@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.9 $, $Date: 2001/05/26 00:48:59 $
+#@(#) File W3D.V, version $Revision: 3.10 $, $Date: 2001/06/21 18:41:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.9 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.10 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -434,6 +434,11 @@ multpole(lmod:integer,nlmod:integer,irpowmx:integer,
          lcosex:logical,lsinex:logical,aper:real,xcen:real,ycen:real,
          nmult:integer,nres:integer,tol:real) 
             subroutine # calculate the multipole moments of the potential
+inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
+             xmmin:real,ymmin:real,x0:real,y0:real,a0:real,b0:real,
+             inj_nsmooth:integer) subroutine
+getinj_phi(nx:integer,ny:integer,nz:integer,phi:real,dx:real,dy:real,dz:real,
+           xmmin:real,ymmin:real) subroutine
 
 
 

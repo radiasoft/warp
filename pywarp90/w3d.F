@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.9 $, $Date: 2001/05/26 00:48:59 $
+c@(#) File W3D.M, version $Revision: 3.10 $, $Date: 2001/06/21 18:41:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -608,9 +608,13 @@ c  the call to afterfs in case some manipulation is done to phi.
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
 
+c  Set the potential near the emitting surface.
+      if (inject > 0)
+     &  call getinj_phi(nx,ny,nz,phi(0,0,0),dx,dy,dz,xmmin,ymmin)
+
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
-      if (inject .gt. 0 .and. caller == "w3dexe")
+      if (inject > 0 .and. caller == "w3dexe")
      &  call inject3d(2)
 
 c  If a flag was set making this a "special" step,
@@ -625,7 +629,7 @@ c  do a half-advance to bring v to t.l. it
 c  Finish transverse space-charge limited injection: change ins and nps.
 c  This is done here so the newly injected particles don't go through
 c  the 'synchv' advance.
-      if (inject .gt. 0 .and. caller == "w3dexe")
+      if (inject > 0 .and. caller == "w3dexe")
      &  call inject3d(3)
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
@@ -4127,51 +4131,9 @@ c           --- Set some temporaries.
 
 c           --- The number of particles loaded is Q/echarge/sw where Q
 c           --- is the charge density as calculated from forcing Enorm to zero.
-c           --- Calculate potential drop from emitting surface at distance
-c           --- of dz from the surface.  This is only done for grid cells
-c           --- within two grid cells of the elliptical emitting surface, and
-c           --- within the axial extent of the grid. This is done over the
-c           --- full axial extent since points which are outside of the
-c           --- injection region maybe needed for the interlopation below
-c           --- to get zp.
-            do iy = 0,ny
-              do ix = 0,nx
-                if (((xmesh(ix)-xinj)*(binj+2.*dy))**2 +
-     &              ((ymesh(iy)-yinj)*(ainj+2.*dx))**2 <
-     &                        ((ainj+2.*dx)*(binj+2.*dx))**2
-     &              .and. (-1 <= inj_grid(ix,iy) .and.
-     &                           inj_grid(ix,iy) < nz)) then
 
-c                 --- angle of point in transverse plane
-                  aa = atan2(iy*dy+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
-c                 --- Find coordinates of the point a distance dz in front
-c                 --- of the source along a line perpendicular to the
-c                 --- emitting surface.
-                  p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
-                  p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
-                  p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
-                  i2x = p2x
-                  i2y = p2y
-                  i2z = p2z
-                  w2x = p2x - i2x
-                  w2y = p2y - i2y
-                  w2z = p2z - i2z
-c                 --- Fetch difference between phi at that point and phi on
-c                 --- the emitting surface.
-                  inj_phi(ix,iy) = vinject(ij) -
-     &                     phi(i2x  ,i2y,  i2z  )*(1.-w2x)*(1.-w2y)*(1.-w2z) -
-     &                     phi(i2x+1,i2y,  i2z  )*    w2x *(1.-w2y)*(1.-w2z) -
-     &                     phi(i2x  ,i2y+1,i2z  )*(1.-w2x)*    w2y *(1.-w2z) -
-     &                     phi(i2x+1,i2y+1,i2z  )*    w2x *    w2y *(1.-w2z) -
-     &                     phi(i2x  ,i2y,  i2z+1)*(1.-w2x)*(1.-w2y)*    w2z  -
-     &                     phi(i2x+1,i2y,  i2z+1)*    w2x *(1.-w2y)*    w2z  -
-     &                     phi(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  -
-     &                     phi(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
-                else
-                  inj_phi(ix,iy) = 0.
-                endif
-              enddo
-            enddo
+c           --- The potential drop in front of the surface is now
+c           --- calculated by a call to getinj_phi from padvnc3d.
 
 c           --- Set factor so correct number of particles are loaded when
 c           --- symmetry is used.  With 2-fold, particles need to be loaded
@@ -5033,6 +4995,190 @@ c             --- over the other.
       return
       end
 c=============================================================================
+      subroutine getinj_phi(nx,ny,nz,phi,dx,dy,dz,xmmin,ymmin)
+      use InjectVars
+      use InjectVars3d
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nz)
+      real(kind=8):: dx,dy,dz,xmmin,ymmin
+
+c Calculate potential drop from emitting surface at distance
+c of dz from the surface.  This is only done for grid cells
+c within two grid cells of the elliptical emitting surface, and
+c within the axial extent of the grid. This is done over the
+c full axial extent since points which are outside of the
+c injection region maybe needed for the interlopation below
+c to get zp.
+
+      integer(ISZ):: ij,ix,iy,i2x,i2y,i2z
+      real(kind=8):: dxi,dyi
+      real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
+      real(kind=8):: rrsq,aa,p2x,p2y,p2z,w2x,w2y,w2z
+
+      dxi = 1./dx
+      dyi = 1./dy
+
+c     --- loop over injection sources
+      do ij=1,ninject
+
+c       --- Set some temporaries.
+        ainj = ainject(ij)
+        binj = binject(ij)
+        ainjsqi = 1./(ainject(ij) + 2.*dx)**2
+        binjsqi = 1./(binject(ij) + 2.*dy)**2
+        xinj = xinject(ij)
+        yinj = yinject(ij)
+
+        do iy = 0,ny
+          do ix = 0,nx
+            rrsq = (ix*dx + xmmin - xinj)**2/ainjsqi +
+     &             (iy*dy + ymmin - yinj)**2/binjsqi
+            if (rrsq < 1. .and.
+     &          (-1 <= inj_grid(ix,iy) .and.
+     &                 inj_grid(ix,iy) < nz)) then
+
+c             --- angle of point in transverse plane
+              aa = atan2(iy*dy+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
+
+c             --- Find coordinates of the point a distance dz in front
+c             --- of the source along a line perpendicular to the
+c             --- emitting surface.
+              p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
+              p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
+              p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
+              i2x = p2x
+              i2y = p2y
+              i2z = p2z
+              w2x = p2x - i2x
+              w2y = p2y - i2y
+              w2z = p2z - i2z
+
+c             --- Fetch difference between phi at that point and phi on
+c             --- the emitting surface.
+              inj_phi(ix,iy) = vinject(ij) -
+     &                 phi(i2x  ,i2y,  i2z  )*(1.-w2x)*(1.-w2y)*(1.-w2z) -
+     &                 phi(i2x+1,i2y,  i2z  )*    w2x *(1.-w2y)*(1.-w2z) -
+     &                 phi(i2x  ,i2y+1,i2z  )*(1.-w2x)*    w2y *(1.-w2z) -
+     &                 phi(i2x+1,i2y+1,i2z  )*    w2x *    w2y *(1.-w2z) -
+     &                 phi(i2x  ,i2y,  i2z+1)*(1.-w2x)*(1.-w2y)*    w2z  -
+     &                 phi(i2x+1,i2y,  i2z+1)*    w2x *(1.-w2y)*    w2z  -
+     &                 phi(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  -
+     &                 phi(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
+            else
+              inj_phi(ix,iy) = 0.
+            endif
+          enddo
+        enddo
+
+c       --- Smooth out inj_phi for this emitting surface.
+        if (inj_nsmooth > 0) then
+          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
+     &                      xinj,yinj,ainj,binj,inj_nsmooth)
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
+     &                        xinj,yinj,ainj,binj,inj_nsmooth)
+      integer(ISZ):: nx,ny
+      real(kind=8):: inj_phi(0:nx,0:ny)
+      real(kind=8):: dx,dy,xmmin,ymmin,xinj,yinj,ainj,binj
+      integer(ISZ):: inj_nsmooth
+
+c This routine smoothes the normal electric field in front of the emitting
+c surface, hopefully removing defects  at places where the emitting surface
+c crosses grid lines.
+c It holds the field at the center point fixed. For points outside of the
+c emitter, a linear extrapolation is done using the results of a least
+c square fit of the field as a function of radius for the points within
+c a grid cell of the edge. The points outside are also held fixed.
+
+      integer(ISZ):: ix,iy,ix0,iy0,is
+      integer(ISZ):: ixm1,iym1,ixp1,iyp1
+      real(kind=8):: rrsq1,rrsq2
+      real(kind=8):: isum,fsum,xsum,xsqsum,fxsum,c1,c2
+      real(kind=8):: s(0:nx,0:ny)
+
+c     --- Calculate the parameters for the least square fit.
+      isum = 0.
+      fsum = 0.
+      xsum = 0.
+      xsqsum = 0.
+      fxsum = 0.
+      do iy = 0,ny
+        do ix = 0,nx
+          rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
+     &            (iy*dy + ymmin - yinj)**2/binj**2
+          rrsq2 = (ix*dx + xmmin - xinj)**2/(ainj - dx)**2 +
+     &            (iy*dy + ymmin - yinj)**2/(binj - dy)**2
+          if (rrsq1 < 1. .and. rrsq2 > 1.) then
+            isum = isum + 1.
+            fsum = fsum + inj_phi(ix,iy)
+            xsum = xsum + sqrt(rrsq1)
+            xsqsum = xsqsum + rrsq1
+            fxsum = fxsum + sqrt(rrsq1)*inj_phi(ix,iy)
+          endif
+        enddo
+      enddo
+      c1 = (fsum*xsqsum/xsum - fxsum)/(isum*xsqsum/xsum - xsum)
+      c2 = (fsum - c1*isum)/xsum
+
+c     --- Set values for points just outside of the emitter edge, using
+c     --- the equation from the fit above.
+      do iy = 0,ny
+        do ix = 0,nx
+          rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
+     &            (iy*dy + ymmin - yinj)**2/binj**2
+          rrsq2 = (ix*dx + xmmin - xinj)**2/(ainj + 2.*dx)**2 +
+     &            (iy*dy + ymmin - yinj)**2/(binj + 2.*dy)**2
+          if (rrsq1 > 1. .and. rrsq2 < 1.) then
+            inj_phi(ix,iy) = c1 + c2*sqrt(rrsq1)
+          endif
+        enddo
+      enddo
+
+c     --- Do the smoothing.
+      ix0 = (xinj - xmmin)/dx
+      iy0 = (yinj - ymmin)/dy
+      do is = 1,inj_nsmooth
+        s = inj_phi
+        do iy = 0,ny
+          do ix = 0,nx
+            rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
+     &              (iy*dy + ymmin - yinj)**2/binj**2
+            if (rrsq1 < 1. .and. (ix .ne. ix0 .or. iy .ne. iy0)) then
+              ixm1 = ix - 1
+              ixp1 = ix + 1
+              iym1 = iy - 1
+              iyp1 = iy + 1
+              if (ix == 0) ixm1 = 1
+              if (ix == nx) ixp1 = nx-1
+              if (iy == 0) iym1 = 1
+              if (iy == ny) iyp1 = ny-1
+              inj_phi(ix,iy) = 0.0625*(s(ixm1,iym1) + s(ixm1,iyp1)  +
+     &                                 s(ixp1,iym1) + s(ixp1,iyp1)) +
+     &                         0.1250*(s(ixm1,iy  ) + s(ixp1,iy  )  +
+     &                                 s(ix  ,iym1) + s(ix  ,iyp1)) +
+     &                         0.2500*(s(ix  ,iy  ))
+            endif
+          enddo
+        enddo
+      enddo
+
+c     --- Do an ad-hoc averaging with the transpose
+c     do iy = 1,ny
+c       do ix = 0,iy-1
+c         inj_phi(ix,iy) = 0.5*(inj_phi(ix,iy) + inj_phi(iy,ix))
+c         inj_phi(iy,ix) = inj_phi(ix,iy)
+c       enddo
+c     enddo
+
+      return
+      end
+c=============================================================================
       subroutine inj_sete3d(phi,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,dx,dy,dz,
      &                      nx,ny,nz,ex,ey,ez)
       use Subtimers
@@ -5132,27 +5278,17 @@ c         --- of the source along a line perpendicular to the
 c         --- emitting surface.
           px = abs((rinj - zi)*sin(az)*cos(aa) + xinj - xmmin)*dxi
           py = abs((rinj - zi)*sin(az)*sin(aa) + yinj - ymmin)*dyi
-c         pz =    (rinj - (rinj - zi)*cos(az)  + zinj - zmmin - zgrid)*dzi
-          ca = cos(az)
-          pz = ((rinj*(1.-ca**2)+2.*zi*ca**2-zi**2*rinji*ca**2)/
-     &         (1.+(1.-zi*rinji)*ca)  + zinj - zmmin - zgrid)*dzi
           ix = int(px)
           iy = int(py)
-          iz = int(pz)
           wx = px - ix
           wy = py - iy
-          wz = pz - iz
 c         --- Fetch difference between phi at that point and phi on
 c         --- the emitting surface, calculating the normal electric field.
-          en = zii*(vinject(ij) -
-     &             phi(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) -
-     &             phi(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) -
-     &             phi(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) -
-     &             phi(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) -
-     &             phi(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  -
-     &             phi(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  -
-     &             phi(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  -
-     &             phi(ix+1,iy+1,iz+1)*    wx *    wy *    wz)
+c         --- That has already been gathered into inj_phi.
+          en = zii*(inj_phi(ix  ,iy  )*(1.-wx)*(1.-wy) +
+     &              inj_phi(ix+1,iy  )*    wx *(1.-wy) +
+     &              inj_phi(ix  ,iy+1)*(1.-wx)*    wy  +
+     &              inj_phi(ix+1,iy+1)*    wx *    wy   )
 
           if (dd .le. 1.) then
 c           --- Now set the particle's electric field based off of the normal
