@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.78 2002/05/06 13:41:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.79 2002/05/09 14:06:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -76,8 +76,6 @@ fg, bg, white, black, red, green, blue, cyan, magenta, yellow
 Define variable names for plot markers
 point, plus, star, circle
 
-setup_subsets(): Create subsets for particle plots (negative window numbers)
-clear_subsets(): Clears the subsets for particle plots (negative window numbers)
 settitles(): set plot titles
 ptitles(): draw plot titles on the current frame
 
@@ -344,60 +342,6 @@ yellow = 'yellow'
 ##########################################################################
 # List of available named colors.
 color = ["red","green","blue","cyan","magenta","yellow"]
-##########################################################################
-# Setup the random subsets. This is only called when the first plot
-# is made so that top.npsplt is known to be set.
-# These routines can be called at any time by the user to add more subsets,
-# for example subsets with more or fewer particles, or subsets based on
-# the number of particles in a species other than 0.
-psubset=[]
-def setup_subsets(js=0):
-  """
-Adds plotting subset to the list
-  - js=0 is the species to create a subset for
-  """
-  global psubset
-  if lparallel:
-    totalnp = parallelsum(top.nps[js])
-    fracnp = float(top.nps[js])/float(totalnp)
-  else:
-    fracnp = 1.
-  for i in xrange(0,len(top.npplot)):
-    ntopick=min(top.nps[js],int(top.npplot[i]*fracnp+0.5))
-    ii = arrayrange(top.nps[0])
-    rr = top.nps[0]*RandomArray.random(top.nps[0])
-    ii = compress(less(rr,ntopick),ii)
-    psubset.append(ii.astype('i'))
-#----------------------------------------------------------------------------
-def clear_subsets():
-  "Clears the particle subsets so that they can be updated."
-  global psubset
-  psubset = []
-
-# --- Old method which replicates the numbers selected by the fortran
-# --- routine psubsets. Note that that method breaks down when
-# --- nps/inclump[i] > npplot[i], when nps/inclump[i] particles will be plotted.
-# --- This version is maintained in case a user wants a close comparison with
-# --- the Basis version.
-def setup_subsetsold(js=0):
-  """Old subset calculator, do not use"""
-  global psubset
-  # --- Print warning if npsplt is zero, in which case the subsets won't work
-  if (top.npsplt == 0):
-    remark("WARNING: npsplt is zero, subsets not calculated")
-    return
-  d2 = len(top.npplot)
-  # --- Create temp ii array and copy top.isubset into it. Then replicate
-  # --- the data throughout ii.
-  for i in xrange(0,d2):
-    n = sum(top.isubset[:,i])
-    nsets = int(min(top.np_s[js],top.npmax)/top.npsplt+1)
-    ii = zeros(n*nsets,'i') + top.npmax
-    ii[0:n] = nonzero(top.isubset[:,i])
-    for j in xrange(1,nsets):
-      ii[j*n:j*n+n] = ii[0:n] + j*top.npsplt
-    ii = compress(less(ii,top.npmax),ii)
-    psubset.append(ii)
 
 ########################################################################
 # Note: Subtracted off 0.0337 from X position of titlel (10/21/99)
