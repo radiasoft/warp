@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.3 $, $Date: 2001/04/20 00:22:07 $
+c@(#) File DTOP.M, version $Revision: 3.4 $, $Date: 2001/04/26 17:31:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -53,6 +53,7 @@ c       --- Check whether any of the z histories have been turned on recently.
 c       --- If so, space needs to be allocated for them.
         lgchange = checkzhistarray(lhlinechg,ihlinechg) .or. lgchange
         lgchange = checkzhistarray(lhvzofz,ihvzofz) .or. lgchange
+        lgchange = checkzhistarray(lhcurrz,ihcurrz) .or. lgchange
         lgchange = checkzhistarray(lhepsxz,ihepsxz) .or. lgchange
         lgchange = checkzhistarray(lhepsyz,ihepsyz) .or. lgchange
         lgchange = checkzhistarray(lhepsnxz,ihepsnxz) .or. lgchange
@@ -190,6 +191,7 @@ c     --- Collect only those z histories specified by the user.
       do iz=0,nzzarr
         if (lhlinechg)  hlinechg(iz,jhist) = linechg(iz)
         if (lhvzofz)    hvzofz(iz,jhist) = vzofz(iz)
+        if (lhcurrz)    hcurrz(iz,jhist) = curr(iz)
       enddo
       do iz=0,nzmmnt
         if (lhepsxz)    hepsxz(iz,jhist)    = epsxz(iz)
@@ -625,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.3 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.4 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19

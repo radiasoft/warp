@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.3 $, $Date: 2001/04/20 00:22:08 $
+c@(#) File TOP.M, version $Revision: 3.4 $, $Date: 2001/04/26 17:31:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1668,7 +1668,7 @@ c       itask=2  sums moments from particles
 c       itask=3  divides by number of particles, calculates emittances and rms
 
 
-      real(kind=8):: pp(0:16,NPARPGRP)
+      real(kind=8):: pp(0:17,NPARPGRP)
       integer(ISZ):: iz(NPARPGRP)
       integer(ISZ):: im,izm,iw,ip,icell,i
       real(kind=8):: dti,dtip1,wz1,wz0,zwin,tg,th
@@ -1931,6 +1931,8 @@ c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
             pp(13,ip) = gaminv(ip)
             pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*pp(0,ip)
             pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*pp(0,ip)
+            pp(16,ip) = dti
+            pp(17,ip) = dtip1
           enddo
 
 c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
@@ -1941,6 +1943,7 @@ c         --- to the moments grid cell centers.
               if (iz(ip) .eq. izepwin(iw) .and. nep(iw,is) .lt. nepmax .and.
      &            pp(0,ip) > 0.) then
                 nep(iw,is) = nep(iw,is) + 1
+                tep(nep(iw,is),iw,is) = pp(16,ip) + time
                 xep(nep(iw,is),iw,is) = pp(1,ip)
                 yep(nep(iw,is),iw,is) = pp(5,ip)
                 uxep(nep(iw,is),iw,is) = pp(3,ip)
@@ -1950,6 +1953,7 @@ c         --- to the moments grid cell centers.
      &                 nep(iw,is) .lt. nepmax .and.
      &                 pp(0,ip) > 0.) then
                 nep(iw,is) = nep(iw,is) + 1
+                tep(nep(iw,is),iw,is) = pp(17,ip) + time
                 xep(nep(iw,is),iw,is) = pp(2,ip)
                 yep(nep(iw,is),iw,is) = pp(6,ip)
                 uxep(nep(iw,is),iw,is) = pp(4,ip)

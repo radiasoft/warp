@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.3 $, $Date: 2001/04/20 00:22:10 $
+#@(#) File TOP.V, version $Revision: 3.4 $, $Date: 2001/04/26 17:31:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -585,7 +585,7 @@ linpgrd              logical           # Flag for when mesh in pgrd element
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.3 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.4 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1342,9 +1342,13 @@ ihlinechg integer /1/        # Multiplier for hlinechg memory size (autoset)
 hlinechg(0:nzzarr*ihlinechg,0:lenhist) _real [C/m] limited (0:nzzarr,0:jhist)
             +zhist +parallel # Line charge density vs. space and time
 lhvzofz logical /.true./     # Turns on history of vz
-ihvzofz integer /1/          # Multiplier for hhvzofz memory size (autoset)
+ihvzofz integer /1/          # Multiplier for hvzofz memory size (autoset)
 hvzofz(0:nzzarr*ihvzofz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
             +zhist +parallel # Vz versus space and time
+lhcurrz logical /.false./    # Turns on history of current
+ihcurrz integer /1/          # Multiplier for hcurrz memory size (autoset)
+hcurrz(0:nzzarr*ihcurrz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
+            +zhist +parallel # Current versus space and time
 lhepsxz logical /.false./    # Turns on history of X emittance
 ihepsxz integer /0 /         # Multiplier for hepsxz memory size (autoset)
 hepsxz(0:nzmmnt*ihepsxz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
@@ -1552,6 +1556,7 @@ nepwin                  integer /0/ # Number of grid locations (windows)
 izepwin(nepwin)        _integer     # List of grid locations (index of zmntmesh)
 nepmax                  integer /0/ # Maximum number of particles
 nep(nepwin,ns)         _integer     # Number of particles in each grid location
+tep(nepmax,nepwin,ns)  _real        # time of particles at grid cell centers
 xep(nepmax,nepwin,ns)  _real        # X coordinates at grid cell centers
 yep(nepmax,nepwin,ns)  _real        # Y coordinates at grid cell centers
 uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
