@@ -1449,6 +1449,297 @@ Create DX object drawing the object.
       dxlist.append(child.getdxobject(kwdict=kw))
     self.dxobject = DXCollection(*dxlist)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  #===========================================================================
+  def solve2down(self):
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    self.phisave[:,:,:] = self.phi
+    cond_potmg(self.conductors.interior,
+               self.nx,self.ny,self.nz,self.phisave,0,false,
+               2,true)
+    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+             self.phisave,self.rhosave,self.res,
+             0,self.bound0,self.boundnz,self.boundxy,
+             self.l2symtry,self.l4symtry,
+             self.mgparam,2,true,self.lcndbndy,self.icndbndy,self.conductors)
+    self.rho[:,:,:] = self.res[:,:,1:-1]
+    self.phi[:,:,:] = 0.
+    print 1,self.res[10,10,10]
+
+    for child in self.children:
+      child.solve2down()
+
+    for parent in self.parents:
+      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
+      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
+      sx1,sy1,sz1 = s1 - self.fulllower
+      sx2,sy2,sz2 = s2 - self.fulllower
+      px1,py1,pz1 = s1/self.refinement - parent.fulllower
+      px2,py2,pz2 = s2/self.refinement - parent.fulllower
+      restrict3d(sx2-sx1,sy2-sy1,sz2-sz1,pz2-pz1,sz2-sz1,
+                 self.res[sx1:sx2+1,sy1:sy2+1,sz1:sz2+3],
+                 parent.res[px1:px2+1,py1:py2+1,pz1:pz2+3],
+                 self.boundxy,
+                 self.bound0,self.boundnz,self.bound0,self.boundnz,
+                 0,0,self.l2symtry,self.l4symtry)
+
+  def solve2up(self):
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    for parent in self.parents:
+      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
+      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
+      sx1,sy1,sz1 = s1 - self.fulllower
+      sx2,sy2,sz2 = s2 - self.fulllower
+      px1,py1,pz1 = s1/self.refinement - parent.fulllower
+      px2,py2,pz2 = s2/self.refinement - parent.fulllower
+      expand3d(px2-px1,py2-py1,pz2-pz1,sz1-sz2,pz2-pz1,
+               parent.phi[px1:px2+1,py1:py2+1,pz1:pz2+3],
+               self.phi[sx1:sx2+1,sy1:sy2+1,sz1:sz2+3],
+               self.boundxy,self.bound0,self.boundnz,0,0)
+
+    #   for i in range(self.uppasses):
+    #     self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+    #                    self.phi,self.rho,self.rstar,
+    #                    dxsqi,dysqi,dzsqi,self.linbend,
+    #                    self.l2symtry,self.l4symtry,self.bendx,
+    #                    self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
+    #                    self.lcndbndy,self.icndbndy,self.conductors)
+
+    childrenserror = 0.
+    for child in self.children:
+      childerror = child.solve2up()
+      childrenserror = max(childrenserror,childerror)
+
+    add(self.phi,self.phisave,self.phi)
+    print 2,self.phi[10,10,10]
+
+    # --- When using residual correction form, the other planes do need
+    # --- to be set when using other than Dirichlet boundaries since
+    # --- those planes are only set with the error of phi.
+    if self.bound0  == 1: self.phi[:,:,0] = self.phi[:,:,2]
+    if self.boundnz == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
+    if self.bound0  == 2: self.phi[:,:,0] = self.phi[:,:,-3]
+    if self.boundnz == 2: self.phi[:,:,-1] = self.phi[:,:,2]
+
+    # --- Calculate the change in phi.
+    subtract(self.phisave,self.phi,self.phisave)
+    absolute(self.phisave,self.phisave)
+    self.mgerror[0] = MA.maximum(self.phisave)
+    print self.mgerror[0],childrenserror
+    print 'err = ',self.mgerror[0]
+    return max(childrenserror,self.mgerror[0])
+
+  #===========================================================================
+  def solve2init(self):
+    # --- Create temp arrays
+    self.phisave = fzeros(shape(self.phi),'d')
+    self.bendx = fzeros(((self.nx+1)*(self.ny+1)),'d')
+
+    # --- Initialize temporaries
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+    rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
+
+    checkconductors(self.nx,self.ny,self.nz,self.nzfull,
+                    self.dx,self.dy,self.dz,self.l2symtry,self.l4symtry,
+                    self.conductors)
+
+    # --- Preset rho to increase performance (reducing the number of
+    # --- multiplies in the main SOR sweep loop).
+    if not self.linbend:
+      # --- Do the operation in place (to avoid temp arrays)
+      multiply(self.rho,reps0c,self.rho)
+    else:
+      raise "Bends not yet supported"
+
+    # --- Since using residual correction form, need to save the original rho.
+    self.rhosave = self.rho + 0.
+    self.res = fzeros(shape(self.phi),'d')
+
+    for child in self.children:
+      child.solve2init()
+
+  #===========================================================================
+  def solve2(self,iwhich=0):
+    # --- No initialization needed
+    if iwhich == 1: return
+
+    self.solve2init()
+
+    # --- Initialize temporaries
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+    rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
+
+    # --- Main multigrid v-cycle loop. Calculate error each iteration since
+    # --- very few iterations are done.
+    self.mgiters[0] = 0
+    self.mgerror[0] = 2.*self.mgtol + 1.
+    while (self.mgerror[0] > self.mgtol and self.mgiters[0] < self.mgmaxiters):
+      self.mgiters[0] = self.mgiters[0] + 1
+ 
+      self.solve2down()
+
+      # --- Do one vcycle.
+      self.vcycle(0,self.nx,self.ny,self.nz,self.nzfull,
+                  self.dx,self.dy,self.dz,self.phi,self.rho,
+                  self.rstar,self.linbend,self.l2symtry,self.l4symtry,
+                  self.bendx,
+                  self.boundxy,self.bound0,self.boundnz,
+                  self.mgparam,self.mgform,self.mgmaxlevels,
+                  self.downpasses,self.uppasses,self.lcndbndy,
+                  self.icndbndy,self.conductors)
+
+      self.mgerror[0] = self.solve2up()
+
+      #else
+      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
+      #                my_index,nslaves,izfsslave,nzfsslave,
+      #                whosendingleft,izsendingleft,
+      #                whosendingright,izsendingright)
+      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,-1,
+      #                my_index,nslaves,izfsslave,nzfsslave,
+      #                whosendingleft,izsendingleft,
+      #                whosendingright,izsendingright)
+      #endif
+
+    # --- For Dirichlet boundary conditions, copy data into guard planes
+    # --- For other boundary conditions, the guard planes are used during
+    # --- the solve are so are already set.
+    if (self.bound0 == 0): self.phi[:,:,0] = self.phi[:,:,1]
+    if (self.boundnz == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
+
+    # --- Make a print out.
+    if (self.mgerror[0] > self.mgtol):
+      print "Multigrid: Maximum number of iterations reached"
+    print ("Multigrid: Error converged to %11.3e in %4d v-cycles"%
+           (self.mgerror[0],self.mgiters[0]))
+
+    # --- If using residual correction form, restore saved rho
+    self.rho[:,:,:] = self.rhosave
+
+    # --- Restore rho
+    if (not self.linbend):
+      multiply(self.rho,1./reps0c,self.rho)
+
+
+  #===========================================================================
+  def solve2down1(self):
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    self.phisave[:,:,:] = self.phi
+    cond_potmg(self.conductors.interior,
+               self.nx,self.ny,self.nz,self.phisave,0,false,
+               2,true)
+    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+             self.phisave,self.rhosave,self.res,
+             0,self.bound0,self.boundnz,self.boundxy,
+             self.l2symtry,self.l4symtry,
+             self.mgparam,2,true,self.lcndbndy,self.icndbndy,self.conductors)
+    self.rho[:,:,:] = self.res[:,:,1:-1]
+    self.phi[:,:,:] = 0.
+
+    for i in range(self.downpasses):
+      self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+                     self.phi,self.rho,self.rstar,
+                     dxsqi,dysqi,dzsqi,self.linbend,
+                     self.l2symtry,self.l4symtry,self.bendx,
+                     self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
+                     self.lcndbndy,self.icndbndy,self.conductors)
+
+    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+             self.phi,self.rho,self.res,
+             0,self.bound0,self.boundnz,self.boundxy,
+             self.l2symtry,self.l4symtry,
+             self.mgparam,2,false,
+             self.lcndbndy,self.icndbndy,self.conductors)
+
+    for child in self.children:
+      child.solve2down()
+
+    for parent in self.parents:
+      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
+      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
+      sx1,sy1,sz1 = s1 - self.fulllower
+      sx2,sy2,sz2 = s2 - self.fulllower
+      px1,py1,pz1 = s1/self.refinement - parent.fulllower
+      px2,py2,pz2 = s2/self.refinement - parent.fulllower
+      restrict3d(sx2-sx1,sy2-sy1,sz2-sz1,pz2-pz1,sz2-sz1,
+                 self.res[sx1:sx2+1,sy1:sy2+1,sz1:sz2+1],
+                 parent.rho[px1:px2+1,py1:py2+1,pz1:pz2+1],
+                 self.boundxy,
+                 self.bound0,self.boundnz,self.bound0,self.boundnz,
+                 0,0,self.l2symtry,self.l4symtry)
+
+  def solve2up1(self):
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    for parent in self.parents:
+      s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
+      s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
+      sx1,sy1,sz1 = s1 - self.fulllower
+      sx2,sy2,sz2 = s2 - self.fulllower
+      px1,py1,pz1 = s1/self.refinement - parent.fulllower
+      px2,py2,pz2 = s2/self.refinement - parent.fulllower
+      expand3d(px2-px1,py2-py1,pz2-pz1,sz2-sz2,pz2-pz1,
+               parent.phi[px1:px2+1,py1:py2+1,pz1:pz2+1],
+               self.phi[sx1:sx2+1,sy1:sy2+1,sz1:sz2+1],
+               self.boundxy,self.bound0,self.boundnz,0,0)
+
+    for i in range(self.uppasses):
+      self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+                     self.phi,self.rho,self.rstar,
+                     dxsqi,dysqi,dzsqi,self.linbend,
+                     self.l2symtry,self.l4symtry,self.bendx,
+                     self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
+                     self.lcndbndy,self.icndbndy,self.conductors)
+
+    childrenserror = 0.
+    for child in self.children:
+      childerror = child.solve2up()
+      childrenserror = max(childrenserror,childerror)
+
+    add(self.phi,self.phisave,self.phi)
+
+    # --- When using residual correction form, the other planes do need
+    # --- to be set when using other than Dirichlet boundaries since
+    # --- those planes are only set with the error of phi.
+    if self.bound0  == 1: self.phi[:,:,0] = self.phi[:,:,2]
+    if self.boundnz == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
+    if self.bound0  == 2: self.phi[:,:,0] = self.phi[:,:,-3]
+    if self.boundnz == 2: self.phi[:,:,-1] = self.phi[:,:,2]
+
+    # --- Calculate the change in phi.
+    subtract(self.phisave,self.phi,self.phisave)
+    absolute(self.phisave,self.phisave)
+    self.mgerror[0] = MA.maximum(self.phisave)
+    print 'err= ',self.mgerror[0]
+    return max(childrenserror,self.mgerror[0])
+
 # --- This can only be done after MRBlock is defined.
 try:
   psyco.bind(MRBlock)
