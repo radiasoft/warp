@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.96 2003/02/27 15:16:13 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.97 2003/03/18 23:22:53 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2361,9 +2361,19 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if w3d.nx_selfe == 0:
-    print "getselfe warning: selfe not allocated"
-    return
+  if top.efetch != 3 or w3d.nx_selfe == 0:
+    # --- If not already using selfe, then allocate it and set it.
+    # --- Note that this could be an unexpected expense for a user.
+    w3d.nx_selfe = w3d.nx
+    w3d.ny_selfe = w3d.ny
+    w3d.nz_selfe = w3d.nz
+    if w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom:
+      w3d.ny_selfe = 0
+    if w3d.solvergeom==w3d.Zgeom: w3d.nx_selfe = 0
+    gchange("Efields3d")
+    getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+               w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,w3d.dx,w3d.dy,w3d.dz,
+               top.pboundxy)
   ic = ['x','y','z'].index(comp)
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
