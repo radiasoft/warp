@@ -1,30 +1,48 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.8 2001/03/08 02:39:10 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.9 2001/03/14 21:51:47 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
 
-# --- Given an iz value, returns the processor number whose region
-# --- contains that value.
 def convertiztope(iz):
-  if 0 <= iz < w3d.nzfull:
-    pe = compress(logical_and(less_equal(top.izslave[1:-1],iz),
-                              less(iz,top.izslave[2:])),arange(npes))[0]
-  elif iz == w3d.nzfull:
-    pe = npes-1
+  """Given an iz value, returns the processor number whose particle region
+contains that value."""
+  if 0 <= iz <= w3d.nzfull:
+    # --- This finds all of the processors for which have iz within their
+    # --- domain. The last one is selected since in the regions which
+    # --- overlap, the standard is that the processor to the right has
+    # --- priority for that region, i.e. the processor which has the
+    # --- overlapping on it left hand edge.
+    pe = compress(logical_and(less_equal(top.izpslave,iz),
+                    less_equal(iz,top.izpslave+top.nzpslave)),arange(npes))[-1]
+  else:
+    pe = None
+  return pe
+convertizptope = convertiztope
+def convertizfstope(iz):
+  """Given an iz value, returns the processor number whose field solve region
+contains that value."""
+  if 0 <= iz <= w3d.nzfull:
+    # --- This finds all of the processors for which have iz within their
+    # --- domain. The last one is selected since in the regions which
+    # --- overlap, the standard is that the processor to the right has
+    # --- priority for that region, i.e. the processor which has the
+    # --- overlapping on it left hand edge.
+    pe = compress(logical_and(less_equal(top.izfsslave,iz),
+                  less_equal(iz,top.izfsslave+top.nzfsslave)),arange(npes))[-1]
   else:
     pe = None
   return pe
 
-# --- Given an z window number, returns the processor number whose region
-# --- contains that range (actually the center of the window).
 def convertiwtope(iw):
+  """Given an z window number, returns the processor number whose region
+contains that range (actually the center of the window)."""
   if 0 <= iw <= top.nzwind:
     zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
-    return compress(logical_and(less_equal(top.zmslmin,zz),
-                                      less(zz,top.zmslmax)),arange(npes))[0]
+    return compress(logical_and(less_equal(top.zpslmin,zz),
+                                      less(zz,top.zpslmax)),arange(npes))[0]
   else:
     return None
 
@@ -320,7 +338,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                 if not histz:
                 # --- This is a temporary solution.
                   ff.defent(vname+'@parallel',v,
-                            (top.nslaves,max(1+top.nzslave),top.lenhist+1))
+                            (top.nslaves,max(1+top.nzpslave),top.lenhist+1))
                 elif histz == 1:
                 # --- This would be the proper way, but writing out the
                 # --- would be expensive since it would have to be done
@@ -445,16 +463,16 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                 # --- This is VERY slow.
                 for ih in xrange(top.jhist+1):
                   ff.write(pdbname,transpose(array([v[:,ih]])),
-                           indx=(top.izslave[me+1],ih))
+                           indx=(top.izpslave[me],ih))
               elif histz == 2:
                 # --- Write out the transpose of the array.
                 ff.write(vname+'@parallel',transpose(v),
-                         indx=(0,top.izslave[me+1]))
+                         indx=(0,top.izpslave[me]))
             elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                           'condvolt','icondlxy','icondlz']:
               # --- Write out conductor data.
               offset = 0
-              if vname=='izcond': offset = top.izslave[me+1]
+              if vname=='izcond': offset = top.izslave[me]
               if f3d.ncond > 0:
                 ff.write(pdbname,v[:f3d.ncond]+offset,
                          indx=(sum(ncond_p0[:me+1]),))
@@ -466,7 +484,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                            'ecvoltpz','iecndlxy','iecndlz']:
               # --- Write out conductor data.
               offset = 0
-              if vname=='iecndz': offset = top.izslave[me+1]
+              if vname=='iecndz': offset = top.izslave[me]
               if f3d.necndbdy > 0:
                 ff.write(pdbname,v[:f3d.necndbdy]+offset,
                          indx=(sum(necndbdy_p0[:me+1]),))
@@ -478,31 +496,32 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                            'ocvoltpz','iocndlxy','iocndlz']:
               # --- Write out conductor data.
               offset = 0
-              if vname=='iocndz': offset = top.izslave[me+1]
+              if vname=='iocndz': offset = top.izslave[me]
               if f3d.nocndbdy > 0:
                 ff.write(pdbname,v[:f3d.nocndbdy]+offset,
                          indx=(sum(nocndbdy_p0[:me+1]),))
             elif p == 'w3d' and vname in ['rho']:
-              if me < npes-1: ppp = v[:,:,:-top.grid_overlap]
-              else: ppp = v
-              ff.write(pdbname,ppp,indx=(0,0,top.izslave[me+1]))
+              iz1 = top.izfsslave[me] - top.izslave[me]
+              if me < npes-1: iz2 = top.izfsslave[me+1] - top.izslave[me]
+              else:           iz2 = iz1 + top.nzfsslave[me] + 1
+              ppp = w3d.rho[:,:,iz1:iz2]
+              ff.write(pdbname,ppp,indx=(0,0,top.izfsslave[me]))
             elif p == 'w3d' and vname in ['phi']:
-              if me == 0:
-                ppp = v[:,:,:w3d.nz-top.grid_overlap+2]
-                imin = 0
-              elif me < npes-1:
-                ppp = v[:,:,1:w3d.nz-top.grid_overlap+2]
-                imin = top.izslave[me+1]+1
-              else:
-                ppp = v[:,:,1:]
-                imin = top.izslave[me+1]+1
-              ff.write(pdbname,ppp,indx=(0,0,imin))
+              iz1 = top.izfsslave[me] - top.izslave[me]
+              if me == 0: iz1 = iz1 - 1
+              if me < npes-1: iz2 = top.izfsslave[me+1] - top.izslave[me]
+              else:           iz2 = iz1 + top.nzfsslave[me] + 1
+              ppp = w3d.phi[:,:,iz1+1:iz2+1]
+              if me == 0: izmin = 0
+              else:       izmin = top.izslave[me]+1
+              ff.write(pdbname,ppp,indx=(0,0,izmin))
             else:
               # --- The rest are domain decomposed Z arrays
-              imin = top.izslave[1+me]
-              izmax = top.nzpslave[1+me]
-              if me == top.nslaves-1: izmax = izmax + 1
-              ff.write(pdbname,v[:izmax],indx=(imin,))
+              # --- Assuming they have the same decomposition as the particles.
+              iz1 = top.izpslave[me] - top.izslave[me]
+              if me < npes-1: iz2 = top.izpslave[me+1] - top.izslave[me]
+              else:           iz2 = iz1 + top.nzpslave[me] + 1
+              ff.write(pdbname,v[iz1:iz2],indx=(top.izpslave[me],))
 
   # --- Everybody closes the file at this point
   ff.close()
@@ -666,15 +685,15 @@ def parallelrestore(fname):
               histz = 0
             if histz == 0:
               # --- This is a temporary but fast solution.
-              itriple = array([me,me,1,0,w3d.nz,1,0,top.lenhist,1])
+              itriple = array([me,me,1,0,top.nzpslave[me],1,0,top.lenhist,1])
               s = p+'.forceassign(vname,\
                     ff.read_part(vname+"@parallel",itriple)[0,...])'
             elif histz == 1:
               # --- The proper solution would have to read the data in
               # --- in chunks for each time step.
-              itriple = array([top.izslave[me+1],top.izslave[me+1]+w3d.nz,1,
-                               0,0,0])
-              tmp = zeros((1+w3d.nz,1+top.lenhist),'d')
+              itriple = array([top.izpslave[me],
+                               top.izpslave[me]+top.nzpslave[me],1,0,0,0])
+              tmp = zeros((1+top.nzpslave[me],1+top.lenhist),'d')
               for ih in xrange(top.jhist+1):
                 itriple[3:] = [ih,ih,1]
                 tmp[:,ih] = ff.read_part(vname+"@parallel",itriple)
@@ -682,7 +701,7 @@ def parallelrestore(fname):
             elif histz == 2:
               # --- Read in data and untranspose it.
               itriple = array([0,top.lenhist,1,
-                               top.izslave[me+1],top.izslave[me+1]+w3d.nz,1])
+                          top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
               tmp = ff.read_part(vname+"@parallel",itriple)
               s = p+'.forceassign(vname,transpose(tmp))'
           elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
@@ -693,7 +712,7 @@ def parallelrestore(fname):
               itriple = array([imin,imin+ncond_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
               if vname == 'izcond':
-                s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me+1]'
+                s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me]'
             else:
               s = 'pass'
           elif p == 'f3d' and \
@@ -708,7 +727,7 @@ def parallelrestore(fname):
               itriple = array([imin,imin+necndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
               if vname == 'iecndz':
-                s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me+1]'
+                s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me]'
             else:
               s = 'pass'
           elif p == 'f3d' and \
@@ -723,22 +742,21 @@ def parallelrestore(fname):
               itriple = array([imin,imin+nocndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
               if vname == 'iocndz':
-                s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me+1]'
+                s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me]'
             else:
               s = 'pass'
           elif p == 'w3d' and vname in ['rho']:
-            imin = top.izslave[1+me]
-            itriple = array([0,w3d.nx,1,0,w3d.ny,1,imin,imin+w3d.nz,1])
+            itriple = array([0,w3d.nx,1,0,w3d.ny,1,
+                        top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
             s = p+'.forceassign(vname,ff.read_part(v,itriple))'
           elif p == 'w3d' and vname in ['phi']:
-            imin = top.izslave[1+me]
             itriple = array([0,w3d.nx,1,0,w3d.ny,1,
-                             imin,imin+w3d.nz+2+w3d.izextra,1])
+                top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
             s = p+'.forceassign(vname,ff.read_part(v,itriple))'
           else:
             # --- The rest are domain decomposed Z arrays
-            imin = top.izslave[1+me]
-            itriple = array([imin,imin+w3d.nz,1])
+            itriple = array([top.izpslave[me],
+                             top.izpslave[me]+top.nzpslave[me],1])
             s = p+'.forceassign(vname,ff.read_part(v,itriple))'
 
       try:
