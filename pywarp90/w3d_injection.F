@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.24 $, $Date: 2005/03/17 18:07:28 $
+c@(#) File w3d_injection.F, version $Revision: 1.25 $, $Date: 2005/03/27 21:45:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1797,6 +1797,15 @@ c     --- as a function of the transverse coordinates.
 
 c Loop over the injection sources.
       do ij=1,ninject
+
+c       --- Provide some simple error checking
+        if (ainject(ij) >= abs(rinject(ij)) .or.
+     &      binject(ij) >= abs(rinject(ij))) then
+          print*,"Error: the radius of curvature of the injection source must"
+          print*,"       be greater than its transverse radius"
+          stop
+        endif
+
 c       --- Calculate the extent of the source plus guard cells.
         ainj    = ainject(ij)
         binj    = binject(ij)
@@ -1828,12 +1837,12 @@ c             --- subtraction of large, similar numbers when rinject is large.
 c             inj_grid(ix,iy,ij) = (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
               rrsq = xx**2 +  yy**2
+              if (rrsq > rinject(ij)**2) rrsq = max(ainject(ij),binject(ij))**2
               inj_grid(ix,iy,ij) = rrsq/
-     &             (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - rrsq)))
+     &             (abs(rinject(ij)) + sqrt(rinject(ij)**2 - rrsq))
               if (rinject(ij) < 0.) inj_grid(ix,iy,ij) = -inj_grid(ix,iy,ij)
-              if (rrsq > rinject(ij)**2) inj_grid(ix,iy,ij) = rinject(ij)
 
-              inj_angl(ix,iy,ij) = asin(max(-1.,min(1.,sqrt(rrsq)/rinject(ij))))
+              inj_angl(ix,iy,ij) = asin(sqrt(rrsq)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
