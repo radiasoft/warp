@@ -1,7 +1,12 @@
+"""Inject particles into a simulation, based on egun results.
+"""
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.1 2000/10/16 18:34:19 dave Exp $'
+eguntowarp_version = '$Id: eguntowarp.py,v 1.2 2003/08/29 00:02:51 dave Exp $'
+def eguntowarpdoc():
+  import eguntowarp
+  print eguntowarp.__doc__
 
 class EgunToWarp:
   """
