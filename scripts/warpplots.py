@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.95 2003/02/24 17:58:02 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.96 2003/02/27 15:16:13 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -195,7 +195,6 @@ def plotruninfo():
 # with one that prints informative text at the bottom of each frame just
 # before the normal gist fma is called. Also created are alternate (Basis
 # like) names for fma and redraw.
-print me, 'fma'
 gistfma = fma
 gisthcp = hcp
 afterplot = []
