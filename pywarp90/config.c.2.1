@@ -39,7 +39,8 @@ extern void initwxypy();
 extern void initfrzpy();
 extern void initwrzpy();
 extern void initcirpy();
-extern void initherpy();                                                        
+extern void initherpy();        
+extern void initchopy();                                                
 
 extern void initgc(void);
 extern void initthread(void);
@@ -75,6 +76,7 @@ struct _inittab _PyImport_Inittab[] = {
         {"wrzpy", initwrzpy},
         {"cirpy", initcirpy},
         {"herpy", initherpy},
+		{"chopy", initchopy},
 
 	{"gc", initgc},
 	{"thread", initthread},

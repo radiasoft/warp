@@ -36,13 +36,13 @@ WARPSLAVEOBJECTS = topslave.o w3dslave.o f3dslave.o frzslave.o
 MODULEOBJECTS = toppymodule.o envpymodule.o w3dpymodule.o f3dpymodule.o \
                 wxypymodule.o fxypymodule.o wrzpymodule.o frzpymodule.o \
                 cirpymodule.o herpymodule.o \
-                top.p.o env.p.o w3d.p.o f3d.p.o wxy.p.o fxy.p.o \
-                wrz.p.o frz.p.o \
+                top.p.o env.p.o w3d.p.o f3d.p.o wxy.p.o fxy.p.o cho.p.o \
+                wrz.p.o frz.p.o chopymodule.o \
                 cir.p.o her.p.o pybasisC.o
 MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 wxypymodule.c fxypymodule.c wrzpymodule.c frzpymodule.c \
                 cirpymodule.c herpymodule.c \
-                pybasisC.c
+                pybasisC.c chopymodule.c 
 
 config.o:config.c.$(PYVERS)
 	cp config.c.$(PYVERS) config.c
@@ -84,6 +84,13 @@ toppymodule.c top.p.F90:top.v
 
 envpy.$(SO):envpymodule.o env.p.o env.o
 	$(LD) -o envpy.$(SO) envpymodule.o env.p.o env.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+chopymodule.o:chopymodule.c pybasis.h
+	$(CC) $(PYMODULEOPT) -c chopymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+cho.p.o:cho.p.F90
+	$(F90FREE) $(POPT) -c cho.p.F90
+chopymodule.c cho.p.F90:cho.v
+	$(PYMAC) -a cho.v
 
 env.p.o:env.p.F90
 	$(F90FREE) $(POPT) -c env.p.F90
