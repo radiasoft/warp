@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.134 2004/11/16 00:39:16 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.135 2004/11/18 01:59:35 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -737,90 +737,95 @@ Note that either the x and y coordinates or the grid must be passed in.
   if ny != 0: dy = (ymax-ymin)/ny
   else:       dy = 1.
 
-  # --- If the grid is needed for the plot and it was not passed in, generate
-  # --- it from the inputted particle data (if there was any)
-  if type(grid) != ArrayType and \
-     (hash or contours or color=='density' or chopped or denmin or denmax or surface or cellarray):
-    if zz is None:
-      densitygrid = 1
+  # --- Calculate the density grid. This is needed if a grid or zz quantity
+  # --- is not input and a gridded plot is being made. The gridded plots are
+  # --- are assumed to be density plots. In this case, grid will be the same
+  # --- as densitygrid. The density grid is also needed if chopped or
+  # --- denmin or max are specified, which always operate on the density.
+  if (((type(grid) != ArrayType and zz is None) and
+       (hash or contours or surface or cellarray or color=='density'))
+      or chopped or denmin or denmax):
+    # --- Create space for data
+    densitygrid = fzeros((1+nx,1+ny),'d')
 
-      # --- Create space for data
-      grid = fzeros((1+nx,1+ny),'d')
-
-      # --- Deposit the density onto the grid.
-      if(weights is None):
-        setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
-      else:
-        setgrid2dw(len(x),x,yms,weights,nx,ny,grid,xmin,xmax,ymin,ymax)
-      # --- If parallel, do a reduction on the grid
-      try:
-        parallelsumrealarray(grid,size(grid))
-      except:
-        grid = parallelsum(grid)
-
+    # --- Deposit the density onto the grid.
+    if(weights is None):
+      setgrid2d(len(x),x,yms,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
     else:
-      densitygrid = 0
+      setgrid2dw(len(x),x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+    # --- If parallel, do a reduction on the grid
+    try:
+      parallelsumrealarray(densitygrid,size(densitygrid))
+    except:
+      densitygrid = parallelsum(densitygrid)
 
-      # --- Create space for data
-      grid = fzeros((1+nx,1+ny),'d')
-      gridcount = fzeros((1+nx,1+ny),'d')
+    if (type(grid) != ArrayType and zz is None): grid = densitygrid
 
-      # --- Deposit the data onto the grid. itask is 1 so that the parallel
-      # --- version can be done properly.
-      if(weights is None):
-        deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
-      else:
-        deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+  else:
+    densitygrid = None
 
-      # --- If parallel, do a reduction on the grid
-      try:
-        parallelsumrealarray(grid,size(grid))
-        parallelsumrealarray(gridcount,size(gridcount))
-      except:
-        grid = parallelsum(grid)
-        gridcount = parallelsum(gridcount)
+  # --- Calculate a grid based on the input zz quantity when a gridded plot
+  # --- is being made. The exception is color=='density', in which case the
+  # --- color is taken directly from the zz quantity.
+  if ((zz is not None) and
+       (hash or contours or surface or cellarray)):
 
-      # --- Divide out the particle counts by hand.
-      grid = grid/where(greater(gridcount,0.),gridcount,1.)
+    # --- Create space for data
+    grid = fzeros((1+nx,1+ny),'d')
+    gridcount = fzeros((1+nx,1+ny),'d')
 
-    # --- Enforce boundary conditions on the grid
+    # --- Deposit the data onto the grid. itask is 1 so that the parallel
+    # --- version can be done properly.
+    if(weights is None):
+      deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+    else:
+      deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+
+    # --- If parallel, do a reduction on the grid
+    try:
+      parallelsumrealarray(grid,size(grid))
+      parallelsumrealarray(gridcount,size(gridcount))
+    except:
+      grid = parallelsum(grid)
+      gridcount = parallelsum(gridcount)
+
+    # --- Divide out the particle counts by hand.
+    grid = grid/where(greater(gridcount,0.),gridcount,1.)
+
+  # --- Enforce boundary conditions on the densitygrid. This operation doesn't
+  # --- make sense on anything other than the density grid.
+  if densitygrid is not None:
     if xbound == neumann:
-      grid[0,:] = 2.*grid[0,:]
-      grid[-1,:] = 2.*grid[-1,:]
+      densitygrid[0,:] = 2.*densitygrid[0,:]
+      densitygrid[-1,:] = 2.*densitygrid[-1,:]
     elif xbound == periodic:
-      grid[0,:] = grid[0,:] + grid[-1,:]
-      grid[-1,:] = grid[0,:]
+      densitygrid[0,:] = densitygrid[0,:] + densitygrid[-1,:]
+      densitygrid[-1,:] = densitygrid[0,:]
     if ybound == neumann:
-      grid[:,0] = 2.*grid[:,0]
-      grid[:,-1] = 2.*grid[:,-1]
+      densitygrid[:,0] = 2.*densitygrid[:,0]
+      densitygrid[:,-1] = 2.*densitygrid[:,-1]
     elif ybound == periodic:
-      grid[:,0] = grid[:,0] + grid[:,-1]
-      grid[:,-1] = grid[:,0]
+      densitygrid[:,0] = densitygrid[:,0] + densitygrid[:,-1]
+      densitygrid[:,-1] = densitygrid[:,0]
 
-    # --- If requested, return the grid and extrema, doing no plotting
-    if returngrid: return (grid,xmin,xmax,ymin,ymax)
+  # --- If requested, return the grid and extrema, doing no plotting
+  if returngrid: return (grid,xmin,xmax,ymin,ymax)
 
-  elif (hash or contours or color=='density' or chopped or denmin or denmax
-        or surface):
-    densitygrid = 0
- 
   # --- Scale the grid by its maximum if requested.
-  if ldensityscale and grid is not None:
-    gridmax = maxnd(abs(grid))
-    if gridmax != 0.:
-      grid[:,:] = grid/gridmax
+  if ldensityscale and densitygrid is not None:
+    densitygridmax = maxnd(abs(densitygrid))
+    if densitygridmax != 0.:
+      densitygrid[:,:] = densitygrid/densitygridmax
 
-  # --- If using logarithmic number density levels, take the log of the grid
-  # --- data. The original grid is left unchanged since that is still needed
-  # --- by some operations below.
-  if uselog:
-    if densitygrid:
+  # --- If using logarithmic levels, take the log of the grid data.
+  if uselog and grid is not None:
+    if grid is densitygrid:
       # --- Take the log, raising all values below 0.1 to 0.1. The
       # --- threshold is used so that none of the elements are zero.
       # --- That value 0.1 is used since values any smaller do not have
       # --- much meaning since a value of 1.0 means that there is already
       # --- only one particle in that cell.
-      grid1 = log10(where(less(grid,0.1),0.1,grid))
+      grid = log10(where(less(grid,0.1),0.1,grid))
     else:
       # --- Before taking the log of the user supplied grid data, make sure
       # --- that there are no negative values. Zero is ok since they will
@@ -829,9 +834,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       dmin = minnd(where(equal(grid,0.),dmax,grid))
       if dmin <= 0.:
         raise "Can't take log since the grid has negative values"
-      grid1 = log(where(less(grid,dmin/10.),dmin/10.,grid))
-  else:
-    grid1 = grid
+      grid = log(where(less(grid,dmin/10.),dmin/10.,grid))
 
   # --- Flip data and plot limits about axis if requested.
   # --- Note that iregt had already been transposed.
@@ -845,11 +848,14 @@ Note that either the x and y coordinates or the grid must be passed in.
     dy = -dy
 
   # --- Get grid min and max and generate contour levels if needed.
-  if (hash or contours or color=='density' or chopped or surface or cellarray):
-    if cmin is None: cmin = minnd(grid1)
-    if cmax is None: cmax = maxnd(grid1)
-    ppgeneric.cmin = cmin
-    ppgeneric.cmax = cmax
+  if grid is not None:
+    if cmin is None: cmin = minnd(grid)
+    if cmax is None: cmax = maxnd(grid)
+  elif zz is not None:
+    if cmin is None: cmin = min(zz)
+    if cmax is None: cmax = max(zz)
+  ppgeneric.cmin = cmin
+  ppgeneric.cmax = cmax
 
   # --- Get grid mesh if it is needed
   if contours or hash or surface or cellarray:
@@ -862,7 +868,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- plotted before it.
   if contours and filled and nx > 1 and ny > 1:
     if cmax != cmin:
-      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),iregt,
+      plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Make cell-array plot. This also is done early since it covers anything
@@ -887,19 +893,22 @@ Note that either the x and y coordinates or the grid must be passed in.
         xmaxc = xmax
         yminc = ymin
         ymaxc = ymax
-      pli(transpose(grid1),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
+      pli(transpose(grid),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
     else:
-      plf(grid1,ymesh,xmesh)
+      plf(grid,ymesh,xmesh)
 
   # --- Plot particles
   if particles:
     if color == 'density':
-      z1 = zeros(len(x),'d')
-      getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
+      if zz is None:
+        z1 = zeros(len(x),'d')
+        getgrid2d(len(x),x,yms,z1,nx,ny,grid,xmin,xmax,ymin,ymax)
+      else:
+        z1 = zz
     if chopped or denmin or denmax:
       dd = zeros(len(x),'d')
-      getgrid2d(len(x),x,yms,dd,nx,ny,grid,xmin,xmax,ymin,ymax)
-      maxdensity = maxnd(grid)
+      getgrid2d(len(x),x,yms,dd,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
+      maxdensity = maxnd(densitygrid)
       dd = dd/maxdensity
       ipick = ones(shape(x))
       if chopped:
@@ -925,7 +934,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- particles
   if contours and not filled and nx > 1 and ny > 1:
     if cmax != cmin:
-      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),iregt,
+      plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Plot hash last since it easiest seen on top of everything else.
@@ -938,7 +947,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- Make plot of tick marks
     for ix in range(nx+1):
       for iy in range(ny+1):
-        plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid1[ix,iy]]),
+        plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid[ix,iy]]),
             color=hcolor,width=width)
 
   # --- Add colorbar if needed
@@ -978,14 +987,14 @@ Note that either the x and y coordinates or the grid must be passed in.
       else:                       scolor = color
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
-      zrange = 1.5*maxnd(abs(grid1))
-      vo = VPythonobjects.VisualMesh(zvalues=grid1,display=1,twoSided=0,
+      zrange = 1.5*maxnd(abs(grid))
+      vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
                                      color=scolor,vrange=(xrange,yrange,zrange))
       vpythonscenelist.append(vo.scene)
     except ImportError:
       pl3d.orient3()
       pl3d.light3()
-      plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
+      plwf.plwf(grid,xmesh,ymesh,fill=grid,edges=0)
       [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
       #limits(xmin3,xmax3,ymin3,ymax3)
 
@@ -2623,7 +2632,7 @@ be from none to all three.
     gchange("Efields3d")
     getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,w3d.dx,w3d.dy,w3d.dz,
-               top.pboundxy)
+               top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
   ic = ['x','y','z'].index(comp)
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
