@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.124 2004/07/30 00:01:13 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.125 2004/08/06 23:38:05 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2267,7 +2267,7 @@ Plots b envelope +/- x centroid
 ##########################################################################
 # --- These functions returns or sets slices of phi and rho.
 ##########################################################################
-def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,w3dgrid=w3d):
+def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,solver=w3d):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
@@ -2280,32 +2280,32 @@ to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
-  if iy is None and w3dgrid.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return w3dgrid.rho
+      return solver.rho
     if ix is not None and iy is None     and iz is None    :
-      return w3dgrid.rho[ix,:,:]
+      return solver.rho[ix,:,:]
     if ix is None     and iy is not None and iz is None    :
-      return w3dgrid.rho[:,iy,:]
+      return solver.rho[:,iy,:]
     if ix is None     and iy is None     and iz is not None:
-      return w3dgrid.rho[:,:,iz]
+      return solver.rho[:,:,iz]
     if ix is not None and iy is not None and iz is None    :
-      return w3dgrid.rho[ix,iy,:]
+      return solver.rho[ix,iy,:]
     if ix is not None and iy is None     and iz is not None:
-      return w3dgrid.rho[ix,:,iz]
+      return solver.rho[ix,:,iz]
     if ix is None     and iy is not None and iz is not None:
-      return w3dgrid.rho[:,iy,iz]
+      return solver.rho[:,iy,iz]
     if ix is not None and iy is not None and iz is not None:
-      return w3dgrid.rho[ix,iy,iz]
+      return solver.rho[ix,iy,iz]
   else:
     iz1 = top.izfsslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izfsslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
-    ppp = w3dgrid.rho[:,:,iz1:iz2]
+    ppp = solver.rho[:,:,iz1:iz2]
     if ix is not None and iy is None:
       ppp = ppp[ix,:,:]
     elif ix is None and iy is not None:
@@ -2323,7 +2323,7 @@ to all three.
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setrho(val,ix=None,iy=None,iz=None,w3dgrid=w3d):
+def setrho(val,ix=None,iy=None,iz=None,solver=w3d):
   """Sets slices of rho, the charge density array. The shape of the input
 object depends on the number of arguments specified, which can be from none
 to all three.
@@ -2332,31 +2332,31 @@ to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
   """
-  if iy is None and w3dgrid.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      w3dgrid.rho[:,:,:] = val
+      solver.rho[:,:,:] = val
     if ix is not None and iy is None     and iz is None    :
-      w3dgrid.rho[ix,:,:] = val
+      solver.rho[ix,:,:] = val
     if ix is None     and iy is not None and iz is None    :
-      w3dgrid.rho[:,iy,:] = val
+      solver.rho[:,iy,:] = val
     if ix is None     and iy is None     and iz is not None:
-      w3dgrid.rho[:,:,iz] = val
+      solver.rho[:,:,iz] = val
     if ix is not None and iy is not None and iz is None    :
-      w3dgrid.rho[ix,iy,:] = val
+      solver.rho[ix,iy,:] = val
     if ix is not None and iy is None     and iz is not None:
-      w3dgrid.rho[ix,:,iz] = val
+      solver.rho[ix,:,iz] = val
     if ix is None     and iy is not None and iz is not None:
-      w3dgrid.rho[:,iy,iz] = val
+      solver.rho[:,iy,iz] = val
     if ix is not None and iy is not None and iz is not None:
-      w3dgrid.rho[ix,iy,iz] = val
+      solver.rho[ix,iy,iz] = val
   else:
     print "Warning, setrho this is not yet implemented in parallel"
    #if me < npes-1:
-   #  ppp = w3dgrid.rho[:,:,:-top.grid_overlap]
+   #  ppp = solver.rho[:,:,:-top.grid_overlap]
    #else:
-   #  ppp = w3dgrid.rho[:,:,:]
+   #  ppp = solver.rho[:,:,:]
    #if ix is not None and iy is None    :
    #  ppp = ppp[ix,:,:]
    #elif ix is None and iy is not None:
@@ -2373,7 +2373,7 @@ to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,w3dgrid=w3d):
+def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,solver=w3d):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2387,32 +2387,32 @@ be from none to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
-  if iy is None and w3dgrid.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return w3dgrid.phi[:,:,1:-1]
+      return solver.phi[:,:,1:-1]
     if ix is not None and iy is None     and iz is None    :
-      return w3dgrid.phi[ix,:,1:-1]
+      return solver.phi[ix,:,1:-1]
     if ix is None     and iy is not None and iz is None    :
-      return w3dgrid.phi[:,iy,1:-1]
+      return solver.phi[:,iy,1:-1]
     if ix is None     and iy is None     and iz is not None:
-      return w3dgrid.phi[:,:,iz+1]
+      return solver.phi[:,:,iz+1]
     if ix is not None and iy is not None and iz is None    :
-      return w3dgrid.phi[ix,iy,1:-1]
+      return solver.phi[ix,iy,1:-1]
     if ix is not None and iy is None     and iz is not None:
-      return w3dgrid.phi[ix,:,iz+1]
+      return solver.phi[ix,:,iz+1]
     if ix is None     and iy is not None and iz is not None:
-      return w3dgrid.phi[:,iy,iz+1]
+      return solver.phi[:,iy,iz+1]
     if ix is not None and iy is not None and iz is not None:
-      return w3dgrid.phi[ix,iy,iz+1]
+      return solver.phi[ix,iy,iz+1]
   else:
     iz1 = top.izfsslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izfsslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
-    ppp = w3dgrid.phi[:,:,iz1+1:iz2+1]
+    ppp = solver.phi[:,:,iz1+1:iz2+1]
     if ix is not None and iy is None:
       ppp = ppp[ix,:,:]
     elif ix is None and iy is not None:
@@ -2430,7 +2430,7 @@ be from none to all three.
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setphi(val,ix=None,iy=None,iz=None,w3dgrid=w3d):
+def setphi(val,ix=None,iy=None,iz=None,solver=w3d):
   """Sets slices of phi, the electrostatic potential array. The shape of
 the input object depends on the number of arguments specified, which can
 be from none to all three.
@@ -2440,31 +2440,31 @@ be from none to all three.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
                from -1 to nz+1
   """
-  if iy is None and w3dgrid.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      w3dgrid.phi[:,:,1:-1] = val
+      solver.phi[:,:,1:-1] = val
     if ix is not None and iy is None     and iz is None    :
-      w3dgrid.phi[ix,:,1:-1] = val
+      solver.phi[ix,:,1:-1] = val
     if ix is None     and iy is not None and iz is None    :
-      w3dgrid.phi[:,iy,1:-1] = val
+      solver.phi[:,iy,1:-1] = val
     if ix is None     and iy is None     and iz is not None:
-      w3dgrid.phi[:,:,iz+1] = val
+      solver.phi[:,:,iz+1] = val
     if ix is not None and iy is not None and iz is None    :
-      w3dgrid.phi[ix,iy,1:-1] = val
+      solver.phi[ix,iy,1:-1] = val
     if ix is not None and iy is None     and iz is not None:
-      w3dgrid.phi[ix,:,iz+1] = val
+      solver.phi[ix,:,iz+1] = val
     if ix is None     and iy is not None and iz is not None:
-      w3dgrid.phi[:,iy,iz+1] = val
+      solver.phi[:,iy,iz+1] = val
     if ix is not None and iy is not None and iz is not None:
-      w3dgrid.phi[ix,iy,iz+1] = val
+      solver.phi[ix,iy,iz+1] = val
   else:
     print "Warning, setphi this is not yet implemented in parallel"
    #if me < npes-1:
-   #  ppp = w3dgrid.phi[:,:,1:w3dgrid.nz-top.grid_overlap+2]
+   #  ppp = solver.phi[:,:,1:solver.nz-top.grid_overlap+2]
    #else:
-   #  ppp = w3dgrid.phi[:,:,1:-1]
+   #  ppp = solver.phi[:,:,1:-1]
    #if ix is not None and iy is None:
    #  ppp = ppp[ix,:,:]
    #elif ix is None and iy is not None:
@@ -2580,180 +2580,180 @@ be from none to all three.
     return eee
 
 ##########################################################################
-def pcrhozy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
+def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
-  if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
-  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
-  kw.setdefault('ymin',w3dgrid.ymmin)
-  kw.setdefault('ymax',w3dgrid.ymmax)
+  kw.setdefault('xmin',solver.zmminglobal + zbeam)
+  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
-                      w3dgrid.ymmin,w3dgrid.ymmax)
+                      solver.ymmin,solver.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
-  rrr = getrho(ix=ix,w3dgrid=w3dgrid)
-  if me > 0: rrr = zeros((w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
+  rrr = getrho(ix=ix,solver=solver)
+  if me > 0: rrr = zeros((solver.ny+1,solver.nzfull+1),'d')
   rrr = transpose(rrr)
   ppgeneric(grid=rrr,kwdict=kw)
-  if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+  if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
+def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
-  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
-  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
-  kw.setdefault('ymin',w3dgrid.xmmin)
-  kw.setdefault('ymax',w3dgrid.xmmax)
+  kw.setdefault('xmin',solver.zmminglobal + zbeam)
+  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
-                      w3dgrid.xmmin,w3dgrid.xmmax)
+                      solver.xmmin,solver.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
-  rrr = getrho(iy=iy,w3dgrid=w3dgrid)
-  if me > 0: rrr = zeros((w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
+  rrr = getrho(iy=iy,solver=solver)
+  if me > 0: rrr = zeros((solver.nx+1,solver.nzfull+1),'d')
   rrr = transpose(rrr)
   ppgeneric(grid=rrr,kwdict=kw)
-  if fullplane and w3dgrid.l4symtry:
+  if fullplane and solver.l4symtry:
     ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcrhoxy(iz=None,fullplane=1,w3dgrid=w3d,**kw):
+def pcrhoxy(iz=None,fullplane=1,solver=w3d,**kw):
   """Plots contours of charge density in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   """
-  if iz is None: iz = nint(-w3dgrid.zmmin/w3dgrid.dz) + top.izslave[me]
-  kw.setdefault('xmin',w3dgrid.xmmin)
-  kw.setdefault('xmax',w3dgrid.xmmax)
-  kw.setdefault('ymin',w3dgrid.ymmin)
-  kw.setdefault('ymax',w3dgrid.ymmax)
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3dgrid.xmmin,w3dgrid.xmmax,w3dgrid.ymmin,w3dgrid.ymmax)
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
-  rrr = getrho(iz=iz,w3dgrid=w3dgrid)
-  if me > 0: rrr = zeros((w3dgrid.nx+1,w3dgrid.ny+1),'d')
+  rrr = getrho(iz=iz,solver=solver)
+  if me > 0: rrr = zeros((solver.nx+1,solver.ny+1),'d')
   ppgeneric(grid=rrr,kwdict=kw)
-  if fullplane and w3dgrid.l4symtry:
+  if fullplane and solver.l4symtry:
     ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=0)
     ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
     ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=1)
-  elif fullplane and w3dgrid.l2symtry:
+  elif fullplane and solver.l2symtry:
     ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
+def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
-  if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
-  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
-  kw.setdefault('ymin',w3dgrid.ymmin)
-  kw.setdefault('ymax',w3dgrid.ymmax)
+  kw.setdefault('xmin',solver.zmminglobal + zbeam)
+  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
-                      w3dgrid.ymmin,w3dgrid.ymmax)
+                      solver.ymmin,solver.ymmax)
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
-  ppp = getphi(ix=ix,w3dgrid=w3dgrid)
-  if me > 0: ppp = zeros((w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
+  ppp = getphi(ix=ix,solver=solver)
+  if me > 0: ppp = zeros((solver.ny+1,solver.nzfull+1),'d')
   ppp = transpose(ppp)
   ppgeneric(grid=ppp,kwdict=kw)
-  if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+  if fullplane and (solver.l2symtry or solver.l4symtry):
     ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
+def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
-  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
-  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
-  kw.setdefault('ymin',w3dgrid.xmmin)
-  kw.setdefault('ymax',w3dgrid.xmmax)
+  kw.setdefault('xmin',solver.zmminglobal + zbeam)
+  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
-                      w3dgrid.xmmin,w3dgrid.xmmax)
+                      solver.xmmin,solver.xmmax)
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
-  ppp = getphi(iy=iy,w3dgrid=w3dgrid)
-  if me > 0: ppp = zeros((w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
+  ppp = getphi(iy=iy,solver=solver)
+  if me > 0: ppp = zeros((solver.nx+1,solver.nzfull+1),'d')
   ppp = transpose(ppp)
   ppgeneric(grid=ppp,kwdict=kw)
-  if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcphixy(iz=None,fullplane=1,w3dgrid=w3d,**kw):
+def pcphixy(iz=None,fullplane=1,solver=w3d,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   """
-  if iz is None: iz = nint(-w3dgrid.zmmin/w3dgrid.dz) + top.izslave[me]
-  kw.setdefault('xmin',w3dgrid.xmmin)
-  kw.setdefault('xmax',w3dgrid.xmmax)
-  kw.setdefault('ymin',w3dgrid.ymmin)
-  kw.setdefault('ymax',w3dgrid.ymmax)
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
     kw.setdefault('contours',20)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3dgrid.xmmin,w3dgrid.xmmax,w3dgrid.ymmin,w3dgrid.ymmax)
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Electrostatic potential in x-y plane","X","Y","iz = "+repr(iz))
-  ppp = getphi(iz=iz,w3dgrid=w3dgrid)
-  if me > 0: ppp = zeros((w3dgrid.nx+1,w3dgrid.ny+1),'d')
+  ppp = getphi(iz=iz,solver=solver)
+  if me > 0: ppp = zeros((solver.nx+1,solver.ny+1),'d')
   ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=0)
-  if fullplane and w3dgrid.l4symtry:
+  if fullplane and solver.l4symtry:
     ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=0)
     ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
     ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=1)
-  elif fullplane and w3dgrid.l2symtry:
+  elif fullplane and solver.l2symtry:
     ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
