@@ -32,11 +32,14 @@ s1, s2, and s3.
 lattice = s1 + s2 + s3
 madtowarp(lattice)
 """
+
+todo = """ Add comment attribute to elements """
+
 from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.22 2003/08/18 17:41:58 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.23 2003/09/30 18:38:28 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -239,6 +242,17 @@ Base class for the lattice classes. Should never be directly called.
 #----------------------------------------------------------------------------
 # WARP elements
 #----------------------------------------------------------------------------
+
+class Marker(Elem):
+  """
+Creates an instance of a Marker lattice element. It currently takes up no space and has
+no attributes.
+  """
+  def __init__(self):
+    Elem.__init__(self)
+    self.type = 'Marker'
+  def install(self,zz):
+    return zz
 
 class Drft(Elem):
   """
