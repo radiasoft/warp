@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.167 $, $Date: 2004/09/14 02:29:08 $
+c@(#) File W3D.F, version $Revision: 3.168 $, $Date: 2004/09/15 17:19:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1394,8 +1394,8 @@ c           --- Zero out B field arrays, but only if B is going
 c             to be recomputed; B doesn't get recomputed if 
 c             center is "synchv" and interpdk is nonzero and allspecl
 c             is 0
-            if (center .ne. "synchv" .and. interpdk(is) .ne. 0 
-     &       .and. .not. allspecl) then
+            if (.not. (center .eq. "synchv" .and. interpdk(is) .ne. 0 
+     &          .and. .not. allspecl)) then
                do i = 1,ip
                   bx(i) = 0.
                   by(i) = 0.
