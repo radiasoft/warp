@@ -82,7 +82,6 @@ class MRBlock(MultiGrid,Visualizable):
         # --- The grid mins and maxs are input.
         self.mins = array(mins)
         self.maxs = array(maxs)
-        self.dims = (self.maxs - self.mins)/self.deltas
         self.lower = nint((self.mins - parent.mins)/self.deltas) + refinement*parent.lower
         self.upper = nint((self.maxs - parent.mins)/self.deltas) + refinement*parent.lower
 
@@ -93,16 +92,13 @@ class MRBlock(MultiGrid,Visualizable):
         # --- This is the standard method of specifying a child block.
         self.lower = refinement*(parent.lower + array(lower))
         self.upper = refinement*(parent.lower + array(upper))
-        self.dims = self.upper - self.lower
         self.mins = parent.mins+(self.lower-refinement*parent.lower)*self.deltas
         self.maxs = parent.mins+(self.upper-refinement*parent.lower)*self.deltas
 
       # --- Now, extend the domain by the given number of guard cells. Checks
       # --- are made so that the domain doesn't extend beyond the original grid.
-      dimtoolow = minimum(0,self.lower - nguard*refinement)
-      dimtoohigh = maximum(dimsmax,self.upper + nguard*refinement) - dimsmax
-      self.fulllower = self.lower - nguard*refinement - dimtoolow
-      self.fullupper = self.upper + nguard*refinement - dimtoohigh
+      self.fulllower = maximum(0,self.lower - nguard*refinement)
+      self.fullupper = minimum(dimsmax,self.upper + nguard*refinement)
 
       # --- Recalculate grid quantities
       self.dims = self.fullupper - self.fulllower
@@ -165,9 +161,14 @@ class MRBlock(MultiGrid,Visualizable):
     self.addblockaschild(child)
 
   def addblockaschild(self,block):
+    self.children.append(block)
+    # --- If there is no overlap, then don't set idomains
+    l = maximum(block.fulllower,self.fulllower*block.refinement)
+    u = minimum(block.fullupper,self.fullupper*block.refinement)
+    if sometrue(l > u): return
+    # --- If idomains not yet created, do so
     if self.idomains is None:
       self.idomains = fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
-    self.children.append(block)
     # --- Set full domain to negative of child number first.
     ix1,iy1,iz1 = maximum(0,block.fulllower/block.refinement - self.fulllower)
     ix2,iy2,iz2 =           block.fullupper/block.refinement - self.fulllower
@@ -209,6 +210,7 @@ Sets grid on the boundaries, using the values from the parent grid
       i1 = maximum(0,self.fulllower/self.refinement - parent.fulllower)
       i2 = minimum(parent.dims,
                    self.fullupper/self.refinement - parent.fulllower)
+      if sometrue(i1 > i2): continue
       # --- Coordinates of this mesh that covers the parent's mesh.
       # --- If this mesh is completely within the parents mesh,
       # --- then i3 is zero and i4 is self.dims.
@@ -343,6 +345,7 @@ efficient timewise, but uses two extra full-size arrays.
       r = child.refinement
       i1 = maximum(0,child.fulllower/r - self.fulllower)
       i2 = minimum(self.dims,child.fullupper/r - self.fulllower)
+      if sometrue(i1 > i2): continue
       # --- Grid cells to gather from child along each axis, relative to grid
       # --- cells in the parent mesh.
       dims = iota(-r+1,r-1)
@@ -389,17 +392,32 @@ efficient timewise, but uses two extra full-size arrays.
             # --- Now add in the contribution (in place)
             add(p,rh,p)
 
+      #ix1,iy1,iz1 = i1
+      #ix2,iy2,iz2 = i2 + 1
+      #iii = self.idomains[ix2-1,iy1:iy2,iz1:iz2]
+      #iii[:,:] = where(iii==0.,largepos,iii)
+      #iii = self.idomains[ix1:ix2,iy2-1,iz1:iz2]
+      #iii[:,:] = where(iii==0.,largepos,iii)
+      #iii = self.idomains[ix1:ix2,iy1:iy2,iz2-1]
+      #iii[:,:] = where(iii==0.,largepos,iii)
+
+  def cleanidomains(self):
+    if self.idomains is None: return
+    self.idomains[:,:,:] = where(self.idomains==largepos,0.,self.idomains)
+    for child in self.children:
+      child.cleanidomains()
+
   def addmyrhotosiblings(self):
     self.ncallsfromparents += 1
     if self.ncallsfromparents < len(self.parents): return
     self.ncallsfromparents = 0
     for sibling in self.overlaps:
       i1 = sibling.fulllower - self.fulllower
-      i2 = sibling.fullupper - self.fulllower
+      i2 = sibling.fullupper - self.fulllower + 1
       i3 = sibling.fulllower - sibling.block.fulllower
-      i4 = sibling.fullupper - sibling.block.fulllower
-      myrho = self.rho[i1[0]:i2[0]+1,i1[1]:i2[1]+1,i1[2]:i2[2]+1]
-      nrho = sibling.block.rho[i3[0]:i4[0]+1,i3[1]:i4[1]+1,i3[2]:i4[2]+1]
+      i4 = sibling.fullupper - sibling.block.fulllower + 1
+      myrho = self.rho[i1[0]:i2[0],i1[1]:i2[1],i1[2]:i2[2]]
+      nrho = sibling.block.rho[i3[0]:i4[0],i3[1]:i4[1],i3[2]:i4[2]]
       add(where(sibling.otherowns,myrho,0.),nrho,nrho)
     for child in self.children:
       child.addmyrhotosiblings()
@@ -410,11 +428,11 @@ efficient timewise, but uses two extra full-size arrays.
     self.ncallsfromparents = 0
     for sibling in self.overlaps:
       i1 = sibling.fulllower - self.fulllower
-      i2 = sibling.fullupper - self.fulllower
+      i2 = sibling.fullupper - self.fulllower + 1
       i3 = sibling.fulllower - sibling.block.fulllower
-      i4 = sibling.fullupper - sibling.block.fulllower
-      myrho = self.rho[i1[0]:i2[0]+1,i1[1]:i2[1]+1,i1[2]:i2[2]+1]
-      nrho = sibling.block.rho[i3[0]:i4[0]+1,i3[1]:i4[1]+1,i3[2]:i4[2]+1]
+      i4 = sibling.fullupper - sibling.block.fulllower + 1
+      myrho = self.rho[i1[0]:i2[0],i1[1]:i2[1],i1[2]:i2[2]]
+      nrho = sibling.block.rho[i3[0]:i4[0],i3[1]:i4[1],i3[2]:i4[2]]
       myrho[:,:,:] = where(sibling.otherowns,nrho,myrho)
     for child in self.children:
       child.getrhofromsiblings()
@@ -437,8 +455,7 @@ efficient timewise, but uses two extra full-size arrays.
     u = minimum(other.fullupper,self.fullupper)
     # --- If any of the lengths are negative, then there is no overlap.
     # --- Don't do anything else.
-    doesnotoverlap = sometrue(u < l)
-    if doesnotoverlap: return
+    if sometrue(l > u): return
     # --- Check how much of the overlap region is owned by the other instance
     # --- First, assume that it doesn't own any.
     otherowns = zeros(u-l+1)
@@ -450,6 +467,7 @@ efficient timewise, but uses two extra full-size arrays.
     for parent,ichild in zip(other.parents,other.ichild):
       pld = maximum(pl,parent.fulllower)
       pud = minimum(pu,parent.fullupper)
+      if sometrue(pud < pld): continue
       ix1,iy1,iz1 = pld*other.refinement - l
       ix2,iy2,iz2 = pud*other.refinement - l + 1
       ix3,iy3,iz3 = pld - parent.fulllower
@@ -508,6 +526,7 @@ efficient timewise, but uses two extra full-size arrays.
       child.generateblocklevellists(blocklists[1:])
     return blocklists
 
+
   def finalize(self):
     # --- This should only be called at the top level.
     blocklists = self.generateblocklevellists()
@@ -528,6 +547,7 @@ the top level grid.
     self.addmyrhotosiblings()
     self.getrhofromsiblings()
     self.gatherrhofromchildren()
+    self.cleanidomains()
     #self.setrhoboundaries()
 
   def gete(self,x,y,z,ex,ey,ez):
@@ -706,6 +726,7 @@ be plotted.
     kw['ireg'] = ireg
     MultiGrid.genericpf(self,kw,pffunc)
     kw['titles'] = 0
+    kw['lcolorbar'] = 0
     for child in self.children:
       child.genericpf(kw,idim,pffunc,ip)
 
@@ -777,7 +798,8 @@ be plotted.
     for child in self.children:
       child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
 
-  def drawbox(self,ip=None,idim=2,withguards=1,color='fg'):
+  def drawbox(self,ip=None,idim=2,withguards=1,color=[]):
+    if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
     if ip is None: ip = self.dims[idim]/2
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
@@ -794,10 +816,10 @@ be plotted.
     xx = [i01,i01,i02,i02,i01]
     yy = [i11,i12,i12,i11,i11]
     if idim==2: xx,yy = yy,xx
-    plg(xx,yy,color=color)
+    plg(xx,yy,color=color[0])
     for child in self.children:
       child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
-                    color=color)
+                    color=color[1:])
 
   def createdxobject(self,kwdict={},**kw):
     """
@@ -818,4 +840,28 @@ Create DX object drawing the object.
     for child in self.children:
       dxlist.append(child.getdxobject(kwdict=kw))
     self.dxobject = DXCollection(*dxlist)
+
+  def drawfilledbox(self,ip=None,idim=2,withguards=1,ibox=None):
+    if ip is None: ip = self.dims[idim]/2
+    if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
+    ii = [0,1,2]
+    del ii[idim]
+    i01 = self.mins[ii[0]]
+    i02 = self.maxs[ii[0]]
+    i11 = self.mins[ii[1]]
+    i12 = self.maxs[ii[1]]
+    if not withguards:
+      i01 = i01 + self.dims[ii[0]]*self.nguard*self.refinement
+      i02 = i02 - self.dims[ii[0]]*self.nguard*self.refinement
+      i11 = i11 + self.dims[ii[1]]*self.nguard*self.refinement
+      i12 = i12 - self.dims[ii[1]]*self.nguard*self.refinement
+    xx = [i01,i01,i02,i02,i01]
+    yy = [i11,i12,i12,i11,i11]
+    if idim==2: xx,yy = yy,xx
+    if ibox is None: ibox = ones(1,'b')
+    else:            ibox = (ibox+1).astype('b')
+    plfp(ibox,yy,xx,[5])
+    for child in self.children:
+      child.drawfilledbox(ip=ip*child.refinement,idim=idim,
+                          withguards=withguards,ibox=ibox)
 
