@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.17 $, $Date: 2004/08/05 00:53:53 $
+c F3DSLAVE.M, version $Revision: 1.18 $, $Date: 2004/09/18 04:10:48 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -963,12 +963,12 @@ c       --- Increment the number of sends that processor makes.
       return
       end
 c=============================================================================
-      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,delz,
+      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,delz,delt,
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,delz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,nzfull,delz,delt
+      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-1:nz+1)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -1014,14 +1014,14 @@ c     --- of the data overlaps.
         if (my_index == whosendingleft(ip)) then
           w = w + 1
           ls = izsendingleft(ip) - leftdelta
-          call MPI_ISEND(phi(0,0,ls),(nx+1)*(ny+1),
+          call MPI_ISEND(phi(-delt,-delt,ls),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,ip,nzfull,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
       if (whosendingright(my_index) /= -1) then
         w = w + 1
-        call MPI_IRECV(phi(0,0,lr),(nx+1)*(ny+1),
+        call MPI_IRECV(phi(-delt,-delt,lr),(nx+1+2*delt)*(ny+1+2*delt),
      &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1030,14 +1030,14 @@ c     --- of the data overlaps.
         if (my_index == whosendingright(ip)) then
           w = w + 1
           rs = izsendingright(ip) + rightdelta
-          call MPI_ISEND(phi(0,0,rs),(nx+1)*(ny+1),
+          call MPI_ISEND(phi(-delt,-delt,rs),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,ip,nzfull,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
       if (whosendingleft(my_index) /= -1) then
         w = w + 1
-        call MPI_IRECV(phi(0,0,rr),(nx+1)*(ny+1),
+        call MPI_IRECV(phi(-delt,-delt,rr),(nx+1+2*delt)*(ny+1+2*delt),
      &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1048,11 +1048,11 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,delz,
+      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,delz,delt,
      &                                  my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
       integer(ISZ):: nx,ny,nz,nzfull,delz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-1:nz+1)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1)
@@ -1084,7 +1084,7 @@ c       --- on the waitall since that message would never be received.
         do ip=my_index+1,nslaves-1
           if (my_index == whosendingleft(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,delz),(nx+1)*(ny+1),
+            call MPI_ISEND(phi(-delt,-delt,delz),(nx+1+2*delt)*(ny+1+2*delt),
      &                     MPI_DOUBLE_PRECISION,ip,10,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1095,7 +1095,7 @@ c       --- See comments on loop above.
         do ip=0,my_index-1
           if (my_index == whosendingright(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,nz-delz),(nx+1)*(ny+1),
+            call MPI_ISEND(phi(-delt,-delt,nz-delz),(nx+1+2*delt)*(ny+1+2*delt),
      &                     MPI_DOUBLE_PRECISION,ip,10,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1105,7 +1105,7 @@ c       --- See comments on loop above.
       if (izfsslave(my_index)+nz == nzfull) then
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(0,0,nz+delz),(nx+1)*(ny+1),
+          call MPI_IRECV(phi(-delt,-delt,nz+delz),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,whosendingleft(my_index),10,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
@@ -1113,7 +1113,7 @@ c       --- See comments on loop above.
       if (izfsslave(my_index) == 0 .and. delz /= 0) then
         if (whosendingright(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(0,0,-delz),(nx+1)*(ny+1),
+          call MPI_IRECV(phi(-delt,-delt,-delz),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,whosendingright(my_index),10,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
