@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.108 $, $Date: 2003/10/23 23:26:39 $
+c@(#) File TOP.F, version $Revision: 3.109 $, $Date: 2003/10/30 19:31:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5598,26 +5598,18 @@ c     --- other boundary condition (particles absorbed or reflected)
           do ip=ins(is),ins(is)+nps(is)-1
             if ((zp(ip)-zgrid) >= zmmax) then
               if(pboundnz==absorb) then
-                zp(ip) = zmmin - .9999*dz + zgrid
                 gaminv(ip) = 0.
-                if(wpid>0) pid(ip,wpid) = 0.
               elseif(pboundnz==reflect) then
                 zp(ip) = 2.*zgrid + 2.*zmmax - zp(ip)
                 uzp(ip) = -uzp(ip)
               end if
             elseif ((zp(ip)-zgrid) <= zmmin) then
               if(pbound0==absorb) then
-                zp(ip) = zmmin - .9999*dz + zgrid
                 gaminv(ip) = 0.
-                if(wpid>0) pid(ip,wpid) = 0.
               elseif(pbound0==reflect) then
                 zp(ip) = 2.*zgrid + 2.*zmmin - zp(ip)
                 uzp(ip) = -uzp(ip)
               end if
-            elseif (uzp(ip) == 0.) then
-c             --- Make sure dead particles stay dead and are not ressurrected
-c                 (only need if moving backward in time).
-              zp(ip) = zmmin - .9999*dz + zgrid
             endif
           enddo
         enddo
@@ -5802,7 +5794,6 @@ c           --- Scrape the particle
               lostpars(iz) = lostpars(iz) + 1
             endif
             gaminv(ip) = 0.
-            if(wpid>0) pid(ip,wpid) = 0.
           endif
 
         endif
@@ -6386,6 +6377,7 @@ c         --- Zero out the velocity, the flag for a lost particle.
           uxp(ip) = 0.0
           uyp(ip) = 0.0
           uzp(ip) = 0.0
+          if(wpid>0) pid(ip,wpid) = 0.
 
         endif
       enddo

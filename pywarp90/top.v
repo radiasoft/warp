@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.108 $, $Date: 2003/10/23 23:26:39 $
+#@(#) File TOP.V, version $Revision: 3.109 $, $Date: 2003/10/30 19:31:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.108 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.109 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1923,7 +1923,7 @@ psumx(a:real,b:real,n)
              subroutine # b := partial sum of a
 fnice(i,e10:real)
           real function   # makes nice contours values
-alotpart()   subroutine # Allocate for particles and setup associated data
+alotpart()   subroutine # Allocate space for particles and setup associated data
 chckpart(is:integer,nlower:integer,nhigher:integer,lfullshft:logical)
              subroutine # Makes sure there is enough space for nn particles.
 addpart(nn:integer,npid:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
@@ -1936,6 +1936,7 @@ clearpart(js:integer,fillmethod:integer)
 processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
+alotlostpart() subroutine # Allocate space for saving lost particles
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
