@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.52 2003/04/08 17:50:53 dave Exp $"
+warp_version = "$Id: warp.py,v 1.53 2003/04/16 22:59:14 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -186,6 +186,10 @@ installbeforestep: Install a function which will be called before a step
 uninstallbeforestep: Uninstall the function called before a step
 installafterstep: Install a function which will be called after a step
 uninstallafterstep: Uninstall the function called after a step
+installparticlescraper: Installs a function which will be called at the
+                        correct time to scrape particles
+uninstallparticlescraper: Uninstalls a function which will be called at the
+                          correct time to scrape particles
 gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
 printtimers: Print timers in a nice annotated format
   """
@@ -198,10 +202,13 @@ derivqty()
 # --- Setup mechanism for "before" and "after" python scripts
 beforefsfuncs = []
 afterfsfuncs = []
+callscraperfuncs = []
 def beforefs():
   for f in beforefsfuncs: f()
 def afterfs():
   for f in afterfsfuncs: f()
+def callscraper():
+  for f in callscraperfuncs: f()
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
   beforefsfuncs.append(f)
@@ -224,6 +231,17 @@ def uninstallafterfs(f):
   else:
     raise 'Warning: uninstallafterfs: no such function had been installed'
   if len(afterfsfuncs) == 0: w3d.lafterfs = false
+def installparticlescraper(f):
+  "Adds a function to the list of functions called to scrape particles"
+  callscraperfuncs.append(f)
+  w3d.lcallscraper = true
+def uninstallparticlescraper(f):
+  "Removes the function from the list of functions called to scrape particles"
+  if f in callscraperfuncs:
+    callscraperfuncs.remove(f)
+  else:
+    raise 'Warning: uninstallparticlescraper: no such function had been installed'
+  if len(callscraperfuncs) == 0: w3d.lcallscraper = false
 def installbeforestep(f):
   "Adds a function to the list of functions called before a step"
   beforestepfuncs.append(f)
