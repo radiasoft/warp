@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.38 2005/03/04 21:06:33 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.39 2005/03/12 00:52:30 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -108,14 +108,21 @@ routines (such as ppxxp).
       self.uzep = []
       self.pidep = []
       for js in range(ns):
-        self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.yep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.pidep.append(AppendableArray(self.nepmax,type='d',autobump=bump,
-                                          shape=(top.npidepmax,)))
+        self.tep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.xep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.yep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.uxep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.uyep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.uzep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.pidep.append(AppendableArray(self.nepmax,typecode='d',
+                                          autobump=bump,
+                                          unitshape=(top.npidepmax,)))
     else:
       self.tep = ns*[zeros(0,'d')]
       self.xep = ns*[zeros(0,'d')]
@@ -129,14 +136,21 @@ routines (such as ppxxp).
     if self.laccumulate and not self.dumptofile:
       for js in range(len(self.tep),top.ns):
         bump = self.nepmax
-        self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.yep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
-        self.pidep.append(AppendableArray(self.nepmax,type='d',autobump=bump,
-                                          shape=(top.npidepmax,)))
+        self.tep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.xep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.yep.append(AppendableArray(self.nepmax,typecode='d',
+                                        autobump=bump))
+        self.uxep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.uyep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.uzep.append(AppendableArray(self.nepmax,typecode='d',
+                                         autobump=bump))
+        self.pidep.append(AppendableArray(self.nepmax,typecode='d',
+                                          autobump=bump,
+                                          unitshape=(top.npidepmax,)))
     else:
       self.tep = top.ns*[zeros(0,'d')]
       self.xep = top.ns*[zeros(0,'d')]
