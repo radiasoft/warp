@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.68 2004/08/13 20:02:04 dave Exp $"
+warp_version = "$Id: warp.py,v 1.69 2004/08/24 00:07:28 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -398,10 +398,6 @@ def initfieldsolver():
         AMRtree=AMR.AMRTree()
         __main__.__dict__['AMRtree'] = AMRtree
         gchange('AMR')
-      w3d.AMRcoalescing=0.8
-      if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeomMR:
-        AMRtree = __main__.__dict__['AMRtree']
-        registersolver(AMRtree.blocks)
 __main__.__dict__['loadrhoMR'] = loadrhoMR
 __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
