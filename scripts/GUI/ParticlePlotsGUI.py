@@ -210,7 +210,7 @@ class ParticlePlotsGUI(wxPanel):
 
     def __init__(self, parent):
         self._init_ctrls(parent)
-        parent.AddPage(imageId=-1, page=self, select=True, text='PPlots')
+#        parent.AddPage(imageId=-1, page=self, select=True, text='PPlots')
         self.plotchoiceslidervalue = 0
         self.plottypekw = {}
         self.doplotrefreshonchange = 0
