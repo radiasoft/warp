@@ -66,8 +66,8 @@ if parallel:
 warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
 
 if parallel:
-  library_dirs = fcompiler.libdirs + ['mpifarg','mpi','elan','elan3','rmscall','elf']
-  libraries = fcompiler.libs + ['/usr/lib/mpi/lib']
+  library_dirs = fcompiler.libdirs + ['/usr/lib/mpi/lib']
+  libraries = fcompiler.libs + ['mpifarg','mpi','elan','elan3','rmscall','elf']
   warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
 setup (name = "warpC",
