@@ -4,7 +4,7 @@ from warp import *
 import time
 import string
 import sys, copy
-runcounter_version = "$Id: runcounter.py,v 1.9 2004/01/21 21:51:50 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.10 2004/02/13 16:26:34 dave Exp $"
 
 def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
                sleep=0):
@@ -105,7 +105,10 @@ third ever increasing. Each run, the first number will be incremented, every
 
   # --- Return the counter as a tuple so it can be returned to multiple
   # --- variables.
-  return tuple(counter)
+  if len(ensambles) > 1:
+    return tuple(counter)
+  else:
+    return counter[0]
 
 def accumulatedata(filename,datadict,scalardict={},pe0only=1):
   """
