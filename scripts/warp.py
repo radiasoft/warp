@@ -1,8 +1,9 @@
-warp_version = "$Id: warp.py,v 1.58 2003/09/10 01:18:38 dave Exp $"
+warp_version = "$Id: warp.py,v 1.59 2003/09/18 18:41:47 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
 import sys
+import os.path
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
@@ -86,9 +87,13 @@ import sys
 # --- the .py suffix.
 if sys.argv[0]:
   if sys.argv[0][-3:] == '.py':
-    top.runid = sys.argv[0][:-3]
+    h,t = os.path.split(sys.argv[0][:-3])
+    top.runid = t
+    del h,t
   else:
-    top.runid = sys.argv[0]
+    h,t = os.path.split(sys.argv[0])
+    top.runid = t
+    del h,t
 runid = arraytostr(top.runid)
 
 #=============================================================================
