@@ -1,4 +1,4 @@
-!     Last change:  JLV  27 Jun 2002    9:22 am
+!     Last change:  JLV  15 Jul 2002    5:49 pm
 #include "top.h"
 
 module multigrid_common
@@ -125,10 +125,11 @@ INTEGER(ISZ) :: ngrids,grids_nids,n_avail_ids,avail_ids(100),level_del_grid
 contains
 
 subroutine init_basegrid(nr,nz,dr,dz,rmin,zmin)
+USE Multigrid3d
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
-INTEGER(ISZ) :: i,j, nzp
+INTEGER(ISZ) :: i,j, nzp, mglevel
 
   IF(associated(basegrid)) return
 
@@ -215,6 +216,31 @@ INTEGER(ISZ) :: i,j, nzp
 !    grids%bnd(i)%izlbnd=grids%izlbnd
 !    grids%bnd(i)%izrbnd=grids%izrbnd
 !  END do
+
+
+  mglevels = basegrid%nlevels
+  do i = 1, basegrid%nlevels
+    mglevel = basegrid%nlevels - i
+    mglevelsnx(mglevel) = basegrid%bnd(i)%nr
+    mglevelsny(mglevel) = 0
+#ifdef MPIPARALLEL
+    mglevelsnzfull(mglevel) = basegrid%bnd(i)%nz*nslaves/basegrid%bnd(i)%nworkpproc
+    mglevelsiz(mglevel) = INT(my_index/basegrid%bnd(i)%nworkpproc)*basegrid%bnd(i)%nz-1
+#else
+    mglevelsnzfull(mglevel) = basegrid%bnd(i)%nz
+    mglevelsiz(mglevel) = 0
+#endif
+    mglevelsnz(mglevel) = basegrid%bnd(i)%nz
+    IF(mglevel==0) then
+      mglevelslx(mglevel) = 1.
+      mglevelsly(mglevel) = 1.
+      mglevelslz(mglevel) = 1.
+    else
+      mglevelslx(mglevel) = basegrid%bnd(i)%dr/basegrid%bnd(basegrid%nlevels)%dr
+      mglevelsly(mglevel) = 1.
+      mglevelslz(mglevel) = basegrid%bnd(i)%dz/basegrid%bnd(basegrid%nlevels)%dz
+    END if
+  end do
 
 return
 end subroutine init_basegrid
@@ -3142,7 +3168,10 @@ do igrid=1,ngrids
                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
 
  end do
 end do
@@ -3198,7 +3227,10 @@ do igrid=1,ngrids
                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
 
  end do
 end do
@@ -3240,20 +3272,147 @@ do igrid=1,ngrids
   call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
                    l2symtry,l4symtry)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
 
  end do
 end do
 
 END subroutine setcndtrrz
 
-subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
-use Conductor3d
+subroutine install_conductors_rz()
+USE Conductor3d
+USE Multigrid3d
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), DIMENSION(:), allocatable :: mg_ncond,mg_necndbdy, mg_nocndbdy
+INTEGER(ISZ) :: i, ii, nrc, nzc, itmp
+INTEGER(ISZ) :: ncondtmp, necndbdytmp, nocndbdytmp
+REAL(8) :: drc, dzc
+
+INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: ixcondtmp, izcondtmp, &
+                                           iecndxtmp, iecndztmp, &
+                                           iocndxtmp, iocndztmp
+REAL(8), ALLOCATABLE, DIMENSION(:) :: ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, ecvolttmp, &
+                                      ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, ocvolttmp, condvolttmp
+
+ALLOCATE(mg_ncond(basegrid%nlevels),mg_necndbdy(basegrid%nlevels), mg_nocndbdy(basegrid%nlevels))
+mg_ncond = 0
+mg_necndbdy = 0
+mg_nocndbdy = 0
+
+do i = 1, ncond
+  ii = basegrid%nlevels-icondlevel(i)
+  mg_ncond(ii) = mg_ncond(ii) + 1
+end do
+do i = 1, necndbdy
+  ii = basegrid%nlevels-iecndlevel(i)
+  mg_necndbdy(ii) = mg_necndbdy(ii) + 1
+end do
+do i = 1, nocndbdy
+  ii = basegrid%nlevels-iocndlevel(i)
+  mg_nocndbdy(ii) = mg_nocndbdy(ii) + 1
+end do
+
+ do i = nlevels,1,-1
+  level = i
+  nrc = bndy(i)%nr
+  nzc = bndy(i)%nz
+  drc = bndy(i)%dr
+  dzc = bndy(i)%dz
+  izlbnd = bndy(i)%izlbnd
+  izrbnd = bndy(i)%izrbnd
+
+  necndbdytmp = mg_necndbdy(i)
+  nocndbdytmp = mg_nocndbdy(i)
+  ncondtmp    = mg_ncond(i)
+
+  ALLOCATE(ixcondtmp(ncondtmp),izcondtmp(ncondtmp),condvolttmp(ncondtmp), &
+           iecndxtmp(necndbdytmp),iecndztmp(necndbdytmp), &
+           iocndxtmp(nocndbdytmp),iocndztmp(nocndbdytmp), &
+           ecdelmxtmp(necndbdytmp),ecdelpxtmp(necndbdytmp), ecdelmztmp(necndbdytmp),ecdelpztmp(necndbdytmp), &
+           ocdelmxtmp(nocndbdytmp),ocdelpxtmp(nocndbdytmp), ocdelmztmp(nocndbdytmp),ocdelpztmp(nocndbdytmp), &
+           ecvolttmp(necndbdytmp), ocvolttmp(nocndbdytmp))
+  itmp = 0
+  do ii = 1, ncond
+    IF(basegrid%nlevels-icondlevel(ii)==i) then
+      itmp = itmp + 1
+      ixcondtmp(itmp) = ixcond(ii)
+      izcondtmp(itmp) = izcond(ii)
+      condvolttmp(itmp) = condvolt(ii)
+    END if
+  end do
+  itmp = 0
+  do ii = 1, necndbdy
+    IF(basegrid%nlevels-iecndlevel(ii)==i) then
+      itmp = itmp + 1
+      iecndxtmp(itmp) = iecndx(ii)
+      iecndztmp(itmp) = iecndz(ii)
+      ecdelmxtmp(itmp) = ecdelmx(ii)
+      ecdelpxtmp(itmp) = ecdelpx(ii)
+      ecdelmztmp(itmp) = ecdelmz(ii)
+      ecdelpztmp(itmp) = ecdelpz(ii)
+      ecvolttmp(itmp) = ecvolt(ii)
+    END if
+  end do
+  itmp = 0
+  do ii = 1, nocndbdy
+    IF(basegrid%nlevels-iocndlevel(ii)==i) then
+      itmp = itmp + 1
+      iocndxtmp(itmp) = iocndx(ii)
+      iocndztmp(itmp) = iocndz(ii)
+      ocdelmxtmp(itmp) = ocdelmx(ii)
+      ocdelpxtmp(itmp) = ocdelpx(ii)
+      ocdelmztmp(itmp) = ocdelmz(ii)
+      ocdelpztmp(itmp) = ocdelpz(ii)
+      ocvolttmp(itmp) = ocvolt(ii)
+    END if
+  end do
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+                        ncondtmp, ixcondtmp, izcondtmp, condvolttmp, &
+                        necndbdytmp, iecndxtmp, iecndztmp, ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, ecvolttmp, &
+                        nocndbdytmp, iocndxtmp, iocndztmp, ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, ocvolttmp)
+
+  DEALLOCATE(ixcondtmp,izcondtmp,condvolttmp, &
+             iecndxtmp,iecndztmp, &
+             iocndxtmp,iocndztmp, &
+             ecdelmxtmp,ecdelpxtmp, ecdelmztmp,ecdelpztmp, &
+             ocdelmxtmp,ocdelpxtmp, ocdelmztmp,ocdelpztmp, &
+             ecvolttmp, ocvolttmp)
+
+ end do
+
+DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
+
+necndbdy=0
+nocndbdy=0
+ncond = 0
+
+call get_cond_rz(1,1)
+
+return
+end subroutine install_conductors_rz
+
+
+subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+                            ncond, ixcond, izcond, condvolt, &
+                            necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
+                            nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
+!use Conductor3d
 USE multigridrz, ONLY: conductor_type, bndy, dirichlet, v_cond, v_bnd, bnd_method, egun, ecb, init_bnd_sublevel
 implicit none
 
-INTEGER(ISZ), INTENT(IN) :: nrc,nzc,i,ixrbnd,izlbnd,izrbnd
+INTEGER(ISZ), INTENT(IN) :: nrc,nzc,i,ixrbnd,izlbnd,izrbnd,ncond,necndbdy,nocndbdy
 REAL(8), INTENT(IN) :: drc,dzc
+INTEGER(ISZ), INTENT(IN) :: ixcond(ncond), izcond(ncond), &
+                            iecndx(necndbdy), iecndz(necndbdy), &
+                            iocndx(nocndbdy), iocndz(nocndbdy)
+REAL(8), INTENT(IN) :: condvolt(ncond), ecvolt(necndbdy), ocvolt(nocndbdy), &
+                       ecdelmx(necndbdy), ecdelpx(necndbdy), ecdelmz(necndbdy), ecdelpz(necndbdy), &
+                       ocdelmx(nocndbdy), ocdelpx(nocndbdy), ocdelmz(nocndbdy), ocdelpz(nocndbdy)
 
 INTEGER(ISZ) :: ii,iii,iv,iiv,nxbnd,nzbndmin,nzbndmax
 REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
