@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.81 2004/09/02 16:42:41 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.82 2004/09/02 23:08:16 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -408,7 +408,17 @@ distances to outside the surface are positive, inside negative.
    
   def setvoltages(self,voltage):
     "Routine to set appropriate voltages."
-    self.vs = voltage + zeros((6,self.ndata),'d')
+    # --- The voltage can be a number, a class instance, or a function.
+    # --- If it is an instance, the class must have a method getvolt
+    # --- that takes the time as an argument. If a function, it must
+    # --- take one argument, the time.  
+    if type(voltage) == FunctionType:
+      v = voltage(top.time)
+    elif type(voltage) == InstanceType:
+      v = voltage.getvolt(top.time)
+    else:
+      v = voltage
+    self.vs = v + zeros((6,self.ndata),'d')
    
   def setcondids(self,condid):
     "Routine to setcondid condids."
