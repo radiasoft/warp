@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.109 $, $Date: 2003/10/30 19:31:27 $
+#@(#) File TOP.V, version $Revision: 3.110 $, $Date: 2003/11/22 00:17:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.109 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.110 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2116,3 +2116,13 @@ setregulartgrid(nx:integer,ny:integer,nz:integer,
                 # set slices regularly in z between zmin and zmax.
                 # nzloc refers to the number of nodes of a lookup table for fast 
                 # localization of temperature slices. In general setting nzloc=w3d.nz is good.
+impact_ion(is1:integer,is2:integer,nbp:integer,w:real,
+           shiftx:real,shifty:real,shiftz:real,
+           deltax:real,deltay:real,deltaz:real)
+           subroutine # create particles of species is2 from impact of particles if species is1 
+                      # nbp particles are created for each incident particle
+                      # w: energy emitted particles (all in -Vz)
+                      # We have
+                      # xpemit = xpabsorb + shiftx + (wranf()-0.5)*deltax 
+                      # ypemit = ypabsorb + shifty + (wranf()-0.5)*deltay 
+                      # zpemit = zpabsorb + shiftz + (wranf()-0.5)*deltaz 
