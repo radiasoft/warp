@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.31 2001/08/14 18:27:52 dave Exp $"
+warp_version = "$Id: warp.py,v 1.32 2001/09/22 00:09:10 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -77,7 +77,6 @@ if lparallel:
 
 # --- Add stuff to the path
 import sys
-sys.path = sys.path + ['/home/ife1/dave/warp/scripts']
 
 #=============================================================================
 # --- Set physical constants which depend on others.
