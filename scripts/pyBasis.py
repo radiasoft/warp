@@ -1,6 +1,6 @@
 # import all of the neccesary packages
 from Numeric import *
-from pybasis import *
+from pybasisC import *
 import os
 import string
 import re
@@ -9,7 +9,7 @@ import PW
 import PR
 import __main__
 import sys
-pyBasis_version = "$Id: pyBasis.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.2 2000/10/26 21:18:12 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -335,7 +335,7 @@ def restoreold(fname):
 
 
 
-def pyBasisdoc():
+def Basisdoc():
   print """
 iota(): returns a array of sequential integers
 arraytostr(): converts an array of chars to a string
