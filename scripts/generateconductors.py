@@ -71,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.49 2004/03/16 16:58:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.50 2004/03/22 14:43:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -458,95 +458,65 @@ Installs the data into the WARP database
     if solvergeom is None: solvergeom = w3d.solvergeom
     if(installrz and
        (solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom)):
-      f3d.ncond = 0
-      f3d.necndbdy = 0
-      f3d.nocndbdy = 0
+      f3d.interior.n = 0
+      f3d.evensubgrid.n = 0
+      f3d.oddsubgrid.n = 0
 
     # --- Install all of the conductor data into the f3d database.
     ntot = 0
-    nc = f3d.ncond
+    nc = f3d.interior.n
     nn = sum(where(self.parity[:self.ndata] == -1,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if nc + nn > f3d.ncondmax:
-        f3d.ncondmax = nn + nc
+      if nc + nn > f3d.interior.nmax:
+        f3d.interior.nmax = nn + nc
         gchange("Conductor3d")
-      f3d.ncond = f3d.ncond + nn
+      f3d.interior.n = f3d.interior.n + nn
       ii = compress(self.parity[:self.ndata] == -1,arange(self.ndata))
-      f3d.ixcond[nc:nc+nn] = take(self.ix,ii)
-      f3d.iycond[nc:nc+nn] = take(self.iy,ii)
-      f3d.izcond[nc:nc+nn] = take(self.iz,ii)
-      f3d.condvolt[nc:nc+nn] = take(self.vs[0,:],ii)
-      f3d.condnumb[nc:nc+nn] = take(self.ns[0,:],ii)
-      f3d.icondlevel[nc:nc+nn] = take(self.mglevel,ii)
+      f3d.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
+      f3d.interior.indx[1,nc:nc+nn] = take(self.iy,ii)
+      f3d.interior.indx[2,nc:nc+nn] = take(self.iz,ii)
+      f3d.interior.volt[nc:nc+nn] = take(self.vs[0,:],ii)
+      f3d.interior.numb[nc:nc+nn] = take(self.ns[0,:],ii)
+      f3d.interior.ilevel[nc:nc+nn] = take(self.mglevel,ii)
 
-    ne = f3d.necndbdy
+    ne = f3d.evensubgrid.n
     nn = sum(where(self.parity[:self.ndata] == 0,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if ne + nn > f3d.ncndmax:
-        f3d.ncndmax = nn + ne
+      if ne + nn > f3d.evensubgrid.nmax:
+        f3d.evensubgrid.nmax = nn + ne
         gchange("Conductor3d")
-      f3d.necndbdy = f3d.necndbdy + nn
+      f3d.evensubgrid.n = f3d.evensubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 0,arange(self.ndata))
-      f3d.iecndx[ne:ne+nn] = take(self.ix,ii)
-      f3d.iecndy[ne:ne+nn] = take(self.iy,ii)
-      f3d.iecndz[ne:ne+nn] = take(self.iz,ii)
-      f3d.ecdelmx[ne:ne+nn] = take(self.dels[0,:],ii)
-      f3d.ecdelpx[ne:ne+nn] = take(self.dels[1,:],ii)
-      f3d.ecdelmy[ne:ne+nn] = take(self.dels[2,:],ii)
-      f3d.ecdelpy[ne:ne+nn] = take(self.dels[3,:],ii)
-      f3d.ecdelmz[ne:ne+nn] = take(self.dels[4,:],ii)
-      f3d.ecdelpz[ne:ne+nn] = take(self.dels[5,:],ii)
-      f3d.ecvoltmx[ne:ne+nn] = take(self.vs[0,:],ii)
-      f3d.ecvoltpx[ne:ne+nn] = take(self.vs[1,:],ii)
-      f3d.ecvoltmy[ne:ne+nn] = take(self.vs[2,:],ii)
-      f3d.ecvoltpy[ne:ne+nn] = take(self.vs[3,:],ii)
-      f3d.ecvoltmz[ne:ne+nn] = take(self.vs[4,:],ii)
-      f3d.ecvoltpz[ne:ne+nn] = take(self.vs[5,:],ii)
-      f3d.ecnumbmx[ne:ne+nn] = take(self.ns[0,:],ii)
-      f3d.ecnumbpx[ne:ne+nn] = take(self.ns[1,:],ii)
-      f3d.ecnumbmy[ne:ne+nn] = take(self.ns[2,:],ii)
-      f3d.ecnumbpy[ne:ne+nn] = take(self.ns[3,:],ii)
-      f3d.ecnumbmz[ne:ne+nn] = take(self.ns[4,:],ii)
-      f3d.ecnumbpz[ne:ne+nn] = take(self.ns[5,:],ii)
-      f3d.ecvolt[ne:ne+nn] = take(self.vs[0,:],ii)
-      f3d.ecnumb[ne:ne+nn] = take(self.ns[0,:],ii)
-      f3d.iecndlevel[ne:ne+nn] = take(self.mglevel,ii)
+      f3d.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
+      f3d.evensubgrid.indx[1,ne:ne+nn] = take(self.iy,ii)
+      f3d.evensubgrid.indx[2,ne:ne+nn] = take(self.iz,ii)
+      f3d.evensubgrid.dels[:,ne:ne+nn] = take(self.dels,ii,1)
+      f3d.evensubgrid.volt[1:,ne:ne+nn] = take(self.vs,ii,1)
+      f3d.evensubgrid.volt[0 ,ne:ne+nn] = take(self.vs[0,:],ii)
+      f3d.evensubgrid.numb[1:,ne:ne+nn] = take(self.ns,ii,1)
+      f3d.evensubgrid.numb[0 ,ne:ne+nn] = take(self.ns[0,:],ii)
+      f3d.evensubgrid.ilevel[ne:ne+nn] = take(self.mglevel,ii)
 
-    no = f3d.nocndbdy
+    no = f3d.oddsubgrid.n
     nn = sum(where(self.parity[:self.ndata] == 1,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if no + nn > f3d.ncndmax:
-        f3d.ncndmax = nn + no
+      if no + nn > f3d.oddsubgrid.nmax:
+        f3d.oddsubgrid.nmax = nn + no
         gchange("Conductor3d")
-      f3d.nocndbdy = f3d.nocndbdy + nn
+      f3d.oddsubgrid.n = f3d.oddsubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 1,arange(self.ndata))
-      f3d.iocndx[no:no+nn] = take(self.ix,ii)
-      f3d.iocndy[no:no+nn] = take(self.iy,ii)
-      f3d.iocndz[no:no+nn] = take(self.iz,ii)
-      f3d.ocdelmx[no:no+nn] = take(self.dels[0,:],ii)
-      f3d.ocdelpx[no:no+nn] = take(self.dels[1,:],ii)
-      f3d.ocdelmy[no:no+nn] = take(self.dels[2,:],ii)
-      f3d.ocdelpy[no:no+nn] = take(self.dels[3,:],ii)
-      f3d.ocdelmz[no:no+nn] = take(self.dels[4,:],ii)
-      f3d.ocdelpz[no:no+nn] = take(self.dels[5,:],ii)
-      f3d.ocvoltmx[no:no+nn] = take(self.vs[0,:],ii)
-      f3d.ocvoltpx[no:no+nn] = take(self.vs[1,:],ii)
-      f3d.ocvoltmy[no:no+nn] = take(self.vs[2,:],ii)
-      f3d.ocvoltpy[no:no+nn] = take(self.vs[3,:],ii)
-      f3d.ocvoltmz[no:no+nn] = take(self.vs[4,:],ii)
-      f3d.ocvoltpz[no:no+nn] = take(self.vs[5,:],ii)
-      f3d.ocnumbmx[no:no+nn] = take(self.ns[0,:],ii)
-      f3d.ocnumbpx[no:no+nn] = take(self.ns[1,:],ii)
-      f3d.ocnumbmy[no:no+nn] = take(self.ns[2,:],ii)
-      f3d.ocnumbpy[no:no+nn] = take(self.ns[3,:],ii)
-      f3d.ocnumbmz[no:no+nn] = take(self.ns[4,:],ii)
-      f3d.ocnumbpz[no:no+nn] = take(self.ns[5,:],ii)
-      f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
-      f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
-      f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
+      f3d.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
+      f3d.oddsubgrid.indx[1,no:no+nn] = take(self.iy,ii)
+      f3d.oddsubgrid.indx[2,no:no+nn] = take(self.iz,ii)
+      f3d.oddsubgrid.dels[:,no:no+nn] = take(self.dels,ii,1)
+      f3d.oddsubgrid.volt[1:,no:no+nn] = take(self.vs,ii,1)
+      f3d.oddsubgrid.volt[0 ,no:no+nn] = take(self.vs[0,:],ii)
+      f3d.oddsubgrid.numb[1:,no:no+nn] = take(self.ns,ii,1)
+      f3d.oddsubgrid.numb[0 ,no:no+nn] = take(self.ns[0,:],ii)
+      f3d.oddsubgrid.ilevel[no:no+nn] = take(self.mglevel,ii)
 
     # --- If the RZ solver is being used, the copy the data into that
     # --- database. This also copies all of the accumulated data back into
@@ -881,8 +851,8 @@ Creates a grid object which can generate conductor data.
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (self.xmmax - self.xmmin)/self.nx
-    self.dy = (self.ymmax - self.ymmin)/self.ny
-    if self.dy == 0.: self.dy = self.dx
+    if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
+    else:           self.dy = self.dx
     # --- z is different since it is not affected by transverse symmetries
     # --- but is affected by parallel decomposition.
     self.dz = (self.zmmax - self.zmmin)/self.nz
