@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.56 $, $Date: 2002/04/30 21:56:19 $
+#@(#) File W3D.V, version $Revision: 3.57 $, $Date: 2002/05/03 13:52:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.56 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.57 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -456,8 +456,7 @@ multpole(lmod:integer,nlmod:integer,irpowmx:integer,
 inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
              xmmin:real,ymmin:real,x0:real,y0:real,a0:real,b0:real,
              inj_nsmooth:integer) subroutine
-getinj_phi(nx:integer,ny:integer,nz:integer,phi:real,dx:real,dy:real,dz:real,
-           xmmin:real,ymmin:real) subroutine
+getinj_phi() subroutine
 
 
 
