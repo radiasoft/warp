@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.115 2004/04/14 17:27:05 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.116 2004/05/10 18:01:02 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -318,7 +318,7 @@ Simple interface to contour plotting, same arguments as plc
   if filled:
     plfc(zz,xx,yy,ireg,contours=contours)
   else:
-    plc(zz,xx,yy,color=color,levs=contours,width=width,type=linetype)
+    plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype)
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
   """
 Simple interface to filled contour plotting, same arguments as plfc
@@ -577,7 +577,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg',
                 'cellarray':0,'centering':'node','ctop':199,
-                'cmin':None,'cmax':None,
+                'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
                 'ldensityscale':0,'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
@@ -607,6 +607,10 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- the code complexity below. If gridt is specified, it is equivalent
   # --- to specifying grid (except for the transpose).
   if gridt is not None: grid = transpose(gridt)
+
+  # --- If ireg is passed in, get its transpose, since only it will be used.
+  if ireg is not None: iregt = transpose(ireg)
+  else:                iregt = None
 
   # --- Do some error checking on the consistency of the input
   assert (type(grid) == ArrayType or \
@@ -825,7 +829,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- plotted before it.
   if contours and filled and nx > 1 and ny > 1:
     if cmax != cmin:
-      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
+      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Make cell-array plot. This also is done early since it covers anything
@@ -888,7 +892,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- particles
   if contours and not filled and nx > 1 and ny > 1:
     if cmax != cmin:
-      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
+      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Plot hash last since it easiest seen on top of everything else.
@@ -2562,8 +2566,8 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
+  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
+  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
   kw.setdefault('ymin',w3dgrid.ymmin)
   kw.setdefault('ymax',w3dgrid.ymmax)
   if kw.get('cellarray',1):
@@ -2595,8 +2599,8 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
+  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
+  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
   kw.setdefault('ymin',w3dgrid.xmmin)
   kw.setdefault('ymax',w3dgrid.xmmax)
   if kw.get('cellarray',1):
@@ -2666,8 +2670,8 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
+  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
+  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
   kw.setdefault('ymin',w3dgrid.ymmin)
   kw.setdefault('ymax',w3dgrid.ymmax)
   if kw.get('cellarray',1):
@@ -2699,8 +2703,8 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
+  kw.setdefault('xmin',w3dgrid.zmminglobal + zbeam)
+  kw.setdefault('xmax',w3dgrid.zmmaxglobal + zbeam)
   kw.setdefault('ymin',w3dgrid.xmmin)
   kw.setdefault('ymax',w3dgrid.xmmax)
   if kw.get('cellarray',1):
