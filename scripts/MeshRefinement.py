@@ -16,8 +16,8 @@ except ImportError:
 class MRBlock(MultiGrid,Visualizable):
   """
  - parent:
- - refinement=2:
- - lower,upper: extent of domain in relative to parent, in parents grid
+ - refinement=None: amount of refinement along each axis
+ - lower,upper: extent of domain in relative to parent, in its own grid
                 cell size, and not including any guard cells
  - ichild: the index number of this child in the given parent
  - dims: dimensions of the grid, only used for root block, the one with
@@ -28,7 +28,7 @@ class MRBlock(MultiGrid,Visualizable):
              (lower,upper,refinement). Children can also be added later
              using addchild.
   """
-  def __init__(self,parent=None,refinement=2,
+  def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
                     ichild=None,
                     dims=None,mins=None,maxs=None,
@@ -59,7 +59,6 @@ class MRBlock(MultiGrid,Visualizable):
     self.root.listofblocks.append(self)
 
     self.overlaps = []
-    self.refinement = refinement
     self.nguard = nguard
     self.conductorlist = []
 
@@ -69,8 +68,10 @@ class MRBlock(MultiGrid,Visualizable):
       self.dims = dims
       self.mins = mins
       self.maxs = maxs
-      self.totalrefinement = 1
+      self.totalrefinement = ones(3)
       self.forcesymmetries = 1
+
+      self.refinement = None
 
       # --- Make sure the top.nparpgrp is a large number. If it becomes too
       # --- small, fetche becomes inefficient since it is called many times,
@@ -80,8 +81,14 @@ class MRBlock(MultiGrid,Visualizable):
       
     else:
 
+      # --- Make sure that refinement is an array of length three. If a scalar
+      # --- is input, it is broadcast to all three axis.
+      if type(refinement) in [IntType,FloatType]:
+        refinement = 3*[refinement]
+      self.refinement = array(refinement)
+
       self.totalrefinement = parent.totalrefinement*self.refinement
-      self.deltas = parent.deltas/refinement
+      self.deltas = parent.deltas/self.refinement
       self.rootdims = self.root.dims*self.totalrefinement
       self.forcesymmetries = 0
 
@@ -102,11 +109,21 @@ class MRBlock(MultiGrid,Visualizable):
 
       # --- Now, extend the domain by the given number of guard cells. Checks
       # --- are made so that the domain doesn't extend beyond the original grid.
-      self.fulllower = maximum(0,self.lower - nguard*refinement)
-      self.fullupper = minimum(self.rootdims,self.upper + nguard*refinement)
+      self.fulllower = maximum(0,self.lower - nguard*self.refinement)
+      self.fullupper = minimum(self.rootdims,
+                               self.upper + nguard*self.refinement)
 
       # --- Recalculate grid quantities, including the guard regions.
       self.dims = self.fullupper - self.fulllower
+
+      # --- Make sure that the number of grid points in each dimension is even
+      self.fulllower = where(self.dims%2==1,self.fulllower-1,self.fulllower)
+      self.fulllower = maximum(0,self.fulllower)
+      self.dims = self.fullupper - self.fulllower
+      self.fullupper = where(self.dims%2==1,self.fullupper+1,self.fullupper)
+      self.fullupper = minimum(self.rootdims,self.fullupper)
+      self.dims = self.fullupper - self.fulllower
+
       self.mins = self.root.mins + self.fulllower*self.deltas
       self.maxs = self.root.mins + self.fullupper*self.deltas
 
@@ -182,9 +199,7 @@ class MRBlock(MultiGrid,Visualizable):
     self.children = []
     if children is not None:
       for l,u,r in children:
-        self.addchild(l,u,r)
-
-    self.createwarrayforrho()
+        self.addchild(l,u,refinement=r)
 
   def __getstate__(self):
     """
@@ -211,21 +226,11 @@ it knows whether to re-register itself.
         w3d.rhop = self.rho
         w3d.phip = self.phi
 
-  def createwarrayforrho(self):
-    # --- Create weight array needed for rho deposition.
-    r = self.refinement
-    # --- Is linear falloff in the weights correct for r > 2?
-    w0 = r - abs(1.*iota(-r+1,+r-1))
-    w0 = w0/sum(w0)
-    # --- Expand into 3 dimensions
-    self.w = outerproduct(w0,outerproduct(w0,w0))
-    self.w.shape = (2*r-1,2*r-1,2*r-1)
-
-  def addchild(self,lower,upper,mins=None,maxs=None,refinement=2):
+  def addchild(self,lower,upper,mins=None,maxs=None,refinement=[2,2,2]):
     """
 Add a mesh refined block to this block.
-  -lower,upper,mins,maxs,refinement=2: All have same meanings as for the
-                                       constructor.
+  -lower,upper,mins,maxs,refinement: All have same meanings as for the
+                                     constructor.
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,ichild=len(self.children)+1,
@@ -433,9 +438,8 @@ not be fetched from there (it is set negative).
 
     for child in self.children:
       # --- Find intersection of parent, self, and child
-      r = child.refinement
-      cl = maximum(child.fulllower/r,l)
-      cu = minimum(child.fullupper/r,u)
+      cl = maximum(child.fulllower/child.refinement,l)
+      cu = minimum(child.fullupper/child.refinement,u)
       if sometrue(cl > cu): continue
 
       # --- Get childdomains in the intersection region, Wherever the
@@ -453,19 +457,22 @@ not be fetched from there (it is set negative).
       # --- the second argument of the where can just be -ii instead
       # --- of -abs(ii) since only positive values of ii will have the sign
       # --- changed.
-      ii[...] = where((nbc<level*r) & (ii == child.blocknumber),-ii,ii)
+      r = child.refinement
+      ii[...] = where((nbc<max(level*r)) & (ii == child.blocknumber),-ii,ii)
 
       # --- Stretch out the array so it has the refined cell size of the child
-      # --- XXX This assumes a refinement factor of 2 XXX
-      nbcstretched = zeros(1+(cu-cl)*2)
-      nbcstretched[ ::r, ::r, ::r] = nbc[:  ,:  ,:  ]
-      nbcstretched[1::r, ::r, ::r] = nbc[:-1,:  ,:  ]
-      nbcstretched[ ::r,1::r, ::r] = nbc[:  ,:-1,:  ]
-      nbcstretched[1::r,1::r, ::r] = nbc[:-1,:-1,:  ]
-      nbcstretched[ ::r, ::r,1::r] = nbc[:  ,:  ,:-1]
-      nbcstretched[1::r, ::r,1::r] = nbc[:-1,:  ,:-1]
-      nbcstretched[ ::r,1::r,1::r] = nbc[:  ,:-1,:-1]
-      nbcstretched[1::r,1::r,1::r] = nbc[:-1,:-1,:-1]
+      nbcstretched = zeros(1+(cu-cl)*r)
+      for k in range(r[2]):
+        if k == 0: ksl = slice(None)
+        else:      ksl = slice(-1)
+        for j in range(r[1]):
+          if j == 0: jsl = slice(None)
+          else:      jsl = slice(-1)
+          for i in range(r[0]):
+            if i == 0: isl = slice(None)
+            else:      isl = slice(-1)
+            nbcstretched[i::r[0],j::r[1],k::r[2]] = nbc[isl,jsl,ksl]
+
       child.clearinactiveregions(nbcstretched,self,level*r)
 
   #--------------------------------------------------------------------------
@@ -741,24 +748,21 @@ Python version.
       child.gatherrhofromchildren_python()
 
       # --- Get coordinates of child relative to this domain
-      r = child.refinement
-      l = maximum(child.fulllower/r,self.fulllower)
-      u = minimum(child.fullupper/r,self.fullupper)
+      l = maximum(child.fulllower/child.refinement,self.fulllower)
+      u = minimum(child.fullupper/child.refinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
       dopbounds = (sometrue(child.pbounds == 1) and
                   sometrue(l == 0) and
                   sometrue(u == self.rootdims))
 
-      # --- Grid cells to gather from child along each axis, relative to grid
-      # --- cells in the parent mesh.
-      dims = iota(-r+1,r-1)
-
       # --- Loop over the three dimensions. The loops loop over all child grid
       # --- cells that contribute to a parent grid cell.
-      for k in dims:
-        for j in dims:
-          for i in dims:
+      r = child.refinement
+      w = self.getwarrayforrho(r)
+      for k in iota(-r[2]+1,r[2]-1):
+        for j in iota(-r[1]+1,r[1]-1):
+          for i in iota(-r[0]+1,r[0]-1):
             ls = array([i,j,k]) + l*r
             us = array([i,j,k]) + u*r
             pm = (ls < child.fulllower)
@@ -771,7 +775,7 @@ Python version.
             # --- Get the rho that will be contributed.
             rh = where(cowns,crho,0.)
             # --- Multiply by the weight in place.
-            multiply(rh,self.w[i+1,j+1,k+1],rh)
+            multiply(rh,w[i+1,j+1,k+1],rh)
             # --- Adjust for symmetries
             if dopbounds:
               if child.pbounds[0] == 1 and i > 0 and l[0] == 0:
@@ -807,19 +811,19 @@ Fortran version
       child.gatherrhofromchildren_fortran()
 
       # --- Get coordinates of child relative to this domain
-      r = child.refinement
-      l = maximum(child.fulllower/r,self.fulllower)
-      u = minimum(child.fullupper/r,self.fullupper)
+      l = maximum(child.fulllower/child.refinement,self.fulllower)
+      u = minimum(child.fullupper/child.refinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
       dopbounds = (sometrue(child.pbounds == 1) and
                   (sometrue(l == 0) or
                    sometrue(u == self.rootdims)))
 
+      w = self.getwarrayforrho(child.refinement)
       gatherrhofromchild(self.rho,self.dims[0],self.dims[1],self.dims[2],
                          child.rho,child.dims[0],child.dims[1],child.dims[2],
                          l,u,self.fulllower,child.fulllower,child.fullupper,
-                         child.refinement,self.w,child.siblingdomains,
+                         child.refinement,w,child.siblingdomains,
                          dopbounds,child.pbounds,self.rootdims)
 
   def gatherrhofromchildren_reversed(self):
@@ -839,7 +843,9 @@ Python version with the loop over the child nodes as the inner loop
       child.gatherrhofromchildren_reversed()
 
       r = child.refinement
-      iwx,iwy,iwz = getmesh3d(-r+1,1,2*r-2,-r+1,1,2*r-2,-r+1,1,2*r-2)
+      iwx,iwy,iwz = getmesh3d(-r[0]+1,1,2*r[0]-2,
+                              -r[1]+1,1,2*r[1]-2,
+                              -r[2]+1,1,2*r[2]-2)
 
       # --- Get coordinates of child relative to this domain
       l = maximum(child.fulllower/r,self.fulllower)
@@ -850,24 +856,25 @@ Python version with the loop over the child nodes as the inner loop
                   sometrue(l == 0) and
                   sometrue(u == self.rootdims))
 
+      w = self.getwarrayforrho(r)
       for iz in range(l[2],u[2]+1):
         iz0 = iz - self.fulllower[2]
-        iz1 = maximum(iz*r - r + 1,child.fulllower[2])
-        iz2 = minimum(iz*r + r - 1,child.fullupper[2])
-        iwz1 = iz1 - (iz*r - r + 1)
-        iwz2 = iz2 - (iz*r - r + 1) + 1
+        iz1 = maximum(iz*r[2] - r[2] + 1,child.fulllower[2])
+        iz2 = minimum(iz*r[2] + r[2] - 1,child.fullupper[2])
+        iwz1 = iz1 - (iz*r[2] - r[2] + 1)
+        iwz2 = iz2 - (iz*r[2] - r[2] + 1) + 1
         for iy in range(l[1],u[1]+1):
           iy0 = iy - self.fulllower[1]
-          iy1 = maximum(iy*r - r + 1,child.fulllower[1])
-          iy2 = minimum(iy*r + r - 1,child.fullupper[1])
-          iwy1 = iy1 - (iy*r - r + 1)
-          iwy2 = iy2 - (iy*r - r + 1) + 1
+          iy1 = maximum(iy*r[1] - r[1] + 1,child.fulllower[1])
+          iy2 = minimum(iy*r[1] + r[1] - 1,child.fullupper[1])
+          iwy1 = iy1 - (iy*r[1] - r[1] + 1)
+          iwy2 = iy2 - (iy*r[1] - r[1] + 1) + 1
           for ix in range(l[0],u[0]+1):
             ix0 = ix - self.fulllower[0]
-            ix1 = maximum(ix*r - r + 1,child.fulllower[0])
-            ix2 = minimum(ix*r + r - 1,child.fullupper[0])
-            iwx1 = ix1 - (ix*r - r + 1)
-            iwx2 = ix2 - (ix*r - r + 1) + 1
+            ix1 = maximum(ix*r[0] - r[0] + 1,child.fulllower[0])
+            ix2 = minimum(ix*r[0] + r[0] - 1,child.fullupper[0])
+            iwx1 = ix1 - (ix*r[0] - r[0] + 1)
+            iwx2 = ix2 - (ix*r[0] - r[0] + 1) + 1
 
             crho = child.getrho([ix1,iy1,iz1],[ix2,iy2,iz2])
             cowns = child.getsiblingdomains([ix1,iy1,iz1],[ix2,iy2,iz2])
@@ -876,8 +883,8 @@ Python version with the loop over the child nodes as the inner loop
             rh = where(cowns,crho,0.)
 
             # --- Multiply by the weight in place.
-            w = self.w[iwx1:iwx2,iwy1:iwy2,iwz1:iwz2]
-            multiply(rh,w,rh)
+            wt = w[iwx1:iwx2,iwy1:iwy2,iwz1:iwz2]
+            multiply(rh,wt,rh)
 
             # --- Adjust for symmetries
             if dopbounds:
@@ -957,7 +964,6 @@ Sets phi on the boundaries, using the values from the parent grid
     """
     if len(self.parents) == 0: return
     for parent in self.parents:
-      r = self.refinement
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
@@ -967,32 +973,52 @@ Sets phi on the boundaries, using the values from the parent grid
       pu = u/self.refinement
       sphi = self.getphi(l,u)
       pphi = parent.getphi(pl,pu)
-      if l[0] == self.fulllower[0]: sphi[ 0,::r,::r] = pphi[ 0,:,:]
-      if u[0] == self.fullupper[0]: sphi[-1,::r,::r] = pphi[-1,:,:]
-      if l[1] == self.fulllower[1]: sphi[::r, 0,::r] = pphi[:, 0,:]
-      if u[1] == self.fullupper[1]: sphi[::r,-1,::r] = pphi[:,-1,:]
-      if l[2] == self.fulllower[2]: sphi[::r,::r, 0] = pphi[:,:, 0]
-      if u[2] == self.fullupper[2]: sphi[::r,::r,-1] = pphi[:,:,-1]
+      r = self.refinement
+      if l[0] == self.fulllower[0]: sphi[ 0    ,::r[1],::r[2]] = pphi[ 0,:,:]
+      if u[0] == self.fullupper[0]: sphi[-1    ,::r[1],::r[2]] = pphi[-1,:,:]
+      if l[1] == self.fulllower[1]: sphi[::r[0], 0    ,::r[2]] = pphi[:, 0,:]
+      if u[1] == self.fullupper[1]: sphi[::r[0],-1    ,::r[2]] = pphi[:,-1,:]
+      if l[2] == self.fulllower[2]: sphi[::r[0],::r[1], 0    ] = pphi[:,:, 0]
+      if u[2] == self.fullupper[2]: sphi[::r[0],::r[1],-1    ] = pphi[:,:,-1]
 
     # --- Do remaining points where interpolation is needed.
     # --- This can be done, now that all of the contributions from the parents
     # --- is done.
     sphi = self.phi[:,:,1:-1]
-    self.setslice(sphi[ 0,:,:])
-    self.setslice(sphi[-1,:,:])
-    self.setslice(sphi[:, 0,:])
-    self.setslice(sphi[:,-1,:])
-    self.setslice(sphi[:,:, 0])
-    self.setslice(sphi[:,:,-1])
+    self.setslice(sphi[ 0,:,:],self.refinement[1:])
+    self.setslice(sphi[-1,:,:],self.refinement[1:])
+    self.setslice(sphi[:, 0,:],self.refinement[0::2])
+    self.setslice(sphi[:,-1,:],self.refinement[0::2])
+    self.setslice(sphi[:,:, 0],self.refinement[:2])
+    self.setslice(sphi[:,:,-1],self.refinement[:2])
 
-  def setslice(self,slice):
+  def setslice(self,slice,r):
     # --- Does interpolation from cells coincident with the parent to the
     # --- other cells.
-    r = self.refinement
-    slice[1::r,::r] = 0.5*(slice[ :-1:r,::r] + slice[2:  :r,::r])
-    slice[::r,1::r] = 0.5*(slice[::r, :-1:r] + slice[::r,2:  :r])
-    slice[1::r,1::r] = 0.25*(slice[ :-1:r, :-1:r] + slice[2:  :r, :-1:r] +
-                             slice[ :-1:r,2:  :r] + slice[2:  :r,2:  :r])
+    for j in range(r[1]):
+      w1 = 1.*j/r[1]
+      for i in range(r[0]):
+        w0 = 1.*i/r[0]
+        if i == 0 and j == 0: continue
+        slice[i:-1:r[0],j:-1:r[1]] = (
+           slice[    :-1:r[0],    :-1:r[1]]*(1.-w0)*(1.-w1) +
+           slice[r[0]:  :r[0],    :-1:r[1]]*    w0 *(1.-w1) +
+           slice[    :-1:r[0],r[1]:  :r[1]]*(1.-w0)*    w1  +
+           slice[r[0]:  :r[0],r[1]:  :r[1]]*    w0 *    w1)
+
+    w1 = 1.
+    for i in range(1,r[0]):
+      w0 = 1.*i/r[0]
+      slice[i::r[0],-1] = (
+         slice[    :-1:r[0],-1]*(1.-w0)*    w1  +
+         slice[r[0]:  :r[0],-1]*    w0 *    w1)
+
+    w0 = 1.
+    for j in range(1,r[1]):
+      w1 = 1.*j/r[1]
+      slice[-1,j::r[1]] = (
+         slice[-1,    :-1:r[1]]*    w0 *(1.-w1) +
+         slice[-1,r[1]:  :r[1]]*    w0 *    w1)
 
   def optimizeconvergence(self,resetpasses=1):
     if not self.isfirstcall(): return
@@ -1247,6 +1273,18 @@ Fetches the potential, given a list of positions
       memtot = memtot + child.getmem()
     return memtot
       
+  def getwarrayforrho(self,r):
+    # --- Create weight array needed for rho deposition.
+    # --- Is linear falloff in the weights correct for r > 2?
+    wi = [0,0,0]
+    for i in range(3):
+      wi[i] = r[i] - abs(1.*iota(-r[i]+1,+r[i]-1))
+      wi[i] = wi[i]/sum(wi[i])
+    # --- Expand into 3 dimensions
+    w = outerproduct(wi[0],outerproduct(wi[1],wi[2]))
+    w.shape = (2*r[0]-1,2*r[1]-1,2*r[2]-1)
+    return w
+
   def getphi(self,lower,upper):
     # --- Note that this takes into account the guard cells in z.
     ix1,iy1,iz1 = lower - self.fulllower
@@ -1254,11 +1292,11 @@ Fetches the potential, given a list of positions
     iz1 = iz1 + 1
     iz2 = iz2 + 1
     return self.phi[ix1:ix2,iy1:iy2,iz1:iz2]
-  def getrho(self,lower,upper,r=1):
+  def getrho(self,lower,upper,r=[1,1,1]):
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    return self.rho[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
-  def getselfe(self,lower=None,upper=None,comp=slice(None),r=1):
+    return self.rho[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
+  def getselfe(self,lower=None,upper=None,comp=slice(None),r=[1,1,1]):
     if lower is None: lower = self.lower
     if upper is None: upper = self.upper
     if type(comp) == StringType:
@@ -1266,7 +1304,7 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     selfe = MultiGrid.getselfe(self,recalculate=0)
-    return selfe[comp,ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
+    return selfe[comp,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
       #self.childdomains = fzeros(1+self.dims)  + self.blocknumber
@@ -1275,19 +1313,20 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
     return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-  def getsiblingdomains(self,lower,upper,r=1):
+  def getsiblingdomains(self,lower,upper,r=[1,1,1]):
     if self.siblingdomains is None:
       #self.siblingdomains = zeros(1+self.dims) - 1
       self.siblingdomains = zeros(1+self.dims)
       subtract(self.siblingdomains,1,self.siblingdomains)
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    return self.siblingdomains[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
-  def getlocalarray(self,array,lower,upper,r=1,fulllower=None,upperedge=1):
+    return self.siblingdomains[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
+  def getlocalarray(self,array,lower,upper,r=[1,1,1],fulllower=None,
+                    upperedge=1):
     if fulllower is None: fulllower = self.fulllower
     ix1,iy1,iz1 = lower - fulllower
     ix2,iy2,iz2 = upper - fulllower + upperedge
-    return array[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
+    return array[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
 
   def setmgtol(self,mgtol=None):
     """
@@ -1314,7 +1353,8 @@ Applies the operator to the array at the specified plane. The blocks only
 contribute within their domains of ownership.
     """
     # --- Each block only needs to check once
-    if not self.islastcall(): return
+    # --- XXX This call breaks something
+    #if not self.islastcall(): return null
     # --- Don't do anything if the ip is outside the block
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return null
     # --- Get the appropriate slice of phi and the childdomains array
@@ -1333,7 +1373,7 @@ contribute within their domains of ownership.
     # --- Find the max of self's and the children's phi
     result = opnd(array)
     for child in self.children:
-      ipc = ip*child.refinement
+      ipc = ip*child.refinement[idim]
       cresult = child.arraysliceoperation(ipc,idim,arraystring,op,opnd,null,
                                           comp)
       result = op(result,cresult)
@@ -1403,10 +1443,10 @@ be plotted.
       ip = kw.get(('ix','iy','iz')[idim],None)
       if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     else:
-      ip = ip*self.refinement
+      ip = ip*self.refinement[idim]
       kw[('ix','iy','iz')[idim]] = ip - self.fulllower[idim]
 
-    # --- Set the values of cmin and cmax from all levels. This must be
+    # --- Set the values of cmin and cmax for all levels. This must be
     # --- done by the root level.
     if self is self.root:
       cmin = kw.get('cmin',None)
@@ -1488,7 +1528,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plphiz(ix*child.refinement,iy*child.refinement,color=color)
+        child.plphiz(ix*child.refinement[0],iy*child.refinement[1],color=color)
 
   def plphix(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
@@ -1499,7 +1539,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plphix(iy*child.refinement,iz*child.refinement,color=color)
+        child.plphix(iy*child.refinement[1],iz*child.refinement[2],color=color)
 
   def plphiy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1510,7 +1550,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plphiy(ix*child.refinement,iz*child.refinement,color=color)
+        child.plphiy(ix*child.refinement[0],iz*child.refinement[2],color=color)
 
   def plrhoz(self,ix=None,iy=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1521,7 +1561,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plrhoz(ix*child.refinement,iy*child.refinement,color=color)
+        child.plrhoz(ix*child.refinement[0],iy*child.refinement[1],color=color)
 
   def plrhox(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
@@ -1532,7 +1572,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plrhox(iy*child.refinement,iz*child.refinement,color=color)
+        child.plrhox(iy*child.refinement[1],iz*child.refinement[2],color=color)
 
   def plrhoy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1543,7 +1583,7 @@ be plotted.
         color=color)
     if not selfonly:
       for child in self.children:
-        child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
+        child.plrhoy(ix*child.refinement[0],iz*child.refinement[2],color=color)
 
   def plselfez(self,comp=2,ix=None,iy=None,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1561,7 +1601,7 @@ be plotted.
         self.zmesh[iz],color=color)
     if not selfonly:
       for child in self.children:
-        child.plselfez(comp,ix*child.refinement,iy*child.refinement,
+        child.plselfez(comp,ix*child.refinement[0],iy*child.refinement[1],
                        color=color,withguard=withguard)
 
   def plselfex(self,comp=2,iy=None,iz=None,color='fg',selfonly=0,withguard=1):
@@ -1580,7 +1620,7 @@ be plotted.
                    self.xmesh[ix],color=color)
     if not selfonly:
       for child in self.children:
-        child.plselfex(comp,iy*child.refinement,iz*child.refinement,
+        child.plselfex(comp,iy*child.refinement[1],iz*child.refinement[2],
                        color=color,withguard=withguard)
 
   def plselfey(self,comp=2,ix=None,iz=None,color='fg',selfonly=0,withguard=1):
@@ -1599,12 +1639,12 @@ be plotted.
         self.ymesh[iy],color=color)
     if not selfonly:
       for child in self.children:
-        child.plselfey(comp,ix*child.refinement,iz*child.refinement,
+        child.plselfey(comp,ix*child.refinement[0],iz*child.refinement[2],
                        color=color,withguard=withguard)
 
   def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
-    if ip is None: ip = self.dims[idim]/2
+    if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
     del ii[idim]
@@ -1627,8 +1667,8 @@ be plotted.
     plg(yy,xx,color=color[0])
     if not selfonly:
       for child in self.children:
-        child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
-                      color=color[1:])
+        child.drawbox(ip=ip*child.refinement[idim],idim=idim,
+                      withguards=withguards,color=color[1:])
 
   def drawboxzy(self,ix=None,withguards=1,color=[],selfonly=0):
     self.drawbox(ip=ix,idim=0,withguards=withguards,color=color,
@@ -1641,7 +1681,7 @@ be plotted.
                  selfonly=selfonly)
 
   def drawfilledbox(self,ip=None,idim=2,withguards=1,ibox=None,selfonly=0):
-    if ip is None: ip = self.dims[idim]/2
+    if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
     del ii[idim]
@@ -1663,7 +1703,7 @@ be plotted.
     plfp(ibox,yy,xx,[5])
     if not selfonly:
       for child in self.children:
-        child.drawfilledbox(ip=ip*child.refinement,idim=idim,
+        child.drawfilledbox(ip=ip*child.refinement[idim],idim=idim,
                             withguards=withguards,ibox=ibox)
 
   def createdxobject(self,kwdict={},**kw):
@@ -1678,9 +1718,9 @@ Create DX object drawing the object.
     zmin,zmax = self.zmmin,self.zmmax
     if not withguards:
       ng = self.nguard*self.refinement
-      xmin,xmax = xmin+ng*self.dx, xmax-ng*self.dx
-      ymin,ymax = ymin+ng*self.dy, ymax-ng*self.dy
-      zmin,zmax = zmin+ng*self.dz, zmax-ng*self.dz
+      xmin,xmax = xmin+ng[0]*self.dx, xmax-ng[0]*self.dx
+      ymin,ymax = ymin+ng[1]*self.dy, ymax-ng[1]*self.dy
+      zmin,zmax = zmin+ng[2]*self.dz, zmax-ng[2]*self.dz
     dxlist = [viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax)]
     for child in self.children:
       dxlist.append(child.getdxobject(kwdict=kw))
