@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.117 2004/05/14 23:48:06 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.118 2004/06/24 20:38:36 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -824,6 +824,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   if (hash or contours or color=='density' or chopped or surface or cellarray):
     if cmin is None: cmin = minnd(grid1)
     if cmax is None: cmax = maxnd(grid1)
+    ppgeneric.cmin = cmin
+    ppgeneric.cmax = cmax
 
   # --- Get grid mesh if it is needed
   if contours or hash or surface or cellarray:
