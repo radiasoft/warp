@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.41 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -36,23 +36,37 @@ c  dels(5,:) -> delpz
         parity(i) = outside
 
         iparity = mod(ix(i)+iy(i)+iz(i),2)
-        if (dels(0,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
-        if (dels(1,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
-        if (dels(2,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
-        if (dels(3,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
-        if (dels(4,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
-        if (dels(5,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(0,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        elseif (dels(1,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        elseif (dels(2,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        elseif (dels(3,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        elseif (dels(4,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        elseif (dels(5,i) < 1.+fuzzsign*fuzz) then
+          parity(i) = iparity
+        endif
 
 c       --- If one direction is negative, all are negative. However,
 c       --- because of the fuzz factor, each direction must be checked
 c       --- since if one direction is between 0 and fuzz, the others
 c       --- will all be positive.
-        if (dels(0,i) < 0.+fuzz) parity(i) = -1
-        if (dels(1,i) < 0.+fuzz) parity(i) = -1
-        if (dels(2,i) < 0.+fuzz) parity(i) = -1
-        if (dels(3,i) < 0.+fuzz) parity(i) = -1
-        if (dels(4,i) < 0.+fuzz) parity(i) = -1
-        if (dels(5,i) < 0.+fuzz) parity(i) = -1
+        if (dels(0,i) < 0.+fuzz) then
+          parity(i) = -1
+        elseif (dels(1,i) < 0.+fuzz) then
+          parity(i) = -1
+        elseif (dels(2,i) < 0.+fuzz) then
+          parity(i) = -1
+        elseif (dels(3,i) < 0.+fuzz) then
+          parity(i) = -1
+        elseif (dels(4,i) < 0.+fuzz) then
+          parity(i) = -1
+        elseif (dels(5,i) < 0.+fuzz) then
+          parity(i) = -1
+        endif
 
 c       --- To minimize the amount of conductor data, points deep inside the
 c       --- conductor can be skipped. The depth is set by the input dfill.
