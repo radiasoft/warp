@@ -85,6 +85,12 @@ class AMRTree(object,Visualizable):
       else:
         return f3d.conductors.interior.n > 0
 
+    def getconductors(self):
+      if self.solvergeom == w3d.XYZgeomMR:
+        return self.blocks.conductors
+      else:
+        return f3d.conductors
+
     def installbeforefs(self,f):
       self.beforefs.installfuncinlist(f)
 
