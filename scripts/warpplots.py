@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.38 2001/04/27 23:04:57 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.39 2001/04/27 23:26:11 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1083,7 +1083,6 @@ Note that either the x and y coordinates or the grid must be passed in.
   settitles() 
   if (lframe):
     limits(pplimits[0],pplimits[1],pplimits[2],pplimits[3])
-    print 'pp= ',pplimits
 if sys.version[:5] != "1.5.1":
   ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
