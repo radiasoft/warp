@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.137 $, $Date: 2003/10/30 19:23:23 $
+c@(#) File W3D.F, version $Revision: 3.138 $, $Date: 2003/11/08 00:35:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3892,10 +3892,10 @@ c        --- loop over particle blocks
              ip = min(nparpgrp, ins_u+nps_u-ipmin)
              if(wpid==0) then
                call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                          sq(is)*sw(is),nx,nz,dx,dz,zgrid)
+     &                          sq(is)*sw(is),nx,nz,dx,dz,xmmin,zgrid)
              else
                call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),pid(ipmin,wpid),ip,
-     &                          sq(is)*sw(is),nx,nz,dx,dz,zgrid)
+     &                          sq(is)*sw(is),nx,nz,dx,dz,xmmin,zgrid)
              end if
            enddo
          elseif(solvergeom==Zgeom) then
