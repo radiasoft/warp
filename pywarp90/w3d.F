@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.92 $, $Date: 2003/03/06 02:15:08 $
+c@(#) File W3D.M, version $Revision: 3.93 $, $Date: 2003/03/13 17:54:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1243,7 +1243,7 @@ c     call zeroarry (bendradi,nparpgrp)
       bendradi = 0.
 
 c  Zero the moments if center is synchv
-      if (center == "synchv" .or. center == "gen") then
+      if (center == "synchv" .or. center == "gen" .and. npmax>0) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns)
@@ -1477,7 +1477,7 @@ c              --- Calculate moments over particles, now that we're sync'd
 
 c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
-      if (center == "synchv" .or. center == "gen") then
+      if (center == "synchv" .or. center == "gen" .and. npmax>0) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),
      &                dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns)
@@ -1516,9 +1516,6 @@ c       --- Apply particle boundary conditions
 c       --- absorb particles passing through semitransparent disc
         call semitransparent_disc(dz)
 
-#ifdef MPIPARALLEL
-        call reorg_particles()
-#endif
         do is=1,ns
           if (nps(is) > 0)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
@@ -1531,6 +1528,10 @@ c       --- absorb particles passing through semitransparent disc
         do is=1,ns
           call processlostpart(is,clearlostpart,time,zbeam)
         enddo
+
+#ifdef MPIPARALLEL
+        call reorg_particles()
+#endif
 
 c       --- Collect charge density (3d)
         call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
