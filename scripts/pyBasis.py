@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.42 2003/10/16 21:09:51 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.43 2003/10/30 00:09:27 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -483,6 +483,12 @@ Dump data into a pdb file
     closefile = 1
   else:
     closefile = 0
+  # --- Make sure the file has a file_type. Older versions of the pdb
+  # --- wrappers did not define a file type.
+  try:
+    ff.file_type
+  except:
+    ff.file_type = "oldPDB"
   # --- Convert attr into a list if needed
   if not (type(attr) == ListType): attr = [attr]
   # --- Loop through all of the packages (getting pkg object).
@@ -544,15 +550,17 @@ Dump data into a pdb file
     except:
       pass
     if docontinue: continue
-    # --- If that didn't work, try writing as a pickled object
-    try:
-      if verbose:
-        print "writing python variable "+vname+" as "+vname+varsuffix+'@pickle'
-      ff.write(vname+varsuffix+'@pickle',cPickle.dumps(vval,dumpsmode))
-      docontinue = 1
-    except (cPickle.PicklingError,TypeError):
-      pass
-    if docontinue: continue
+    # --- If that didn't work, try writing as a pickled object. This is only
+    # --- needed for old pdb files.
+    if ff.file_type == 'oldPDB':
+      try:
+        if verbose:
+          print "writing python variable "+vname+" as "+vname+varsuffix+'@pickle'
+        ff.write(vname+varsuffix+'@pickle',cPickle.dumps(vval,dumpsmode))
+        docontinue = 1
+      except (cPickle.PicklingError,TypeError):
+        pass
+      if docontinue: continue
     # --- All attempts failed so write warning message
     if verbose: print "cannot write python variable "+vname
   if closefile: ff.close()
@@ -597,6 +605,10 @@ Note that it will automatically detect whether the file is PDB or HDF.
     closefile = 1
   else:
     closefile = 0
+  try:
+    ff.file_type
+  except:
+    ff.file_type = "oldPDB"
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_ls()
   # --- Print list of variables
@@ -629,8 +641,9 @@ Note that it will automatically detect whether the file is PDB or HDF.
 
   # --- These would be interpreter variables written to the file
   # --- as pickled objects. The data is unpickled and the variable
-  # --- in put in the main dictionary.
-  if groups.has_key('pickle'):
+  # --- in put in the main dictionary. This is only needed for
+  # --- the old pdb wrapper.
+  if groups.has_key('pickle') and ff.file_type == "oldPDB":
     picklelist = groups['pickle']
     del groups['pickle']
     for vname in picklelist:
