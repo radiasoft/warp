@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.106 2003/08/04 19:49:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.107 2003/08/12 23:13:49 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -111,6 +111,10 @@ never = top.never
 cgmlogfile = None
 numframes = 0
 if me == 0: pldefault(marks=0) # --- Set plot defaults, no line marks
+if "GISTPATH" not in os.environ:
+  # --- Set GISTPATH environment variable appropriately
+  import warp
+  os.environ["GISTPATH"] = os.path.dirname(warp.__file__)
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
           cgmfilesize=100000):
   """
