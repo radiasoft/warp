@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.12 2002/05/23 15:57:15 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.13 2002/07/02 17:45:19 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -81,7 +81,7 @@ plotting routines, along with their default values.
   """ + hpbasictext
 
 ###########################################################################
-def _extractvar(name,varsuffix,pkg='top'):
+def _extractvar(name,varsuffix=None,pkg='top'):
   """
 Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
@@ -90,7 +90,7 @@ returned.
   if type(name) == StringType:
     # --- if varsuffix is specified, try to evaluate the name with the
     # --- suffix. If ok, return the result, otherwise, default to the
-    # --- fortran varaible in the specified package.
+    # --- fortran variable in the specified package.
     if varsuffix is not None:
       vname = name + str(varsuffix)
       try:
@@ -1568,4 +1568,112 @@ hpvxvzbarz(): VxVz bar
 hpvyvzbarz(): VyVz bar
   """
   print histplotsdoc.__doc__
+
+def histplotstest(**kw):
+  """
+Test all histplots
+  """
+  apply(hptotalke,(),kw);fma()
+  apply(hptotalke,(),kw);fma()
+  apply(hptotale,(),kw);fma()
+  apply(hpthermale,(),kw);fma()
+  apply(hpeps6d,(),kw);fma()
+  apply(hpepst,(),kw);fma()
+  apply(hpepsnt,(),kw);fma()
+  apply(hpxedge,(),kw);fma()
+  apply(hpxpedge,(),kw);fma()
+  apply(hpyedge,(),kw);fma()
+  apply(hpypedge,(),kw);fma()
+  apply(hpxedges,(),kw);fma()
+  apply(hpyedges,(),kw);fma()
+  apply(hpenvx,(),kw);fma()
+  apply(hpenvy,(),kw);fma()
+  apply(hpzbeam,(),kw);fma()
+  apply(hpvbeam,(),kw);fma()
+  apply(hpbmlen,(),kw);fma()
+  apply(hpefld,(),kw);fma()
+  apply(hpekzmbe,(),kw);fma()
+  apply(hpekzbeam,(),kw);fma()
+  apply(hpekperp,(),kw);fma()
+  apply(hpekinz,(),kw);fma()
+  apply(hpekin,(),kw);fma()
+  apply(hpepsx,(),kw);fma()
+  apply(hpepsy,(),kw);fma()
+  apply(hpepsz,(),kw);fma()
+  apply(hpepsnx,(),kw);fma()
+  apply(hpepsny,(),kw);fma()
+  apply(hpepsnz,(),kw);fma()
+  apply(hpepsg,(),kw);fma()
+  apply(hpepsh,(),kw);fma()
+  apply(hpepsng,(),kw);fma()
+  apply(hpepsnh,(),kw);fma()
+  apply(hppnum,(),kw);fma()
+  apply(hprhomid,(),kw);fma()
+  apply(hprhomax,(),kw);fma()
+  apply(hpxbar,(),kw);fma()
+  apply(hpybar,(),kw);fma()
+  apply(hpxybar,(),kw);fma()
+  apply(hpxrms,(),kw);fma()
+  apply(hpyrms,(),kw);fma()
+  apply(hpxprms,(),kw);fma()
+  apply(hpyprms,(),kw);fma()
+  apply(hpxsqbar,(),kw);fma()
+  apply(hpysqbar,(),kw);fma()
+  apply(hpvxbar,(),kw);fma()
+  apply(hpvybar,(),kw);fma()
+  apply(hpvzbar,(),kw);fma()
+  apply(hpxpbar,(),kw);fma()
+  apply(hpypbar,(),kw);fma()
+  apply(hpvxrms,(),kw);fma()
+  apply(hpvyrms,(),kw);fma()
+  apply(hpvzrms,(),kw);fma()
+  apply(hpxpsqbar,(),kw);fma()
+  apply(hpypsqbar,(),kw);fma()
+  apply(hpxxpbar,(),kw);fma()
+  apply(hpyypbar,(),kw);fma()
+  apply(hpxypbar,(),kw);fma()
+  apply(hpyxpbar,(),kw);fma()
+  apply(hpxpypbar,(),kw);fma()
+  apply(hpxvzbar,(),kw);fma()
+  apply(hpyvzbar,(),kw);fma()
+  apply(hpvxvzbar,(),kw);fma()
+  apply(hpvyvzbar,(),kw);fma()
+  apply(hplinechg,(),kw);fma()
+  apply(hpvzofz,(),kw);fma()
+  apply(hpepsxz,(),kw);fma()
+  apply(hpepsyz,(),kw);fma()
+  apply(hpepsnxz,(),kw);fma()
+  apply(hpepsnyz,(),kw);fma()
+  apply(hpepsgz,(),kw);fma()
+  apply(hpepshz,(),kw);fma()
+  apply(hpepsngz,(),kw);fma()
+  apply(hpepsnhz,(),kw);fma()
+  apply(hpxbarz,(),kw);fma()
+  apply(hpybarz,(),kw);fma()
+  apply(hpxybarz,(),kw);fma()
+  apply(hpxrmsz,(),kw);fma()
+  apply(hpyrmsz,(),kw);fma()
+  apply(hpxprmsz,(),kw);fma()
+  apply(hpyprmsz,(),kw);fma()
+  apply(hpxsqbarz,(),kw);fma()
+  apply(hpysqbarz,(),kw);fma()
+  apply(hpvxbarz,(),kw);fma()
+  apply(hpvybarz,(),kw);fma()
+  apply(hpvzbarz,(),kw);fma()
+  apply(hpxpbarz,(),kw);fma()
+  apply(hpypbarz,(),kw);fma()
+  apply(hpvxrmsz,(),kw);fma()
+  apply(hpvyrmsz,(),kw);fma()
+  apply(hpvzrmsz,(),kw);fma()
+  apply(hpxpsqbarz,(),kw);fma()
+  apply(hpypsqbarz,(),kw);fma()
+  apply(hpxxpbarz,(),kw);fma()
+  apply(hpyypbarz,(),kw);fma()
+  apply(hpxypbarz,(),kw);fma()
+  apply(hpyxpbarz,(),kw);fma()
+  apply(hpxpypbarz,(),kw);fma()
+  apply(hpxvzbarz,(),kw);fma()
+  apply(hpyvzbarz,(),kw);fma()
+  apply(hpvxvzbarz,(),kw);fma()
+  apply(hpvyvzbarz,(),kw);fma()
 
