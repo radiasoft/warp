@@ -11,7 +11,7 @@ DXImage: views a OpenDX object using a nice interactor handler
 from warp import *
 from pyDXObject import *
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.1 2003/01/16 20:17:43 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.2 2003/01/22 17:29:05 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -142,8 +142,24 @@ def interactor_handler():
   if len(getchar) > 0: interactor = eval(getchar)
   else:                interactor = -1
 
+_group = [None]
+_groupn = [0]
 def DXImage(object,camera,name='WARP viz'):
   global interactor
+
+  if _group[0] is None:
+    minput = {'object':object}
+    moutput = ['group']
+    (_group[0],) = DXCallModule('Collect',minput,moutput)
+    DXReference(_group[0])
+  else:
+    minput = {'input':_group[0],'object':object}
+    moutput = ['group']
+    (g,) = DXCallModule('Append',minput,moutput)
+    DXDelete(_group[0])
+    _group[0] = g
+    DXReference(_group[0])
+
   i = 0
   DXRegisterInputHandler(interactor_handler)
   while interactor >= 0:
@@ -159,7 +175,7 @@ def DXImage(object,camera,name='WARP viz'):
       DXDelete(wsize)
     else:
       minput = {'where':wwhere,'size':wsize,'events':wevents,
-                'object':object,'mode':interactor,'resetObject':1}
+                'object':_group[0],'mode':interactor,'resetObject':1}
       if i == 1:
         minput['defaultCamera'] = camera
         minput['resetCamera'] = 1
@@ -172,3 +188,9 @@ def DXImage(object,camera,name='WARP viz'):
 
   DXDelete(dwhere)
   interactor = 0
+
+def DXNewImage():
+  DXDelete(_group[0])
+  _group[0] = None
+  _groupn[0] = 0
+
