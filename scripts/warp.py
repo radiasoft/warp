@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.18 2001/02/13 02:42:15 dave Exp $"
+warp_version = "$Id: warp.py,v 1.19 2001/02/27 19:30:35 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -379,9 +379,9 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Set the lattice internal variables (probably not really needed)
   setlatt()
   # --- Reinitialize some injection stuff if it is needed.
-  # --- This is really only neede for the parallel version since some of the
+  # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
-  if top.inject > 0: injctint()
+  if top.inject > 0: fill_inj(w3d.dx,w3d.dy,w3d.dz,w3d.ix_axis,w3d.iy_axis)
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
 
