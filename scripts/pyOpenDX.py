@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.13 2004/06/24 20:37:31 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.14 2004/07/01 23:38:59 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -136,7 +136,7 @@ def viewparticles(x,y,z,v,labels=None,name='WARP viz',
     return dxobject
 
 ###########################################################################
-def viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax):
+def viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax,color='yellow'):
   """
 Create a box
   - xmin,xmax,ymin,ymax,zmin,zmax: extent of the box
@@ -163,6 +163,9 @@ Create a box
   minput = {'input':dxf}
   moutput = ['box']
   (box,) = DXCallModule('ShowBox',minput,moutput)
+  minput = {'input':box,'color':color}
+  moutput = ['colored']
+  (box,) = DXCallModule('Color',minput,moutput)
   return box
 
 ###########################################################################
@@ -295,7 +298,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     DXReference(camera)
     labels = DXMakeStringList(labels)
     minput = {'input':dxobject,'camera':camera,'labels':labels,
-              'ticks':3,'colors':'yellow'}
+              'ticks':3,'colors':'grey'}#'yellow'}
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
 
