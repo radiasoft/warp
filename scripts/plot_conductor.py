@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.58 2003/04/24 16:41:28 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.59 2003/04/29 17:09:57 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -616,7 +616,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     apply(pcphizy,(ix,fullplane,lbeamframe),kw)
   if fill:
     plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,1,1)
-    if fullplane and w3d.l4symtry:
+    if fullplane and (w3d.l2symtry or w3d.l4symtry):
       plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,-1,1)
   if cond:
     plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1)
@@ -627,7 +627,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
                 subgridlen,mglevel,1,1)
     plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
                 subgridlen,mglevel,1,1)
-    if fullplane and w3d.l4symtry:
+    if fullplane and (w3d.l2symtry or w3d.l4symtry):
       plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
                   subgridlen,mglevel,-1,1)
       plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
