@@ -31,8 +31,7 @@ WARPOBJECTS = env.o \
               wrz.o \
               cir.o \
               her.o \
-              cho.o \
-              w3d_chombodummy.o
+              cho.o
 
 WARPSLAVEOBJECTS = topslave.o w3dslave.o f3dslave.o frzslave.o
 
