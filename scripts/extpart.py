@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.6 2001/07/20 23:27:08 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.7 2001/10/01 18:48:17 dave Exp $"
 
 def extpartdoc():
   print """
@@ -168,22 +168,22 @@ routines (such as ppxxp).
     self.laccumulate = v
     if self.laccumulate: self.setuparrays()
 
-  def t(self,js=0): return self.tep[js][:]
-  def x(self,js=0): return self.xep[js][:]
-  def y(self,js=0): return self.yep[js][:]
-  def ux(self,js=0): return self.uxep[js][:]
-  def uy(self,js=0): return self.uyep[js][:]
-  def uz(self,js=0): return self.uzep[js][:]
-  def vx(self,js=0): return self.uxep[js][:]
-  def vy(self,js=0): return self.uyep[js][:]
-  def vz(self,js=0): return self.uzep[js][:]
-  def xp(self,js=0): return self.ux(js)/self.uz(js)
-  def yp(self,js=0): return self.uy(js)/self.uz(js)
-  def r(self,js=0): return sqrt(self.x(js)**2 + self.y(js)**2)
-  def theta(self,js=0): return arctan2(self.y(js),self.x(js))
-  def rp(self,js=0): return self.xp(js)*cos(self.theta(js)) + \
+  def gett(self,js=0): return self.tep[js][:]
+  def getx(self,js=0): return self.xep[js][:]
+  def gety(self,js=0): return self.yep[js][:]
+  def getux(self,js=0): return self.uxep[js][:]
+  def getuy(self,js=0): return self.uyep[js][:]
+  def getuz(self,js=0): return self.uzep[js][:]
+  def getvx(self,js=0): return self.uxep[js][:]
+  def getvy(self,js=0): return self.uyep[js][:]
+  def getvz(self,js=0): return self.uzep[js][:]
+  def getxp(self,js=0): return self.ux(js)/self.uz(js)
+  def getyp(self,js=0): return self.uy(js)/self.uz(js)
+  def getr(self,js=0): return sqrt(self.x(js)**2 + self.y(js)**2)
+  def gettheta(self,js=0): return arctan2(self.y(js),self.x(js))
+  def getrp(self,js=0): return self.xp(js)*cos(self.theta(js)) + \
                             self.yp(js)*sin(self.theta(js))
-  def nep(self,js=0): return len(self.tep[js][:])
+  def getn(self,js=0): return len(self.tep[js][:])
 
   def xxpslope(self,js=0):
     return (ave(self.x(js)*self.xp(js)) - ave(self.x(js))*ave(self.xp(js)))/ \
