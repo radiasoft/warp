@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.29 2004/08/18 19:49:16 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.30 2004/12/02 17:28:10 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -303,7 +303,7 @@ Performs steady-state iterations
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
-    if (i == iter-1 and _ipsave > 0 and _ipstep > 0):
+    if (i == iter-1 and _ipstep > 0):
 
       # --- Set ins and nps for saved particles
       # --- This only creates the arrays - the actual values don't
@@ -365,7 +365,7 @@ Performs steady-state iterations
       if lstatusline: statusline()
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
-      if (i == iter-1 and _ipsave > 0 and _ipstep > 0):
+      if (i == iter-1 and _ipstep > 0):
         for js in xrange(top.ns):
           # --- Make sure that there are actually particles to save
           if (top.nps[js] > 0):
@@ -495,7 +495,7 @@ Performs steady-state iterations
   # --- end of multiple iterations
 
   # --- Set saved particles to be live particles (for diagnostics only).
-  if (_ipsave > 0 and _ipstep > 0):
+  if (_ipstep > 0):
     top.ins[:] = ins_save
     top.nps[:] = nps_save
 
