@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.134 $, $Date: 2003/10/08 23:10:08 $
+c@(#) File W3D.F, version $Revision: 3.135 $, $Date: 2003/10/21 21:32:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2190,8 +2190,9 @@ c        + ...
 
 c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer(ISZ):: indx(33,np)
-      real(kind=8):: p(33,np), u1p(np), v1p(np), w1p(np)
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
+
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -2372,6 +2373,11 @@ c          --- Adjust sign of E field for appropriate quadrant.
 
       elseif (efetch == 2) then
 
+c     --- Allocate the temporary arrays
+c     --- The arrays are made allocatable so that memory is only created for them when
+c     --- efetch is 2.
+        allocate(indx(33,np))
+        allocate(p(33,np), u1p(np), v1p(np), w1p(np))
 
 C  WARNING: This coding does not include symmetries!
 c  NOTE: This section can probably be deleted since it is not really neccesary.
@@ -2476,6 +2482,10 @@ c  Evaluation of E, vectorized over particles
      &                  + u1 * v1 * w1 * (p(13,ip) - p(32,ip)))
 
       enddo
+
+c       --- Free the memory
+        deallocate(indx)
+        deallocate(p, u1p, v1p, w1p)
 
       elseif (efetch == 3) then
 
@@ -4237,6 +4247,39 @@ c=============================================================================
         if(l2symtry .or. l4symtry) then
           xmin = -xmmax
         endif
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine fixgridextent()
+      use InMesh3d
+      use InGen3d
+
+c      --- Put ny to zero for RZ geometry
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+        ny = 0
+      elseif(solvergeom==Zgeom) then
+        nx = 0
+        ny = 0
+      endif
+
+c     --- Put grid min's to zero as appropriate for the symmetry
+      if(solvergeom==XYZgeom) then
+        if (l2symtry) then
+          ymmin = 0.
+        elseif (l4symtry) then
+          xmmin = 0.
+          ymmin = 0.
+        endif
+      else if(solvergeom==XZgeom) then
+        ymmin = 0.
+        if (l2symtry .or. l4symtry) xmmin = 0.
+      else if(solvergeom==RZgeom .or. solvergeom==Zgeom) then
+        l2symtry=.false.
+        l4symtry=.false.
+        xmmin = 0.
+        ymmin = 0.
       endif
 
       return
