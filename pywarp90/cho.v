@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.2 $, $Date: 2001/12/07 23:46:44 $
+#@(#) File CHO.V, version $Revision: 1.3 $, $Date: 2002/02/28 19:35:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.2 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.3 $"/#  Code version version is set by CVS
 
 *********** CHOsubs:
 #amrnx integer
@@ -51,5 +51,7 @@ verscho character*19 /"$Revision: 1.2 $"/#  Code version version is set by CVS
 #     subroutine # External CHOMBO routine for AMR field solve testing
 setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
            ymmin:real, zmmin:real,numLevels:integer, refratio:integer,
-           i:integer, j:integer, k:integer, level:integer, numtags:integer) subroutine
-
+           i:integer, j:integer, k:integer, level:integer, numtags:integer,
+           bcxlo:integer, bcxhi:integer, bcylo:integer, bcyhi:integer,
+           bczlo:integer, bczhi:integer) subroutine
+returnphi(phiout:real) subroutine

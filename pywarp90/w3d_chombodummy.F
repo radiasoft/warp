@@ -20,3 +20,8 @@ c
       return
       end
 
+      subroutine returnphi(phiout)
+      double precision phiout(*)
+      print*,"***: stopping.  dummy returnphi called"
+      return
+      end
