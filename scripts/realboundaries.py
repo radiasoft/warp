@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.18 2002/05/15 18:41:48 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.19 2002/05/15 19:23:25 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -669,7 +669,7 @@ Constructor arguments:
       # --- The exception handling is done to allow for the two different
       # --- versions of the code, the f90 which allows element overlapping
       # --- and the f77 which does not.
-      for io in xrange(top.quadol):
+      for io in xrange(top.nquadol):
         qid = top.cquadid[0,io]
         qzs = top.cquadzs[0,io]
         qze = top.cquadze[0,io]
@@ -687,7 +687,7 @@ Constructor arguments:
             return
     #--------------------------------------------------------------------------
     if top.accls:
-      for io in xrange(top.acclol):
+      for io in xrange(top.nacclol):
         aid = top.cacclid[0,io]
         azs = top.cacclzs[0,io]
         aze = top.cacclze[0,io]
@@ -716,7 +716,7 @@ Constructor arguments:
           return
     #--------------------------------------------------------------------------
     if top.pgrds:
-      for io in xrange(top.pgrdol):
+      for io in xrange(top.npgrdol):
         pid = top.cpgrdid[0,io]
         pzs = top.cpgrdzs[0,io]
         pze = top.cpgrdze[0,io]
@@ -727,7 +727,7 @@ Constructor arguments:
           return
     #--------------------------------------------------------------------------
     if top.bgrds:
-      for io in xrange(top.bgrdol):
+      for io in xrange(top.nbgrdol):
         bid = top.cbgrdid[0,io]
         bzs = top.cbgrdzs[0,io]
         bze = top.cbgrdze[0,io]
@@ -736,7 +736,7 @@ Constructor arguments:
           return
     #--------------------------------------------------------------------------
     if top.heles:
-      for io in xrange(top.heleol):
+      for io in xrange(top.nheleol):
         hid = top.cheleid[0,io]
         hzs = top.chelezs[0,io]
         hze = top.cheleze[0,io]
@@ -760,7 +760,7 @@ Constructor arguments:
         return
     #--------------------------------------------------------------------------
     if top.dipos:
-      for io in xrange(top.dipool):
+      for io in xrange(top.ndipool):
         did = top.cdipoid[0,io]
         dzs = top.cdipozs[0,io]
         dze = top.cdipoze[0,io]
@@ -769,7 +769,7 @@ Constructor arguments:
           return
     #--------------------------------------------------------------------------
     if top.sexts:
-      for io in xrange(top.sextol):
+      for io in xrange(top.nsextol):
         sid = top.csextid[0,io]
         szs = top.csextzs[0,io]
         sze = top.csextze[0,io]
@@ -780,7 +780,7 @@ Constructor arguments:
     # --- Drifts are checked for last in case the other elements might extend
     # --- into the neighboring drifts.
     if top.drfts:
-      for io in xrange(top.drftol):
+      for io in xrange(top.ndrftol):
         did = top.cdrftid[0,io]
         dzs = top.cdrftzs[0,io]
         dze = top.cdrftze[0,io]
