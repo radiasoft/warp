@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.131 $, $Date: 2003/09/26 16:49:14 $
+#@(#) File W3D.V, version $Revision: 3.132 $, $Date: 2003/09/26 16:50:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.131 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.132 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -517,6 +517,7 @@ getinj_phi() subroutine
 getinj_phi_3d() subroutine
 test_inj_setq(nn:integer,xp:real,yp:real,zp:real,base:real) subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer,ex:real,ey:real,ez:real) subroutine
+particleboundaries3d() subroutine
 
 ******** Subtimers3d:
 lw3dtimesubs logical /.false./
@@ -551,6 +552,7 @@ timestptcl3d real /0./
 timesetrho3d real /0./
 timeloadrho3d real /0./
 timefetche3d real /0./
+timeparticleboundaries3d real /0./
 timestckxy3d real /0./
 timesetrstar real /0./
 timeinject3d real /0./

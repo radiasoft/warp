@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.132 $, $Date: 2003/09/26 16:49:15 $
+c@(#) File W3D.M, version $Revision: 3.133 $, $Date: 2003/09/26 16:50:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4061,6 +4061,48 @@ c     --- Obtain the self-field from the electrostatic potential
 
 !$OMP MASTER
       if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine particleboundaries3d()
+      use Subtimers3d
+      use InGen
+      use InGen3d
+      use InPart
+      use InMesh3d
+      use Picglb
+      use Picglb3d
+      use Particles
+
+c Does everything needed to apply particle boundary conditions.
+
+      integer(ISZ):: is
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- Apply particle boundary conditions
+      call zpartbnd(zmmax,zmmin,dz,zgrid)
+
+c     --- absorb particles passing through semitransparent disc
+      call semitransparent_disc(dz)
+
+      do is=1,ns
+        if (nps(is) > 0)
+     &     call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
+     &                   ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
+     &                   uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
+     &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
+      enddo
+
+      if (lcallscraper) call execuser("callscraper")
+
+      do is=1,ns
+        call processlostpart(is,clearlostpart,time+dt,zbeam)
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timeparticleboundaries3d = timeparticleboundaries3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
