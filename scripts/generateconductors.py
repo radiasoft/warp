@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.108 2005/03/03 00:54:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.109 2005/03/08 18:28:08 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1970,7 +1970,7 @@ Cylinder aligned with z-axis
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
-                specified from the current palette. Should be between 0 and 240.
+                specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmin=0.: inner range in r to include in plot
     """
@@ -2062,7 +2062,7 @@ Outside of a cylinder aligned with z-axis
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
-                specified from the current palette. Should be between 0 and 240.
+                specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=w3d.xmmax: outer range in r to include in plot
     """
@@ -2835,7 +2835,7 @@ Plots the r versus z
  - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
-                specified from the current palette. Should be between 0 and 240.
+                specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=None: when given, overrides the instance's value of rmax, useful in
               cases when the instance's value of rmax is largepos.
@@ -2964,7 +2964,7 @@ Plots the r versus z
  - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
-                specified from the current palette. Should be between 0 and 240.
+                specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmin: when given, overrides the instance's values of rmin - this is not
          really useful
@@ -3126,7 +3126,7 @@ Plots the r versus z
  - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
-                specified from the current palette. Should be between 0 and 240.
+                specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
     """
     if self.usemindata:

@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.89 2005/02/25 22:31:59 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.90 2005/03/08 18:28:08 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2687,15 +2687,16 @@ def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false,
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor. Can be one of the following...
-     - list of voltages at z grid cell locations
+     - list of voltages at z grid cell locations, the list must have the same
+       number of points along z as the grid, i.e. w3d.nz.
      - function which takes three arguments, x, y, z positions relative to lab
-       frame and returns the voltage
+       frame and returns the voltage (only works in 3d)
      - a scalar voltage value
  - condid=0: conductor id number
  - discrete=false: when true, z locations for plus/minus z subgrid
                    points are round up/down.
  - setvinject=false: when true, sets top.vinject
- - conductors=f3d.conductors: allows alternate conductor to be visualized other
+ - conductors=f3d.conductors: allows alternate conductor to be set other
                               than the default ones
   """
   interior = conductors.interior
@@ -2720,7 +2721,8 @@ Sets the voltage on a conductor, given an id.
     if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
-      setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete)
+      setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete,
+                            condid)
     else:
       setconductorvoltagerz_id(condid,voltage)
     return

@@ -207,43 +207,43 @@ def myplots():
   limits(0.,zmmax,-.15,.15)
   fma()
   #
-  ppxy(iz=int(diode_len/w3d.dz),color="density",ncolor=240)
+  ppxy(iz=int(diode_len/w3d.dz),color="density",ncolor=200)
   limits(-.03,.03,-.03,.03)
   fma()
   #
-  ppxy(iz=int(diode_len/w3d.dz),contours=240,filled=1,particles=0,nx=50,ny=50)
+  ppxy(iz=int(diode_len/w3d.dz),contours=200,filled=1,particles=0,nx=50,ny=50)
   limits(-.03,.03,-.03,.03)
   fma()
   #
-  ppxxp(iz=int(diode_len/w3d.dz),color="density",ncolor=240,slope='a')
+  ppxxp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
   limits(-.03,.03,-.02,.02)
   fma()
   #
-  ppyyp(iz=int(diode_len/w3d.dz),color="density",ncolor=240,slope='a')
+  ppyyp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
   limits(-.03,.03,-.02,.02)
   fma()
   #
-  pprrp(iz=int(diode_len/w3d.dz),color="density",ncolor=240,slope='a')
+  pprrp(iz=int(diode_len/w3d.dz),color="density",ncolor=200,slope='a')
   limits(.0,.03,-.02,.01)
   fma()
   #
-  ppxy(iz=w3d.nz-1,color="density",ncolor=240)
+  ppxy(iz=w3d.nz-1,color="density",ncolor=200)
   limits(-.06,.06,-.06,.06)
   fma()
   #
-  ppxy(iz=w3d.nz-1,contours=240,filled=1,particles=0,nx=50,ny=50)
+  ppxy(iz=w3d.nz-1,contours=200,filled=1,particles=0,nx=50,ny=50)
   limits(-.06,.06,-.06,.06)
   fma()
   #
-  ppxxp(iz=w3d.nz-1,color="density",ncolor=240,slope='a')
+  ppxxp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
   limits(-.06,.06,-.02,.02)
   fma()
   #
-  ppyyp(iz=w3d.nz-1,color="density",ncolor=240,slope='a')
+  ppyyp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
   limits(-.06,.06,-.02,.02)
   fma()
   #
-  pprrp(iz=w3d.nz-1,color="density",ncolor=240,slope='a')
+  pprrp(iz=w3d.nz-1,color="density",ncolor=200,slope='a')
   limits(.0,.06,-.06,.06)
  
 top.itplalways[0:3] = [0,1000000,100]
