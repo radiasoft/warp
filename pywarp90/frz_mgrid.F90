@@ -1,4 +1,4 @@
-!     Last change:  JLV  25 Oct 2001   10:27 am
+!     Last change:  JLV  25 Oct 2001   10:40 am
 #include "top.h"
 
 module multigrid_common
@@ -336,11 +336,12 @@ end function expandwguard
 function expandwguard_any(uold, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(0:,0:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: expandwguard_any(0:nxnew+2,0:nznew+2)
 
-INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
+INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jnew, knew, j, k, jp, kp
 REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
@@ -402,12 +403,13 @@ END function expandwguard_any
 function expandwguardandbnd_any(uold, bnd, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(0:,0:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: expandwguardandbnd_any(0:nxnew+2,0:nznew+2)
 TYPE(bndptr) :: bnd
 
-INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
+INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jnew, knew, j, k, jp, kp
 REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
@@ -584,11 +586,12 @@ end function restrict_pof2
 function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: restrict(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
 
-INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
+INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp
 REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
@@ -679,12 +682,13 @@ END function restrict
 function restrict_wbnd(uold, bnd, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: restrict_wbnd(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
 TYPE(bndptr) :: bnd
 
-INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
+INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp, ic, ii, itot
 REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz, dxnew, dznew, u1, u2, u3, u4, q
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
@@ -3026,11 +3030,12 @@ function expandwguard_any(uold, nxnew, nynew, nznew, xminnew, xmaxnew, yminnew, 
                           xminold, xmaxold, yminold, ymaxold, zminold, zmaxold)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nynew, nznew
 REAL(8), DIMENSION(0:,0:,0:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, yminold, ymaxold, zminold, zmaxold, xminnew, xmaxnew, yminnew, ymaxnew, zminnew, zmaxnew
 REAL(8) :: expandwguard_any(0:nxnew+2,0:nynew+2,0:nznew+2)
 
-INTEGER(ISZ) :: nxnew, nynew, nznew, nxold, nyold, nzold
+INTEGER(ISZ) :: nxold, nyold, nzold
 INTEGER(ISZ) :: jnew, knew, lnew, j, k, l, jp, kp, lp
 REAL(8) :: x, y, z, xx, yy, zz, invdxold, invdyold, invdzold, dxnew, dynew, dznew, delx, dely, delz, odelx, odely, odelz
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddy(nynew+1), oddy(nynew+1), ddz(nznew+1), oddz(nznew+1)
@@ -3116,11 +3121,12 @@ function restrict(uold, nxnew, nynew, nznew, xminold, xmaxold, yminold, ymaxold,
                         xminnew, xmaxnew, yminnew, ymaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nynew, nznew
 REAL(8), DIMENSION(1:,1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, yminold, ymaxold, zminold, zmaxold, xminnew, xmaxnew, yminnew, ymaxnew, zminnew, zmaxnew
 REAL(8) :: restrict(1:nxnew+1,1:nynew+1,1:nznew+1),rap(1:nxnew+1,1:nynew+1,1:nznew+1)
 
-INTEGER(ISZ) :: nxnew, nynew, nznew, nxold, nyold, nzold
+INTEGER(ISZ) :: nxold, nyold, nzold
 INTEGER(ISZ) :: jold, kold, lold, j, k, l, jp, kp, lp
 REAL(8) :: dxold, dyold, dzold, invdxnew, invdynew, invdznew, x, y, z, delx, dely, delz, odelx, odely, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddy, ddz, oddx, oddy, oddz
@@ -3238,12 +3244,13 @@ function restrict_wbnd(uold, bnd, nxnew, nynew, nznew, xminold, xmaxold, yminold
                        xminnew, xmaxnew, yminnew, ymaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nynew, nznew
 REAL(8), DIMENSION(1:,1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, yminold, ymaxold, zminold, zmaxold, xminnew, xmaxnew, yminnew, ymaxnew, zminnew, zmaxnew
 REAL(8) :: restrict_wbnd(1:nxnew+1,1:nynew+1,1:nznew+1),rap(1:nxnew+1,1:nynew+1,1:nznew+1)
 TYPE(bndptr) :: bnd
 
-INTEGER(ISZ) :: nxnew, nynew, nznew, nxold, nyold, nzold
+INTEGER(ISZ) :: nxold, nyold, nzold
 INTEGER(ISZ) :: jold, kold, lold, j, k, l, jp, kp, lp, ic, ii, itot
 REAL(8) :: dxold, dyold, dzold, invdxnew, invdynew, invdznew, x, y, z, &
            delx, dely, delz, odelx, odely, odelz, dxnew, dynew, dznew, u1, u2, u3, u4, u5, u6, u7, u8, q
