@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.1 $, $Date: 2001/04/12 23:19:26 $
+c@(#) File TOP.M, version $Revision: 3.2 $, $Date: 2001/04/19 23:46:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1679,7 +1679,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       real(kind=8):: delvxsq,delvysq
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
-#if SYSTEM == J90
+#ifdef J90
       real(kind=8):: pmmnts(NUMZMMNT,NPARPGRP)
 #endif
 
@@ -1771,7 +1771,7 @@ c       endif
 c       --- Accumate global moments first.
 
 c-------------------------------------------------------------------------
-#if SYSTEM == J90
+#ifdef J90
 c       --- This method is faster for vectorized machines, primarily the J90.
 c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
@@ -1960,7 +1960,7 @@ c         --- to the moments grid cell centers.
           enddo
 
 c-------------------------------------------------------------------------
-#if SYSTEM == J90
+#ifdef J90
 c       --- This method is faster for vectorized machines, primarily the J90.
 c         --- put particle moments into pmmnts array for zmmnts(iz,)
           do ip=1,np
@@ -3369,16 +3369,8 @@ c is not exactly reproduced. (The exact version is still under development.)
       real(kind=8):: dxi,dyi,ni,nip1,ninti,sumn,sumnx,wy
       real(kind=8):: rnrev
       integer     :: i,ip,ix,iy
-
-c Note that this relies on automatic allocation of local arrays.
-c ifelse(COMPILER,PGF77,[
-#ifdef PGF77
-      real(kind=8):: n1x(0:1024),n1y(0:1024)
-      real(kind=8):: nintx(0:1024),ninty(0:1024)
-#else
       real(kind=8):: n1x(0:nx),n1y(0:ny)
       real(kind=8):: nintx(0:nx),ninty(0:ny)
-#endif
 
       dxi = 1./dx
       dyi = 1./dy
