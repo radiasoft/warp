@@ -20,6 +20,7 @@ for pubhome in pubhomes:
   executecommand('cd '+pubhome+';ln -sf warpC'+date+'.so warpC.so')
   executecommand('cd '+pubhome+'/source/pywarp90;cvs update -d')
   executecommand('cd '+pubhome+'/scripts;cvs update -d')
+  executecommand('chmod -R go+rX '+pubhome)
 
 #for pubhome in pubhomes:
 #  executecommand('cp pywarp90 '+pubhome+'/pywarp90'+date)
