@@ -70,6 +70,7 @@ class MRBlock(MultiGrid,Visualizable):
       self.mins = mins
       self.maxs = maxs
       self.totalrefinement = 1
+      self.forcesymmetries = 1
 
       # --- Make sure the top.nparpgrp is a large number. If it becomes too
       # --- small, fetche becomes inefficient since it is called many times,
@@ -82,6 +83,7 @@ class MRBlock(MultiGrid,Visualizable):
       self.totalrefinement = parent.totalrefinement*self.refinement
       self.deltas = parent.deltas/refinement
       self.rootdims = self.root.dims*self.totalrefinement
+      self.forcesymmetries = 0
 
       if lower is None and upper is None:
         # --- The grid mins and maxs are input.

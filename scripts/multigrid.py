@@ -24,6 +24,7 @@ class MultiGrid(object):
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy']
+  __flaginputs__ = {'forcesymmetries':1}
 
   def __init__(self,**kw):
     self.solvergeom = w3d.XYZgeom
@@ -48,10 +49,14 @@ class MultiGrid(object):
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(top,name))
         if kw.has_key(name): del kw[name]
+    for name,defvalue in MultiGrid.__flaginputs__.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+        if kw.has_key(name): del kw[name]
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
-    # --- Also, correct xmmin and ymmin in cases of symmetries
     if 'bounds' not in self.__dict__:
       if 'bounds' in kw:
         self.bounds = kw['bounds']
@@ -65,12 +70,12 @@ class MultiGrid(object):
         self.bounds[5] = self.boundnz
         if self.l2symtry:
           self.bounds[2] = 1
-          self.ymmin = 0.
+          if self.forcesymmetries: self.ymmin = 0.
         elif self.l4symtry:
           self.bounds[0] = 1
           self.bounds[2] = 1
-          self.xmmin = 0.
-          self.ymmin = 0.
+          if self.forcesymmetries: self.xmmin = 0.
+          if self.forcesymmetries: self.ymmin = 0.
 
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
