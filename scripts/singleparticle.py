@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.4 2001/07/19 20:35:23 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.5 2001/08/24 21:57:57 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -20,6 +20,7 @@ done and no diagnostic moments are calculated. Creator arguments...
  - savedata=1: flag to turn on saving of particle trajectories
  - zerophi=1: when true, w3d.phi is zero out
  - resettime=0: when true, time and beam frame location reset to initial values
+ -js=0: species of particles
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -44,15 +45,16 @@ Available methods...
 
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
-                    maxsteps=1000,savedata=1,zerophi=1,resettime=0):
+                    maxsteps=1000,savedata=1,zerophi=1,resettime=0,js=0):
     global _first_instance
     # --- Do some global initialization
+    self.js = js
     if _first_instance:
-      top.ins[0] = 1
-      top.nps[0] = 0
-      top.sq[0] = top.zion*top.echarge
-      top.sm[0] = top.aion*top.amu
-      top.sw[0] = 0.
+      top.ins[self.js] = top.npmax_s[self.js] + 1
+      top.nps[self.js] = 0
+      top.sq[self.js] = top.zion*top.echarge
+      top.sm[self.js] = top.aion*top.amu
+      top.sw[self.js] = 0.
       _first_instance = 0
     self.savedata = savedata
     self.enabled = 0
@@ -163,9 +165,9 @@ initial data, and redefines the step command
     # --- make sure there is space
     chckpart(0,0,self.nn,false)
     # --- load the data
-    ip1 = top.ins[0] - 1 + top.nps[0]
-    top.nps[0] = top.nps[0] + self.nn
-    ip2 = top.ins[0] + top.nps[0] - 1
+    ip1 = top.ins[self.js] - 1 + top.nps[self.js]
+    top.nps[self.js] = top.nps[self.js] + self.nn
+    ip2 = top.ins[self.js] + top.nps[self.js] - 1
     self.ip1 = ip1
     self.ip2 = ip2
     top.xp[ip1:ip2] = self.x
@@ -193,11 +195,11 @@ initial data, and redefines the step command
     top.uzp[self.ip1:self.ip2] = 0.
     # --- Remove particles from looping if they are at either end of the
     # --- particle data in the arrays
-    if self.ip1 == top.ins[0]:
-      top.ins[0] = top.ins[0] + self.nn
-      top.nps[0] = top.nps[0] - self.nn
-    if self.ip2 == top.ins[0] + top.nps[0] - 1:
-      top.nps[0] = top.nps[0] - self.nn
+    if self.ip1 == top.ins[self.js]:
+      top.ins[self.js] = top.ins[self.js] + self.nn
+      top.nps[self.js] = top.nps[self.js] - self.nn
+    if self.ip2 == top.ins[self.js] + top.nps[self.js] - 1:
+      top.nps[self.js] = top.nps[self.js] - self.nn
     # --- remove routine from after step
     uninstallafterstep(self.spsavedata)
 
