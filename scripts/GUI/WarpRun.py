@@ -74,6 +74,40 @@ class WarpRun(wxFrame):
               item='About', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WARPRUNMNUHELPABOUT, self.OnMnuhelpAboutMenu)
 
+    def _init_coll_menuBar1_Menus(self, parent):
+        # generated method, don't edit
+
+        parent.Append(menu=self.mnuFile, title='File')
+        parent.Append(menu=self.mnuDump, title='Dump')
+        parent.Append(menu=self.mnuHelp, title='Help')
+        parent.Append(menu=self.mnuErrorCheck, title='ErrorCheck')
+        parent.Append(menu=self.mnuPackage, title='Package')
+        parent.Append(menu=self.mnuPalette, title='Palette')
+
+    def _init_coll_mnuErrorCheck_Items(self, parent):
+        # generated method, don't edit
+
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKSYMMETRY,
+              item='Symmetry', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
+              item='ParticleLoad', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKENVELOPE,
+              item='Envelope', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKIBPUSH,
+              item='Ibpush', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKCHECKALL,
+              item='CheckAll', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKSYMMETRY,
+              self.OnMnuerrorchecksymmetryMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
+              self.OnMnuerrorcheckparticleloadMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKENVELOPE,
+              self.OnMnuerrorcheckenvelopeMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKIBPUSH,
+              self.OnMnuerrorcheckibpushMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKCHECKALL,
+              self.OnMnuerrorcheckallMenu)
+
     def _init_coll_mnuFile_Items(self, parent):
         # generated method, don't edit
 
@@ -96,16 +130,6 @@ class WarpRun(wxFrame):
         EVT_MENU(self, wxID_WARPRUNMNUFILEEXIT, self.OnMnufileExitMenu)
         EVT_MENU(self, wxID_WARPRUNMNUFILEEXEC, self.OnMnufileexecfileMenu)
         EVT_MENU(self, wxID_WARPRUNMNUFILEOPENEXEC, self.OnMnufileOpenExecMenu)
-
-    def _init_coll_menuBar1_Menus(self, parent):
-        # generated method, don't edit
-
-        parent.Append(menu=self.mnuFile, title='File')
-        parent.Append(menu=self.mnuDump, title='Dump')
-        parent.Append(menu=self.mnuHelp, title='Help')
-        parent.Append(menu=self.mnuErrorCheck, title='ErrorCheck')
-        parent.Append(menu=self.mnuPackage, title='Package')
-        parent.Append(menu=self.mnuPalette, title='Palette')
 
     def _init_coll_mnuPackage_Items(self, parent):
         # generated method, don't edit
@@ -135,30 +159,6 @@ class WarpRun(wxFrame):
         EVT_MENU(self, wxID_WARPRUNMNUDUMPRESTART, self.OnMnudumpRestart)
         EVT_MENU(self, wxID_WARPRUNMNUDUMPDUMP, self.OnMnudumpDump)
         EVT_MENU(self, wxID_WARPRUNMNUDUMPDUMPAS, self.OnMnudumpDumpAs)
-
-    def _init_coll_mnuErrorCheck_Items(self, parent):
-        # generated method, don't edit
-
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKSYMMETRY,
-              item='Symmetry', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
-              item='ParticleLoad', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKENVELOPE,
-              item='Envelope', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKIBPUSH,
-              item='Ibpush', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKCHECKALL,
-              item='CheckAll', kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKSYMMETRY,
-              self.OnMnuerrorchecksymmetryMenu)
-        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
-              self.OnMnuerrorcheckparticleloadMenu)
-        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKENVELOPE,
-              self.OnMnuerrorcheckenvelopeMenu)
-        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKIBPUSH,
-              self.OnMnuerrorcheckibpushMenu)
-        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKCHECKALL,
-              self.OnMnuerrorcheckallMenu)
 
     def _init_coll_notebook1_Pages(self, parent):
         # generated method, don't edit
@@ -200,10 +200,10 @@ class WarpRun(wxFrame):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxFrame.__init__(self, id=wxID_WARPRUN, name='WarpRun', parent=prnt,
-              pos=wxPoint(564, 162), size=wxSize(608, 647),
+              pos=wxPoint(544, 141), size=wxSize(610, 655),
               style=wxDEFAULT_FRAME_STYLE, title='WARP')
         self._init_utils()
-        self.SetClientSize(wxSize(600, 623))
+        self.SetClientSize(wxSize(602, 631))
         self.SetMenuBar(self.menuBar1)
         EVT_IDLE(self, self.OnWxframe1Idle)
 
@@ -283,7 +283,8 @@ class WarpRun(wxFrame):
 
         self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
               name='MessageWindow', parent=self, pos=wxPoint(2, 376),
-              size=wxSize(596, 208), style=wxTE_READONLY | wxTE_MULTILINE,
+              size=wxSize(596, 208),
+              style=wxHSCROLL | wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
               value='')
         self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
               false, ''))
@@ -369,7 +370,10 @@ class WarpRun(wxFrame):
         Palettes = ["earth","rainbow","gray","yarg","heat","ncar","cool","rainbowaf","stern","christmas"]
         for i in range(0,len(Palettes)):
             self.AddPalette(Palettes[i])
-   
+
+    def add_panel(self,panel,name):
+        self.panels[name] = self.show_GUI(panel,'notebook',name)
+
     def show_GUI(self,gui,winout,title):
         if(winout=='notebook'):
           panel = gui.panel(self.notebook1)
@@ -671,10 +675,15 @@ class WarpRun(wxFrame):
         self.mnuPackageUpdate()
 
     def OnWxframe1Idle(self, event):
-#        if self.isgistwindowon:
+        # What should it be on Mac?
+        if sys.platform == 'win32':
+            if self.isgistwindowon:
+                self.HandleGistEvents()
+                event.RequestMore(1)
+        else:
             self.HandleGistEvents()
             event.RequestMore(1)
-    
+
     def OnWinonButton(self, event):
         if not self.isgistwindowon:
             winon()
