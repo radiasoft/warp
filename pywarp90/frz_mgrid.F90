@@ -4036,10 +4036,10 @@ do ij=1,ninject
 !             --- Find coordinates of the point a distance dz in front
 !             --- of the source along a line perpendicular to the
 !             --- emitting surface.
-        p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
-        p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
+        p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d(ij)
+        p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d(ij)
         p2r = sqrt(p2x**2+p2y**2)
-        p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
+        p2z = inj_grid(ix,iy)/dz + cos(inj_angl(ix,iy))*inj_d(ij)
         i2r = p2r
         i2z = p2z
         w2r = p2r - i2r
