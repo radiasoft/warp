@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.59 2003/09/18 18:41:47 dave Exp $"
+warp_version = "$Id: warp.py,v 1.60 2003/09/23 19:35:58 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -240,13 +240,29 @@ __controlfuncs = {'beforefs':beforefsfuncs,
                   'beforestep':beforestepfuncs,
                   'afterstep':afterstepfuncs}
 def beforefs():
+  bb = wtime()
   for f in beforefsfuncs: f()
+  aa = wtime()
+  try: beforefs.time = beforefs.time + (aa - bb)
+  except: beforefs.time = 0.
 def afterfs():
+  bb = wtime()
   for f in afterfsfuncs: f()
+  aa = wtime()
+  try: afterfs.time = afterfs.time + (aa - bb)
+  except: afterfs.time = 0.
 def callscraper():
+  bb = wtime()
   for f in callscraperfuncs: f()
+  aa = wtime()
+  try: callscraper.time = callscraper.time + (aa - bb)
+  except: callscraper.time = 0.
 def calladdconductor():
+  bb = wtime()
   for f in addconductorfuncs: f()
+  aa = wtime()
+  try: calladdconductor.time = calladdconductor.time + (aa - bb)
+  except: calladdconductor.time = 0.
 
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
