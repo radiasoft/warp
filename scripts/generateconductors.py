@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.90 2004/10/15 18:08:54 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.91 2004/10/21 01:11:36 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1280,7 +1280,7 @@ Creates a grid object which can generate conductor data.
       xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
 
     # --- The conductor extent is completely outside the grid
-    if xmin > xmax or ymin > ymax or zmin > zmax:
+    if xmin-dx > xmax or ymin-dy > ymax or zmin-dz > zmax:
       return [],[],[],[],[],[],0.,0.,0.,0.,0,0,0,[]
 
     zmmin = self.zmmin + iz*dz
@@ -1302,12 +1302,11 @@ Creates a grid object which can generate conductor data.
   def checkoverlap(self,mglevel,extent):
     if extent is None: return 1
 
+    dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
+
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
     if lparallel:
-      dz = self.dz*self.mglevellz[mglevel]
-      nz = self.mglevelnz[mglevel]
-      iz = self.mgleveliz[mglevel]
       zmin = max(self.zmin,self.zmmin+iz*dz+top.zbeam)
       zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+top.zbeam)
     else:
@@ -1317,7 +1316,7 @@ Creates a grid object which can generate conductor data.
     xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
     xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
 
-    if zmin > zmax or xmin > xmax or ymin > ymax: return 0
+    if zmin-dz > zmax or xmin-dx > xmax or ymin-dy > ymax: return 0
     return 1
 
   def getdata(self,a,dfill=top.largepos,fuzzsign=-1):
