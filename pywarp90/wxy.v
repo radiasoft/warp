@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.19 $, $Date: 2002/04/24 21:37:09 $
+#@(#) File WXY.V, version $Revision: 3.20 $, $Date: 2002/04/30 21:08:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.19 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.20 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -32,6 +32,7 @@ lexbend  logical /.true./  # When true, use exact transformation in bend, when
 # Subroutines in package XY
 wxygen() subroutine
 wxyexe() subroutine
+initdtp() subroutine # Initializes dtp
 extebxy(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
         bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
         m:real,q:real,bendres:real,bendradi:real,lexbend:logical,gammabar:real,

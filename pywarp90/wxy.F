@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.19 $, $Date: 2002/04/24 21:37:09 $
+c@(#) File WXY.M, version $Revision: 3.20 $, $Date: 2002/04/30 21:08:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -223,10 +223,7 @@ c  use a user-set npmax directly)
       call remark(" ---  Allocating space for particles")
       if (xrandom == "grid") npmax = nxstripe*nystripe*nzstripe
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
-
       call alotpart
-      npmaxxy = npmax
-      call gallot("Particlesxy",0)
 
 c  Load the particles, calculate the charge density
 
@@ -235,23 +232,13 @@ c  Load the particles, calculate the charge density
       cylinder = .true.
       call stptcl3d
       call setgamma(lrelativ)
+      call initdtp
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
       rho = 0.
       curr = 0.
       do is=1,ns
-c        --- Calculate initial guess of dt for each particle.  This will
-c        --- not change if vz does not change.
-         if (lthick) then
-           do ip=ins(is),ins(is)+nps(is)-1
-             dtp(ip) = dt
-           enddo
-         else
-           do ip=ins(is),ins(is)+nps(is)-1
-             dtp(ip) = dt*vbeam/uzp(ip)
-           enddo
-         endif
 c        --- Set charge density
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
             ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
@@ -1381,6 +1368,39 @@ c  Advance particle positions
 
       return
       end      
+c============================================================================ 
+      subroutine initdtp()
+      use Beam_acc
+      use InPart
+      use InGen
+      use InGenxy
+      use Particles
+      use Particlesxy
+c Initializes dtp
+      integer(ISZ):: is,i1,i2
+
+c     --- First check if the allocation size has changed
+      if (npmaxxy /= npmax) then
+        npmaxxy = npmax
+        call gchange("Particlesxy",0)
+      endif
+
+c     --- Give an initial value to dtp if it has not already been set or
+c     --- if any values are zero.
+      do is=1,ns
+        i1 = ins(is)
+        i2 = ins(is) + nps(is) - 1
+        if (minval(abs(dtp(i1:i2))) == 0.) then
+          if (lthick) then
+            dtp(i1:i2) = dt
+          else
+            dtp(i1:i2) = dt*vbeam/uzp(i1:i2)
+          endif
+        endif
+      enddo
+
+      return
+      end
 c============================================================================ 
       subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi)
       use InGenxy
