@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.4 2001/04/04 17:38:37 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.5 2001/11/03 01:16:19 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -1176,6 +1176,1004 @@ def getlattice(file):
 
   # --- Convert MAD lattice to WARP lattice
   madtowarp(lattice)
+
+
+
+
+
+###############################################################################
+###############################################################################
+#########################################################################
+# --- Utility routines to add in new elements into the middle of a lattice.
+
+# ----------------------------------------------------------------------------
+# --- DRFT --- XXX
+def addnewdrft(zs,ze,ap=0.,ox=0.,oy=0.):
+  """
+Adds a new drft element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+drft arrays with the same suffices:
+  - ap,ox,oy
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already drfts, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a drft is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.ndrft and top.drftzs[ie] <= zs and
+         top.drftzs[ie] != top.drftze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.ndrft or top.drftzs[-1] != top.drftze[-1]:
+    top.ndrft = top.ndrft + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.drftzs,'ze':top.drftze,'ap':top.drftap,
+         'ox':top.drftox,'oy':top.drftoy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.ndrft:
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- BEND --- XXX
+def addnewbend(zs,ze,rc,ap=0.,ox=0.,oy=0.):
+  """
+Adds a new bend element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+  - rc: radius of curvature of the bend
+The following are all optional and have the same meaning and default as the
+bend arrays with the same suffices:
+  - ap,ox,oy
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already bends, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a bend is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nbend and top.bendzs[ie] <= zs and
+         top.bendzs[ie] != top.bendze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nbend or top.bendzs[-1] != top.bendze[-1]:
+    top.nbend = top.nbend + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.bendzs,'ze':top.bendze,'rc':top.bendrc,'ap':top.bendap,
+         'ox':top.bendox,'oy':top.bendoy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nbend:
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- DIPO --- XXX
+def addnewdipo(zs,ze,by=0.,bx=0.,ta=0.,tb=0.,ex=0.,ey=0.,ap=0.,x1=0.,x2=0.,
+               v1=0.,v2=0.,l1=0.,l2=0.,w1=0.,w2=0.):
+  """
+Adds a new dipo element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+dipo arrays with the same suffices:
+  - by,bx,ta,tb,ex,ey,ap,x1,x2,v1,v2,l1,l2,w1,w2
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already dipos, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a dipo is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.ndipo and top.dipozs[ie] <= zs and
+         top.dipozs[ie] != top.dipoze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.ndipo or top.dipozs[-1] != top.dipoze[-1]:
+    top.ndipo = top.ndipo + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.dipozs,'ze':top.dipoze,'by':top.dipoby,'bx':top.dipobx,
+         'ta':top.dipota,'tb':top.dipotb,'ex':top.dipoex,'ey':top.dipoey,
+         'ap':top.dipoap,
+         'x1':top.dipox1,'x2':top.dipox2,'v1':top.dipov1,'v2':top.dipov2,
+         'l1':top.dipol1,'l2':top.dipol2,'w1':top.dipow1,'w2':top.dipow2}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.ndipo:
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- QUAD --- XXX
+def addnewquad(zs,ze,db=0.,de=0.,et=0.,bt=0.,ts=0.,dt=0.,vx=0.,vy=0.,ap=0.,
+               rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,pr=0.,sl=0.,ox=0.,oy=0.,
+               do=0.,
+               glx=0.,gly=0.,axp=0.,axm=0.,ayp=0.,aym=0.,rxp=0.,rxm=0.,
+               ryp=0.,rym=0.,vxp=0.,vxm=0.,vyp=0.,vym=0.,oxp=0.,oxm=0.,
+               oyp=0.,oym=0.,pwl=0.,pwr=0.,pal=0.,par=0.,prl=0.,prr=0.):
+  """
+Adds a new quad element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+quad and qdel arrays with the same suffices:
+  - db,de,et,bt,ts,dt,vx,vy,ap,rr,rl,gl,gp,pw,pa,pr,sl,ox,oy,do
+  - glx,gly,axp,axm,ayp,aym,rxp,rxm,ryp,rym,vxp,vxm,vyp,vym,oxp,oxm,
+    oyp,oym,pwl,pwr,pal,par,prl,prr
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already quads, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a quad is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nquad and top.quadzs[ie] <= zs and
+         top.quadzs[ie] != top.quadze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays if it is needed.
+  if ie > top.nquad or top.quadzs[-1] != top.quadze[-1]:
+    top.nquad = top.nquad + 100
+    top.nqerr = top.nqerr + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.quadzs,'ze':top.quadze,'db':top.quaddb,'de':top.quadde,
+       'et':top.quadet,'bt':top.quadbt,'ts':top.quadts,'dt':top.quaddt,
+       'vx':top.quadvx,'vy':top.quadvy,'ap':top.quadap,'rr':top.quadrr,
+       'rl':top.quadrl,'gl':top.quadgl,'gp':top.quadgp,'pw':top.quadpw,
+       'pa':top.quadpa,'pr':top.quadpr,'sl':top.quadsl,'do':top.quaddo,
+       'glx':top.qdelglx,'gly':top.qdelgly,'axp':top.qdelaxp,'axm':top.qdelaxm,
+       'ayp':top.qdelayp,'aym':top.qdelaym,'rxp':top.qdelrxp,'rxm':top.qdelrxm,
+       'ryp':top.qdelryp,'rym':top.qdelrym,'vxp':top.qdelvxp,'vxm':top.qdelvxm,
+       'vyp':top.qdelvyp,'vym':top.qdelvym,'oxp':top.qdeloxp,'oxm':top.qdeloxm,
+       'oyp':top.qdeloyp,'oym':top.qdeloym,'pwl':top.qdelpwl,'pwr':top.qdelpwr,
+       'pal':top.qdelpal,'par':top.qdelpar,'prl':top.qdelprl,'prr':top.qdelprr,
+       'ox':top.qoffx,'oy':top.qoffy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nquad:
+    for e in edict.values():
+      if len(shape(e)) == 1:
+        e[ie+1:] = e[ie:-1] + 0
+      else:
+        # --- There are two arrays which are 2-D, quadet, and quadbt.
+        e[:,ie+1:] = e[:,ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    if len(shape(e)) == 1:
+      e[ie] = ldict[xx]
+    else:
+      # --- There are two arrays which are 2-D, quadet, and quadbt.
+      e[:,ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- SEXT --- XXX
+def addnewsext(zs,ze,db=0.,de=0.):
+  """
+Adds a new sext element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+sext arrays with the same suffices:
+  - db,de
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already sexts, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a sext is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nsext and top.sextzs[ie] <= zs and
+         top.sextzs[ie] != top.sextze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nsext or top.sextzs[-1] != top.sextze[-1]:
+    top.nsext = top.nsext + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.sextzs,'ze':top.sextze,'db':top.sextdb,'de':top.sextde}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nsext:
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- HELE --- XXX
+def addnewhele(zs,ze,ap=0.,ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               ae=0.,am=0.,ep=0.,mp=0.,nn=0.,vv=0.,pe=0.,pm=0.):
+  """
+Adds a new hele element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+hele arrays with the same suffices:
+  - ap,ox,oy,rr,rl,gl,gp,pw,pa,ae,am,ep,mp,nn,vv,pe,pm
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Get the number of multipole components in this element.
+  # --- Assume 1 for the case where ae and am are scalars.
+  # --- Check top.nhmlt to see if the arrays are big enough for that number.
+  nh = 1
+  try: nh = len(ae)
+  except: pass
+  try: nh = len(am)
+  except: pass
+  if nh > top.nhmlt:
+    top.nhmlt = nh
+    gchange("Lattice")
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already heles, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a hele is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nhele and top.helezs[ie] <= zs and
+         top.helezs[ie] != top.heleze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nhele or top.helezs[-1] != top.heleze[-1]:
+    top.nhele = top.nhele + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.helezs,'ze':top.heleze,'ap':top.heleap,
+         'ox':top.heleox,'oy':top.heleoy,'rr':top.helerr,'rl':top.helerl,
+         'gl':top.helegl,'gp':top.helegp,'pw':top.helepw,'pa':top.helepa,
+         'ae':top.heleae,'am':top.heleam,'ep':top.heleep,'mp':top.helemp,
+         'nn':top.hele_n,'vv':top.hele_v,'pe':top.helepe,'pm':top.helepm}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nhele:
+    for e in edict.values():
+      if len(shape(e)) == 1:
+        e[ie+1:] = e[ie:-1] + 0
+      else:
+        # --- These are quantities input for each multipole component
+        e[:,ie+1:] = e[:,ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    if len(shape(e)) == 1:
+      e[ie] = ldict[xx]
+    else:
+      # --- These are quantities input for each multipole component
+      e[:,ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- EMLT --- XXX
+def addnewemlt(zs,ze,ap=0.,ph=0.,sf=0.,sc=1.,id=None,
+               ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               es=None,esp=None,phz=None,phpz=None,nn=None,vv=None):
+  """
+Adds a new emlt element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+One and only one of the following must be supplied (if both are supplied, id
+takes precedence):
+  - id: data set ID corresponding to already existing emlt multipole data
+  - es: 1- or 2-D array containing the multipole data. First dimension is data
+    along z, optional second dimension is number of multipole components.
+If 'es' is supplied, the following may also be supplied.
+  - nn, vv: the multipole indices. If these are not specified, then it is
+    assumed that the data in the 'es' array is layed out with the ordering of
+    the existing emlt_n and emlt_v. Must have the same len as the second
+    dimension of es (can be scalars is es is 1-D).
+  - esp: first derivative of es along z. Must have the same shape as es.
+  - phz, phpz: phase angle along z and it's derivative. Must have the same
+    shape as es.
+The following are all optional and have the same meaning and default as the
+emlt arrays with the same suffices:
+  - ap,ph,sf,sc,ox,oy,rr,rl,gl,gp,pw,pa
+  """
+  # --- Make sure either an 'id' or a dataset, 'es', was passed in.
+  assert (id is not None or es is not None), \
+         "either an 'id' or a dataset, 'es', must be passed in"
+  # --- If a dataset was passed in, make sure that it has the same
+  # --- number of multipole components or less, or that both n and v are
+  # --- passed in
+  assert (es is None) or \
+         ((len(shape(es)) == 1) or (shape(es)[1] <= top.nesmult) or \
+          (nn is not None and vv is not None)),\
+         "The shape of the dataset must be consistent with the data already created or both n and v must be specified"
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already emlts, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that emltid > 0,
+  # --- to determine whether or not an emlt is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nemlt and top.emltzs[ie] <= zs and top.emltid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nemlt or top.emltid[-1] != 0:
+    top.nemlt = top.nemlt + 100
+    top.neerr = top.neerr + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.emltzs,'ze':top.emltze,'ap':top.emltap,'ph':top.emltph,
+           'sf':top.emltsf,'sc':top.emltsc,
+           'ox':top.emltox,'oy':top.emltoy,'rr':top.emltrr,'rl':top.emltrl,
+           'gl':top.emltgl,'gp':top.emltgp,'pw':top.emltpw,'pa':top.emltpa}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.nemlt:
+    top.emltid[ie+1:] = top.emltid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the multipole component dataset.
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.emltid[ie] = id
+  elif es is not None:
+    # --- Otherwise, create a new dataset.
+    top.nemltsets = top.nemltsets + 1
+    top.emltid[ie] = top.nemltsets
+    # --- Make sure that es is a 2-D array (first dimension is data versus z,
+    # --- second is number of multipole components)
+    if len(shape(es)) == 1:
+      es = transpose(array([es]))
+      if esp is not None: esp = transpose(array([esp]))
+      if phz is not None: phz = transpose(array([phz]))
+      if phpz is not None: phpz = transpose(array([phpz]))
+    # --- Make sure that the first dimension of the arrays is long enough
+    if shape(es)[0] > top.nzemltmax+1: top.nzemltmax = shape(es)[0] - 1
+    # --- Change the sizes of the arrays
+    gchange("Mult_data")
+    # --- Set basic parameters
+    n0 = shape(es)[0] # --- Number of data points along z
+    n1 = shape(es)[1] # --- Number of multipole components
+    top.nzemlt[-1] = n0 - 1
+    top.dzemlt[-1] = (top.emltze[ie] - top.emltzs[ie])/(n0 - 1.)
+    if nn is None and vv is None:
+      # --- Assume n and v are ordered correctly and just copy the data in
+      top.esemlt[:n0,:n1,-1] = es
+      if esp is not None: top.esemltp[:n0,:n1,-1] = esp
+      if phz is not None: top.esemltph[:n0,:n1,-1] = phz
+      if phpz is not None: top.esemltphp[:n0,:n1,-1] = phpz
+    else:
+      # --- Make sure that n and v are lists
+      if type(nn) in [IntType,FloatType]: nn = list([nn])
+      else:                               nn = list(nn)
+      if type(vv) in [IntType,FloatType]: vv = list([vv])
+      else:                               vv = list(vv)
+      # --- Make es a list of arrays
+      es = list(transpose(es))
+      if esp is not None: esp = list(transpose(esp))
+      if phz is not None: phz = list(transpose(phz))
+      if phpz is not None: phpz = list(transpose(phpz))
+      # --- Loop over existing multipole components
+      for i in xrange(top.nesmult):
+        # --- Loop over input multipole components checking if any are the same
+        for j in xrange(len(nn)):
+          if nn[j] == top.emlt_n[i] and vv[j] == top.emlt_v[i]:
+            # --- If so, then copy the data to the appropriate place and
+            # --- delete the data from the lists.
+            top.esemlt[:n0,i,-1] = es[j]
+            if esp is not None: top.esemltp[:n0,i,-1] = esp[j]
+            if phz is not None: top.esemltph[:n0,i,-1] = phz[j]
+            if phpz is not None: top.esemltphp[:n0,i,-1] = phpz[j]
+            del nn[j],vv[j],es[j]
+            if esp is not None: del esp[j]
+            if phz is not None: del phz[j]
+            if phpz is not None: del phpz[j]
+            break
+      # --- Now copy in any left over data, increasing the number of multipole
+      # --- components.
+      if len(nn) > 0:
+        ln = len(nn)
+        top.nesmult = top.nesmult + ln
+        gchange("Mult_data")
+        top.emlt_n[-ln:] = nn
+        top.emlt_v[-ln:] = vv
+        top.esemlt[:n0,-ln:,-1] = transpose(array(es))
+        if esp is not None: top.esemltp[:n0,-ln:,-1] = transpose(array(esp))
+        if phz is not None: top.esemltph[:n0,-ln:,-1] = transpose(array(phz))
+        if phpz is not None: top.esemltphp[:n0,-ln:,-1] = transpose(array(phpz))
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to knowne its actual number.
+  return top.emltid[ie]
+
+def plotemlt(ie,m=0,color='fg'):
+  """
+Plots the field of the emlt element
+  - ie: the element to plot
+  - m=0: the multipole number to plot
+  - color='fg': color of plot
+  """
+  id = top.emltid[ie] - 1
+  dz = top.dzemlt[id]
+  nz = top.nzemlt[id]
+  zz = top.emltzs[ie] + iota(0,nz)*dz
+  plg(top.esemlt[:nz+1,m,id],zz,color=color)
+
+# ----------------------------------------------------------------------------
+# --- MMLT --- XXX
+def addnewmmlt(zs,ze,ap=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
+               ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None):
+  """
+Adds a new mmlt element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+One and only one of the following must be supplied (if both are supplied, id
+takes precedence):
+  - id: data set ID corresponding to already existing mmlt multipole data
+  - ms: 1- or 2-D array containing the multipole data. First dimension is data
+    along z, optional second dimension is number of multipole components.
+If 'ms' is supplied, the following may also be supplied.
+  - nn, vv: the multipole indices. If these are not specified, then it is
+    assumed that the data in the 'ms' array is layed out with the ordering of
+    the existing mmlt_n and mmlt_v. Must have the same len as the second
+    dimension of ms (can be scalars is ms is 1-D).
+  - msp: first derivative of ms along z. Must have the same shape as ms.
+  - phz, phpz: phase angle along z and it's derivative. Must have the same
+    shape as ms.
+The following are all optional and have the same meaning and default as the
+mmlt arrays with the same suffices:
+  - ap,ph,sf,sc,ox,oy
+  """
+  # --- Make sure either an 'id' or a dataset, 'ms', was passed in.
+  assert (id is not None or ms is not None), \
+         "either an 'id' or a dataset, 'ms', must be passed in"
+  # --- If a dataset was passed in, make sure that it has the same
+  # --- number of multipole components or less, or that both n and v are
+  # --- passed in
+  assert (ms is None) or \
+         ((len(shape(ms)) == 1) or (shape(ms)[1] <= top.nmsmult) or \
+          (nn is not None and vv is not None)),\
+         "The shape of the dataset must be consistent with the data already created or both n and v must be specified"
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already mmlts, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that mmltid > 0,
+  # --- to determine whether or not an mmlt is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nmmlt and top.mmltzs[ie] <= zs and top.mmltid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nmmlt or top.mmltid[-1] != 0:
+    top.nmmlt = top.nmmlt + 100
+    top.nmerr = top.nmerr + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edist = {'zs':top.mmltzs,'ze':top.mmltze,'ap':top.mmltap,'ph':top.mmltph,
+           'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.nmmlt:
+    top.mmltid[ie+1:] = top.mmltid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the multipole component dataset.
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.mmltid[ie] = id
+  elif ms is not None:
+    # --- Otherwise, create a new dataset.
+    top.nmmltsets = top.nmmltsets + 1
+    top.mmltid[ie] = top.nmmltsets
+    # --- Make sure that ms is a 2-D array (first dimension is data versus z,
+    # --- second is number of multipole components)
+    if len(shape(ms)) == 1:
+      ms = transpose(array([ms]))
+      if msp is not None: msp = transpose(array([msp]))
+      if phz is not None: phz = transpose(array([phz]))
+      if phpz is not None: phpz = transpose(array([phpz]))
+    # --- Make sure that the first dimension of the arrays is long enough
+    if shape(ms)[0] > top.nzmmltmax+1: top.nzmmltmax = shape(ms)[0] - 1
+    # --- Change the sizes of the arrays
+    gchange("Mult_data")
+    # --- Set basic parameters
+    n0 = shape(ms)[0] # --- Number of data points along z
+    n1 = shape(ms)[1] # --- Number of multipole components
+    top.nzmmlt[-1] = n0 - 1
+    top.dzmmlt[-1] = (top.mmltze[ie] - top.mmltzs[ie])/(n0 - 1.)
+    if nn is None and vv is None:
+      # --- Assume n and v are ordered correctly and just copy the data in
+      top.msmmlt[:n0,:n1,-1] = ms
+      if msp is not None: top.msmmltp[:n0,:n1,-1] = msp
+      if phz is not None: top.msmmltph[:n0,:n1,-1] = phz
+      if phpz is not None: top.msmmltphp[:n0,:n1,-1] = phpz
+    else:
+      # --- Make sure that n and v are lists
+      if type(nn) in [IntType,FloatType]: nn = list([nn])
+      else:                               nn = list(nn)
+      if type(vv) in [IntType,FloatType]: vv = list([vv])
+      else:                               vv = list(vv)
+      # --- Make ms a list of arrays
+      ms = list(transpose(ms))
+      if msp is not None: msp = list(transpose(msp))
+      if phz is not None: phz = list(transpose(phz))
+      if phpz is not None: phpz = list(transpose(phpz))
+      # --- Loop over existing multipole components
+      for i in xrange(top.nmsmult):
+        # --- Loop over input multipole components checking if any are the same
+        for j in xrange(len(nn)):
+          if nn[j] == top.mmlt_n[i] and vv[j] == top.mmlt_v[i]:
+            # --- If so, then copy the data to the appropriate place and
+            # --- delete the data from the lists.
+            top.msmmlt[:n0,i,-1] = ms[j]
+            if msp is not None: top.msmmltp[:n0,i,-1] = msp[j]
+            if phz is not None: top.msmmltph[:n0,i,-1] = phz[j]
+            if phpz is not None: top.msmmltphp[:n0,i,-1] = phpz[j]
+            del nn[j],vv[j],ms[j]
+            if msp is not None: del msp[j]
+            if phz is not None: del phz[j]
+            if phpz is not None: del phpz[j]
+            break
+      # --- Now copy in any left over data, increasing the number of multipole
+      # --- components.
+      if len(nn) > 0:
+        ln = len(nn)
+        top.nmsmult = top.nmsmult + ln
+        gchange("Mult_data")
+        top.mmlt_n[-ln:] = nn
+        top.mmlt_v[-ln:] = vv
+        top.msmmlt[:n0,-ln:,-1] = transpose(array(ms))
+        if msp is not None: top.msmmltp[:n0,-ln:,-1] = transpose(array(msp))
+        if phz is not None: top.msmmltph[:n0,-ln:,-1] = transpose(array(phz))
+        if phpz is not None: top.msmmltphp[:n0,-ln:,-1] = transpose(array(phpz))
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to knowne its actual number.
+  return top.mmltid[ie]
+
+# ----------------------------------------------------------------------------
+# --- ACCL --- XXX
+def addnewaccl(zs,ze,ez=0.,ap=0.,ox=0.,oy=0.,xw=0.,sw=0.,et=0.,ts=0.,dt=0.):
+  """
+Adds a new accl element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+The following are all optional and have the same meaning and default as the
+accl arrays with the same suffices:
+  - ez,ap,ox,oy,xw,sw,et,ts,dt
+  """
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already accls, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that zs != ze to
+  # --- determine whether or not a accl is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.naccl and top.acclzs[ie] <= zs and
+         top.acclzs[ie] != top.acclze[ie]):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays if it is needed.
+  if ie > top.naccl or top.acclzs[-1] != top.acclze[-1]:
+    top.naccl = top.naccl + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict={'zs':top.acclzs,'ze':top.acclze,'ez':top.acclez,'ap':top.acclap,
+         'ox':top.acclox,'oy':top.accloy,'xw':top.acclxw,'sw':top.acclsw,
+         'et':top.acclet,'ts':top.acclts,'dt':top.accldt}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element.
+  if ie <= top.naccl:
+    for e in edict.values():
+      if len(shape(e)) == 1:
+        e[ie+1:] = e[ie:-1] + 0
+      else:
+        # --- acclet is 2-D
+        e[:,ie+1:] = e[:,ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    if len(shape(e)) == 1:
+      e[ie] = ldict[xx]
+    else:
+      # --- acclet is 2-D
+      e[:,ie] = ldict[xx]
+
+# ----------------------------------------------------------------------------
+# --- BGRD --- XXX
+def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ox=0.,oy=0.,ph=0.,sp=0.,cp=0.,
+               sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None):
+  """
+Adds a new bgrd element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+Optionally, id may be specified, using a previously defined dataset
+takes precedence):
+  - id: data set ID corresponding to already existing bgrd multipole data
+Or, one or more 3-D field arrays may be specified
+  - bx, by, bz
+  - dx,dy: transverse grid cell size must also be specified
+The following are all optional and have the same meaning and default as the
+bgrd arrays with the same suffices:
+  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
+  """
+  # --- Make sure either an 'id' or a dataset, 'es', was passed in.
+  assert None not in [id,bx,by,bz], \
+         "either an 'id' or a dataset, bx, by, or bz, must be passed in"
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already bgrds, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that bgrdid > 0,
+  # --- to determine whether or not an bgrd is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nbgrd and top.bgrdzs[ie] <= zs and top.bgrdid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nbgrd or top.bgrdid[-1] != 0:
+    top.nbgrd = top.nbgrd + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.bgrdzs,'ze':top.bgrdze,'xs':top.bgrdxs,'ys':top.bgrdys,
+           'ap':top.bgrdap,'ox':top.bgrdox,'oy':top.bgrdoy,'ph':top.bgrdph,
+           'sp':top.bgrdsp,'cp':top.bgrdcp,'sf':top.bgrdsf,'sc':top.bgrdsc,
+           'sy':top.bgrdsy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.nbgrd:
+    top.bgrdid[ie+1:] = top.bgrdid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the 3-D field grid dataset
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.bgrdid[ie] = id
+  else:
+    # --- Otherwise, create a new dataset.
+    top.bgrdns = top.bgrdns + 1
+    # --- Get array size
+    if bx is not None: nx,ny,nz = shape(bx)
+    if by is not None: nx,ny,nz = shape(by)
+    if bz is not None: nx,ny,nz = shape(bz)
+    # --- Make sure that the arrays are big enough
+    top.bgrdnx = max(nx-1,top.bgrdnx)
+    top.bgrdny = max(ny-1,top.bgrdny)
+    top.bgrdnz = max(nz-1,top.bgrdnz)
+    gchange("Mult_data")
+    # --- Copy the data in
+    top.bgrddx[-1] = dx
+    top.bgrddy[-1] = dy
+    top.bgrddz[-1] = (ze - zs)/(nz - 1)
+    if bx is not None: top.bgrdbx[:nx,:ny,:nz,-1] = bx
+    if by is not None: top.bgrdby[:nx,:ny,:nz,-1] = by
+    if bz is not None: top.bgrdbz[:nx,:ny,:nz,-1] = bz
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to knowne its actual number.
+  return top.bgrdid[ie]
+
+# ----------------------------------------------------------------------------
+# --- PGRD --- XXX
+def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ox=0.,oy=0.,ph=0.,sp=0.,cp=0.,
+               sf=0.,sc=1.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
+               dx=None,dy=None,phi=None):
+
+  """
+Adds a new pgrd element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+Optionally, id may be specified, using a previously defined dataset
+takes precedence):
+  - id: data set ID corresponding to already existing pgrd multipole data
+Or, 3-D phi array may be specified
+  - phi
+  - dx,dy: transverse grid cell size must also be specified
+The following are all optional and have the same meaning and default as the
+pgrd arrays with the same suffices:
+  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,rr,rl,gl,gp,pw,pa
+  """
+  # --- Make sure either an 'id' or a dataset, 'es', was passed in.
+  assert None not in [id,phi], \
+         "either an 'id' or the dataset phi must be passed in"
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (ze > 0.),"element end must be greater than zero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+
+  # --- Get a dict of the input arguments and there values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already pgrds, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that pgrdid > 0,
+  # --- to determine whether or not an pgrd is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.npgrd and top.pgrdzs[ie] <= zs and top.pgrdid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.npgrd or top.pgrdid[-1] != 0:
+    top.npgrd = top.npgrd + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.pgrdzs,'ze':top.pgrdze,'xs':top.pgrdxs,'ys':top.pgrdys,
+           'ap':top.pgrdap,'ox':top.pgrdox,'oy':top.pgrdoy,'ph':top.pgrdph,
+           'sp':top.pgrdsp,'cp':top.pgrdcp,'id':top.pgrdid,'sf':top.pgrdsf,
+           'sc':top.pgrdsc,'rr':top.pgrdrr,'rl':top.pgrdrl,'gl':top.pgrdgl,
+           'gp':top.pgrdgp,'pw':top.pgrdpw,'pa':top.pgrdpa}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.npgrd:
+    top.pgrdid[ie+1:] = top.pgrdid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- there values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the 3-D field grid dataset
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.pgrdid[ie] = id
+  else:
+    # --- Otherwise, create a new dataset.
+    top.pgrdns = top.pgrdns + 1
+    # --- Get array size
+    nx,ny,nz = shape(phi)
+    # --- Make sure that the arrays are big enough
+    top.pgrdnx = max(nx-1,top.pgrdnx)
+    top.pgrdny = max(ny-1,top.pgrdny)
+    top.pgrdnz = max(nz-1,top.pgrdnz)
+    gchange("Mult_data")
+    # --- Copy the data in
+    top.bgrddx[-1] = dx
+    top.bgrddy[-1] = dy
+    top.bgrddz[-1] = (ze - zs)/(nz - 1)
+    top.pgrd[:nx,:ny,:nz,-1] = phi
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to knowne its actual number.
+  return top.pgrdid[ie]
+
+
+
+
+
+
+
+
+
+
 
 
 
