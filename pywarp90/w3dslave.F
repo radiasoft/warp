@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.2 $, $Date: 2001/06/13 20:36:55 $
+c W3DSLAVE.M, version $Revision: 1.3 $, $Date: 2001/07/11 21:48:12 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -190,9 +190,10 @@ c       --- Get sum of zslave to allow proper scaling.
 
 c       --- All values of zslave must be > 0.
         do i=0,nslaves-1
-          if (zslave(i)/sumzslave*(zmmax-zmmin) <= 2.*dz) then
-            call remark("ERROR: All particle domains must be at least 2*dz")
-            call remark("       long. Fix zslave appropriately.")
+c         if (zslave(i)/sumzslave*(zmmax-zmmin) <= 0.) then
+          if (zslave(i) <= 0.) then
+            call remark("ERROR: The length of all particle domains must be")
+            call remark("       positive. Fix zslave appropriately.")
             call kaboom(1)
           endif
         enddo
@@ -356,6 +357,16 @@ c===========================================================================
 c This routine sums rho in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rho back to the left
 c since that is done in getrhoforfieldsolve.
+c This allows for cases where more than two processors have deposited rho
+c into the same plane. A check is made if the data being sent to the right
+c overlaps with the data being received from the left. If so, the process
+c waits to receive the data from the left and then adds it to its own data.
+c That data is then sent to the right. This way, the data is accumulated as it
+c is passed from process to process moving toward the right. If there is no
+c overlap, then the data is sent first to the right and then received from
+c the left. This is done so that processes to the right do not have to wait
+c for processes to the left. Note that process 0 always sends it data first
+c so that there won't be a lock up.
 
       integer(ISZ):: left_pe,right_pe
       integer(ISZ):: left_iz,right_iz,left_nz,right_nz
@@ -392,6 +403,19 @@ c     --- planes to exchange.
         right_nz = 1
       endif
 
+c     --- Check if data being sent overlaps with data being received.
+c     --- If so, wait for the incoming data first.
+      if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
+        call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+
+c       --- Sum the two planes. The utility call sumarry is used since
+c       --- with the gchange above, the local dimension of buffer2d may not
+c       --- be correct, so explicitly writing out the loops may not work.
+        call sumarry(buffer2d,rho(0,0,left_iz),left_nz*(nx+1)*(ny+1))
+
+      endif
+
 c     --- Send rho to the process to the right
       if (my_index < nslaves-1 .or. periinz) then
         call MPI_ISEND(rho(0,0,right_iz),right_nz*(nx+1)*(ny+1),
@@ -399,7 +423,10 @@ c     --- Send rho to the process to the right
      &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
 
-      if (my_index > 0 .or. periinz) then
+c     --- If there is no overlap, wait for the data after sending so
+c     --- that processors to the right do not have to also wait.
+      if ((my_index > 0 .and. right_iz > left_iz+left_nz) .or.
+     &    (my_index == 0 .and. periinz)) then
         call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
      &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
 
