@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.2 2000/11/21 19:56:32 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.3 2000/11/30 23:19:48 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -104,6 +104,10 @@ Performs steady-state iterations
   if ipsave: _ipsave = ipsave
   if save_same_part: _save_same_part = save_same_part
 
+  # --- Save current value of top.nhist
+  _nhist = top.nhist
+  top.nhist = 0
+
   # --- Estimate the time that will be required for the particles
   # --- to propagate through the system. It is based off of the Child-Langmuir
   # --- solution for a diode. The diode length is assumed to be (nzfull*dz),
@@ -147,7 +151,7 @@ Performs steady-state iterations
 
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
-    if (i == iter-1 and top.ifzmmnt > 0):
+    if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
       getzmom.zmmnt(1)
       # --- Make sure that moments are calculated on each time step. This is
       # --- the only way that the data will make sense.
@@ -312,6 +316,17 @@ Performs steady-state iterations
     fieldsol(-1)
     top.fstype = -1
 
+    # --- Do final work for zmoments calculation
+    if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
+       getzmom.zmmnt(3)
+
+    # --- Save the history data
+    if (gun_iter%_nhist) == 0 and top.ifzmmnt > 0:
+      top.nhist = gun_iter
+      minidiag(gun_iter,gun_time,false)
+      top.nhist = 0
+      top.hzbeam[top.jhist] = gun_iter
+
     # --- Print out warning message if needed.
     if top.time-gun_time > maxtime:
       print "Warning: maxtime exceeded - this may be corrected in the next"
@@ -331,11 +346,8 @@ Performs steady-state iterations
     top.ins[:] = ins_save
     top.nps[:] = nps_save
 
-  # --- Do final work for zmoments calculation
-  if (top.ifzmmnt > 0): getzmom.zmmnt(3)
-
   # --- Change what is plotted at the bottom of each frame
-  stepid(gun_steps,gun_time,top.zbeam)
+  stepid(gun_iter,gun_time,top.zbeam)
 
   # --- Set some additional diagnostic data
   top.curr = top.vzbarz*top.linechg
@@ -347,6 +359,7 @@ Performs steady-state iterations
     top.nztinjmn = _onztinjmn
     top.nztinjmx = _onztinjmx
   top.inject = _oinject
+  top.nhist = _nhist
 
 
 ########################################################################
