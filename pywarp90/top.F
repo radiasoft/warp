@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.8 $, $Date: 2001/05/16 22:27:21 $
+c@(#) File TOP.M, version $Revision: 3.9 $, $Date: 2001/05/22 20:27:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1774,6 +1774,63 @@ c       --- set the field
           ex(ip) = ex(ip) + cdipoex(j) * frac
           ey(ip) = ey(ip) + cdipoey(j) * frac
         endif
+      enddo
+
+      return
+      end
+c=========================================================================== 
+      subroutine sledgcor(np,xp,yp,npz,zp,zpo,uxp,uyp,uzp,gaminv,m,q)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np,npz
+      real(kind=8):: xp(np), yp(np), zp(npz), zpo(npz) 
+      real(kind=8):: uxp(np), uyp(np), uzp(npz), gaminv(npz) 
+      real(kind=8):: q, m
+
+c Applies position and velocity jump corrections on entry/exit of dipoles 
+c with slanted faces.  (Must be called after all z advancement is done this 
+c timestep, so that entry/exit of the bend is detected exactly once.)    
+c Accounts for the fact that the jumped velocities act on the particles for 
+c less than the entire andvance step on entry/exit of the dipole.  
+
+      integer(ISZ):: ip,j
+      real(kind=8):: vz,vzi,qoverm
+
+      if (.not.dipos) return
+
+      qoverm = q/m
+
+      if (npz == 1) then
+        vz = uzp(1)*gaminv(1)
+        vzi = 1./dvnz(vz)
+        j = 0
+        if (.not. ((zpo(1) < cdipozs(j) .and. zp(1) >= cdipozs(j)) .or.
+     &             (zpo(1) < cdipoze(j) .and. zp(1) >= cdipoze(j)))) return
+      endif
+      do ip = 1,np
+        if (npz > 1) then
+          vz = uzp(ip)*gaminv(ip)
+          vzi = 1./dvnz(vz)
+c         --- find z-cell in which particle lies
+          j = min(nzl,int(max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)))
+        endif
+        if ((zpo(ip) < cdipozs(j)) .and. (zp(ip) >= cdipozs(j))) then 
+c         --- entered dipole
+          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipota(j)*qoverm
+          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipota(j)*qoverm
+          xp(ip)  = xp(ip) + (zp(ip)-cdipozs(j))*vzi*
+     &                       xp(ip)*cdipoby(j)*cdipota(j)*qoverm
+          yp(ip)  = yp(ip) - (zp(ip)-cdipozs(j))*vzi*
+     &                       yp(ip)*cdipoby(j)*cdipota(j)*qoverm
+        elseif ((zpo(ip) < cdipoze(j)).and.(zp(ip) >= cdipoze(j))) then  
+c         --- exited dipole
+          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
+          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
+          xp(ip)  = xp(ip) + (zp(ip)-cdipoze(j))*vzi*
+     &                       xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
+          yp(ip)  = yp(ip) - (zp(ip)-cdipoze(j))*vzi*
+     &                       yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
+        endif 
       enddo
 
       return
