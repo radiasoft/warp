@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.6 2001/11/15 22:30:08 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.7 2002/03/07 00:30:07 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -2154,7 +2154,7 @@ pgrd arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,color='fg'):
+def plotemlt(ie,m=0,p=0,color='fg'):
   """
 Plots the field of the emlt element
   - ie: the element to plot
@@ -2165,9 +2165,12 @@ Plots the field of the emlt element
   dz = top.dzemlt[id]
   nz = top.nzemlt[id]
   zz = top.emltzs[ie] + iota(0,nz)*dz
-  plg(top.esemlt[:nz+1,m,id],zz,color=color)
+  if p == 0:
+    plg(top.esemlt[:nz+1,m,id],zz,color=color)
+  else:
+    plg(top.esemltp[:nz+1,m,id],zz,color=color)
 
-def plotmmlt(im,m=0,color='fg'):
+def plotmmlt(im,m=0,p=0,color='fg'):
   """
 Plots the field of the emlt element
   - im: the element to plot
@@ -2178,4 +2181,7 @@ Plots the field of the emlt element
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
   zz = top.mmltzs[im] + iota(0,nz)*dz
-  plg(top.msmmlt[:nz+1,m,id],zz,color=color)
+  if p == 0:
+    plg(top.msmmlt[:nz+1,m,id],zz,color=color)
+  else:
+    plg(top.msmmltp[:nz+1,m,id],zz,color=color)
