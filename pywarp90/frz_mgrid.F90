@@ -1,4 +1,4 @@
-!     Last change:  JLV   2 Jul 2004    2:49 pm
+!     Last change:  JLV   7 Jul 2004    3:28 pm
 #include "top.h"
 
 module multigrid_common
@@ -1258,7 +1258,9 @@ subroutine del_grid(g)
 implicit none
 TYPE(GRIDtype), pointer :: g
 
-  IF(associated(g%up%down)) NULLIFY(g%up%down)
+  if (associated(g%up)) then
+    IF(associated(g%up%down)) NULLIFY(g%up%down)
+  end if
 
   IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom) call del_grid_bnds(g)
   call del_overlaps(g)
@@ -9176,11 +9178,8 @@ end subroutine nullify_basegrid
 subroutine del_base()
 USE Multigridrz
 implicit none
-INTEGER(ISZ) :: i
 
-  IF(.NOT.associated(basegrid)) then
-    return
-  end if
+  IF(.NOT.associated(basegrid)) return
   IF(associated(basegrid)) call del_grid(basegrid)
 
 return
