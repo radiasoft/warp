@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.23 $, $Date: 2001/08/22 23:58:45 $
+#@(#) File W3D.V, version $Revision: 3.24 $, $Date: 2001/09/12 21:59:24 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.23 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.24 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -306,6 +306,8 @@ inj_rho(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Surface charge density at the emitting surface.
 inj_phi(0:inj_nx,0:inj_ny)  _real
    # Electrostatic potential at the emitting surface.
+inj_ex(0:inj_nx,0:inj_ny)  _real
+inj_ey(0:inj_nx,0:inj_ny)  _real
 inj_area(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Inverse of the fraction of the grid cell's area within the emitting surface
 
@@ -381,9 +383,8 @@ injctint()   subroutine # Initialization for injection
 fill_inj(dx:real,dy:real,dz:real,ix_axis:integer,iy_axis:integer)
              subroutine # Initializes arrays describing the geometry of the
                         # emitting surface. Automatically called.
-inj_sete3d(phi:real,np:integer,xp:real,yp:real,zp:real,zgrid:real,
-           xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,
-           nx:integer,ny:integer,nz:integer,ex:real,ey:real,ez)
+inj_sete3d(np:integer,ipmin:integer,xmmin:real,ymmin:real,zmmin:real,
+           dx:real,dy:real,dz:real,ex:real,ey:real,ez)
              subroutine # Calculate the E field for particles near the
                         # emitting surface.
 loadrho3d(ins,nps,is,lzero:logical) 
