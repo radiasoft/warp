@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.41 $, $Date: 2002/05/13 20:09:07 $
+c@(#) File F3D.M, version $Revision: 3.42 $, $Date: 2002/05/13 21:14:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1698,6 +1698,7 @@ c  Start and end of loops
       iystart = 0
       iyend = ny-1
 #ifdef MPIPARALLEL
+      if (xynppgroup > nslaves) xynppgroup = nslaves
       if (nx > xynppgroup .and. xynppgroup > 1) then
         ixstart = mod(my_index,xynppgroup)*nx/xynppgroup
         ixend = ixstart + nx/xynppgroup - 1
