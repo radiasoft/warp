@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.102 $, $Date: 2003/08/22 22:52:59 $
+#@(#) File TOP.V, version $Revision: 3.103 $, $Date: 2003/08/25 23:04:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.102 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.103 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1725,7 +1725,9 @@ lspecial                  logical
 # Arrays that hold particle data that is extrapolated to grid cell centers
 # in the GETZMMNT routine.
 nepwin                  integer /0/ # Number of grid locations (windows)
-izepwin(nepwin)        _integer     # List of grid locations (index of zmntmesh)
+izepwin(nepwin)        _integer /-1/ # List of grid locations (indx of zmntmesh)
+zzepwin(nepwin)        _real        # List of lab frame locations
+wzepwin(nepwin)        _real        # List of lab frame widths
 nepmax                  integer /0/ # Maximum number of particles
 nep(nepwin,ns)         _integer     # Number of particles in each grid location
 tep(nepmax,nepwin,ns)  _real        # time of particles at grid cell centers

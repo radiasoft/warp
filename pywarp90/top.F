@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.101 $, $Date: 2003/08/22 22:52:59 $
+c@(#) File TOP.M, version $Revision: 3.102 $, $Date: 2003/08/25 23:04:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5146,6 +5146,85 @@ c         --- End of Z moments accumulation
 
 !$OMP ATOMIC
       momentstime = momentstime + (wtime() - timetemp)
+
+      return
+      end
+c=============================================================================
+      subroutine getextrapolatedparticles(np,xp,yp,zp,uxp,uyp,uzp,gaminv,
+     &                                    dt,uxpo,uypo,uzpo,is,time)
+      use Z_Moments
+      use ExtPart
+      use Timers
+      integer(ISZ):: np,is
+      real(kind=8):: dt,time
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+
+c Given current and previous velocities, extrapolates particles to the
+c positions given (in the lab frame) by zzepwin.
+c The extrapolation is approximate. A better version might use the full
+c advance capabilities (from padvnc3d) but that would probably be overkill.
+c --- az calculated from current and previous Vz and dt
+c --- dti calculated by assuming constant az and 
+c ---   computing times at which z crosses lab window
+c --- V extrapolated using current V and estimated A
+c ---   (this avoids having to use E and B to extrapolate V).
+c --- X extrapolated using constant V and estimated A
+
+      real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az
+      integer(ISZ):: iw,ip,nn
+
+      real(kind=8):: timetemp,wtime
+
+      oneondt = 1./dt
+
+c     --- Loop over windows
+      do iw=1,nepwin
+
+c       --- Skip windows with iz defined since those are already dealt with
+c       --- in the moments calculation
+        if (izepwin(iw) >= 0) cycle
+
+c       --- Skip windows that are outside of the grid frame.
+        if (zzepwin(iw)+wzepwin(iw) <= zmmntmin .or.
+     &      zzepwin(iw)-wzepwin(iw) >= zmmntmax) cycle
+
+c       --- Make sure that there is enough room - assuming that all particles
+c       --- could be saved.
+        if (nep(iw,is)+np > nepmax) then
+          nepmax = nep(iw,is)+np
+          call gchange("ExtPart",0)
+        endif
+
+c       --- extrapolate to window if near it
+        do ip=1,np
+          if (zp(ip) < zzepwin(iw)-wzepwin(iw) .or.
+     &        zp(ip) > zzepwin(iw)+wzepwin(iw)) cycle
+c         if (nep(iw,is) == nepmax) cycle
+
+          vx = uxp(ip)*gaminv(ip)
+          vy = uyp(ip)*gaminv(ip)
+          vz = uzp(ip)*gaminv(ip)
+          ax = (uxp(ip) - uxpo(ip))*oneondt
+          ay = (uyp(ip) - uypo(ip))*oneondt
+          az = (uzp(ip) - uzpo(ip))*oneondt
+
+          delz = (zzepwin(iw) - zp(ip))
+          dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
+
+          nep(iw,is) = nep(iw,is) + 1
+          nn = nep(iw,is)
+
+          tep(nn,iw,is) = time + dtstar
+          xep(nn,iw,is) = xp(ip) + vx*dtstar + 0.5*ax*dtstar**2
+          yep(nn,iw,is) = yp(ip) + vy*dtstar + 0.5*ay*dtstar**2
+          uxep(nn,iw,is) = vx + ax*dtstar
+          uyep(nn,iw,is) = vy + ay*dtstar
+          uzep(nn,iw,is) = vz + az*dtstar
+
+        enddo
+      enddo
 
       return
       end
