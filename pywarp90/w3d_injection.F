@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.3 $, $Date: 2004/09/17 18:06:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.4 $, $Date: 2004/09/17 22:31:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -43,7 +43,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
-      real(kind=8):: apinj,bpinj,rinj,rinji,vzinj
+      real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj
       real(kind=8):: sphericalcorrection
       real(kind=8):: vtx,vty
       real(kind=8):: zmid,zleni,ztilt,gamma
@@ -133,6 +133,8 @@ c         --- loop over injection sources
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
+            xpinj = xpinject(ij)
+            ypinj = ypinject(ij)
             vzinj = vzinject(ij)
 
 c         --- Loop over species.
@@ -271,8 +273,8 @@ c             --- Only save particle if it is within the injection region.
                 zp(ii) = zs
                 vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
                 vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
-                uxp(ii) = vzinj*apinj*xp(ii)*ainji + vtx*uxt(ip)
-                uyp(ii) = vzinj*bpinj*yp(ii)*binji + vty*uyt(ip)
+                uxp(ii) = vzinj*(apinj*xp(ii)*ainji + xpinj) + vtx*uxt(ip)
+                uyp(ii) = vzinj*(bpinj*yp(ii)*binji + ypinj) + vty*uyt(ip)
                 if(l_inj_addtempz_abs) then
                   uzp(ii) = vzinj + abs(0.5*vthz_s(is)*uzt(ip))
                 else
@@ -308,8 +310,8 @@ c           --- Transform particles to lab frame
 c             --- The check if nn > 0 is needed since if npmax was zero
 c             --- and no particles were injected then npmax stays zero
 c             --- and the particle arrays are unallocated.
-              call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,.true.)
-              call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,.false.)
+              call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,1)
+              call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
             endif
 
 c           --- get E self-field at initial positions
@@ -526,6 +528,8 @@ c           --- Set some temporaries.
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
+            xpinj = xpinject(ij)
+            ypinj = ypinject(ij)
             vzinj = vzinject(ij)
             rinji = 1./rinject(ij)
 
@@ -835,9 +839,9 @@ c                   --- component of the normal velocity and the specified
 c                   --- vbeam (which is also taken to be normal).
 c                   --- Like the emittance term, the term with ap (and bp)
 c                   --- are probably not correct.
-                    uxp(ii) = spreadx*(vzinj*(apinj*xp(ii)*ainji)
+                    uxp(ii) = spreadx*(vzinj*(apinj*xp(ii)*ainji + xpinj)
      &                      - (vznorm + vzinj)*sin(az)*cos(aa))
-                    uyp(ii) = spready*(vzinj*(bpinj*yp(ii)*binji)
+                    uyp(ii) = spready*(vzinj*(bpinj*yp(ii)*binji + ypinj)
      &                      - (vznorm + vzinj)*sin(az)*sin(aa))
                     if(.not. l_inj_delay_temp) then
                       vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
@@ -901,8 +905,8 @@ c           --- Transform particles to lab frame
 c               --- The check if nn > 0 is needed since if npmax was zero
 c               --- and no particles were injected then npmax stays zero
 c               --- and the particle arrays are unallocated.
-                call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,.true.)
-                call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,.false.)
+                call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,1)
+                call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
               endif
             enddo
 
@@ -1940,19 +1944,23 @@ c             --- the min is always ij.
       return
       end
 c=============================================================================
-      subroutine inj_transform(np,x,y,z,ni,ijp,tsign,lshift)
+      subroutine inj_transform(np,x,y,z,ni,ijp,tsign,ishift)
       use Subtimers3d
       use InjectVars
       use InjectVars3d
       integer(ISZ):: np,ni
       real(kind=8):: x(np),y(np),z(np)
       integer(ISZ):: ijp(ni),tsign
-      logical(ISZ):: lshift
+      integer(ISZ):: ishift
 
 c Transform coordinates from frame of source to frame of lab, or
 c vice versa.
 c When tsign = +1, transform from source frame to lab frame
 c      tsign = -1, transform from lab frame to source frame
+c ishift specifies what kind of coordinate shift is done.
+c  ishift = 1, data is shifted by grid position
+c  ishift = 2, data is shifted by velocity angle
+c  for any other value, the shift is skipped.
 
       real(kind=8):: theta,phi,ct,st,cp,sp
       real(kind=8):: xp,yp,zp
@@ -1961,15 +1969,26 @@ c      tsign = -1, transform from lab frame to source frame
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- If transforming to coordinates of source, subtract source center
-      if (tsign < 0 .and. lshift) then
-        do i=1,np
-          ij = ijp(min(i,ni))
-          if (ij > 0) then
-            x(i) = x(i) - xinject(ij)
-            y(i) = y(i) - yinject(ij)
-            z(i) = z(i) - zinject(ij)
-          endif
-        enddo
+      if (tsign < 0 .and. ishift > 0) then
+        if (ishift == 1) then
+          do i=1,np
+              ij = ijp(min(i,ni))
+            if (ij > 0) then
+              x(i) = x(i) - xinject(ij)
+              y(i) = y(i) - yinject(ij)
+              z(i) = z(i) - zinject(ij)
+            endif
+          enddo
+        else if (ishift == 2) then
+          do i=1,np
+              ij = ijp(min(i,ni))
+            if (ij > 0) then
+              x(i) = x(i) - xpinject(ij)*vzinject(ij)
+              y(i) = y(i) - ypinject(ij)*vzinject(ij)
+              z(i) = z(i) - vzinject(ij)
+            endif
+          enddo
+        endif
       endif
 
       if (maxval(abs(xpinject)) > 0. .or. maxval(abs(ypinject)) > 0.) then
@@ -1985,8 +2004,10 @@ c         --- ypinject = (y2 - y1)/(z2 - z1)
 c         --- where (x1,y1,z1) and (x2,y2,z2) are the two points rotated into
 c         --- the lab frame. Plugging in the transformation equations below
 c         --- produces and inverting produces the following result.
-          theta = atan(xpinject(ij))
-          phi = atan(ypinject(ij)*cos(theta))
+c         theta = atan(xpinject(ij))
+c         phi = atan(ypinject(ij)*cos(theta))
+          theta = thetainject(ij)
+          phi = phiinject(ij)
           ct = cos(theta)
           st = sin(theta)
           cp = cos(phi)
@@ -1997,8 +2018,8 @@ c         --- produces and inverting produces the following result.
           if (ij > 0) then
             if (ni > 1) then
 c             --- See comments above.
-              theta = atan(xpinject(ij))
-              phi = atan(ypinject(ij)*cos(theta))
+              theta = thetainject(ij)
+              phi = phiinject(ij)
               ct = cos(theta)
               st = sin(theta)
               cp = cos(phi)
@@ -2027,15 +2048,26 @@ c             --- followed by a rotation about the new y axis by theta.
       endif
 
 c     --- If transforming from coordinates of source, add source center
-      if (tsign > 0 .and. lshift) then
-        do i=1,np
-          ij = ijp(min(i,ni))
-          if (ij > 0) then
-            x(i) = x(i) + xinject(ij)
-            y(i) = y(i) + yinject(ij)
-            z(i) = z(i) + zinject(ij)
-          endif
-        enddo
+      if (tsign > 0 .and. ishift > 0) then
+        if (ishift == 1) then
+          do i=1,np
+            ij = ijp(min(i,ni))
+            if (ij > 0) then
+              x(i) = x(i) + xinject(ij)
+              y(i) = y(i) + yinject(ij)
+              z(i) = z(i) + zinject(ij)
+            endif
+          enddo
+        else if (ishift == 2) then
+          do i=1,np
+            ij = ijp(min(i,ni))
+            if (ij > 0) then
+              x(i) = x(i) + xpinject(ij)*vzinject(ij)
+              y(i) = y(i) + ypinject(ij)*vzinject(ij)
+              z(i) = z(i) + vzinject(ij)
+            endif
+          enddo
+        endif
       endif
 
 !$OMP MASTER
@@ -2130,7 +2162,7 @@ c             --- emitting surface.
           enddo
         enddo
 
-        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,.true.)
+        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
 
 #ifdef MPIPARALLEL
 c       --- Select only those data points which are within the domain
@@ -2377,7 +2409,7 @@ c     --- copying particle data to temporary arrays.
       yy = yp
       zz = zp
       ijp = int(pid)
-      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
+      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,1)
 
 c     --- Loop over particles
       do ip=1,npart
@@ -2502,7 +2534,7 @@ c           --- (i.e. zero) and the value on the secondary surface.
       enddo
 
 c     --- Transform E field from injection source frame to lab frame
-      call inj_transform(npart,tex,tey,tez,npart,ijp,1,.false.)
+      call inj_transform(npart,tex,tey,tez,npart,ijp,1,0)
 
 c     --- Copy the temporary arrays into the original. Note that for
 c     --- particles near the source, the original was zero-ed out.
@@ -2549,7 +2581,7 @@ c     --- Transform the particles into the frame of the injection source
       yy = yp(ipmin:ipmin+npart-1)
       zz = zp(ipmin:ipmin+npart-1)
       ijp = int(pid(ipmin:ipmin+npart-1,injpid))
-      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
+      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,1)
 
 c     --- Loop over particles
       do ip=1,npart
@@ -2624,7 +2656,7 @@ c         --- reverse sign of pid(,tpid) indicating that temperature has been ad
       enddo
 
 c     --- Transform thermal velocities to lab frame
-      call inj_transform(npart,vx,vy,vz,npart,ijp,1,.false.)
+      call inj_transform(npart,vx,vy,vz,npart,ijp,1,0)
       uxp(ipmin:ipmin+npart-1) = uxp(ipmin:ipmin+npart-1) + vx
       uyp(ipmin:ipmin+npart-1) = uyp(ipmin:ipmin+npart-1) + vy
       uzp(ipmin:ipmin+npart-1) = uzp(ipmin:ipmin+npart-1) + vz
@@ -2676,7 +2708,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,1)
         endif
 
         ww = sq(is)*sw(is)*dxi*dyi*dzi
@@ -2745,7 +2777,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,1)
         endif
 
       enddo
@@ -2811,7 +2843,7 @@ c       --- All that this should do is add zinject to zp.
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,1)
         endif
 
         ww = 2.*sq(is)*sw(is)*dzi
@@ -2839,7 +2871,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,1)
         endif
 
       enddo
@@ -2952,7 +2984,7 @@ c              endif
           enddo
         enddo
 
-        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,.true.)
+        call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
 
 #ifdef MPIPARALLEL
 c       --- Select only those data points which are within the domain
@@ -3100,7 +3132,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,1)
         endif
         wws = sq(is)*sw(is)*dxi*dyi
         do ip=ins(is),ins(is)+nps(is)-1
@@ -3189,7 +3221,7 @@ c           --- Deposit the particle's charge onto the emitting region.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,1)
         endif
 
       enddo
@@ -3214,7 +3246,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,1)
         endif
         wws = sq(is)*sw(is)
         do ip=ins(is),ins(is)+nps(is)-1
@@ -3289,7 +3321,7 @@ c           --- Deposit the particle's charge onto the emitting region.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,1)
         endif
        enddo
 c     --- Loop over unique injection sources
@@ -3378,7 +3410,7 @@ c            dz1 = 2.*dz1
           end do
         end do
 
-        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,.true.)
+        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,1)
         do iz = 1, inj_nz-1
           if(iz==1) then
             dz0 = dzmin*deltaz(ij)
@@ -3425,8 +3457,8 @@ c           --- transform field vector from source coordinates to lab coordinate
           end do
           inj_ez_3d(:,:,0,ij) = inj_ez_3d(:,:,1,ij)
         end do
-        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,1,.true.)
-        call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,.false.)
+        call inj_transform(nrhs,xxp,yyp,zzp,1,ij,1,1)
+        call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,0)
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
             if(solvergeom==XYZgeom) then
@@ -3574,7 +3606,7 @@ c     --- Transform the particles into the frame of the injection source
       yy = yp
       zz = zp
       ijp = int(pid)
-      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
+      call inj_transform(npart,xx,yy,zz,npart,ijp,-1,1)
 
 c     --- Loop over particles
       do ip=1,npart
@@ -3717,7 +3749,7 @@ c            wz = dd*2.**(inj_nz-iz)-1.
         endif
       enddo
 
-      call inj_transform(npart,tex,tey,tez,npart,ijp,1,.false.)
+      call inj_transform(npart,tex,tey,tez,npart,ijp,1,0)
       ex = ex + tex
       ey = ey + tey
       ez = ez + tez
