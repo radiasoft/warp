@@ -1,4 +1,4 @@
-!     Last change:  JLV   5 Mar 2003   10:13 am
+!     Last change:  JLV   7 Mar 2003    1:15 pm
 #include "top.h"
 
 module multigrid_common
@@ -68,7 +68,7 @@ TYPE(BNDtype), POINTER :: b
 #ifdef MPIPARALLEL
   workfact = mgridrz_workfact
   bg%nzp   = nzpslave(my_index)
-  bg%nrpar = bg%nrp
+  bg%nrpar = nr
   bg%nzpar = bg%nzp
 #else
   bg%nzp   = nz
