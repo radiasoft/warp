@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.15 $, $Date: 2002/10/28 23:13:26 $
+c TOPSLAVE.M, version $Revision: 1.16 $, $Date: 2002/11/05 21:37:11 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -18,14 +18,14 @@ c  Impose boundary conditions on zp.  Puts particles that exit to the left
 c  lower in the arrays and particles that exit to the right higher.  Keeps
 c  track of how many left and sends to the appropriate processor.
 
-      real(kind=8):: temp,syslen
-      integer(ISZ):: is,ip,ins_init,nps_init,idest
+      real(kind=8):: temp,pidtemp(npid),syslen
+      integer(ISZ):: is,ip,ins_init,nps_init,idest,ipid
       integer(ISZ):: nsendleft,nsendright,nrecvleft,nrecvright
       integer(ISZ):: left_pe,right_pe
       integer(ISZ):: nquant
 
 c     integer(ISZ):: ii
-c     integer(ISZ):: blocklengths(7),displacements(7)
+c     integer(ISZ):: blocklengths(100),displacements(100)
       include "mpif.h"
       integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(ISZ):: mpinewtype,mpirequest
@@ -77,9 +77,9 @@ c         --- in the arrays.
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
             if (npmaxi > 0) then
-              temp = pid(ip)
-              pid(ip) = pid(idest)
-              pid(idest) = temp
+              pidtemp = pid(ip,:)
+              pid(ip,:) = pid(idest,:)
+              pid(idest,:) = pidtemp
             endif
 c         endif
 
@@ -111,9 +111,9 @@ c         --- in the arrays.
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
             if (npmaxi > 0) then
-              temp = pid(ip)
-              pid(ip) = pid(idest)
-              pid(idest) = temp
+              pidtemp = pid(ip,:)
+              pid(ip,:) = pid(idest,:)
+              pid(idest,:) = pidtemp
             endif
             ip = ip - 1
           endif
@@ -165,9 +165,9 @@ c       --- Make sure these are zero in case they are not set below.
         nsendright = 0
 
 c       --- Number of quantities to be exchanged. Normally it is seven,
-c       --- but when npmaxi > 0, then it is 8 since pid is also exchanged.
+c       --- but when npmaxi > 0, then it is more since pid is also exchanged.
         nquant = 7
-        if (npmaxi > 0) nquant = 8
+        if (npmaxi > 0) nquant = nquant + npid
 
 c       --- Copy particles being sent to the left to buffer1.
         if (pbound0==periodic .or. my_index > 0) then
@@ -184,8 +184,12 @@ c       --- Copy particles being sent to the left to buffer1.
             call copyarry(uyp(ins_init),buffer1(1+4*nsendleft),nsendleft)
             call copyarry(uzp(ins_init),buffer1(1+5*nsendleft),nsendleft)
             call copyarry(gaminv(ins_init),buffer1(1+6*nsendleft),nsendleft)
-            if (npmaxi > 0)
-     &        call copyarry(pid(ins_init),buffer1(1+7*nsendleft),nsendleft)
+            if (npmaxi > 0) then
+              do ipid=1,npid
+                call copyarry(pid(ins_init,ipid),buffer1(1+(6+ipid)*nsendleft),
+     &                        nsendleft)
+              enddo
+             endif
           endif
         endif
 
@@ -205,19 +209,23 @@ c       --- Copy particles being sent to the right to buffer2.
             call copyarry(uyp(ip),buffer2(1+4*nsendright),nsendright)
             call copyarry(uzp(ip),buffer2(1+5*nsendright),nsendright)
             call copyarry(gaminv(ip),buffer2(1+6*nsendright),nsendright)
-            if (npmaxi > 0)
-     &        call copyarry(pid(ip),buffer2(1+7*nsendright),nsendright)
+            if (npmaxi > 0) then
+              do ipid=1,npid
+                call copyarry(pid(ip,ipid),buffer2(1+(6+ipid)*nsendright),
+     &                        nsendright)
+              enddo
+            endif
           endif
         endif
 
 c       --- Now send the data.
 
 c       --- First send the number of particles to be sent
-        call MPI_SENDRECV(nsendleft,1,MPI_INTEGER,left_pe,0,
-     &                    nrecvright,1,MPI_INTEGER,right_pe,0,
+        call MPI_SENDRECV(nsendleft,1,MPI_INTEGER,left_pe,20,
+     &                    nrecvright,1,MPI_INTEGER,right_pe,20,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
-        call MPI_SENDRECV(nsendright,1,MPI_INTEGER,right_pe,0,
-     &                    nrecvleft,1,MPI_INTEGER,left_pe,0,
+        call MPI_SENDRECV(nsendright,1,MPI_INTEGER,right_pe,20,
+     &                    nrecvleft,1,MPI_INTEGER,left_pe,20,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
 c       --- Make sure that there is space for the incoming data.
@@ -232,11 +240,11 @@ c       --- Make sure that there is space for the incoming data.
           call gchange("Databuffers",0)
         endif
 
-        call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
-     &                    buffer3,nquant*nrecvleft,MPI_DOUBLE_PRECISION,left_pe,0,
+        call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,20,
+     &                    buffer3,nquant*nrecvleft,MPI_DOUBLE_PRECISION,left_pe,20,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
-        call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
-     &                    buffer4,nquant*nrecvright,MPI_DOUBLE_PRECISION,right_pe,0,
+        call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,20,
+     &                    buffer4,nquant*nrecvright,MPI_DOUBLE_PRECISION,right_pe,20,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
         if (nrecvleft > 0) then
@@ -248,8 +256,12 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
           call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
           call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
-          if (npmaxi > 0)
-     &      call copyarry(buffer3(1+7*nrecvleft),pid(ip),nrecvleft)
+          if (npmaxi > 0) then
+            do ipid=1,npid
+              call copyarry(buffer3(1+(6+ipid)*nrecvleft),pid(ip,ipid),
+     &                      nrecvleft)
+            enddo
+          endif
           ins(is) = ins(is) - nrecvleft
           nps(is) = nps(is) + nrecvleft
         endif
@@ -263,8 +275,12 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
           call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
           call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
-          if (npmaxi > 0)
-     &      call copyarry(buffer4(1+7*nrecvright),pid(ip),nrecvright)
+          if (npmaxi > 0) then
+            do ipid=1,npid
+              call copyarry(buffer4(1+(6+ipid)*nrecvright),pid(ip,ipid),
+     &                      nrecvright)
+            enddo
+          endif
           nps(is) = nps(is) + nrecvright
         endif
 
@@ -282,8 +298,11 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi > 0)
-c    &    call MPI_ADDRESS(pid(ip),displacements(8),mpierror)
+c       if (npmaxi > 0) then
+c         do ipid=1,npid
+c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c         enddo
+c       endif
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -308,8 +327,11 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi > 0)
-c    &    call MPI_ADDRESS(pid(ip),displacements(8),mpierror)
+c       if (npmaxi > 0) then
+c         do ipid=1,npid
+c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c         enddo
+c       endif
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -365,7 +387,8 @@ c     --- temporary for z moments
       real(kind=8):: maxes1(6),mines1(6)
       real(kind=8):: maxes2(6),mines2(6)
       include "mpif.h"
-      integer(ISZ):: mpierror,mpirequest,mpistatus(MPI_STATUS_SIZE)
+      integer(ISZ):: mpierror,mpirequest(2),mpistatus(MPI_STATUS_SIZE,2)
+      integer(ISZ):: w
 
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -408,7 +431,7 @@ c     --- Check if data being sent overlaps with data being received.
 c     --- If so, wait for the incoming data first.
       if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
         call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                left_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=left_iz,left_iz+left_nz
           do im=1,NUMZMMNT
             zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
@@ -417,21 +440,23 @@ c     --- If so, wait for the incoming data first.
       endif
 
 c     --- Send the data (which is copied into temp1 to make it contiguous).
+      w = 0
       if (my_index < nslaves-1) then
         do iz=right_iz,right_iz+right_nz
           do im=1,NUMZMMNT
             temp1(im,iz-right_iz) = zmmnts(iz,im)
           enddo
         enddo
+        w = w + 1
         call MPI_ISEND(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 right_pe,30,MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
 c     --- If there is no overlap, wait for the data after sending so
 c     --- that processors to the right do not have to also wait.
       if (my_index > 0 .and. right_iz > left_iz+left_nz) then
         call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                left_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=left_iz,left_iz+left_nz
           do im=1,NUMZMMNT
             zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
@@ -446,7 +471,7 @@ c     --- Check if data being sent overlaps with data being received.
 c     --- If so, wait for the incoming data first.
       if (my_index < nslaves-1 .and. right_iz <= left_iz+left_nz) then
         call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                right_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=right_iz,right_iz+right_nz
           do im=1,NUMZMMNT
             zmmnts(iz,im) = temp1(im,iz-right_iz)
@@ -461,21 +486,25 @@ c     --- Send the data
             temp2(im,iz-left_iz) = zmmnts(iz,im)
           enddo
         enddo
+        w = w + 1
         call MPI_ISEND(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                 left_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 left_pe,30,MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
 c     --- If there is no overlap, wait for the data after sending so
 c     --- that processors to the right do not have to also wait.
       if (my_index < nslaves-1 .and. right_iz > left_iz+left_nz) then
         call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                right_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=right_iz,right_iz+right_nz
           do im=1,NUMZMMNT
             zmmnts(iz,im) = temp1(im,iz-right_iz)
           enddo
         enddo
       endif
+
+c     --- Free up space of nonblocking messages.
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
 c     --- Find global max's and min's
 c     --- This is done minimizing the amount of interprocessor communication
@@ -526,7 +555,8 @@ c Assumes a maximum grid overlap of 11.
       integer(ISZ):: iz
       real(kind=8):: temp(0:10)
       include "mpif.h"
-      integer(ISZ):: mpierror,mpirequest,mpistatus(MPI_STATUS_SIZE)
+      integer(ISZ):: mpierror,w
+      integer(ISZ):: mpirequest(2),mpistatus(MPI_STATUS_SIZE,2)
 
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -558,23 +588,28 @@ c     --- elements of data are to be exchanged.
       endif
 
 c     --- Send the data to the right.
+      w = 0
       if (my_index < nslaves-1 .or. bound0==periodic) then
+        w = w + 1
         call MPI_ISEND(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
-     &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 right_pe,40,MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
       if (my_index > 0 .or. bound0==periodic) then
         call MPI_RECV(temp,left_nz+1,MPI_DOUBLE_PRECISION,
-     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                left_pe,40,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=left_iz,left_iz+left_nz
           curr(iz) = curr(iz) + temp(iz-left_iz)
         enddo
+        w = w + 1
         call MPI_ISEND(curr(left_iz),left_nz+1,MPI_DOUBLE_PRECISION,
-     &                 left_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 left_pe,40,MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
       if (my_index < nslaves-1 .or. bound0==periodic) then
         call MPI_RECV(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
-     &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                right_pe,40,MPI_COMM_WORLD,mpistatus,mpierror)
       endif
+
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
       return
       end
@@ -645,6 +680,22 @@ c to all processors.
       include "mpif.h"
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
+     &                   MPI_COMM_WORLD,mpierror)
+      data = data2
+
+      return
+      end
+c==========================================================================
+      subroutine parallellor(data)
+      logical(ISZ):: data
+c Logical OR of data over all processors.  Resulting data is broadcasted
+c to all processors.
+
+      logical(ISZ):: data2
+      integer(ISZ):: mpierror
+      include "mpif.h"
+
+      call MPI_ALLREDUCE(data,data2,1,MPI_LOGICAL,MPI_LOR,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
