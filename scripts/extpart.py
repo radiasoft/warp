@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.35 2005/01/21 21:23:09 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.36 2005/02/15 01:24:59 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -55,6 +55,7 @@ The follow all take an optional argument to specify species number.
  - gett: Get time at which particle was saved
  - getx, y, ux, uy, uz, vx, vy, vz, xp, yp, r, theta, rp: Get the various
      coordinates or velocity of particles
+ - getpid: Get the particle ID info
 
 The following are available plot routines. All take an optional argument to
 specify species number. Additional arguments are the same as the 'pp' plotting
@@ -104,6 +105,7 @@ routines (such as ppxxp).
       self.uxep = []
       self.uyep = []
       self.uzep = []
+      self.pidep = []
       for js in range(ns):
         self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
@@ -111,6 +113,8 @@ routines (such as ppxxp).
         self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.pidep.append(AppendableArray(self.nepmax,type='d',autobump=bump,
+                                          shape=(top.npidepmax,)))
     else:
       self.tep = ns*[zeros(0,'d')]
       self.xep = ns*[zeros(0,'d')]
@@ -118,6 +122,7 @@ routines (such as ppxxp).
       self.uxep = ns*[zeros(0,'d')]
       self.uyep = ns*[zeros(0,'d')]
       self.uzep = ns*[zeros(0,'d')]
+      self.pidep = ns*[zeros((0,top.npidepmax),'d')]
 
   def addspecies(self):
     if self.laccumulate and not self.dumptofile:
@@ -129,6 +134,8 @@ routines (such as ppxxp).
         self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.pidep.append(AppendableArray(self.nepmax,type='d',autobump=bump,
+                                          shape=(top.npidepmax,)))
     else:
       self.tep = top.ns*[zeros(0,'d')]
       self.xep = top.ns*[zeros(0,'d')]
@@ -136,6 +143,7 @@ routines (such as ppxxp).
       self.uxep = top.ns*[zeros(0,'d')]
       self.uyep = top.ns*[zeros(0,'d')]
       self.uzep = top.ns*[zeros(0,'d')]
+      self.pidep = top.ns*[zeros((0,top.npidepmax),'d')]
 
   def clear(self):
     self.setuparrays(top.ns)
@@ -254,6 +262,7 @@ routines (such as ppxxp).
         ff.write('ux'+suffix,self.getux(js=js))
         ff.write('uy'+suffix,self.getuy(js=js))
         ff.write('uz'+suffix,self.getuz(js=js))
+        ff.write('pid'+suffix,self.getpid(js=js))
     ff.close()
 
   def accumulate(self):
@@ -307,6 +316,10 @@ routines (such as ppxxp).
       ux = gatherarray(top.uxep[:nn,id,js],othersempty=1)
       uy = gatherarray(top.uyep[:nn,id,js],othersempty=1)
       uz = gatherarray(top.uzep[:nn,id,js],othersempty=1)
+      if top.npidepmax > 0:
+        pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
+      else:
+        pid = zeros((nn,0),'d')
       if self.laccumulate and not self.dumptofile:
         self.tep[js].append(t+0.)
         self.xep[js].append(x+0.)
@@ -314,6 +327,7 @@ routines (such as ppxxp).
         self.uxep[js].append(ux+0.)
         self.uyep[js].append(uy+0.)
         self.uzep[js].append(uz+0.)
+        self.pidep[js].append(pid+0.)
       else:
         self.tep[js] = t
         self.xep[js] = x
@@ -321,6 +335,7 @@ routines (such as ppxxp).
         self.uxep[js] = ux
         self.uyep[js] = uy
         self.uzep[js] = uz
+        self.pidep[js] = pid
     if self.dumptofile: self.dodumptofile()
     # --- Force nep to zero to ensure that particles are not saved twice.
     top.nep[id,:] = 0
@@ -368,10 +383,18 @@ feature.
         self.uxep[js].append(ff.read('ux_%d_%d'%(ii,js)))
         self.uyep[js].append(ff.read('uy_%d_%d'%(ii,js)))
         self.uzep[js].append(ff.read('uz_%d_%d'%(ii,js)))
+        self.pidep[js].append(ff.read('pid_%d_%d'%(ii,js)))
     ff.close()
 
   ############################################################################
   def selectparticles(self,val,js=0,tc=None,wt=None,tp=None):
+    """
+ - js=0: Species number to gather from.
+ - tc=None: time at which to gather particles from. When not given, returns
+            all particles.
+ - wt=top.dt: Width of region around tc from which to select particles.
+ - tp=gett(js=js): Time value to use for the particle selection
+    """
     if tc is None: return val[js][:]
     if wt is None: wt = self.dt
     if tp is None: tp = self.tep[js][:]
@@ -397,6 +420,11 @@ feature.
     return self.selectparticles(self.uyep,js,tc,wt,tp)
   def getvz(self,js=0,tc=None,wt=None,tp=None):
     return self.selectparticles(self.uzep,js,tc,wt,tp)
+  def getpid(self,js=0,tc=None,wt=None,tp=None,id=0):
+    if top.npidepmax > 0:
+      return self.selectparticles(self.pidep,js,tc,wt,tp)[:,id]
+    else:
+      return zeros((self.getn(js,tc,wt,tp),0),'d')
 
   def getxp(self,js=0,tc=None,wt=None,tp=None):
     return self.getux(js,tc,wt,tp)/self.getuz(js,tc,wt,tp)
