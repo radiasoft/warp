@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.171 $, $Date: 2004/09/30 00:20:05 $
+c@(#) File W3D.F, version $Revision: 3.172 $, $Date: 2004/11/12 23:38:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -824,7 +824,7 @@ c  Phase space diagnostics
 c  Finally, moment diagnostic printout and history storage
 
       if (caller == "w3dgen" .or. lspecial)
-     &  call minidiag (it,time,lmoments)
+     &  call minidiag (it,time,lspecial)
 !$OMP MASTER
       if (lw3dtimesubs) timestep3d = timestep3d + wtime() - substarttime
 !$OMP END MASTER

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.128 $, $Date: 2004/09/15 21:31:58 $
+c@(#) File DTOP.F, version $Revision: 3.129 $, $Date: 2004/11/12 23:38:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -8,7 +8,7 @@ c  This file contains the diagnostic plotting routines.
 c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
-      subroutine minidiag (itt,tim,lmoments)
+      subroutine minidiag (itt,tim,lspecial)
       use InDiag
       use Io
       use Z_arrays
@@ -18,7 +18,7 @@ c=============================================================================
       use Moments
       integer(ISZ):: itt
       real(kind=8):: tim
-      logical(ISZ):: lmoments
+      logical(ISZ):: lspecial
 
 c  Printout particle moments and field qty, writes into history buffers, etc.
 c  Send one-liner to print file, and possibly to tty.
@@ -37,7 +37,7 @@ c     --- called 'oneliner'.
       if (loneliner) then
         call execuser("oneliner")
       else
-        if (lmoments) call oneliner (STDOUT,itt,tim,pz,ese,ek)
+        if (lspecial) call oneliner (STDOUT,itt,tim,pz,ese,ek)
       endif
 
       if (nhist .gt. 0) then
@@ -646,7 +646,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.128 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.129 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
