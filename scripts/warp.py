@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.78 2004/11/18 02:00:04 dave Exp $"
+warp_version = "$Id: warp.py,v 1.79 2004/12/03 18:01:07 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -21,8 +21,7 @@ try:
 except ImportError:
   pass
 
-# --- Gist needs to be imported before pyBasis since pyBasis calls a function
-# --- from gist. Also, since gist is only loaded on PE0 in the parallel
+# --- Since gist is only loaded on PE0 in the parallel
 # --- environment, the parallel module must also be loaded in to check
 # --- whether this is in fact running in parallel.
 
@@ -41,19 +40,12 @@ try:
 except ImportError:
   pass
 
-# Try importing the warpC shared object which contains all of WARP and pybasisC
-try:
-  from warpC import *
-except ImportError:
-  pass
+# Import the warpC shared object which contains all of WARP and pybasisC
+from warpC import *
 
-try:
-  import pybasisC # This will fail in Forthon based Warp.
-  from pyBasis import *
-except ImportError:
-  from Forthon import *
-  from warputils import *
-  import RandomArray
+from Forthon import *
+from warputils import *
+import RandomArray
 
 # --- The WARP modules must be imported in the order below because of
 # --- linking dependencies.
@@ -305,7 +297,7 @@ returns a digit reversed random number.
     return result
 
 # --- Gaussian distribution
-# --- This was in pyBasis but had to be moved here in order to use rnormdig.
+# --- This had to be moved here in order to use rnormdig.
 # --- First, try and define a normal generator from the RNG module.
 try:
   _normaldistribution = RNG.NormalDistribution(0.,1.)
