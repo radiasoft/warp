@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.17 $, $Date: 2005/01/12 16:59:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.18 $, $Date: 2005/01/21 15:09:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -728,7 +728,7 @@ c                   --- elliptical annulus with outer major and minor
 c                   --- size of ainject and binject and inner size of
 c                   --- ainjmin and binjmin.
                     if(linj_rectangle) then
-                      if (abs(xp(ii)) > ainji .or. abs(yp(ii)) > binji) cycle
+                      if (abs(xp(ii)) > ainj .or. abs(yp(ii)) > binj) cycle
                       if (abs(xp(ii)) < ainjmin(ij) .or.
      &                    abs(yp(ii)) < binjmin(ij)) cycle
                     else
@@ -942,6 +942,7 @@ c         --- removal of particles outside the grid.
      &                      ymmin,dy,zp(ii),zmmin,dz,uxp(ii),
      &                      uyp(ii),uzp(ii),gaminv(ii),
      &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
+              call processlostpart(is,clearlostpart,time,zbeam)
             endif
           enddo
 
@@ -2216,13 +2217,15 @@ c       --- This also removes particles not within the domain of this
 c       --- process.
         nn = i1
         do ii=i1,i2
-          if (inj_zmmin <= zz(ii) .and. zz(ii) < inj_zmmax .and. nn < ii) then
-            xi(nn) = xi(ii)
-            yi(nn) = yi(ii)
-            xx(nn) = xx(ii)
-            yy(nn) = yy(ii)
-            zz(nn) = zz(ii)
-            in(nn) = in(ii)
+          if (inj_zmmin <= zz(ii) .and. zz(ii) < inj_zmmax) then
+            if (nn < ii) then
+              xi(nn) = xi(ii)
+              yi(nn) = yi(ii)
+              xx(nn) = xx(ii)
+              yy(nn) = yy(ii)
+              zz(nn) = zz(ii)
+              in(nn) = in(ii)
+            endif
             nn = nn + 1
           endif
         enddo
@@ -2524,8 +2527,8 @@ c         --- emitting surface.
           wx = spreadx*(px - ix)
           wy = spready*(py - iy)
 
-          if (spreadx*px < 0. .or. (px+1)*spreadx > inj_nx .or.
-     &        spready*py < 0. .or. (py+1)*spready > inj_ny) cycle
+          if (spreadx*px < 0. .or. px*spreadx > inj_nx .or.
+     &        spready*py < 0. .or. py*spready > inj_ny) cycle
 
 c         --- Calculate the normal electric field from the potential drop in
 c         --- front of the emitting surface. The normal field given by the
