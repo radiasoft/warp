@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.89 2002/11/07 00:08:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.90 2002/11/25 20:59:22 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -54,6 +54,7 @@ Plots contours of charge density (rho) or electrostatic potential (phi) in
 various planes.
 pcrhozy(), pcrhozx(), pcrhoxy()
 pcphizy(), pcphizx(), pcphixy()
+pcselfezy(), pcselfezx(), pcselfexy()
 
 Dynamically view any 3-D surface plot
 viewsurface
@@ -2268,6 +2269,63 @@ be from none to all three.
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
    #if bcast: ppp = broadcast(ppp)
    #return ppp
+# --------------------------------------------------------------------------
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0):
+  """Returns slices of selfe, the electrostatic field array. The shape of
+the object returned depends on the number of arguments specified, which can
+be from none to all three.
+  - comp: field component to get, either 'x', 'y', or 'z'
+  - ix = None
+  - iy = None
+  - iz = None
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if w3d.nx_selfe == 0:
+    print "getselfe warning: selfe not allocated"
+    return
+  ic = ['x','y','z'].index(comp)
+  if not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      return w3d.selfe[ic,:,:,:]
+    if ix is not None and iy is None     and iz is None    :
+      return w3d.selfe[ic,ix,:,:]
+    if ix is None     and iy is not None and iz is None    :
+      return w3d.selfe[ic,:,iy,:]
+    if ix is None     and iy is None     and iz is not None:
+      return w3d.selfe[ic,:,:,iz]
+    if ix is not None and iy is not None and iz is None    :
+      return w3d.selfe[ic,ix,iy,:]
+    if ix is not None and iy is None     and iz is not None:
+      return w3d.selfe[ic,ix,:,iz]
+    if ix is None     and iy is not None and iz is not None:
+      return w3d.selfe[ic,:,iy,iz]
+    if ix is not None and iy is not None and iz is not None:
+      return w3d.selfe[ic,ix,iy,iz]
+  else:
+    iz1 = top.izfsslave[me] - top.izslave[me]
+    if me < npes-1:
+      iz2 = top.izfsslave[me+1] - top.izslave[me]
+    else:
+      iz2 = iz1 + top.nzfsslave[me] + 1
+    eee = w3d.selfe[ic,:,:,iz1:iz2]
+    if ix is not None and iy is None:
+      eee = eee[ix,:,:]
+    elif ix is None and iy is not None:
+      eee = eee[:,iy,:]
+    elif ix is not None and iy is not None:
+      eee = eee[ix,iy,:]
+    if iz is None:
+      eee = transpose(gatherarray(transpose(eee)))
+    else:
+      pe = convertizfstope(iz)
+      if pe is None: return None
+      if me == pe: eee = eee[...,iz-top.izfsslave[me]]
+      else:        eee = zeros(shape(eee[...,0]),'d')
+      if (me == pe or me == 0) and (pe != 0): eee = getarray(pe,eee,0)
+    if bcast: eee = broadcast(eee)
+    return eee
 ##########################################################################
 ##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
@@ -2473,6 +2531,111 @@ def pcphixy(iz=None,fullplane=1,**kw):
   ppgeneric(grid=ppp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
+##########################################################################
+def pcselfezy(comp=None,ix=None,fullplane=1,lbeamframe=1,**kw):
+  """Plots contours of electrostatic field in the Z-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - ix=w3d.ix_axis X index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  """
+  if ix is None: ix = w3d.ix_axis
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
+  settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  eee = getselfe(comp=comp,ix=ix)
+  if me > 0: eee = zeros((w3d.ny+1,w3d.nzfull+1),'d')
+  if fullplane and (w3d.l2symtry or w3d.l4symtry):
+    ee1 = zeros((2*w3d.ny+1,w3d.nzfull+1),'d')
+    ee1[w3d.ny:,:] = eee
+    ee1[w3d.ny::-1,:] = eee
+    eee = ee1
+    kw['ymin'] = - kw['ymax']
+  ppgeneric(grid=transpose(eee),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
+##########################################################################
+def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,**kw):
+  """Plots contours of electrostatic potential in the Z-X plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iy=w3d.iy_axis Y index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  """
+  if iy is None: iy = w3d.iy_axis
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
+  settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  eee = getselfe(comp=comp,iy=iy)
+  if me > 0: eee = zeros((w3d.nx+1,w3d.nzfull+1),'d')
+  if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+    ee1 = zeros((2*w3d.nx+1,w3d.nzfull+1),'d')
+    ee1[w3d.nx:,:] = eee
+    ee1[w3d.nx::-1,:] = eee
+    eee = ee1
+    kw['ymin'] = - kw['ymax']
+  ppgeneric(grid=transpose(eee),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
+##########################################################################
+def pcselfexy(comp=None,iz=None,fullplane=1,**kw):
+  """Plots contours of electrostatic potential in the X-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iz=w3d.iz_axis Z index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  """
+  if iz is None: iz = w3d.iz_axis + top.izslave[me]
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
+  settitles("Electrostatic E%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  eee = getselfe(comp=comp,iz=iz)
+  if me > 0: eee = zeros((w3d.nx+1,w3d.ny+1),'d')
+  if fullplane and w3d.l4symtry:
+    ee1 = zeros((2*w3d.nx+1,2*w3d.ny+1),'d')
+    ee1[w3d.nx:,w3d.ny:] = eee
+    ee1[w3d.nx::-1,w3d.ny:] = eee
+    ee1[w3d.nx:,w3d.ny::-1] = eee
+    ee1[w3d.nx::-1,w3d.ny::-1] = eee
+    eee = ee1
+    kw['ymin'] = - kw['ymax']
+    kw['xmin'] = - kw['xmax']
+  elif fullplane and w3d.l2symtry:
+    ee1 = zeros((w3d.nx+1,2*w3d.ny+1),'d')
+    ee1[:,w3d.ny:] = eee
+    ee1[:,w3d.ny::-1] = eee
+    eee = ee1
+    kw['ymin'] = - kw['ymax']
+  ppgeneric(grid=eee,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 ##########################################################################
 def ppdecomposition(scale=1.,minscale=0.,gap=0.2):
