@@ -130,7 +130,7 @@ c     the result of the final push will be identical to
 c     a full conventional push.
         
 c     print*,"xpush2",dt,alpha(1)
-c     print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+      print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
       call xpush3d (npd,xp(ipmin),yp(ipmin),zp(ipmin),uxeff,
      &               uyeff,uzeff,gaminv(ipmin),dt)
 
@@ -344,7 +344,8 @@ c
 c     Assumes  E and B are already set, either via setfields
 c      or via calls in padvnc3d.
 c     Calculate B**2 and interpolation parameter
-      do i=1,np
+      if (ipalpha == 1) then
+       do i=1,np
           bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
           bsq_safe=bsq(i)+dksmall
           bsqi(i) = 1./bsq_safe
@@ -357,7 +358,32 @@ c         alpha(i) = 1./sqrt(1.+omegadtsq)
 c         alpha = 1./sqrt(1.+4.*omegadtsq)
 c         alpha=exp(-omegadtsq)
           alphabar(i)=1.-alpha(i)
-      enddo
+       enddo
+      elseif (ipalpha == 2) then
+       do i=1,np
+          bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
+          bsq_safe=bsq(i)+dksmall
+          bsqi(i) = 1./bsq_safe
+c         calculate interpolation parameter, 0 if magnetized, 1 if not
+          omegacesq = qovermsq(is)*bsq(i)
+          omegadtsq = omegacesq*dt**2
+          alpha(i) = usealphacalc(is)/(1.+alphcoef*omegadtsq)  
+     &       + notusealphcalc(is)
+          alphabar(i)=1.-alpha(i)
+       enddo
+      else
+       do i=1,np
+          bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
+          bsq_safe=bsq(i)+dksmall
+          bsqi(i) = 1./bsq_safe
+c         calculate interpolation parameter, 0 if magnetized, 1 if not
+          omegacesq = qovermsq(is)*bsq(i)
+          omegadtsq = omegacesq*dt**2
+          alpha(i) = usealphacalc(is)/(1.+alphcoef*omegadtsq)**palpha  
+     &       + notusealphcalc(is)
+          alphabar(i)=1.-alpha(i)
+       enddo
+      endif
 
       if (igradb == 1) then
 c       igradb == 1, get data from lookup table.

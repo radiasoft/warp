@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.168 $, $Date: 2004/09/25 00:37:51 $
+#@(#) File W3D.V, version $Revision: 3.169 $, $Date: 2004/11/05 22:04:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.168 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.169 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -462,6 +462,7 @@ m_over_q(1000)  _real [mks] /0./ # mass over charge, calc. by code
 qovermsq(1000)  _real [mks] /0./ # (charge/mass)**2, calc. by code
 alpha0(1000)     _real     /0./ 
                 # Interpolation parameter if not to be automatically set
+                # Note alpha0=0 for pure drift kinetics
 acntr(1000)      _real /.5/    # centering parameter for predictor-corrector
 usealphacalc(1000) _real  /1./  # fraction of calculated interpolation parameter
                          # to use; will use (1-usealphacalc)*alpha0.
@@ -469,11 +470,19 @@ notusealphcalc(1000) _real /0./ # 1-usealphacalc, calculated by code
 dksmall       real  /1.e-20/ # small parameter for safe divides
 igradb   integer  /2/    #  parameter to select method of calculating grad B
                          # 1 for lookup table, 2 for assumed quadrupole
+                         # 3 for lookup in z, quad in x,y
 interpdk(1000) _integer  /0/ # parameter specifies whether and how to do orbit
-                         # interpolation: 0, full orbit. 1, interpolate;
-                         # 2, pure drift
+                         # interpolation: 0, full orbit. 1, interpolate
 alphcoef      real    /0.25/ # coefficient multiplying (omegac dt)**2
                              # in setting alpha
+ipalpha       integer /1/   # power of sqrt(1+omegadt) in setting alpha.
+                            # allowed values for now are  1 or 2.  
+                            # If any other value, then uses the arbitrary 
+                            # (real) power palpha in a slower calculation
+palpha        real  /0.5/    # power of (1+omegadt) in setting alpha
+                            # used only if ipalpha != 1 or 2.
+npredcor      integer /1/   # number of times to do predictor-corrector
+                            # update of effective velocities
 
 *********** DKInterptmp:
 # This group contains temporary data for the drift-kinetic interpolation
