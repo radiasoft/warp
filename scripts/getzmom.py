@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.11 2002/11/06 18:08:03 jlvay Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.12 2002/11/07 17:30:31 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -56,7 +56,11 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
     for js in jslist:
       for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,groupsize):
          ip = min(groupsize, top.ins[js]+top.nps[js]-ipmin-1)
-         if(top.wpid==0):
+         try:
+           weighted = top.wpid
+         except AttributeError:
+           weighted = 0
+         if(weighted):
            getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
                     top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
                     top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
