@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.10 $, $Date: 2002/10/22 18:09:52 $
+c@(#) File CHO.F, version $Revision: 1.11 $, $Date: 2002/10/28 22:49:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -302,6 +302,7 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine ReachableNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi, ncomp)
+      use CHOInput
       use PSOR3d
       use Conductor3d
       integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi, ncomp
@@ -327,6 +328,9 @@ c     --- Get level of coarseness
 
 c     --- By default, all points are within the domain and are reachable.
       mask = 1
+
+c     --- If all nodes are reachable, then just return.
+      if (lcho_allnodesreachable) return
 
 c     --- Check for point in conductors.
       do ic=icstart(il),icstart(il+1)-1
