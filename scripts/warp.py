@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.55 2003/08/25 23:27:15 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.56 2003/08/30 00:11:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -188,8 +188,11 @@ fieldsol: Solve for the self-fields
 installbeforefs: Install a function which will be called before a field-solve
 uninstallbeforefs: Uninstall the function called before a field-solve
 installafterfs: Install a function which will be called after a field-solve
+isinstalledafterfs: Checks if a function is installed to be called after a
+                    field-solve
 uninstallafterfs: Uninstall the function called after a field-solve
 installbeforestep: Install a function which will be called before a step
+isinstalledbeforestep: Install a function which will be called before a step
 uninstallbeforestep: Uninstall the function called before a step
 installafterstep: Install a function which will be called after a step
 uninstallafterstep: Uninstall the function called after a step
@@ -235,6 +238,8 @@ def uninstallbeforefs(f):
   else:
     raise 'Warning: uninstallbeforefs: no such function had been installed'
   if len(beforefsfuncs) == 0: w3d.lbeforefs = false
+def isinstalledbeforefs(f):
+  return f in beforefsfuncs
 
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
@@ -247,6 +252,8 @@ def uninstallafterfs(f):
   else:
     raise 'Warning: uninstallafterfs: no such function had been installed'
   if len(afterfsfuncs) == 0: w3d.lafterfs = false
+def isinstalledafterfs(f):
+  return f in afterfsfuncs
 
 def installparticlescraper(f):
   "Adds a function to the list of functions called to scrape particles"
