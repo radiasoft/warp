@@ -5,7 +5,7 @@ PYVERS = 2.1
 PYTHON = /home/dave/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
-MPIHOME = /home/dave/mpich_ifc
+MPIHOME = /usr/local/mpich_ifc
 PROF = #-Mprof=lines
 OPT = -O3 -xK -tpp6 -ip -unroll -prefetch
 #OPT = -g
