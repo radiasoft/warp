@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.59 $, $Date: 2002/06/19 22:08:40 $
+c@(#) File W3D.M, version $Revision: 3.60 $, $Date: 2002/06/28 22:20:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5459,19 +5459,21 @@ c       --- Smooth out inj_phi for this emitting surface.
       enddo
 
 c     --- Calculate the transverse fields
+c     --- Note that sign of inj_ex and inj_ey is not what you think it might
+c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
       if (linj_eperp) then
         do ij = 1,inj_ninj
           do iy = 1,inj_ny-1
             do ix = 1,inj_nx-1
-              inj_ex(ix,iy,ij)=(inj_phi(ix-1,iy  ,ij)-inj_phi(ix+1,iy  ,ij))*dxi*0.5
-              inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy-1,ij)-inj_phi(ix  ,iy+1,ij))*dyi*0.5
+              inj_ex(ix,iy,ij)=(inj_phi(ix+1,iy  ,ij)-inj_phi(ix-1,iy  ,ij))*dxi*0.5
+              inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy+1,ij)-inj_phi(ix  ,iy-1,ij))*dyi*0.5
             enddo
           enddo
           do ix = 1,inj_nx-1
-            inj_ex(ix,0,ij) = (inj_phi(ix-1,0,ij) - inj_phi(ix+1,0,ij))*dxi*0.5
+            inj_ex(ix,0,ij) = (inj_phi(ix+1,0,ij) - inj_phi(ix-1,0,ij))*dxi*0.5
           enddo
           do iy = 1,inj_ny-1
-            inj_ey(0,iy,ij) = (inj_phi(0,iy-1,ij) - inj_phi(0,iy+1,ij))*dyi*0.5
+            inj_ey(0,iy,ij) = (inj_phi(0,iy+1,ij) - inj_phi(0,iy-1,ij))*dyi*0.5
           enddo
         enddo
       endif
