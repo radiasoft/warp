@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.11 2004/05/20 22:00:10 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.12 2004/05/21 20:18:26 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -160,50 +160,42 @@ class VisualModel:
         if n is None: self.normals.append(-normal)
         else:         self.normals.append(-n)
 
-  def FacetedPolygon(self, v, n=None, color=None):
+  def FacetedPolygon(self, vv, nn=None, color=None):
     """Appends a planar polygon of any number of vertices to the model,
        applying faceted shading automatically."""
-    if n is None: n = len(v)*[None]
-    for t in range(len(v)-2):
-      self.FacetedTriangle( vv=[v[0], v[t+1], v[t+2]],
-                            nn=[n[0], n[t+1], n[t+2]], color=color)
+    if nn is None: nn = len(vv)*[None]
+    for t in range(len(vv)-2):
+      self.FacetedTriangle( vv=[vv[0], vv[t+1], vv[t+2]],
+                            nn=[nn[0], nn[t+1], nn[t+2]], color=color)
    # --- This is an attempt to fill in areas that are concave without
    # --- having triangles sticking outside. It doesn't work yet.
    ## --- Get norm of first triangle
-   #n1 = self.Norm( self.Cross(v[1]-v[0], v[2]-v[0]) )
-   #starti = 0
-   #startlen = len(v)
-   #while 1:
+   #n1 = self.Norm( self.Cross(vv[1]-vv[0], vv[2]-vv[0]) )
+   #for normsign in [+1,-1]:
    #  tilist = []
-   #  badlist = []
-   #  ilist = range(len(v))
-   #  i = starti
-   #  normsign = +1
-   #  while len(ilist) > 2:
+   #  ilist = range(len(vv))
+   #  prevlen = len(ilist)
+   #  i = 0
+   #  signok = true
+   #  while len(ilist) > 2 and signok:
    #    n = len(ilist)
    #    i0 = ilist[(i  )%n]
    #    i1 = ilist[(i+1)%n]
    #    i2 = ilist[(i+2)%n]
-   #    if [i0,i1,i2] in badlist:
-   #      break
-   #    ni = self.Norm( self.Cross(v[i1]-v[i0], v[i2]-v[i0]) )
+   #    ni = self.Norm( self.Cross(vv[i1]-vv[i0], vv[i2]-vv[i0]) )
    #    if self.Dot(n1,ni)*normsign >= 0.:
    #      tilist.append([i0,i1,i2])
    #      del ilist[(i+1)%n]
-   #    else:
-   #      badlist.append([i0,i1,i2])
-   #      i += 1
+   #    i = (i+1) % len(ilist)
+   #    if i == 0:
+   #      if len(ilist) == prevlen:
+   #        signok = false
+   #      prevlen = len(ilist)
    #  if len(ilist) < 3:
    #    break
-   #  print starti,startlen,ilist
-   #  starti += 1
-   #  if starti == startlen:
-   #    if normsign == -1: break
-   #    starti = 0
-   #    normsign = -1
    #for ti in tilist:
-   #  self.FacetedTriangle( vv=[v[ti[0]], v[ti[1]], v[ti[2]]],
-   #                        nn=[n[ti[0]], n[ti[1]], n[ti[2]]], color=color)
+   #  self.FacetedTriangle( vv=[vv[ti[0]], vv[ti[1]], vv[ti[2]]],
+   #                        nn=[nn[ti[0]], nn[ti[1]], nn[ti[2]]], color=color)
      
 
   def DoSmoothShading(self):
