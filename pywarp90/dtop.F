@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.123 $, $Date: 2004/07/22 23:18:40 $
+c@(#) File DTOP.F, version $Revision: 3.124 $, $Date: 2004/08/05 16:32:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -156,50 +156,54 @@ c  Save results of this time step in history buffers
       hvyminp(jhist) = vyminp
       hvzmaxp(jhist) = vzmaxp
       hvzminp(jhist) = vzminp
-      do iw=0,nzwind
-        hepsx(iw,jhist)    = epsx(iw)
-        hepsy(iw,jhist)    = epsy(iw)
-        hepsz(iw,jhist)    = epsz(iw)
-        hepsnx(iw,jhist)   = epsnx(iw)
-        hepsny(iw,jhist)   = epsny(iw)
-        hepsnz(iw,jhist)   = epsnz(iw)
-        hepsg(iw,jhist)    = epsg(iw)
-        hepsh(iw,jhist)    = epsh(iw)
-        hepsng(iw,jhist)   = epsng(iw)
-        hepsnh(iw,jhist)   = epsnh(iw)
-        hpnum(iw,jhist)    = pnum(iw)
-        hxbar(iw,jhist)    = xbar(iw)
-        hybar(iw,jhist)    = ybar(iw)
-        hxrms(iw,jhist)    = xrms(iw)
-        hyrms(iw,jhist)    = yrms(iw)
-        hrrms(iw,jhist)    = rrms(iw)
-        hxprms(iw,jhist)   = xprms(iw)
-        hyprms(iw,jhist)   = yprms(iw)
-        hxsqbar(iw,jhist)  = xsqbar(iw)
-        hysqbar(iw,jhist)  = ysqbar(iw)
-        hxybar(iw,jhist)   = xybar(iw)
-        hvxbar(iw,jhist)   = vxbar(iw)
-        hvybar(iw,jhist)   = vybar(iw)
-        hvzbar(iw,jhist)   = vzbar(iw)
-        hxpbar(iw,jhist)   = xpbar(iw)
-        hypbar(iw,jhist)   = ypbar(iw)
-        hvxrms(iw,jhist)   = vxrms(iw)
-        hvyrms(iw,jhist)   = vyrms(iw)
-        hvzrms(iw,jhist)   = vzrms(iw)
-        hxpsqbar(iw,jhist) = xpsqbar(iw) 
-        hypsqbar(iw,jhist) = ypsqbar(iw)
-        hxxpbar(iw,jhist)  = xxpbar(iw) 
-        hyypbar(iw,jhist)  = yypbar(iw) 
-        hxypbar(iw,jhist)  = xypbar(iw) 
-        hyxpbar(iw,jhist)  = yxpbar(iw) 
-        hxpypbar(iw,jhist) = xpypbar(iw) 
-        hxvzbar(iw,jhist)  = xvzbar(iw) 
-        hyvzbar(iw,jhist)  = yvzbar(iw) 
-        hvxvzbar(iw,jhist) = vxvzbar(iw) 
-        hvyvzbar(iw,jhist) = vyvzbar(iw) 
-        hrhomid(iw,jhist)  = rhomid(iw)
-        hrhomax(iw,jhist)  = rhomax(iw)
-      enddo
+c     do iw=0,nzwind
+c       --- Write the code this way gets around an unexplained segmentation
+c       --- fault that appears with the xlf compiler. It is almost certainly
+c       --- a compiler bug since the seg fault goes away when using the -g
+c       --- option, or when rewriting the code thusly.
+        hepsx(:,jhist)    = epsx(:)
+        hepsy(:,jhist)    = epsy(:)
+        hepsz(:,jhist)    = epsz(:)
+        hepsnx(:,jhist)   = epsnx(:)
+        hepsny(:,jhist)   = epsny(:)
+        hepsnz(:,jhist)   = epsnz(:)
+        hepsg(:,jhist)    = epsg(:)
+        hepsh(:,jhist)    = epsh(:)
+        hepsng(:,jhist)   = epsng(:)
+        hepsnh(:,jhist)   = epsnh(:)
+        hpnum(:,jhist)    = pnum(:)
+        hxbar(:,jhist)    = xbar(:)
+        hybar(:,jhist)    = ybar(:)
+        hxrms(:,jhist)    = xrms(:)
+        hyrms(:,jhist)    = yrms(:)
+        hrrms(:,jhist)    = rrms(:)
+        hxprms(:,jhist)   = xprms(:)
+        hyprms(:,jhist)   = yprms(:)
+        hxsqbar(:,jhist)  = xsqbar(:)
+        hysqbar(:,jhist)  = ysqbar(:)
+        hxybar(:,jhist)   = xybar(:)
+        hvxbar(:,jhist)   = vxbar(:)
+        hvybar(:,jhist)   = vybar(:)
+        hvzbar(:,jhist)   = vzbar(:)
+        hxpbar(:,jhist)   = xpbar(:)
+        hypbar(:,jhist)   = ypbar(:)
+        hvxrms(:,jhist)   = vxrms(:)
+        hvyrms(:,jhist)   = vyrms(:)
+        hvzrms(:,jhist)   = vzrms(:)
+        hxpsqbar(:,jhist) = xpsqbar(:) 
+        hypsqbar(:,jhist) = ypsqbar(:)
+        hxxpbar(:,jhist)  = xxpbar(:) 
+        hyypbar(:,jhist)  = yypbar(:) 
+        hxypbar(:,jhist)  = xypbar(:) 
+        hyxpbar(:,jhist)  = yxpbar(:) 
+        hxpypbar(:,jhist) = xpypbar(:) 
+        hxvzbar(:,jhist)  = xvzbar(:) 
+        hyvzbar(:,jhist)  = yvzbar(:) 
+        hvxvzbar(:,jhist) = vxvzbar(:) 
+        hvyvzbar(:,jhist) = vyvzbar(:) 
+        hrhomid(:,jhist)  = rhomid(:)
+        hrhomax(:,jhist)  = rhomax(:)
+c     enddo
 
 c     --- Collect only those z histories specified by the user.
       do iz=0,nzzarr
@@ -642,7 +646,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.123 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.124 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
