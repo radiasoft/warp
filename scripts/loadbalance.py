@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.30 2003/08/12 17:44:10 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.31 2003/08/18 17:34:56 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -30,11 +30,12 @@ Creation arguments:
  - padleft=0: Amount of space added to left end of grid.
  - doloadrho=0: Specifies whether the charge density is recalculated
  - dofs=0: Specifies whether the fields are recalculated
+ - verbose=0: Prints output
 Note, if particles on cover a few grid cells, then distribution is
 recalculated on a finer mesh to give better balancing.
   """
   def __init__(self,padright=None,padleft=0.,when=None,doitnow=0,
-               doloadrho=0,dofs=0):
+               doloadrho=0,dofs=0,verbose=0):
     if not lparallel: return
     if when is None:
       self.when = {10:1,100:10,1000000:20}
@@ -44,6 +45,7 @@ recalculated on a finer mesh to give better balancing.
     self.padleft = padleft
     self.doloadrho = doloadrho
     self.dofs = dofs
+    self.verbose = verbose
     if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
@@ -53,7 +55,10 @@ recalculated on a finer mesh to give better balancing.
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
     if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
-      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz: lforce = true
+      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz:
+        lforce = true
+        if self.verbose:
+          print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,top.zmaxp,top.zpslmax[-1]-2*w3d.dz
 
     # --- Find frequency of load balancing
     ii = max(self.when.values())
@@ -62,6 +67,9 @@ recalculated on a finer mesh to give better balancing.
 
     # --- Just return is load balancing not done now.
     if not lforce and (top.it%ii) != 0: return
+
+    if (top.it%ii) == 0 and self.verbose:
+      print "Load balancing based on frequency"
 
     # --- On step zero, a complete reorganization is done so the reorg flag
     # --- is set to true to use the particle sorter which is more efficient
@@ -91,6 +99,9 @@ recalculated on a finer mesh to give better balancing.
       if top.vzmaxp > 0.: padright = top.vzmaxp*top.dt*ii*2
       else:               padright = ii*w3d.dz
     else:                 padright = self.padright
+    padright = max(padright,self.padright)
+    if self.verbose:
+      print "Load balancing padright = ",padright
 
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=self.padleft,
