@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.41 $, $Date: 2003/12/18 00:13:17 $
+c@(#) File WXY.M, version $Revision: 3.42 $, $Date: 2004/01/24 00:42:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -202,7 +202,7 @@ c  Set the value of prwall, radius at which particles are lost
         prwallz(k) = prwall
         if (prwallxz(k) == 0.) prwallxz(k) = prwallx
         if (prwallyz(k) == 0.) prwallyz(k) = prwally
-        if (prwelips(k) == 0.) prwelips(k) = 1.
+        if (prwelipz(k) == 0.) prwelipz(k) = prwelip
       enddo
         
 c  Calculate mesh dimensioning quantities 
