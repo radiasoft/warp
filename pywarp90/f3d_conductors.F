@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.7 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.8 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -236,10 +236,10 @@ c       --- If point is not within the z extent of the cylinder
 
 c       --- Point inside the cylinder
         if (rsq < rad**2) then
-          delmx(i) = -(sqrt(rad**2 - yy*yy) + xx)
-          delpx(i) = -(sqrt(rad**2 - yy*yy) - xx)
-          delmy(i) = -(sqrt(rad**2 - xx*xx) + yy)
-          delpy(i) = -(sqrt(rad**2 - xx*xx) - yy)
+          delmx(i) = -(sqrt(rad**2 - yy**2) + xx)
+          delpx(i) = -(sqrt(rad**2 - yy**2) - xx)
+          delmy(i) = -(sqrt(rad**2 - xx**2) + yy)
+          delpy(i) = -(sqrt(rad**2 - xx**2) - yy)
           delmz(i) = zmin - z(i)
           delpz(i) = z(i) - zmax
           cycle
@@ -248,12 +248,12 @@ c       --- Point inside the cylinder
 c       --- Point is outside the cylinder
         if (rsq > rad**2) then
           if (abs(yy) <= rad) then
-            if (xx > 0) delmx(i) = ( xx - sqrt(rad**2 - yy*yy))
-            if (xx < 0) delpx(i) = (-xx - sqrt(rad**2 - yy*yy))
+            if (xx > 0) delmx(i) = ( xx - sqrt(max(0.,rad**2 - yy**2)))
+            if (xx < 0) delpx(i) = (-xx - sqrt(max(0.,rad**2 - yy**2)))
           endif
           if (abs(xx) <= rad) then
-            if (yy > 0) delmy(i) = ( yy - sqrt(rad**2 - xx*xx))
-            if (yy < 0) delpy(i) = (-yy - sqrt(rad**2 - xx*xx))
+            if (yy > 0) delmy(i) = ( yy - sqrt(max(0.,rad**2 - xx**2)))
+            if (yy < 0) delpy(i) = (-yy - sqrt(max(0.,rad**2 - xx**2)))
           endif
           cycle
         endif
@@ -310,7 +310,7 @@ c       --- Set temps
         rsq = (xx**2 + yy**2)
         rr = sqrt(rsq)
         if (rad-rad2 <= rr .and. rr <= rad) then
-          zround = sqrt(rad2**2 - (rr-rad+rad2)**2)
+          zround = sqrt(max(0.,rad2**2 - (rr-rad+rad2)**2))
         endif
 
 c       --- If point is not within the z extent of the cylinder
@@ -363,22 +363,22 @@ c       --- sqrt's of negative numbers.
 
 c       --- Point inside the cylinder
         if (rsq < r**2) then
-          delmx(i) = -(sqrt(r**2 - yy*yy) + xx)
-          delpx(i) = -(sqrt(r**2 - yy*yy) - xx)
-          delmy(i) = -(sqrt(r**2 - xx*xx) + yy)
-          delpy(i) = -(sqrt(r**2 - xx*xx) - yy)
+          delmx(i) = -(sqrt(r**2 - yy**2) + xx)
+          delpx(i) = -(sqrt(r**2 - yy**2) - xx)
+          delmy(i) = -(sqrt(r**2 - xx**2) + yy)
+          delpy(i) = -(sqrt(r**2 - xx**2) - yy)
           cycle
         endif
 
 c       --- Point is outside the cylinder
         if (rsq > r**2) then
           if (abs(yy) <= r) then
-            if (xx > 0) delmx(i) = ( xx - sqrt(r**2 - yy*yy))
-            if (xx < 0) delpx(i) = (-xx - sqrt(r**2 - yy*yy))
+            if (xx > 0) delmx(i) = ( xx - sqrt(max(0.,r**2 - yy**2)))
+            if (xx < 0) delpx(i) = (-xx - sqrt(max(0.,r**2 - yy**2)))
           endif
           if (abs(xx) <= r) then
-            if (yy > 0) delmy(i) = ( yy - sqrt(r**2 - xx*xx))
-            if (yy < 0) delpy(i) = (-yy - sqrt(r**2 - xx*xx))
+            if (yy > 0) delmy(i) = ( yy - sqrt(max(0.,r**2 - xx**2)))
+            if (yy < 0) delpy(i) = (-yy - sqrt(max(0.,r**2 - xx**2)))
           endif
           cycle
         endif
@@ -445,10 +445,10 @@ c       --- If point is not within the z extent of the cylinder
 
 c       --- Point inside the cylinder
         if (rsq < rad**2) then
-          delmx(i) = (sqrt(rad**2 - yy*yy) + xx)
-          delpx(i) = (sqrt(rad**2 - yy*yy) - xx)
-          delmy(i) = (sqrt(rad**2 - xx*xx) + yy)
-          delpy(i) = (sqrt(rad**2 - xx*xx) - yy)
+          delmx(i) = (sqrt(rad**2 - yy**2) + xx)
+          delpx(i) = (sqrt(rad**2 - yy**2) - xx)
+          delmy(i) = (sqrt(rad**2 - xx**2) + yy)
+          delpy(i) = (sqrt(rad**2 - xx**2) - yy)
           cycle
         endif
 
@@ -459,12 +459,12 @@ c       --- Point is outside the cylinder
           delmy(i) = -LARGEPOS
           delpy(i) = -LARGEPOS
           if (abs(yy) <= rad) then
-            if (xx > 0) delmx(i) = -( xx - sqrt(rad**2 - yy*yy))
-            if (xx < 0) delpx(i) = -(-xx - sqrt(rad**2 - yy*yy))
+            if (xx > 0) delmx(i) = -( xx - sqrt(max(0.,rad**2 - yy**2)))
+            if (xx < 0) delpx(i) = -(-xx - sqrt(max(0.,rad**2 - yy**2)))
           endif
           if (abs(xx) <= rad) then
-            if (yy > 0) delmy(i) = -( yy - sqrt(rad**2 - xx*xx))
-            if (yy < 0) delpy(i) = -(-yy - sqrt(rad**2 - xx*xx))
+            if (yy > 0) delmy(i) = -( yy - sqrt(max(0.,rad**2 - xx**2)))
+            if (yy < 0) delpy(i) = -(-yy - sqrt(max(0.,rad**2 - xx**2)))
           endif
           delmz(i) = zmin - z(i)
           delpz(i) = z(i) - zmax
@@ -523,7 +523,7 @@ c       --- Set temps
         rsq = (xx**2 + yy**2)
         rr = sqrt(rsq)
         if (rad <= rr .and. rr <= rad+rad2) then
-          zround = sqrt(rad2**2 - (rad+rad2-rr)**2)
+          zround = sqrt(max(0.,rad2**2 - (rad+rad2-rr)**2))
         endif
 
 c       --- If point is not within the z extent of the cylinder
@@ -576,10 +576,10 @@ c       --- sqrt's of negative numbers.
 
 c       --- Point inside the cylinder
         if (rsq < r**2) then
-          delmx(i) = (sqrt(r**2 - yy*yy) + xx)
-          delpx(i) = (sqrt(r**2 - yy*yy) - xx)
-          delmy(i) = (sqrt(r**2 - xx*xx) + yy)
-          delpy(i) = (sqrt(r**2 - xx*xx) - yy)
+          delmx(i) = (sqrt(r**2 - yy**2) + xx)
+          delpx(i) = (sqrt(r**2 - yy**2) - xx)
+          delmy(i) = (sqrt(r**2 - xx**2) + yy)
+          delpy(i) = (sqrt(r**2 - xx**2) - yy)
           cycle
         endif
 
@@ -590,12 +590,12 @@ c       --- Point is outside the cylinder
           delmy(i) = -LARGEPOS
           delpy(i) = -LARGEPOS
           if (abs(yy) <= r) then
-            if (xx > 0) delmx(i) = -( xx - sqrt(r**2 - yy*yy))
-            if (xx < 0) delpx(i) = -(-xx - sqrt(r**2 - yy*yy))
+            if (xx > 0) delmx(i) = -( xx - sqrt(max(0.,r**2 - yy**2)))
+            if (xx < 0) delpx(i) = -(-xx - sqrt(max(0.,r**2 - yy**2)))
           endif
           if (abs(xx) <= r) then
-            if (yy > 0) delmy(i) = -( yy - sqrt(r**2 - xx*xx))
-            if (yy < 0) delpy(i) = -(-yy - sqrt(r**2 - xx*xx))
+            if (yy > 0) delmy(i) = -( yy - sqrt(max(0.,r**2 - xx**2)))
+            if (yy < 0) delpy(i) = -(-yy - sqrt(max(0.,r**2 - xx**2)))
           endif
           cycle
         endif
@@ -690,27 +690,27 @@ c       --- Set temps
 
 c       --- Point inside the sphere
         if (rsq < rad**2) then
-          delmx(i) = -(sqrt(rad**2 - yy*yy - zz*zz) + xx)
-          delpx(i) = -(sqrt(rad**2 - yy*yy - zz*zz) - xx)
-          delmy(i) = -(sqrt(rad**2 - xx*xx - zz*zz) + yy)
-          delpy(i) = -(sqrt(rad**2 - xx*xx - zz*zz) - yy)
-          delmz(i) = -(sqrt(rad**2 - xx*xx - yy*yy) + zz)
-          delpz(i) = -(sqrt(rad**2 - xx*xx - yy*yy) - zz)
+          delmx(i) = -(sqrt(rad**2 - yy**2 - zz**2) + xx)
+          delpx(i) = -(sqrt(rad**2 - yy**2 - zz**2) - xx)
+          delmy(i) = -(sqrt(rad**2 - xx**2 - zz**2) + yy)
+          delpy(i) = -(sqrt(rad**2 - xx**2 - zz**2) - yy)
+          delmz(i) = -(sqrt(rad**2 - xx**2 - yy**2) + zz)
+          delpz(i) = -(sqrt(rad**2 - xx**2 - yy**2) - zz)
         endif
 
 c       --- Point outside the sphere
         if (rsq > rad**2) then
-          if ((yy*yy + zz*zz) <= rad**2) then
-            if (xx > 0) delmx(i) = ( xx - sqrt(rad**2 - yy*yy - zz*zz))
-            if (xx < 0) delpx(i) = (-xx - sqrt(rad**2 - yy*yy - zz*zz))
+          if ((yy**2 + zz**2) <= rad**2) then
+            if (xx > 0) delmx(i) = ( xx - sqrt(max(0.,rad**2 - yy**2 - zz**2)))
+            if (xx < 0) delpx(i) = (-xx - sqrt(max(0.,rad**2 - yy**2 - zz**2)))
           endif
-          if ((xx*xx + zz*zz) <= rad**2) then
-            if (yy > 0) delmy(i) = ( yy - sqrt(rad**2 - xx*xx - zz*zz))
-            if (yy < 0) delpy(i) = (-yy - sqrt(rad**2 - xx*xx - zz*zz))
+          if ((xx**2 + zz**2) <= rad**2) then
+            if (yy > 0) delmy(i) = ( yy - sqrt(max(0.,rad**2 - xx**2 - zz**2)))
+            if (yy < 0) delpy(i) = (-yy - sqrt(max(0.,rad**2 - xx**2 - zz**2)))
           endif
-          if ((xx*xx + yy*yy) <= rad**2) then
-            if (zz > 0) delmz(i) = ( zz - sqrt(rad**2 - xx*xx - yy*yy))
-            if (zz < 0) delpz(i) = (-zz - sqrt(rad**2 - xx*xx - yy*yy))
+          if ((xx**2 + yy**2) <= rad**2) then
+            if (zz > 0) delmz(i) = ( zz - sqrt(max(0.,rad**2 - xx**2 - yy**2)))
+            if (zz < 0) delpz(i) = (-zz - sqrt(max(0.,rad**2 - xx**2 - yy**2)))
           endif
         endif
 
@@ -812,20 +812,20 @@ c       --- expression above will have roundoff problems.
 
 c       --- Point inside the cone
         if (r < rcone) then
-          delmx(i) = -(sqrt(rcone**2 - yy*yy) + xx)
-          delpx(i) = -(sqrt(rcone**2 - yy*yy) - xx)
-          delmy(i) = -(sqrt(rcone**2 - xx*xx) + yy)
-          delpy(i) = -(sqrt(rcone**2 - xx*xx) - yy)
+          delmx(i) = -(sqrt(rcone**2 - yy**2) + xx)
+          delpx(i) = -(sqrt(rcone**2 - yy**2) - xx)
+          delmy(i) = -(sqrt(rcone**2 - xx**2) + yy)
+          delpy(i) = -(sqrt(rcone**2 - xx**2) - yy)
 
 c       --- Point is outside the cone
         else if (r > rcone) then
           if (abs(yy) <= rcone) then
-            if (xx > 0) delmx(i) = ( xx - sqrt(rcone**2 - yy*yy))
-            if (xx < 0) delpx(i) = (-xx - sqrt(rcone**2 - yy*yy))
+            if (xx > 0) delmx(i) = ( xx - sqrt(max(0.,rcone**2 - yy**2)))
+            if (xx < 0) delpx(i) = (-xx - sqrt(max(0.,rcone**2 - yy**2)))
           endif
           if (abs(xx) <= rcone) then
-            if (yy > 0) delmy(i) = ( yy - sqrt(rcone**2 - xx*xx))
-            if (yy < 0) delpy(i) = (-yy - sqrt(rcone**2 - xx*xx))
+            if (yy > 0) delmy(i) = ( yy - sqrt(max(0.,rcone**2 - xx**2)))
+            if (yy < 0) delpy(i) = (-yy - sqrt(max(0.,rcone**2 - xx**2)))
           endif
 
         else
@@ -927,10 +927,10 @@ c       --- expression above will have roundoff problems.
 
 c       --- Point inside the cone
         if (r < rcone) then
-          delmx(i) = (sqrt(rcone**2 - yy*yy) + xx)
-          delpx(i) = (sqrt(rcone**2 - yy*yy) - xx)
-          delmy(i) = (sqrt(rcone**2 - xx*xx) + yy)
-          delpy(i) = (sqrt(rcone**2 - xx*xx) - yy)
+          delmx(i) = (sqrt(rcone**2 - yy**2) + xx)
+          delpx(i) = (sqrt(rcone**2 - yy**2) - xx)
+          delmy(i) = (sqrt(rcone**2 - xx**2) + yy)
+          delpy(i) = (sqrt(rcone**2 - xx**2) - yy)
 
 c       --- Point is outside the cone
         else if (r > rcone) then
@@ -939,12 +939,12 @@ c       --- Point is outside the cone
           delmy(i) = -LARGEPOS
           delpy(i) = -LARGEPOS
           if (abs(yy) <= rcone) then
-            if (xx > 0) delmx(i) = -( xx - sqrt(rcone**2 - yy*yy))
-            if (xx < 0) delpx(i) = -(-xx - sqrt(rcone**2 - yy*yy))
+            if (xx > 0) delmx(i) = -( xx - sqrt(max(0.,rcone**2 - yy**2)))
+            if (xx < 0) delpx(i) = -(-xx - sqrt(max(0.,rcone**2 - yy**2)))
           endif
           if (abs(xx) <= rcone) then
-            if (yy > 0) delmy(i) = -( yy - sqrt(rcone**2 - xx*xx))
-            if (yy < 0) delpy(i) = -(-yy - sqrt(rcone**2 - xx*xx))
+            if (yy > 0) delmy(i) = -( yy - sqrt(max(0.,rcone**2 - xx**2)))
+            if (yy < 0) delpy(i) = -(-yy - sqrt(max(0.,rcone**2 - xx**2)))
           endif
 
         else
@@ -1002,8 +1002,8 @@ c       --- Find radius of point relative to torus axis
 
 c       --- Only need to set delmz and delpz for points with r within r1+-r2
         if (r1 - r2 <= r .and. r <= r1 + r2) then
-          zl = zcent - sqrt(r2**2 - (r - r1)**2)
-          zr = zcent + sqrt(r2**2 - (r - r1)**2)
+          zl = zcent - sqrt(max(0.,r2**2 - (r - r1)**2))
+          zr = zcent + sqrt(max(0.,r2**2 - (r - r1)**2))
           if (r == r1 - r2 .or. r == r1 + r2) then
             zl = zcent
             zr = zcent
@@ -1019,8 +1019,8 @@ c       --- Only need to set delmz and delpz for points with r within r1+-r2
 c       --- Only need to set transverse distances for points with
 c       --- z within zcent+-r2.
         if (zcent-r2 <= z(i) .and. z(i) <= zcent+r2) then
-          ri = r1 - sqrt(r2**2 - (z(i) - zcent)**2)
-          ro = r1 + sqrt(r2**2 - (z(i) - zcent)**2)
+          ri = r1 - sqrt(max(0.,r2**2 - (z(i) - zcent)**2))
+          ro = r1 + sqrt(max(0.,r2**2 - (z(i) - zcent)**2))
           if (z(i) == zcent) then
             ri = r1 - r2
             ro = r1 + r2
@@ -1029,42 +1029,42 @@ c       --- z within zcent+-r2.
             ro = r1
           endif
           if (r < ri) then
-            delmx(i) = sqrt(ri**2 - yy*yy) + xx
-            delpx(i) = sqrt(ri**2 - yy*yy) - xx
-            delmy(i) = sqrt(ri**2 - xx*xx) + yy
-            delpy(i) = sqrt(ri**2 - xx*xx) - yy
+            delmx(i) = sqrt(ri**2 - yy**2) + xx
+            delpx(i) = sqrt(ri**2 - yy**2) - xx
+            delmy(i) = sqrt(ri**2 - xx**2) + yy
+            delpy(i) = sqrt(ri**2 - xx**2) - yy
           else if (ri == r .or. r == ro) then
             delmx(i) = 0.
             delpx(i) = 0.
             delmy(i) = 0.
             delpy(i) = 0.
           else if (ri < r .and. r < ro) then
-            delmx(i) = -(sqrt(ro**2 - yy*yy) + xx)
-            delpx(i) = -(sqrt(ro**2 - yy*yy) - xx)
-            delmy(i) = -(sqrt(ro**2 - xx*xx) + yy)
-            delpy(i) = -(sqrt(ro**2 - xx*xx) - yy)
+            delmx(i) = -(sqrt(ro**2 - yy**2) + xx)
+            delpx(i) = -(sqrt(ro**2 - yy**2) - xx)
+            delmy(i) = -(sqrt(ro**2 - xx**2) + yy)
+            delpy(i) = -(sqrt(ro**2 - xx**2) - yy)
             if (abs(yy) < ri) then
-              if (xx <= 0.) delpx(i) = xx + sqrt(ri**2 - yy*yy)
-              if (xx >= 0.) delmx(i) = sqrt(ri**2 - yy*yy) - xx
+              if (xx <= 0.) delpx(i) = xx + sqrt(max(0.,ri**2 - yy**2))
+              if (xx >= 0.) delmx(i) = sqrt(max(0.,ri**2 - yy**2)) - xx
             else if (abs(yy) == ri) then
               if (xx <= 0.) delpx(i) = xx
               if (xx >= 0.) delmx(i) = -xx
             endif
             if (abs(xx) < ri) then
-              if (yy <= 0.) delpy(i) = yy + sqrt(ri**2 - xx*xx)
-              if (yy >= 0.) delmy(i) = sqrt(ri**2 - xx*xx) - yy
+              if (yy <= 0.) delpy(i) = yy + sqrt(max(0.,ri**2 - xx**2))
+              if (yy >= 0.) delmy(i) = sqrt(max(0.,ri**2 - xx**2)) - yy
             else if (abs(xx) == ri) then
               if (yy <= 0.) delpy(i) = yy
               if (yy >= 0.) delmy(i) = -yy
             endif
           else if (r > ro) then
             if (abs(yy) < ro) then
-              if (xx <= 0.) delpx(i) = -sqrt(ro**2 - yy*yy) - xx
-              if (xx >= 0.) delmx(i) = xx - sqrt(ro**2 - yy*yy)
+              if (xx <= 0.) delpx(i) = -sqrt(max(0.,ro**2 - yy**2)) - xx
+              if (xx >= 0.) delmx(i) = xx - sqrt(max(0.,ro**2 - yy**2))
             endif
             if (abs(xx) < ro) then
-              if (yy <= 0.) delpy(i) = -sqrt(ro**2 - xx*xx) - yy
-              if (yy >= 0.) delmy(i) = yy - sqrt(ro**2 - xx*xx)
+              if (yy <= 0.) delpy(i) = -sqrt(max(0.,ro**2 - xx**2)) - yy
+              if (yy >= 0.) delmy(i) = yy - sqrt(max(0.,ro**2 - xx**2))
             endif
           endif
 
@@ -1138,7 +1138,7 @@ c         --- Get the two points of intersection
             z1 = -c/b
             z2 = z1
           else
-            ss = sqrt(b**2 - 4*a*c)
+            ss = sqrt(max(0.,b**2 - 4*a*c))
             z1 = (-b-ss)/(2*a)
             z2 = (-b+ss)/(2*a)
           endif
@@ -1187,7 +1187,7 @@ c       --- delta x
             x1 = -c/b
             x2 = x1
           else
-            ss = sqrt(b**2 - 4*a*c)
+            ss = sqrt(max(0.,b**2 - 4*a*c))
             x1 = (-b-ss)/(2*a)
             x2 = (-b+ss)/(2*a)
           endif
@@ -1237,7 +1237,7 @@ c       --- delta y
             y1 = -c/b
             y2 = y1
           else
-            ss = sqrt(b**2 - 4*a*c)
+            ss = sqrt(max(0.,b**2 - 4*a*c))
             y1 = (-b-ss)/(2*a)
             y2 = (-b+ss)/(2*a)
           endif
