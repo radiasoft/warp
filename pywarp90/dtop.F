@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.21 $, $Date: 2001/09/12 21:46:49 $
+c@(#) File DTOP.M, version $Revision: 3.22 $, $Date: 2001/09/19 22:28:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.21 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.22 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1071,6 +1071,127 @@ c         if within grid, accumulate
       return
       end
 c=============================================================================
+c=============================================================================
+      subroutine setgrid1d(np,x,nx,grid,xmin,xmax)
+      integer(ISZ):: nx,np
+      real(kind=8):: x(np)
+      real(kind=8):: grid(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Lays particles down onto 1-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: dxi,wx
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        ix = (x(ip) - xmin)*dxi
+
+c       --- if within grid, accumulate
+        if (ix >= 0 .and. ix < nx) then
+          wx = (x(ip) - xmin)*dxi - ix
+          grid(ix  ) = grid(ix  ) + (1. - wx)
+          grid(ix+1) = grid(ix+1) +       wx
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine deposgrid1d(itask,np,x,z,nx,grid,gridcount,xmin,xmax)
+      integer(ISZ):: itask,nx,np
+      real(kind=8):: x(np), z(np)
+      real(kind=8):: grid(0:nx), gridcount(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Deposits particle data onto 1-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: dxi,wx
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        ix = (x(ip) - xmin)*dxi
+
+c       --- if within grid, accumulate
+        if (ix >= 0 .and. ix < nx) then
+          wx = (x(ip) - xmin)*dxi - ix
+          grid(ix  ) = grid(ix  ) + z(ip)*(1. - wx)
+          grid(ix+1) = grid(ix+1) + z(ip)*      wx
+          gridcount(ix  ) = gridcount(ix  ) + (1. - wx)
+          gridcount(ix+1) = gridcount(ix+1) +       wx
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do ix=0,nx
+          if (gridcount(ix) > 0.) then
+            grid(ix) = grid(ix)/gridcount(ix)
+          endif
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine getgrid1d(np,x,z,nx,grid,xmin,xmax)
+      integer(ISZ):: nx,np
+      real(kind=8):: x(np), z(np)
+      real(kind=8):: grid(0:nx)
+      real(kind=8):: xmin,xmax
+
+c Gathers data from a 1-D mesh onto particle positions.
+
+      integer(ISZ):: ip,ix
+      real(kind=8):: dxi,wx
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        ix = (x(ip) - xmin)*dxi
+
+c       --- if within grid, gather
+        if (ix >= 0 .and. ix < nx) then
+          wx = (x(ip) - xmin)*dxi - ix
+          z(ip) = grid(ix  )*(1. - wx) + grid(ix+1)*wx
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
       subroutine setgrid2d(np,x,y,nx,ny,grid,xmin,xmax,ymin,ymax)
       integer(ISZ):: nx,ny,np
       real(kind=8):: x(np), y(np)
@@ -1164,8 +1285,8 @@ c       --- if within grid, accumulate
 c     --- Divide out the number of particles at each grid point, only if
 c     --- itask == 0.
       if (itask == 0) then
-        do iy=0,nx
-          do ix=0,ny
+        do iy=0,ny
+          do ix=0,nx
             if (gridcount(ix,iy) > 0.) then
               grid(ix,iy) = grid(ix,iy)/gridcount(ix,iy)
             endif
@@ -1821,7 +1942,7 @@ c Local:
 c   xrms = sqrt(<x**2>-<x>**2)
 
       integer(ISZ):: i,ipart,ipt,areaindex,ntotal
-      real(kind=8):: areamax,beta,ellipticity,xcentroid,xpcentroid
+      real(kind=8):: areamax,beta,ellipticity
       real(kind=8):: xp2,xxp,x2,xrms,xprms
       real(kind=8):: x2total,xp2total,xxptotal,xsumtotal,xpsumtotal
 
@@ -1901,8 +2022,6 @@ C  Zero moments
       x2=0.0e0
       xp2=0.0e0
       xxp=0.0e0
-      xcentroid=0.0e0
-      xpcentroid=0.0e0
 
 c Find the nested ellipses, and locate the particles within them.  Add
 c each particle's moments to the moments for the elliptical shell it is
@@ -1947,8 +2066,6 @@ C       write (19,500) ipt,ntotal
 C500 format (1h ,"ipt=",i3,1x,"ntotal=",i4)
         if (ntotal.ne.0) then
 
-                xcentroid=xsumtotal/ntotal
-                xpcentroid=xpsumtotal/ntotal
                 x2=x2total/ntotal
                 xp2=(xp2total/ntotal)
                 xxp=xxptotal/ntotal

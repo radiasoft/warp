@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.21 $, $Date: 2001/09/12 21:46:49 $
+c@(#) File TOP.M, version $Revision: 3.22 $, $Date: 2001/09/19 22:28:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -103,27 +103,25 @@ c
 c     initialization section.  the logic only works if local
 c     storage is non-volatile.
 c
-      real(kind=8):: pion2,oneonpi,twoonpi,zs,zend,zendr,zmap,zl,zendi,a1,a2
-      real(kind=8):: third,sixth,root3,q
+      real(kind=8):: pion2,oneonpi,zs,zend,zendr,zmap,zl,zendi
+      real(kind=8):: third,root3
       integer(ISZ):: i
 
       pion2 = pi*0.5
       oneonpi = 1./pi
-      twoonpi = 1./pion2
       zs = straight
       zend = (1.-zs)*0.5
       zendr = 1.-zend
       zmap = zs+(4./3.)*zend
       zl = zend/3.
       zendi = 1./dvnz(zend)
-      a1 = -3.
-      a2 = 0.
 
 c initialize stuff for cubic solver
       third = 1./3.
-      sixth = 1./6.
       root3 = sqrt(3.)
-      q = a1*third-a2**2/9.0
+c     a1 = -3.
+c     a2 = 0.
+c     q = a1*third-a2**2/9.0
 
       do i=1,np
 c
@@ -3913,7 +3911,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       integer(ISZ):: iz(NPARPGRP)
       integer(ISZ):: im,izm,iw,ip,icell,i
       real(kind=8):: dti,dtip1,wz1,wz0,zwin,tg,th
-      real(kind=8):: oneondt,clighti,vzi,pnumi,vbeami
+      real(kind=8):: oneondt,clighti,vzi,pnumi
       real(kind=8):: delxsq,delxxp,delxpsq,delysq,delyyp,delypsq
       real(kind=8):: delxy,delxyp,delyxp,delxpyp
       real(kind=8):: delzsq,delvzsq,delzvz
@@ -4374,7 +4372,6 @@ c         --- End of Z moments accumulation
       endif
 
       if (itask == 3 .and. .not. laccumulate_zmoments) then
-        vbeami = 1./dvnz(vbeam)
         clighti = 1./clight
         gamma = 1./sqrt(1. - (vbeam*clighti)**2)
 
@@ -4956,14 +4953,96 @@ c=============================================================================
 c A general particle scraping routine, which allows particles to be scraped
 c efficiently using complex geometries.
 c=============================================================================
-      subroutine griddedparticlescraper(is,isinside,volumeinside,nx,ny,nz,
+      subroutine griddedparticlescraper(is,distance,nx,ny,nz,dx,dy,dz,
+     &                                  xmin,ymin,zmin,l2symtry,l4symtry)
+      use Particles
+      integer(ISZ):: is,nx,ny,nz
+      real(kind=8):: dx,dy,dz,xmin,ymin,zmin
+      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: distance(0:nx,0:ny,0:nz)
+
+c This provides a method of scraping particles in a complex geometry.
+
+c Input:
+c   is: species number of particles to process
+c   distance(0:nx,0:ny,0:nz): distance to boundary surface
+c   nx,ny,nz: grid dimensions
+c   dx,dy,dz: grid cell sizes
+c   xmin,ymin,zmin: coordinates of lower left hand corner of grid
+c   l2symtry,l4symtry: level of symmetry to use
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+      real(kind=8):: dd
+ 
+c     --- set grid cell inverse sizes
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+ 
+c     --- loop over particles
+      do ip=1,np
+ 
+c       --- find location on grid
+        if (l4symtry) then
+          ix = abs((xp(ip) - xmin)*dxi)
+          iy = abs((yp(ip) - ymin)*dyi)
+          iz =     (zp(ip) - zmin)*dzi
+          wx = abs((xp(ip) - xmin)*dxi) - ix
+          wy = abs((yp(ip) - ymin)*dyi) - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
+        else if (l2symtry) then
+          ix =     (xp(ip) - xmin)*dxi
+          iy = abs((yp(ip) - ymin)*dyi)
+          iz =     (zp(ip) - zmin)*dzi
+          wx =     (xp(ip) - xmin)*dxi - ix
+          wy = abs((yp(ip) - ymin)*dyi) - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
+        else
+          ix =     (xp(ip) - xmin)*dxi
+          iy =     (yp(ip) - ymin)*dyi
+          iz =     (zp(ip) - zmin)*dzi
+          wx =     (xp(ip) - xmin)*dxi - ix
+          wy =     (yp(ip) - ymin)*dyi - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
+        endif
+ 
+c       --- if within grid, examine the particle, otherwise assume its OK.
+        if (ix >= 0 .and. ix < nx .and.
+     &      iy >= 0 .and. iy < ny .and.
+     &      iz >= 0 .and. iz < nz) then
+
+          dd = distance(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
+     &         distance(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
+     &         distance(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
+     &         distance(ix+1,iy+1,iz  )*      wx *      wy *(1. - wz) +
+     &         distance(ix  ,iy  ,iz+1)*(1. - wx)*(1. - wy)*      wz  +
+     &         distance(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
+     &         distance(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
+     &         distance(ix+1,iy+1,iz+1)*      wx *      wy *      wz
+
+          if (dd < 0.) then
+c           --- Scrape the particle
+            uxp(ip) = 0.0
+            uyp(ip) = 0.0
+            uzp(ip) = 0.0
+          endif
+
+        endif
+ 
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine griddedparticlescraper1(is,isinside,volumeinside,nx,ny,nz,
      &                                  dx,dy,dz,xmin,ymin,zmin,
      &                                  l2symtry,l4symtry)
       use Particles
       integer(ISZ):: is,nx,ny,nz
       real(kind=8):: dx,dy,dz,xmin,ymin,zmin
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: isinside(0:nx,0:ny,0:nz)
+      real(kind=8):: isinside(0:nx,0:ny,0:nz)
       real(kind=8):: volumeinside(0:nx-1,0:ny-1,0:nz-1)
 
 c This provides a method of scraping particles in a complex geometry.  It
@@ -5002,24 +5081,29 @@ c       --- find location on grid
           ix = abs((xp(ip) - xmin)*dxi)
           iy = abs((yp(ip) - ymin)*dyi)
           iz =     (zp(ip) - zmin)*dzi
+          wx = abs((xp(ip) - xmin)*dxi) - ix
+          wy = abs((yp(ip) - ymin)*dyi) - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
         else if (l2symtry) then
           ix =     (xp(ip) - xmin)*dxi
           iy = abs((yp(ip) - ymin)*dyi)
           iz =     (zp(ip) - zmin)*dzi
+          wx =     (xp(ip) - xmin)*dxi - ix
+          wy = abs((yp(ip) - ymin)*dyi) - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
         else
           ix =     (xp(ip) - xmin)*dxi
           iy =     (yp(ip) - ymin)*dyi
           iz =     (zp(ip) - zmin)*dzi
+          wx =     (xp(ip) - xmin)*dxi - ix
+          wy =     (yp(ip) - ymin)*dyi - iy
+          wz =     (zp(ip) - zmin)*dzi - iz
         endif
  
 c       --- if within grid, examine the particle, otherwise assume its OK.
         if (ix >= 0 .and. ix < nx .and.
      &      iy >= 0 .and. iy < ny .and.
      &      iz >= 0 .and. iz < nz) then
-
-          wx = (xp(ip) - xmin)*dxi - ix
-          wy = (yp(ip) - ymin)*dyi - iy
-          wz = (zp(ip) - zmin)*dzi - iz
 
           fraction_inside =
      &        isinside(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
@@ -5708,13 +5792,12 @@ c approximate in that when the resulting particles are loaded back onto
 c the same 2-D grid from which the distribution is taken, the distribution
 c is not exactly reproduced. (The exact version is still under development.)
 
-      real(kind=8):: dxi,dyi,ni,nip1,ninti,sumn,sumnx,wy
+      real(kind=8):: dyi,ni,nip1,ninti,sumn,sumnx,wy
       real(kind=8):: rnrev
       integer     :: i,ip,ix,iy
       real(kind=8):: n1x(0:nx),n1y(0:ny)
       real(kind=8):: nintx(0:nx),ninty(0:ny)
 
-      dxi = 1./dx
       dyi = 1./dy
 
 c     --- Initialize xp and yp
