@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.109 $, $Date: 2003/10/30 19:31:26 $
+c@(#) File TOP.F, version $Revision: 3.110 $, $Date: 2003/11/22 00:17:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7390,3 +7390,47 @@ c there is a problem here with the intel compiler
         return
       end
 c=============================================================================
+      subroutine impact_ion(is1,is2,nbp,wp,shiftx,shifty,shiftz,deltax,deltay,deltaz)
+      ! create particles of specie is2 created by impact of particles of species is1
+      ! particles are created with initial kinetic energy wp
+      USE Constant
+      use Particles
+      USE InPart
+      use LostParticles
+      implicit none
+      INTEGER, INTENT(IN) :: is1, is2, nbp
+      REAL(8), INTENT(IN) :: wp,shiftx,shifty,shiftz,deltax,deltay,deltaz
+
+      INTEGER :: ip,i1,i2,ir
+      REAL(8) :: gamma, uz_tmp
+      REAL(8), EXTERNAL :: wranf
+
+        IF(nbp==0) return
+
+        gamma = 1.+wp*echarge/(sm(is2)*clight**2)
+        IF(gamma-1.<1.e-6) then
+          uz_tmp = gamma*SQRT(1.-1./(gamma**2))*clight
+        else
+          uz_tmp = SQRT(2.*wp*echarge/sm(is2))
+        END if
+        call chckpart(is2,0,nbp*npslost(is1),.false.)
+        do ip = inslost(is1), inslost(is1)+npslost(is1)-1
+          i1 = ins(is2) + nps(is2)
+          i2 = i1 + nbp - 1
+          do ir = 1, nbp
+            xp(i1+ir-1) = xplost(ip)+shiftx+(wranf()-0.5)*deltax
+            yp(i1+ir-1) = yplost(ip)+shifty+(wranf()-0.5)*deltay
+            zp(i1+ir-1) = zplost(ip)+shiftz+(wranf()-0.5)*deltaz
+          end do
+          uxp(i1:i2) = 0.
+          uyp(i1:i2) = 0.
+          uzp(i1:i2) = -uz_tmp
+          if(wpid>0) pid(i1:i2,wpid) = pidlost(ip,wpid)
+          nps(is2) = nps(is2) + nbp
+        end do
+
+      return
+      end subroutine impact_ion
+c=============================================================================
+
+
