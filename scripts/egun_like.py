@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.35 2005/01/12 17:17:39 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.36 2005/02/25 22:33:05 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -94,7 +94,8 @@ def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         ipstep=None,egundata_window=-1,plottraces_window=-1,
-        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
+        resetlostpart=0):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -117,6 +118,8 @@ Performs steady-state iterations
                        plotting.
   - plottraces_window=1: window in which to plot traces.Set to a negative 
                          number to deactivate plotting.
+  - resetlostpart=0: When true, before each iteration, clear out any lost
+                     particles that were saved (set top.npslost = 0)
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
@@ -250,7 +253,11 @@ Performs steady-state iterations
     # --- set number of particles to zero.
     top.nps = 0
     top.ins[0:]=top.npmax_s[1:]
-        
+
+    # --- Clear out any lost particles that were saved from previous
+    # --- iterations, if requested
+    if resetlostpart: top.npslost = 0
+
     # --- turn on injection (type 1 or 2) for one time step.
     if (top.ntinj > 0):
       top.nztinjmn = _onztinjmn
@@ -564,7 +571,8 @@ def gunmg(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         nmg=0,conductors=None,egundata_window=2,plottraces_window=1,
-        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
+        resetlostpart=0):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -590,6 +598,8 @@ Performs steady-state iterations in a cascade using different resolutions.
                        plotting.
   - plottraces_window=1: window in which to plot traces.Set to a negative 
                          number to deactivate plotting.
+  - resetlostpart=0: When true, before each iteration, clear out any lost
+                     particles that were saved (set top.npslost = 0)
   Note that ipsave and save_same_part are preserved in between calls
   """
   global rhonext,nrnex,nznext,dxnext,dznext
@@ -601,7 +611,7 @@ Performs steady-state iterations in a cascade using different resolutions.
         laccumulate_zmoments,rhoparam,
         lstatusline,insertbeforeiter,insertafteriter,
         None,egundata_window,plottraces_window,
-        egundata_nz,egundata_zmin,egundata_zmax)
+        egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
   # initialize itersub
   if itersub is None: itersub = iter
   iterlast = iter
@@ -679,7 +689,7 @@ Performs steady-state iterations in a cascade using different resolutions.
             laccumulate_zmoments,rhoparam,
             lstatusline,insertbeforeiter,insertafteriter,
             None,egundata_window,plottraces_window,
-            egundata_nz,egundata_zmin,egundata_zmax)
+            egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
         # remaining iterations but last one performed with inj_param=0.5
         top.inj_param = 0.5
         if(iter>2):
@@ -687,7 +697,7 @@ Performs steady-state iterations in a cascade using different resolutions.
               laccumulate_zmoments,rhoparam,
               lstatusline,insertbeforeiter,insertafteriter,
               None,egundata_window,plottraces_window,
-              egundata_nz,egundata_zmin,egundata_zmax)
+              egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
       # For all sublevels, rhonext is created and setrhonext is installed
       # so that rhonext is eveluated during last iteration at current level.
       if i<nmg:
@@ -702,7 +712,7 @@ Performs steady-state iterations in a cascade using different resolutions.
           laccumulate_zmoments,rhoparam,
           lstatusline,insertbeforeiter,insertafteriter,
           None,egundata_window,plottraces_window,
-          egundata_nz,egundata_zmin,egundata_zmax)
+          egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
       # Uninstall setrhonext if necessary.
       if i<nmg:
          uninstallafterstep(setrhonext)
@@ -718,7 +728,8 @@ def gunamr(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         conductors=None,ipstep=None,egundata_window=-1,plottraces_window=-1,
-        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
+        resetlostpart=0):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -744,6 +755,8 @@ Performs steady-state iterations in a cascade using different resolutions.
                        plotting.
   - plottraces_window=1: window in which to plot traces.Set to a negative 
                          number to deactivate plotting.
+  - resetlostpart=0: When true, before each iteration, clear out any lost
+                     particles that were saved (set top.npslost = 0)
   Note that ipsave and save_same_part are preserved in between calls
   """
   global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
@@ -753,13 +766,13 @@ Performs steady-state iterations in a cascade using different resolutions.
          laccumulate_zmoments,rhoparam,
          lstatusline,insertbeforeiter,insertafteriter,
          nmg,conductors,egundata_window,plottraces_window,
-         egundata_nz,egundata_zmin,egundata_zmax)
+         egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
   else:
    gun(itersub,ipsave,save_same_part,maxtime,
             laccumulate_zmoments,rhoparam,
             lstatusline,insertbeforeiter,insertafteriter,
             None,egundata_window,plottraces_window,
-            egundata_nz,egundata_zmin,egundata_zmax)
+            egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
   if AMRlevels>0:
     w3d.AMRlevels = AMRlevels
     fieldsol()
@@ -782,14 +795,14 @@ Performs steady-state iterations in a cascade using different resolutions.
           laccumulate_zmoments,None,
           lstatusline,insertbeforeiter,insertafteriter,
           ipsteptemp,egundata_window,plottraces_window,
-          egundata_nz,egundata_zmin,egundata_zmax)
+          egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
       iter = iter - 1
     if iter > 0:
       gun(iter,ipsave,save_same_part,maxtime,
           laccumulate_zmoments,rhoparam,
           lstatusline,insertbeforeiter,insertafteriter,
           None,egundata_window,plottraces_window,
-          egundata_nz,egundata_zmin,egundata_zmax)
+          egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
     w3d.AMRgenerate_periodicity = tmp
   if egundata_nz is not None:
     return [array(egundata_curr),array(egundata_xrmsz),array(egundata_yrmsz), 
