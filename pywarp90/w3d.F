@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.20 $, $Date: 2001/08/14 20:32:09 $
+c@(#) File W3D.M, version $Revision: 3.21 $, $Date: 2001/08/15 16:45:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3739,6 +3739,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: substarttime,wtime
 
       real(kind=8), allocatable, dimension(:):: ymesh_tmp
+      real(kind=8) :: absphiang, const_a(ns), fact(ns)
 
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -4254,20 +4255,28 @@ c           --- injected at edges of the grid that are not symmetry planes.
               signy(4) = -1.
             end if
 
-c           --- loop over species
+            if(allocated(ymesh_tmp)) deallocate(ymesh_tmp)
+            if(solvergeom==XYZgeom) then
+              allocate(ymesh_tmp(0:ny))
+              ymesh_tmp = ymesh
+            elseif(solvergeom==RZgeom) then
+              allocate(ymesh_tmp(0:nx))
+              ymesh_tmp = xmesh
+            end if
+
             do is=1,ns
               inj_is = min(is,inj_ns)
               qoverm = sq(is)/sm(is)
-
 c             --- This constant terms includes corrections for injection off
 c             --- of a concentric spheres.  See I. Langmuir,
 c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
-              if (inject == 2) then
-                const = 4./9.*eps0*(2.*abs(qoverm))**.5/(dz*inj_d)**2*
-     &                  dt*dx*dy/echarge/sw(is)
-     &                  /(1.+1.6*dz*rinji+2.06*(dz*rinji)**2)
-              endif
+              if (inject == 2)
+     &          const_a(is) = 4./9.*eps0*(2.*abs(qoverm))**.5/(dz*inj_d)**2*
+     &                        dt*dx*dy/echarge/sw(is)
+     &                        /(1.+1.6*dz*rinji+2.06*(dz*rinji)**2)
+                fact(is) = dx*dy*dt/sq(is)/sw(is)
+            end do
 
 c             --- Load particles one grid cell at a time,
 c             --- only if there is a positive number of injected particles.
@@ -4278,24 +4287,27 @@ c             --- If so, then calculate rest of beam parameters.
 c             --- Particles are initially placed on the emitting surface
 c             --- and are then advance using a isochronous leapfrog with
 c             --- timesteps uniformly distributed between 0 and dt.
-            if(solvergeom==XYZgeom) then
-              allocate(ymesh_tmp(0:ny))
-              ymesh_tmp = ymesh
-            elseif(solvergeom==RZgeom) then
-              allocate(ymesh_tmp(0:nx))
-              ymesh_tmp = xmesh
-            end if
-             do iy=0,inj_ny
-                do ix=0,inj_nx
+            do iy=0,inj_ny
+              do ix=0,inj_nx
+                if (.not.(((xmesh(ix)-xinj)*(binj+2.*dy))**2 +
+     &             ((ymesh_tmp(iy)-yinj)*(ainj+2.*dx))**2 .lt.
+     &                       ((ainj+2.*dx)*(binj+2.*dy))**2
+     &             .and. (-1 <= inj_grid(ix,iy) .and.
+     &                          inj_grid(ix,iy) < nz))) cycle
+
+                absphiang = abs(inj_phi(ix,iy))**1.5/cos(inj_angl(ix,iy))
+
+                do is=1,ns
+                  inj_is = min(is,inj_ns)
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
-                    rnn = const*abs(inj_phi(ix,iy))**1.5/cos(inj_angl(ix,iy))
+                    rnn = const_a(is)*absphiang
                     rnn = sign(rnn,sq(is)*inj_phi(ix,iy))
                   elseif (inject == 3) then
                     rnn = (eps0*inj_phi(ix,iy)/
-     &                          (dz*inj_d) - inj_rho(ix,iy,inj_ij)*dz)*
-     &                          dx*dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
+     &                    (dz*inj_d) - inj_rho(ix,iy,inj_ij)*dz)*
+     &                    dx*dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
                   endif
 c                 --- Make sure that rnn is >= 0.
                   if (rnn < 0.) rnn = 0.
@@ -4307,55 +4319,45 @@ c                 --- Only count the particles (and previous particles) if
 c                 --- within 2 grid cells of the current source.
 c                 --- Also, only count particles is the source is within
 c                 --- the grid.
-                  if (((xmesh(ix)-xinj)*(binj+2.*dy))**2 +
-     &                ((ymesh_tmp(iy)-yinj)*(ainj+2.*dx))**2 .lt.
-     &                          ((ainj+2.*dx)*(binj+2.*dy))**2
-     &                .and. (-1 <= inj_grid(ix,iy) .and.
-     &                             inj_grid(ix,iy) < nz)) then
-                    rnn = (inj_param*rnn +
-     &                     (1. - inj_param)*inj_prev(ix,iy,inj_ij,inj_is))*
-     &                    finject(ij,is)
+                  rnn = (inj_param*rnn +
+     &                  (1. - inj_param)*inj_prev(ix,iy,inj_ij,inj_is))*
+     &                  finject(ij,is)
 
-c                   --- Force injected current to be between the range
-c                   --- jmininj to jmaxinj.  The absolute values are used
-c                   --- so that this works with either positive ions
-c                   --- and electron.
-                    rnn = min(rnn,
-     &                      abs(jmaxinj*dx*dy*dt/sq(is)/sw(is)*finject(ij,is)))
-                    rnn = max(rnn,
-     &                      abs(jmininj*dx*dy*dt/sq(is)/sw(is)*finject(ij,is)))
+c                 --- Force injected current to be between the range
+c                 --- jmininj to jmaxinj.  The absolute values are used
+c                 --- so that this works with either positive ions
+c                 --- and electron.
+                  rnn = min(rnn,abs(jmaxinj*fact(is)*finject(ij,is)))
+                  rnn = max(rnn,abs(jmininj*fact(is)*finject(ij,is)))
 
-c                   --- Add a random number to the number of particles injected
-c                   --- so that the average number of particles injected is
-c                   --- correct.  For example, if rnn < 1., without the
-c                   --- addition of the random number, no particles would ever
-c                   --- be injected.  With the random number, particles will be
-c                   --- injected and but the average number will be less than 1.
-                    rnn = rnn + wranf()
+c                 --- Add a random number to the number of particles injected
+c                 --- so that the average number of particles injected is
+c                 --- correct.  For example, if rnn < 1., without the
+c                 --- addition of the random number, no particles would ever
+c                 --- be injected.  With the random number, particles will be
+c                 --- injected and but the average number will be less than 1.
+                  rnn = rnn + wranf()
 
-c                   --- Save the number of particles injected
-                    inj_np(ix,iy,inj_ij,inj_is)=inj_np(ix,iy,inj_ij,inj_is)+rnn
-                  else
-                    rnn = 0.
-                  endif
+c                 --- Save the number of particles injected
+                  inj_np(ix,iy,inj_ij,inj_is)=inj_np(ix,iy,inj_ij,inj_is)+rnn
 
 c                 --- Convert to integer, making sure that nn is not negative.
                   nn = max(0,int(rnn))
 
 c                 --- Only do following work if particles are to be injected
-                  if (nn > 0) then
+                  if (nn <= 0) cycle
 
-c                   --- Make sure there is room for more particles.  Estimate
-c                   --- total number of particles to be injected from the
-c                   --- source.
-                    call chckpart(is,int(nn*ainj*binj*pi*dxi*dyi),0,.true.)
-                    call chckpart(is,nn*load_fac+npinje_s(is),0,.true.)
+c                 --- Make sure there is room for more particles.  Estimate
+c                 --- total number of particles to be injected from the
+c                 --- source.
+                  call chckpart(is,int(nn*ainj*binj*pi*dxi*dyi),0,.true.)
+                  call chckpart(is,nn*load_fac+npinje_s(is),0,.true.)
 
-c                   --- loop to load new particles
-                    ilf = load_fac
-                    if (ix == 0) ilf = ilf/2
-                    if (iy == 0) ilf = ilf/2
-                    do il=1,ilf
+c                 --- loop to load new particles
+                  ilf = load_fac
+                  if (ix == 0) ilf = ilf/2
+                  if (iy == 0) ilf = ilf/2
+                  do il=1,ilf
                     do ip=1,nn
                       ii = ins(is) - npinje_s(is) - 1
 c                     --- calculate x, y and z of new particle
@@ -4425,12 +4427,10 @@ c                       --- increment particle counter
 c                     --- increment random number counter
                       injctcnt = injctcnt + 1
                     enddo
-                    enddo
-                  endif
+                  enddo
+c           --- end loop over species
                 enddo
               enddo
-
-c           --- end loop over species
             enddo
 
 c         --- end of loop over injection sources
