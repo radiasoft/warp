@@ -37,6 +37,25 @@ class MultiGrid:
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
         if kw.has_key(name): del kw[name]
 
+    # --- bounds is special since it will sometimes be set from the
+    # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
+    if 'bounds' not in self.__dict__:
+      if 'bounds' in kw:
+        self.bounds = kw['bounds']
+      else:
+        self.bounds = zeros(6)
+        self.bounds[0] = self.boundxy
+        self.bounds[1] = self.boundxy
+        self.bounds[2] = self.boundxy
+        self.bounds[3] = self.boundxy
+        self.bounds[4] = self.bound0
+        self.bounds[5] = self.boundnz
+        if self.l2symtry:
+          self.bounds[2] = 1
+        elif self.l4symtry:
+          self.bounds[0] = 1
+          self.bounds[2] = 1
+
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
@@ -47,6 +66,8 @@ class MultiGrid:
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmax - self.zmmin)/self.nz
+    self.xsymmetryplane = 0.
+    self.ysymmetryplane = 0.
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
@@ -61,6 +82,7 @@ class MultiGrid:
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
+    self.conductorlist = []
 
     # --- These must be arrays since they are modified in the call to the
     # --- MG solver.
@@ -80,13 +102,13 @@ class MultiGrid:
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
 
-  def gete(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions(self,x,y,z,ex,ey,ez):
     n = len(x)
     sete3d(self.phi,0.,n,x,y,z,top.zgridprv,self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
            self.l2symtry,self.l4symtry)
 
-  def setphi(self,x,y,z,phi):
+  def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
     getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
@@ -97,15 +119,30 @@ class MultiGrid:
     for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
 
-  def fetche(self,ipmin,ip,js,ex,ey,ez):
-    for i,n in zip(top.ins,top.nps):
-      self.gete(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],ex,ey,ez)
+  def makerhoperiodic(self):
+    if self.bounds[0] == 2 or self.bounds[1] == 2:
+      self.rho[0,:,:] = self.rho[0,:,:] + self.rho[-1,:,:]
+      self.rho[-1,:,:] = self.rho[0,:,:]
+    if self.bounds[2] == 2 or self.bounds[3] == 2:
+      self.rho[:,0,:] = self.rho[:,0,:] + self.rho[:,-1,:]
+      self.rho[:,-1,:] = self.rho[:,0,:]
+    if self.bounds[4] == 2 or self.bounds[5] == 2:
+      self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
+      self.rho[:,:,-1] = self.rho[:,:,0]
+
+  def fetche(self):
+    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+
+  def fetche(self):
+    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
                             dfill=top.largepos):
+    self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       top.zbeam,
                       self.nx,self.ny,self.nz,self.nzfull,
@@ -117,9 +154,7 @@ class MultiGrid:
   def solve(self,iwhich=0):
     multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                      self.dx,self.dy,self.dz,self.phi,self.rho,
-                     self.rstar,self.linbend,
-                     self.bound0,self.boundnz,self.boundxy,
-                     self.l2symtry,self.l4symtry,
+                     self.rstar,self.linbend,self.bounds,
                      self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
                      self.mgparam,self.mgform,self.mgiters,self.mgmaxiters,
                      self.mgmaxlevels,self.mgerror,self.mgtol,
@@ -168,8 +203,7 @@ class MultiGrid:
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
-                    self.dx,self.dy,self.dz,self.l2symtry,self.l4symtry,
-                    self.conductors)
+                    self.dx,self.dy,self.dz,self.conductors)
 
     # --- Preset rho to increase performance (reducing the number of
     # --- multiplies in the main SOR sweep loop).
@@ -184,21 +218,18 @@ class MultiGrid:
     if self.mgform == 2:
       rhosave = self.rho + 0.
       res = fzeros(shape(self.phi),'d')
+      localbounds = bounds.copy()
+
     #ifdef MPIPARALLEL
     #  lparity = 0
     #  rparity = 0
     #  mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-    #                   bound0,boundnz,nzfull,
+    #                   bounds,nzfull,
     #                   lparity,rparity,
     #                   whosendingleft,izsendingleft,
     #                   whosendingright,izsendingright)
-    #  localb0 = bound0
-    #  localbnz = boundnz
-    #  if (izfsslave(my_index) > 0) localb0 = -1
-    #  if (izfsslave(my_index)+nz < nzfull) localbnz = -1
-    #else
-      localb0 = self.bound0
-      localbnz = self.boundnz
+    #  if (izfsslave(my_index) > 0) localbounds[4] = -1
+    #  if (izfsslave(my_index)+nz < nzfull) localbounds[5] = -1
     #endif
 
     #   --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -219,19 +250,17 @@ class MultiGrid:
       # --- correction form since it is operating on the error.
       if self.mgform == 2:
         cond_potmg(self.conductors.interior,
-                   self.nx,self.ny,self.nz,phisave,0,false,
-                   self.mgform,true)
+                   self.nx,self.ny,self.nz,phisave,0,false,self.mgform,true)
         residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
-                 phisave,rhosave,res,
-                 0,localb0,localbnz,self.boundxy,self.l2symtry,self.l4symtry,
+                 phisave,rhosave,res,0,localbounds,
                  self.mgparam,self.mgform,true,
                  self.lcndbndy,self.icndbndy,self.conductors)
     #ifdef MPIPARALLEL
-    #  mgexchange_phi(nx,ny,nz,nzfull,res,localb0,localbnz,-1,
+    #  mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
     #                 my_index,nslaves,izfsslave,nzfsslave,
     #                 whosendingleft,izsendingleft,
     #                 whosendingright,izsendingright)
-    #  mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localb0,localbnz,0,
+    #  mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
     #                         my_index,nslaves,izfsslave,
     #                         whosendingleft,whosendingright)
     #endif
@@ -241,8 +270,7 @@ class MultiGrid:
       # --- Do one vcycle.
       self.vcycle(0,self.nx,self.ny,self.nz,self.nzfull,
                   self.dx,self.dy,self.dz,self.phi,self.rho,
-                  self.rstar,self.linbend,self.l2symtry,self.l4symtry,bendx,
-                  self.boundxy,self.bound0,self.boundnz,
+                  self.rstar,self.linbend,bendx,self.bounds,
                   self.mgparam,self.mgform,self.mgmaxlevels,
                   self.downpasses,self.uppasses,self.lcndbndy,
                   self.icndbndy,self.conductors)
@@ -254,17 +282,17 @@ class MultiGrid:
       # --- to be set when using other than Dirichlet boundaries since
       # --- those planes are only set with the error of phi.
       if self.mgform == 2:
-        if localb0  == 1: self.phi[:,:,0] = self.phi[:,:,2]
-        if localbnz == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
+        if localbounds[4] == 1: self.phi[:,:,0] = self.phi[:,:,2]
+        if localbounds[5] == 1: self.phi[:,:,-1] = self.phi[:,:,-3]
       #ifndef MPIPARALLEL
-        if localb0  == 2: self.phi[:,:,0] = self.phi[:,:,-3]
-        if localbnz == 2: self.phi[:,:,-1] = self.phi[:,:,2]
+        if localbounds[4] == 2: self.phi[:,:,0] = self.phi[:,:,-3]
+        if localbounds[5] == 2: self.phi[:,:,-1] = self.phi[:,:,2]
       #else
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
+      # mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,-1,
+      # mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
@@ -282,8 +310,8 @@ class MultiGrid:
     # --- For Dirichlet boundary conditions, copy data into guard planes
     # --- For other boundary conditions, the guard planes are used during
     # --- the solve are so are already set.
-    if (self.bound0 == 0): self.phi[:,:,0] = self.phi[:,:,1]
-    if (self.boundnz == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
+    if (self.bounds[4] == 0): self.phi[:,:,0] = self.phi[:,:,1]
+    if (self.bounds[5] == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
 
     # --- Make a print out.
     if (self.mgerror[0] > self.mgtol):
@@ -300,11 +328,8 @@ class MultiGrid:
 
   #===========================================================================
   def vcycle(self,mglevel,nx,ny,nz,nzfull,dx,dy,dz,
-                  phi,rho,rstar,linbend,l2symtry,l4symtry,
-                  bendx,boundxy,globalb0,globalbnz,
-                  mgparam,mgform,
-                  mgmaxlevels,downpasses,uppasses,
-                  lcndbndy,icndbndy,conductors):
+                  phi,rho,rstar,linbend,bendx,bounds,mgparam,mgform,
+                  mgmaxlevels,downpasses,uppasses,lcndbndy,icndbndy,conductors):
    
     res = fzeros(shape(phi),'d')
 
@@ -312,28 +337,24 @@ class MultiGrid:
     dysqi = 1./dy**2
     dzsqi = 1./dz**2
 
+    localbounds = bounds.copy()
+
     #ifdef MPIPARALLEL
     #lparityall = 0
     #rparityall = 0
     #mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-    #                 globalb0,globalbnz,nzfull,
+    #                 bounds,nzfull,
     #                 lparityall,rparityall,
     #                 whosendingleft,izsendingleft,
     #                 whosendingright,izsendingright)
-    #localb0 = globalb0
-    #localbnz = globalbnz
-    #if (izfsslave(my_index) > 0) localb0 = -1
-    #if (izfsslave(my_index)+nz < nzfull) localbnz = -1
-    #else
-    localb0 = globalb0
-    localbnz = globalbnz
+    #if (izfsslave(my_index) > 0) localbounds[4] = -1
+    #if (izfsslave(my_index)+nz < nzfull) localbounds[5] = -1
     #endif
 
     for i in range(downpasses):
       self.sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-                     dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
-                     localb0,localbnz,boundxy,mgparam,mgform,
-                     lcndbndy,icndbndy,conductors)
+                     dxsqi,dysqi,dzsqi,linbend,bendx,
+                     localbounds,mgparam,mgform,lcndbndy,icndbndy,conductors)
 
     # --- Check if this is the finest level. If so, then don't do any further
     # --- coarsening. This is the same check that is done in getmglevels.
@@ -344,15 +365,14 @@ class MultiGrid:
 
       # --- Get the residual on the current grid.
       residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
-               mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,
-               mgparam,mgform,false,
+               mglevel,localbounds,mgparam,mgform,false,
                lcndbndy,icndbndy,conductors)
       #ifdef MPIPARALLEL
-      #mgexchange_phi(nx,ny,nz,nzfull,res,localb0,localbnz,-1,
+      #mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
       #                  my_index,nslaves,izfsslave,nzfsslave,
       #                  whosendingleft,izsendingleft,
       #                  whosendingright,izsendingright)
-      #mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localb0,localbnz,0,
+      #mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
       #                       my_index,nslaves,izfsslave,
       #                       whosendingleft,whosendingright)
       #endif
@@ -375,21 +395,20 @@ class MultiGrid:
         # --- Ratio of old to new constant needed to scale the residual for
         # --- the restriction.
         ff = (dxsqi+dysqi+dzsqi)/(dxsqi*0.25 + dysqi*0.25 + dzsqi)
-        restrict2d(nx,ny,nz,nzfull,res,rho2,ff,boundxy,localb0,localbnz,
-                   l2symtry,l4symtry)
+        restrict2d(nx,ny,nz,nzfull,res,rho2,ff,localbounds)
 
         # --- Continue at the next coarsest level.
         self.vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
-                    dx*2,dy*2,dz,phi2,rho2,
-                    rstar,linbend,l2symtry,l4symtry,bendx,
-                    boundxy,globalb0,globalbnz,mgparam,mgform,
-                    mgmaxlevels,downpasses,uppasses,
+                    dx*2,dy*2,dz,phi2,rho2,rstar,linbend,bendx,bounds,
+                    mgparam,mgform,mgmaxlevels,downpasses,uppasses,
                     lcndbndy,icndbndy,conductors)
 
         # --- Add in resulting error.
-        expand2d(nx/2,ny/2,nz,nzfull,phi2,phi,boundxy,localb0,localbnz)
+        expand2d(nx/2,ny/2,nz,nzfull,phi2,phi,localbounds)
 
       else:
+
+        localbounds2 = bounds.copy()
 
         #ifdef MPIPARALLEL
         # --- Find domains in coarser grid
@@ -413,16 +432,12 @@ class MultiGrid:
         #                       lparityall,rparityall,
         #                       whosendingleft2,izsendingleft2,
         #                       whosendingright2,izsendingright2)
-        # local2b0 = globalb0
-        # local2bnz = globalbnz
-        # if (izfsslave2(my_index) > 0) local2b0 = -1
-        # if (izfsslave2(my_index) + nznew < nzfull/2) local2bnz = -1
+        # if (izfsslave2(my_index) > 0) localbounds2[4] = -1
+        # if (izfsslave2(my_index) + nznew < nzfull/2) localbounds2[5] = -1
         #else
         nznew = nz/2
         lparity = 0
         rparity = 0
-        local2b0 = globalb0
-        local2bnz = globalbnz
         #endif
 
         # --- Alloate new work space
@@ -432,12 +447,11 @@ class MultiGrid:
         # --- Restriction - note that scaling factor for residual is always
         # --- 4 for full-coarsening and is compiled into the restriction
         # --- routine.
-        restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,boundxy,
-                   local2b0,local2bnz,localb0,localbnz,
-                   lparity,rparity,l2symtry,l4symtry)
+        restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,localbounds2,localbounds,
+                   lparity,rparity)
         #ifdef MPIPARALLEL
         # mgexchange_phi(nx/2,ny/2,nznew,nzfull/2,rho2plusmorespace,
-        #                local2b0,local2bnz,0,
+        #                localbounds2,0,
         #                my_index,nslaves,izfsslave2,nzfsslave2,
         #                whosendingleft2,izsendingleft2,
         #                whosendingright2,izsendingright2)
@@ -445,18 +459,16 @@ class MultiGrid:
 
         # --- Continue at the next coarsest level.
         self.vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
-                    dx*2,dy*2,dz*2,phi2,rho2,
-                    rstar,linbend,l2symtry,l4symtry,bendx,
-                    boundxy,globalb0,globalbnz,mgparam,mgform,
-                    mgmaxlevels,downpasses,uppasses,
+                    dx*2,dy*2,dz*2,phi2,rho2,rstar,linbend,bendx,bounds,
+                    mgparam,mgform,mgmaxlevels,downpasses,uppasses,
                     lcndbndy,icndbndy,conductors)
 
         # --- Add in resulting error.
-        expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,
-                 boundxy,localb0,localbnz,lparity,rparity)
+        expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,localbounds,
+                 lparity,rparity)
         #ifdef MPIPARALLEL
         # mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,
-        #                        localb0,localbnz,1,
+        #                        localbounds,1,
         #                        my_index,nslaves,izfsslave,
         #                        whosendingleft,whosendingright)
         #endif
@@ -464,14 +476,12 @@ class MultiGrid:
     # --- Do final SOR passes.
     for i in range(uppasses):
       self.sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-                     dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
-                     localb0,localbnz,boundxy,mgparam,mgform,
-                     lcndbndy,icndbndy,conductors)
+                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
+                     mgparam,mgform,lcndbndy,icndbndy,conductors)
 
   #===========================================================================
   def sorpass3d(self,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
-                     localb0,localbnz,boundxy,mgparam,mgform,
+                     rdx2,rdy2,rdz2,linbend,bendx,bounds,mgparam,mgform,
                      lcndbndy,icndbndy,conductors):
 
     # --- Put desired potential onto conductors in phi array.
@@ -490,26 +500,25 @@ class MultiGrid:
     for parity in [s_parity,e_parity]:
 
       sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-                    rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
-                    localb0,localbnz,boundxy,mgparam,mgform,
+                    rdx2,rdy2,rdz2,linbend,bendx,bounds,mgparam,mgform,
                     lcndbndy,icndbndy,conductors)
 
     #ifndef MPIPARALLEL
-      if (localb0  == 2): phi[:,:,0] = phi[:,:,-3]
-      if (localbnz == 2): phi[:,:,-2:] = phi[:,:,1:3]
+      if (bounds[4] == 2): phi[:,:,0] = phi[:,:,-3]
+      if (bounds[5] == 2): phi[:,:,-2:] = phi[:,:,1:3]
     #else
-    # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
+    # mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,
     #                my_index,nslaves,izfsslave,nzfsslave,
     #                whosendingleft,izsendingleft,
     #                whosendingright,izsendingright)
-    # mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localb0,localbnz,1,
+    # mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,
     #                        my_index,nslaves,izfsslave,
     #                        whosendingleft,whosendingright)
     #endif
 
     #ifdef MPIPARALLEL
     # --- Exchange phi in the z guard planes
-    #mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,-1,
+    #mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,
     #               my_index,nslaves,izfsslave,nzfsslave,
     #               whosendingleft,izsendingleft,
     #               whosendingright,izsendingright)
