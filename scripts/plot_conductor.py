@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.62 2003/08/11 18:14:50 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.63 2003/08/29 18:10:56 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1444,6 +1444,23 @@ def plotaccloutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
   plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
                      top.acclzs,top.acclze,top.acclap,
                      top.acclox,top.accloy)
+
+#---------------------------------------------------------------------------
+def plotdrftoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
+  """Plots the outline of drft elements
+ - ie=0: starting drft to plot
+ - ne=top.ndrft+1: number of drfts to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  if ne is None: ne = top.ndrft + 1
+  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+                     top.drftzs,top.drftze,top.drftap,
+                     top.drftox,top.drftoy)
 
 #########################################################################
 #########################################################################
