@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.65 2004/07/24 00:25:49 dave Exp $"
+warp_version = "$Id: warp.py,v 1.66 2004/07/29 17:32:33 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -416,15 +416,7 @@ Creates a dump file
   interpreter_variables = []
   if pyvars:
     if attr == 'dump' or 'dump' in attr:
-      # --- Convert control functions to their names so they can be written
-      # --- Note, only functions are converted, not methods of class
-      # --- instances. Also, note that functions defined interactively will
-      # --- not be restored properly since the source is not available.
-      for n,l in controllerfuncs.iteritems():
-        __main__.__dict__['control'+n] = []
-        for f in l:
-          if type(f) is FunctionType:
-            __main__.__dict__['control'+n].append(f.__name__)
+      controllerspreparefordump()
     # --- Add to the list all variables which are not in the initial list
     for l in __main__.__dict__.keys():
       if l not in initial_global_dict_keys:
@@ -441,9 +433,7 @@ Creates a dump file
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix,verbose=verbose,hdf=hdf)
   # --- Remove control names from main dict
-  for n in controllerfuncs.iterkeys():
-    if 'control'+n in __main__.__dict__:
-      del __main__.__dict__['control'+n]
+  controllerscleanafterdump()
   # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
@@ -470,15 +460,7 @@ Reads in data from file, redeposits charge density and does field solve
   else:
     pyrestore(filename,verbose=verbose)
   # --- Recreate control function lists
-  for n,l in controllerfuncs.iteritems():
-    if 'control'+n not in __main__.__dict__: continue
-    # --- Add items that are defined to the list if not already there.
-    for fname in __main__.__dict__['control'+n]:
-      if fname in __main__.__dict__:
-        if not __main__.__dict__['isinstalled'+n](__main__.__dict__[fname]):
-          __main__.__dict__['install'+n](__main__.__dict__[fname])
-    # --- Delete the temporary variable
-    del __main__.__dict__['control'+n]
+  controllersrecreatelists()
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.
