@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.14 2002/08/21 18:11:48 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.15 2002/08/23 17:23:49 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -16,8 +16,8 @@ hpbasictext = """
   - istart=0: Time index at which to start the plots
   - iend=jhist: Time index at which to end the plots
   - istep=1: Step size of time data plotted
-  - lhzbeam=1: When true, plots data versus hzbeam instead of thist
-  - lvsz=1: Old name for lhzbeam
+  - lhzbeam=0: When true, plots data versus hzbeam instead of thist
+  - lvsz=0: Old name for lhzbeam
   - lzshift=0: specifies whether the z-axis is shifted by the window
               location
   - logplot=0: When true, make a log plot
@@ -52,7 +52,7 @@ hpbasicconttext = (
   - jstart=0: Z index at which to start the plots
   - jend=nzzarr: Z index at which to end the plots
   - jstep=max(jend/32,1): Z step size of time data plotted
-  - lhzbeam=1: When true, plots data versus hzbeam instead of thist
+  - lhzbeam=0: When true, plots data versus hzbeam instead of thist
   - logplot=0: When true, make a log plot
   - color='fg': Color of the curve plotted
   - marks=0: Marks to place on curve
@@ -117,7 +117,7 @@ only required argument of course is the data to be plotted.
                 'titlet':'','titleb':'','titlel':'','titler':'',
                 'xscale':1.0,'xoffset':0.0,'yscale':array([1.0]),'yoffset':0.0,
                 'lnormalized':0,'istart':0,'iend':'jhist','istep':1,
-                'lhzbeam':1,'lvsz':1,'logplot':0,
+                'lhzbeam':0,'lvsz':0,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
                 'plsysval':1,'width':1.,'linetype':'solid',
                 'varsuffix':None}
@@ -209,7 +209,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
                 'titlet':'','titleb':'','titlel':'','titler':'',
                 'xscale':1.0,'xoffset':0.0,'yscale':1.0,'yoffset':0.0,
                 'istart':0,'iend':'jhist','istep':None,'jstart':0,
-                'jend':'nzzarr','jstep':None,'lhzbeam':1,'logplot':0,
+                'jend':'nzzarr','jstep':None,'lhzbeam':0,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,
                 'titles':1,'levs':10,'filled':0,'width':1.,'linetype':'solid',
                 'varsuffix':None}
