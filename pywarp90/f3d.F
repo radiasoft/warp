@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.34 $, $Date: 2002/04/25 16:47:25 $
+c@(#) File F3D.M, version $Revision: 3.35 $, $Date: 2002/04/26 16:07:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6637,7 +6637,7 @@ c           --- will be piecewise linear), otherwise make the surface spherical.
               if (inj_grid(ix,iy+1) > zz)
      &          delpy = delmz/(inj_grid(ix,iy+1)-inj_grid(ix,iy))*dz
             else
-              zz = (zinject - zmmin) + (xx**2 + yy**2)/
+              zz = (zinject(ij) - zmmin) + (xx**2 + yy**2)/
      &             (rinject(ij) + sqrt(rinject(ij)**2 - (xx**2 + yy**2)))
               iz = int(zz/dz + 1)
               delmx = 2.
