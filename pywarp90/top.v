@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.32 $, $Date: 2002/01/15 19:53:20 $
+#@(#) File TOP.V, version $Revision: 3.33 $, $Date: 2002/01/22 17:21:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.32 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.33 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1822,29 +1822,33 @@ zpartbnd(zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
        # Enforces axial particle boundary conditions
 
 ******* Parallel:
-nslaves      integer /0/ # number of slaves which have been given regions
-my_index     integer +parallel # processor index to array of task ids
-grid_overlap integer +dump # Overlap of field grid in processors
-slavenp      integer /0/ +dump # Value of npmax that slave is to use
-maxslaves    integer /512/ +dump # Max numer of slaves
-lautodecomp  logical /.true./ # When false, the domain decompostion for the
- # particles is supplied by the user.
-zslave(0:maxslaves-1) _real   +dump # User supplied weighting for the domain
-                                    # decomposition of the particles.
-lfsautodecomp  logical /.true./ # When false, the domain decompostion for the
- # field solver is supplied by the user. Can only be done for fstype == 3.
-izslave(0:maxslaves-1) _integer +dump # starting iz for each slave
+nslaves       integer /0/         # Number of slaves
+my_index      integer   +parallel # Processor index to array of task ids
+grid_overlap  integer       +dump # Overlap of field grid in processors
+slavenp       integer /0/   +dump # Value of npmax that slave is to use
+maxslaves     integer /512/ +dump # Max numer of slaves
+lautodecomp   logical /.true./    # When false, the domain decompostion for the
+                                  # particles is supplied by the user.
+lfsautodecomp logical /.true./    # When false, the domain decompostion for the
+                                  # field solver is supplied by the user. Can
+                                  # only be done for fstype == 3.
+xynppgroup    integer /16/        # For slice field solver, number of process
+                                  # in each group which cooperatively does
+                                  # a field solve.
+zslave(0:maxslaves-1)    _real +dump    # User supplied weighting for the domain
+                                        # decomposition of the particles.
+izslave(0:maxslaves-1)   _integer +dump # starting iz for each slave
 izfsslave(0:maxslaves-1) _integer +dump # starting iz for which each slave does
-                                       # a field solve calculation
-nzslave(0:maxslaves-1) _integer +dump # number of z grid cells for each slave
+                                        # a field solve calculation
+nzslave(0:maxslaves-1)   _integer +dump # number of z grid cells for each slave
 nzfsslave(0:maxslaves-1) _integer +dump # number of z grid cells for which each
-                                       # slave does a field solve calculation
-zmslmin(0:maxslaves-1) _real   +dump # Mesh Z minimum for each slave
-zmslmax(0:maxslaves-1) _real   +dump # Mesh Z maximum for each slave
-izpslave(0:maxslaves-1) _integer +dump # Starting iz of particle extent
-nzpslave(0:maxslaves-1) _integer +dump #Number of Z cells of particle extent
-zpslmin(0:maxslaves-1) _real   +dump # Particle Z minimum for each slave
-zpslmax(0:maxslaves-1) _real   +dump # Particle Z maximum for each slave
+                                        # slave does a field solve calculation
+zmslmin(0:maxslaves-1)   _real    +dump # Mesh Z minimum for each slave
+zmslmax(0:maxslaves-1)   _real    +dump # Mesh Z maximum for each slave
+izpslave(0:maxslaves-1)  _integer +dump # Starting iz of particle extent
+nzpslave(0:maxslaves-1)  _integer +dump # Number of Z cells of particle extent
+zpslmin(0:maxslaves-1)   _real    +dump # Particle Z minimum for each slave
+zpslmax(0:maxslaves-1)   _real    +dump # Particle Z maximum for each slave
 
 ******* Databuffers:
 # Primarily used as data buffers for message passing
