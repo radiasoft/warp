@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.17 $, $Date: 2001/08/03 00:33:13 $
+c@(#) File W3D.M, version $Revision: 3.18 $, $Date: 2001/08/09 00:57:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1232,11 +1232,11 @@ c           --- Obtain the self-field from the electrostatic potential
 c           --- Get E field for particles near the  injection surface.
             if (inject .gt. 0) then
               if(solvergeom==XYZgeom) then
-                call inj_sete3d(phi(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
+                call inj_sete3d(phi(0,0,0),ip,ipmin,
      &                          zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
      &                          nx,ny,nz,ex,ey,ez)
               elseif(solvergeom==RZgeom) then
-                call inj_sete3d_rz(phi(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
+                call inj_sete3d_rz(phi(0,0,0),ip,ipmin,
      &                             zgridprv,xmmin,zmmin,dx,dz,
      &                             nx,nz,ex,ey,ez)
               end if
@@ -3720,10 +3720,13 @@ c injection.  The third part is for space-charge limited injection.
 
 
       integer(ISZ):: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
+      integer(ISZ):: inj_is,inj_ij
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,ehalf,vnorm,zz,wxx,wyy,aa,az,wz,xx,xxi
-      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,ez,vznorm,rp,clightsqi
-      real(kind=8):: xinj,yinj,ainj,ainji,binj,binji,apinj,bpinj,xpinj,ypinj,rinj,rinji
+      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,ez,vznorm,rp
+      real(kind=8):: clightsqi
+      real(kind=8):: xinj,yinj,ainj,ainji,binj,binji
+      real(kind=8):: apinj,bpinj,xpinj,ypinj,rinj,rinji
       real(kind=8):: vtx,vty
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: zinjmin,zinjmax
@@ -3978,14 +3981,14 @@ c           --- make injected particles live particles
 
 c           --- get E self-field at initial positions
             if(solvergeom==XYZgeom) then
-              call inj_sete3d(phi(0,0,0),nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
+              call inj_sete3d(phi(0,0,0),nn,ins(is),
      &                        zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
      &                        nx,ny,nz,at(1),bt(1),apt(1))
             elseif(solvergeom==RZgeom) then
-              call inj_sete3d_rz(phi(0,0,0),nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
+              call inj_sete3d_rz(phi(0,0,0),nn,ins(is),
      &                        zgridprv,xmmin,zmmin,dx,dz,
      &                        nx,nz,at(1),bt(1),apt(1))
-            end if
+            endif
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -4077,14 +4080,14 @@ c           --- Make sure there is enough temp space
 
 c           --- calculate new E self-fields
             if(solvergeom==XYZgeom) then
-              call inj_sete3d(phi(0,0,0),nn,xp(ipmin),yp(ipmin),zp(ipmin),
+              call inj_sete3d(phi(0,0,0),nn,ipmin,
      &                        zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
      &                        nx,ny,nz,at(1),bt(1),apt(1))
             elseif(solvergeom==RZgeom) then
-              call inj_sete3d_rz(phi(0,0,0),nn,xp(ipmin),yp(ipmin),zp(ipmin),
+              call inj_sete3d_rz(phi(0,0,0),nn,ipmin,
      &                        zgridprv,xmmin,zmmin,dx,dz,
      &                        nx,nz,at(1),bt(1),apt(1))
-            end if
+            endif
 
 c           --- get external fields at current positions
             do ip=1,nn
@@ -4169,12 +4172,18 @@ c         --- Zero npinje_s.
           enddo
 
 c         --- Copy inj_np to inj_prev, and zero inj_np
-          do iy=0,inj_ny
-            do ix=0,inj_nx
-              inj_prev(ix,iy) = inj_np(ix,iy)
-              inj_np(ix,iy) = 0.
-            enddo
-          enddo
+          inj_prev = inj_np
+          inj_np = 0.
+c         do is=1,inj_ns
+c           do ij=1,inj_ninj
+c             do iy=0,inj_ny
+c               do ix=0,inj_nx
+c                 inj_prev(ix,iy,ij,is) = inj_np(ix,iy,ij,is)
+c                 inj_np(ix,iy,ij,is) = 0.
+c               enddo
+c             enddo
+c           enddo
+c         enddo
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
@@ -4188,6 +4197,7 @@ c         --- Calculate the charge density on the surface of the emitter.
 
 c         --- loop over injection sources
           do ij=1,ninject
+            inj_ij = min(ij,inj_ninj)
 
 c           --- Set some temporaries.
             ainj = ainject(ij)
@@ -4246,6 +4256,7 @@ c           --- injected at edges of the grid that are not symmetry planes.
 
 c           --- loop over species
             do is=1,ns
+              inj_is = min(is,inj_ns)
               qoverm = sq(is)/sm(is)
 
 c             --- This constant terms includes corrections for injection off
@@ -4282,7 +4293,8 @@ c                 --- number of particles injected in grid cell
                     rnn = const*abs(inj_phi(ix,iy))**1.5/cos(inj_angl(ix,iy))
                     rnn = sign(rnn,sq(is)*inj_phi(ix,iy))
                   elseif (inject == 3) then
-                    rnn = (eps0*inj_phi(ix,iy)/(dz*inj_d) - inj_rho(ix,iy)*dz)*
+                    rnn = (eps0*inj_phi(ix,iy)/
+     &                          (dz*inj_d) - inj_rho(ix,iy,inj_ij)*dz)*
      &                          dx*dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
                   endif
 c                 --- Make sure that rnn is >= 0.
@@ -4293,11 +4305,6 @@ c                 --- Apply ad-hoc scaling factor
 
 c                 --- Only count the particles (and previous particles) if
 c                 --- within 2 grid cells of the current source.
-c                 --- Note that there will be problems if the sources are
-c                 --- within 2 grid cells of each other since inj_prev
-c                 --- will then have contributions from the neighboring
-c                 --- sources. The only way to make this fool proof is to
-c                 --- save inj_prev for each species and each source.
 c                 --- Also, only count particles is the source is within
 c                 --- the grid.
                   if (((xmesh(ix)-xinj)*(binj+2.*dy))**2 +
@@ -4305,7 +4312,8 @@ c                 --- the grid.
      &                          ((ainj+2.*dx)*(binj+2.*dy))**2
      &                .and. (-1 <= inj_grid(ix,iy) .and.
      &                             inj_grid(ix,iy) < nz)) then
-                    rnn = (inj_param*rnn + (1. - inj_param)*inj_prev(ix,iy))*
+                    rnn = (inj_param*rnn +
+     &                     (1. - inj_param)*inj_prev(ix,iy,inj_ij,inj_is))*
      &                    finject(ij,is)
 
 c                   --- Force injected current to be between the range
@@ -4326,7 +4334,7 @@ c                   --- injected and but the average number will be less than 1.
                     rnn = rnn + wranf()
 
 c                   --- Save the number of particles injected
-                    inj_np(ix,iy) = inj_np(ix,iy) + rnn
+                    inj_np(ix,iy,inj_ij,inj_is)=inj_np(ix,iy,inj_ij,inj_is)+rnn
                   else
                     rnn = 0.
                   endif
@@ -4408,6 +4416,8 @@ c                       --- as dead particles when vthz_s=0.
                         else
                           gaminv(ii) = 1.
                         endif
+c                       --- Set particle ID if it is needed.
+                        if (inj_ninj > 1) pid(ii) = ij
 c                       --- increment particle counter
                         npinje_s(is) = npinje_s(is) + 1
                       endif
@@ -4452,16 +4462,14 @@ c           --- Make sure that there is enough room in the temporary arrays.
 
 c           --- get E self-field at initial positions
             if(solvergeom==XYZgeom) then
-              call inj_sete3d(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
-     &                        zp(ins(is)),
+              call inj_sete3d(phi(0,0,0),npinje_s(is),ins(is),
      &                        zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
      &                        nx,ny,nz,at(1),bt(1),apt(1))
             elseif(solvergeom==RZgeom) then
-               call inj_sete3d_rz(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
-     &                        zp(ins(is)),
+               call inj_sete3d_rz(phi(0,0,0),npinje_s(is),ins(is),
      &                        zgridprv,xmmin,zmmin,dx,dz,
      &                        nx,nz,at(1),bt(1),apt(1))
-           end if
+           endif
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -4526,16 +4534,14 @@ c           --- Make sure that there is enough room in the temporary arrays.
 
 c           --- calculate new E self-fields
             if(solvergeom==XYZgeom) then
-              call inj_sete3d(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
-     &                        zp(ins(is)),
+              call inj_sete3d(phi(0,0,0),npinje_s(is),ins(is),
      &                        zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
      &                        nx,ny,nz,at(1),bt(1),apt(1))
             elseif(solvergeom==RZgeom) then
-              call inj_sete3d_rz(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
-     &                        zp(ins(is)),
+              call inj_sete3d_rz(phi(0,0,0),npinje_s(is),ins(is),
      &                        zgridprv,xmmin,zmmin,dx,dz,
      &                        nx,nz,at(1),bt(1),apt(1))
-            end if
+            endif
 
 c           --- Get external fields at current positions, assuming that there
 c           --- is no bend.
@@ -4820,8 +4826,9 @@ c=============================================================================
       use Setpwork3d
       use Picglb3d
 
-      integer(ISZ):: is,ip,ij,nn,nnmax
-      real(kind=8):: total_frac
+      integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
+      real(kind=8):: total_frac,dd,maxdxdy
+      real(kind=8):: maxab1,maxab2,minab1,minab2
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -4940,6 +4947,64 @@ c to large number.
         if (jmaxtinj(ij) == 0.) jmaxtinj(ij) = LARGEPOS
       enddo
 
+c Determine what the value of inj_ns should be. It can either be 1 or
+c ns: if only one species will be injected from each source, the it is 1,
+c otherwise, ns. This is needed in order that inj_prev and inj_np are set
+c correctly. If multiple species are being injected from a single source,
+c then inj_prev and inj_np must be saved for each species. In order to
+c minimize the bookkeepping, if more than one species is injected from any
+c source, than the two arrays are made big enough to save the data for all
+c species for each source. If cases come up where this is too much wasted
+c space, then the code can later be changed by only making inj_ns as big
+c as is needed, i.e. the maximum number of species emitted from any one
+c source.  
+      inj_ns = 1
+      do ij=1,ninject
+        nn = 0
+        do is=1,ns
+          if (finject(ij,is) > 0.) nn = nn + 1
+        enddo
+        if (nn > 1) inj_ns = ns
+      enddo
+
+c Determine what the value if inj_ninj should be. It can either be 1 or
+c ninject: if no sources are within 2 grid cells of another, then it is 1,
+c otherwise ninject. This is needed since some parameters, inj_prev,
+c inj_np, inj_area, and inj_rho, are stored on grids and must be known for
+c each emitting source. If the sources are too close, then the data can
+c overlap. In that case, the data is saved in seperate planes for each
+c source. In order to minimize bookkeepping, if any two source (or more)
+c sources are too close, then the arrays are made big enough so that all
+c of the data is saved seperately for each source (whether or not they are
+c too close to another). If cases comes up where this is too much wasted
+c space, then the code can be changed so that inj_ninj is only made as big
+c as needed, i.e. the maximum number of sources that are too close to each
+c other.  
+c The radius of each source is taken to be the maximum of a and b. This
+c makes the checks much simpler but overly conservative.
+      inj_ninj = 1
+      maxdxdy = max(dx,dy)
+      do ij1=1,ninject
+        maxab1 = max(ainject(ij1),binject(ij1))
+        minab1 = min(ainjmin(ij1),binjmin(ij1))
+        do ij2=1,ninject
+          if (ij1 == ij2) cycle
+          dd = sqrt((xinject(ij1)-xinject(ij2))**2 +
+     &              (yinject(ij1)-yinject(ij2))**2)
+          maxab2 = max(ainject(ij2),binject(ij2))
+          minab2 = min(ainjmin(ij2),binjmin(ij2))
+c         --- Check if the outer edges are near each other. If not
+c         --- go to next pair.
+          if (maxab1 + maxab2 < dd - 2.*maxdxdy) cycle
+c         --- Check if one is inside the other.
+          if (dd + maxab1 < minab2 - 2.*maxdxdy) cycle
+          if (dd + maxab2 < minab1 - 2.*maxdxdy) cycle
+c         --- If it gets through the checks above, these two source are
+c         --- too close
+          inj_ninj = ninject
+        enddo
+      enddo
+
 c Allocate inject arrays and fill with source location information.
 c Note that gchange is called instead of gallot since some the of arrays
 c in InjectVars3d may have been allocated by the user for specialized
@@ -4955,6 +5020,17 @@ c control of injection.
         call gchange("InjectVars3d",0)
         call fill_inj_rz(dx,dz,ix_axis,iy_axis)
       end if
+
+c Allocate the particle index if it is needed. The index keeps track of
+c which source the particles are injected from. It is only needed when
+c there is more than one source and when there are sources within 2 grid
+c cells of each other or overlapping. It is not needed when the source
+c from which particles came can be resolved using only the particles
+c location and the inj_id array.
+      if (inj_ninj > 1) then
+        npmaxi = npmax
+        call gchange("Particles",0)
+      endif
 
 c Check if the voltages were specified.  If so, set so conductor will be
 c set up for source.
@@ -4991,6 +5067,7 @@ c     --- as a function of the transverse coordinates.
       real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
+      real(kind=8):: area
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -5017,7 +5094,7 @@ c           --- transverse coordinate relative to center of source
             yy = (iy - iy_axis)*dy - yinject(ij)
 c           --- If the point is within source or guard cells, calculate both
 c           --- axial distance and angle of curvature.
-            if ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 .le. 0.) then
+            if ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 <= 0.) then
               inj_id(ix,iy) = ij
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
@@ -5045,53 +5122,53 @@ c             --- The max(0,) chop off any part that crosses the x or y axis.
 
 c             --- If the two by two block is completely outside emitting
 c             --- surface, set the area to zero.
-              if (xl**2 + yl**2 .gt. 1.) then
-                inj_area(ix,iy) = 0.
+              if (xl**2 + yl**2 > 1.) then
+                area = 0.
 
 c             --- If two by two block straddles edge of emitting surface, do
 c             --- the calculation.
-              elseif (xl**2 + yl**2 .lt. 1. .and.
-     &                                   1. .lt. xu**2 + yu**2) then
+              elseif (xl**2 + yl**2 < 1. .and.
+     &                                1. < xu**2 + yu**2) then
 c               --- Calculate area of block within first quadrant.
                 x1 = max(xl, sqrt(max(0.,1. - yu**2)))
                 x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                inj_area(ix,iy) = (x1 - xl)*(yu - yl) +
-     &                            0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
-     &                            0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
-     &                            (x2 - x1)*yl
+                area = (x1 - xl)*(yu - yl) +
+     &                 0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
+     &                 0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
+     &                 (x2 - x1)*yl
 c               --- If block extended past x axis, calculate the area of
 c               --- that piece.
-                if (abs(xx) - dx .lt. 0.) then
+                if (abs(xx) - dx < 0.) then
                   xu = - (abs(xx) - dx)*ainji
                   xl = 0.
                   x1 = max(xl, sqrt(max(0.,1. - yu**2)))
                   x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                  inj_area(ix,iy) = inj_area(ix,iy) + (x1 - xl)*(yu - yl) +
-     &                              0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
-     &                              0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
-     &                              (x2 - x1)*yl
+                  area = area + (x1 - xl)*(yu - yl) +
+     &                          0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
+     &                          0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
+     &                          (x2 - x1)*yl
                 endif
 c               --- If block extended past y axis, calculate the area of
 c               --- that piece.
-                if (abs(yy) - dy .lt. 0.) then
+                if (abs(yy) - dy < 0.) then
                   yu = - (abs(yy) - dy)*binji
                   yl = 0.
                   x1 = max(xl, sqrt(max(0.,1. - yu**2)))
                   x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                  inj_area(ix,iy) = inj_area(ix,iy) + (x1 - xl)*(yu - yl) +
-     &                              0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
-     &                              0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1)
+                  area = area + (x1 - xl)*(yu - yl) +
+     &                          0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
+     &                          0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1)
                 endif
 
 c               --- Normalize the area so that the total area of the block
-c               --- would be 1 (since inj_area was calculated above on a
+c               --- would be 1 (since area was calculated above on a
 c               --- unit circle).
-                inj_area(ix,iy) = inj_area(ix,iy)*dxi*dyi*ainj*binj*0.25
+                area = area*dxi*dyi*ainj*binj*0.25
 
 c               --- If the block is completely within the emitting surface,
 c               --- set the area to 1.
               else
-                inj_area(ix,iy) = 1.
+                area = 1.
               endif
 
 c             --- Take into account the tent function of the charge density,
@@ -5101,11 +5178,18 @@ c             --- within the emitting surface.  This is an approximate
 c             --- calculation.  The conversion was obtained by completely
 c             --- integrating over one dimension and partially intregrating
 c             --- over the other.
-              if (inj_area(ix,iy) .le. 0.5) then
-                inj_area(ix,iy) = 2.*inj_area(ix,iy)**2
+              if (area <= 0.5) then
+                area = 2.*area**2
               else
-                inj_area(ix,iy) = 4.*inj_area(ix,iy) - 2.*inj_area(ix,iy)**2 -1.
+                area = 4.*area - 2.*area**2 -1.
               endif
+
+c             --- Now assign to inj_area. This is done here to simplify the
+c             --- coding above, primarily because of the third index here.
+c             --- Note that the min works, since inj_ninj is either 1 or
+c             --- ninject: if 1, then the min is always 1, if ninject, then
+c             --- the min is always ij.
+              inj_area(ix,iy,min(ij,inj_ninj)) = area
 
             endif
           enddo
@@ -5137,6 +5221,7 @@ c     --- as a function of the transverse coordinates.
       real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
+      real(kind=8):: area
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -5192,7 +5277,7 @@ c             --- The max(0,) chop off any part that crosses the x or y axis.
 c             --- If the two by two block is completely outside emitting
 c             --- surface, set the area to zero.
               if (xl**2 + yl**2 .gt. 1.) then
-                inj_area(ix,iy) = 0.
+                area = 0.
 
 c             --- If two by two block straddles edge of emitting surface, do
 c             --- the calculation.
@@ -5201,20 +5286,20 @@ c             --- the calculation.
 c               --- Calculate area of block within first quadrant.
                 x1 = max(xl, sqrt(max(0.,1. - yu**2)))
                 x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                inj_area(ix,iy) = (x1 - xl)*(yu - yl) +
-     &                            0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
-     &                            0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
-     &                            (x2 - x1)*yl
+                area = (x1 - xl)*(yu - yl) +
+     &                 0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
+     &                 0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
+     &                 (x2 - x1)*yl
 
 c               --- Normalize the area so that the total area of the block
-c               --- would be 1 (since inj_area was calculated above on a
+c               --- would be 1 (since area was calculated above on a
 c               --- unit circle).
-                inj_area(ix,iy) = inj_area(ix,iy)*dxi*dyi*ainj*binj*0.25
+                area = area*dxi*dyi*ainj*binj*0.25
 
 c               --- If the block is completely within the emitting surface,
 c               --- set the area to 1.
               else
-                inj_area(ix,iy) = 1.
+                area = 1.
               endif
 
 c             --- Take into account the tent function of the charge density,
@@ -5224,11 +5309,18 @@ c             --- within the emitting surface.  This is an approximate
 c             --- calculation.  The conversion was obtained by completely
 c             --- integrating over one dimension and partially intregrating
 c             --- over the other.
-              if (inj_area(ix,iy) .le. 0.5) then
-                inj_area(ix,iy) = 2.*inj_area(ix,iy)**2
+              if (area .le. 0.5) then
+                area = 2.*area**2
               else
-                inj_area(ix,iy) = 4.*inj_area(ix,iy) - 2.*inj_area(ix,iy)**2 -1.
+                area = 4.*area - 2.*area**2 -1.
               endif
+
+c             --- Now assign to inj_area. This is done here to simplify the
+c             --- coding above, primarily because of the third index here.
+c             --- Note that the min works, since inj_ninj is either 1 or
+c             --- ninject: if 1, then the min is always 1, if ninject, then
+c             --- the min is always ij.
+              inj_area(ix,iy,min(ij,inj_ninj)) = area
 
             endif
           enddo
@@ -5500,15 +5592,15 @@ c     --- Do the smoothing.
       return
       end
 c=============================================================================
-      subroutine inj_sete3d(phi,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,dx,dy,dz,
+      subroutine inj_sete3d(phi,np,ipmin,zgrid,xmmin,ymmin,zmmin,dx,dy,dz,
      &                      nx,ny,nz,ex,ey,ez)
       use Subtimers
       use InPart
       use InjectVars
       use InjectVars3d
-      integer(ISZ):: nx,ny,nz,np
+      use Particles
+      integer(ISZ):: nx,ny,nz,np,ipmin
       real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
 
@@ -5522,7 +5614,7 @@ c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
 
-      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1
+      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1,ii
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zii
       real(kind=8):: aa,az,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi,dzi
@@ -5536,17 +5628,24 @@ c any conductor surface.
       zii = 1./(dz*inj_d)
 
 c     --- Loop over particles
-      do ip=1,np
+      do ip=ipmin,ipmin+np-1
         jx = int(abs(xp(ip) - xmmin)*dxi)
         jy = int(abs(yp(ip) - ymmin)*dyi)
         jz = int(   (zp(ip) - zmmin)*dzi)
 
-c       --- Get number of injection source of particle. Note that if the
-c       --- particle happens to travel transversely beyond the edge of the
-c       --- injection area (which is unlikely), the injection source will
-c       --- be set to 1, which will most likely be the wrong source when
-c       --- there are multiple sources.
-        ij = max(inj_id(jx,jy),1)
+c       --- Get number of injection source of particle.
+c       --- If inj_ninj > 1, then use the particle id, which has the number
+c       --- of the injection source the particle was emitted from.
+c       --- Otherwise just use inj_id.
+        if (inj_ninj > 1) then
+          ij = pid(ip)
+        else
+c         --- Note that if the particle happens to travel transversely
+c         --- beyond the edge of the injection area (which is unlikely),
+c         --- the injection source will be set to 1, which will most
+c         --- likely be the wrong source when there are multiple sources.
+          ij = max(inj_id(jx,jy),1)
+        endif
 
 c       --- set temporaries
         xinj = xinject(ij)
@@ -5574,11 +5673,16 @@ c         --- When zz>rinj, a seperate equation is needed.
         dd = dd*dzi
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 .le. dd .and. dd .lt. inj_d+1. .and.
-     &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
-     &    (ainject(ij)*binject(ij))**2) .and.
-     &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
-     &    (ainjmin(ij)*binjmin(ij))**2) ) then
+        if (0.0 .le. dd .and. dd .lt. inj_d+1.) then
+c         --- The check if a particle is within the radial area of the
+c         --- source is probably not needed. It has been removed since there
+c         --- are some cases which this check is incorrect - for example
+c         --- in a source with a diverging beam. The particles spread out
+c         --- beyond the edge of the source and would not pass this check.
+c    &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
+c    &    (ainject(ij)*binject(ij))**2) .and.
+c    &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
+c    &    (ainjmin(ij)*binjmin(ij))**2) ) then
 
 c         --- angle of point in transverse plane
           aa = atan2(yp(ip)-yinj,dvnz(xp(ip)-xinj))
@@ -5605,12 +5709,13 @@ c         --- That has already been gathered into inj_phi.
      &              inj_phi(ix+1,iy+1)*    wx *    wy   )
           en = en*dz*inj_d/(dz*inj_d - (inj_zstart-zinj))
 
+          ii = ip - ipmin + 1
           if (dd .le. inj_d) then
 c           --- Now set the particle's electric field based off of the normal
 c           --- electric field.
-            ex(ip) = -en*sin(az)*cos(aa)
-            ey(ip) = -en*sin(az)*sin(aa)
-            ez(ip) =  en*cos(az)
+            ex(ii) = -en*sin(az)*cos(aa)
+            ey(ii) = -en*sin(az)*sin(aa)
+            ez(ii) =  en*cos(az)
           else
 c           --- This next section was added since the E fields
 c           --- obtained from sete3d include a part which was calculated
@@ -5630,17 +5735,17 @@ c           --- calculated in sete3d.
             sy = 1.
             if (xp(ip) .lt. xmmin) sx = -1.
             if (yp(ip) .lt. ymmin) sy = -1.
-            ex(ip) = sx*0.5*dxi*(
+            ex(ii) = sx*0.5*dxi*(
      &           (phi(jxm1,jy  ,jz+1)-phi(jx+1,jy  ,jz+1))*(1.-wx)*(1.-wy) +
      &           (phi(jx  ,jy  ,jz+1)-phi(jx+2,jy  ,jz+1))*    wx *(1.-wy) +
      &           (phi(jxm1,jy+1,jz+1)-phi(jx+1,jy+1,jz+1))*(1.-wx)*    wy  +
      &           (phi(jx  ,jy+1,jz+1)-phi(jx+2,jy+1,jz+1))*    wx *    wy )
-            ey(ip) = sy*0.5*dyi*(
+            ey(ii) = sy*0.5*dyi*(
      &           (phi(jx  ,jym1,jz+1)-phi(jx  ,jy+1,jz+1))*(1.-wx)*(1.-wy) +
      &           (phi(jx+1,jym1,jz+1)-phi(jx+1,jy+1,jz+1))*    wx *(1.-wy) +
      &           (phi(jx  ,jy  ,jz+1)-phi(jx  ,jy+2,jz+1))*(1.-wx)*    wy  +
      &           (phi(jx+1,jy  ,jz+1)-phi(jx+1,jy+2,jz+1))*    wx *    wy )
-            ez(ip) = 0.5*dzi*(
+            ez(ii) = 0.5*dzi*(
      &           (phi(jx  ,jy  ,jz  )-phi(jx  ,jy  ,jz+2))*(1.-wx)*(1.-wy) +
      &           (phi(jx+1,jy  ,jz  )-phi(jx+1,jy  ,jz+2))*    wx *(1.-wy) +
      &           (phi(jx  ,jy+1,jz  )-phi(jx  ,jy+1,jz+2))*(1.-wx)*    wy  +
@@ -5648,9 +5753,9 @@ c           --- calculated in sete3d.
 
 c           --- Do a linear weigthing between the En and sete3d fields.
             wz = dd - inj_d
-            ex(ip) = -en*sin(az)*cos(aa)*(1. - wz) + ex(ip)*wz
-            ey(ip) = -en*sin(az)*sin(aa)*(1. - wz) + ey(ip)*wz
-            ez(ip) =  en*cos(az)        *(1. - wz) + ez(ip)*wz
+            ex(ii) = -en*sin(az)*cos(aa)*(1. - wz) + ex(ii)*wz
+            ey(ii) = -en*sin(az)*sin(aa)*(1. - wz) + ey(ii)*wz
+            ez(ii) =  en*cos(az)        *(1. - wz) + ez(ii)*wz
           endif
 
         endif
@@ -5660,15 +5765,15 @@ c           --- Do a linear weigthing between the En and sete3d fields.
       return
       end
 c=============================================================================
-      subroutine inj_sete3d_rz(phi,np,xp,yp,zp,zgrid,xmmin,zmmin,dx,dz,
+      subroutine inj_sete3d_rz(phi,np,ipmin,zgrid,xmmin,zmmin,dx,dz,
      &                      nx,nz,ex,ey,ez)
       use Subtimers
       use InPart
       use InjectVars
       use InjectVars3d
-      integer(ISZ):: nx,nz,np
+      use Particles
+      integer(ISZ):: nx,nz,np,ipmin
       real(kind=8):: phi(0:nx,0:nz)
-      real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       real(kind=8):: zgrid,xmmin,zmmin,dx,dz
 
@@ -5682,7 +5787,7 @@ c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
 
-      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jr,jz,jrm1
+      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jr,jz,jrm1,ii
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zii
       real(kind=8):: aa,az,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi,dzi
@@ -5697,17 +5802,24 @@ c any conductor surface.
       zii = 1./(dz*inj_d)
 
 c     --- Loop over particles
-      do ip=1,np
+      do ip=ipmin,ipmin+np-1
         jx = int(abs(xp(ip) - xmmin)*dxi)
         jy = int(abs(yp(ip) - xmmin)*dyi)
         jz = int(   (zp(ip) - zmmin)*dzi)
 
-c       --- Get number of injection source of particle. Note that if the
-c       --- particle happens to travel transversely beyond the edge of the
-c       --- injection area (which is unlikely), the injection source will
-c       --- be set to 1, which will most likely be the wrong source when
-c       --- there are multiple sources.
-        ij = max(inj_id(jx,jy),1)
+c       --- Get number of injection source of particle.
+c       --- If inj_ninj > 1, then use the particle id, which has the number
+c       --- of the injection source the particle was emitted from.
+c       --- Otherwise just use inj_id.
+        if (inj_ninj > 1) then
+          ij = pid(ip)
+        else
+c         --- Note that if the particle happens to travel transversely
+c         --- beyond the edge of the injection area (which is unlikely),
+c         --- the injection source will be set to 1, which will most
+c         --- likely be the wrong source when there are multiple sources.
+          ij = max(inj_id(jx,jy),1)
+        endif
 
 c       --- set temporaries
         xinj = xinject(ij)
@@ -5735,11 +5847,16 @@ c         --- When zz>rinj, a seperate equation is needed.
         dd = dd*dzi
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 .le. dd .and. dd .lt. inj_d+1. .and.
-     &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
-     &    (ainject(ij)*binject(ij))**2) .and.
-     &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
-     &    (ainjmin(ij)*binjmin(ij))**2) ) then
+        if (0.0 .le. dd .and. dd .lt. inj_d+1.) then
+c         --- The check if a particle is within the radial area of the
+c         --- source is probably not needed. It has been removed since there
+c         --- are some cases which this check is incorrect - for example
+c         --- in a source with a diverging beam. The particles spread out
+c         --- beyond the edge of the source and would not pass this check.
+c    &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
+c    &    (ainject(ij)*binject(ij))**2) .and.
+c    &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
+c    &    (ainjmin(ij)*binjmin(ij))**2) ) then
 
 c         --- angle of point in transverse plane
           aa = atan2(yp(ip)-yinj,dvnz(xp(ip)-xinj))
@@ -5766,12 +5883,13 @@ c         --- That has already been gathered into inj_phi.
      &              inj_phi(ix+1,iy+1)*    wx *    wy   )
           en = en*dz*inj_d/(dz*inj_d - (inj_zstart-zinj))
 
+          ii = ip - ipmin + 1
           if (dd .le. inj_d) then
 c           --- Now set the particle's electric field based off of the normal
 c           --- electric field.
-            ex(ip) = -en*sin(az)*cos(aa)
-            ey(ip) = -en*sin(az)*sin(aa)
-            ez(ip) =  en*cos(az)
+            ex(ii) = -en*sin(az)*cos(aa)
+            ey(ii) = -en*sin(az)*sin(aa)
+            ez(ii) =  en*cos(az)
           else
 c           --- This next section was added since the E fields
 c           --- obtained from sete3d include a part which was calculated
@@ -5787,21 +5905,21 @@ c           --- calculated in sete3d.
             wr = r_tmp*dxi - jr
             wz = (zp(ip) - zmmin)*dzi - jz
             jrm1 = abs(jr - 1)
-            ex(ip) = 0.5*dxi*(
+            ex(ii) = 0.5*dxi*(
      &           (phi(jrm1,jz+1)-phi(jr+1,jz+1))*(1.-wr) +
      &           (phi(jr  ,jz+1)-phi(jr+2,jz+1))*    wr) * cos(aa)
-            ey(ip) = 0.5*dxi*(
+            ey(ii) = 0.5*dxi*(
      &           (phi(jrm1,jz+1)-phi(jr+1,jz+1))*(1.-wr) +
      &           (phi(jr  ,jz+1)-phi(jr+2,jz+1))*    wr) * sin(aa)
-            ez(ip) = 0.5*dzi*(
+            ez(ii) = 0.5*dzi*(
      &           (phi(jr  ,jz  )-phi(jr  ,jz+2))*(1.-wr) +
      &           (phi(jr+1,jz  )-phi(jr+1,jz+2))*    wr )
 
 c           --- Do a linear weigthing between the En and sete3d fields.
             wz = dd - inj_d
-            ex(ip) = -en*sin(az)*cos(aa)*(1. - wz) + ex(ip)*wz
-            ey(ip) = -en*sin(az)*sin(aa)*(1. - wz) + ey(ip)*wz
-            ez(ip) =  en*cos(az)        *(1. - wz) + ez(ip)*wz
+            ex(ii) = -en*sin(az)*cos(aa)*(1. - wz) + ex(ii)*wz
+            ey(ii) = -en*sin(az)*sin(aa)*(1. - wz) + ey(ii)*wz
+            ez(ii) =  en*cos(az)        *(1. - wz) + ez(ii)*wz
           endif
 
         endif
@@ -5834,9 +5952,9 @@ c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
 
-      integer(ISZ):: is,ip,ix,iy,ij
+      integer(ISZ):: is,ip,ix,iy,ij,ij1
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
-      real(kind=8):: aa,az,px,py,wx,wy,ww
+      real(kind=8):: aa,az,px,py,wx1,wy1,wx0,wy0,ww
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -5846,7 +5964,7 @@ c the grid cell.
       dzi = 1./dz
 
 c     --- zero out the array
-      call zeroarry(inj_rho(0,0),(1+nx)*(1+ny))
+      call zeroarry(inj_rho(0,0,1),(1+nx)*(1+ny)*inj_ninj)
 c     inj_rho = 0.
 
 c     --- Loop over species and particles
@@ -5856,12 +5974,19 @@ c     --- Loop over species and particles
           ix = int(abs(xp(ip) - xmmin)*dxi)
           iy = int(abs(yp(ip) - ymmin)*dyi)
 
-c         --- Get number of injection source of particle. Note that if the
-c         --- particle happens to travel transversely beyond the edge of the
-c         --- injection area (which is unlikely), the injection source will
-c         --- be set to 1, which will most likely be the wrong source when
-c         --- there are multiple sources.
-          ij = max(inj_id(ix,iy),1)
+c         --- Get number of injection source of particle.
+c         --- If inj_ninj > 1, then use the particle id, which has the number
+c         --- of the injection source the particle was emitted from.
+c         --- Otherwise just use inj_id.
+          if (inj_ninj > 1) then
+            ij = pid(ip)
+          else
+c           --- Note that if the particle happens to travel transversely
+c           --- beyond the edge of the injection area (which is unlikely),
+c           --- the injection source will be set to 1, which will most
+c           --- likely be the wrong source when there are multiple sources.
+            ij = max(inj_id(ix,iy),1)
+          endif
 
 c         --- set temporaries
           rinji = 1./rinject(ij)
@@ -5902,53 +6027,61 @@ c           --- Map the particle position onto the emitting surface.
             py = abs(rinj*sin(az)*sin(aa) + yinj - ymmin)*dyi
             ix = int(px)
             iy = int(py)
-            wx = px - ix
-            wy = py - iy
+            wx1 = px - ix
+            wy1 = py - iy
+            wx0 = 1. - wx1
+            wy0 = 1. - wy1
 
 c           --- Deposit the particle's charge onto the emitting surface.
-            inj_rho(ix  ,iy  )=inj_rho(ix  ,iy  ) + ww*(1.-wx)*(1.-wy)*(1.-dd)
-            inj_rho(ix+1,iy  )=inj_rho(ix+1,iy  ) + ww*    wx *(1.-wy)*(1.-dd)
-            inj_rho(ix  ,iy+1)=inj_rho(ix  ,iy+1) + ww*(1.-wx)*    wy *(1.-dd)
-            inj_rho(ix+1,iy+1)=inj_rho(ix+1,iy+1) + ww*    wx *    wy *(1.-dd)
+            ij1 = min(ij,inj_ninj)
+            inj_rho(ix  ,iy  ,ij1)=inj_rho(ix  ,iy  ,ij1) + ww*wx0*wy0*(1.-dd)
+            inj_rho(ix+1,iy  ,ij1)=inj_rho(ix+1,iy  ,ij1) + ww*wx1*wy0*(1.-dd)
+            inj_rho(ix  ,iy+1,ij1)=inj_rho(ix  ,iy+1,ij1) + ww*wx0*wy1*(1.-dd)
+            inj_rho(ix+1,iy+1,ij1)=inj_rho(ix+1,iy+1,ij1) + ww*wx1*wy1*(1.-dd)
 
           endif
         enddo
       enddo
 
+c     --- Loop over unique injection sources
+      do ij1 = 1,min(ij,inj_ninj)
+
 c     --- If two-fold symmetry, divide inj_rho by two except on x axis.
-      if (l2symtry) then
-        do iy=1,ny
-          do ix=0,nx
-            inj_rho(ix,iy) = inj_rho(ix,iy)*0.5
+        if (l2symtry) then
+          do iy=1,ny
+            do ix=0,nx
+              inj_rho(ix,iy,ij1) = inj_rho(ix,iy,ij1)*0.5
+            enddo
           enddo
-        enddo
-      endif
+        endif
 
 c     --- If four-fold symmetry, divide inj_rho by four, except on both axis
 c     --- divide by two, except the origin.
-      if (l4symtry) then
-        do iy=1,ny
-          do ix=1,nx
-            inj_rho(ix,iy) = inj_rho(ix,iy)*0.25
+        if (l4symtry) then
+          do iy=1,ny
+            do ix=1,nx
+              inj_rho(ix,iy,ij1) = inj_rho(ix,iy,ij1)*0.25
+            enddo
           enddo
-        enddo
-        do ix=1,nx
-          inj_rho(ix,0) = inj_rho(ix,0)*0.5
-        enddo
-        do iy=1,ny
-          inj_rho(0,iy) = inj_rho(0,iy)*0.5
-        enddo
-      endif
+          do ix=1,nx
+            inj_rho(ix,0,ij1) = inj_rho(ix,0,ij1)*0.5
+          enddo
+          do iy=1,ny
+            inj_rho(0,iy,ij1) = inj_rho(0,iy,ij1)*0.5
+          enddo
+        endif
 
 c     --- Scale the charge density by the inverse of the fraction of the
 c     --- contributing area which is within the emitting surface.
 c     --- The factor of two is needed since particles are contributing to
 c     --- rho only on the right side of the emitting surface.
-      do iy=0,ny
-        do ix=0,nx
-          if (inj_area(ix,iy) .gt. 0.)
-     &      inj_rho(ix,iy) = 2.*inj_rho(ix,iy)/inj_area(ix,iy)
+        do iy=0,ny
+          do ix=0,nx
+            if (inj_area(ix,iy,ij1) > 0.)
+     &        inj_rho(ix,iy,ij1) = 2.*inj_rho(ix,iy,ij1)/inj_area(ix,iy,ij1)
+          enddo
         enddo
+
       enddo
 
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
@@ -5977,9 +6110,9 @@ c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
 
-      integer(ISZ):: is,ip,ix,iy,ij,j
+      integer(ISZ):: is,ip,ix,iy,ij,j,ij1
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
-      real(kind=8):: aa,az,px,py,wx,wy,ww
+      real(kind=8):: aa,az,px,py,wx1,wx0,ww
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: substarttime,wtime
       real(kind=8):: invvol(0:nx)
@@ -5996,7 +6129,7 @@ c the grid cell.
       iy = 0
 
 c     --- zero out the array
-      call zeroarry(inj_rho(0,0),(1+nx))
+      call zeroarry(inj_rho(0,0,1),(1+nx)*inj_ninj)
 c      inj_rho = 0.
 
 c     --- Loop over species and particles
@@ -6005,12 +6138,19 @@ c     --- Loop over species and particles
         do ip=ins(is),ins(is)+nps(is)-1
           ix = int(abs(sqrt(xp(ip)**2+yp(ip)**2) - xmmin)*dxi)
 
-c         --- Get number of injection source of particle. Note that if the
-c         --- particle happens to travel transversely beyond the edge of the
-c         --- injection area (which is unlikely), the injection source will
-c         --- be set to 1, which will most likely be the wrong source when
-c         --- there are multiple sources.
-          ij = max(inj_id(ix,iy),1)
+c         --- Get number of injection source of particle.
+c         --- If inj_ninj > 1, then use the particle id, which has the number
+c         --- of the injection source the particle was emitted from.
+c         --- Otherwise just use inj_id.
+          if (inj_ninj > 1) then
+            ij = pid(ip)
+          else
+c           --- Note that if the particle happens to travel transversely
+c           --- beyond the edge of the injection area (which is unlikely),
+c           --- the injection source will be set to 1, which will most
+c           --- likely be the wrong source when there are multiple sources.
+            ij = max(inj_id(ix,iy),1)
+          endif
 
 c         --- set temporaries
           rinji = 1./rinject(ij)
@@ -6049,25 +6189,31 @@ c           --- angle relative to z axis
 c           --- Map the particle position onto the emitting surface.
             px = abs(rinj*sin(az) + xinj - xmmin)*dxi
             ix = int(px)
-            wx = px - ix
+            wx1 = px - ix
+            wx0 = 1. - wx1
 
 c           --- Deposit the particle's charge onto the emitting surface.
-            inj_rho(ix  ,iy  )=inj_rho(ix  ,iy  ) + ww*(1.-wx)*(1.-dd)*invvol(ix)
-            inj_rho(ix+1,iy  )=inj_rho(ix+1,iy  ) + ww*    wx *(1.-dd)*invvol(ix+1)
+            ij1 = min(ij,inj_ninj)
+            inj_rho(ix  ,iy,ij1)=inj_rho(ix  ,iy,ij1)+ww*wx0*(1.-dd)*invvol(ix)
+            inj_rho(ix+1,iy,ij1)=inj_rho(ix+1,iy,ij1)+ww*wx1*(1.-dd)*invvol(ix+1)
 
           endif
         enddo
       enddo
 
-c     --- Scale the charge density by the inverse of the fraction of the
-c     --- contributing area which is within the emitting surface.
-c     --- The factor of two is needed since particles are contributing to
-c     --- rho only on the right side of the emitting surface.
-      iy = 0
-        do ix=0,nx
-          if (inj_area(ix,iy) .gt. 0.)
-     &      inj_rho(ix,iy) = 2.*inj_rho(ix,iy)/inj_area(ix,iy)
-        enddo
+c     --- Loop over unique injection sources
+      do ij1 = 1,min(ij,inj_ninj)
+c       --- Scale the charge density by the inverse of the fraction of the
+c       --- contributing area which is within the emitting surface.
+c       --- The factor of two is needed since particles are contributing to
+c       --- rho only on the right side of the emitting surface.
+        iy = 0
+          do ix=0,nx
+            if (inj_area(ix,iy,ij1) > 0.)
+     &        inj_rho(ix,iy,ij1) = 2.*inj_rho(ix,iy,ij1)/inj_area(ix,iy,ij1)
+          enddo
+
+      enddo
 
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
       return
