@@ -24,7 +24,7 @@ specified z plane. The data have been saved by PlaneSave.
 The two simulations are linked together.
 """
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.4 2003/04/17 22:19:04 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.5 2003/08/07 23:35:56 dave Exp $"
 
 class PlaneRestore:
   """
@@ -51,6 +51,9 @@ Input:
       self.zplane = w3d.zmminglobal
     else:
       self.zplane = zplane
+
+    # Only restore if zplane within the grid
+    if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax): return
 
     self.l_restore_phi = l_restore_phi
 
@@ -92,6 +95,12 @@ Input:
       top.npmaxb = max(top.npmax,2)
       top.npmaxi = max(top.npmax,2)
       gchange('Particles')
+
+    # restore solver geometry of the saved data
+    try:
+      self.solvergeom = self.f.solvergeom
+    except:
+      self.solvergeom = w3d.XYZgeom
 
     # restore only if between grid bounds
     if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax): return
@@ -190,20 +199,28 @@ Input:
         return
 
   #######################################################################
-  # This routine copies the saved phi plane into the current phi array
-  # making use of different numbers of grid cells and differing symmetries.
-  # Still assumes that the grid cell size of the saved and restored grid
-  # are the same.
   def restore_phi(self,iz,it):
-
     # return if flag indicates phi not to be restored
     if self.l_restore_phi is 0: return
     
-    #  phi(nx0_r:nxm_r,ny0_r:nym_r,iz-1:iz)=pfb.phi_plane(nx0_s:nxm_s,ny0_s:nym_s,)
+    if self.solvergeom == w3d.solvergeom:
+      restore_phi_3d_to_3d(iz,it)
+    elif self.solvergeom == w3d.RZgeom and w3d.solvergeom == w3d.XYZgeom:
+      restore_phi_rz_to_3d(iz,it)
+    # Required since only phi is changed and not phip
+    getphiforparticles
+
+  #######################################################################
+  # This routine copies the saved phi plane into the current phi array
+  # making use of different numbers of grid cells and differing symmetries.
+  # Both saved and restored phi are 3-D.
+  def restore_phi_3d_to_3d(self,iz,it):
+    savedphi = self.f.read('phiplane%08d'%it)
     for i in range(2):
-      grid2grid(w3d.phi[self.nx0_r:self.nxm_r+1,self.ny0_r:self.nym_r+1,iz-1+i],w3d.nx,w3d.ny,
+      grid2grid(w3d.phi[self.nx0_r:self.nxm_r+1,self.ny0_r:self.nym_r+1,iz-1+i],
+                w3d.nx,w3d.ny,
                 w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                self.f.read('phiplane%08d'%it)[:,:,i],self.f.nx_plane,self.f.ny_plane,
+                savedphi[:,:,i],self.f.nx_plane,self.f.ny_plane,
                 self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
       
     if ((self.f.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
@@ -211,25 +228,60 @@ Input:
     #     phi(self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1:iz)=
     #      self.f.phi_plane(nx0_s:nxm_s,nym_s2:ny0_s2:-1,)
       for i in range(2):
-        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],w3d.nx,w3d.ny,
+        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],
+                  w3d.nx,w3d.ny,
                   w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  self.f.read('phiplane%08d'%it)[:,::-1,i],self.f.nx_plane,self.f.ny_plane,
+                  savedphi[:,::-1,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
 
     if ((self.f.sym_plane == 4 and ( w3d.l2symtry and not w3d.l4symtry))):
     #  phi(nx0_r2:nxm_r2,ny0_r:nym_r,iz-1:iz)=
     #    self.f.phi_plane(nx0_s2:nxm_s2:-1,ny0_s:nym_s,)
       for i in range(2):
-        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],w3d.nx,w3d.ny,
+        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],
+                  w3d.nx,w3d.ny,
                   w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  self.f.read('phiplane%08d'%it)[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
+                  savedphi[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
 
     if ((self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))):
     #  phi(nx0_r2:nxm_r2,ny0_r2:nym_r,iz-1:iz)=
     #    self.f.phi_plane(nx0_s2:nxm_s2:-1,ny0_s2:nym_s,)
       for i in range(2):
-        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],w3d.nx,w3d.ny,
+        grid2grid(w3d.phi[self.nx0_r:self.nxm_r,self.ny0_r2:self.nym_r2,iz-1+i],
+                  w3d.nx,w3d.ny,
                   w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                  self.f.read('phiplane%08d'%it)[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
+                  savedphi[::-1,:,i],self.f.nx_plane,self.f.ny_plane,
                   self.f.xmmin,self.f.xmmax,self.f.ymmin,self.f.ymmax)
+
+  #######################################################################
+  # This routine copies the saved phi plane into the current phi array
+  # making use of different numbers of grid cells and differing symmetries.
+  # Saved phi is rz and restored phi is 3-D.
+  def restore_phi_rz_to_3d(self,iz,it):
+    try:
+      self._rz_to_3d_inited
+    except:
+      self._rz_to_3d_inited = 1
+      xmmin = w3d.xmmin + w3d.dx*self.nx0_r
+      nx = self.nxm_r - self.nx0_r
+      ymmin = w3d.ymmin + w3d.dy*self.ny0_r
+      nx = self.nym_r - self.ny0_r
+      xmesh,ymesh = getmesh2d(xmmin,w3d.dx,nx,ymmin,w3d.dy,ny)
+      rmesh = sqrt(xmesh**2 + ymesh**2)
+      dr = (self.f.xmmax - self.f.xmmin)/self.f.nx
+      self.irmesh = int(rmesh/dr)
+      self.wrmesh =     rmesh/dr  - self.irmesh
+      self.wrmesh = where(self.irmesh >= self.f.nx,1,self.wrmesh)
+      self.irmesh = where(self.irmesh >= self.f.nx,self.f.nx-1,self.irmesh)
+
+    savedphi = self.f.read('phiplane%08d'%it)
+    i1 = self.nx0_r
+    i2 = self.nxm_r+1
+    j1 = self.ny0_r
+    j2 = self.nym_r+1
+    for i in range(2):
+      w3d.phi[i1:i2,j1:j2,iz-1+i] = (
+          take(savephi[:,0,i],self.irmesh  )*(1.-self.wrmesh) + 
+          take(savephi[:,0,i],self.irmesh+1)*self.wrmesh)
+
