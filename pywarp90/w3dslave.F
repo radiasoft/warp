@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.18 $, $Date: 2003/04/09 01:58:25 $
+c W3DSLAVE.M, version $Revision: 1.19 $, $Date: 2003/05/29 17:02:42 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -102,7 +102,8 @@ c       --- First processor is easy
 c       --- loop over processors until used all processors or have assigned
 c       --- all of grid.
         i = 0
-        do while (i < nslaves-1 .and. izfsslave(i)+nzfsslave(i) < nz)
+        do while (i < nslaves-1 .and.
+     &            izfsslave(i)+nzfsslave(i)-overlap+1 < nz)
           i = i + 1
 
 c         --- This processor starts at the end of the region covered
@@ -126,10 +127,10 @@ c         --- recalculate nzfsslave(i).
             nzfsslave(i) = nz - izfsslave(i)
 c           --- If nzfsslave(i) is less than 3 then skip this
 c           --- processor and give remaining zones to previous processor.
-            if (nzfsslave(i) < 3) then
-              i = i - 1
-              nzfsslave(i) = nz - izfsslave(i)
-            endif
+c           if (nzfsslave(i) < 3) then
+c             i = i - 1
+c             nzfsslave(i) = nz - izfsslave(i)
+c           endif
           endif
 
         enddo
@@ -358,7 +359,7 @@ c===========================================================================
 
 c This routine sums rhop in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rhop back to the left
-c since that is done in getrhoforfieldsolve.
+c since that is done in getrhoforfieldsolve3d.
 c This allows for cases where more than two processors have deposited rhop
 c into the same plane. A check is made if the data being sent to the right
 c overlaps with the data being received from the left. If so, the process
@@ -486,7 +487,7 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
@@ -600,7 +601,7 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getphiforparticles(nx,ny,nz,phi,nxp,nyp,nzp,phip)
+      subroutine getphiforparticles3d(nx,ny,nz,phi,nxp,nyp,nzp,phip)
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
