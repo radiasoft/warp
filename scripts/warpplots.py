@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.58 2001/12/13 22:27:57 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.59 2001/12/19 21:12:26 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1580,19 +1580,27 @@ if sys.version[:5] != "1.5.1":
   ppyyp.__doc__ = ppyyp.__doc__ + ppgeneric_doc("y","y'")
 
 ##########################################################################
-def ppxpyp(iw=0,particles=1,**kw):
-  "Plots X'-Y'."
+def ppxpyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+  "Plots X'-Y'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxpyp,(iw,particles),kw): return
+  if type(slope) == type(''):
+    (xslope,xoffset,vz) = getxxpslope(iw=iw,iz=iz)
+    (yslope,yoffset,vz) = getyypslope(iw=iw,iz=iz)
+  else:
+    (xslope,xoffset) = (slope,0.)
+    (yslope,yoffset) = (slope,0.)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
-  ii = selectparticles(iw=iw,kwdict=kw)
+  kw['iz'] = iz
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),
-            take(top.uxp,ii)/take(top.uzp,ii),kwdict=kw)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xp = take(top.uxp,ii)/take(top.uzp,ii) - xslope*take(top.xp,ii) - xoffset
+  yp = take(top.uyp,ii)/take(top.uzp,ii) - yslope*take(top.yp,ii) - yoffset
+  ppgeneric(yp,xp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxpyp.__doc__ = ppxpyp.__doc__ + ppgeneric_doc("x'","y'")
 
@@ -2109,7 +2117,8 @@ to all three.
   - ix = None
   - iy = None
   - iz = None
-  - bcast=0 When 1, the result is broadcast to all of the processors
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
   """
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
@@ -2208,7 +2217,8 @@ be from none to all three.
   - iy = None
   - iz = None Value is relative to the fortran indexing, so iz ranges
               from -1 to nz+1
-  - bcast=0 When 1, the result is broadcast to all of the processors
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
   """
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
@@ -2315,7 +2325,9 @@ def pcrhozy(ix=None,**kw):
   else:
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
-  ppgeneric(grid=transpose(getrho(ix=ix)),kwdict=kw)
+  rrr = getrho(ix=ix)
+  if rrr is None: return
+  ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -2333,14 +2345,16 @@ def pcrhozx(iy=None,**kw):
   else:
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
-  ppgeneric(grid=transpose(getrho(iy=iy)),kwdict=kw)
+  rrr = getrho(iy=iy)
+  if rrr is None: return
+  ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcrhoxy(iz=None,**kw):
   """Plots contours of charge density in the X-Y plane
      - iz=w3d.iz_axis Z index of plane"""
-  if iz is None: iz = w3d.iz_axis
+  if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
@@ -2351,7 +2365,9 @@ def pcrhoxy(iz=None,**kw):
   else:
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
-  ppgeneric(grid=getrho(iz=iz),kwdict=kw)
+  rrr = getrho(iz=iz)
+  if rrr is None: return
+  ppgeneric(grid=rrr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
@@ -2369,7 +2385,9 @@ def pcphizy(ix=None,**kw):
   else:
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
-  ppgeneric(grid=transpose(getphi(ix=ix)),kwdict=kw)
+  ppp = getphi(ix=ix)
+  if ppp is None: return
+  ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -2387,14 +2405,16 @@ def pcphizx(iy=None,**kw):
   else:
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
-  ppgeneric(grid=transpose(getphi(iy=iy)),kwdict=kw)
+  ppp = getphi(iy=iy)
+  if ppp is None: return
+  ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
 def pcphixy(iz=None,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
      - iz=w3d.iz_axis Z index of plane"""
-  if iz is None: iz = w3d.iz_axis
+  if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
@@ -2405,7 +2425,9 @@ def pcphixy(iz=None,**kw):
   else:
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
-  ppgeneric(grid=getphi(iz=iz),kwdict=kw)
+  ppp = getphi(iz=iz)
+  if ppp is None: return
+  ppgeneric(grid=ppp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
