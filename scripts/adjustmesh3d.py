@@ -1,8 +1,76 @@
+"""
+Routines for adjusting the mesh for the 3-D self field
+resizemesh: Change size of mesh
+adjustmeshz: Adjust the longitudinal length of the mesh.
+adjustmeshxy: Adjust the longitudinal length of the mesh.
+"""
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.6 2001/07/11 22:40:16 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.7 2002/11/12 01:00:10 dave Exp $"
 
 def adjustmesh3ddoc():
-  print "adjustmeshz: Adjust the longitudinal length of the mesh."
+  import adjustmesh3d
+  print adjustmesh3d.__doc__
+
+
+# -------------------------------------------------------------------------
+def resizemesh(nx=None,ny=None,nz=None,lloadrho=1,lfieldsol=1):
+  """
+Changes the number of grid points in the mesh.
+Warning - this does not yet work in parallel
+  """
+  # --- Todo for parallel ...
+  # ---  reset izextra if needed
+  # ---  recalculate domain decomposition
+
+  # --- Set defaults to original values
+  if nx is None: nx = w3d.nx
+  if ny is None: ny = w3d.ny
+  if nz is None: nz = w3d.nz
+
+  # --- If nothing changes, then just return
+  if nx == w3d.nx and ny == w3d.ny and nz == w3d.nz: return
+
+  # --- Set scalars
+  w3d.nx = nx
+  w3d.ny = ny
+  w3d.nz = nz
+  w3d.nzfull = w3d.nz
+  w3d.izfsmax = w3d.nz
+  w3d.nmxy  = max(w3d.nx,w3d.ny)
+  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nzfull)
+  w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
+  w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+  w3d.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
+
+  # --- Reallocate the fields
+  try:
+    gallot("SelfFieldGrid3d")
+  except:
+    gallot("Fields3d")
+
+  # --- Calculate the mesh points
+  w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
+  w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
+  w3d.zmesh[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
+
+  # --- Find the grid axis
+  w3d.ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.iy_axis = nint(-w3d.ymmin/w3d.dy)
+  w3d.iz_axis = nint(-w3d.zmmin/w3d.dz)
+
+  # --- Re-initialize any field solve parameters
+  fieldsol(1)
+
+  # --- If requested, reload rho
+  if lloadrho:
+    w3d.rho = 0
+    loadrho()
+
+  # --- If requested, calculate the new fields
+  if lfieldsol:
+    fieldsol(-1)
+
 
 # -------------------------------------------------------------------------
 def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
