@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.43 2003/12/10 21:32:13 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.44 2004/01/14 23:12:17 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1902,6 +1902,15 @@ Betweem surfaces of revolution
 #============================================================================
 #============================================================================
 #============================================================================
+try:
+  enumerate
+except:
+  def enumerate(ll):
+    tt = []
+    for i in range(len(ll)):
+      tt.append((i,ll[i]))
+    return tt
+
 class SRFRVLApart:
   """
 Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
