@@ -78,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.16 2005/01/12 17:17:40 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.17 2005/01/14 21:46:13 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -1981,8 +1981,9 @@ def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
   warpplg(linechg,zoffset+zplmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Line Charge",titleb,"(C/m^2)")
+  if titles: ptitles("Line Charge",titleb,"(C/m)")
 pplchg = pzlchg
+pzlinechg = pzlchg
 
 ##########################################################################
 def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
