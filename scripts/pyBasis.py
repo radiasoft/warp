@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.20 2002/01/09 17:18:29 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.21 2002/05/15 00:19:54 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -211,12 +211,14 @@ def doc(f):
 # to the global name space. The exec also needed to have the local name
 # space explicitly included.
 # Note that attr can be a list of attributes and group names.
-def pydump(fname,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
+def pydump(fname=None,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
            verbose=false):
   """
 Dump data into a pdb file
   - fname dump file name
   - attr attribute or list of attributes of variables to dump
+         Any items that are not strings are skipped. To write no variables,
+         use attr=None.
   - vars list of python variables to dump
   - serial switch between parallel and serial versions
   - ff=None Allows passing in of a file object so that pydump can be called
@@ -228,6 +230,8 @@ Dump data into a pdb file
   - verbose=false When true, prints out the names of the variables as they are
                   written to the dump file
   """
+  assert fname is not None or ff is not None,\
+         "Either a filename must be specified or a pdb file pointer"
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
   if not ff:
@@ -249,7 +253,8 @@ Dump data into a pdb file
     if varsuffix is None: pkgsuffix = '@' + pname
     # --- Get variables in this package which have attribute attr.
     vlist = []
-    for a in attr: vlist = vlist + pkg.varlist(a)
+    for a in attr:
+      if type(a) == StringType: vlist = vlist + pkg.varlist(a)
     # --- Loop over list of variables
     for vname in vlist:
       # --- Check if object is available (i.e. check if dynamic array is
@@ -396,6 +401,9 @@ Restores all of the variables in the specified file.
         __main__.__dict__[v[:-7]] = ff.__getattr__(v)
       except:
         if verbose: print "error with variable "+v[:-7]
+    elif v[-9:] == '@parallel':
+      # --- Don't read in variables with suffix @parallel
+      pass
     else:
       # --- These would be interpreter variables written to the file
       # --- from python (or other sources). A simple assignment is done and
