@@ -1,4 +1,4 @@
-!     Last change:  JLV  26 Jun 2002   11:30 am
+!     Last change:  JLV  27 Jun 2002    9:22 am
 #include "top.h"
 
 module multigrid_common
@@ -1984,8 +1984,6 @@ else
   nzf=nz
 END if
 
-!  IF(my_index==0) WRITE(0,*) my_index,':e:',f(24,nzf+1)
-!  IF(my_index==1) WRITE(0,*) my_index,':e:',f(24,1)
 do i = 1, nc
 
 lsw = 1
@@ -2029,9 +2027,6 @@ do redblack = 1, 2
       END if
     ENDDO
   END do
-!  IF(my_index==0) WRITE(0,*) my_index,':c:',f(24,nzf+1)
-!  IF(my_index==1) WRITE(0,*) my_index,':c:',f(24,1)
-!  call exchange_fbndz(f,izlbnd,izrbnd)
   do l = nzi, nzf+1
     IF(jsw==2) then! origin
       j = 1
@@ -2047,41 +2042,23 @@ do redblack = 1, 2
                                  + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
                                  + cfz*(f(j,l+1)+f(j,l-1)) &
                                  - cfrhs*rhs(j,l)
-!      IF(j==24.and.my_index==0.and.l==nzf+1) &
-!         WRITE(0,*)  my_index,':'&
-!                                 , f(j+1,l),f(j-1,l)   &
-!                                 , f(j,l+1),f(j,l-1) &
-!                                 , rhs(j,l),bnd%v(j,l)
-!      IF(j==24.and.my_index==1.and.l==1) &
-!         WRITE(0,*)  my_index,':'&
-!                                 , f(j+1,l),f(j-1,l)   &
-!                                 , f(j,l+1),f(j,l-1) &
-!                                 , rhs(j,l),bnd%v(j,l)
 
     end do
     jsw = 3-jsw
   end do
   lsw = 3-lsw
-!  IF(my_index==0) WRITE(0,*) my_index,':v:',f(24,nzf+1)
-!  IF(my_index==1) WRITE(0,*) my_index,':v:',f(24,1)
 
 #ifdef MPIPARALLEL
-!  call check_fbndz(f,izlbnd,izrbnd)
   call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
-!  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
 END do !redblack=1, 2
-!  call exchange_fbndz(f,izlbnd,izrbnd)
 
 call updateguardcellsrz(f=f, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
 
 END do !i=1, nc
 
 IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
-
-!IF(my_index==0 .AND. f(24,nzf+1)/=0.) stop
-!IF(my_index==1 .AND. ANY(f/=0.)) stop
 
 return
 END subroutine relaxbndrzwguard
@@ -2267,11 +2244,11 @@ END subroutine relaxbndrzwguard
 !    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' send to ',p_up
     IF(izlbnd<0) then
       ir = ir + 1
-      call mpi_isend_real_array(rho(:,1), p_down, 1,mpi_req(ir))
+      call mpi_isend(rho(1,1),nr+1,mpi_double_precision,p_down,1,mpi_comm_world,mpi_req(ir),mpierror)
     end if
     IF(izrbnd<0) then
       ir = ir + 1
-      call mpi_isend_real_array(rho(:,nz+1), p_up, 1,mpi_req(ir))
+      call mpi_isend(rho(1,nz+1),nr+1,mpi_double_precision,p_up,1,mpi_comm_world,mpi_req(ir),mpierror)
     end if
 
     ! receive
@@ -2410,6 +2387,7 @@ do l = nzi, nzf+1
   residbndrzwguard(j,l) = (cf0-2._8/dr**2) * f(j,l) + 4._8*f(j+1,l)/dr**2   &
                                  + cfz*(f(j,l+1)+f(j,l-1)) &
                                  - rhs(j,l)
+
   do j = 2, nrf+1
      IF(bnd%v(j,l)==v_vacuum) &
        residbndrzwguard(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
@@ -2535,6 +2513,7 @@ else
                              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd), &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
                              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+
 !  END if
   call apply_voltage(res,bnd(j-1),0._8)
 #ifdef MPIPARALLEL
@@ -2698,21 +2677,11 @@ has_diverged = .false.
       uold=grid%phi
       call mgbndrzwguard(j=nlevels,u=grid%phi,rhs=-grid%rho/eps0,bnd=grid%bnd,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
-!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.true.,npmin=grid%npmin, &
-!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=nlevels-1, &
                          mgparam=grid%mgparam)
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
 #ifdef MPIPARALLEL
       maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
- !     IF(my_index==0) WRITE(0,*) j,maxerr,'*****************************'
- !     IF(my_index==0) then
- !       OPEN(10,FILE='fout.dat',POSITION='append')
- !       WRITE(10,*) j,maxerr
- !       CLOSE(10)
- !     END if
-#else
- !     WRITE(0,*) j,maxerr
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
