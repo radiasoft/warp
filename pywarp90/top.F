@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.54 $, $Date: 2002/09/25 21:12:06 $
+c@(#) File TOP.M, version $Revision: 3.55 $, $Date: 2002/10/04 22:19:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5422,9 +5422,9 @@ c starting at 'it' to locations starting at 'istart'.
           gaminv(in) = gaminv(ij)
           if (npmaxi > 0) then
             pid(in) = pid(ij)
-            pid(ij) = 0
+c           pid(ij) = 0
           endif
-          uzp(ij) = 0.
+c         uzp(ij) = 0.
         enddo
       else
         do i=0,nn-1
@@ -5439,9 +5439,9 @@ c starting at 'it' to locations starting at 'istart'.
           gaminv(in) = gaminv(ij)
           if (npmaxi > 0) then
             pid(in) = pid(ij)
-            pid(ij) = 0
+c           pid(ij) = 0
           endif
-          uzp(ij) = 0.
+c         uzp(ij) = 0.
         enddo
       endif
       return
