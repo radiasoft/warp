@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.59 $, $Date: 2002/10/25 20:22:48 $
+c@(#) File TOP.M, version $Revision: 3.60 $, $Date: 2002/10/26 00:24:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4819,17 +4819,18 @@ c     --- scalar loop
       return
       end
 c=============================================================================
-      subroutine percurr(curr,nzzarr,periinz)
-      integer(ISZ):: nzzarr
+      subroutine percurr(curr,nzzarr,bound0)
+      use GlobalVars
+      integer(ISZ):: nzzarr,bound0
       real(kind=8):: curr(0:nzzarr)
-      logical(ISZ):: periinz
+
 c Make current periodic.
 
 c Parallel version makes call to special routine percurr_slave
 #ifdef MPIPARALLEL
-      call percurr_slave(curr,nzzarr,periinz)
+      call percurr_slave(curr,nzzarr,bound0)
 #else
-      if (periinz) then
+      if (bound0==periodic) then
         curr(0) = curr(0) + curr(nzzarr)
         curr(nzzarr) = curr(0)
       endif
@@ -4943,6 +4944,7 @@ c  Converts v to u, sets inverse gamma factor for all particles
       end
 c=============================================================================
       subroutine zpartbnd(zmmax,zmmin,dz,zgrid)
+      use GlobalVars
       use InGen
       use InPart
       use Particles
@@ -4958,7 +4960,7 @@ c Parallel version makes call to special routine zpartbnd_slave
       call zpartbnd_slave(zmmax,zmmin,dz,zgrid)
 #else
 
-      if (periinz) then
+      if (pbound0==periodic) then
 c     --- periodic boundary condition
         syslen = zmmax - zmmin
         do is=1,ns
@@ -4969,15 +4971,30 @@ c     --- periodic boundary condition
      &        zp(ip) = zp(ip) - syslen*int((zp(ip) - zgrid - zmmin)/syslen)
           enddo
         enddo
-
-      elseif (stickyz) then
-c     --- sticky boundary condition
-c     --- Particles stick at the extreme edges of the grid.
+      else
+c     --- other boundary condition (particles absorbed or reflected)
         do is=1,ns
           do ip=ins(is),ins(is)+nps(is)-1
-            if (zp(ip)-zgrid <  zmmin .or.
-     &          zp(ip)-zgrid >= zmmax) then
-              gaminv(ip) = 0.
+            if ((zp(ip)-zgrid) >= zmmax) then
+              if(pboundnz==absorb) then
+                zp(ip) = zmmin - .9999*dz + zgrid
+                gaminv(ip) = 0.
+              elseif(pboundnz==reflect) then
+                zp(ip) = 2.*zgrid + 2.*zmmax - zp(ip)
+                uzp(ip) = -uzp(ip)
+              end if
+            elseif ((zp(ip)-zgrid) <= zmmin) then
+              if(pbound0==absorb) then
+                zp(ip) = zmmin - .9999*dz + zgrid
+                gaminv(ip) = 0.
+              elseif(pbound0==reflect) then
+                zp(ip) = 2.*zgrid + 2.*zmmin - zp(ip)
+                uzp(ip) = -uzp(ip)
+              end if
+            elseif (uzp(ip) == 0.) then
+c             --- Make sure dead particles stay dead and are not ressurrected
+c                 (only need if moving backward in time).
+              zp(ip) = zmmin - .9999*dz + zgrid
             endif
           enddo
         enddo
@@ -5025,10 +5042,10 @@ c     --- set grid cell inverse sizes
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
- 
+
 c     --- loop over particles
-      do ip=1,np
- 
+      do ip = ins(is), ins(is) + nps(is)
+
 c       --- find location on grid
         if (l4symtry) then
           ix = abs((xp(ip) - xmin)*dxi)
@@ -5187,7 +5204,7 @@ c     --- distribute the particles among the processors.
       np = npmax
 #endif
       npmaxb = npmax
-      if (npmaxi > 0) npmaxi = npmax
+      if (npmaxi > 1) npmaxi = npmax
 
 c     --- Allocate space. A gchange is done primarily so that any data
 c     --- in npmax_s is preserved.
@@ -5240,7 +5257,7 @@ c       --- 10000, add the amount of space needed.
 c       --- change the particle array dimension variables and allot space
         npmax = npmax + nadd
         npmaxb = npmax
-        if (npmaxi > 0) npmaxi = npmax
+        if (npmaxi > 1) npmaxi = npmax
         call gchange("Particles",0)
 
 c       --- Loop over species species above 'is', shifting
@@ -5276,18 +5293,18 @@ c=============================================================================
       use InPart
       use Particles
       integer(ISZ):: is,ishft
-      call shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,
+      call shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
      &                  xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       return
       end
 c=============================================================================
-      subroutine shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,
+      subroutine shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
      &                        xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       integer(ISZ):: is,ishft
-      integer(ISZ):: npmax,npmaxi,ns,npmax_s(0:ns),ins(ns),nps(ns)
+      integer(ISZ):: npmax,npmaxi,ns,npmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
-      real(kind=8):: gaminv(npmax),pid(npmax)
+      real(kind=8):: gaminv(npmax),pid(npmaxi,npid)
 
 c Shift particles by 'ishft'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
@@ -5315,9 +5332,9 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi > 0) then
-            pid(ip+ishft) = pid(ip)
-            pid(ip) = 0
+          if (npmaxi == npmax) then
+            pid(ip+ishft,:) = pid(ip,:)
+            pid(ip,:) = 0
           endif
           uzp(ip) = 0.
         enddo
@@ -5342,9 +5359,9 @@ c       --- (ins(is) - npmax_s(is-1)) < -ishft
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi > 0) then
-            pid(ip+ishft) = pid(ip)
-            pid(ip) = 0
+          if (npmaxi == npmax) then
+            pid(ip+ishft,:) = pid(ip,:)
+            pid(ip,:) = 0
           endif
           uzp(ip) = 0.
         enddo
@@ -5385,8 +5402,8 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi > 0) then
-            pid(in) = pid(ij)
+          if (npmaxi == npmax) then
+            pid(in,:) = pid(ij,:)
           endif
         enddo
       else
@@ -5400,8 +5417,8 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi > 0) then
-            pid(in) = pid(ij)
+          if (npmaxi == npmax) then
+            pid(in,:) = pid(ij,:)
           endif
         enddo
       endif
@@ -5526,9 +5543,9 @@ c       --- to fill in the empty spaces.
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npmaxi > 0) then
-                  pid(ip) = pid(ips)
-                  pid(ips) = 0
+                if (npmaxi == npmax) then
+                  pid(ip,:) = pid(ips,:)
+                  pid(ips,:) = 0
                 endif
                 uzp(ips) = 0.
                 gaminv(ips) = 0.
@@ -5559,9 +5576,9 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npmaxi > 0) then
-                  pid(ip) = pid(ips)
-                  pid(ips) = 0
+                if (npmaxi == npmax) then
+                  pid(ip,:) = pid(ips,:)
+                  pid(ips,:) = 0
                 endif
                 uzp(ips) = 0.
               endif
@@ -5611,7 +5628,7 @@ c     --- set to zero, the flag for scraped particles.
             uxplost(i1) = uxp(ip)
             uyplost(i1) = uyp(ip)
             uzplost(i1) = uzp(ip)
-            if (npmaxi > 0) pidlost(i1) = pid(ip)
+            if (npmaxi == npmax) pidlost(i1,:) = pid(ip,:)
             npslost(is) = npslost(is) + 1
           endif
 
@@ -5710,9 +5727,10 @@ c=============================================================================
       subroutine shftlostpart(is,ishft)
       use InPart
       use LostParticles
+      use Particles
       integer(ISZ):: is,ishft
       call shftpartwork(is,ishft,npmaxlost,npmaxlost,ns,npmaxlost_s,
-     &                  inslost,npslost,
+     &                  inslost,npslost,npid,
      &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                  gaminvlost,pidlost)
       return
