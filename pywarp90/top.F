@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.105 $, $Date: 2003/09/03 01:00:54 $
+c@(#) File TOP.M, version $Revision: 3.106 $, $Date: 2003/09/26 21:59:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5296,19 +5296,21 @@ c  are actually calculated more or less often.
           w0 = (zlw(i) - zbeam - zmmntmin)*dzmi - iz
           w1 = 1. - w0
           timelw(ilw,i) = time
-          pnumlw(ilw,i)  = w1*pnumz(iz)  + w0*pnumz(iz+1)
-          xbarlw(ilw,i)  = w1*xbarz(iz)  + w0*xbarz(iz+1)
-          ybarlw(ilw,i)  = w1*ybarz(iz)  + w0*ybarz(iz+1)
-          xrmslw(ilw,i)  = w1*xrmsz(iz)  + w0*xrmsz(iz+1)
-          yrmslw(ilw,i)  = w1*yrmsz(iz)  + w0*yrmsz(iz+1)
-          rrmslw(ilw,i)  = w1*rrmsz(iz)  + w0*rrmsz(iz+1)
-          vzbarlw(ilw,i) = w1*vzbarz(iz) + w0*vzbarz(iz+1)
-          epsxlw(ilw,i)  = w1*epsxz(iz)  + w0*epsxz(iz+1)
-          epsylw(ilw,i)  = w1*epsyz(iz)  + w0*epsyz(iz+1)
-          epszlw(ilw,i)  = w1*epszz(iz)  + w0*epszz(iz+1)
-          vxrmslw(ilw,i) = w1*vxrmsz(iz) + w0*vxrmsz(iz+1)
-          vyrmslw(ilw,i) = w1*vyrmsz(iz) + w0*vyrmsz(iz+1)
-          vzrmslw(ilw,i) = w1*vzrmsz(iz) + w0*vzrmsz(iz+1)
+          pnumlw(ilw,i)   = w1*pnumz(iz)   + w0*pnumz(iz+1)
+          xbarlw(ilw,i)   = w1*xbarz(iz)   + w0*xbarz(iz+1)
+          ybarlw(ilw,i)   = w1*ybarz(iz)   + w0*ybarz(iz+1)
+          xrmslw(ilw,i)   = w1*xrmsz(iz)   + w0*xrmsz(iz+1)
+          yrmslw(ilw,i)   = w1*yrmsz(iz)   + w0*yrmsz(iz+1)
+          rrmslw(ilw,i)   = w1*rrmsz(iz)   + w0*rrmsz(iz+1)
+          xxpbarlw(ilw,i) = w1*xxpbarz(iz) + w0*xxpbarz(iz+1)
+          yypbarlw(ilw,i) = w1*yypbarz(iz) + w0*yypbarz(iz+1)
+          vzbarlw(ilw,i)  = w1*vzbarz(iz)  + w0*vzbarz(iz+1)
+          epsxlw(ilw,i)   = w1*epsxz(iz)   + w0*epsxz(iz+1)
+          epsylw(ilw,i)   = w1*epsyz(iz)   + w0*epsyz(iz+1)
+          epszlw(ilw,i)   = w1*epszz(iz)   + w0*epszz(iz+1)
+          vxrmslw(ilw,i)  = w1*vxrmsz(iz)  + w0*vxrmsz(iz+1)
+          vyrmslw(ilw,i)  = w1*vyrmsz(iz)  + w0*vyrmsz(iz+1)
+          vzrmslw(ilw,i)  = w1*vzrmsz(iz)  + w0*vzrmsz(iz+1)
           iz = (zlw(i) - zbeam - zzmin)*dzzi
           w0 = (zlw(i) - zbeam - zzmin)*dzzi - iz
           w1 = 1. - w0

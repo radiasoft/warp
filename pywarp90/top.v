@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.106 $, $Date: 2003/09/03 01:00:54 $
+#@(#) File TOP.V, version $Revision: 3.107 $, $Date: 2003/09/26 21:59:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.106 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.107 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1306,6 +1306,8 @@ vzrmslw(ntlabwn,nlabwn) _real # Vz RMS in lab frame
 xrmslw(ntlabwn,nlabwn)  _real # X RMS in lab frame
 yrmslw(ntlabwn,nlabwn)  _real # Y RMS in lab frame
 rrmslw(ntlabwn,nlabwn)  _real # R RMS in lab frame
+xxpbarlw(ntlabwn,nlabwn)  _real # XX' bar in lab frame
+yypbarlw(ntlabwn,nlabwn)  _real # YY' bar in lab frame
 currlw(ntlabwn,nlabwn)  _real # Current in lab frame
 linechglw(ntlabwn,nlabwn)  _real # Line-charge in lab frame
 lostparslw(ntlabwn,nlabwn)  _real # Number of lost particles in lab frame
@@ -1845,6 +1847,8 @@ grid2grid(unew:real,nxnew:integer,nynew:integer,
           uold:real,nxold:integer,nyold:integer,
           xminold:real,xmaxold:real,yminold:real,ymaxold:real) subroutine
         # project field from one grid to another
+take2dint(a:integer,n1:integer,n2:integer,i:integer,j:integer,n:integer,
+          b:integer) subroutine
 getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
          hmax:real,zl:real,zr:real,zp:real,uzp:real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space

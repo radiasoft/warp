@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.104 $, $Date: 2003/09/03 01:00:55 $
+c@(#) File DTOP.M, version $Revision: 3.105 $, $Date: 2003/09/26 21:59:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -642,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.104 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.105 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1737,6 +1737,20 @@ c       --- if within grid, gather
           f(ip) = grid(ix,iy,iz)
         endif
 
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine take2dint(a,n1,n2,i,j,n,b)
+      integer(ISZ):: n1,n2,n
+      integer(ISZ):: a(0:n1-1,0:n2-1)
+      integer(ISZ):: i(n),j(n)
+      integer(ISZ):: b(n)
+
+      integer(ISZ):: k
+      do k=1,n
+        b(k) = a(i(k),j(k))
       enddo
 
       return
