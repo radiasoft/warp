@@ -13,6 +13,7 @@ import PzplotsGUI
 import txtEditorDialog
 import newstdout
 import gist
+import sys
 import code
 import __main__
 
@@ -603,14 +604,14 @@ class WarpRun(wxFrame):
         if self.isgistwindowon:
             self.HandleGistEvents()
             event.RequestMore(1)
-
+    
     def OnWinonButton(self, event):
         if not self.isgistwindowon:
             winon()
-           #window(0)
-            self.HandleGistEvents()
-            self.isgistwindowon = 1
-
+            if sys.platform <> 'win32':
+                self.HandleGistEvents()
+                self.isgistwindowon = 1
+        
     def OnFmaButton(self, event):
         fma()
 
@@ -677,5 +678,6 @@ class WarpRun(wxFrame):
             self.OutToConsole()
         else:
             self.OutToMessageWindow()
+        event.Skip()
             
         
