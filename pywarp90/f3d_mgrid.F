@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.3 $, $Date: 2001/04/23 17:56:13 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.4 $, $Date: 2001/05/03 19:08:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1045,7 +1045,8 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom,voltfac
+      real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
+      real(kind=8):: voltfac
       integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
       integer(ISZ):: icdx,icdy,icdz
       logical(ISZ):: dosubgrid
@@ -1987,6 +1988,175 @@ c         --- Otherwise, keep looking.
 
 c     --- Reset the index.
       cds(ia) = cnd
+
+      return
+      end
+c=============================================================================
+      subroutine CoveredNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi)
+      use PSOR3d
+      use MultigridConductor3d
+      integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi
+      integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi)
+      real(kind=8):: dx
+ 
+c Returns the mask, which is set to 1 for points which are inside a
+c conductor. The input argument dx is used to determine the refinement level.
+ 
+      integer(ISZ):: level,ic
+ 
+c     --- Get the level of coarseness above the finest level.
+      level = nint(dx/dxpsor)                                                    
+c     --- Zero out the mask
+      mask = 0
+
+      do ic=1,ncond
+c       --- First check if the conductor point is on the grid at this
+c       --- level of refinement.
+        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
+c         --- Then check if the point is within the requested region.
+          if (xlo <= ixcond(ic)/level .and. ixcond(ic)/level <= xhi .and.
+     &        ylo <= iycond(ic)/level .and. iycond(ic)/level <= yhi .and.
+     &        zlo <= izcond(ic)/level .and. izcond(ic)/level <= zhi) then
+c           --- If so, set mask to 1.
+            mask(ixcond(ic)/level,iycond(ic)/level,izcond(ic)/level) = 1
+          endif
+        endif
+      enddo
+ 
+      return
+      end
+c=============================================================================
+      subroutine NodalCoefficients(dx,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,ncomp)
+      use PSOR3d
+      use MultigridConductor3d
+      integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi,ncomp
+      real(kind=8):: dx,coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
+
+c Fills the array coeffs with the coeeficients of the 7-point finite
+c differenced Poisson's equation, taking into account the changed form of the
+c equation near a boundary using the subgrid-scale technique.
+
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: level
+      real(kind=8):: rdx2,coeff0
+
+c     --- First put in the default values
+      rdx2 = 1./dx**2
+      coeff0 = 2.*(rdx2 + rdx2 + rdx2)
+      coeffs(:,:,:,0) = coeff0
+      coeffs(:,:,:,1:6) = rdx2
+      coeffs(:,:,:,7) = 0.
+      
+c     --- Get level of coarseness
+      level = nint(dx/dxpsor)
+
+c     --- Get coefficients for even points.
+      call NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
+     &                        necndbdy,
+     &                        ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,ecdelpz,
+     &                        iecndx,iecndy,iecndz,iecndlxy,iecndlz,
+     &                        ecvoltmx,ecvoltpx,ecvoltmy,
+     &                        ecvoltpy,ecvoltmz,ecvoltpz,
+     &                        level)
+
+c     --- Get coefficients for odd points. Only needs to be done at the finest
+c     --- level.
+      if (level == 1) then
+        call NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
+     &                        nocndbdy,
+     &                        ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,ocdelpz,
+     &                        iocndx,iocndy,iocndz,iocndlxy,iocndlz,
+     &                        ocvoltmx,ocvoltpx,ocvoltmy,
+     &                        ocvoltpy,ocvoltmz,ocvoltpz,
+     &                        level)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
+     &                        ncndbdy,
+     &                        cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,
+     &                        cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
+     &                        cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
+     &                        level)
+      integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
+      real(kind=8):: coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
+      real(kind=8):: rdx2
+      integer(ISZ):: ncndbdy,level
+      real(kind=8):: cdelmx(ncndbdy), cdelmy(ncndbdy), cdelmz(ncndbdy)
+      real(kind=8):: cdelpx(ncndbdy), cdelpy(ncndbdy), cdelpz(ncndbdy)
+      integer(ISZ):: icndx(ncndbdy), icndy(ncndbdy), icndz(ncndbdy)
+      integer(ISZ):: icndlxy(ncndbdy), icndlz(ncndbdy)
+      real(kind=8):: cvoltmx(ncndbdy),cvoltmy(ncndbdy),cvoltmz(ncndbdy)
+      real(kind=8):: cvoltpx(ncndbdy),cvoltpy(ncndbdy),cvoltpz(ncndbdy)
+
+c Does the work of setting the coefficients. The even or odd conductor
+c points can be passed into this routine.
+
+      integer(ISZ):: ic,ix,iy,iz
+      real(kind=8):: coeff0(6)
+
+c     --- loop over points near surface of conductors
+      do ic = 1,ncndbdy
+ 
+c       --- Only use point if it is usable at this level or higher
+c       --- and if the point is within the requested domain
+        if (icndlxy(ic) >= level .and. icndlz(ic) >= level) then
+ 
+          ix = icndx(ic)/level
+          iy = icndy(ic)/level
+          iz = icndz(ic)/level
+ 
+          if (xlo <= ix .and. ix <= xhi .and.
+     &        ylo <= iy .and. iy <= yhi .and.
+     &        zlo <= iz .and. iz <= zhi) then
+ 
+c           --- Contributions of terms with no conductor boundary nearby.
+            coeff0 = -rdx2
+
+c           --- the point lower in x is inside the conductor
+            if (cdelmx(ic) .lt. level) then
+              coeff0(2) = 1./cdelmx(ic)
+              coeffs(ix,iy,iz,2) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmx(ic)/cdelmx(ic)*rdx2
+            endif
+c           --- the point higher in x is inside the conductor
+            if (cdelpx(ic) .lt. level) then
+              coeff0(1) = 1./cdelpx(ic)
+              coeffs(ix,iy,iz,1) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpx(ic)/cdelpx(ic)*rdx2
+            endif
+c           --- the point lower in y is inside the conductor
+            if (cdelmy(ic) .lt. level) then
+              coeff0(4) = 1./cdelmy(ic)
+              coeffs(ix,iy,iz,4) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmy(ic)/cdelmy(ic)*rdx2
+            endif
+c           --- the point higher in y is inside the conductor
+            if (cdelpy(ic) .lt. level) then
+              coeff0(3) = 1./cdelpy(ic)
+              coeffs(ix,iy,iz,3) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpy(ic)/cdelpy(ic)*rdx2
+            endif
+c           --- the point lower in z is inside the conductor
+            if (cdelmz(ic) .lt. level) then
+              coeff0(6) = 1./cdelmz(ic)
+              coeffs(ix,iy,iz,6) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmz(ic)/cdelmz(ic)*rdx2
+            endif
+c           --- the point lower in z is inside the conductor
+            if (cdelpz(ic) .lt. level) then
+              coeff0(5) = 1./cdelpz(ic)
+              coeffs(ix,iy,iz,5) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpz(ic)/cdelpz(ic)*rdx2
+            endif
+c           --- Sum contributions to center term.
+            coeffs(ix,iy,iz,0) = sum(coeff0)
+
+          endif
+        endif
+      enddo
 
       return
       end
