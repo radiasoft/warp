@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.119 $, $Date: 2004/02/09 22:59:44 $
+c@(#) File TOP.F, version $Revision: 3.120 $, $Date: 2004/03/03 16:36:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1139,18 +1139,24 @@ c keep track of the level of overlaps.
       logical(ISZ):: overlaps(1+nelem)
 
 c     --- The first element is always at the lowest overlap level.
-      elemol(0) = 1
+c     --- Don't set it if it is flagged to ignore overlaps.
+      if (elemol(0) .ne. -1) elemol(0) = 1
 
 c     --- Loop over the rest of the elements...
       do ie=1,nelem
+
+c       --- Skip element if it is flagged to ignore overlaps.
+        if (elemol(ie) == -1) cycle
       
 c       --- First assume that this element doesn't overlap any others.
         overlaps = .false.
 
 c       --- Loop over the previous elements and check which ones overlap the
-c       --- current one. For each overlap, set the corresponding overlap level
-c       --- to true.
+c       --- current one.
         do ii=0,ie-1
+c         --- Skip element if it is flagged to ignore overlaps.
+          if (elemol(ii) == -1) cycle
+c         --- For each overlap, set the corresponding overlap level to true.
           if (elemze(ie)+zlatbuffer > elemzs(ii) .and.
      &        elemze(ii)+zlatbuffer > elemzs(ie)) then
             overlaps(elemol(ii)) = .true.
@@ -1167,7 +1173,10 @@ c       --- level which has no overlap
 
       enddo
 
-      nelemol = maxval(elemol)
+c     --- Get the number of overlap levels. The max(1,...) is needed in case
+c     --- all of the elements had the flag set to ignore overlaps, then
+c     --- maxval(elemol) would be -1.
+      nelemol = max(1,maxval(elemol))
 
       return
       end
@@ -1197,12 +1206,15 @@ c    oelemnn   the number of elements in each overlap level
 c     --- Loop over the number of levels of overlap. For each level, get
 c     --- the element indices that are at that level and increment
 c     --- the number of elements at that level.
+c     --- The absolute value of elemol is used since it can be set to -1,
+c     --- signifying that overlaps are to be ignored. In that case, the
+c     --- element will by default be in overlap level 1.
       ii = 0
       do io=1,nelemol
         oelemnn(io) = 0
         oelemii(io) = ii
         do ie=0,nelem
-          if (elemol(ie) == io) then
+          if (abs(elemol(ie)) == io) then
             oelemoi(ii) = ie
             oelemio(ie) = ii - oelemii(io) + 1
             oelemnn(io) = oelemnn(io) + 1
@@ -1659,7 +1671,10 @@ c --- Check if there is only one element. If so, return id is that element.
       endif
 
 c --- Make sure id actually refers to an element of the overlap level.
-      if (elemol(id) .ne. io) id = oelemoi(1)
+c --- The absolute value of elemol is used since it can be set to -1,
+c --- signifying that overlaps are to be ignored. In that case, the
+c --- element will by default be in overlap level 1.
+      if (abs(elemol(id)) .ne. io) id = oelemoi(1)
 
 c --- Check if z is somehow greater than the current element (id) location.
 c --- If so, reset it to 0 and start from the beginning. This happens if

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.119 $, $Date: 2004/02/09 22:59:44 $
+#@(#) File TOP.V, version $Revision: 3.120 $, $Date: 2004/03/03 16:36:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.119 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.120 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -210,7 +210,8 @@ drftax(0:ndrft)   _real [m]   # Aperture in drifts in x
 drftay(0:ndrft)   _real [m]   # Aperture in drifts in y
 drftox(0:ndrft)   _real [m]   # X-offsets of drifts
 drftoy(0:ndrft)   _real [m]   # Y-offsets of drifts
-drftol(0:ndrft)   _integer    # Overlap level of the element (autoset)
+drftol(0:ndrft)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 bendzs(0:nbend)   _real [m]   # Z's of bend starts
 bendze(0:nbend)   _real [m]   # Z's of bend ends
 bendrc(0:nbend)   _real [m]   # Radii of curvature of bends
@@ -219,7 +220,8 @@ bendax(0:nbend)   _real [m]   # Aperture in bends in x
 benday(0:nbend)   _real [m]   # Aperture in bends in y
 bendox(0:nbend)   _real [m]   # X-offsets of bends (for aperture only)
 bendoy(0:nbend)   _real [m]   # Y-offsets of bends (for aperture only)
-bendol(0:nbend)   _integer    # Overlap level of the element (autoset)
+bendol(0:nbend)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 dipozs(0:ndipo)   _real [m]   # Z's of dipo starts (set from bendzs if =dipoze)
 dipoze(0:ndipo)   _real [m]   # Z's of dipo ends   (set from bendze if =dipozs)
 dipoby(0:ndipo)   _real [T]   # By's of dipos (set from bendrc if 0 & dipoex=0)
@@ -239,7 +241,8 @@ dipol1(0:ndipo)   _real [m]   # Length of first dipole plates
 dipol2(0:ndipo)   _real [m]   # Length of second dipole plates
 dipow1(0:ndipo)   _real [m]   # Width of first dipole plates
 dipow2(0:ndipo)   _real [m]   # Width of second dipole plates
-dipool(0:ndipo)   _integer    # Overlap level of the element (autoset)
+dipool(0:ndipo)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 quadzs(0:nquad)   _real [m]   # Z's of quad starts (hard-edge measure) 
 quadze(0:nquad)   _real [m]   # Z's of quad ends   (hard-edge measure)
 quaddb(0:nquad)   _real [T/m] # Magnetic quad strengths (field gradients)
@@ -263,7 +266,8 @@ quadpw(0:nquad)   _real [m]   # End plate width of electrostatic quadrupole
 quadpa(0:nquad)   _real [m]   # End plate aperture of electrostatic quadrupole
 quadpr(0:nquad)   _real [m]   # End plate max radius
 quadsl(0:nquad)   _real [m]   # Slant of rod which makes it a cone
-quadol(0:nquad)   _integer    # Overlap level of the element (autoset)
+quadol(0:nquad)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 quaddo(0:nquad)   _real [1]   # Relative strength of dodecopole at pole tip
 qdelglx(0:nquad)  _real [m]   # Change in gap length on x axis
 qdelgly(0:nquad)  _real [m]   # Change in gap length on y axis
@@ -295,7 +299,8 @@ sextzs(0:nsext)   _real [m]   # Z's of sextupole starts
 sextze(0:nsext)   _real [m]   # Z's of sextupole ends
 sextdb(0:nsext)   _real [ ]   # d^2 B/dx^2 field of sextupole (6*V33)
 sextde(0:nsext)   _real [ ]   # d^2 E/dx^2 field of sextupole (6*V33)
-sextol(0:nsext)   _integer    # Overlap level of the element (autoset)
+sextol(0:nsext)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 helezs(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole starts
 heleze(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole ends
 heleap(0:nhele)   _real [m]   # Aperture in hard-edge elements
@@ -329,7 +334,8 @@ helegl(0:nhele)   _real [m]   # Length of electrostatic quadrupole gap
 helegp(0:nhele)   _real [ ]   # Gap position of ESQ, only sign is used
 helepw(0:nhele)   _real [m]   # End plate width of electrostatic quadrupole
 helepa(0:nhele)   _real [m]   # End plate aperture of electrostatic quadrupole
-heleol(0:nhele)   _integer    # Overlap level of the element (autoset)
+heleol(0:nhele)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 emltzs(0:nemlt)   _real [m]   # Z's of electric multipole element starts
 emltze(0:nemlt)   _real [m]   # Z's of electric multipole element ends
 emltap(0:nemlt)   _real [m]   # Aperture in electric multipole elements
@@ -349,7 +355,8 @@ emltgl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole gap
 emltgp(0:nemlt)   _real [ ]   # Gap position of ESQ, only sign is used
 emltpw(0:nemlt)   _real [m]   # End plate width of electrostatic quadrupole
 emltpa(0:nemlt)   _real [m]   # End plate aperture of electrostatic quadrupole
-emltol(0:nemlt)   _integer    # Overlap level of the element (autoset)
+emltol(0:nemlt)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 mmltzs(0:nmmlt)   _real [m]   # Z's of magnetic multipole element starts
 mmltze(0:nmmlt)   _real [m]   # Z's of magnetic multipole element ends
 mmltap(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements
@@ -365,7 +372,8 @@ mmltsc(0:nmmlt)   _real [1] /1./ # Scale factor for magnetic multipole element
 mmltid(0:nmmlt)   _integer    # Index of magnetic multipole dataset
 mmltox(0:nmerr)   _real [m]   # Offset in x of magnetic multipole centers
 mmltoy(0:nmerr)   _real [m]   # Offset in y of magnetic multipole centers
-mmltol(0:nmmlt)   _integer    # Overlap level of the element (autoset)
+mmltol(0:nmmlt)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 acclzs(0:naccl)   _real [m]   # Z's of acceleration gap starts
 acclze(0:naccl)   _real [m]   # Z's of acceleration gap ends
 acclez(0:naccl)   _real [V/m] # Ez's of acceleration gaps, constant part
@@ -381,7 +389,8 @@ acclet(0:ntaccl,0:naccl) _real [V/m] # Ez's of acceleration gaps as a function
                                      # of time.
 acclts(0:naccl)   _real [t]   # Time of start of gap field in acclet
 accldt(0:naccl)   _real [t]   # Delta t for gap field data in acclet
-acclol(0:naccl)   _integer    # Overlap level of the element (autoset)
+acclol(0:naccl)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
@@ -402,7 +411,8 @@ bgrdsc(0:nbgrd) _real [1] /1./ # Scale factor to multiply 3-D B field data set
 bgrdsy(0:nbgrd) _integer /0/   # Level of symmetry in the bgrd data.
                                # (0, no symmetry; 2, quadrupole)
                                # Defaul is no symmetry.
-bgrdol(0:nbgrd)   _integer    # Overlap level of the element (autoset)
+bgrdol(0:nbgrd)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 pgrdzs(0:npgrd)   _real [m]   # Z starts of 3-D grid of potential data(PGRDdata)
 pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)
@@ -426,7 +436,8 @@ pgrdgl(0:npgrd)   _real [m]   # Length of electrostatic quadrupole gap
 pgrdgp(0:npgrd)   _real [ ]   # Gap position of ESQ, only sign is used
 pgrdpw(0:npgrd)   _real [m]   # End plate width of electrostatic quadrupole
 pgrdpa(0:npgrd)   _real [m]   # End plate aperture of electrostatic quadrupole
-pgrdol(0:npgrd)   _integer    # Overlap level of the element (autoset)
+pgrdol(0:npgrd)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
