@@ -4,7 +4,8 @@ Most important ones are the paralleldump and parallelrestore functions.
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.45 2004/05/14 23:49:14 dave Exp $"
+import copy
+warpparallel_version = "$Id: warpparallel.py,v 1.46 2004/06/03 22:08:08 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -217,7 +218,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
 #       ff.write('nocndbdy_p@parallel',nocndbdy_p)
 
     # --- Loop through all variables, getting the ones with attribute attr
-    packagelist = package()
+    packagelist = copy.copy(package())
     packagelist.reverse()
     for p in packagelist:
       pkg = __main__.__dict__[p]
