@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.101 2005/01/12 17:07:49 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.102 2005/01/24 13:49:47 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -190,6 +190,10 @@ Should never be directly created by the user.
     self.generatori = generatori
     self.name = name
     self.lostparticles_data = []
+    self.emitparticles_data = []
+    self.imageparticles_data = []
+    if not isinstalledafterfs(self.accuimagecharge):
+      installafterfs(self.accuimagecharge)
 
   def getkwlist(self):
     kwlist = []
@@ -229,28 +233,163 @@ Should never be directly created by the user.
                        kwlist=self.getkwlist())
     return result
 
-  def get_current_history(self,js=None,tmin=None,tmax=None,nt=100):
-    data = array(self.lostparticles_data)
-    q = data[:,1].copy()
-    t = data[:,0].copy()
-    if tmin is None:tmin=min(t)
-    if tmax is None:tmax=max(t)
-    if js is not None:
-      j = data[:,3].copy()
-      q = compress(j==js,q)
-      t = compress(j==js,t)
-    n = shape(q)[0]
+  def get_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100):
+    """
+  Returns conductor current history:
+    - js=None    : select species to consider (default None means that contribution from all species are added)
+    - l_lost=1   : logical flag to set if lost particles are taken into account
+    - l_emit=1   : logical flag to set if emitted particles are taken into account
+    - t_min=None : min time
+    - t_max=None : max time
+    - nt=100     : nb of cells
+    """
+    tminl=0.
+    tmaxl=top.time
+    tmine=0.
+    tmaxe=top.time
+    tmini=0.
+    tmaxi=top.time
+    # collect lost particles data
+    nl = 0
+    if l_lost and len(self.lostparticles_data) > 0:
+      datal = array(self.lostparticles_data)
+      ql = datal[:,1].copy()
+      tl = datal[:,0].copy()
+      if tmin is None:tminl=min(tl)
+      if tmax is None:tmaxl=max(tl)
+      if js is not None:
+        jl = datal[:,3].copy()
+        ql = compress(jl==js,ql)
+        tl = compress(jl==js,tl)
+      nl = shape(ql)[0]
+    # collect emitted particles data
+    ne = 0
+    if l_emit and len(self.emitparticles_data) > 0:
+      datae = array(self.emitparticles_data)
+      qe = datae[:,1].copy()
+      te = datae[:,0].copy()
+      if tmin is None:tmine=min(te)
+      if tmax is None:tmaxe=max(te)
+      if js is not None:
+        je = datal[:,3].copy()
+        qe = compress(je==js,qe)
+        te = compress(je==js,te)
+      ne = shape(qe)[0]
+    # collect accumulated image data
+    ni = 0
+    if l_accu and len(self.imageparticles_data) > 0:
+      datai = array(self.imageparticles_data)
+      qi = 0.5*(datai[:-2,1]-datai[2:,1])
+      ti = datai[1:-1,0].copy()
+      if tmin is None:tmini=min(ti)
+      if tmax is None:tmaxi=max(ti)
+      ni = shape(qi)[0]
+    # setup time min/max and arrays
+    tmin=min(tminl,tmine,tmini)
+    tmax=max(tmaxl,tmaxe,tmaxi)
     qt = zeros(nt+1,Float)
+    qtmp = zeros(nt+1,Float)
     dt = (tmax-tmin)/nt
-    if n>0:
-      qtmp = zeros(nt+1,Float)
-      deposgrid1d(1,n,t,q,nt,qt,qtmp,tmin,tmax)
+    # accumulate data
+    if nl>0:deposgrid1d(1,nl,tl, ql,nt,qt,qtmp,tmin,tmax)
+    if ne>0:deposgrid1d(1,ne,te,-qe,nt,qt,qtmp,tmin,tmax)
+    if ni>0:deposgrid1d(1,ni,ti, qi,nt,qt,qtmp,tmin,tmax)
     return arange(tmin,tmax+0.1*dt,dt),qt/dt
    
-  def plot_current_history(self,js=None,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
-    time,current=self.get_current_history(js=js,tmin=tmin,tmax=tmax,nt=nt)
+  def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
+    """
+  Plots conductor current history:
+    - js=None      : select species to consider (default None means that contribution from all species are added)
+    - l_lost=1     : logical flag to set if lost particles are taken into account
+    - l_emit=1     : logical flag to set if emitted particles are taken into account
+    - t_min=None   : min time
+    - t_max=None   : max time
+    - nt=100       : nb of cells
+    - color=black  : line color
+    - widht=1      : line width
+    - type='solid' : line type
+    """
+    time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_accu=l_accu,tmin=tmin,tmax=tmax,nt=nt)
     plg(current,time,color=color,width=width,type=type)
     ptitles('Current history at '+self.name,'time (s)','I (A)')
+
+  def accuimagecharge(self,doplot=false,l_verbose=false):
+    """
+    """
+    # get extents
+    mins = self.getextent().mins
+    maxs = self.getextent().maxs
+    # compute mins and maxs
+    xmin = max(w3d.xmmin,mins[0])
+    ymin = max(w3d.ymmin,mins[1])
+    zmin = max(w3d.zmmin,mins[2])
+    xmax = min(w3d.xmmax,maxs[0])
+    ymax = min(w3d.ymmax,maxs[1])
+    zmax = min(w3d.zmmax,maxs[2])
+    # get box boundaries at nodes locations
+    ixmin = max(0,       int((xmin-w3d.xmmin)/w3d.dx))
+    iymin = max(0,       int((ymin-w3d.ymmin)/w3d.dy))
+    izmin = max(1,       int((zmin-w3d.zmmin)/w3d.dz))+1   
+    ixmax = min(w3d.nx,  int((xmax-w3d.xmmin)/w3d.dx)+1)
+    iymax = min(w3d.ny,  int((ymax-w3d.ymmin)/w3d.dy)+1)
+    izmax = min(w3d.nz+1,int((zmax-w3d.zmmin)/w3d.dz)+1)+1 
+    
+    # accumulate charge due to integral form of Gauss Law
+    q = 0.
+    if izmax<w3d.nz+1: q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmax+1]-w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmax]))*w3d.dx*w3d.dy/w3d.dz
+    if izmin>1:        q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin-1]-w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin]))*w3d.dx*w3d.dy/w3d.dz
+    if ixmax<w3d.nx:   q += sum(sum(w3d.phi[ixmax+1,iymin:iymax+1,izmin:izmax+1]-w3d.phi[ixmax,iymin:iymax+1,izmin:izmax+1]))*w3d.dz*w3d.dy/w3d.dx
+    if ixmin>0:        q += sum(sum(w3d.phi[ixmin-1,iymin:iymax+1,izmin:izmax+1]-w3d.phi[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dz*w3d.dy/w3d.dx
+    if iymax<w3d.ny:   q += sum(sum(w3d.phi[ixmin:ixmax+1,iymax+1,izmin:izmax+1]-w3d.phi[ixmin:ixmax+1,iymax,izmin:izmax+1]))*w3d.dx*w3d.dz/w3d.dy
+    if iymin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin-1,izmin:izmax+1]-w3d.phi[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dz/w3d.dy
+
+    # compute total charge inside volume
+    qc = sum(sum(sum(w3d.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*w3d.dx*w3d.dy*w3d.dz
+
+    # correct for symmetries
+    if w3d.l4symtry:
+      q=q*4.
+      qc=qc*4.
+    elif w3d.l2symtry:
+      q=q*2.
+      qc=qc*2.
+    if w3d.l2symtry or w3d.l4symtry:
+      if iymin==0:
+        if izmax<w3d.nz+1: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmax+1]-w3d.phi[ixmin:ixmax+1,iymin,izmax])*w3d.dx*w3d.dy/w3d.dz
+        if izmin>1:        q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmin-1]-w3d.phi[ixmin:ixmax+1,iymin,izmin])*w3d.dx*w3d.dy/w3d.dz
+        if ixmax<w3d.nx:   q -= 2.*sum(w3d.phi[ixmax+1,iymin,izmin:izmax+1]-w3d.phi[ixmax,iymin,izmin:izmax+1])*w3d.dz*w3d.dy/w3d.dx
+        if ixmin>0:        q -= 2.*sum(w3d.phi[ixmin-1,iymin,izmin:izmax+1]-w3d.phi[ixmin,iymin,izmin:izmax+1])*w3d.dz*w3d.dy/w3d.dx
+        qc -= 2.*sum(sum(w3d.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
+    if w3d.l4symtry:
+      if ixmin==0:
+        if izmax<w3d.nz+1: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmax+1]-w3d.phi[ixmin,iymin:iymax+1,izmax])*w3d.dx*w3d.dy/w3d.dz
+        if izmin>1:        q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmin-1]-w3d.phi[ixmin,iymin:iymax+1,izmin])*w3d.dx*w3d.dy/w3d.dz
+        if iymax<w3d.ny:   q -= 2.*sum(w3d.phi[ixmin,iymax+1,izmin:izmax+1]-w3d.phi[ixmin,iymax,izmin:izmax+1])*w3d.dx*w3d.dz/w3d.dy
+        if iymin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin-1,izmin:izmax+1]-w3d.phi[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dz/w3d.dy
+        qc -= 2.*sum(sum(w3d.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
+      if ixmin==0 and iymin==0:
+        if izmax<w3d.nz+1: q += (w3d.phi[ixmin,iymin,izmax+1]-w3d.phi[ixmin,iymin,izmax])*w3d.dx*w3d.dy/w3d.dz
+        if izmin>1:        q += (w3d.phi[ixmin,iymin,izmin-1]-w3d.phi[ixmin,iymin,izmin])*w3d.dx*w3d.dy/w3d.dz
+        qc += sum(w3d.rho[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dy*w3d.dz
+
+    self.imageparticles_data += [[top.time,q*eps0-qc]]
+    if l_verbose:print self.name,q*eps0,qc
+    if doplot:
+      window(0)
+      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=red,width=3)
+      window(1)
+      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
+      window(0)
+      zmin=w3d.zmmin+(izmin-1)*w3d.dz
+      zmax=w3d.zmmin+(izmax-1)*w3d.dz
+      xmin=w3d.xmmin+ixmin*w3d.dx
+      xmax=w3d.xmmin+ixmax*w3d.dx
+      ymin=w3d.ymmin+iymin*w3d.dy
+      ymax=w3d.ymmin+iymax*w3d.dy
+      pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=blue,width=3)
+      window(1)
+      pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=blue,width=3)
+      window(0)
 
    # Operations which return an Assembly expression.
   def __mul__(self,right):
