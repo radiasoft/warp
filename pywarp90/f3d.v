@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.59 $, $Date: 2002/10/04 00:53:12 $
+#@(#) File F3D.V, version $Revision: 3.60 $, $Date: 2002/10/31 23:16:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.59 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.60 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -419,7 +419,15 @@ ycylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
 zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zroundedcylinderconductorf(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zcylinderoutconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
