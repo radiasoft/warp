@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.28 $, $Date: 2001/11/06 22:18:04 $
+c@(#) File TOP.M, version $Revision: 3.29 $, $Date: 2001/11/09 23:32:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1937,7 +1937,6 @@ c Apply uniform fields.
       end
 c============================================================================ 
       subroutine getbend(np,npz,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,lslice)
-      use Subtimers
       use InGen
       use Lattice
       use LatticeInternal
@@ -3488,7 +3487,6 @@ c           --- and Ez - the expression reduces to q*V/m for small V.
       end
 c=========================================================================== 
       subroutine zgapcorr(np,zp,xp,uzp,gaminv,dtl,dtr,dt,m,q,time)
-      use Subtimers
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
