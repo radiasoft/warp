@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.8 $, $Date: 2002/04/30 13:53:45 $
+c W3DSLAVE.M, version $Revision: 1.9 $, $Date: 2002/05/15 21:51:03 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -30,9 +30,16 @@ c This is the routine which divies up the work aming the slaves.
       real(kind=8):: zinjmax(ninject)
       real(kind=8):: zperproc,avezpp,ztot,sumzslave,zlast
       real(kind=8):: zpmin,zpmax
+      logical(ISZ):: w3dinitialized
+      data w3dinitialized/.false./
+      save w3dinitialized
       logical(ISZ):: initialized
       integer(ISZ):: mpierror
       include "mpif.h"
+
+c This routine should only be called once.
+      if (w3dinitialized) return
+      w3dinitialized = .true.
 
 c get number of slaves and my_pe
       call MPI_INITIALIZED(initialized,mpierror)
