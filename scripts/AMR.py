@@ -27,6 +27,7 @@ class AMRTree(object,Visualizable):
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conds_installed_onbasegrid = []
+      self.beforefsfuncs = ControllerFunction()
       self.dfill = 2
       self.enable()
 
@@ -83,7 +84,10 @@ class AMRTree(object,Visualizable):
         return self.blocks.hasconductors()
       else:
         return f3d.conductors.interior.n > 0
-      
+
+    def installbeforefs(self,f):
+      self.beforefs.installfuncinlist(f)
+
     def pfxy(self,**kw): self.blocks.pfxy(kwdict=kw)
     def pfzx(self,**kw): self.blocks.pfzx(kwdict=kw)
     def pfzy(self,**kw): self.blocks.pfzy(kwdict=kw)
@@ -648,6 +652,8 @@ class AMRTree(object,Visualizable):
         self.blocks.loadrho(lrootonly=0)
       else:
         loadrho()
+
+      self.beforefs()
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
       for i,blocks in enumerate(self.listblocks[1:]):
