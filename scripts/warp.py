@@ -1,9 +1,20 @@
+warp_version = "$Id: warp.py,v 1.22 2001/05/25 19:58:39 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
-import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.21 2001/04/23 22:58:39 dave Exp $"
+
+# --- Import the RNG module. Older versions have ranf in a seperate module
+# --- called Ranf. In newer versions, ranf is part of RNG.
+try:
+  import Ranf
+except ImportError:
+  pass
+try:
+  import RNG
+except ImportError:
+  pass
+
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -222,14 +233,28 @@ def setseed(x=0,y=0):
     
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
+  """Returns a pseudo-random number. If the 2nd and 3rd arguments are given,
+returns a digit reversed random number.
+  x=None: if present, returns and array the same shape fill with random numbers
+  i1=None: returns i'th digit reversed number
+  nbase=None: base to use for digit reversing
+  """
   if not i1:
     if x == None:
-      try:
-        return ranlib.sample()
-      except:
-        return RandomArray.random(shape(array([0])))[0]
+      # --- Try various versions of ranf.
+      try: return RNG.ranf()
+      except: pass
+      try: return Ranf.ranf()
+      except: pass
+      try: return RandomArray.random(shape(array([0])))[0]
+      except: raise "No random number modules found"
     else:
-      return RandomArray.random(shape(x))
+      try: return apply(RNG.random_sample,shape(x))
+      except: pass
+      try: return apply(Ranf.random_sample,shape(x))
+      except: pass
+      try: return RandomArray.random(shape(x))
+      except: raise "No random number modules found"
   else:
     if not nbase: nbase = 2
     n = product(array(shape(array(x))))
