@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.87 $, $Date: 2003/02/27 19:34:16 $
+#@(#) File W3D.V, version $Revision: 3.88 $, $Date: 2003/03/06 01:40:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.87 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.88 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -72,6 +72,11 @@ lrhodia3d logical /.true./ # Sets whether rho diagnostics are done,
 lpltfld3d logical /.false./ # When true, the compiled pltfld3d calls the
                             # interpreter function 'pltfld3d' with the
                             # appropriate arguments and then returns.
+lgetvzofz logical /.true./ # Sets wether vzofz is calculated
+lsrhoax3d logical /.true./ # Sets wether the charge density on axis is calculated
+lsphiax3d logical /.true./ # Sets wether the potential on axis is calculated
+lsezax3d  logical /.true./ # Sets wether the longitudinal electric field on axis is calculated
+
 
 *********** InPart3d dump:
 # Particle input quantities (input qtys)
@@ -305,7 +310,12 @@ inj_ns               integer  # Auto set to either 1 or ns. Set to 1
                               # when only one species is being injected from
                               # each source.
 linj_sphere          logical /.true./
-l_inj_rz             logical /.false./
+l_inj_rz             logical /.false./ # if true, make RZ injection with variable weights
+l_inj_regular        logical /.false./ # if true, inject one particle at each grid node and adjust weight accordingly
+l_inj_delay_temp     logical /.false./ # if true, add temperature only after particles at distance inj_dtemp from emitter
+l_inj_addtempz_abs   logical /.false./ # if true, longitudinal thermal velocity is positive
+l_inj_rec_inittime   logical /.false./ # if true, time of creation is recorded in pid
+l_inj_rec_initradius logical /.false./ # if true, radius of creation is recorded in pid
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
@@ -518,6 +528,7 @@ timeinject3d real /0./
 timeinjctint real /0./
 timefill_inj real /0./
 timeinj_sete3d real /0./
+timeinj_addtemp3d real /0./
 timeinj_setrho3d real /0./
 timesete3d_aperture real /0./
 timeset_aperture_e real /0./
