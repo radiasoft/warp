@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.36 $, $Date: 2002/03/06 00:53:38 $
+c@(#) File TOP.M, version $Revision: 3.37 $, $Date: 2002/03/12 22:57:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1967,7 +1967,10 @@ c  For periodic runs, assumes mesh period length = lattice period length
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
 
-      if (.not. bends .or. .not. linbend) return
+      if (.not. bends .or. .not. linbend) then
+        bendres = 0.
+        return
+      endif
 
       vz  = uzp*gaminv
       dzi = 1./dvnz(vz*(dtr-dtl))
