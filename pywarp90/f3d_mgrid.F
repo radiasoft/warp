@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.21 $, $Date: 2002/03/28 20:55:49 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.22 $, $Date: 2002/04/03 20:58:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1746,10 +1746,9 @@ c     attached - positive for even points, negative for odd points
 c   - the value chosen for inside of conductors is large enough so that
 c     is will not be the same as a subgrid point
 
-
       integer(ISZ):: icond,ix,iy,iz
       integer(ISZ):: cds(3),maxcdel
-      integer(ISZ):: ic,ne,no,levelxy,levelz,tnx,tny,tnz
+      integer(ISZ):: ic,i,ne,no,levelxy,levelz,tnx,tny,tnz
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       real(kind=8):: tdx,tdy,tdz
 
@@ -1762,12 +1761,22 @@ c     --- Set the known conductor points.
         iii(ixcond(ic),iycond(ic),izcond(ic)) = icond + ic
       enddo
 
-c     --- Scan through subgrid points and remove all points which lie inside
-c     --- of a conductor.
+c     --- Scan through subgrid points:
+c     ---   remove points which lie inside of a conductor
+c     ---   reset distances which are greater than one to LARGEPOS
+c     ---   register subgrid points in the work array iii
+c     ---   copy the voltage and conductor number into the appropriate arrays.
+c     ---   check for redundant point (multiple points at grid location)
       ne = 0
       do ic=1,necndbdy
+c       --- If iii == 0, then this data point is outside any conductors and
+c       --- is not redundant.
         if (iii(iecndx(ic),iecndy(ic),iecndz(ic)) == 0) then
+c         --- Increment the counter and register the point
           ne = ne + 1
+          iii(iecndx(ic),iecndy(ic),iecndz(ic)) = ne
+c         --- If points have been skipped, copy current data point to
+c         --- free location.
           if (ne < ic) then
             iecndx(ne)   = iecndx(ic)
             iecndy(ne)   = iecndy(ic)
@@ -1781,14 +1790,95 @@ c     --- of a conductor.
             ecvolt(ne)   = ecvolt(ic)
             ecnumb(ne)   = ecnumb(ic)
           endif
+c         --- Reset distances > 1 to LARGEPOS (a number much greater than the
+c         --- grid extent).
+          if (ecdelmx(ne) > 1.) ecdelmx(ne) = LARGEPOS
+          if (ecdelpx(ne) > 1.) ecdelpx(ne) = LARGEPOS
+          if (ecdelmy(ne) > 1.) ecdelmy(ne) = LARGEPOS
+          if (ecdelpy(ne) > 1.) ecdelpy(ne) = LARGEPOS
+          if (ecdelmz(ne) > 1.) ecdelmz(ne) = LARGEPOS
+          if (ecdelpz(ne) > 1.) ecdelpz(ne) = LARGEPOS
+c         --- Set voltage and conductor number for conductors in each
+c         --- direction. Assumes that any surrounding conductors have
+c         --- same voltage and number.
+          if (ecdelmx(ne) < 1.) then
+            ecvoltmx(ne) = ecvolt(ne)
+            ecnumbmx(ne) = ecnumb(ne)
+          endif
+          if (ecdelpx(ne) < 1.) then
+            ecvoltpx(ne) = ecvolt(ne)
+            ecnumbpx(ne) = ecnumb(ne)
+          endif
+          if (ecdelmy(ne) < 1.) then
+            ecvoltmy(ne) = ecvolt(ne)
+            ecnumbmy(ne) = ecnumb(ne)
+          endif
+          if (ecdelpy(ne) < 1.) then
+            ecvoltpy(ne) = ecvolt(ne)
+            ecnumbpy(ne) = ecnumb(ne)
+          endif
+          if (ecdelmz(ne) < 1.) then
+            ecvoltmz(ne) = ecvolt(ne)
+            ecnumbmz(ne) = ecnumb(ne)
+          endif
+          if (ecdelpz(ne) < 1.) then
+            ecvoltpz(ne) = ecvolt(ne)
+            ecnumbpz(ne) = ecnumb(ne)
+          endif
+        else if (iii(iecndx(ic),iecndy(ic),iecndz(ic)) < icond) then
+c         --- This point is redundant - another subgrid point is at this
+c         --- location.
+c         --- For each direction, check if a conductor is nearer to this point
+c         --- than the other point. If so, reset data for the other point.
+c         --- This point will be discarded.
+          i = iii(iecndx(ic),iecndy(ic),iecndz(ic))
+          if (ecdelmx(ic) < 1. .and. ecdelmx(ic) < ecdelmx(i)) then
+            ecdelmx(i)  = ecdelmx(ic)
+            ecvoltmx(i) = ecvolt(ic)
+            ecnumbmx(i) = ecnumb(ic)
+          endif
+          if (ecdelpx(ic) < 1. .and. ecdelpx(ic) < ecdelpx(i)) then
+            ecdelpx(i)  = ecdelpx(ic)
+            ecvoltpx(i) = ecvolt(ic)
+            ecnumbpx(i) = ecnumb(ic)
+          endif
+          if (ecdelmy(ic) < 1. .and. ecdelmy(ic) < ecdelmy(i)) then
+            ecdelmy(i)  = ecdelmy(ic)
+            ecvoltmy(i) = ecvolt(ic)
+            ecnumbmy(i) = ecnumb(ic)
+          endif
+          if (ecdelpy(ic) < 1. .and. ecdelpy(ic) < ecdelpy(i)) then
+            ecdelpy(i)  = ecdelpy(ic)
+            ecvoltpy(i) = ecvolt(ic)
+            ecnumbpy(i) = ecnumb(ic)
+          endif
+          if (ecdelmz(ic) < 1. .and. ecdelmz(ic) < ecdelmz(i)) then
+            ecdelmz(i)  = ecdelmz(ic)
+            ecvoltmz(i) = ecvolt(ic)
+            ecnumbmz(i) = ecnumb(ic)
+          endif
+          if (ecdelpz(ic) < 1. .and. ecdelpz(ic) < ecdelpz(i)) then
+            ecdelpz(i)  = ecdelpz(ic)
+            ecvoltpz(i) = ecvolt(ic)
+            ecnumbpz(i) = ecnumb(ic)
+          endif
         endif
       enddo
+c     --- Reset the number of even conductor points (with points inside a
+c     --- conductor and redundant points excluded).
       necndbdy = ne
 
+c     --- Do the same for the odd conductor points.
       no = 0
       do ic=1,nocndbdy
+c       --- If iii == 0, then this data point is outside any conductors and
+c       --- is not redundant.
         if (iii(iocndx(ic),iocndy(ic),iocndz(ic)) == 0) then
+c         --- Increment the counter and register the point
           no = no + 1
+          iii(iocndx(ic),iocndy(ic),iocndz(ic)) = -no
+c         --- If points have been skipped, copy current data point to
+c         --- free location.
           if (no < ic) then
             iocndx(no)   = iocndx(ic)
             iocndy(no)   = iocndy(ic)
@@ -1802,79 +1892,83 @@ c     --- of a conductor.
             ocvolt(no)   = ocvolt(ic)
             ocnumb(no)   = ocnumb(ic)
           endif
+c         --- Reset distances > 1 to LARGEPOS (a number much greater than the
+c         --- grid extent).
+          if (ocdelmx(no) > 1.) ocdelmx(no) = LARGEPOS
+          if (ocdelpx(no) > 1.) ocdelpx(no) = LARGEPOS
+          if (ocdelmy(no) > 1.) ocdelmy(no) = LARGEPOS
+          if (ocdelpy(no) > 1.) ocdelpy(no) = LARGEPOS
+          if (ocdelmz(no) > 1.) ocdelmz(no) = LARGEPOS
+          if (ocdelpz(no) > 1.) ocdelpz(no) = LARGEPOS
+c         --- Set voltage and conductor number for conductors in each
+c         --- direction. Assumes that any surrounding conductors have
+c         --- same voltage and number.
+          if (ocdelmx(no) < 1.) then
+            ocvoltmx(no) = ocvolt(no)
+            ocnumbmx(no) = ocnumb(no)
+          endif
+          if (ocdelpx(no) < 1.) then
+            ocvoltpx(no) = ocvolt(no)
+            ocnumbpx(no) = ocnumb(no)
+          endif
+          if (ocdelmy(no) < 1.) then
+            ocvoltmy(no) = ocvolt(no)
+            ocnumbmy(no) = ocnumb(no)
+          endif
+          if (ocdelpy(no) < 1.) then
+            ocvoltpy(no) = ocvolt(no)
+            ocnumbpy(no) = ocnumb(no)
+          endif
+          if (ocdelmz(no) < 1.) then
+            ocvoltmz(no) = ocvolt(no)
+            ocnumbmz(no) = ocnumb(no)
+          endif
+          if (ocdelpz(no) < 1.) then
+            ocvoltpz(no) = ocvolt(no)
+            ocnumbpz(no) = ocnumb(no)
+          endif
+        else if (iii(iocndx(ic),iocndy(ic),iocndz(ic)) < icond) then
+c         --- This point is redundant - another conductor point is at this
+c         --- location.
+c         --- For each direction, check if a conductor is nearer to this point
+c         --- than the other point. If so, reset data for the other point.
+c         --- This point will be discarded.
+          i = -iii(iocndx(ic),iocndy(ic),iocndz(ic))
+          if (ocdelmx(ic) < 1. .and. ocdelmx(ic) < ocdelmx(i)) then
+            ocdelmx(i)  = ocdelmx(ic)
+            ocvoltmx(i) = ocvolt(ic)
+            ocnumbmx(i) = ocnumb(ic)
+          endif
+          if (ocdelpx(ic) < 1. .and. ocdelpx(ic) < ocdelpx(i)) then
+            ocdelpx(i)  = ocdelpx(ic)
+            ocvoltpx(i) = ocvolt(ic)
+            ocnumbpx(i) = ocnumb(ic)
+          endif
+          if (ocdelmy(ic) < 1. .and. ocdelmy(ic) < ocdelmy(i)) then
+            ocdelmy(i)  = ocdelmy(ic)
+            ocvoltmy(i) = ocvolt(ic)
+            ocnumbmy(i) = ocnumb(ic)
+          endif
+          if (ocdelpy(ic) < 1. .and. ocdelpy(ic) < ocdelpy(i)) then
+            ocdelpy(i)  = ocdelpy(ic)
+            ocvoltpy(i) = ocvolt(ic)
+            ocnumbpy(i) = ocnumb(ic)
+          endif
+          if (ocdelmz(ic) < 1. .and. ocdelmz(ic) < ocdelmz(i)) then
+            ocdelmz(i)  = ocdelmz(ic)
+            ocvoltmz(i) = ocvolt(ic)
+            ocnumbmz(i) = ocnumb(ic)
+          endif
+          if (ocdelpz(ic) < 1. .and. ocdelpz(ic) < ocdelpz(i)) then
+            ocdelpz(i)  = ocdelpz(ic)
+            ocvoltpz(i) = ocvolt(ic)
+            ocnumbpz(i) = ocnumb(ic)
+          endif
         endif
       enddo
+c     --- Reset the number of even conductor points (with points inside a
+c     --- conductor and redundant points excluded).
       nocndbdy = no
-
-c     --- Reset distances which are greater than one to LARGEPOS and
-c     --- register subgrid points in the work array iii. Also copy the
-c     --- voltage and conductor number into the appropriate arrays.
-      do ic=1,necndbdy
-        iii(iecndx(ic),iecndy(ic),iecndz(ic)) = ic
-        if (ecdelmx(ic) > 1.) ecdelmx(ic) = LARGEPOS
-        if (ecdelpx(ic) > 1.) ecdelpx(ic) = LARGEPOS
-        if (ecdelmy(ic) > 1.) ecdelmy(ic) = LARGEPOS
-        if (ecdelpy(ic) > 1.) ecdelpy(ic) = LARGEPOS
-        if (ecdelmz(ic) > 1.) ecdelmz(ic) = LARGEPOS
-        if (ecdelpz(ic) > 1.) ecdelpz(ic) = LARGEPOS
-        if (ecdelmx(ic) < 1.) then
-          ecvoltmx(ic) = ecvolt(ic)
-          ecnumbmx(ic) = ecnumb(ic)
-        endif
-        if (ecdelpx(ic) < 1.) then
-          ecvoltpx(ic) = ecvolt(ic)
-          ecnumbpx(ic) = ecnumb(ic)
-        endif
-        if (ecdelmy(ic) < 1.) then
-          ecvoltmy(ic) = ecvolt(ic)
-          ecnumbmy(ic) = ecnumb(ic)
-        endif
-        if (ecdelpy(ic) < 1.) then
-          ecvoltpy(ic) = ecvolt(ic)
-          ecnumbpy(ic) = ecnumb(ic)
-        endif
-        if (ecdelmz(ic) < 1.) then
-          ecvoltmz(ic) = ecvolt(ic)
-          ecnumbmz(ic) = ecnumb(ic)
-        endif
-        if (ecdelpz(ic) < 1.) then
-          ecvoltpz(ic) = ecvolt(ic)
-          ecnumbpz(ic) = ecnumb(ic)
-        endif
-      enddo
-      do ic=1,nocndbdy
-        iii(iocndx(ic),iocndy(ic),iocndz(ic)) = -ic
-        if (ocdelmx(ic) > 1.) ocdelmx(ic) = LARGEPOS
-        if (ocdelpx(ic) > 1.) ocdelpx(ic) = LARGEPOS
-        if (ocdelmy(ic) > 1.) ocdelmy(ic) = LARGEPOS
-        if (ocdelpy(ic) > 1.) ocdelpy(ic) = LARGEPOS
-        if (ocdelmz(ic) > 1.) ocdelmz(ic) = LARGEPOS
-        if (ocdelpz(ic) > 1.) ocdelpz(ic) = LARGEPOS
-        if (ocdelmx(ic) < 1.) then
-          ocvoltmx(ic) = ocvolt(ic)
-          ocnumbmx(ic) = ocnumb(ic)
-        endif
-        if (ocdelpx(ic) < 1.) then
-          ocvoltpx(ic) = ocvolt(ic)
-          ocnumbpx(ic) = ocnumb(ic)
-        endif
-        if (ocdelmy(ic) < 1.) then
-          ocvoltmy(ic) = ocvolt(ic)
-          ocnumbmy(ic) = ocnumb(ic)
-        endif
-        if (ocdelpy(ic) < 1.) then
-          ocvoltpy(ic) = ocvolt(ic)
-          ocnumbpy(ic) = ocnumb(ic)
-        endif
-        if (ocdelmz(ic) < 1.) then
-          ocvoltmz(ic) = ocvolt(ic)
-          ocnumbmz(ic) = ocnumb(ic)
-        endif
-        if (ocdelpz(ic) < 1.) then
-          ocvoltpz(ic) = ocvolt(ic)
-          ocnumbpz(ic) = ocnumb(ic)
-        endif
-      enddo
 
 c     --- Check through all of the SOR points to reset any distances which
 c     --- should not be LARGEPOS.
