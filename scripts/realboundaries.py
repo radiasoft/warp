@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.21 2002/05/21 16:41:44 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.22 2002/05/21 19:50:33 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -171,6 +171,17 @@ Constructor arguments
                                logical_and(greater(y,w3d.ymmin+yfuzz),
                                            greater(w3d.ymmax-yfuzz,y))),1,0)
   #----------------------------------------------------------------------------
+  def setparticleboundary(s,rpart,xcent,ycent):
+    """
+Sets particle scraping boundaries.
+    """
+    top.prwall = rpart
+    top.prwallx = xcent
+    top.prwally = ycent
+    top.prwallz = top.prwall
+    top.prwallxz = top.prwallx
+    top.prwallyz = top.prwally
+  #----------------------------------------------------------------------------
   def getmesh(s,xmin,xmax,ymin,ymax,rpart,xcent,ycent):
     # --- This routine redefines the mesh to match the size of the element.
     # --- Extend far enough to cover the conductor plus a little extra space to
@@ -194,13 +205,6 @@ Constructor arguments
     # --- Recalculate mesh arrays
     w3d.xmesh = iota(0,w3d.nx)*w3d.dx + w3d.xmmin
     w3d.ymesh = iota(0,w3d.ny)*w3d.dy + w3d.ymmin
-    # --- Reset particle boundaries
-    top.prwall = rpart
-    top.prwallx = xcent
-    top.prwally = ycent
-    top.prwallz = top.prwall
-    top.prwallxz = top.prwallx
-    top.prwallyz = top.prwally
     # --- Recalculate ksqx and ksqy (notice that for this part, the capacity
     # --- matrix is turned off since the matrix does not need to be calculated)
     if top.fstype >= 0:
@@ -307,6 +311,7 @@ Constructor arguments:
   def setmatrix(s,v=None):
     if v is not None: s.vcond[:] = v
     CapacityMatrix.setmatrix(s,s.vcond)
+    s.setparticleboundary(s.ap,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,ox,oy):
     # --- Checks if the input values would return the same matrix
@@ -428,6 +433,7 @@ Constructor arguments:
       except AttributeError:
         pass
     CapacityMatrix.setmatrix(s,s.vcond)
+    s.setparticleboundary(s.ap,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,rr,withx,withy,ox,oy):
     # --- Checks if the input values would return the same matrix
