@@ -13,7 +13,7 @@ def printparameters3d():
   textblock = \
       f30%("Number of grid points in x = ",w3d.nx," ") + \
       f30%("Number of grid points in y = ",w3d.ny," ") + \
-      f30%("Number of grid points in z = ",w3d.fullnz," ") + \
+      f30%("Number of grid points in z = ",w3d.nzfull," ") + \
       f20%("Grid spacing in x = ",w3d.dx," m") + \
       f20%("Grid spacing in y = ",w3d.dy," m") + \
       f20%("Grid spacing in z = ",w3d.dz," m")
