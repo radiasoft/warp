@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.76 $, $Date: 2003/04/16 23:09:39 $
+c@(#) File DTOP.M, version $Revision: 3.77 $, $Date: 2003/04/22 16:32:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -639,7 +639,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.76 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.77 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1451,6 +1451,41 @@ c       --- if within grid, gather
      &            grid(ix+1,iy  )*      wx *(1. - wy) +
      &            grid(ix  ,iy+1)*(1. - wx)*      wy  +
      &            grid(ix+1,iy+1)*      wx *      wy
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getgridngp2d(np,x,y,z,nx,ny,grid,xmin,xmax,ymin,ymax)
+      integer(ISZ):: nx,ny,np
+      real(kind=8):: x(np), y(np), z(np)
+      real(kind=8):: grid(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Gathers data from a 2-D mesh onto particle positions.
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, gather
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          z(ip) = grid(ix,iy)
         endif
 
       enddo

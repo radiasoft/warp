@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.81 $, $Date: 2003/04/16 23:09:38 $
+#@(#) File TOP.V, version $Revision: 3.82 $, $Date: 2003/04/22 16:32:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.81 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.82 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1800,6 +1800,9 @@ deposgrid2dw(itask:integer,np:integer,x:real,y:real,z:real,w:real,nx:integer,ny:
 getgrid2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Gathers data from a 2-D grid.
+getgridngp2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
+          xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+        # Gathers data from a 2-D grid using nearest grid point
 setgrid3d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,nz:integer,
           grid:real,xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)        subroutine
         # Deposits uniform data onto a 3-D grid.
