@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.31 $, $Date: 2004/09/25 00:37:53 $
+#@(#) File ENV.V, version $Revision: 3.32 $, $Date: 2004/12/03 22:35:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.31 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.32 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -148,41 +148,3 @@ envxport(np,z:real,a:real,ap:real,b:real,bp:real,
          emitx,emity,ibeam:real) integer function
          # Export routine with envelope data at z(1:np)
 
-
-%%%%%%%% ENVtype:
-oo integer
-nn integer
-aa(1-oo:nn+oo+1) _real
-bb(0:nn) _real
-ap(0:nn) _real
-bp(0:nn) _real +fassign
-ee(5)     real
-ack _ENVtype
-
-******* TTester:
-e1 ENVtype
-e2 ENVtype
-xxx _ENVtype
-#yyy(4) _ENVtype
-zzz(10) _real +fassign
-envtypetest(n1:integer,n2:integer) subroutine
-printxxx() subroutine
-setzzz() subroutine
-printzzz() subroutine
-dtypeargtest(e:ENVtype) subroutine
-
-****** ATester:
-iqiq integer
-xqxq(iqiq) _real +fassign
-iqtest(iqiq:integer) subroutine
-
-%%%%%% MEMtesttype:
-nn integer /100000/
-xx(nn) _real
-mm _MEMtesttype
-
-****** MEMtester:
-mm _MEMtesttype
-testmem1(nn:integer) subroutine
-testmem2() subroutine
-testmem3(nn:integer) subroutine

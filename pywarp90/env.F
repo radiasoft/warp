@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.31 $, $Date: 2004/09/25 00:37:52 $
+c@(#) File ENV.M, version $Revision: 3.32 $, $Date: 2004/12/03 22:35:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1367,94 +1367,3 @@ c Press, 1986, pg 292, Ch 10
       go to 1
       end
 c=========================================================================
-      subroutine envtypetest(n1,n2)
-      use TTester
-      integer(ISZ):: n1,n2
-      real(kind=8),pointer:: bp(:)
-      TYPE(ENVtype),POINTER:: newe
-      e1%oo = 1
-      e2%oo = 1
-      e1%nn = n1
-      e2%nn = n2
-      call gallot("TTester",0)
-      e1%aa(1:3) = 2.
-      e2%ee(2:4) = 1.
-      allocate(bp(0:e1%nn))
-      bp = 3.1416
-      e1%bp => bp
-      newe => NewENVType()
-      newe%oo = 1
-      newe%nn = 21
-      call ENVtypeallot(newe)
-      e1%ack => newe
-      xxx => NewENVType()
-      return
-      end
-      subroutine printxxx()
-      use TTester
-      print*,"xxx%oo = ",xxx%oo
-      print*,"xxx%nn = ",xxx%nn
-      print*,"xxx%ee = ",xxx%ee
-      return
-      end
-      subroutine setzzz()
-      use TTester
-      real(kind=8),allocatable,target:: newzzz(:)
-      allocate(newzzz(10))
-      newzzz(3:5) = 18.
-      zzz => newzzz
-      return
-      end
-      subroutine printzzz()
-      use TTester
-      print*,"zzz = ",zzz
-      NULLIFY(zzz)
-      return
-      end
-      subroutine iqtest(iq)
-      use ATester
-      integer(ISZ):: iq
-      real(kind=8),pointer:: nn(:)
-      iqiq = iq
-      call gsetdims("ATester")
-      allocate(nn(iq))
-      nn(iq) = 12345.
-      xqxq => nn
-      return
-      end
-      subroutine testmem1(nn)
-      use MEMtester
-      integer(ISZ):: nn
-      mm => NewMEMtesttype()
-      mm%nn = nn
-      call MEMtesttypeallot(mm)
-      return
-      end
-      subroutine testmem2()
-      use MEMtester
-      call MEMtesttypefree(mm)
-      return
-      end
-      subroutine testmem3(nn)
-      use MEMtester
-      integer(ISZ):: nn,ii
-      TYPE(MEMtesttype),POINTER:: aa
-      aa => mm
-      do ii=1,5
-        aa%mm => NewMEMtesttype()
-        aa%mm%nn = nn
-        call MEMtesttypeallot(aa%mm)
-        aa => aa%mm
-      enddo
-      return
-      end
-      
-      subroutine dtypeargtest(e)
-      use ENVtypemodule
-      TYPE(ENVtype):: e
-      print*,'oo = ',e%oo
-      print*,'nn = ',e%nn
-      print*,'ee = ',e%ee
-      e%oo = 120
-      return
-      end
