@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.47 $, $Date: 2002/04/03 23:09:26 $
+c@(#) File W3D.M, version $Revision: 3.48 $, $Date: 2002/04/12 21:10:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -64,6 +64,7 @@ c=============================================================================
       use Pspwork
       use InjectVars
       use FRZmgrid
+      use multigridrz
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -213,6 +214,11 @@ c  Calculate mesh dimensioning quantities
          zmesh(k) = k*dz + zmmin
       enddo
 
+c  Initialize base grid for RZ solver
+      if(solvergeom==RZgeom) then
+        call init_basegrid(nx,nz,dx,dz,xmmin,zmmin)
+      end if
+
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
       if(solvergeom==XYZgeom) then
@@ -243,6 +249,7 @@ c  Load the particles, calculate the charge density
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
       call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+      if(solvergeom==RZgeom) call reset_rzmgrid_rho()
       call zeroarry(curr(0),nzzarr+1)
 c     rho = 0.
 c     curr = 0.
@@ -259,6 +266,7 @@ c     curr = 0.
          enddo
       enddo
       call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
+      if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
 
 c  Set up for injection
       if (inject .gt. 0) call injctint
@@ -656,7 +664,7 @@ c  Set the potential near the emitting surface.
         if(solvergeom==XYZgeom) then
           call getinj_phi(nx,ny,nz,phi(0,0,0),dx,dy,dz,xmmin,ymmin)
         elseif(solvergeom==RZgeom) then
-          call getinj_phi_rz(nx,nz,phi(0,0,0),dx,dz,xmmin,ymmin)
+          call getinj_phi_rz_ng()
         endif
       endif
 c  Complete constant current and axially directed space-charge limited
@@ -1221,9 +1229,11 @@ c     call zeroarry (bendradi,NPARPGRP)
       bendradi = 0.
 
 c  Zero rho only if particles are advanced
-      if (center == "fullv" .or. center == "halfv" .and. .not. laccumulate_rho)
-     &  call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
-c    &  rho = 0.
+      if (center == "fullv" .or. center == "halfv" .and. .not. laccumulate_rho) then
+        call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+        if(solvergeom==RZgeom) call reset_rzmgrid_rho()
+c       rho = 0.
+      end if
 
 c  Zero curr if center is synchv or if using gaps
       if (center == "synchv" .or. ifgap .and. .not. laccumulate_rho)
@@ -3584,7 +3594,10 @@ c --- all of the particles, otherwise the specified particles are loaded.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- zero rho if requested
-      if (lzero) call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+      if (lzero) then
+        call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+        if(solvergeom==RZgeom) call reset_rzmgrid_rho()
+      end if
 c     if (lzero) rho = 0.
 
 c     --- set limits on loop over species
@@ -3620,6 +3633,7 @@ c        --- loop over particle blocks
             end if
          enddo
       enddo
+      if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
 
 c     --- enforce axial periodicity
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
@@ -3751,6 +3765,8 @@ c=============================================================================
       use Picglb3d
       use Setpwork3d
       use Fields3d
+      use FRZmgrid
+      use multigridrz
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -3783,6 +3799,12 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==RZgeom) then
+        dx = grids_ptr(mgridrz_inj_id)%grid%dr
+        dy = grids_ptr(mgridrz_inj_id)%grid%dr
+        dz = grids_ptr(mgridrz_inj_id)%grid%dz
+      end if
 
       dxi = 1./dx
       dyi = 1./dy
@@ -4850,6 +4872,7 @@ c         --- are injected.
               end if
             enddo
           enddo
+          if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
 
         elseif (itask == 3) then
 c         --- Only include new particles now, after rest of particles have
@@ -4867,6 +4890,12 @@ c         --- make injected particles live particles
         endif
       endif
 c     --- End of transverse injection
+
+      if(solvergeom==RZgeom) then
+        dx = basegrid%dr
+        dy = basegrid%dr
+        dz = basegrid%dz
+      end if
 
       if (lw3dtimesubs) timeinject3d = timeinject3d + wtime() - substarttime
 
@@ -4886,12 +4915,20 @@ c=============================================================================
       use InjectVars3d
       use Setpwork3d
       use Picglb3d
+      use FRZmgrid
+      use multigridrz
 
       integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==RZgeom) then
+        dx = grids_ptr(mgridrz_inj_id)%grid%dr
+        dy = grids_ptr(mgridrz_inj_id)%grid%dr
+        dz = grids_ptr(mgridrz_inj_id)%grid%dz
+      end if
 
 c Make sure that space has been allocated for the arrays. This is needed
 c in case the user changes ninject or ns but doesn't explicitly allocate
@@ -5076,10 +5113,12 @@ c control of injection.
         call gchange("InjectVars3d",0)
         call fill_inj(dx,dy,dz,ix_axis,iy_axis)
       elseif(solvergeom==RZgeom) then
-        inj_nx = nx
-        inj_ny = nx
+        inj_nx = grids_ptr(mgridrz_inj_id)%grid%nr
+        inj_ny = grids_ptr(mgridrz_inj_id)%grid%nr
         call gchange("InjectVars3d",0)
-        call fill_inj_rz(dx,dz,ix_axis,iy_axis)
+        call fill_inj_rz(grids_ptr(mgridrz_inj_id)%grid%dr,
+     &                   grids_ptr(mgridrz_inj_id)%grid%dz,
+     &                   ix_axis,iy_axis)
       endif
 
 c Allocate the particle index. The index keeps track of which source the
@@ -5090,13 +5129,19 @@ c timestep for each particle upon emission.
 
 c Check if the voltages were specified.  If so, set so conductor will be
 c set up for source.
-      do ij=1,ninject
-        if (vinject(ij) .ne. 0) lvinject = .true.
-      enddo
+c      do ij=1,ninject
+c        if (vinject(ij) .ne. 0) lvinject = .true.
+c      enddo
 
 c Set vbeamfrm to zero so that the grid does not move off of the source,
 c causing a code crash.
       vbeamfrm = 0.
+
+      if(solvergeom==RZgeom) then
+        dx = basegrid%dr
+        dy = basegrid%dr
+        dz = basegrid%dz
+      end if
 
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
       return
@@ -5143,8 +5188,10 @@ c       --- Calculate the extent of the source plus guard cells.
 c       --- Calculate grid location of transverse center of source.
         zz = (zinject - zmmin)*dzi
 c       --- Loop over transverse plane.
-        do iy = 0,ny
-          do ix = 0,nx
+c        do iy = 0,ny
+c          do ix = 0,nx
+        do iy = 0,inj_ny
+          do ix = 0,inj_nx
 c           --- transverse coordinate relative to center of source
             xx = (ix - ix_axis)*dx - xinject(ij)
             yy = (iy - iy_axis)*dy - yinject(ij)
@@ -5503,14 +5550,16 @@ c     --- Calculate the transverse fields
       return
       end
 c=============================================================================
-      subroutine getinj_phi_rz(nx,nz,phi,dx,dz,xmmin,ymmin)
+      subroutine getinj_phi_rz_ng()
       use InjectVars
       use InjectVars3d
+      use FRZmgrid
+      use multigridrz
 #ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: nx,nz
-      real(kind=8):: phi(0:nx,0:nz)
+c      real(kind=8):: phi(0:nx,0:nz)
       real(kind=8):: dx,dz,xmmin,ymmin
 
 c Calculate potential drop from emitting surface at distance
@@ -5530,6 +5579,14 @@ c to get zp.
 c     --- In the parallel version, only processor 0 calculates inj_phi.
       if (my_index == 0) then
 #endif
+
+      grids=>grids_ptr(mgridrz_inj_id)%grid
+      dx = grids%dr
+      dz = grids%dz
+      nx = grids%nr
+      nz = grids%nz
+      xmmin = grids%rmin
+      ymmin = grids%rmin
 
       dxi = 1./dx
       dyi = 1./dx
@@ -5565,18 +5622,21 @@ c             --- emitting surface.
               i2z = p2z
               w2r = p2r - i2r
               w2z = p2z - i2z
+              i2r = i2r+1
+              i2z = i2z+1
 
 c             --- Fetch difference between phi at that point and phi on
 c             --- the emitting surface.
               inj_phi(ix,iy) = vinject(ij) -
-     &                 phi(i2r  ,i2z  )*(1.-w2r)*(1.-w2z) -
-     &                 phi(i2r+1,i2z  )*    w2r *(1.-w2z) -
-     &                 phi(i2r  ,i2z+1)*(1.-w2r)*    w2z  -
-     &                 phi(i2r+1,i2z+1)*    w2r *    w2z
+     &                 grids%phi(i2r  ,i2z  )*(1.-w2r)*(1.-w2z) -
+     &                 grids%phi(i2r+1,i2z  )*    w2r *(1.-w2z) -
+     &                 grids%phi(i2r  ,i2z+1)*(1.-w2r)*    w2z  -
+     &                 grids%phi(i2r+1,i2z+1)*    w2r *    w2z
             endif
           enddo
         enddo
 
+cc        call getinj_phipgrd_rz(ij,nx,nz,phi,dx,dz,xmmin,ymmin)
 c       --- Smooth out inj_phi for this emitting surface.
 c        if (inj_nsmooth > 0) then
 c          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
@@ -5589,7 +5649,7 @@ c        endif
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
-      call parallelbroadcastrealarray(inj_phi,(nx+1)*(nx+1),0)
+      call parallelbroadcast(inj_phi,(nx+1)*(nx+1),0)
 #endif
 
 c     --- Calculate the transverse fields
@@ -5711,10 +5771,13 @@ c     --- Do the smoothing.
 c=============================================================================
       subroutine inj_sete3d(npart,ipmin,xmmin,ymmin,zmmin,dx,dy,dz,ex,ey,ez)
       use Subtimers
+      use InGen3d
       use InPart
       use InjectVars
       use InjectVars3d
       use Particles
+      use FRZmgrid
+      use multigridrz
       integer(ISZ):: nx,ny,nz,npart,ipmin
       real(kind=8):: ex(npart),ey(npart),ez(npart)
       real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
@@ -5735,6 +5798,12 @@ c any conductor surface.
       real(kind=8):: fourthirds,onethird
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==RZgeom) then
+        dx = grids_ptr(mgridrz_inj_id)%grid%dr
+        dy = grids_ptr(mgridrz_inj_id)%grid%dr
+        dz = grids_ptr(mgridrz_inj_id)%grid%dz
+      end if
 
       dxi = 1./dx
       dyi = 1./dy
@@ -5851,6 +5920,12 @@ c           --- (i.e. zero) and the value on the secondary surface.
 
         endif
       enddo
+
+      if(solvergeom==RZgeom) then
+        dx = basegrid%dr
+        dy = basegrid%dr
+        dz = basegrid%dz
+      end if
 
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
       return
@@ -7001,25 +7076,8 @@ c         --- put forward by Lantz
 c       case (10)
       elseif (fstype == 10) then
 c         --- RZ full-multigrid solver
-         if(.not.mgridrz_lmr) then
-          call multigridrzf(iwhich,phi(:,0,:),rho(:,0,:),nx,nz,dx,dz,
-     &                      mgridrz_accuracy,
-     &                      mgridrz_ncmax,
-     &                      mgridrz_npre,
-     &                      mgridrz_npost,
-     &                      mgridrz_ncycles,
-     &                      mgridrz_mgparam,
-     &                      mgridrz_mgiters)
-         else
-          call multigridrzf_ng(iwhich,phi(:,0,:),rho(:,0,:),nx,nz,dx,dz,
-     &                      mgridrz_accuracy,
-     &                      mgridrz_ncmax,
-     &                      mgridrz_npre,
-     &                      mgridrz_npost,
-     &                      mgridrz_ncycles,
-     &                      mgridrz_mgparam,
-     &                      mgridrz_mgiters)
-         end if
+       call multigridrzf(iwhich,phi(:,0,:),rho(:,0,:),nx,nz,dx,dz,
+     &                      mgridrz_accuracy)
 c       case (11)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
