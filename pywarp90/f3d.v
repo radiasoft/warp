@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.17 $, $Date: 2001/11/06 22:17:00 $
+#@(#) File F3D.V, version $Revision: 3.18 $, $Date: 2002/01/17 22:51:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.17 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.18 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -345,12 +345,9 @@ vp3x(iwhich) subroutine
      # BASIS-level interface to VPOIS3d, using FS3 database variables
      #  The user program should declare a similar subroutine w/ its vars.
 vpois2d  (iwhich, a:real, ak:real, kxsq:real, kysq:real, attx:real, atty:real,
-          filt:real, lx:real, ly:real, nx, ny, work:real, ibc,
+          filt:real, lx:real, ly:real, nx, ny, work:real, xywork:real, ibc,
           l2symtry:logical,l4symtry:logical)
      subroutine #  The 2d Sine-Sine Poisson solver
-vp2x     (iwhich) subroutine
-     #  BASIS-level interface to VPOIS2d, using FS3 database variables
-     #  The user program should declare a similar subroutine w/ its vars.
 vsftx    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
      subroutine #  Vectorized Sine Fourier Transform in X
 vsfty    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)

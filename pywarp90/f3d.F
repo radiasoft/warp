@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.18 $, $Date: 2002/01/14 20:46:45 $
+c@(#) File F3D.M, version $Revision: 3.19 $, $Date: 2002/01/17 22:51:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -250,23 +250,6 @@ c  To avoid confusion, it should have a different name, say "vp3"
       return
       end
 c=======================================================================
-      subroutine vp2x (iwhich)
-      use F3Dvars
-      integer(ISZ):: iwhich
-
-c  BASIS interface to VPOIS2D, using variables from the database for
-c  package F3D.  The user's application package should contain a
-c  similar subroutine for convenience, using its own database variables.
-c  To avoid confusion, it should have a different name, say "vp2"
-
-
-      call vpois2d (iwhich, a, a, kxsq, kysq,
-     & attx, atty, filt, lx, ly, nx, ny, work2d, ibc,
-     & .false.,.false.)
-
-      return
-      end
-c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine vpois3d(iwhich,a,ak,kxsq,kysq,kzsq,attx,atty,attz,filt,
@@ -1373,15 +1356,15 @@ c       --- do tridiag matrix solve
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine vpois2d(iwhich,a,ak,kxsq,kysq,attx,atty,filt,lx,ly,nx,ny,w,
-     &                   ibc,l2symtry,l4symtry)
+      subroutine vpois2d(iwhich,a,ak,kxsq,kysq,attx,atty,filt,lx,ly,nx,ny,
+     &                   w,xywork,ibc,l2symtry,l4symtry)
       use Constant
       integer(ISZ):: iwhich,nx,ny,ibc
       real(kind=8)::  a(0:nx, 0:ny)
       real(kind=8):: ak(0:nx, 0:ny)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), filt(5,2)
-      real(kind=8):: lx, ly, w(*)
+      real(kind=8):: lx, ly, w(*), xywork(0:nx,0:ny)
       logical(ISZ):: l2symtry,l4symtry
       
 c-----------------------------------------------------------------------------
@@ -1454,7 +1437,8 @@ c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 c  Set pointers into workspace needed by x and y sine transforms
 
       iwxy  = 1
-      icmx  = iwxy  + (nx+1)*(ny+1)
+c     icmx  = iwxy  + (nx+1)*(ny+1)
+      icmx  = iwxy
       icpx  = icmx  + nx/2-1
       icmy  = icpx  + nx/2-1
       icpy  = icmy  + ny/2-1
@@ -1562,14 +1546,14 @@ c ----------------------------------------------------------------------------
       if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 5) then
 
         if (l4symtry) then
-          call cosqx (a(0,0), w(iwxy), w(icox), nx, ny, 0)
-          call cosqy (a(0,0), w(iwxy), w(icoy), nx, ny, 0)
+          call cosqx (a(0,0), xywork, w(icox), nx, ny, 0)
+          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 0)
         elseif (l2symtry) then
-          call vsftx (a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 1)
-          call cosqy (a(0,0), w(iwxy), w(icoy), nx, ny, 0)
+          call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
+          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 0)
         else
-          call vsftx (a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 1)
-          call vsfty (a(0,0), w(iwxy), w(icpy), w(icmy), nx, ny, 1)
+          call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
+          call vsfty (a(0,0), xywork, w(icpy), w(icmy), nx, ny, 1)
         endif
 
       endif
@@ -1590,8 +1574,14 @@ c         --- Normalize the array
             enddo
           enddo
 c         --- Invoke the transform routines for the current z-slice
-          call cosqx(a(0,0),w(iwxy),w(icox),nx,ny,-1)
-          call cosqy(a(0,0),w(iwxy),w(icoy),nx,ny,-1)
+          do iy = 0, ny-1,2
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,-1)
+          enddo
+          do ix = 0, nx-1,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,-1)
+          enddo
+c         call cosqx(a(0,0),xywork,w(icox),nx,ny,-1)
+c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,-1)
         else if (l2symtry) then
 c         --- factor of .5*dy for cosqy
           norm = .5*dx*dy
@@ -1602,8 +1592,14 @@ c         --- Normalize the array
             enddo
           enddo
 c         --- Invoke the transform routines for the current z-slice
-          call vsftx(a(0,0),w(iwxy),w(icpx),w(icmx),nx,ny,0)
-          call cosqy(a(0,0),w(iwxy),w(icoy),nx,ny,-1)
+          do iy = 0, ny-1,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+          enddo
+          do ix = 0, nx-1,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,-1)
+          enddo
+c         call vsftx(a(0,0),xywork,w(icpx),w(icmx),nx,ny,0)
+c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,-1)
         else
           norm = dx * dy
 c         --- Normalize the array
@@ -1613,8 +1609,14 @@ c         --- Normalize the array
             enddo
           enddo
 c         --- Invoke the transform routines for the current z-slice
-          call vsftx ( a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 0)
-          call vsfty ( a(0,0), w(iwxy), w(icpy), w(icmy), nx, ny, 0)
+          do iy = 0, ny-1,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+          enddo
+          do ix = 0, nx-1,2
+            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+          enddo
+c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
+c         call vsfty ( a(0,0), xywork, w(icpy), w(icmy), nx, ny, 0)
         endif
 
       endif
@@ -1657,8 +1659,14 @@ c ----------------------------------------------------------------------------
 c         --- factor of .25/lx for cosqx and .25/ly for cosqy
           norm = .0625/(lx*ly)
 c         --- Invoke the inverse transform routines for the current z-slice
-          call cosqx(a(0,0),w(iwxy),w(icox),nx,ny,1)
-          call cosqy(a(0,0),w(iwxy),w(icoy),nx,ny,1)
+          do iy = 0, ny-1,2
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,1)
+          enddo
+          do ix = 0, nx-1,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
+          enddo
+c         call cosqx(a(0,0),xywork,w(icox),nx,ny,1)
+c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,1)
 c         --- set boundary elements to zero
           do iy = 1, ny
             a(nx,iy) = 0.
@@ -1676,8 +1684,14 @@ c         --- Normalize the array
 c         --- factor of 2./lx for vsftx and .25/ly for cosqy
           norm = .5/(lx*ly)
 c         --- Invoke the inverse transform routines for the current z-slice
-          call vsftx ( a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 0)
-          call cosqy ( a(0,0), w(iwxy), w(icoy), nx, ny, 1)
+          do iy = 0, ny-1,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+          enddo
+          do ix = 0, nx-1,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
+          enddo
+c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
+c         call cosqy ( a(0,0), xywork, w(icoy), nx, ny, 1)
 c         --- set boundary elements to zero
           do iy = 0, ny
             a(0 ,iy) = 0.
@@ -1695,8 +1709,14 @@ c         --- Normalize the array
         else
           norm = 4. / (lx * ly)
 c         --- Invoke the transform routines
-          call vsfty ( a(0,0), w(iwxy), w(icpy), w(icmy), nx, ny, 0)
-          call vsftx ( a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 0)
+          do iy = 0, ny-1,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+          enddo
+          do ix = 0, nx-1,2
+            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+          enddo
+c         call vsfty ( a(0,0), xywork, w(icpy), w(icmy), nx, ny, 0)
+c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
 c         --- Normalize the array, and set boundary elements to zero
           do ix = 1, nx-1
             a(ix,0 ) = 0.
@@ -3632,6 +3652,10 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
       real(kind=8):: rdx2,rdy2,rdz2,rdel,reps0,const
       real(kind=8):: rdx2c,rdy2c,rdz2c,reps0c,spm1
+      real(kind=8):: ecdelmxi(necndbdy),ecdelmyi(necndbdy),ecdelmzi(necndbdy)
+      real(kind=8):: ecdelpxi(necndbdy),ecdelpyi(necndbdy),ecdelpzi(necndbdy)
+      real(kind=8):: ocdelmxi(nocndbdy),ocdelmyi(nocndbdy),ocdelmzi(nocndbdy)
+      real(kind=8):: ocdelpxi(nocndbdy),ocdelpyi(nocndbdy),ocdelpzi(nocndbdy)
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
       integer(ISZ):: i,k,ii,ie,ix,iy,iz,ic
       real(kind=8):: rs,x,r,nsorerri
@@ -3726,6 +3750,20 @@ c       --- Change rstar if using Nuemann boundary conditions
         if (bound0 == 1) rstar(-1) = rstar(1)
         if (boundnz == 1) rstar(nz+1) = rstar(nz-1)
       endif 
+
+c Precalculate the reciprocals of the subgrid data.
+      ecdelpxi = 1./ecdelpx(1:necndbdy)
+      ecdelpyi = 1./ecdelpy(1:necndbdy)
+      ecdelpzi = 1./ecdelpz(1:necndbdy)
+      ocdelpxi = 1./ocdelpx(1:nocndbdy)
+      ocdelpyi = 1./ocdelpy(1:nocndbdy)
+      ocdelpzi = 1./ocdelpz(1:nocndbdy)
+      ecdelmxi = 1./ecdelmx(1:necndbdy)
+      ecdelmyi = 1./ecdelmy(1:necndbdy)
+      ecdelmzi = 1./ecdelmz(1:necndbdy)
+      ocdelmxi = 1./ocdelmx(1:nocndbdy)
+      ocdelmyi = 1./ocdelmy(1:nocndbdy)
+      ocdelmzi = 1./ocdelmz(1:nocndbdy)
 
 c If doing Chebyshev accel, set sorparam to one for first iteration.
       if (lchebshv) sorparam = 1.
@@ -3965,15 +4003,21 @@ c           --- surface of the conductor boundaries.
             if (lcndbndy) then
               if (parity == s_parity) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                     ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),
+     &                     ncndmax,necndbdy,
+     &                     ecdelmx(1),ecdelmy(1),ecdelmz(1),
      &                     ecdelpx(1),ecdelpy(1),ecdelpz(1),
+     &                     ecdelmxi(1),ecdelmyi(1),ecdelmzi(1),
+     &                     ecdelpxi(1),ecdelpyi(1),ecdelpzi(1),
      &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
      &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               else
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                     ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),ocdelmz(1),
+     &                     ncndmax,nocndbdy,
+     &                     ocdelmx(1),ocdelmy(1),ocdelmz(1),
      &                     ocdelpx(1),ocdelpy(1),ocdelpz(1),
+     &                     ocdelmxi(1),ocdelmyi(1),ocdelmzi(1),
+     &                     ocdelpxi(1),ocdelpyi(1),ocdelpzi(1),
      &                     iocndx(1),iocndy(1),iocndz(1),ocvolt(1),ocndpvph(1),
      &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
@@ -4296,8 +4340,10 @@ c sets phi to the desired potential on conductors
       end
 c===========================================================================
       subroutine condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
-     &                    ncndmax,ncndbdy,cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,
-     &                    cdelpz,icndx,icndy,icndz,cvolt,cndpvph,
+     &                    ncndmax,ncndbdy,
+     &                    cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,cdelpz,
+     &                    cdelmxi,cdelmyi,cdelmzi,cdelpxi,cdelpyi,cdelpzi,
+     &                    icndx,icndy,icndz,cvolt,cndpvph,
      &                    nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    izfsmin,izfsmax,dx,dy,dz,icndbndy)
       integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,nzpsor
@@ -4305,6 +4351,8 @@ c===========================================================================
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax), cdelpz(ncndmax)
+      real(kind=8):: cdelmxi(ncndbdy), cdelmyi(ncndbdy), cdelmzi(ncndbdy)
+      real(kind=8):: cdelpxi(ncndbdy), cdelpyi(ncndbdy), cdelpzi(ncndbdy)
       integer(ISZ):: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
       real(kind=8):: cvolt(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
@@ -4391,38 +4439,38 @@ c         --- set temporaries with initial values
 
 c         --- the point lower in x is inside the conductor
           if (cdelmx(ic) < 1.) then
-            pxm = cvolt(ic)/cdelmx(ic)
-            denom = denom + (1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
+            pxm = cvolt(ic)*cdelmxi(ic)
+            denom = denom + (1.-cdelmx(ic))*cdelmxi(ic)*rdx2cos
             dxm = cdelmx(ic)
           endif
 c         --- the point higher in x is inside the conductor
           if (cdelpx(ic) < 1.) then
-            pxp = cvolt(ic)/cdelpx(ic)
-            denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
+            pxp = cvolt(ic)*cdelpxi(ic)
+            denom = denom + (1.-cdelpx(ic))*cdelpxi(ic)*rdx2cos
             dxp = cdelpx(ic)
           endif
 c         --- the point lower in y is inside the conductor
           if (cdelmy(ic) < 1.) then
-            pym = cvolt(ic)/cdelmy(ic)
-            denom = denom + (1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
+            pym = cvolt(ic)*cdelmyi(ic)
+            denom = denom + (1.-cdelmy(ic))*cdelmyi(ic)*rdy2cos
             dym = cdelmy(ic)
           endif
 c         --- the point higher in y is inside the conductor
           if (cdelpy(ic) < 1.) then
-            pyp = cvolt(ic)/cdelpy(ic)
-            denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
+            pyp = cvolt(ic)*cdelpyi(ic)
+            denom = denom + (1.-cdelpy(ic))*cdelpyi(ic)*rdy2cos
             dyp = cdelpy(ic)
           endif
 c         --- the point lower in z is inside the conductor
           if (cdelmz(ic) < 1.) then
-            pzm = cvolt(ic)/cdelmz(ic)
-            denom = denom + (1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
+            pzm = cvolt(ic)*cdelmzi(ic)
+            denom = denom + (1.-cdelmz(ic))*cdelmzi(ic)*rdz2cos
             dzm = cdelmz(ic)
           endif
 c         --- the point lower in z is inside the conductor
           if (cdelpz(ic) < 1.) then
-            pzp = cvolt(ic)/cdelpz(ic)
-            denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
+            pzp = cvolt(ic)*cdelpzi(ic)
+            denom = denom + (1.-cdelpz(ic))*cdelpzi(ic)*rdz2cos
             dzp = cdelpz(ic)
           endif
 c         --- calculate the new phi based on the boundary conditions
@@ -4613,7 +4661,6 @@ c===========================================================================
      &                    l2symtry,l4symtry)
       use PSOR3d
       use Lattice
-      use InPart
       use InjectVars
       use InGen
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
