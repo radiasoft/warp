@@ -211,10 +211,15 @@ Given a block instance, installs it as a child.
     """
     self.children.append(block)
 
-  def installconductor(self,conductor):
-    MultiGrid.installconductor(self,conductor)
+  def installconductor(self,conductor,dfill=top.largepos):
+    MultiGrid.installconductor(self,conductor,dfill=dfill)
     for child in self.children:
-      child.installconductor(conductor)
+      child.installconductor(conductor,dfill=dfill)
+
+  def clearconductors(self):
+    MultiGrid.clearconductors(self)
+    for child in self.children:
+      child.clearconductors()
 
   #--------------------------------------------------------------------------
   # --- The next several methods handle initialization that is done after
@@ -406,6 +411,7 @@ the top level grid.
     """
     if lzero: self.zerorho()
     for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
+      if n == 0: continue
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
     self.accumulaterhofromsiblings()
     self.getrhofromsiblings()
@@ -680,7 +686,7 @@ Fetches the E field. This should only be called at the root level grid.
     """
 Fetches the potential. This should only be called at the root level grid.
     """
-    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsphi)
+    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def fetchphifrompositions(self,x,y,z,phi):
     """
