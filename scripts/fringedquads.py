@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.5 2001/05/14 19:58:58 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.6 2002/08/19 22:20:17 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -189,14 +189,14 @@ not, then the derivatives will be done with a finite difference of fringe.
       return ffpp
   if not fringep:
     # --- Use finite difference of fringe
-    def fringep(n):
+    def fringep(n,fringe=fringe):
       ffp = zeros(n+1,Float)
       ff = fringe(n)
       ffp[1:n] = (ff[2:] - ff[:-2])/2.
       return ffp
     if not fringepp:
       # --- If fringepp is also not defined, use finite difference of fringe
-      def fringepp(n):
+      def fringepp(n,fringe=fringe):
         ffpp = zeros(n+1,Float)
         ff = fringe(n)
         ffpp[1:n] = (ff[2:] + ff[:-2] - 2.*ff[1:-1])/2.
@@ -204,7 +204,7 @@ not, then the derivatives will be done with a finite difference of fringe.
   if not fringepp:
     # --- If fringep was defined but not fringepp, then use finite difference
     # --- on fringep directly.
-    def fringepp(n):
+    def fringepp(n,fringep=fringep):
       ffpp = zeros(n+1,Float)
       ffp = fringep(n)
       ffpp[1:n] = (ffp[2:] - ffp[:-2])/2.
