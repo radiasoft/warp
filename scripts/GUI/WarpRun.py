@@ -22,7 +22,9 @@ import code
 import __main__
 from warp import *
 from errorcheck import *
-sys.path=sys.path+[os.path.dirname(warp.__file__)+'/GUI/pype']
+warp_path = os.path.dirname(warp.__file__)
+if warp_path<>'':warp_path+='/'
+sys.path=sys.path+[warp_path+'GUI/pype']
 import pype
 
 # for debugging purpose, output is not redirected in GUI if true
