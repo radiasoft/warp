@@ -5,7 +5,7 @@ module multigrid_common
 
 USE Constant
 USE multigrid_common_base
-USE PSOR3d, ONLY:boundxy,bound0,boundnz
+USE GridBoundary3d
 USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom,l2symtry,l4symtry
 #ifdef MPIPARALLEL
   use Parallel
