@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.44 $, $Date: 2004/05/11 17:51:02 $
+c@(#) File WXY.M, version $Revision: 3.45 $, $Date: 2004/07/02 23:32:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -81,7 +81,7 @@ c  Announce that we're starting up
 
       call remark(" ***  particle simulation package WXY generating")
 
-c  Estimate wall radius, needed for g-factor calc 
+c  Estimate wall radius, needed for g-factor calc
 c  (rwallfac = 1 is probably NOT a good guess)
 
       rwall = rwallfac * sqrt( xmmax**2 + xmmin**2 )
@@ -100,12 +100,14 @@ c  Zmmin and zmmax are chosen so that dz = 1.
       if (.not. lthick) then
         if (zmmin == 0.0 .and. zmmax == 0.0) then
           zmmin = -0.5
-          zmmax = +0.5
+          zmmax = -zmmin
         endif
         if (zimin == 0.0 .and. zimax == 0.0) then
-          zimin = zmmin
-          zimax = zmmax
+          zimin = -0.5
+          zimax = -zimin
         endif
+        zmminglobal = zmmin
+        zmmaxglobal = zmmax
         if (nz == 2) nz = 1
       endif
 
@@ -225,6 +227,14 @@ c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       iy_axis = nint(-ymmin/dy)
       iz_axis = nint(-zmmin/dz)
 
+c Initialize grid when solvergeom=XYgeom
+      if(solvergeom==XYgeom) then
+        nz = 0
+        nzfull = nz
+        fstype = 10
+        call init_base(nx,ny,dx,dy,xmmin,ymmin)
+      end if
+
 c  Create the dynamic arrays for particles (set npmax to an estimated 
 c  length for now, for those loading schemes that don't actually
 c  use a user-set npmax directly)
@@ -247,16 +257,7 @@ c  Load the particles, calculate the charge density
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
-      rho = 0.
-      curr = 0.
-      do is=1,ns
-c        --- Set charge density
-         ip = nps(is)
-         ipmin = ins(is)
-         call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                 uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
-      enddo
-      call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
+      call loadrhoxy(-1,-1,-1,.true.)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -335,13 +336,10 @@ c  Print interesting things to plot file and teletype
 
       call prntpara(dx,dy,dz,lprntpara)
       call prntpa3d(lprntpara)
-
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
-
       call vpxy (1)
 
 c  Initial fieldsolve, diagnostics
-
       call stepxy ("wxygen")
 
       if (lwxytimesubs) timewxygen = timewxygen + wtime() - substarttime
@@ -683,7 +681,6 @@ c  use of a single array for rho and phi.
 
 c  Set lattice; this is done just before field solve, and so is
 c  relative to ZBEAM in the same way that self-fields are.
-
       call setlatt
 
 c  Field-solve for potential 
@@ -713,7 +710,7 @@ c  on a 1-d mesh.  Also, calculate the electrostatic energy (getese3d),
 c  electrostatic potential on axis (sphiax3d), and the axial electric 
 c  field (sezax3d).  
 
-      if (lspecial .and. ldiag) then 
+      if (lspecial .and. ldiag) then
         call getvzofz
         call getese3d 
         call sphiax3d 
@@ -913,10 +910,6 @@ c  and also loads RHO at the new time level.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
-c  Zero rho only if particles are advanced
-c     if (center == "halfv") call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
-      if (center == "halfv") rho = 0.
-      
 c  Zero curr if center is synchv or if using gaps
 c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)
       if (center == "synchv" .or. ifgap) curr = 0.
@@ -938,6 +931,8 @@ c  Zero the bend radius and residence fraction
       bendradi = 0.
       bendres = 0.
 
+      if(solvergeom==XYgeom) ez=0.
+
 c  Loop over species
       do is=1,ns
 
@@ -946,14 +941,20 @@ c  Loop over particle blocks; move each block separately
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
-c         --- Obtain the self-field from the electrostatic potential
-          call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry)
-c         --- Scale the self E-field to get the lowest order relativistic
-c         --- correction.
-          if (relativity == 1)
-     &      call sete3d_relativity(ip,ex,ey,vbeam)
+c          call fetche3d(ipmin,ip,is,ex,ey,ez)
+          if(solvergeom/=XYgeom) then
+c           --- Obtain the self-field from the electrostatic potential
+            call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                  zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                  efetch,ex,ey,ez,l2symtry,l4symtry)
+          elseif(solvergeom==XYgeom) then
+            call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,zgridprv)
+          end if
+
+c           --- Scale the self E-field to get the lowest order relativistic
+c           --- correction.
+            if (relativity == 1)
+     &        call sete3d_relativity(ip,ex,ey,vbeam)
 
 c         --- Zero out B field arrays
           do i = 1,ip
@@ -1236,14 +1237,16 @@ c         --- Apply particle boundary conditions
      &                     zp(ins(is)),zmmin,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
+        enddo
+
+        if (lcallscraper) call execuser("callscraper")
+
+        do is=1,ns
           call processlostpart(is,clearlostpart,time,zbeam)
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
-        call loadrhoxy(-1,-1,-1,.false.)
-
-c       --- Make rho periodic if periodic in z
-        call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
+        call loadrhoxy(-1,-1,-1,.true.)
 
         if (ifgap) then
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -1304,6 +1307,8 @@ c  For thin slice model, average out rho along the axis.
       real(kind=8):: nzi
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
+
+      if(nz==0) return
 
       if (periinz) then
 
@@ -2061,6 +2066,7 @@ c=============================================================================
       use GlobalVars
       use InGen
       use InGenxy
+      use InGen3d
       use InPart
       use Picglb
       use Picglb3d
@@ -2083,7 +2089,13 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
-      if (lzero) rho = 0.
+      if(lzero) then
+        if(solvergeom==XYgeom) then
+          call reset_rzmgrid_rho()
+        else
+          rho = 0.
+        end if
+      end if
 
 c     --- set limits on loop over species
       if (is_i == -1) then
@@ -2107,14 +2119,36 @@ c        --- get loop limits for particles if needed
          if (nps_i == -1) nps_u = nps(is)
 
 c        --- loop over particle blocks
-         ip = nps_u
-         ipmin = ins_u
-         call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                 uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
+         if(solvergeom==XYgeom) then
+           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+             ip = min(nparpgrp, ins_u+nps_u-ipmin)
+             if(wpid==0) then
+               call rhoweightrz(xp(ipmin),yp(ipmin),yp(ipmin),ip,
+     &                          sq(is)*sw(is),nx,ny,dx,dy,xmmin,ymmin)
+             else
+               call rhoweightrz_weights(xp(ipmin),yp(ipmin),yp(ipmin),pid(ipmin,wpid),ip,
+     &                          sq(is)*sw(is),nx,ny,dx,dy,xmmin,ymmin)
+             end if
+           enddo
+         else
+           ip = nps_u
+           ipmin = ins_u
+           call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                   uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
+         end if
       enddo
 
 c     --- enforce axial periodicity if rho was zeroed
       if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
+
+      if(solvergeom==XYgeom) then
+c  Distribute rho for AMR solver
+        call distribute_rho_rz()
+c  Enforce boundary conditions
+        call rhobndrz()
+c  Copy charge density from frz.basegrid to w3d.rho
+        call get_rho_rz(rho(0,0,0),nx,ny,1,0)
+      end if
 
       if (lwxytimesubs) timeloadrhoxy = timeloadrhoxy + wtime() - substarttime
       return
@@ -2351,6 +2385,9 @@ c         --- scratch space.
 c         --- Multigrid solver
           call multigridxyf(iwhich,nx,ny,dx,dy,phi(0,0,0),rho(0,0,0),
      &                      l2symtry,l4symtry,xmmin,ymmin)
+c         --- AMR multigrid solver
+        elseif (fstype == 10) then
+          call multigridxyf2(iwhich,phi(:,:,0),rho(:,:,0),nx,ny)
         endif
 
       endif
