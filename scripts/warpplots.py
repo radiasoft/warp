@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.123 2004/07/24 00:27:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.124 2004/07/30 00:01:13 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -217,6 +217,7 @@ for before and after plot commands.
   callafterplotfuncs()
   gistfma()
   callbeforeplotfuncs()
+  oldlimits = limits()
 def hcp(legend=1):
   """
 Hardcopy - plots run info on the bottom of the frame and sends image to hard
@@ -2923,6 +2924,7 @@ def pltfld3d(fld='phi',freqflag=always):
   #if (top.icphixy4 == freqflag and fld == "phi"): pcphixy4
   #if (top.icphizx4 == freqflag and fld == "phi"): pcphizx4
   #if (top.icphizy4 == freqflag and fld == "phi"): pcphizy4
+  oldlimits = limits()
   window(currentwindow)
 
 ##########################################################################
@@ -2938,6 +2940,7 @@ def onedplts(freqflag=always):
   if freqflag == top.iprhoax: pzrhoax()
   if freqflag == top.ipphiax: pzphiax()
   if freqflag == top.ipezax: pzezax()
+  oldlimits = limits()
   window(currentwindow)
 
 # --- Thses are defined for the fortran interface. If WARP is not imported
