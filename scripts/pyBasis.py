@@ -13,6 +13,11 @@ try:
   import PR
 except ImportError:
   pass
+try:
+  import PWpyt
+  import PRpyt
+except ImportError:
+  pass
 import __main__
 import sys
 import cPickle
@@ -29,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.37 2003/09/03 17:56:12 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.38 2003/09/10 01:18:38 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -387,7 +392,7 @@ def pydumpbasisobject(ff,attr,objname,obj,varsuffix,writtenvars,fobjlist,
 # is put into a 'try' command since some variables cannot be written to
 # a pdb file.
 def pydump(fname=None,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
-           verbose=false):
+           verbose=false,hdf=0):
   """
 Dump data into a pdb file
   - fname: dump file name
@@ -405,13 +410,21 @@ Dump data into a pdb file
        cannot be restarted from the dump file.
   - verbose=false: When true, prints out the names of the variables as they are
        written to the dump file
+  - hdf=0: when true, dump into an HDF file rather than a PDB.
   """
   assert fname is not None or ff is not None,\
          "Either a filename must be specified or a pdb file pointer"
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
   if ff is None:
-    ff = PW.PW(fname)
+    if hdf:
+      ff = PWpyt.PW(fname)
+      # --- One advantage of HDF is that the pickle dumps can be done in binary
+      dumpsmode = 1
+    else:
+      ff = PW.PW(fname)
+      # --- With PDB, pickle dumps can only be done in ascii.
+      dumpsmode = 0
     closefile = 1
   else:
     closefile = 0
@@ -480,7 +493,7 @@ Dump data into a pdb file
     try:
       if verbose:
         print "writing python variable "+vname+" as "+vname+varsuffix+'@pickle'
-      ff.write(vname+varsuffix+'@pickle',cPickle.dumps(vval,0))
+      ff.write(vname+varsuffix+'@pickle',cPickle.dumps(vval,dumpsmode))
       docontinue = 1
     except (cPickle.PicklingError,TypeError):
       pass
@@ -511,6 +524,7 @@ Restores all of the variables in the specified file.
   - ls=0: when true, prints a list of the variables in the file
           when 1 prints as tuple
           when 2 prints in a column
+Note that it will automatically detect whether the file is PDB or HDF.
   """
   assert filename is not None or fname is not None or ff is not None,\
          "Either a filename must be specified or a pdb file pointer"
@@ -521,7 +535,10 @@ Restores all of the variables in the specified file.
     # --- Make sure a filename was input.
     assert filename is not None,"A filename must be specified"
     # --- open pdb file
-    ff = PR.PR(filename)
+    try:
+      ff = PR.PR(filename)
+    except:
+      ff = PRpyt.PR(filename)
     closefile = 1
   else:
     closefile = 0
@@ -658,7 +675,10 @@ def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
 
   if neednew:
     # --- A new variable needs to be created.
-    fobj = ff.read("FOBJ@"+gpdbname)
+    try:
+      fobj = ff.read("FOBJ@"+gpdbname)
+    except:
+      return
     # --- First, check if the object has already be restored.
     if fobj in fobjdict:
       # --- If so, then point new variable to existing object

@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.57 2003/09/03 17:55:15 dave Exp $"
+warp_version = "$Id: warp.py,v 1.58 2003/09/10 01:18:38 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -465,7 +465,7 @@ package. Only w3d and wxy have field solves defined.
 ##############################################################################
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false):
+         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,hdf=0):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
@@ -484,6 +484,7 @@ Creates a dump file
                     that the variable is in.
   - resizeHist=1: When true, resize history arrays so that unused locations
                   are removed.
+  - hdf=0: when true, dump into an HDF file rather than a PDB.
   """
   timetemp = wtime()
   if not filename:
@@ -527,7 +528,7 @@ Creates a dump file
                  varsuffix=varsuffix,histz=histz,verbose=verbose)
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
-           varsuffix=varsuffix,verbose=verbose)
+           varsuffix=varsuffix,verbose=verbose,hdf=hdf)
   # --- Remove control names from main dict
   for n in __controlfuncs.iterkeys():
     if 'control'+n in __main__.__dict__:

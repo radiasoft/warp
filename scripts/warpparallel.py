@@ -4,7 +4,7 @@ Most important ones are the paralleldump and parallelrestore functions.
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.40 2003/08/29 23:10:45 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.41 2003/09/10 01:18:38 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -148,7 +148,7 @@ contains that value."""
 # yet). To do that, global values of scalars are written out and arrays are
 # written out in the same format as serial dump.
 def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
-                 verbose=false):
+                 verbose=false,hdf=hdf):
 
   # --- Convert attr into a list if needed
   if not (type(attr) == type([])): attr = [attr]
@@ -198,7 +198,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
     # --- pydump skips parallel variables. This also writes out any
     # --- python variables.
     pydump(fname=None,attr=attr,vars=vars,serial=1,ff=ff,varsuffix=varsuffix,
-               verbose=verbose)
+               verbose=verbose,hdf=hdf)
 
     # --- Might as well write out *_p data right now while I'm thinking of it.
     # --- But only if they have the attribute attr.
