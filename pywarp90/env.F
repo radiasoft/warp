@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.2 $, $Date: 2001/04/24 21:10:27 $
+c@(#) File ENV.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:08:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -37,9 +37,6 @@ c=============================================================================
 c  Invoked by the GENERATE command, it allocates storage
 c  for the envelope code.
 
-
-      integer(ISZ):: gallot
-
 c  Send a startup message to the standard output
 
       call remark(" ***  envelope solver package ENV generating")
@@ -50,10 +47,7 @@ c  Calculate derived quantities
 
       nenv = (zu - zl) / dzenv +0.5
 c     --- allocate dynamic arrays ("group allot")
-      if ( gallot("ENVvars",0) == ERR ) then
-         call remark ("---> Cannot allocate space in group ENVvars.")
-         return
-      endif
+      call gallot("ENVvars",0)
 
 c     --- reset Lattice arrays to final size
       call resetlat
@@ -142,7 +136,7 @@ c=======================================================================
 c  Export routine from envelope package:
 c      envelope parameters at a set of z values passed in
 c  Called during the particle loading process of the particle code.
-c  Returns ERR if any input z is outside the range over which the envelope
+c  Returns 1 if any input z is outside the range over which the envelope
 c      is defined.
 c  Inputs:  np, z(1:np)
 c  Outputs: a(1:np), ap(1:np), b(1:np), bp(1:np)
@@ -161,7 +155,7 @@ c  Validity check on input
          zpmax = max(zpmax, z(ip))
   500 continue
       if (zpmin < zl .or. zpmax > zu) then
-         envxport = ERR
+         envxport = 1
          return
       endif
 
@@ -181,7 +175,7 @@ c  Interpolate to get envelope values
         yp(ip) = w0*ypenv(i) + w1*ypenv(i+1)
       enddo
 
-      envxport = OK
+      envxport = 0
       return
       end
 c=======================================================================
@@ -233,7 +227,8 @@ c=======================================================================
       real(kind=8):: mx11,mx22,mx110,mx220
       real(kind=8):: my11,my22,my110,my220
       real(kind=8):: gammabar,genprv,dzenv
-      real(kind=8):: aion,zion,ekin,vbeam,a0,b0,ap0,bp0,x0,y0,xp0,yp0,emitx,emity 
+      real(kind=8):: aion,zion,ekin,vbeam,a0,b0,ap0,bp0,x0,y0,xp0,yp0
+      real(kind=8):: emitx,emity 
       real(kind=8):: dedr,dexdx,deydy,dbdr,zl,zu
       real(kind=8):: tunezs, tuneze 
       real(kind=8):: sig0x,sigx,sig0y,sigy,deltaa,deltaap,deltab,deltabp
