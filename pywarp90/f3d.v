@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.42 $, $Date: 2002/05/15 21:54:47 $
+#@(#) File F3D.V, version $Revision: 3.43 $, $Date: 2002/06/05 01:23:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.42 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.43 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -388,3 +388,36 @@ coverednodes(dx:real,mask:integer,xlo:integer,ylo:integer,zlo:integer,
 nodalcoefficients(dx:real,coeffs:real,xlo:integer,ylo:integer,zlo:integer,
                   xhi:integer,yhi:integer,zhi:integer,ncomp:integer) subroutine
 
+******** ConductorGeometryGenerators:
+setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
+                   delmx:real,delpx:real,delmy:real,delpy:real,
+                  delmz:real,delpz:real,parity:integer,fuzz:real) subroutine
+zplaneconductorf(zcent:real,zsign,
+                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
+              n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+              delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+cylinderconductorf(rad:real,length:real,theta:real,phi:real,
+                   xcent:real,ycent:real,zcent:real,
+                   n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                   delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+xcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+ycylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
+                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+zconeconductorf(r_zmin:real,r_zmax:real,length:real,
+                xcent:real,ycent:real,zcent:real,
+                n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
+                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
