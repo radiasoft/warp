@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.151 $, $Date: 2004/05/04 21:44:35 $
+c@(#) File W3D.F, version $Revision: 3.152 $, $Date: 2004/05/07 18:42:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9367,19 +9367,19 @@ c fits and so was replaced with if statements.
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
      &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
      &                 nx,ny,izfsmax-izfsmin,nzfull,
-     &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                 scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,
-     &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork(0,0),
+     &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork,
      &                zwork(1,0,0),l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nzfull,
-     &                scrtch(0,0),xywork(0,0),zwork,
+     &                scrtch(0,0),xywork,zwork,
      &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
@@ -9395,24 +9395,24 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),
-     &                   xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
 
@@ -9422,7 +9422,7 @@ c         --- General capacity matrix solver in kz space
      &                    filt,xlen,ylen,zlen,
      &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
-     &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry,
+     &                    xywork,zwork(1,0,0),l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
@@ -9430,7 +9430,7 @@ c         --- General capacity matrix solver
      &                  filt,xlen,ylen,zlen,
      &                  nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
-     &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry,
+     &                  xywork,zwork(1,0,0),l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
@@ -9447,7 +9447,7 @@ c         --- boundary data.
           call paralleltridiag(phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                         attx,atty,attz,filt,xlen,ylen,zlen,
      &                         nx,ny,izfsmax-izfsmin,
-     &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry,
+     &                         scrtch(0,0),xywork,zwork,l2symtry,l4symtry,
      &                         bound0,boundnz,boundxy)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
@@ -9455,7 +9455,7 @@ c         --- put forward by Lantz
           call lantzsolver(iwhich,phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                     attx,atty,attz,filt,xlen,ylen,zlen,
      &                     nx,ny,izfsmax-izfsmin,
-     &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry,
+     &                     scrtch(0,0),xywork,zwork,l2symtry,l4symtry,
      &                     bound0,boundnz,boundxy)
 
 #endif
