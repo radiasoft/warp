@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.83 $, $Date: 2004/11/05 00:34:57 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.84 $, $Date: 2004/11/05 01:18:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -412,7 +412,7 @@ c=============================================================================
       i2 = nz + delz
       sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
 
-      if (nslaves > 1) call parallelsumrealarray(sss,2)
+      if (npes > 1) call parallelsumrealarray(sss,2)
       mggetarraysum = sss
 
 #else
