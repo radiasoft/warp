@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.9 $, $Date: 2002/05/15 21:51:03 $
+c W3DSLAVE.M, version $Revision: 1.10 $, $Date: 2002/06/19 22:09:17 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -23,7 +23,7 @@ c===========================================================================
       use InjectVars
       use InjectVars3d
 
-c This is the routine which divies up the work aming the slaves.
+c This is the routine which divies up the work among the slaves.
 
       integer(ISZ):: i,is,overlap,bestnz
       integer(ISZ):: nzinj
@@ -236,22 +236,34 @@ c---------------------------------------------------------------------------
 c     --- If space-charge limited injection is turned on, then add additional
 c     --- grid cells to the first processor so it will have the injection
 c     --- surface completely covered.
-      if (inject > 1) then
+      if(solvergeom/=RZgeom) then
+       if (inject > 1) then
         zinjmax = ainject**2/(rinject+sqrt(rinject**2-ainject**2))
         nzinj = int(maxval((zinject + zinjmax - zmmin)/dz + inj_d)) + 1
         nzpslave(0) = max(nzpslave(0),nzinj)
+       endif
       endif
 
 c---------------------------------------------------------------------------
 c     --- Now set the axial extent of each slaves domain, which includes
 c     --- both the particle and field solve domain.
-      do i=0,nslaves-1
+      if(solvergeom/=RZgeom) then
+       do i=0,nslaves-1
         izslave(i) = min(izpslave(i),izfsslave(i))
         nzslave(i) = max(izpslave(i) + nzpslave(i),izfsslave(i) + nzfsslave(i))
      &               - izslave(i)
         zmslmin(i) = izslave(i)*dz + zmmin
         zmslmax(i) = (izslave(i) + nzslave(i))*dz + zmmin
-      enddo
+       enddo
+      else
+       do i=0,nslaves-1
+        izslave(i) = izfsslave(i)
+        nzslave(i) = izfsslave(i) + nzfsslave(i)
+     &               - izslave(i)
+        zmslmin(i) = izslave(i)*dz + zmmin
+        zmslmax(i) = (izslave(i) + nzslave(i))*dz + zmmin
+       end do
+      end if
 
 c---------------------------------------------------------------------------
 c     --- Save global array sizes
@@ -304,8 +316,10 @@ c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
 c     --- to be made larger to hold the transposed array. izextra could
 c     --- actualy be one less then the value calculated here, but I don't
 c     --- subtract one so there is some extra slop.
-      if (nx+ny < nslaves) then
+      if(solvergeom/=RZgeom) then
+       if (nx+ny < nslaves) then
         izextra = max(1,(nzfull-nzfull/nslaves*(nx+ny))/(nx*ny))
+       endif
       endif
 
       return
