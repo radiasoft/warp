@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.46 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1490,7 +1490,7 @@ c       --- Check if it hits the cylinder.
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
                 theta = pi*0.5
-                phi = atan2(yy,xx)
+                phi = atan2(yy,xx)+pi
               endif
             endif
           endif
