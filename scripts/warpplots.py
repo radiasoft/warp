@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.17 2001/01/24 00:46:58 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.18 2001/01/24 02:37:29 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -533,6 +533,8 @@ from window 0, getting all of the live partilces (whose uzp > 0).
     if psubset==[]: setup_subsets()
     if -iw > len(psubset): raise "Bad window number"
     ii = ir1 + compress(less(psubset[-iw-1],top.nps[js-1]),psubset[-iw-1])
+  elif iw == 0:
+    ii = xrange(ir1,ir2)
   else:
     if win == None: win = top.zwindows[:,iw] + top.zbeam
     if len(shape(win)) == 2: win = win[:,iw]
@@ -546,104 +548,104 @@ from window 0, getting all of the live partilces (whose uzp > 0).
 # The following return a specific coordinate of the selected particles
 # More documetation added after they are declared.
 #-------------------------------------------------------------------------
-def getn(iw=0,**kw):
+def getn(iw=0,gather=1,**kw):
   "Returns number of particles in selection."
   ii = selectparticles(iw=iw,kwdict=kw)
   if lparallel and gather: return globalsum(len(ii))
   else: return len(ii)
 #-------------------------------------------------------------------------
-def getx(iw=0,**kw):
+def getx(iw=0,gather=1,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.xp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def gety(iw=0,**kw):
+def gety(iw=0,gather=1,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.yp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getz(iw=0,**kw):
+def getz(iw=0,gather=1,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.zp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getr(iw=0,**kw):
+def getr(iw=0,gather=1,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def gettheta(iw=0,**kw):
+def gettheta(iw=0,gather=1,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = arctan2(take(top.yp,ii),take(top.xp,ii))
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvx(iw=0,**kw):
+def getvx(iw=0,gather=1,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvy(iw=0,**kw):
+def getvy(iw=0,gather=1,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvz(iw=0,**kw):
+def getvz(iw=0,gather=1,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getux(iw=0,**kw):
+def getux(iw=0,gather=1,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getuy(iw=0,**kw):
+def getuy(iw=0,gather=1,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getuz(iw=0,**kw):
+def getuz(iw=0,gather=1,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getxp(iw=0,**kw):
+def getxp(iw=0,gather=1,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getyp(iw=0,**kw):
+def getyp(iw=0,gather=1,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getrp(iw=0,**kw):
+def getrp(iw=0,gather=1,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
@@ -654,7 +656,7 @@ def getrp(iw=0,**kw):
 # Add the selectparticles documentation to each of the routines.
 if sys.version[:5] != "1.5.1":
   if lparallel:
-    _gatherdoc = "  gather=1 When 0, all data is gathered to PE0"
+    _gatherdoc = "  gather=1 When 1, all data is gathered to PE0"
   else:
     _gatherdoc = ""
   getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
@@ -935,8 +937,6 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- much meaning since a value of 1.0 means that there is already
       # --- only one particle in that cell.
       grid1 = log10(where(less(grid,0.1),0.1,grid))
-      dmax = maxnd(grid1)
-      dmin = -1.
     else:
       # --- Before taking the log of the user supplied grid data, make sure
       # --- that there are no negative values. Zero is ok since they will
@@ -946,11 +946,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       if dmin <= 0.:
         raise "Can't take log since the grid has negative values"
       grid1 = log(where(less(grid,dmin/10.),dmin/10.,grid))
-      dmax = maxnd(grid1)
-      dmin = minnd(grid1)
   else:
-    dmax = maxnd(grid)
-    dmin = minnd(grid)
     grid1 = grid
 
   # --- Get grid mesh if it is needed
@@ -1007,9 +1003,11 @@ Note that either the x and y coordinates or the grid must be passed in.
             color=hcolor,width=width)
 
   # --- Add colorbar if needed
-  if (contours and filled==1) or color == 'density':
+  if (contours and filled==1) or (color == 'density' and len(x) > 0):
     if (contours and filled==1): nc = contours + 1
     else: nc = ncolor + 1
+    dmax = maxnd(grid1)
+    dmin = minnd(grid1)
     color_bar(dmin,dmax,uselog=uselog,ncolor=nc)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
