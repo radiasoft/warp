@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.30 $, $Date: 2002/05/06 20:21:49 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.31 $, $Date: 2002/05/07 17:38:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -540,8 +540,8 @@ c     --- Set the loop limits, including edges when appropriate.
       if (boundxy == 1) ixmax = nx
       if (boundxy > 0 .or. l4symtry) iymin = 0
       if (boundxy == 1) iymax = ny
-      if (localb0 == 0 .or. lparity == 1) izmin = 1
-      if (localbnz == 0 .or. rparity == 1) izmax = nznew - 1
+      if (localb0 == 0 .or. lparity >= 1) izmin = 1
+      if (localbnz == 0 .or. rparity >= 1) izmax = nznew - 1
 
 c     --- Do the loops.
       do iz=izmin,izmax

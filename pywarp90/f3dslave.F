@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.5 $, $Date: 2002/04/30 14:01:36 $
+c F3DSLAVE.M, version $Revision: 1.6 $, $Date: 2002/05/07 17:38:40 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1059,7 +1059,7 @@ c     --- of the data overlaps.
       if (my_index > 0) then
         rparity = 2*(izfsslave2(my_index-1)+nzfsslave2(my_index-1)) -
      &              (izfsslave(my_index-1) +nzfsslave(my_index-1))
-        if (rparity == 1) then
+        if (rparity >= 1) then
           w = w + 1
           ls = izfsslave2(my_index-1)+nzfsslave2(my_index-1)-izfsslave2(my_index)
           call MPI_ISEND(res(0,0,ls),(nx+1)*(ny+1),
@@ -1070,7 +1070,7 @@ c     --- of the data overlaps.
 
       if (my_index < nslaves-1) then
         lparity = izfsslave(my_index+1) - 2*izfsslave2(my_index+1)
-        if (lparity == 1) then
+        if (lparity >= 1) then
           w = w + 1
           rs = izfsslave2(my_index+1) - izfsslave2(my_index)
           call MPI_ISEND(res(0,0,rs),(nx+1)*(ny+1),
@@ -1080,7 +1080,7 @@ c     --- of the data overlaps.
       endif
 
       lparity = izfsslave(my_index) - 2*izfsslave2(my_index)
-      if (lparity == 1) then
+      if (lparity >= 1) then
         w = w + 1
         call MPI_IRECV(res(0,0,0),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,my_index-1,nzfull,
@@ -1089,7 +1089,7 @@ c     --- of the data overlaps.
 
       rparity = 2*(izfsslave2(my_index)+nzfsslave2(my_index)) -
      &            (izfsslave(my_index) +nzfsslave(my_index))
-      if (rparity == 1) then
+      if (rparity >= 1) then
         w = w + 1
         call MPI_IRECV(res(0,0,nz),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,my_index+1,nzfull,
