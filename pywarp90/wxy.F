@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.9 $, $Date: 2001/07/10 20:35:33 $
+c@(#) File WXY.M, version $Revision: 3.10 $, $Date: 2001/07/18 23:55:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -166,6 +166,8 @@ c  since all particles will be at the same element.
       call remark(" ---  Resetting lattice array sizes")
       call resetlat
       nzl = 0
+      zlmin = 0.
+      zlmax = 0.
 
 c  Create the dynamic arrays for fields, contour plot workspace
 c  Also set vbeamfrm, adjust x and ymmin for symmetries and set
@@ -605,10 +607,12 @@ c --- it is better to make sure the data is consistent than to save a
 c --- little bit of time. The value of nzl must be checked since other
 c --- packages (like W3D) may have reset it. For example, if the
 c --- W3D package is generated after the WXY package, nzl will be set to
-c --- zero. Switching back to WXY and running step, the internal lattice
+c --- non-zero. Switching back to WXY and running step, the internal lattice
 c --- would still be setup for the W3D package and so the step would produce
 c --- erroneaous results.
       nzl = 0
+      zlmin = 0.
+      zlmax = 0.
       call setlatt
 
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
