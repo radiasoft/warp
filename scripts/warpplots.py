@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.83 2002/06/21 16:59:44 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.84 2002/08/08 18:10:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2411,7 +2411,7 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
-  if fullplane and w3d.l4symtry:
+  if (fullplane and w3d.l4symtry) or w3d.solvergeom == w3d.RZgeom:
     pp1 = zeros((2*w3d.nx+1,w3d.nzfull+1),'d')
     pp1[w3d.nx:,:] = ppp
     pp1[w3d.nx::-1,:] = ppp
