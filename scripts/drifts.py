@@ -1,6 +1,6 @@
 from warp import *
 from lattice import *
-drifts_version = "$Id: drifts.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+drifts_version = "$Id: drifts.py,v 1.2 2005/02/16 00:32:33 jlvay Exp $"
 
 def initdrifts():
   if top.drfts: return
@@ -79,6 +79,14 @@ def initdrifts():
       elist.append(Pgrd(zs=top.pgrdzs[ii],ze=top.pgrdze[ii],ap=top.pgrdap[ii],
                         ox=top.pgrdox[ii],oy=top.pgrdoy[ii],
                         id=top.pgrdid[ii]))
+
+  if top.bsqgrads:
+    elist = []
+    elems.append(elist)
+    for ii in xrange(top.nbsqgrad+1):
+      elist.append(Bsqgrad(zs=top.bsqgradzs[ii],ze=top.bsqgradze[ii],ap=top.bsqgradap[ii],
+                        ox=top.bsqgradox[ii],oy=top.bsqgradoy[ii],
+                        id=top.bsqgradid[ii]))
 
   # --- Create a counter for each element type
   ielem = len(elems)*[0]
