@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.66 $, $Date: 2003/01/24 16:53:27 $
+#@(#) File TOP.V, version $Revision: 3.67 $, $Date: 2003/01/24 17:46:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.66 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.67 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1417,15 +1417,15 @@ hvyvzbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
 lhlinechg logical /.true./   # Turns on history of line charge
 ihlinechg integer /1/        # Multiplier for hlinechg memory size (autoset)
 hlinechg(0:nzzarr*ihlinechg,0:lenhist) _real [C/m] limited (0:nzzarr,0:jhist)
-            +zhist +parallel # Line charge density vs. space and time
+            +zhist           # Line charge density vs. space and time
 lhvzofz logical /.true./     # Turns on history of vz
 ihvzofz integer /1/          # Multiplier for hvzofz memory size (autoset)
 hvzofz(0:nzzarr*ihvzofz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
-            +zhist +parallel # Vz versus space and time
+            +zhist           # Vz versus space and time
 lhcurrz logical /.false./    # Turns on history of current
 ihcurrz integer /1/          # Multiplier for hcurrz memory size (autoset)
 hcurrz(0:nzzarr*ihcurrz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
-            +zhist +parallel # Current versus space and time
+            +zhist           # Current versus space and time
 lhepsxz logical /.false./    # Turns on history of X emittance
 ihepsxz integer /0 /         # Multiplier for hepsxz memory size (autoset)
 hepsxz(0:nzmmnt*ihepsxz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
