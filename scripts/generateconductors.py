@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.74 2004/07/23 20:51:07 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.75 2004/07/27 22:02:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -428,7 +428,7 @@ grid cell sizes.
 Removes the data which is far from any conductors. Assumes that setparity
 has already been called.
     """
-    ii = compress(self.parity < 2,arange(self.ndata))
+    ii = nonzero(self.parity < 2)
     self.ix    = take(self.ix,ii)
     self.iy    = take(self.iy,ii)
     self.iz    = take(self.iz,ii)
@@ -533,7 +533,7 @@ Installs the data into the WARP database
         conductors.interior.nmax = nn + nc
         conductors.gchange("*")
       conductors.interior.n = conductors.interior.n + nn
-      ii = compress(self.parity[:self.ndata] == -1,arange(self.ndata))
+      ii = nonzero(self.parity[:self.ndata] == -1)
       conductors.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
       conductors.interior.indx[1,nc:nc+nn] = take(self.iy,ii)
       conductors.interior.indx[2,nc:nc+nn] = take(self.iz,ii)
@@ -549,7 +549,7 @@ Installs the data into the WARP database
         conductors.evensubgrid.nmax = nn + ne
         conductors.gchange("*")
       conductors.evensubgrid.n = conductors.evensubgrid.n + nn
-      ii = compress(self.parity[:self.ndata] == 0,arange(self.ndata))
+      ii = nonzero(self.parity[:self.ndata] == 0)
       conductors.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
       conductors.evensubgrid.indx[1,ne:ne+nn] = take(self.iy,ii)
       conductors.evensubgrid.indx[2,ne:ne+nn] = take(self.iz,ii)
@@ -566,7 +566,7 @@ Installs the data into the WARP database
         conductors.oddsubgrid.nmax = nn + no
         conductors.gchange("*")
       conductors.oddsubgrid.n = conductors.oddsubgrid.n + nn
-      ii = compress(self.parity[:self.ndata] == 1,arange(self.ndata))
+      ii = nonzero(self.parity[:self.ndata] == 1)
       conductors.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
       conductors.oddsubgrid.indx[1,no:no+nn] = take(self.iy,ii)
       conductors.oddsubgrid.indx[2,no:no+nn] = take(self.iz,ii)
@@ -1004,11 +1004,17 @@ Creates a grid object which can generate conductor data.
     dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
+    # --- Note: this need to be fixed for the parallel version since
+    # --- zmmin and zmmax depend in leveliz and levelnz
     xmin,ymin,zmin = self.xmin,self.ymin,self.zmin
     xmax,ymax,zmax = self.xmax,self.ymax,self.zmax
     if extent is not None:
       xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
       xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
+
+    # --- The conductor extent is completely outside the grid
+    if xmin > xmax or ymin > ymax or zmin > zmax:
+      return [],[],[],[],[],[],0.,0.,0.,0.,0,0,0,[]
 
     zmmin = self.zmmin + iz*dz
 
@@ -1052,41 +1058,49 @@ Assembly on this grid.
       return
 
     starttime = wtime()
-    tt2 = zeros(8,'d')
+    timeit = 0
+    if timeit: tt1 = wtime()
+    if timeit: tt2 = zeros(10,'d')
     aextent = a.getextent()
-    dall = Delta()
-    self.dlist.append(dall)
+    # --- Leave dall empty. It is created if needed below.
+    dall = None
+    if timeit: tt2[8] = tt2[8] + wtime() - tt1
     for i in range(self.mglevels):
-      tt1 = wtime()
+      if timeit: tt1 = wtime()
       ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i,aextent)
-      tt2[0] = tt2[0] + wtime() - tt1
+      if timeit: tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
       for zz in zmesh:
-        tt1 = wtime()
+        if timeit: tt1 = wtime()
         z[:] = zz
         iz[:] = nint((zz - zmmin - self.zbeam)/dz)
-        tt2[1] = tt2[1] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[1] = tt2[1] + wtime() - tt1
+        if timeit: tt1 = wtime()
         d = a.griddistance(ix,iy,iz,x,y,z)
-        tt2[2] = tt2[2] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[2] = tt2[2] + wtime() - tt1
+        if timeit: tt1 = wtime()
         d.normalize(dx,dy,dz)
-        tt2[3] = tt2[3] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[3] = tt2[3] + wtime() - tt1
+        if timeit: tt1 = wtime()
         d.setparity(dfill,fuzzsign)
-        tt2[4] = tt2[4] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[4] = tt2[4] + wtime() - tt1
+        if timeit: tt1 = wtime()
         d.clean()
-        tt2[5] = tt2[5] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[5] = tt2[5] + wtime() - tt1
+        if timeit: tt1 = wtime()
         d.setlevels(i)
-        tt2[6] = tt2[6] + wtime() - tt1
-        tt1 = wtime()
+        if timeit: tt2[6] = tt2[6] + wtime() - tt1
+        if timeit: tt1 = wtime()
+        if dall is None:
+          # --- Only create the Delta instance if it is actually needed.
+          dall = Delta()
+          self.dlist.append(dall)
         dall.append(d)
-        tt2[7] = tt2[7] + wtime() - tt1
+        if timeit: tt2[7] = tt2[7] + wtime() - tt1
     endtime = wtime()
     self.generatetime = endtime - starttime
-    #print tt2
+    if timeit: tt2[9] = endtime - starttime
+    if timeit: print tt2
 
   def installdata(self,installrz=1,gridmode=1,solvergeom=None,
                   conductors=f3d.conductors,gridrz=None):
