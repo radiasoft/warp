@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.79 $, $Date: 2003/07/21 21:34:09 $
+c@(#) File F3D.M, version $Revision: 3.80 $, $Date: 2003/08/22 22:47:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5547,8 +5547,11 @@ c       --- find end plates
 
 c       --- Check for case where both hard edged and self-consistent
 c       --- models are being used for the same quadrupole.  Print notice if
-c       --- this is the case.
-        if (islctype(iz) == 2 .and. quadde(iq) .ne. 0.) lnotice = .true.
+c       --- this is the case. Note that it is OK if the rods are defined
+c       --- but held at the same voltage.
+        if (islctype(iz) == 2 .and.
+     &      (quadvx(iq) .ne. quadvy(iq)) .and.
+     &      quadde(iq) .ne. 0.) lnotice = .true.
 
 c       --- Estimate amount of space needed.
         if (islctype(iz) == 1 .or. islctype(iz) == 3) then
