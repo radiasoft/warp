@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.10 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1377,17 +1377,26 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: ctheta,stheta,cphi,sphi,ss,cci,sci,si,lenhalf
       real(kind=8):: xx,yy,zz
       real(kind=8):: a,b,c
-      real(kind=8):: z1,z2,zl,zu,zlend,zuend
-      real(kind=8):: x1,x2,xl,xu,xlend,xuend
-      real(kind=8):: y1,y2,yl,yu,ylend,yuend
+      real(kind=8):: z1,z2,zl,zu,zlend,zuend,zi1,zi2
+      real(kind=8):: x1,x2,xl,xu,xlend,xuend,xi1,xi2
+      real(kind=8):: y1,y2,yl,yu,ylend,yuend,yi1,yi2
 
       ctheta = cos(theta)
       stheta = sin(theta)
       cphi = cos(phi)
       sphi = sin(phi)
+c     --- In the limiting cases with the angles being exactly zero (or p/2)
+c     --- the algorithm breaks down. The sign of expressions dependent on
+c     --- the angles is important, and is lost when the angles are exactly
+c     --- zero (or pi/2). So the limiting cases is used where the angle
+c     --- approaches but does not equal to zero (or pi/2).
+      if (ctheta == 0) ctheta = SMALLPOS
+      if (stheta == 0) stheta = SMALLPOS
+      if (cphi == 0) cphi = SMALLPOS
+      if (sphi == 0) sphi = SMALLPOS
       cci = 1./(ctheta*cphi)
       sci = 1./(stheta*cphi)
-      si  = 1./sphi
+      si  = 1./(sphi)
       lenhalf = length/2.
 
       do i=1,n
@@ -1433,31 +1442,19 @@ c         --- Get the point where the z-line intersects the end planes
           zlend = min(z1,z2)
           zuend = max(z1,z2)
 c         --- Now, get distances to surface
-          if (zz < zl) then
-            if (zl <= zlend .and. zlend <= zu) delpz(i) = zlend - zz
-            if (zlend <= zl .and. zl <= zuend) delpz(i) = zl - zz
-          else if (zl <= zz .and. zz <= zu) then
-            if (zl <= zlend .and. zlend <= zu .and. zz <= zuend) then
-              if (zz <= zlend) then
-                delpz(i) = zlend - zz
-              else
-                delpz(i) = zz - min(zu,zuend)
-                delmz(i) = zlend - zz
-              endif
-            else if (zlend <= zl .and. zu <= zuend) then
-              delmz(i) = zl - zz
-              delpz(i) = zz - zu
-            else if (zl <= zuend .and. zuend <= zu) then
-              if (zz <= zuend) then
-                delpz(i) = zz - zuend
-                delmz(i) = max(zl,zlend) - zz
-              else
-                delmz(i) = zz - zuend
-              endif
-            endif
-          else if (zu < zz) then
-            if (zu >= zuend .and. zuend >= zl) delmz(i) = zz - zuend
-            if (zuend >= zu .and. zu >= zlend) delmz(i) = zz - zu
+          zi1 = +LARGEPOS
+          zi2 = -LARGEPOS
+          if (zl <= zuend .and. zlend <= zu) then
+            zi1 = max(zl,zlend)
+            zi2 = min(zu,zuend)
+          endif
+          if (zz <= zi1) then
+            delpz(i) = zi1 - zz
+          else if (zi1 <= zz .and. zz <= zi2) then
+            delmz(i) = zi1 - zz
+            delpz(i) = zz - zi2
+          else if (zi2 <= zz) then
+            delmz(i) = zz - zi2
           endif
         endif
 
@@ -1482,31 +1479,19 @@ c         --- Get the point where the x-line intersects the end planes
           xlend = min(x1,x2)
           xuend = max(x1,x2)
 c         --- Now, get distances to surface
-          if (xx < xl) then
-            if (xl <= xlend .and. xlend <= xu) delpx(i) = xlend - xx
-            if (xlend <= xl .and. xl <= xuend) delpx(i) = xl - xx
-          else if (xl <= xx .and. xx <= xu) then
-            if (xl <= xlend .and. xlend <= xu .and. xx <= xuend) then
-              if (xx <= xlend) then
-                delpx(i) = xlend - xx
-              else
-                delpx(i) = xx - min(xu,xuend)
-                delmx(i) = xlend - xx
-              endif
-            else if (xlend <= xl .and. xu <= xuend) then
-              delmx(i) = xl - xx
-              delpx(i) = xx - xu
-            else if (xl <= xuend .and. xuend <= xu) then
-              if (xx <= xuend) then
-                delpx(i) = xx - xuend
-                delmx(i) = max(xl,xlend) - xx
-              else
-                delmx(i) = xx - xuend
-              endif
-            endif
-          else if (xu < xx) then
-            if (xu >= xuend .and. xuend >= xl) delmx(i) = xx - xuend
-            if (xuend >= xu .and. xu >= xlend) delmx(i) = xx - xu
+          xi1 = +LARGEPOS
+          xi2 = -LARGEPOS
+          if (xl <= xuend .and. xlend <= xu) then
+            xi1 = max(xl,xlend)
+            xi2 = min(xu,xuend)
+          endif
+          if (xx <= xi1) then
+            delpx(i) = xi1 - xx
+          else if (xi1 <= xx .and. xx <= xi2) then
+            delmx(i) = xi1 - xx
+            delpx(i) = xx - xi2
+          else if (xi2 <= xx) then
+            delmx(i) = xx - xi2
           endif
         endif
 
@@ -1532,31 +1517,19 @@ c         --- Get the point where the z-line intersects the end planes
           ylend = min(y1,y2)
           yuend = max(y1,y2)
 c         --- Now, get distances to surface
-          if (yy < yl) then
-            if (yl <= ylend .and. ylend <= yu) delpy(i) = ylend - yy
-            if (ylend <= yl .and. yl <= yuend) delpy(i) = yl - yy
-          else if (yl <= yy .and. yy <= yu) then
-            if (yl <= ylend .and. ylend <= yu .and. yy <= yuend) then
-              if (yy <= ylend) then
-                delpy(i) = ylend - yy
-              else
-                delpy(i) = yy - min(yu,yuend)
-                delmy(i) = ylend - yy
-              endif
-            else if (ylend <= yl .and. yu <= yuend) then
-              delmy(i) = yl - yy
-              delpy(i) = yy - yu
-            else if (yl <= yuend .and. yuend <= yu) then
-              if (yy <= yuend) then
-                delpy(i) = yy - yuend
-                delmy(i) = max(yl,ylend) - yy
-              else
-                delmy(i) = yy - yuend
-              endif
-            endif
-          else if (yu < yy) then
-            if (yu >= yuend .and. yuend >= yl) delmy(i) = yy - yuend
-            if (yuend >= yu .and. yu >= ylend) delmy(i) = yy - yu
+          yi1 = +LARGEPOS
+          yi2 = -LARGEPOS
+          if (yl <= yuend .and. ylend <= yu) then
+            yi1 = max(yl,ylend)
+            yi2 = min(yu,yuend)
+          endif
+          if (yy <= yi1) then
+            delpy(i) = yi1 - yy
+          else if (yi1 <= yy .and. yy <= yi2) then
+            delmy(i) = yi1 - yy
+            delpy(i) = yy - yi2
+          else if (yi2 <= yy) then
+            delmy(i) = yy - yi2
           endif
         endif
 
@@ -1603,6 +1576,15 @@ c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
       stheta = sin(theta)
       cphi = cos(phi)
       sphi = sin(phi)
+c     --- In the limiting cases with the angles being exactly zero (or p/2)
+c     --- the algorithm breaks down. The sign of expressions dependent on
+c     --- the angles is important, and is lost when the angles are exactly
+c     --- zero (or pi/2). So the limiting cases is used where the angle
+c     --- approaches but does not equal to zero (or pi/2).
+      if (ctheta == 0) ctheta = SMALLPOS
+      if (stheta == 0) stheta = SMALLPOS
+      if (cphi == 0) cphi = SMALLPOS
+      if (sphi == 0) sphi = SMALLPOS
       cci = 1./dvnz(ctheta*cphi)
       sci = 1./dvnz(stheta*cphi)
       si  = 1./dvnz(sphi)
