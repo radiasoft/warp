@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.4 $, $Date: 2001/08/14 20:27:25 $
+c W3DSLAVE.M, version $Revision: 1.5 $, $Date: 2001/09/06 20:50:19 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -562,6 +562,7 @@ c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
       integer(ISZ):: i
+      integer(ISZ):: izglobal,izmaxp,izmaxfs
       integer(ISZ):: izsend,nzsend,izrecv,nzrecv
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
@@ -569,10 +570,19 @@ c iz=-1 and +1.
 c     --- First, send the data out to processors that need it.
       do i=0,nslaves-1
         if ( i /= my_index) then
-          izsend = max(izfsslave(my_index),izpslave(i)-1) - izslave(my_index)
-          nzsend = min(izfsslave(my_index)+nzfsslave(my_index)-grid_overlap,
-     &                 izpslave(i)+nzpslave(i)+1)
-     &             - max(izfsslave(my_index),izpslave(i)-1) + 1
+
+c         izsend = max(izfsslave(my_index),izpslave(i)-1) - izslave(my_index)
+c         nzsend = min(izfsslave(my_index)+nzfsslave(my_index)-grid_overlap,
+c    &                 izpslave(i)+nzpslave(i)+1)
+c    &             - max(izfsslave(my_index),izpslave(i)-1) + 1
+
+          izglobal = max(izfsslave(my_index),izpslave(i)-1)
+          izmaxp   = izpslave(i)+nzpslave(i)+1
+          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
+
+          izsend   = izglobal - izslave(my_index)
+          nzsend   = min(izmaxp,izmaxfs) - izglobal + 1
+
           if (nzsend > 0) then
             call MPI_ISEND(phi(0,0,izsend),nzsend*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
@@ -584,10 +594,19 @@ c     --- First, send the data out to processors that need it.
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
-          izrecv = max(izpslave(my_index)-1,izfsslave(i)) - izslave(my_index)
-          nzrecv = min(izpslave(my_index)+nzpslave(my_index)+1,
-     &                 izfsslave(i)+nzfsslave(i)-grid_overlap)
-     &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
+
+c         izrecv = max(izpslave(my_index)-1,izfsslave(i)) - izslave(my_index)
+c         nzrecv = min(izpslave(my_index)+nzpslave(my_index)+1,
+c    &                 izfsslave(i)+nzfsslave(i)-grid_overlap)
+c    &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
+
+          izglobal = max(izpslave(my_index)-1,izfsslave(i))
+          izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
+          izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
+
+          izrecv   = izglobal - izslave(my_index)
+          nzrecv   = min(izmaxp,izmaxfs) - izglobal + 1
+
           if (nzrecv > 0) then
             call MPI_RECV(phi(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
