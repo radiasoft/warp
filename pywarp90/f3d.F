@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.54 $, $Date: 2002/08/28 16:14:29 $
+c@(#) File F3D.M, version $Revision: 3.55 $, $Date: 2002/08/29 18:19:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5253,7 +5253,7 @@ c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
@@ -5265,7 +5265,7 @@ c  rather than a circular cylinder. (modified by I. Haber)
 c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
 c     --- Call the appropriate routine.
-      if(solvergeom==RZgeom) then
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  l2symtry,l4symtry)
       else if (fstype == 7 .or. solvergeom==AMRgeom) then
@@ -6012,7 +6012,7 @@ c===========================================================================
      &      quadsl,rodap,fuzz,qzs,dz,iz,voltage)
       use PSOR3d
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,rodx,rody,rminsq,rodrrsq,rrr,rodmxsq,delz_in,quadsl
       real(kind=8):: rodap,fuzz,qzs,dz,voltage
@@ -6287,7 +6287,7 @@ c===========================================================================
      &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
       use PSOR3d
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,aper,rmax,vvv,xoff,yoff,delz_in,fuzz
       logical(ISZ):: lz_in_plate
@@ -6499,7 +6499,7 @@ c===========================================================================
       subroutine dipopnt(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
       use PSOR3d
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: iymin,iymax,izmin,izmax,ix_near,ix
       real(kind=8):: vvv,delx
 
@@ -6622,7 +6622,7 @@ c===========================================================================
       use Conductor3d
       use InjectVars
       use InjectVars3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       real(kind=8):: dx,dy,dz,zmmin
       integer(ISZ):: ix_axis,iy_axis,nx,ny
 
@@ -6773,7 +6773,7 @@ c===========================================================================
      &                     condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -6832,7 +6832,8 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       endif
 
 c     --- Call the appropriate version of the routine.
-      if(solvergeom==RZgeom) then
+      if(solvergeom==Zgeom) return
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
@@ -7955,7 +7956,7 @@ c===========================================================================
      &                       condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -8023,7 +8024,8 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       endif
 
 c     --- Call the appropriate routine
-      if(solvergeom==RZgeom) then
+      if(solvergeom==Zgeom) return
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
          call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
