@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.88 $, $Date: 2003/12/03 01:23:24 $
+c@(#) File F3D.M, version $Revision: 3.89 $, $Date: 2003/12/12 23:47:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4368,7 +4368,8 @@ c Make sure that the transverse grid dimensions are even.
 
 c If iwhich equals zero or one, do initialization
       if (iwhich == 0 .or. iwhich == 1)
-     &  call psorinit(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
+        call psorinit(nx,ny,nz,dx,dy,dz,bound0,boundnz,boundxy,
+     &                l2symtry,l4symtry)
 
 c If doing initialization only, then exit
       if (iwhich == 1) return
