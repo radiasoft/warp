@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.21 2001/08/10 23:42:07 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.22 2002/01/08 00:07:44 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -739,7 +739,7 @@ def parallelrestore(fname,verbose=false):
       try:
         a = pkg.getvarattr(vname)
       except pybasisC.error:
-        print "Warning: There was a problem %s - it can't be found."(pname)
+        print "Warning: There was a problem %s - it can't be found."%(pname)
       parallelvar = re.search('parallel',a)
       if not parallelvar:
         # --- Simply read variable directly in.
@@ -750,8 +750,8 @@ def parallelrestore(fname,verbose=false):
         s = pname+'= ff.read_part(vname+"@parallel",itriple)[0]'
       try:
         exec(s,__main__.__dict__,locals())
-      except AttributeError:
-        print "Warning: There was a problem restoring %s" (pname)
+      except:
+        print "Warning: There was a problem restoring %s"%(pname)
     elif v[-7:] == '@global':
       try:
         if verbose: print "reading python variable "+v[:-7]
@@ -783,7 +783,7 @@ def parallelrestore(fname,verbose=false):
       try:
         a = pkg.getvarattr(vname)
       except pybasisC.error:
-        print "Warning: There was a problem %s - it can't be found."(pname)
+        print "Warning: There was a problem %s - it can't be found."%(pname)
       parallelvar = re.search('parallel',a)
       if not parallelvar:
         # --- Simply read variable directly in.
@@ -914,8 +914,8 @@ def parallelrestore(fname,verbose=false):
 
       try:
         exec(s,__main__.__dict__,locals())
-      except AttributeError:
-        print "Warning: There was a problem restoring %s" (pname)
+      except:
+        print "Warning: There was a problem restoring %s"%(pname)
 
   ff.close()
 
