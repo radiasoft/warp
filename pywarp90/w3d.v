@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.98 $, $Date: 2003/04/09 01:51:17 $
+#@(#) File W3D.V, version $Revision: 3.99 $, $Date: 2003/04/16 23:05:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.98 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.99 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -46,8 +46,9 @@ pipeshpe             character*8 /" "/
       # Shape of pipe for 3D capacity matrix (default circle; "hyp" hyperbola)
 l2symtry             logical    /.false./  # Turns on 2-fold symmetry
 l4symtry             logical    /.false./  # Turns on 4-fold symmetry
-lbeforefs  logical    /.false./  # Turns on call to basis function "beforefs"
-lafterfs   logical    /.false./  # Turns on call to basis function "afterfs"
+lbeforefs  logical    /.false./  # Turns on call to python function "beforefs"
+lafterfs   logical    /.false./  # Turns on call to python function "afterfs"
+lcallscraper  logical    /.false./  # Turns on call to python function "callscraper"
 izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
 izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
 solvergeom integer    /0/  # Geometry of field solver

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.97 $, $Date: 2003/04/09 01:51:17 $
+c@(#) File W3D.M, version $Revision: 3.98 $, $Date: 2003/04/16 23:05:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -502,7 +502,7 @@ c --- zgridprv is set here (as well as in padvnc3d) in case the
 c --- user has changed zbeam.
 
       it = it + 1
-      time = time + dt
+c     time = time + dt ! Moved to end of padvanc3d
       if (lgridqnt) then
 c       --- zgrid is integer number of dz's
         zgridprv = int((zbeam)/dz + .5)*dz
@@ -512,7 +512,7 @@ c       --- zgrid is the same as the beam frame
         zgridprv = zbeam
         zgrid = zbeam + dt*vbeamfrm + zcorrection
       endif
-      call stepid (it, time, zgrid)
+      call stepid (it, time+dt, zgrid)
 
 c  set logicals
 
@@ -1543,8 +1543,10 @@ c       --- absorb particles passing through semitransparent disc
 
         enddo
 
+        if (lcallscraper) call execuser("callscraper")
+
         do is=1,ns
-          call processlostpart(is,clearlostpart,time,zbeam)
+          call processlostpart(is,clearlostpart,time+dt,zbeam)
         enddo
 
 c       --- Collect charge density (3d)
@@ -1561,6 +1563,8 @@ c         --- Advance beam frame location using the nominal beam frame velocity.
 c       --- zgridprv needs to be updated for the "synchv" step
 c       --- Note that zgridprv is also set at the beginning of w3dexe
         zgridprv = zgrid
+
+        time = time + dt
       endif
 
 
@@ -4684,7 +4688,7 @@ c                   --- are correlated with transverse position.
                     pid(ii,1) = rnrev(injctcnt,dig5)
 
 c                   --- save time of creation if tpid > 0
-                    if(tpid>0) pid(ii,tpid) = time
+                    if(tpid>0) pid(ii,tpid) = time + dt
                     if(l_inj_delay_temp) pid(ii,tpid) = -pid(ii,tpid)
 
 c                   --- save radius of creation if rpid > 0
