@@ -35,7 +35,7 @@ class ParallelPW(PW.PW):
 	    if me == pe:
               self.open(self.filename,'a')
           if me == pe:
-            PW.PW.write(self,name,quantity,record)
+            self.inquire_handle().write(name,quantity,record,None)
 	  # --- Now, that pe should close it and pe0 should open it again.
 	  if pe != 0:
 	    if me == pe:
@@ -70,7 +70,7 @@ class ParallelPW(PW.PW):
         self.open(self.filename,'a')
 	index = ndims*[0]
         index[-1] = nlast[me]
-	PW.PW.write(self,name,quantity,indx=tuple(index))
+        self.inquire_handle().write(name,quantity,0,tuple(index))
 	# --- All but PE0 close the file.
 	if me != 0:
 	  self.close()
