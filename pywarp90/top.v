@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.59 $, $Date: 2002/10/25 20:22:48 $
+#@(#) File TOP.V, version $Revision: 3.60 $, $Date: 2002/10/26 00:24:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.59 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.60 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -69,8 +69,13 @@ largepos real    /LARGEPOS/ # Large positive number
 smallpos real    /SMALLPOS/ # Small positive number
 
 *********** GlobalVars:
-nparpgrp integer /NPARPGRP/ # Number of particles per group. Effects size
-                            # of temporaries and cache use.
+nparpgrp  integer /NPARPGRP/ # Number of particles per group. Effects size
+                             # of temporaries and cache use.
+dirichlet integer /0/        # constant for boundary condition (constant potential)
+neumann   integer /1/        # constant for boundary condition (derivative = 0)
+periodic  integer /2/        # constant for boundary condition 
+absorb    integer /0/        # constant for particle absorption at boundaries
+reflect   integer /1/        # constant for particle reflection at boundaries
 
 *********** Timers dump parallel:
 starttime   real /0./ # CPU start time (in seconds)
@@ -811,6 +816,15 @@ stickyz                   logical /.false./
    # Specifies whether or not there are sticky walls in z
 stickyxy                  logical /.true./
    # Specifies whether or not there are sticky walls in x and y
+pbound0                   integer /2/
+   # boundary condition for particles at iz = 0 (absorb/dirichlet: absorption, 
+   # reflect/neumann: reflection, periodic: periodicity)
+pboundnz                  integer /2/
+   # boundary condition for particles at iz = nz (absorb/dirichlet: absorption, 
+   # reflect/neumann: reflection, periodic: periodicity)
+pboundxy                  integer /0/
+   # boundary condition for particles at x and y (absorb/dirichlet: absorption, 
+   # reflect/neumann: reflection, periodic: periodicity)
 ibpush                    integer /1/
    # Specifies type of B-advance: 0-none, 1-fast, 2-with tan(alpha)/alpha
 ifeears                   integer /0/
@@ -1564,7 +1578,8 @@ nplive integer    /0/  # No. of "live" particles
 npmax  integer    /0/  # Maximum no. of particles
                        # (user input for some loadings)
 npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
-npmaxi integer    /0/  # Maximum no. of particles for pid.
+npid   integer    /1/  # number of columns for pid.
+npmaxi integer    /1/  # Maximum no. of particles for pid.
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
@@ -1578,7 +1593,7 @@ zp(npmax)      _real  [m]        # Z-positions of particles
 uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
-pid(npmaxi)    _real    [1]      # Particle index - user for various purposes
+pid(npmaxi,npid) _real    [1]      # Particle index - user for various purposes
 
 *********** LostParticles dump parallel:
 lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
@@ -1594,7 +1609,7 @@ uxplost(npmaxlost) _real [m/s]  # gamma * X-velocities of lost particles
 uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
-pidlost(npmaxlost) _integer [1] # Particle index of lost particles
+pidlost(npmaxlost,npid) _integer [1] # Particle index of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
