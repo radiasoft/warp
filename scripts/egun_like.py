@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.32 2004/12/22 22:17:56 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.33 2005/01/03 18:57:29 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -559,7 +559,8 @@ def recovergun():
 def gunmg(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        nmg=0,conductors=None,egundata_window=2,plottraces_window=1):
+        nmg=0,conductors=None,egundata_window=2,plottraces_window=1,
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -595,7 +596,8 @@ Performs steady-state iterations in a cascade using different resolutions.
     return gun(iter,ipsave,save_same_part,maxtime,
         laccumulate_zmoments,rhoparam,
         lstatusline,insertbeforeiter,insertafteriter,
-        None,egundata_window,plottraces_window)
+        None,egundata_window,plottraces_window,
+        egundata_nz,egundata_zmin,egundata_zmax)
   # initialize itersub
   if itersub is None: itersub = iter
   iterlast = iter
@@ -672,14 +674,16 @@ Performs steady-state iterations in a cascade using different resolutions.
         gun(1,0,save_same_part,maxtime,
             laccumulate_zmoments,rhoparam,
             lstatusline,insertbeforeiter,insertafteriter,
-            None,egundata_window,plottraces_window)
+            None,egundata_window,plottraces_window,
+            egundata_nz,egundata_zmin,egundata_zmax)
         # remaining iterations but last one performed with inj_param=0.5
         top.inj_param = 0.5
         if(iter>2):
           gun(iter-2,0,save_same_part,maxtime,
               laccumulate_zmoments,rhoparam,
               lstatusline,insertbeforeiter,insertafteriter,
-              None,egundata_window,plottraces_window)
+              None,egundata_window,plottraces_window,
+              egundata_nz,egundata_zmin,egundata_zmax)
       # For all sublevels, rhonext is created and setrhonext is installed
       # so that rhonext is eveluated during last iteration at current level.
       if i<nmg:
@@ -693,21 +697,24 @@ Performs steady-state iterations in a cascade using different resolutions.
       gun(1,ipsave,save_same_part,maxtime,
           laccumulate_zmoments,rhoparam,
           lstatusline,insertbeforeiter,insertafteriter,
-          None,egundata_window,plottraces_window)
+          None,egundata_window,plottraces_window,
+          egundata_nz,egundata_zmin,egundata_zmax)
       # Uninstall setrhonext if necessary.
       if i<nmg:
          uninstallafterstep(setrhonext)
 
-  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
-           array(egundata_xprmsz), array(egundata_yprmsz),
-           array(egundata_epsnxz), array(egundata_epsnyz)]
+  if egundata_nz is not None:
+    return [array(egundata_curr),array(egundata_xrmsz),array(egundata_yrmsz), 
+             array(egundata_xprmsz),array(egundata_yprmsz),
+             array(egundata_epsnxz),array(egundata_epsnyz)]
 
 ########################################################################
 def gunamr(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         nmg=0,AMRlevels=0,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        conductors=None,egundata_window=-1,plottraces_window=-1):
+        conductors=None,egundata_window=-1,plottraces_window=-1,
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -741,12 +748,14 @@ Performs steady-state iterations in a cascade using different resolutions.
    gunmg(itersub,itersub,ipsave,save_same_part,maxtime,
          laccumulate_zmoments,rhoparam,
          lstatusline,insertbeforeiter,insertafteriter,
-         nmg,conductors,egundata_window,plottraces_window)
+         nmg,conductors,egundata_window,plottraces_window,
+         egundata_nz,egundata_zmin,egundata_zmax)
   else:
    gun(itersub,ipsave,save_same_part,maxtime,
             laccumulate_zmoments,rhoparam,
             lstatusline,insertbeforeiter,insertafteriter,
-            None,egundata_window,plottraces_window)
+            None,egundata_window,plottraces_window,
+            egundata_nz,egundata_zmin,egundata_zmax)
   if AMRlevels>0:
     w3d.AMRlevels = AMRlevels
     fieldsol()
@@ -761,15 +770,18 @@ Performs steady-state iterations in a cascade using different resolutions.
     gun(1,0,save_same_part,maxtime,
         laccumulate_zmoments,None,
         lstatusline,insertbeforeiter,insertafteriter,
-        None,egundata_window,plottraces_window)
+        None,egundata_window,plottraces_window,
+        egundata_nz,egundata_zmin,egundata_zmax)
     gun(iter-1,ipsave,save_same_part,maxtime,
         laccumulate_zmoments,rhoparam,
         lstatusline,insertbeforeiter,insertafteriter,
-        None,egundata_window,plottraces_window)
+        None,egundata_window,plottraces_window,
+        egundata_nz,egundata_zmin,egundata_zmax)
     w3d.AMRgenerate_periodicity = tmp
-  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
-           array(egundata_xprmsz), array(egundata_yprmsz),
-           array(egundata_epsnxz), array(egundata_epsnyz)]
+  if egundata_nz is not None:
+    return [array(egundata_curr),array(egundata_xrmsz),array(egundata_yrmsz), 
+             array(egundata_xprmsz),array(egundata_yprmsz),
+             array(egundata_epsnxz),array(egundata_epsnyz)]
 
 ########################################################################
 def statusline():
