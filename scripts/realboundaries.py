@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.4 2000/12/05 01:34:16 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.5 2001/01/16 19:28:02 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -365,7 +365,7 @@ Constructor arguments:
     # --- The minimum distance between two points that gaurantess that they
     # --- are not in the same cell is sqrt(dx**2+dy**2). Take as the minimum
     # --- angle then sqrt(dx**2+dy**2)/r, and divide the circle up evenly.
-    n = int(2*pi*rr/sqrt(w3d.dx**2 + w3d.dy**2))
+    n = int(2*pi*s.rr/sqrt(w3d.dx**2 + w3d.dy**2))
     # --- Now calculate the points for each rod (including the full circle).
     # --- Lists are used to allow concatenation.
     x = []
@@ -520,7 +520,7 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def roundpipe(s,id,zs,ze,ap,ox,oy,cm):
     # --- Only apply matrix is the z location is within the current element
-    if zs < top.zbeam < ze:
+    if zs <= top.zbeam < ze:
       # --- Check if there is a matrix for this element
       if (len(cm) > id+1 and cm[id] == None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
@@ -545,8 +545,8 @@ Constructor arguments:
       # --- Otherwise, rely on the zs and ze of the element.
       zl = zs
       zr = ze
-    # --- Only apply matrix is the z location is within the current element
-    if zl < top.zbeam < zr and ap > 0.:
+    # --- Only apply matrix if the z location is within the current element
+    if zl <= top.zbeam < zr and ap > 0.:
       # --- Check if the matrix has already been calculated.
       if (len(cm) > id+1 and cm[id] == None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
@@ -635,7 +635,8 @@ Constructor arguments:
     #--------------------------------------------------------------------------
     if top.quads:
       qid = top.cquadid[0]
-      if abs(top.quadde[qid]) > 0.:
+      if (abs(top.quadde[qid]) > 0. or
+          abs(top.quadvx[qid]) > 0. or abs(top.quadvy[qid]) > 0.):
         if s.quadrods(qid,top.cquadzs[0],top.cquadze[0],top.quadap[qid],
                       top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
                       top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
@@ -730,11 +731,11 @@ Constructor arguments:
                ecolor='green'):
     """
 Makes a plot of the conductor.
-  - plotphi when true, plots contours of phi
-  - filled when true, plot filled contours
-  - plotsym when true, plots appropriate reflections when symmeties are used
-  - plotedge when true, plots a square around the edge of the mesh (with
-             appropriate reflections when plotsym is true)
+  - plotphi=1 when true, plots contours of phi
+  - filled=0 when true, plot filled contours
+  - plotsym=1 when true, plots appropriate reflections when symmeties are used
+  - plotedge=1 when true, plots a square around the edge of the mesh (with
+               appropriate reflections when plotsym is true)
     """
     # --- Plot phi first (so filled contours are on bottom)
     if plotphi:
