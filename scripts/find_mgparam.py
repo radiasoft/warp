@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.11 2003/04/03 01:00:45 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.12 2003/04/10 21:50:30 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -30,7 +30,7 @@ def find_mgparam():
 Optimize both mgparam and up and down passes, minimizing the fieldsolve
 time.
   """
-  if(w3d.solvergeom == w3d.XYZgeom and top.fstpye != 7):
+  if(w3d.solvergeom == w3d.XYZgeom and top.fstype != 7):
     print "The fstype must be set to 7"
     return
   if(w3d.solvergeom == w3d.Zgeom): return
