@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.83 $, $Date: 2003/04/22 21:53:19 $
+c@(#) File TOP.M, version $Revision: 3.84 $, $Date: 2003/04/22 22:26:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2926,12 +2926,12 @@ c           --- find z-cell in which particle lies
 c         --- find z location relative to multipole data
           izm(ip) = int((zz-cmltzs(iz,io))*dzi)
           wzm(ip) =     (zz-cmltzs(iz,io))*dzi - izm(ip)
-          if (izm(ip) < 1) then
-            izm(ip) = 1
+          if (zz < cmltzs(iz,io)) then
+            izm(ip) = 0
             wzm(ip) = 0
             imm(ip) = 0
-          elseif (izm(ip) > nzmlt(imm(ip))-1) then
-            izm(ip) = nzmlt(imm(ip))-1
+          elseif (zz > cmltze(iz,io)) then
+            izm(ip) = nzmlt(imm(ip))
             wzm(ip) = 0
             imm(ip) = 0
           endif
@@ -3019,12 +3019,12 @@ c         --- end of coordinate transformation
 
           izm(ip) = int((zzz(ip)-cmltzs(iz,io))*dzi)
           wzm(ip) =     (zzz(ip)-cmltzs(iz,io))*dzi - izm(ip)
-          if (izm(ip) < 1) then
-            izm(ip) = 1
+          if (zzz(ip) < cmltzs(iz,io)) then
+            izm(ip) = 0
             wzm(ip) = 0
             imm(ip) = 0
-          elseif (izm(ip) > nzmlt(imm(ip))-1) then
-            izm(ip) = nzmlt(imm(ip))-1
+          elseif (zzz(ip) > cmltze(iz,io)) then
+            izm(ip) = nzmlt(imm(ip))
             wzm(ip) = 0
             imm(ip) = 0
           endif
