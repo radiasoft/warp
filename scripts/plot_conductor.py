@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.82 2004/08/06 23:40:01 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.83 2004/09/15 21:36:07 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1465,42 +1465,42 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
 ############################################################################
 
 # --- plot grid in lab frame (including bends)
-def plotgrid(zz=None,ii=2,plotcond=1,solver=w3d):
+def plotgrid(zbeam=None,ii=2,plotcond=1,solver=w3d,zcent=None):
   """
 Plots Z-X grid in the lab frame (including bends)
-  - zz=top.zbeam is the center position
+  - zbeam=top.zbeam is the center position
   - ii=2 is the step size in the grid points plotted
     2 means that every other grid line is plotted
   - plotcond=1 when true, plots conductors
   """
-  if not zz: zz=top.zbeam
+  if zbeam is None: zbeam=top.zbeam
+  if zcent is None: zcent=top.zbeam
   # --- declare temporary data space, 2 2-D arrays to hold grid coordinates
-  xg = zeros((solver.nx/ii+1,solver.nz/ii+1),'d')
-  zg = zeros((solver.nx/ii+1,solver.nz/ii+1),'d')
-  for iz in xrange(solver.nz/ii+1):
-    xg[:,iz] = solver.xmesh[::ii]
-  for ix in xrange(solver.nx/ii+1):
-    zg[ix,:] = solver.zmmin + iota(0,solver.nz,ii)*solver.dz + zz
+  nx = nint(1.*solver.nx/ii)
+  dx = 1.*solver.nx/nx*solver.dx
+  nz = nint(1.*solver.nz/ii)
+  dz = 1.*solver.nz/nz*solver.dz
+  xg,zg = getmesh2d(solver.xmmin,dx,nx,solver.zmmin+zbeam,dz,nz)
 
   # --- If in a bend, convert the grid data to the lab frame
-  if top.linbend:
+  if top.bends:
     # --- reshape arrays to make 1-D arrays to pass to tolabfrm
-    nn = int((solver.nx/ii+1)*(solver.nz/ii+1))
-    xg.shape = (nn)
-    zg.shape = (nn)
+    nn = (nx+1)*(nz+1)
+    xg.shape = (nn,)
+    zg.shape = (nn,)
 
     # --- Convert data to lab frame
-    tolabfrm(zz,nn,xg,zg)
+    tolabfrm(zcent,nn,xg,zg)
 
     # --- Reshape back into 2-D arrays
-    xg.shape = (solver.nx/ii+1,solver.nz/ii+1)
-    zg.shape = (solver.nx/ii+1,solver.nz/ii+1)
+    xg.shape = (nx+1,nz+1)
+    zg.shape = (nx+1,nz+1)
 
   # --- Make plots
   pla(xg,zg,marks=0)
   pla(transpose(xg),transpose(zg),marks=0)
 
-  if plotcond: pfzxlab(zz)
+  if plotcond: pfzxlab(zbeam)
 
 # --- Make pfzx plot in lab frame
 def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,solver=w3d):
