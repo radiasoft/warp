@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.14 2003/07/18 20:56:50 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.15 2003/07/18 22:04:50 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -32,10 +32,14 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   # If changed, fix Win_Moments arrays
   if (len(top.pnumz) != top.nzmmnt+1): gchange ("Z_Moments")
   
+  try:
+    numzmmnt = top.numzmmnt
+  except:
+    numzmmnt = 28
   maxp = zeros(6,'d')
   minp = zeros(6,'d')
-  zmmnts0 = zeros(top.numzmmnt,'d')
-  zmmnts = zeros((1+top.nzmmnt,top.numzmmnt),'d')
+  zmmnts0 = zeros(numzmmnt,'d')
+  zmmnts = zeros((1+top.nzmmnt,numzmmnt),'d')
 
   # --- This is bad idea and so is commented out.
   # If itask is greater than zero, assume that the intent was to do the
