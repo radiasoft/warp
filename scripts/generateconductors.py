@@ -42,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.22 2003/04/24 16:40:36 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.23 2003/04/25 00:38:53 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1451,7 +1451,7 @@ Betweem surfaces of revolution
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zsrfrvoutconductorf,f3d.zsrfrvoutconductord)
+                      f3d.zsrfrvinoutconductorf,f3d.zsrfrvinoutconductord)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
     self.zmin = zmin
