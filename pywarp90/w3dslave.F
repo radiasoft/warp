@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.17 $, $Date: 2003/03/25 22:53:37 $
+c W3DSLAVE.M, version $Revision: 1.18 $, $Date: 2003/04/09 01:58:25 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -285,11 +285,8 @@ c     --- Reset local values
       nzp = nzpslave(my_index)
       zmminp = zmminglobal + izpslave(my_index)*dz
       zmmaxp = zmminp + nzp*dz
-      nzmmnt = nzpslave(my_index)
       zpmin = zmmin + izpslave(my_index)*dz
       zpmax = (izpslave(my_index)+nzpslave(my_index))*dz + zmmin
-      if (zmmntmin == 0.) zmmntmin = zpmin
-      if (zmmntmax == 0.) zmmntmax = zpmax
       izfsmin = 0
       izfsmax = nzfsslave(my_index)
       zmmin = zmslmin(my_index)
@@ -327,40 +324,6 @@ c     --- subtract one so there is some extra slop.
       return
       end
 c===========================================================================
-c===========================================================================
-      subroutine reorg_particles
-      use Parallel
-      use Picglb
-      use Picglb3d
-      use InMesh3d
-      use InPart
-      use Particles
-
-c Reorganize particles:  distributes particles to the appropriate slaves.
-c Particles are shifted multiple times until they are in the proper region.
-
-      integer(ISZ):: checkzpartbnd
-      integer(ISZ):: nout1,nout2
-      integer(ISZ):: mpierror
-      include "mpif.h"
-
-c First, call zpartbnd to redistribute particles.  This checks if there are
-c any particles outside of the mesh and if so, loops until there aren't any.
-c This loop is necessary since in the initial load, the particles may be
-c loaded more than one region away from where the will be in the simulation,
-c but the routine zpartbnd only moves particles to the nearest neighbors.
-      nout1 = checkzpartbnd(zgrid)
-      call MPI_ALLREDUCE(nout1,nout2,1,MPI_INTEGER,MPI_MAX,
-     &                   MPI_COMM_WORLD,mpierror)
-      do while (nout2 > 0)
-        call zpartbnd(zmmax,zmmin,dz,zgrid)
-        nout1 = checkzpartbnd(zgrid)
-        call MPI_ALLREDUCE(nout1,nout2,1,MPI_INTEGER,MPI_MAX,
-     &                     MPI_COMM_WORLD,mpierror)
-      enddo
-
-      return
-      end
 c===========================================================================
       subroutine sw_globalsum(ns,sw)
       integer(ISZ):: ns
@@ -639,7 +602,6 @@ c  Only first and last processors do anything.
 c=============================================================================
       subroutine getphiforparticles(nx,ny,nz,phi,nxp,nyp,nzp,phip)
       use Parallel
-      use InjectVars3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       integer(ISZ):: nxp,nyp,nzp
