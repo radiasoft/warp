@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.1 2001/06/20 23:43:57 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.2 2001/06/26 00:11:34 dave Exp $"
 
 def extpartdoc():
   print """
@@ -161,7 +161,7 @@ Available methods:
   def r(self,js=0): return sqrt(self.x(js)**2 + self.y(js)**2)
   def theta(self,js=0): return arctan2(self.y(js),self.x(js))
   def rp(self,js=0):
-    return self.x(js)*cos(self.theta(js)) + self.y(js)*sin(self.theta(js))
+    return self.xp(js)*cos(self.theta(js)) + self.yp(js)*sin(self.theta(js))
   def nep(self,js=0): return len(self.tep[js][:])
 
 
