@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.22 $, $Date: 2003/06/25 00:40:51 $
+c TOPSLAVE.M, version $Revision: 1.23 $, $Date: 2003/07/16 00:34:44 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -153,14 +153,18 @@ c         --- Periodic boundary conditions: all particles picked out have
 c         --- their z adjusted.
           if (my_index == 0 .and. pbound0==periodic) then
             syslen = zpslmax(nslaves-1) - zpslmin(0)
+!$OMP PARALLEL DO
             do ip=ins_init(is),ins(is)-1
               zp(ip) = zp(ip) + syslen
             enddo
+!$OMP END PARALLEL DO
           elseif (my_index == nslaves-1 .and. pboundnz==periodic) then
             syslen = zpslmax(nslaves-1) - zpslmin(0)
+!$OMP PARALLEL DO
             do ip=ins(is)+nps(is),ins_init(is)+nps_init(is)-1
               zp(ip) = zp(ip) - syslen
             enddo
+!$OMP END PARALLEL DO
 c         --- Sticky boundary condition: particles picked out are not passed.
 c         --- Instead, they are marked as lost particles and ins and nps are
 c         --- reset to include them.
@@ -637,6 +641,7 @@ c outside the mesh.
       integer(ISZ):: is,ip,nout
       nout = 0
       do is=1,ns
+!$OMP PARALLEL DO REDUCTION(+:nout)
         do ip=ins(is),ins(is)+nps(is)-1
           if (zp(ip)-zgrid < zpslmin(my_index) .or.
      &        zp(ip)-zgrid >= zpslmax(my_index)) then
@@ -644,15 +649,18 @@ c outside the mesh.
           endif
         enddo
       enddo
+!$OMP END PARALLEL DO
       checkzpartbnd = nout
       return
       end
 c=============================================================================
 c=============================================================================
-      subroutine sum_mmnts
+      subroutine sum_mmnts(zmmnts0,zmmnts)
       use Parallel
       use Moments
       use Z_Moments
+      real(kind=8):: zmmnts0(NUMZMMNT)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
 
 c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
