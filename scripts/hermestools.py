@@ -144,3 +144,40 @@ def sethermesenvelope (niter = 1000, errorlimit = 1.e-9):
   envx()
   package ("her")
 
+
+def doubleniz(oldvars):
+# This function doubles the number of slices used by Hermes
+  oldniz = shape(oldvars)[1]
+  niz = 2*oldniz-1
+  newvars = zeros((16,niz),'d')
+  for variable in range(12):
+    for slice in range(oldniz):
+      newvars[variable,2*slice] = oldvars[variable,slice]
+    for slice in range(1,niz,2):
+      newvars[variable,slice] = (newvars[variable,slice-1]+newvars[variable,slice+1])/2.
+  for variable in [12,14]:
+    for slice in range(oldniz):
+      newvars[variable,2*slice] = oldvars[variable,slice]
+    for slice in range(1,niz,2):
+      newvars[variable,slice] = (newvars[variable,slice-1]+newvars[variable,slice+1])/2.
+  for slice in range(oldniz-1):
+    newvars[13,2*slice]   = oldvars[13,slice] / 2.
+    newvars[13,2*slice+1] = oldvars[13,slice] / 2.
+  return newvars
+
+def halfniz(oldvars):
+# This function doubles the number of slices used by Hermes
+  oldniz = shape(oldvars)[1]
+  niz = (oldniz+1)/2
+  newvars = zeros((16,niz),'d')
+  for variable in range(12):
+    for slice in range(niz):
+      newvars[variable,slice] = oldvars[variable,2*slice]
+  for variable in [12,14]:
+    for slice in range(niz):
+      newvars[variable,slice] = oldvars[variable,2*slice]
+  for slice in range(niz-1):
+    newvars[13,slice] = oldvars[13,2*slice] + oldvars[13,2*slice+1]
+  return newvars
+
+
