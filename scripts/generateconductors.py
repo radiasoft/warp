@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.77 2004/07/29 17:17:19 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.78 2004/08/05 22:50:10 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2123,6 +2123,25 @@ data and make sure it is consistent.
              "Some of the input surface data is not the correct length"
     return data
 
+  def plotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints,color='fg'):
+    r = []
+    z = []
+    for i in range(len(rdata)-1):
+      if raddata[i] == largepos:
+        r.append(rdata[i])
+        z.append(zdata[i])
+      else:
+        zz = span(zdata[i],zdata[i+1],narcpoints)
+        if raddata[i] > 0.:
+          rr = rcdata[i] + sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+        else:
+          rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+        r = r + list(rr)
+        z = z + list(zz)
+    r.append(rdata[-1])
+    z.append(zdata[-1])
+    plg(r,z,color=color)
+
 #============================================================================
 class ZSrfrvOut(Srfrv):
   """
@@ -2204,6 +2223,11 @@ Outside of a surface of revolution
   def getextent(self):
     return Assembly.getextent(self,[-self.rmax,-self.rmax,self.zmin],
                                    [+self.rmax,+self.rmax,self.zmax])
+
+  def draw(self,narcpoints=40,color='fg'):
+    if self.usedata:
+      self.plotdata(self.rofzdata,self.zdata,self.raddata,
+                    self.rcdata,self.zcdata,narcpoints,color=color)
 
   def createdxobject(self,rend=None,kwdict={},**kw):
     kw.update(kwdict)
@@ -2301,6 +2325,11 @@ Inside of a surface of revolution
     else:            rmax = largepos
     return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
                                    [+rmax,+rmax,self.zmax])
+
+  def draw(self,narcpoints=40,color='fg'):
+    if self.usedata:
+      self.plotdata(self.rofzdata,self.zdata,self.raddata,
+                    self.rcdata,self.zcdata,narcpoints,color=color)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -2433,6 +2462,14 @@ Between surfaces of revolution
     else:               rmax = largepos
     return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
                                    [+rmax,+rmax,self.zmax])
+
+  def draw(self,narcpoints=40,color='fg'):
+    if self.usemindata:
+      self.plotdata(self.rminofzdata,self.zmindata,self.radmindata,
+                    self.rcmindata,self.zcmindata,narcpoints,color=color)
+    if self.usemaxdata:
+      self.plotdata(self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
+                    self.rcmaxdata,self.zcmaxdata,narcpoints,color=color)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
