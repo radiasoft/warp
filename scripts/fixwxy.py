@@ -1,5 +1,5 @@
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.4 2001/06/18 20:45:54 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.5 2003/06/27 22:23:35 dave Exp $"
 # Fixes beam so that it exactly agress with the specified beam paramters
 
 # --- Fixes 1st and 2nd moments
@@ -56,8 +56,10 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None,
   top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0],0.)
   top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0],0.)
   # --- Then remove any coherent velocity
-  slopex = top.xxpbar[0]/top.xsqbar[0]*top.vbeam
-  slopey = top.yypbar[0]/top.ysqbar[0]*top.vbeam
+  top.xxpbar[0] = ave(getx()*getxp())
+  top.yypbar[0] = ave(gety()*getyp())
+  slopex = top.xxpbar[0]/(a/2.)**2*top.vbeam
+  slopey = top.yypbar[0]/(b/2.)**2*top.vbeam
   top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - slopex*top.xp,0.)
   top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - slopey*top.yp,0.)
   # --- Scale to get correct thermal spread
