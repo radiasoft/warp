@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.69 2002/01/29 22:43:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.70 2002/01/30 18:25:28 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -879,6 +879,8 @@ def ppgeneric_doc(x,y):
   - nx, ny: grid size, defaults to 20x20
   - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
   - offset=0.: %(y)s-offset of particles
+  - xscale=1.: scaling factor applied to x data
+  - yscale=1.: scaling factor applied to y data
   - titles=1: when true, plot the titles
   - lframe=0: when true, the plot limits are set to the plmin and plmax input
               arguments, which default to the plmin and plmax variables from
@@ -927,7 +929,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {'zz':None,'grid':None,'nx':20,'ny':20,'slope':0.,
-                'offset':0.,'titles':1,'lframe':0,
+                'offset':0.,'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
@@ -1027,6 +1029,10 @@ Note that either the x and y coordinates or the grid must be passed in.
     if xmax is None: xmax = xmaxtemp
     if ymin is None: ymin = ymintemp
     if ymax is None: ymax = ymaxtemp
+
+    # --- Scale the data
+    x = x*xscale
+    yms = yms*yscale
   else:
     # --- If no particles are inputted and the extrema are not set, then
     # --- can only make a guess.
@@ -1034,6 +1040,12 @@ Note that either the x and y coordinates or the grid must be passed in.
     if xmax is None: xmax = nx
     if ymin is None: ymin = 0
     if ymax is None: ymax = ny
+
+  # --- Scale the extrema
+  xmin = xmin*xscale
+  xmax = xmax*xscale
+  ymin = ymin*yscale
+  ymax = ymax*yscale
 
   # --- Get grid cell sizes
   dx = (xmax-xmin)/nx
@@ -1206,7 +1218,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   if titles: ptitles(v=view)
   settitles() 
   if (lframe):
-    limits(pplimits[0],pplimits[1],pplimits[2],pplimits[3])
+    limits(pplimits[0]*xscale,pplimits[1]*xscale,
+           pplimits[2]*yscale,pplimits[3]*yscale)
 if sys.version[:5] != "1.5.1":
   ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
