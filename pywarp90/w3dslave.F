@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.7 $, $Date: 2002/04/18 21:33:11 $
+c W3DSLAVE.M, version $Revision: 1.8 $, $Date: 2002/04/30 13:53:45 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -231,7 +231,7 @@ c     --- grid cells to the first processor so it will have the injection
 c     --- surface completely covered.
       if (inject > 1) then
         zinjmax = ainject**2/(rinject+sqrt(rinject**2-ainject**2))
-        nzinj = int(maxval(zinject + zinjmax - zmmin)/dz + inj_d) + 1
+        nzinj = int(maxval((zinject + zinjmax - zmmin)/dz + inj_d)) + 1
         nzpslave(0) = max(nzpslave(0),nzinj)
       endif
 
