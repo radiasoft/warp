@@ -17,6 +17,9 @@ import __main__
 __main__.selectbox = 1
 __main__.l_hardware_acceleration = 1
 __main__.l_dxforceupdate = 0
+__main__.l_dxupdate_all_windows = 1
+__main__.l_dxnewwindow = 0
+__main__.DXWindows={}
 
 try:
   # --- Try importing. If not found, still define the functions and classes.
@@ -25,7 +28,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.21 2004/12/15 23:37:26 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.22 2004/12/21 21:43:19 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -40,7 +43,7 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
                        take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,scale=1.,ratio=1.,**kw):
+def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,ratio=1.,stride=1,type='speedy',scale=None,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -56,7 +59,30 @@ def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,scale=1.,rat
   if zscale is not None:
     zz = zz*zscale
   return viewparticles(xx,yy,zz,cc,
-                       labels,name='WARP viz',display=display,scale=scale,ratio=ratio)
+                       labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale)
+
+def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=0.,stride=1,type='standard',scale=None,**kw):
+  """Vector Plot X-Y-Z-Vx-Vy-Vz"""
+  checkparticleplotarguments(kw)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if labels == 1: labels = ['X','Y','Z']
+  xx = take(top.xp,ii)
+  yy = take(top.yp,ii)
+  zz = take(top.zp,ii)
+  vx = take(top.uxp,ii)
+  vy = take(top.uyp,ii)
+  vz = take(top.uzp,ii)
+  gg = take(top.gaminv,ii)
+  vx=vx*gg
+  vy=vy*gg
+  vz=vz*gg
+  if rscale is not None:
+    xx = xx*rscale
+    yy = yy*rscale
+  if zscale is not None:
+    zz = zz*zscale
+  return viewvparticles(xx,yy,zz,vx,vy,vz,
+                       labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale,normalize=1)
 
 ###########################################################################
 def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
@@ -103,12 +129,18 @@ def viewisosurface(data,isovalue,name='WARP viz'):
   DXImage(group,camera,name)
 
 ###########################################################################
-def viewparticles(x,y,z,v,labels=None,name='WARP viz',
-                  display=1,scale=1.,ratio=1.):
-  x = gatherarray(x)
-  y = gatherarray(y)
-  z = gatherarray(z)
-  v = gatherarray(v)
+def viewparticles(x,y,z,v,labels=None,name=None,
+                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None):
+  if stride==1:
+    x = gatherarray(x)
+    y = gatherarray(y)
+    z = gatherarray(z)
+    v = gatherarray(v)
+  else:
+    x = gatherarray(x[::stride])
+    y = gatherarray(y[::stride])
+    z = gatherarray(z[::stride])
+    v = gatherarray(v[::stride])
   if me > 0: return
   # --- First combine particle data and create a DX array
   n = len(x)
@@ -129,11 +161,91 @@ def viewparticles(x,y,z,v,labels=None,name='WARP viz',
   DXEndField(dxf)
 
   # --- Create glyphs to render data
-  minput = {'data':dxf,'type':'speedy','ratio':ratio,'scale':scale}
+  if scale is not None:
+    origin = array([0.,0.,0.]).astype(Float32)
+    dxorigin = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+    DXAddArrayData(dxorigin,0,1,origin)
+
+    dxdata = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,0)
+    DXAddArrayData(dxdata,0,1,array(1.,Float32))
+
+    minput = {'origin':dxorigin,'data':dxdata}
+    moutput = ['output']
+    (glyph_data,) = DXCallModule('Construct',minput,moutput)
+
+    minput = {'data':glyph_data,'type':type,'scale':1.}
+    moutput = ['glyphs']
+    (glyph,) = DXCallModule('Glyph',minput,moutput)
+    
+    dxscale = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+    DXAddArrayData(dxscale,0,1,array([1./scale[0],1./scale[1],1./scale[2]],Float32))
+    minput  = {'input':glyph,'scaling':dxscale}
+    moutput = ['output']
+    (type,) = DXCallModule('Scale',minput,moutput)
+
+  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
   moutput = ['glyphs']
   (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
 
-  minput = {'data':glyphs,'opacity':.5}
+  minput = {'data':glyphs}#,'opacity':.5} # significant slow down with opacity<1.
+  moutput = ['mapped']
+  (dxobject,) = DXCallModule('AutoColor',minput,moutput)
+
+  if display:
+    DXImage(dxobject,name=name,labels=labels,scale=scale)
+  else:
+    return dxobject
+
+###########################################################################
+def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
+                  display=1,size=1.,ratio=0.,stride=1,type='standard',scale=None,normalize=0):
+  if stride==1:
+    x = gatherarray(x)
+    y = gatherarray(y)
+    z = gatherarray(z)*0.1
+    vx = gatherarray(vx)
+    vy = gatherarray(vy)
+    vz = gatherarray(vz)
+  else:
+    x = gatherarray(x[::stride])
+    y = gatherarray(y[::stride])
+    z = gatherarray(z[::stride])
+    vx = gatherarray(vx[::stride])
+    vy = gatherarray(vy[::stride])
+    vz = gatherarray(vz[::stride])
+  if me > 0: return
+  if normalize:
+    vx = vx/ave(abs(vx))
+    vy = vy/ave(abs(vy))
+    vz = vz/ave(abs(vz))
+    
+  # --- First combine particle data and create a DX array
+  n = len(x)
+  p = zeros((n,3),'d')
+  p[:,0] = x
+  p[:,1] = y
+  p[:,2] = z
+  v = zeros((n,3),'d')
+  v[:,0] = vx
+  v[:,1] = vy
+  v[:,2] = vz
+  dxp = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxp,0,n,p.astype(Float32))
+  dxv = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxv,0,n,v.astype(Float32))
+
+  # --- Create the field
+  dxf = DXNewField()
+  DXSetComponentValue(dxf,'positions',dxp)
+  DXSetComponentValue(dxf,'data',dxv)
+  DXEndField(dxf)
+
+  # --- Create glyphs to render data
+  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
+  moutput = ['glyphs']
+  (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
+
+  minput = {'data':glyphs}#,'opacity':.5}
   moutput = ['mapped']
   (dxobject,) = DXCallModule('AutoColor',minput,moutput)
 
@@ -176,7 +288,7 @@ Create a box
   (box,) = DXCallModule('Color',minput,moutput)
   return box
 
-def DXMountainPlot(f,xmin=0.,ymin=0.,dx=1.,dy=1.,scale=1.,display=1,labels=['x','y','z'],name = 'Mountain plot',perspective=1):
+def DXMountainPlot(f,xmin=0.,ymin=0.,dx=1.,dy=1.,scale=1.,display=1,labels=['x','y','z'],name = None,perspective=1):
   fshape = shape(f)
   nx = fshape[0]
   ny = fshape[1]
@@ -322,15 +434,41 @@ class DXCollection(Visualizable):
   def __add__(self,right):
     return DXCollection(self,right)
 
+class DXWindow:
+  def __init__(self,name):
+    self.name = name
+
 ###########################################################################
 #==========================================================================
-__main__.interactor = 0
 def interactor_handler():
   getchar = sys.stdin.readline()[:-1]
-  if len(getchar) > 0: __main__.interactor = eval(getchar)
-  else:                __main__.interactor = -1
+  if len(getchar) > 0: __main__.dxwindow.interactor = eval(getchar)
+  else:                __main__.dxwindow.interactor = -1
 
-def DXImage(object,camera=None,name='WARP viz',labels=None,hardware=0):
+def DXSuperviseWindow(name,visibility=1):
+    minput = {'name':name,'visibility':visibility}
+    moutput = ['where','size','events']
+    return DXCallModule('SuperviseWindow',minput,moutput)
+
+def DXScale(dxobject,scale):
+    dxscale = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+    DXAddArrayData(dxscale,0,1,array(scale,Float32))
+    minput  = {'input':dxobject,'scaling':dxscale}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Scale',minput,moutput)
+    return dxobject_out
+
+def DXAutoAxes(dxobject,camera,labels):
+    assert (len(labels) == 3),"Length of labels list must be three"
+    DXReference(camera)
+    labels = DXMakeStringList(labels)
+    minput = {'input':dxobject,'camera':camera,'labels':labels,
+              'ticks':3,'adjust':1,'colors':'grey'}#'yellow'}
+    moutput = ['axes']
+    (dxobject_out,) = DXCallModule('AutoAxes',minput,moutput)
+    return dxobject_out
+
+def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None):
   """
 Displays an image of the input object, allowing mouse controls for moving the
 image. Default mode is rotation. Press 1 for panning, 2 for zooming.
@@ -342,7 +480,12 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
  - labels=None: when specified, axis with labels are included. labels must be
                 of list containing three strings.
   """
-  global interactor
+
+  if name is None:
+    if __main__.l_dxnewwindow or (__main__.DXWindows=={}): 
+      name='WARP viz %g'%(len(__main__.DXWindows.keys())+1)
+    else:
+      name=__main__.dxwindow.name
 
   group = DXCollection(object)
   dxobject = group.getdxobject()
@@ -353,38 +496,71 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
   minput = {'input':dxobject,'attribute':'cache','value':0}
   moutput = ['output']
   (dxobject,) = DXCallModule('Options',minput,moutput)
+  if not __main__.DXWindows.has_key('name'):
+    __main__.DXWindows[name]=DXWindow(name)
+  __main__.dxwindow=__main__.DXWindows[name]
+  
+  __main__.dxwindow.dxobject_init = dxobject
+  __main__.dxwindow.dxobject      = dxobject
+  __main__.dxwindow.interactor    = 0
+  __main__.dxwindow.previousmode  = 0
 
   if hardware:
-    minput = {'input':dxobject,'attribute':'rendering mode','value':'hardware'}
-    moutput = ['output']
-    (dxobject,) = DXCallModule('Options',minput,moutput)
+    __main__.dxwindow.l_hardware_acceleration=1
+  else:
+    __main__.dxwindow.l_hardware_acceleration=0
+
+  if scale is None:
+     __main__.dxwindow.dxscale=[1.,1.,1.]
+  __main__.dxwindow.dxobject = DXScale(__main__.dxwindow.dxobject_init,__main__.dxwindow.dxscale)
 
   if camera is None:
-    DXReference(dxobject)
-    minput = {'object':dxobject}
+    DXReference(__main__.dxwindow.dxobject)
+    minput = {'object':__main__.dxwindow.dxobject}
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
 
-  if labels is not None:
-    assert (len(labels) == 3),"Length of lables list must be three"
-    DXReference(camera)
-    labels = DXMakeStringList(labels)
-    minput = {'input':dxobject,'camera':camera,'labels':labels,
-              'ticks':3,'adjust':1,'colors':'grey'}#'yellow'}
-    moutput = ['axes']
-    (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
+  try:
+    __main__.gui_is_on = __main__.wgui.initialized
+  except:
+    __main__.gui_is_on = 0
+  if  not __main__.gui_is_on:
+    DXRegisterInputHandler(interactor_handler)
 
-  DXRegisterInputHandler(interactor_handler)
+  def dxinter_loop(dxwindow,l_init=0,forceupdate=0):
+    if dxwindow.wevents.isnull() and not l_init and not forceupdate:
+      DXDelete(dxwindow.wwhere)
+      DXDelete(dxwindow.wsize)
+    else:
+      if dxwindow.l_dxhaslabels:
+        if dxwindow.l_dxrescaled:
+          dxwindow.dxobject = DXAutoAxes(dxwindow.dxobject,camera,labels) 
+          if dxwindow.l_hardware_acceleration:
+            DXRendering(dxwindow,rendering='hardware')
+          else:
+            DXRendering(dxwindow,rendering='software')
+          dxwindow.l_dxrescaled=0
+      dxobject = dxwindow.dxobject
 
-  def dxinter(l_init=0,name=None,dxobject=None):
-    if dxobject is None: dxobject = __main__.wgui.dxobject
-    if name is None: name = __main__.wgui.dxname
+      # --- This is needed and sometimes not.
+      DXReference(dxobject)
+      minput = {'where':dxwindow.wwhere,'size':dxwindow.wsize,'events':dxwindow.wevents,
+                'object':dxobject,'mode':dxwindow.interactor,'resetObject':1}
+      if l_init:
+        minput['defaultCamera'] = camera
+        minput['resetCamera'] = 1
+      moutput = ['object','camera','where']
+      (dxwindow.dobject,dxwindow.dcamera,dxwindow.dwhere,) = DXCallModule('SuperviseState',minput,moutput)
 
+      minput = {'object':dxwindow.dobject,'camera':dxwindow.dcamera,'where':dxwindow.dwhere}
+      moutput = []
+      DXCallModule('Display',minput,moutput)
+
+  def dxinter(l_init=0):
     DXCheckRIH(0)
+    winit = __main__.dxwindow
 
-    minput = {'name':name}
-    moutput = ['where','size','events']
-    (wwhere,wsize,wevents,) = DXCallModule('SuperviseWindow',minput,moutput)
+    (winit.wwhere,winit.wsize,winit.wevents,) = DXSuperviseWindow(winit.name)
 
     # --- Special coding is needed when hardware acceleration is used. The
     # --- hardware seems to be capturing all events so that the events
@@ -396,65 +572,60 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     # --- events is alway null when using hardware acceleration.
     try: dxinter.previousmode
     except: dxinter.previousmode = 0
-    forceupdate = (((__main__.interactor != dxinter.previousmode) and
-                   (hardware or __main__.l_hardware_acceleration)) or 
+    forceupdate = (((winit.interactor != winit.previousmode) and
+                   (hardware or dxwindow.l_hardware_acceleration)) or 
                    __main__.l_dxforceupdate)
-    __main__.l_dxforceupdate = 0
-    dxinter.previousmode = __main__.interactor
-
-    if wevents.isnull() and not l_init and not forceupdate:
-      DXDelete(wwhere)
-      DXDelete(wsize)
+    if __main__.l_dxupdate_all_windows:
+      for w in __main__.DXWindows.itervalues():
+        if w is not winit:
+          (w.wwhere,w.wsize,w.wevents,) = DXSuperviseWindow(w.name)
+        w.interactor=winit.interactor
+        w.l_hardware_acceleration=winit.l_hardware_acceleration
+        dxinter_loop(w,l_init,forceupdate)
     else:
-      # --- This is needed and sometimes not.
-      DXReference(dxobject)
-      minput = {'where':wwhere,'size':wsize,'events':wevents,
-                'object':dxobject,'mode':__main__.interactor,'resetObject':1}
-      if l_init:
-        minput['defaultCamera'] = camera
-        minput['resetCamera'] = 1
-      moutput = ['object','camera','where']
-      (__main__.dobject,__main__.dcamera,__main__.dwhere,) = DXCallModule('SuperviseState',minput,moutput)
+      dxinter_loop(winit,l_init,forceupdate)
 
-      minput = {'object':__main__.dobject,'camera':__main__.dcamera,'where':__main__.dwhere}
-      moutput = []
-      DXCallModule('Display',minput,moutput)
+    __main__.l_dxforceupdate = 0
+    winit.previousmode = winit.interactor
 
-  try:
-    gui_is_on = __main__.wgui.initialized
-  except:
-    gui_is_on = 0
-
-  if gui_is_on:
-    __main__.wgui.dxinter = dxinter
-    __main__.wgui.dxname  = name
-    __main__.wgui.dxobject = dxobject
-    if __main__.l_hardware_acceleration:
-      minput = {'input':__main__.wgui.dxobject,'attribute':'rendering mode','value':'hardware'}
-      moutput = ['output'] 
-      (__main__.wgui.dxobject,) = DXCallModule('Options',minput,moutput)
-    dxinter(1)
-    __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
-    __main__.wgui.dx_timer.Start(100)
+  if labels is not None:
+    __main__.dxwindow.l_dxrescaled=1
+    __main__.dxwindow.l_dxhaslabels=1
+    __main__.dxwindow.dxlabels = labels
   else:
-    dxinter(1,name,dxobject)
-    __main__.interactor = 0
+    __main__.dxwindow.l_dxhaslabels=0
+  if __main__.gui_is_on:
+    __main__.wgui.dxinter = dxinter
+    __main__.wgui.dxname   = name
+    if __main__.dxwindow.l_hardware_acceleration:
+      DXRendering(__main__.dxwindow,rendering='hardware')
+    tmpvar=__main__.l_dxupdate_all_windows
+    __main__.l_dxupdate_all_windows=0
+    dxinter(1)
+    __main__.l_dxupdate_all_windows=tmpvar
+    try:
+      timer = __main__.wgui.dx_timer
+    except:
+      __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
+      __main__.wgui.dx_timer.Start(100)
+  else:
+    dxinter(1)
     print "Press 0 for rotation, 1 for panning, 2 for zooming, return to exit."
     print "Default mode is rotation."
-    while __main__.interactor >=0:
-      dxinter(0,name,dxobject)
+    while __main__.dxwindow.interactor >=0:
+      dxinter()
     DXDelete(dxobject)
-    interactor = 0
+    __main__.interactor = 0
 
-def DXRendering(rendering='software'):
-  minput = {'input':__main__.wgui.dxobject,'attribute':'rendering mode','value':rendering}
+def DXRendering(dxwindow,rendering='software'):
+  minput = {'input':dxwindow.dxobject,'attribute':'rendering mode','value':rendering}
   moutput = ['output']
-  (__main__.wgui.dxobject,) = DXCallModule('Options',minput,moutput)
+  (dxwindow.dxobject,) = DXCallModule('Options',minput,moutput)
   __main__.l_dxforceupdate=1
   if rendering=='hardware':
-    __main__.l_hardware_acceleration=1
+    dxwindow.l_hardware_acceleration=1
   else:
-    __main__.l_hardware_acceleration=0
+    dxwindow.l_hardware_acceleration=0
 
 def DXNewImage():
   _group.reset()
@@ -500,12 +671,17 @@ Writes an image of the object to a file.
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
 
-  minput = {'object':dxobject,'camera':camera}
-  moutput = ['image']
-  (image,) = DXCallModule('Render',minput,moutput)
+  if format=="dx" or format=="vrml":
+    minput = {'object':dxobject,'name':filename,'format':format}
+    moutput = []
+    DXCallModule('Export',minput,moutput)
+  else:
+    minput = {'object':dxobject,'camera':camera}
+    moutput = ['image']
+    (image,) = DXCallModule('Render',minput,moutput)
 
-  minput = {'image':image,'name':filename}
-  if format is not None: minput['format'] = format
-  moutput = []
-  DXCallModule('WriteImage',minput,moutput)
+    minput = {'image':image,'name':filename}
+    if format is not None: minput['format'] = format
+    moutput = []
+    DXCallModule('WriteImage',minput,moutput)
 
