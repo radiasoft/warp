@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.26 2004/07/08 19:34:13 jlvay Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.27 2004/07/12 23:28:09 jlvay Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -729,12 +729,12 @@ Performs steady-state iterations in a cascade using different resolutions.
   if AMRlevels>0:
     w3d.AMRlevels = AMRlevels
     fieldsol()
-    tmp = w3d.AMRgenerate_frequency 
-    w3d.AMRgenerate_frequency = 1
+    tmp = w3d.AMRgenerate_periodicity 
+    w3d.AMRgenerate_periodicity = 1
     AMRtree = __main__.__dict__['AMRtree']
     AMRtree.conductors += conductors
     AMRtree.generate()
-    w3d.AMRgenerate_frequency = 1000000
+    w3d.AMRgenerate_periodicity = 1000000
     fieldsol(-1)
     gun(1,0,save_same_part,maxtime,
         laccumulate_zmoments,None,
@@ -744,7 +744,7 @@ Performs steady-state iterations in a cascade using different resolutions.
         laccumulate_zmoments,rhoparam,
         lstatusline,insertbeforeiter,insertafteriter,
         None,egundata_window,plottraces_window)
-    w3d.AMRgenerate_frequency = tmp
+    w3d.AMRgenerate_periodicity = tmp
   return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
           egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
 
