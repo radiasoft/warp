@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.48 $, $Date: 2002/04/12 21:10:13 $
+c@(#) File W3D.M, version $Revision: 3.49 $, $Date: 2002/04/12 22:17:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -266,8 +266,10 @@ c     curr = 0.
          enddo
       enddo
       call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
-      if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
-
+      if(solvergeom==RZgeom) then
+        call distribute_rho(basegrid)
+        call get_rho_rz(rho(0,0,0),nx,nz,1)
+      end if
 c  Set up for injection
       if (inject .gt. 0) call injctint
 
@@ -1206,6 +1208,7 @@ c=============================================================================
       use InjectVars
       use Apertures
       use FRZmgrid
+      use multigridrz
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
@@ -1510,7 +1513,10 @@ c       --- Collect charge density (3d) and current (1d)
             endif
           enddo
         enddo
-        if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
+        if(solvergeom==RZgeom) then
+          call distribute_rho(basegrid)
+          call get_rho_rz(rho(0,0,0),nx,nz,1)
+        end if
 
 c       --- Make rho periodic if periodic in z (if not accumulating rho)
         if (.not. laccumulate_rho)
@@ -3579,6 +3585,7 @@ c=============================================================================
       use Particles
       use Fields3d
       use FRZmgrid
+      use multigridrz
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -3633,7 +3640,10 @@ c        --- loop over particle blocks
             end if
          enddo
       enddo
-      if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
+      if(solvergeom==RZgeom) then
+        call distribute_rho(basegrid)
+        call get_rho_rz(rho(0,0,0),nx,nz,1)
+      end if
 
 c     --- enforce axial periodicity
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
@@ -4872,7 +4882,10 @@ c         --- are injected.
               end if
             enddo
           enddo
-          if(solvergeom==RZgeom) call rhobndrz(rho(0,0,0),nx,nz)
+          if(solvergeom==RZgeom) then
+            call distribute_rho(basegrid)
+            call get_rho_rz(rho(0,0,0),nx,nz,1)
+          end if
 
         elseif (itask == 3) then
 c         --- Only include new particles now, after rest of particles have
