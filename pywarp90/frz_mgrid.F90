@@ -4714,12 +4714,16 @@ INTEGER(ISZ) :: igrid, nr, nz
     nr = grids_ptr(igrid)%grid%nr
     nz = grids_ptr(igrid)%grid%nz
 #ifdef MPIPARALLEL
-    IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rhop(1,:)    = 2._8*grids_ptr(igrid)%grid%rhop(1,:)
+    IF(solvergeom/=RZgeom) then
+      IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rhop(1,:)    = 2._8*grids_ptr(igrid)%grid%rhop(1,:)
+    END if
     IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rhop(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rhop(nr+1,:)
     IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rhop(:,1)    = 2._8*grids_ptr(igrid)%grid%rhop(:,1)
     IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rhop(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rhop(:,nz+1)
 #else
-    IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rho(1,:)    = 2._8*grids_ptr(igrid)%grid%rho(1,:)
+    IF(solvergeom/=RZgeom) then
+      IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rho(1,:)    = 2._8*grids_ptr(igrid)%grid%rho(1,:)
+    END if
     IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rho(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rho(nr+1,:)
     IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rho(:,1)    = 2._8*grids_ptr(igrid)%grid%rho(:,1)
     IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rho(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rho(:,nz+1)
