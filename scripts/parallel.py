@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.14 2002/08/30 20:52:30 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.15 2002/09/23 20:32:19 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -82,7 +82,12 @@ def pprint(obj):
   if not lparallel:
     print str(obj)
     return
-  mpi.synchronizedWrite(str(obj)+'\n')
+  # Ignore all exceptions to make sure that there is not a lock up.
+  try:
+    ss = str(obj)
+  except:
+    ss = ''
+  mpi.synchronizedWrite(ss+'\n')
   if mpi.rank == 0: print
 
 # ---------------------------------------------------------------------------
