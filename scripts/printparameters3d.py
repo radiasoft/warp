@@ -20,16 +20,17 @@ def printparameters3d():
       f20%("Grid spacing in z = ",w3d.dz," m")
   if top.nbend >= 1:
     xrbend = top.bendrc[0]
-    xbbend = top.dipoby[0]
     xbendlen = top.bendze[0] - top.bendzs[0]
     xstralen = top.bendzs[1] - top.bendze[0]
     xz0bend = top.bendzs[1]
     textblock = textblock + \
       f20%("Bend radius = ",xrbend," m") + \
-      f20%("Bending field = ",xbbend," T") + \
       f20%("Bend length = ",xbendlen," m") + \
       f20%("Straight section length = ",xstralen," m") + \
       f20%("Z at start of first bend = ",xz0bend," m")
+    if top.ndipo == 0:
+      xbbend = top.dipoby[0]
+      textblock = textblock + f20%("Bending field = ",xbbend," T") + \
   plt(textblock,0.12,0.88,justify="LT")
   fma()
 
