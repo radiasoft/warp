@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.95 $, $Date: 2003/06/30 18:52:45 $
+c@(#) File TOP.M, version $Revision: 3.96 $, $Date: 2003/06/30 19:49:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4474,7 +4474,7 @@ c       --- Compute overall true RMS positions
         xrms(0) = sqrt(max(SMALLPOS,delxsq))
         yrms(0) = sqrt(max(SMALLPOS,delysq))
         zrms(0) = sqrt(max(SMALLPOS,delzsq))
-        rrms(0) = sqrt(xsqbar(0) + ysqbar(0))
+        rrms(0) = sqrt(xrms(0)**2 + yrms(0)**2)
 
 c       --- Compute overall true RMS velocities
         xprms(0) = sqrt(max(SMALLPOS,delxpsq))
@@ -4581,7 +4581,7 @@ c           --- Compute overall true RMS positions
             xrmsz(izm) = sqrt(max(SMALLPOS,delxsq))
             yrmsz(izm) = sqrt(max(SMALLPOS,delysq))
             zrmsz(izm) = sqrt(max(SMALLPOS,delzsq))
-            rrmsz(izm) = sqrt(xsqbarz(izm) + ysqbarz(izm))
+            rrmsz(izm) = sqrt(xrmsz(izm)**2 + yrmsz(izm)**2)
 
 c           --- Compute overall true RMS velocities
             xprmsz(izm) = sqrt(max(SMALLPOS,delxpsq))
