@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.136 2004/11/19 00:52:15 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.137 2004/12/01 00:23:38 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -495,7 +495,6 @@ def ppmoments(text):
 
 #############################################################################
 #############################################################################
-vpythonscenelist = []
 #############################################################################
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
@@ -984,15 +983,17 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make surface plot
   if surface and me == 0 and nx > 1 and ny > 1:
     try:
-      import VPythonobjects
+      #import VPythonobjects
+      import pyOpenDX
       if type(color) != ListType: scolor = None
       else:                       scolor = color
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
       zrange = 1.5*maxnd(abs(grid))
-      vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
-                                     color=scolor,vrange=(xrange,yrange,zrange))
-      vpythonscenelist.append(vo.scene)
+     #vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
+     #                               color=scolor,vrange=(xrange,yrange,zrange))
+      vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy,
+                                   name=(default_titlet or 'Mountain plot'))
     except ImportError:
       pl3d.orient3()
       pl3d.light3()
@@ -1448,11 +1449,6 @@ box around the area to be zoomed to.
   ymin = min(m1[1],m1[3])
   ymax = max(m1[1],m1[3])
   limits(xmin,xmax,ymin,ymax)
-
-#############################################################################
-def hidesurfaces():
-  for scene in vpythonscenelist:
-    scene.visible = 0
 
 #############################################################################
 #############################################################################
