@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.35 $, $Date: 2002/06/26 00:45:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.36 $, $Date: 2002/06/26 19:31:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1627,7 +1627,7 @@ c Makes call to the recursive routine which generates the conductors.
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nx1,ny1,nz1,nzfull1
       integer(ISZ):: globalb0,globalbnz
       integer(ISZ):: localb0,localbnz
 
@@ -1655,6 +1655,7 @@ c       --- Set the grid parameters for this level
         nx1 = mglevelsnx(il)
         ny1 = mglevelsny(il)
         nz1 = mglevelsnz(il)
+        nzfull1 = mglevelsnzfull(ii)
         zmmin1 = zmminglobal + dz1*mglevelsiz(il)
         localb0 = globalb0
         localbnz = globalbnz
