@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.108 $, $Date: 2003/05/27 22:15:56 $
+c@(#) File W3D.M, version $Revision: 3.109 $, $Date: 2003/06/02 22:24:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4473,7 +4473,11 @@ c           --- need to be loaded in each of the four quadrants.
               spready = 1
             elseif(solvergeom==RZgeom) then
               spreadx = 1
-              spready = 1
+              if(l_inj_rz) then
+                spready = 0
+              else
+                spready = 1
+              end if
             elseif(solvergeom==XZgeom) then
               spreadx = 1
               spready = 0
@@ -4481,7 +4485,6 @@ c           --- need to be loaded in each of the four quadrants.
               spreadx = 0
               spready = 0
             endif
-            if (l_inj_rz) spready = 0
 
             do is=1,ns
 
@@ -4595,10 +4598,13 @@ c                 --- correct.  For example, if rnn < 1., without the
 c                 --- addition of the random number, no particles would ever
 c                 --- be injected.  With the random number, particles will be
 c                 --- injected and but the average number will be less than 1.
-                 if(.not. l_inj_regular) rnn = rnn + wranf()
-
-c                 --- divide number of particles injected by two on axis when using radial injection
-                  if(l_inj_rz .and. ix==0) rnn = 0.5*rnn
+                 if(.not. l_inj_regular) then
+                   rnn = rnn + wranf()
+c                  --- divide number of particles injected by two on axis when using radial injection
+                   if(l_inj_rz .and. ix==0) rnn = 0.5*rnn
+                 else
+                   rnn = rnn * inj_area(ix,iy,ij)
+                 end if
 
 c                 --- Convert to integer.
                   if(.not.l_inj_regular) then
@@ -4608,20 +4614,26 @@ c                 --- Convert to integer.
                   end if
 
 c                 --- Only do following work if particles are to be injected
-                  if (nn <= 0) cycle
+                  if (nn <= 0 .or. rnn<=0.) cycle
 
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source. The second call makes it absolutely sure
 c                 --- that there is enough room available in case the
 c                 --- first estimate is wrong.
-                  call chckpart(is,int(nn*ainj*binj*pi*dxi*dyi),0,.true.)
-                  call chckpart(is,nn+npinje_s(is),0,.true.)
+                  if(.not.l_inj_regular) then
+                    if(.not.l_inj_rz) then
+                      call chckpart(is,max(nn+npinje_s(is),int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
+                    else
+                      call chckpart(is,max(nn+npinje_s(is),int(nn*ainj*dxi)),0,.true.)
+                    end if
+                  else
+                    call chckpart(is,max(nn+npinje_s(is),int((inj_nx+1)*(inj_ny+1))),0,.true.)
+                  end if
 
 c                 --- loop to load new particles
                   do ip=1,nn
                     ii = ins(is) - npinje_s(is) - 1
-
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
 
@@ -4629,7 +4641,11 @@ c                   --- calculate x, y and z of new particle
 c                   --- if within injection source load it, else skip it
                     if(.not.l_inj_regular) then
                       xp(ii)=xm+spreadx*(rnrev(injctcnt,dig1)-.5)*inj_dx*2.
-                      yp(ii)=ym+spready*(rnrev(injctcnt,dig2)-.5)*inj_dy*2.
+                      if(.not. l_inj_rz) then
+                        yp(ii)=ym+spready*(rnrev(injctcnt,dig2)-.5)*inj_dy*2.
+                      else
+                        yp(ii)=0.
+                      endif
                     else
                       xp(ii)=xm
                       yp(ii)=ym
@@ -4642,14 +4658,13 @@ c                   --- first quadrant.
                     xx = xp(ii)
                     yy = yp(ii)
                     if ((xx*ainji)**2 + (yy*binji)**2 > 1.) cycle
-                    if(.not.l_inj_regular .and.solvergeom/=Zgeom) then
+                    if(solvergeom/=Zgeom .and. ainjmin(ij)>0.  .and. binjmin(ij)>0.) then
                        if((xx*ainjmini)**2 + (yy*binjmini)**2 < 1.) cycle
                     end if
-
                     if(l_inj_regular) then
                       if(l_inj_rz) then
                         r_tmp=abs(xp(ii))
-                        theta_tmp = 2.*pi*wranf()
+                        theta_tmp = 2.*pi*wranf()!rnrev(injctcnt,dig2)
                         xp(ii) = r_tmp*cos(theta_tmp)
                         yp(ii) = r_tmp*sin(theta_tmp)
                         if(ix==0) then
@@ -4665,46 +4680,39 @@ c                   --- first quadrant.
 c                     --- if inject only radially, use variable weights and assign pid
                       if(l_inj_rz) then
                         r_tmp=abs(xp(ii))
-                        theta_tmp = 2.*pi*wranf()
+                        theta_tmp = 2.*pi*wranf()!rnrev(injctcnt,dig2)
                         xp(ii) = r_tmp*cos(theta_tmp)
                         yp(ii) = r_tmp*sin(theta_tmp)
                         pid(ii,wpid) = 2.*r_tmp*ainji
                       end if
                     end if
 
-c                   --- find injection surface axial location by interpolation
-                    if(l_inj_rz) then
-                      ixx = spreadx*(abs(r_tmp - inj_xmmin(ij))*dxi)
-                      iyy = 0
-                      wxx = spreadx*(abs(r_tmp - inj_xmmin(ij))*dxi - ixx)
-                      wyy = 0.
+                    if(l_inj_exact .or. l_inj_rz) then
+                      zp(ii) = (xp(ii)**2+yp(ii)**2)/
+     &                       (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
+     &                       + inj_addfdz*inj_dz
+                      az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
                     else
+c                     --- find injection surface axial location by interpolation
                       ixx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi)
                       iyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi)
                       wxx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi - ixx)
                       wyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi - iyy)
+                      zp(ii) = inj_grid(ixx        ,iyy        ,ij)*(1.-wxx)*(1.-wyy) +
+     &                         inj_grid(ixx+spreadx,iyy        ,ij)*    wxx *(1.-wyy) +
+     &                         inj_grid(ixx        ,iyy+spready,ij)*(1.-wxx)*    wyy  +
+     &                         inj_grid(ixx+spreadx,iyy+spready,ij)*    wxx *    wyy  +
+     &                         inj_zstart(ij)
+
+c                     --- find injection angle due to curvature by interpolation
+                      az = inj_angl(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
+     &                     inj_angl(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
+     &                     inj_angl(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
+     &                     inj_angl(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
                     end if
-                    zp(ii) = inj_grid(ixx        ,iyy        ,ij)*(1.-wxx)*(1.-wyy) +
-     &                       inj_grid(ixx+spreadx,iyy        ,ij)*    wxx *(1.-wyy) +
-     &                       inj_grid(ixx        ,iyy+spready,ij)*(1.-wxx)*    wyy  +
-     &                       inj_grid(ixx+spreadx,iyy+spready,ij)*    wxx *    wyy  +
-     &                       inj_zstart(ij)
 
 c                   --- Only inject particles within the injection region.
                     if (zp(ii)+zinj < inj_zmmin .or. zp(ii)+zinj >= inj_zmmax) cycle
-
-c                   --- find injection angle due to curvature by interpolation
-                    az = inj_angl(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
-     &                   inj_angl(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
-     &                   inj_angl(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
-     &                   inj_angl(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
-
-c          --- perform 'exact' calculation of zp and az rather than by interpolation
-
-c            zp(ii) = zinject(ij) + (xp(ii)**2+yp(ii)**2)/
-c     &       (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
-c     &      + 0.01*dz
-c            az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
 
 c                   --- Calculate transverse angle
                     aa = atan2(yp(ii),xp(ii))
@@ -4720,10 +4728,17 @@ c                   --- integer.
 c                   --- The fractions are chosen using the digit reversed
 c                   --- number generator and not particle number since they
 c                   --- are correlated with transverse position.
-                    pid(ii,injpid) = rnrev(injctcnt,dig5)
+                    if(.not. l_inj_regular) then
+                      pid(ii,injpid) = rnrev(injctcnt,dig5)
+                    else
+                      pid(ii,injpid) = rnrev(injctcnt,dig1)
+                    end if
 
 c                   --- save time of creation if tpid > 0
                     if(tpid>0) pid(ii,tpid) = time + dt
+
+c                   --- reverse sign of pid(ii,tpid) if temperature added after delay.
+c                   --- negative pid is then used to track particles on which to add temperature.
                     if(l_inj_delay_temp) pid(ii,tpid) = -pid(ii,tpid)
 
 c                   --- save radius of creation if rpid > 0
@@ -4758,7 +4773,6 @@ c                   --- are probably not correct.
                       uxp(ii) = uxp(ii) + spreadx*vtx*rnorm()
                       uyp(ii) = uyp(ii) + spready*vty*rnorm()
                     end if
-
 c                   --- Include the user specified vbeam (assumed to be a
 c                   --- normal), the thermal velocity, and the term from
 c                   --- the Child-Langmuir solution.
@@ -5234,25 +5248,29 @@ c     --- Setup grids covering injection surfaces.
       inj_ninj = ninject
       call gchange("InjectVars3d",0)
       do ij=1,ninject
-        ixmin = max(xmin,xinject(ij) - ainject(ij) - 2*dx)
+        ixmin = max(xmin,xinject(ij) - ainject(ij) - 2*dx)*oneiftrue(.not. l_inj_rz)
         ixmax = min(xmax,xinject(ij) + ainject(ij) + 2*dx)
         iymin = max(ymin,yinject(ij) - binject(ij) - 2*dy)*oneiftrue(.not. l_inj_rz)
         iymax = min(ymax,yinject(ij) + binject(ij) + 2*dy)*oneiftrue(.not. l_inj_rz)
-        inx = nint((ixmax - ixmin)/dx)
-        iny = nint((iymax - iymin)/dy)
+        if(inj_dx==0.) then
+          inx = nint((ixmax - ixmin)/dx)
+        else
+          inx = nint((ixmax - ixmin)/inj_dx)
+        endif
+        if(inj_dy==0.) then
+          iny = nint((iymax - iymin)/dy)
+        else
+          iny = nint((iymax - iymin)/inj_dy)
+        endif
         inj_nx = max(inj_nx,inx)
         inj_ny = max(inj_ny,iny)
       enddo
 
-      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
-        inj_dx = dx
-        inj_dy = dy
-        inj_dz = dz
-      elseif(solvergeom==RZgeom) then
-        inj_dx = dx
-        inj_dy = dx
-        inj_dz = dz
-      end if
+      if(inj_dx==0.) inj_dx = dx
+      if(inj_dy==0.) inj_dy = dy
+      inj_dz = dz
+      if(solvergeom==RZgeom) inj_dy = inj_dx
+      if(l_inj_rz) inj_ny = 0
       inj_dz0 = inj_dz
       if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(real(inj_nz-1)*2.**(1./3.)+real(2-inj_nz))**3
       if(inj_nz > 1 .and. ninject > 1) then
@@ -5485,7 +5503,11 @@ c Note that gchange is called instead of gallot since some the of arrays
 c in InjectVars3d may have been allocated by the user for specialized
 c control of injection.
       call gchange("InjectVars3d",0)
-      call fill_inj()
+      if(l_inj_rz) then
+        call fill_inj_rz(inj_dx,inj_dz,ix_axis)
+      else
+        call fill_inj()
+      end if
 
 c Set pid index for injection information for particles
       npid = npid + 1
@@ -5659,6 +5681,105 @@ c             --- the min is always ij.
 
             endif
           enddo
+        enddo
+      enddo
+
+      if (lw3dtimesubs) timefill_inj = timefill_inj + wtime() - substarttime
+      return
+      end
+c=============================================================================
+      subroutine fill_inj_rz(dx,dz,ix_axis)
+      use Subtimers3d
+      use InPart
+      use InMesh3d
+      use InjectVars
+      use InjectVars3d
+      real(kind=8):: dx,dz
+      integer(ISZ):: ix_axis
+
+c     --- Fill the injection grid array.  A padding of 2 grid cells is also
+c     --- set.
+c     --- The array inj_grid holds the axial location of the injection source
+c     --- as a function of the transverse coordinates, in the lab frame.
+c     --- The array inj_angl holds the angle due to the curvature of the source
+c     --- as a function of the transverse coordinates.
+
+
+      integer(ISZ):: ij,ix,iy,inj_ij
+      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
+      real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
+      real(kind=8):: ainji,binji
+      real(kind=8):: area
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      dxi = 1./dx
+      dzi = 1./dz
+
+c Loop over the injection sources.
+      do ij=1,ninject
+        inj_ij = min(ij,inj_ninj)
+c       --- Calculate the extent of the source plus guard cells.
+        ainj    = ainject(ij)
+        ainji   = 1./ainj
+        ai_dx = ainject(ij) + 2.*dx
+c       --- Loop over transverse plane.
+        do ix = 0,inj_nx
+c           --- transverse coordinate relative to center of source
+            xx = ix*inj_dx + inj_xmmin(ij)
+c           --- If the point is within source or guard cells, calculate both
+c           --- axial distance and angle of curvature.
+            if (xx - ai_dx <= 0.) then
+c             --- Write the expression for inj_grid so as to avoid
+c             --- subtraction of large, similar numbers when rinject is large.
+c             inj_grid(ix,iy,inj_ij) = zinject(ij) + (rinject(ij) -
+c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              inj_grid(ix,0,inj_ij) = xx**2 /
+     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2)))
+              inj_angl(ix,0,inj_ij) = asin(abs(xx)/rinject(ij))
+
+c             --- Calculate fraction of grid cell which is within the emitting
+c             --- surface.  Used to scale the charge density on the emitting
+c             --- surface.
+c             --- The calculation is done with the emitting area scaled to
+c             --- a unit circle.
+c             --- The result is the fraction of the two by two block around
+c             --- the grid point which is inside the emitting surface.
+
+c             --- First, put the grid point in the first quadrant and scale it.
+c             --- The max(0,) chop off any part that crosses the x or y axis.
+              xl = max(0.,(abs(xx) - dx)*ainji)
+              xu =        (abs(xx) + dx)*ainji
+
+c             --- If the two by two block is completely outside emitting
+c             --- surface, set the area to zero.
+              if (xl > 1.) then
+                area = 0.
+
+c             --- If two by two block straddles edge of emitting surface, do
+c             --- the calculation.
+              elseif (xl < 1. .and. 1. < xu) then
+                area = 1.-xl
+
+c               --- Normalize the area so that the total area of the block
+c               --- would be 1 (since area was calculated above on a
+c               --- unit circle).
+                area = area*dxi*ainj*0.5
+
+c               --- If the block is completely within the emitting surface,
+c               --- set the area to 1.
+              else
+                area = 1.
+              endif
+
+c             --- Now assign to inj_area. This is done here to simplify the
+c             --- coding above, primarily because of the third index here.
+c             --- Note that the min works, since inj_ninj is either 1 or
+c             --- ninject: if 1, then the min is always 1, if ninject, then
+c             --- the min is always ij.
+              inj_area(ix,iy,min(ij,inj_ninj)) = area
+
+            endif
         enddo
       enddo
 
@@ -6223,8 +6344,13 @@ c any conductor surface.
       if(inj_nz>1) call inj_sete_3darray(npart,ipmin,dz,ex,ey,ez)
 
       if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        spreadx = 1
-        spready = 1
+        if(.not.l_inj_rz) then
+          spreadx = 1
+          spready = 1
+        else
+          spreadx = 1
+          spready = 0
+        end if
       elseif(solvergeom==XZgeom) then
         spreadx = 1
         spready = 0
@@ -6319,13 +6445,14 @@ c         --- Child-Langmuir solution (for planar surfaces) is used.
 c           --- Scale the normal E field to match the Child-Langmuir solution
             en = en*fourthirds*(dd*inj_di)**onethird
           endif
+
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
           ex(ip) = -en*sin(az)*cos(aa)
           ey(ip) = -en*sin(az)*sin(aa)
           ez(ip) =  en*cos(az)
 
-          if (linj_eperp) then
+          if (linj_eperp .and. .not.l_inj_rz) then
 c           --- Add in the tangential fields if requested.
 c           --- Fetch the transverse field components. The field is linearly
 c           --- interpolated between the value of the emitting surface
@@ -6985,10 +7112,11 @@ c         dz1 = 2.*dz1
       dz_local(inj_nz) = dz_local(inj_nz-1)
 
 c     --- zero out the array
-      call zeroarry(inj_q(0,0,0,1),(1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
+      inj_q = 0.
 
 c     --- Loop over species and particles
-      do is=1,ns
+      if(.not. l_inj_rz) then
+       do is=1,ns
 
 c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
@@ -6996,7 +7124,6 @@ c       --- Transform the particles into the frame of the injection source
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                       nps(is),ijp(nps(is)),-1,.true.)
         endif
-
         wws = sq(is)*sw(is)*dxi*dyi
         do ip=ins(is),ins(is)+nps(is)-1
           if(wpid>0) then
@@ -7093,41 +7220,126 @@ c     --- Loop over unique injection sources
        do ij1 = 1,inj_ninj
 
 c       --- If two-fold symmetry, divide inj_rho by two except on x axis.
-        if (l2symtry) then
-          do iy=1,inj_ny
-            do ix=0,inj_nx
-              inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.5
+          if (l2symtry) then
+            do iy=1,inj_ny
+              do ix=0,inj_nx
+                inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.5
+              enddo
             enddo
-          enddo
-        endif
+          endif
 
 c       --- If four-fold symmetry, divide inj_rho by four, except on both axis
 c       --- divide by two, except the origin.
-        if (l4symtry .or. solvergeom==RZgeom) then
-          do iy=1,inj_ny
-            do ix=1,inj_nx
-              inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.25
+          if (l4symtry .or. solvergeom==RZgeom) then
+            do iy=1,inj_ny
+              do ix=1,inj_nx
+                inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.25
+              enddo
             enddo
-          enddo
-          do ix=1,inj_nx
-            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1)*0.5
-          enddo
-          do iy=1,inj_ny
-            inj_q(0,iy,:,ij1) = inj_q(0,iy,:,ij1)*0.5
-          enddo
-        endif
-
+            do ix=1,inj_nx
+              inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1)*0.5
+            enddo
+            do iy=1,inj_ny
+              inj_q(0,iy,:,ij1) = inj_q(0,iy,:,ij1)*0.5
+            enddo
+          endif
 c       --- Scale the charge density by the inverse of the fraction of the
 c       --- contributing area which is within the emitting surface.
-        do iy=0,inj_ny
-          do ix=0,inj_nx
-            if (inj_area(ix,iy,ij1) > 0.)
-     &        inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)/inj_area(ix,iy,ij1)
+          do iy=0,inj_ny
+            do ix=0,inj_nx
+              if (inj_area(ix,iy,ij1) > 0.)
+     &          inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)/inj_area(ix,iy,ij1)
+            enddo
           enddo
         enddo
+       end if
+      else !l_inj_rz=.true.
+       do is=1,ns
+        wws = sq(is)*sw(is)
+        do ip=ins(is),ins(is)+nps(is)-1
+          if(wpid>0) then
+            ww=wws*pid(ip,wpid)
+          else
+            ww=wws
+          end if
+          rr2 = xp(ip)**2 + yp(ip)**2
+          ix = int(sqrt(rr2)*dxi)
 
+c         --- Get number of injection source of particle.  The particle id
+c         --- has the number of the injection source the particle was
+c         --- emitted from. The int is needed since it is doing double
+c         --- duty and has other information stored in the fractional part.
+          ij = int(pid(ip,1))
+
+c         --- set temporaries
+          rinji = 1./rinject(ij)
+          rinj = rinject(ij)
+
+c         --- Calculate distance of particle from the emitting surface
+          if (abs(zp(ip)) < abs(rinj)) then
+c           --- The expression below for zp(ip)<rinj is mathematically identical
+c           --- to the commented out expression below.  That form is
+c           --- used so that for large values of rinj, i.e. a flat emitting
+c           --- surface, the correct value of the distance is calculated,
+c           --- namely zp(ip).
+c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
+            dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
+     &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+          else
+c           --- When zp(ip)>rinj, a seperate equation is needed.
+            dd = rinj + sqrt(rr2 + (zp(ip) - rinj)**2)
+          endif
+          dd = dd/deltaz(ij)
+
+c         --- Only deposit charge of particles in emitting area
+          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
+
+c           --- angle relative to z axis
+            az = atan2(sqrt(rr2),rinj-zp(ip))
+
+c           --- Map the particle position onto the emitting surface.
+            px = abs(rinj*sin(az) - xmmin)*dxi
+            ix = int(px)
+            wx1 = px - ix
+            wx0 = 1. - wx1
+            if(dd>dzmin) then
+              iz  = 1+int(real(inj_nz-1)*(1.-(1.-dd**onethird)/(1.-dzmin**onethird)))
+              wz1 = (dd-(1.-((real(inj_nz-iz))/real(inj_nz-1))*(1.-dzmin**onethird))**3)/dz_local(iz)
+c              iz  = int(real(inj_nz) - log(1./dd)/log(2.))
+c              wz1 = dd*2.**(inj_nz-iz)-1.
+            else
+c             prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
+              IF(l_find_rise_time) cycle
+              iz  = 0
+              wz1 = dd/dzmin
+            end if
+            wz0 = 1.-wz1
+
+c           --- Deposit the particle's charge onto the emitting region.
+            ij1 = min(ij,inj_ninj)
+            inj_q(ix   ,0   ,iz  , ij1) = inj_q(ix   ,0   ,iz  ,ij1) + ww*wx0*wz0
+            inj_q(ix+sx,0   ,iz  , ij1) = inj_q(ix+sx,0   ,iz  ,ij1) + ww*wx1*wz0
+            inj_q(ix   ,0   ,iz+1, ij1) = inj_q(ix   ,0   ,iz+1,ij1) + ww*wx0*wz1
+            inj_q(ix+sx,0   ,iz+1, ij1) = inj_q(ix+sx,0   ,iz+1,ij1) + ww*wx1*wz1
+
+          endif
+        enddo
        enddo
-      endif
+c     --- Loop over unique injection sources
+        do ij1 = 1,min(ij,inj_ninj)
+c       --- Scale the charge density by the inverse of the fraction of the
+c       --- contributing area which is within the emitting surface.
+         do ix=0,inj_nx
+          if (inj_area(ix,0,ij1) > 0.)
+     &      inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / inj_area(ix,0,ij1)
+          if(ix==0) then
+            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (pi*0.25*inj_dx**2)
+          else
+            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (2.*pi*ix*inj_dx**2)
+          end if
+         enddo
+        enddo
+      end if
 
 c     --- assign charge deposited on emitter surface (slice 0) to slice 1
       IF(.not. l_find_rise_time) then
@@ -7332,8 +7544,13 @@ c any conductor surface.
       if (lw3dtimesubs) substarttime = wtime()
 
       if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        spreadx = 1
-        spready = 1
+        if(.not.l_inj_rz) then
+          spreadx = 1
+          spready = 1
+        else
+          spreadx = 1
+          spready = 0
+        end if
       elseif(solvergeom==XZgeom) then
         spreadx = 1
         spready = 0
@@ -7444,10 +7661,6 @@ c            wz = dd*2.**(inj_nz-iz)-1.
             iz = 0
             wz = dd/dzmin
           end if
-          if(wz<0. .or. wz>1.) then
-            write(0,*) 'error,wz = ',wz,dd,2.**(iz-inj_nz),iz,inj_nz
-            stop
-          endif
 
 c         --- Calculate the normal electric field from the potential drop in
 c         --- front of the emitting surface. The normal field given by the
@@ -7460,13 +7673,14 @@ c         --- Child-Langmuir solution (for planar surfaces) is used.
      &         inj_ez_3d(ix+spreadx,iy        ,iz+1,ij)*    wx *(1.-wy)*    wz  +
      &         inj_ez_3d(ix        ,iy+spready,iz+1,ij)*(1.-wx)*    wy *    wz  +
      &         inj_ez_3d(ix+spreadx,iy+spready,iz+1,ij)*    wx *    wy *    wz
+
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
           ex(ip) = -en*sin(az)*cos(aa)
           ey(ip) = -en*sin(az)*sin(aa)
           ez(ip) =  en*cos(az)
 
-          if (linj_eperp) then
+          if (linj_eperp .and. .not.l_inj_rz) then
 c           --- Add in the tangential fields if requested.
 c           --- Fetch the transverse field components. The field is linearly
 c           --- interpolated between the value of the emitting surface
