@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.2 2003/04/22 16:31:23 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.3 2003/06/10 18:43:42 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -26,6 +26,7 @@ Class for creating particle scraper for conductors
     if w3d.solvergeom != w3d.XYZgeom:
       self.pwork = top.npid
       top.npid = top.npid + 1
+    top.npidmax = max(top.npidmax,top.npid)
     # --- Make sure that npmaxi is set
     top.npmaxi = max(top.npmax,2)
     gchange("Particles")
