@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.109 $, $Date: 2004/05/27 23:07:32 $
+c@(#) File F3D.M, version $Revision: 3.110 $, $Date: 2004/06/03 21:55:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5558,7 +5558,7 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
       real(kind=8):: xcent,ycent
       real(kind=8):: fuzz,zfuzz
-      logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
+      logical(ISZ):: lnotice,lz_in_rod,lz_in_plate,l1
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -5687,7 +5687,11 @@ c     --- Change the memory allocated based on the estimates made above.
 
 c Set slicv in planes at ends of quads to allow for sub-grid placement of
 c boundaries. This also takes care of the boundary planes.
-      do iz=-1,nz+1
+      if (islctype(-1)==0 .and. islctype(0).ne.0) then
+        slicvx(-1)=slicvx(0)
+        slicvy(-1)=slicvy(0)
+      endif
+      do iz=0,nz
         if (iz >= 0 .and. islctype(iz)==0 .and. islctype(iz-1).ne.0) then
           slicvx(iz)=slicvx(iz-1)
           slicvy(iz)=slicvy(iz-1)
@@ -5696,6 +5700,10 @@ c boundaries. This also takes care of the boundary planes.
           slicvy(iz)=slicvy(iz+1)
         endif
       enddo
+      if (islctype(nz+1)==0 .and. islctype(nz).ne.0) then
+        slicvx(nz+1)=slicvx(nz)
+        slicvy(nz+1)=slicvy(nz)
+      endif
 
 c     --- Print notice that both hard edged and self-consistent
 c     --- models are being used for the same quadrupole, if
@@ -6106,8 +6114,14 @@ c       --- calculate (in lab frame) start and end of quad
         qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
 
 c       --- plate on left hand side of quad
-        if ((iz == -1 .and. islctype(iz) == 4) .or.
-     &      (islctype(iz) == 4 .and. islctype(iz-1) /= 4)) then
+c       --- Separate out l1 to avoid access to islctype(-2) which is
+c       --- out of bounds.
+        if (iz == -1) then
+          l1 = .false.
+        else
+          l1 = (islctype(iz) == 4 .and. islctype(iz-1) /= 4)
+        endif
+        if ((iz == -1 .and. islctype(iz) == 4) .or. l1) then
 
           if (quadgp(iq) < 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
@@ -6134,8 +6148,14 @@ c       --- plate on left hand side of quad
         endif
 
 c       --- plate on right hand side of quad
-        if ((iz == -1 .and. islctype(iz) == 5) .or.
-     &      (islctype(iz) == 5 .and. islctype(iz-1) /= 5)) then
+c       --- Separate out l1 to avoid access to islctype(-2) which is
+c       --- out of bounds.
+        if (iz == -1) then
+          l1 = .false.
+        else
+          l1 = (islctype(iz) == 5 .and. islctype(iz-1) /= 5)
+        endif
+        if ((iz == -1 .and. islctype(iz) == 5) .or. l1) then
 
           if (quadgp(iq) > 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
@@ -9009,6 +9029,7 @@ c     the Python routine rofzfunc.
 c     The radius returned is always greater than or equal to zero.
 
       integer(ISZ):: i,ii,iz
+      real(kind=8):: z_sriim1
 
       if (lsrlinr .and. icase == 0) then
 
@@ -9026,8 +9047,11 @@ c       --- Calculate r from z.
         elseif (ii == npnts_sr) then
           srfrv_r = r_sr(npnts_sr)
         else
+c         --- Get z_sr at ii-1 to avoid accessing z_sr(0)
+          z_sriim1 = 0.
+          if (ii > 1) z_sriim1 = z_sr(ii-1)
           if (ii > 1 .and.
-     &        z_sr(ii-1) == z_sr(ii) .and. zz == z_sr(ii) .and.
+     &        z_sriim1 == z_sr(ii) .and. zz == z_sr(ii) .and.
      &        izflag == 1) then
             if (ii-1 == 1) then
               srfrv_r = r_sr(1)
