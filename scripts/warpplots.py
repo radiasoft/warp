@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.138 2004/12/21 21:47:14 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.139 2005/01/03 19:12:23 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -231,6 +231,16 @@ copy file.
   if legend: plotruninfo()
   controllers.callbeforeplotfuncs()
   gisthcp()
+
+def refresh():
+  """
+Refresh the current gist windows.
+  """
+  try:
+    pyg_pending()
+    pyg_idler()
+  except:
+    ygdispatch()
 
 nf = fma
 sf = redraw
