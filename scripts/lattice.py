@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.5 2001/11/03 01:16:19 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.6 2001/11/15 22:30:08 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -1739,19 +1739,6 @@ emlt arrays with the same suffices:
   # --- this new dataset without having to knowne its actual number.
   return top.emltid[ie]
 
-def plotemlt(ie,m=0,color='fg'):
-  """
-Plots the field of the emlt element
-  - ie: the element to plot
-  - m=0: the multipole number to plot
-  - color='fg': color of plot
-  """
-  id = top.emltid[ie] - 1
-  dz = top.dzemlt[id]
-  nz = top.nzemlt[id]
-  zz = top.emltzs[ie] + iota(0,nz)*dz
-  plg(top.esemlt[:nz+1,m,id],zz,color=color)
-
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
 def addnewmmlt(zs,ze,ap=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
@@ -2165,17 +2152,30 @@ pgrd arrays with the same suffices:
   # --- this new dataset without having to knowne its actual number.
   return top.pgrdid[ie]
 
+# ----------------------------------------------------------------------------
+# --- Convenient plotting functions
+def plotemlt(ie,m=0,color='fg'):
+  """
+Plots the field of the emlt element
+  - ie: the element to plot
+  - m=0: the multipole number to plot
+  - color='fg': color of plot
+  """
+  id = top.emltid[ie] - 1
+  dz = top.dzemlt[id]
+  nz = top.nzemlt[id]
+  zz = top.emltzs[ie] + iota(0,nz)*dz
+  plg(top.esemlt[:nz+1,m,id],zz,color=color)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+def plotmmlt(im,m=0,color='fg'):
+  """
+Plots the field of the emlt element
+  - im: the element to plot
+  - m=0: the multipole number to plot
+  - color='fg': color of plot
+  """
+  id = top.mmltid[im] - 1
+  dz = top.dzmmlt[id]
+  nz = top.nzmmlt[id]
+  zz = top.mmltzs[im] + iota(0,nz)*dz
+  plg(top.msmmlt[:nz+1,m,id],zz,color=color)
