@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.4 2000/11/30 22:01:59 dave Exp $"
+warp_version = "$Id: warp.py,v 1.5 2001/01/11 00:20:13 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -274,7 +274,7 @@ def fieldsol(iwhich=0):
 
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None):
+         ff=None,varsuffix=None):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
@@ -288,6 +288,9 @@ Creates a dump file
   - ff=None: Optional file object. When passed in, write to that file instead
              of creating a new one. Note that the inputted file object must be
              closed by the user.
+  - varsuffix=None Suffix to add to the variable names. If none is specified,
+                   the suffix '@pkg' is used, where pkg is the package name
+                   that the variable is in.
   """
   if not filename:
     # --- Setup default filename based on time step and processor number.
@@ -307,9 +310,11 @@ Creates a dump file
         interpreter_variables.append(l)
   # --- Call routine to make data dump
   if onefile and npes > 0:
-    paralleldump(filename,attr,interpreter_variables,serial=serial)
+    paralleldump(filename,attr,interpreter_variables,serial=serial,
+                 varsuffix=varsuffix)
   else:
-    pydump(filename,attr,interpreter_variables,serial=serial,ff=ff)
+    pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
+           varsuffix=varsuffix)
 
 # --- Restart command
 def restart(filename,onefile=1):
@@ -330,10 +335,20 @@ Reads in data from file, redeposits charge density and does field solve
     parallelrestore(filename)
   else:
     pyrestore(filename)
-  # --- Finish up the restart work
+  # --- Now that the dump file has been read in, finish up the restart work.
+  # --- First set the current packge. Note that currpkg is only ever defined
+  # --- in the main dictionary.
+  package(__main__.__dict__["currpkg"])
+  # --- Allocate all arrays appropriately
+  gchange("*")
+  # --- Load the charge density (since it was not saved)
   loadrho()
+  # --- Recalculate the fields (since it was not saved)
   fieldsol(0)
+  # --- Set the lattice internal variables (probably not really needed)
   setlatt()
+  # --- Call setup if it is needed.
+  if me == 0 and current_window() == -1: setup()
 
 def restartold(filename):
   restoreold(filename)
