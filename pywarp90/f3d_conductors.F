@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.20 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2677,10 +2677,10 @@ c         --- x and y deltas there. Otherwise this conductor can be skipped.
           else
             cycle
           endif
-          xc(1) = zz*tan(theta(ic)) + xcent(ic)
-          yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
-     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
-     &            ycent(ic)
+c         xc(1) = zz*tan(theta(ic)) + xcent(ic)
+c         yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
+c    &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
+c    &            ycent(ic)
           zc(1) = zz
           call ConeConductorF(r_zmin(ic),r_zmax(ic),length(ic),
      &                        theta(ic),phi(ic),xcent(ic),ycent(ic),zcent(ic),
