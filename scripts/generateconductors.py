@@ -99,7 +99,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.88 2004/09/14 17:37:24 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.89 2004/09/28 00:40:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2355,7 +2355,7 @@ data and make sure it is consistent.
              "Some of the input surface data is not the correct length"
     return data
 
-  def plotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints,color='fg'):
+  def getplotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints):
     r = []
     z = []
     for i in range(len(rdata)-1):
@@ -2372,7 +2372,18 @@ data and make sure it is consistent.
         z = z + list(zz)
     r.append(rdata[-1])
     z.append(zdata[-1])
-    plg(r,z,color=color)
+    return r,z
+
+  def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
+    if color is not None:
+      plg(r,z,color=color)
+      if fullplane:
+        plg(-array(r),z,color=color)
+    if filled is not None:
+      c = array([filled],typecode='b')
+      plfp(c,r,z,[len(r)])
+      if fullplane:
+        plfp(c,-array(r),z,[len(r)])
 
 #============================================================================
 class ZSrfrvOut(Srfrv,Assembly):
@@ -2396,6 +2407,14 @@ Outside of a surface of revolution
       The length of the radii and centers lists is one less than the length
       of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
+Methods:
+  - draw: draws the object's r versus z
+  - createdxobject: creates (internally) the object for visualization using
+                    OpenDX. This can be used to specify options on how the
+                    image is made before passing the object to DXImage.
+  - getdxobject: returns a object for visualization. This can be used to
+                 specify options on how the image is made. The returned object
+                 is then passed to DXImage
   """
   def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
@@ -2455,16 +2474,36 @@ Outside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg'):
+  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1,rmax=None):
+    """
+Plots the r versus z
+ - narcpoints=40: number of points to draw along any circular arcs
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 240.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmax=None: when given, overrides the instance's value of rmax, useful in
+              cases when the instance's value of rmax is largepos.
+    """
     if self.usedata:
-      self.plotdata(self.rofzdata,self.zdata,self.raddata,
-                    self.rcdata,self.zcdata,narcpoints,color=color)
+      r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
+                             self.rcdata,self.zcdata,narcpoints)
+      if rmax is None: rmax = self.rmax
+      r = [rmax] + r + [rmax]
+      z = [self.zmin] + z + [self.zmax]
+      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
-  def createdxobject(self,rend=None,kwdict={},**kw):
+  def createdxobject(self,rmax=None,kwdict={},**kw):
+    """
+Creates internally the object to be used for visualization.
+ - rmax=None: when given, overrides the instance's value of rmax, useful in
+              cases when the instance's value of rmax is largepos.
+For other options, see documentation of VPythonobjects.VisualRevolution.
+    """
     kw.update(kwdict)
-    if rend is None: rend = self.rmax
+    if rmax is None: rmax = self.rmax
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
-                       rendzmin=rend,rendzmax=rend,
+                       rendzmin=rmax,rendzmax=rmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
@@ -2495,6 +2534,14 @@ Inside of a surface of revolution
       The length of the radii and centers lists is one less than the length
       of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
+Methods:
+  - draw: draws the object's r versus z
+  - createdxobject: creates (internally) the object for visualization using
+                    OpenDX. This can be used to specify options on how the
+                    image is made before passing the object to DXImage.
+  - getdxobject: returns a object for visualization. This can be used to
+                 specify options on how the image is made. The returned object
+                 is then passed to DXImage
   """
   def __init__(self,rofzfunc,zmin,zmax,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
@@ -2556,12 +2603,30 @@ Inside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg'):
+  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1,rmin=None):
+    """
+Plots the r versus z
+ - narcpoints=40: number of points to draw along any circular arcs
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 240.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin: when given, overrides the instance's values of rmin - this is not
+         really useful
+    """
     if self.usedata:
-      self.plotdata(self.rofzdata,self.zdata,self.raddata,
-                    self.rcdata,self.zcdata,narcpoints,color=color)
+      r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
+                             self.rcdata,self.zcdata,narcpoints)
+      if rmin is None: rmin = self.rmin
+      r = [rmin] + r + [rmin]
+      z = [self.zmin] + z + [self.zmax]
+      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,kwdict={},**kw):
+    """
+Creates internally the object to be used for visualization.
+For options, see documentation of VPythonobjects.VisualRevolution.
+    """
     kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
                        rendzmin=self.rmin,rendzmax=self.rmin,
@@ -2593,6 +2658,14 @@ Between surfaces of revolution
       The length of the radii and centers lists is one less than the length
       of the list of r and z data.
     Note that if tablized data is given, the first two arguments are ignored.
+Methods:
+  - draw: draws the object's r versus z
+  - createdxobject: creates (internally) the object for visualization using
+                    OpenDX. This can be used to specify options on how the
+                    image is made before passing the object to DXImage.
+  - getdxobject: returns a object for visualization. This can be used to
+                 specify options on how the image is made. The returned object
+                 is then passed to DXImage
   """
   def __init__(self,rminofz,rmaxofz,zmin,zmax,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
@@ -2692,15 +2765,36 @@ Between surfaces of revolution
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg'):
+  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1):
+    """
+Plots the r versus z
+ - narcpoints=40: number of points to draw along any circular arcs
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 240.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+    """
     if self.usemindata:
-      self.plotdata(self.rminofzdata,self.zmindata,self.radmindata,
-                    self.rcmindata,self.zcmindata,narcpoints,color=color)
+      ri,zi = self.getplotdata(self.rminofzdata,self.zmindata,self.radmindata,
+                               self.rcmindata,self.zcmindata,narcpoints)
+    else:
+      ri,zi = [],[]
     if self.usemaxdata:
-      self.plotdata(self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
-                    self.rcmaxdata,self.zcmaxdata,narcpoints,color=color)
+      ro,zo = self.getplotdata(self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
+                               self.rcmaxdata,self.zcmaxdata,narcpoints)
+    else:
+      ro,zo = [],[]
+    ro.reverse()
+    zo.reverse()
+    r,z = ri+ro,zi+zo
+    if len(r) > 0:
+      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,kwdict={},**kw):
+    """
+Creates internally the object to be used for visualization.
+For options, see documentation of VPythonobjects.VisualRevolution.
+    """
     kw.update(kwdict)
     if self.usemindata:
       rminzmin = self.rminofzdata[0]
