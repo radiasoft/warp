@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.32 2001/02/27 18:40:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.33 2001/03/08 02:37:14 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -688,15 +688,37 @@ Calculates the x-x' slope based on either the window moments in window iw
 or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
 The product slope*vz gives the slope for x-vx.
   """
-  if 0 <= iz <= w3d.nz:
-    slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-    offset = top.xpbarz[iz]-slope*top.xbarz[iz]
-    vz = top.vzbarz[iz]
+  if not lparallel:
+    if 0 <= iz <= w3d.nz:
+      slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
+      offset = top.xpbarz[iz]-slope*top.xbarz[iz]
+      vz = top.vzbarz[iz]
+    else:
+      iiw = max(0,iw)
+      slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
+      offset = top.xpbar[iiw]-slope*top.xbar[iiw]
+      vz = top.vzbar[iiw]
   else:
-    iiw = max(0,iw)
-    slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-    offset = top.xpbar[iiw]-slope*top.xbar[iiw]
-    vz = top.vzbar[iiw]
+    if 0 <= iz <= w3d.nzfull:
+      pe = convertiztope(iz)
+      if me == pe:
+        iz = iz - top.izslave[me+1]
+        slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
+        offset = top.xpbarz[iz]-slope*top.xbarz[iz]
+        vz = top.vzbarz[iz]
+      else:
+        (slope,offset,vz) = (0.,0.,0.)
+      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+    else:
+      iiw = max(0,iw)
+      pe = convertiwtope(iiw)
+      if me == pe:
+        slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
+        offset = top.xpbar[iiw]-slope*top.xbar[iiw]
+        vz = top.vzbar[iiw]
+      else:
+        (slope,offset,vz) = (0.,0.,0.)
+      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
   return (slope,offset,vz)
 #-------------------------------------------------------------------------
 def getyypslope(iw=0,iz=-1):
@@ -705,15 +727,37 @@ Calculates the y-y' slope based on either the window moments in window iw
 or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
 The product slope*vz gives the slope for y-vy.
   """
-  if 0 <= iz <= w3d.nz:
-    slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-    offset = top.ypbarz[iz]-slope*top.ybarz[iz]
-    vz = top.vzbarz[iz]
+  if not lparallel:
+    if 0 <= iz <= w3d.nz:
+      slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
+      offset = top.ypbarz[iz]-slope*top.ybarz[iz]
+      vz = top.vzbarz[iz]
+    else:
+      iiw = max(0,iw)
+      slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
+      offset = top.ypbar[iiw]-slope*top.ybar[iiw]
+      vz = top.vzbar[iiw]
   else:
-    iiw = max(0,iw)
-    slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-    offset = top.ypbar[iiw]-slope*top.ybar[iiw]
-    vz = top.vzbar[iiw]
+    if 0 <= iz <= w3d.nzfull:
+      pe = convertiztope(iz)
+      if me == pe:
+        iz = iz - top.izslave[me+1]
+        slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
+        offset = top.ypbarz[iz]-slope*top.ybarz[iz]
+        vz = top.vzbarz[iz]
+      else:
+        (slope,offset,vz) = (0.,0.,0.)
+      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+    else:
+      iiw = max(0,iw)
+      pe = convertiwtope(iiw)
+      if me == pe:
+        slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
+        offset = top.ypbar[iiw]-slope*top.ybar[iiw]
+        vz = top.vzbar[iiw]
+      else:
+        (slope,offset,vz) = (0.,0.,0.)
+      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
   return (slope,offset,vz)
 #-------------------------------------------------------------------------
 def getvzrange():
