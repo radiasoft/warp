@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.17 2003/05/28 20:25:57 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.18 2003/07/03 23:31:04 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -262,6 +262,17 @@ def gatherarray(a,root=0,othersempty=0):
   #result.shape = snew
   ## --- Return the result
   #return result
+
+
+# ---------------------------------------------------------------------------
+# Find the nonzero value of array over all processors. This assumes that the
+# non-zero values for each index are the same for all processors.
+# Resulting data is broadcast to all processors.
+def parallelnonzeroarray(a):
+  dmax = parallelmax(a)
+  dmin = parallelmin(a)
+  result = where(not_equal(dmax,0),dmax,dmin)
+  return result
 
 # ---------------------------------------------------------------------------
 # Generic global operation on a distributed array.
