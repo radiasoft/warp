@@ -5,8 +5,8 @@ PUBLICHOME = $(HOME)/scripts
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
 	rm -f warpC.so
 	python setup.py build --build-platlib .
+	#cp warpC.so /home/dave/scriptsnew
 	#mv warpC.so /home/dave/scriptsnew
-	mv warpC.so /Volumes/Data/Users/rcohen/warp2.3/scripts
 
 toppy.$(SO): top.F dtop.F top.v
 	Forthon -a $(DEBUG) top dtop.F
