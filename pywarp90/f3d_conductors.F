@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.29 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4911,11 +4911,12 @@ c       --- Check if it hits the inner cylinder.
 c=======================================================================
 c=======================================================================
       real(kind=8) function linrzintersection(zz,rr,npnts_sr,z_sr,r_sr,
-     &                               rad_sr,zc_sr,rc_sr,i1,i2,istep)
+     &                               rad_sr,zc_sr,rc_sr,zend,i1,i2,istep)
       real(kind=8):: zz,rr
       integer(ISZ):: npnts_sr
       real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
       real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
+      real(kind=8):: zend
       integer(ISZ):: i1,i2,istep
 
 c This searches throught the line segments to find the one that the z-line
@@ -4969,8 +4970,15 @@ c         --- side of the point. Otherwise, try the next segment.
           endif
         endif
         ii = ii - istep
+        if (istep == +1 .and. ii == 0) then
+          zi = zend
+          done = .true.
+        endif
+        if (istep == -1 .and. ii == npnts_sr+1) then
+          zi = zend
+          done = .true.
+        endif
       enddo
-
 
       linrzintersection = zi
 
@@ -5096,7 +5104,7 @@ c       --- conductor or within the max radius.
             if (min(rminlower,rmin) <= rr .and. rr <= max(rminlower,rmin)) then
               if (lsrminlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
-     &                                   rad_srmin,zc_srmin,rc_srmin,
+     &                                   rad_srmin,zc_srmin,rc_srmin,zmin,
      &                                   2,npnts_srmin,1)
                 delmz(i) = zz - znew
               else
@@ -5153,7 +5161,7 @@ c                 --- 10% in the delta and slowing down the code.
             if (min(rmaxlower,rmax) <= rr .and. rr <= max(rmaxlower,rmax)) then
               if (lsrmaxlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
-     &                                   rad_srmax,zc_srmax,rc_srmax,
+     &                                   rad_srmax,zc_srmax,rc_srmax,zmin,
      &                                   2,npnts_srmax,1)
                 delmz1 = zz - znew
               else
@@ -5231,7 +5239,7 @@ c         --- Calculate distance to conductor at higher z.
      &          rr <= max(rminhigher,rmin)) then
               if (lsrminlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
-     &                                   rad_srmin,zc_srmin,rc_srmin,
+     &                                   rad_srmin,zc_srmin,rc_srmin,zmax,
      &                                   npnts_srmin-1,1,-1)
                 delpz(i) = znew - zz
               else
@@ -5287,7 +5295,7 @@ c                 --- 10% in the delta and slowing down the code.
      &          rr <= max(rmaxhigher,rmax)) then
               if (lsrmaxlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
-     &                                   rad_srmax,zc_srmax,rc_srmax,
+     &                                   rad_srmax,zc_srmax,rc_srmax,zmax,
      &                                   npnts_srmax-1,1,-1)
                 delpz1 = znew - zz
               else
