@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.6 2003/01/31 14:42:26 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.7 2003/02/04 18:04:01 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -33,7 +33,8 @@ Mountain-range plots of quantities saved vs. z at every timestep
   - iend=shape(qty)[1]-1: Time index at which to end the plots
   - istep=jhist/nlines: Can be specified instead of nlines
   - navg=0: Turns on averaging (over 2*navg+1 points)
-  - offset=0: Ordinate offset of overlaid lines
+  - offset=0: Abscissa offset of overlaid lines
+  - ordoffset=0: Ordinate offset of overlaid lines
   - color='fg': Line color
   - nz=shape(qty)[0]-1: Number of z points
   - dz=w3d.dz: Size of z points
@@ -126,22 +127,22 @@ def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
 
 ### PMLCHG - plot line charge
 def pmlchg(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
-          ordoffset=0.,istep=None):
-  mountainplot1("Line charge",top.hlinechg,ifdelta=ifdelta,ifordt=ifordt,
+          ordoffset=0.,istep=None,title="Line charge"):
+  mountainplot1(title,top.hlinechg,ifdelta=ifdelta,ifordt=ifordt,
                 ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
                 offset=offset,ordoffset=ordoffset,istep=istep)
 
 ### PMCURR - plot current
 def pmcurr(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=1.e-3,
-          ordoffset=0.,istep=None):
-  mountainplot1("Current",top.hcurr,ifdelta=ifdelta,ifordt=ifordt,
+          ordoffset=0.,istep=None,title="Current"):
+  mountainplot1(title,top.hcurrz,ifdelta=ifdelta,ifordt=ifordt,
                 ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
                 offset=offset,ordoffset=ordoffset,istep=istep)
 
 ### PMVZOFZ - plot axial velocity
 def pmvzofz(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
-            ordoffset=0.,istep=None):
-  mountainplot1("Axial velocity",top.hvzofz,ifdelta=ifdelta,ifordt=ifordt,
+            ordoffset=0.,istep=None,title="Axial velocity"):
+  mountainplot1(title,top.hvzofz,ifdelta=ifdelta,ifordt=ifordt,
                 ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
                 offset=offset,ordoffset=ordoffset,istep=istep)
 
