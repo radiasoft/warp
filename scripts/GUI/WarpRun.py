@@ -8,6 +8,7 @@ import EnvelopeGUI
 import LatticeGUI
 import DocGUI
 import newstdout
+import gist
 
 from warp import *
 from errorcheck import *
@@ -302,6 +303,18 @@ class wxFrame1(wxFrame):
         for i in range(0,len(Palettes)):
             self.AddPalette(Palettes[i])
    
+    def HandleGistEvents(self):
+      """
+Checks version of gist and handles events accordingly
+Old version does not have __version__ defined.
+      """
+      try:
+        v = gist.__version__
+        pyg_pending()
+        pyg_idler()
+      except:
+        ygdispatch()
+
     def AddPalette(self,name):
         exec("[wxID_WXFRAME1MNUPALLETTE"+name+"] = map(lambda _init_coll_mnuPalette_Items: wxNewId(), range(1))")
         exec("self.mnuPalette.Append(helpString='', id=wxID_WXFRAME1MNUPALLETTE"+name+", item='"+name+"',kind=wxITEM_NORMAL)")
@@ -489,11 +502,7 @@ class wxFrame1(wxFrame):
                 else:
                     redo = false
                     if(string.strip(self.line)=='winon()'):
-                        if not self.isgistwindowon:
-#                            winon()
-                            window(0)
-                            ygdispatch()
-                            self.isgistwindowon=1
+                        self.OnWinonButton()
                     else:
                         self.Console.WriteText(self.prefix+self.line+'\n')
                         r=self.ConsolePanel.sendcommand(self.line,addlist=0)
@@ -591,20 +600,15 @@ class wxFrame1(wxFrame):
 
     def OnWxframe1Idle(self, event):
         if self.isgistwindowon:
-          ygdispatch()
-          event.RequestMore(1)
+            self.HandleGistEvents()
+            event.RequestMore(1)
 
     def OnWinonButton(self, event):
-        window(0)
-#        winon()
-#       dlg = wxMessageDialog(self, 'Press enter in the starting terminal window',
-#         'Press enter', wxOK | wxICON_INFORMATION)
-#       try:
-#           dlg.ShowModal()
-#       finally:
-#           dlg.Destroy()
-        ygdispatch()
-        self.isgistwindowon = 1
+        if not self.isgistwindowon:
+           #winon()
+            window(0)
+            self.HandleGistEvents()
+            self.isgistwindowon = 1
 
     def OnFmaButton(self, event):
         fma()
