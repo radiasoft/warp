@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.121 $, $Date: 2004/11/13 01:33:07 $
+#@(#) File F3D.V, version $Revision: 3.122 $, $Date: 2005/04/05 16:54:24 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.121 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.122 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -252,14 +252,14 @@ expand2d(nx:integer,ny:integer,nz:integer,phi:real,
 restrict3d(nx:integer,ny:integer,nz:integer,nzfull:integer,res:real,
            nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
            nzfullcoarse:integer,rhocoarse:real,
-           bounds:integer,boundscoarse:integer,
-           lzoffset:integer,rzoffset:integer)
+           ff:real,bounds:integer,boundscoarse:integer,
+           lzoffset:integer)
    subroutine
    # Restricts phi in 3 dimensions
 expand3d(nx:integer,ny:integer,nz:integer,nzfull:integer,phi:real,
          nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
          nzfullcoarse:integer,phicoarse:real,
-         bounds:integer,lzoffset:integer,rzoffset:integer)
+         bounds:integer,lzoffset:integer)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
@@ -271,8 +271,7 @@ sorhalfpass3d(parity:integer,mglevel:integer,
    subroutine
    # Performs one pass of SOR relaxation, either even or odd.
 cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
-           phi:real,mglevel:integer,lresidual:logical,
-           mgform:integer,mgform2init:logical)
+           phi:real,mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
 
