@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.48 2002/10/26 00:08:07 jlvay Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.49 2002/11/07 23:57:15 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -150,15 +150,244 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     pp = array(pp)
     pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
 
+def plotcondfill(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx):
+  """
+Plots conductors, filling them in with a solid color. The color is given
+by the conductor number.
+  """
+  # --- Get the numbers of conductor points
+  nc = f3d.ncond
+  ne = f3d.necndbdy
+  no = f3d.nocndbdy
+  ns = ne + no
+  if ns+nc > 0:
+    lx = eval('f3d.mglevelsl'+xx)[mglevel]
+    ly = eval('f3d.mglevelsl'+yy)[mglevel]
+    lz = eval('f3d.mglevelsl'+zz)[mglevel]
+    ixc = eval('f3d.i'+xx+'cond')[:nc]
+    iyc = eval('f3d.i'+yy+'cond')[:nc]
+    izc = eval('f3d.i'+zz+'cond')[:nc]
+    numb = f3d.condnumb[:nc]
+    # --- The even and odd data are merged into the same list.
+    ixs = array(list(eval('f3d.iecnd'+xx)[:ne]) +
+                list(eval('f3d.iocnd'+xx)[:no]))
+    iys = array(list(eval('f3d.iecnd'+yy)[:ne]) +
+                list(eval('f3d.iocnd'+yy)[:no]))
+    izs = array(list(eval('f3d.iecnd'+zz)[:ne]) +
+                list(eval('f3d.iocnd'+zz)[:no]))*lz
+    # --- Add z offset of data. This only applies for the parallel version
+    if xx == 'z':
+      ixc[:] = ixc + f3d.mglevelsiz[mglevel]
+      ixs[:] = ixs + f3d.mglevelsiz[mglevel]
+    if yy == 'z':
+      iyc[:] = iyc + f3d.mglevelsiz[mglevel]
+      iys[:] = iys + f3d.mglevelsiz[mglevel]
+    if zz == 'z':
+      izc[:] = izc + f3d.mglevelsiz[mglevel]
+      izs[:] = izs + f3d.mglevelsiz[mglevel]
+    delmx = array(list(eval('f3d.ecdelm'+xx)[:ne]) +
+                  list(eval('f3d.ocdelm'+xx)[:no]))
+    delpx = array(list(eval('f3d.ecdelp'+xx)[:ne]) +
+                  list(eval('f3d.ocdelp'+xx)[:no]))
+    delmy = array(list(eval('f3d.ecdelm'+yy)[:ne]) +
+                  list(eval('f3d.ocdelm'+yy)[:no]))
+    delpy = array(list(eval('f3d.ecdelp'+yy)[:ne]) +
+                  list(eval('f3d.ocdelp'+yy)[:no]))
+    numbmx = array(list(eval('f3d.ecnumbm'+xx)[:ne]) +
+                   list(eval('f3d.ocnumbm'+xx)[:no]))
+    numbpx = array(list(eval('f3d.ecnumbp'+xx)[:ne]) +
+                   list(eval('f3d.ocnumbp'+xx)[:no]))
+    numbmy = array(list(eval('f3d.ecnumbm'+yy)[:ne]) +
+                   list(eval('f3d.ocnumbm'+yy)[:no]))
+    numbpy = array(list(eval('f3d.ecnumbp'+yy)[:ne]) +
+                   list(eval('f3d.ocnumbp'+yy)[:no]))
+    try:
+      levc = f3d.icondlevel[:nc]
+      levelc = equal(mglevel,levc)
+      levs = array(list(f3d.iecndlevel[:ne]) + list(f3d.iocndlevel[:no]))
+      levels = equal(mglevel,levs)
+    except:
+      levelc = ones(nc)
+      levels = ones(ns)
+  else:
+    # --- This code block is needed for the parallel version since not all
+    # --- processors may have conductors and global communication is needed.
+    lx = array([1])
+    ly = array([1])
+    lz = array([1])
+    ixc = array([])
+    iyc = array([])
+    izc = array([])
+    ixs = array([])
+    iys = array([])
+    izs = array([])
+    delmx = array([])
+    delpx = array([])
+    delmy = array([])
+    delpy = array([])
+    levelc = array([])
+    levels = array([])
+  # --- Select out the conductor points in the appropriate slice and in
+  # --- the appropriate refinement level.
+  iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(equal(izs,iz),equal(levels,1)),arange(ns))
+  dx = dx*lx*signx
+  dy = dy*ly*signy
+  ixc = take(ixc,iic)
+  iyc = take(iyc,iic)
+  xxc = ixc*dx+xmin
+  yyc = iyc*dy+ymin
+  numb = take(numb,iic)
+  ixs = take(ixs,iis)
+  iys = take(iys,iis)
+  xxs = ixs*dx+xmin
+  yys = iys*dy+ymin
+  delmx = take(delmx,iis)*dx
+  delpx = take(delpx,iis)*dx
+  delmy = take(delmy,iis)*dy
+  delpy = take(delpy,iis)*dy
+  numbmx = take(numbmx,iis)
+  numbpx = take(numbpx,iis)
+  numbmy = take(numbmy,iis)
+  numbpy = take(numbpy,iis)
+  if lparallel:
+    ixc = gatherarray(ixc)
+    iyc = gatherarray(iyc)
+    xxc = gatherarray(xxc)
+    yyc = gatherarray(yyc)
+    numb = gatherarray(numb)
+    ixs = gatherarray(ixs)
+    iys = gatherarray(iys)
+    xxs = gatherarray(xxs)
+    yys = gatherarray(yys)
+    delmx = gatherarray(delmx)
+    delpx = gatherarray(delpx)
+    delmy = gatherarray(delmy)
+    delpy = gatherarray(delpy)
+    numbmx = gatherarray(numbmx)
+    numbpx = gatherarray(numbpx)
+    numbmy = gatherarray(numbmy)
+    numbpy = gatherarray(numbpy)
+  # --- Now, after the global gather, if there is no data then quit.
+  if len(ixc) + len(ixs) == 0: return
+  # --- Get max grid point so that an array can be created which covers all
+  # --- of the data.
+  if len(ixc) == 0:
+    maxixc = 0
+    maxiyc = 0
+  else:
+    maxixc = max(ixc)
+    maxiyc = max(iyc)
+  if len(ixs) == 0:
+    maxixs = 0
+    maxiys = 0
+  else:
+    maxixs = max(ixs)
+    maxiys = max(iys)
+  nx = max(maxixc,maxixs) + 1
+  ny = max(maxiyc,maxiys) + 1
+  iii = zeros((5,1+nx,1+ny)) - 1
+  mx,px,my,py = 1,2,3,4
+  # --- Flag grid points where the conductors are.
+  for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i
+  for i in xrange(len(ixs)):
+    if abs(delmx[i]) < abs(dx): iii[mx,ixs[i],iys[i]] = i
+    if abs(delpx[i]) < abs(dx): iii[px,ixs[i],iys[i]] = i
+    if abs(delmy[i]) < abs(dy): iii[my,ixs[i],iys[i]] = i
+    if abs(delpy[i]) < abs(dy): iii[py,ixs[i],iys[i]] = i
+  x = []
+  y = []
+  z = []
+  n = []
+
+  # --- Loop over all conductor points, drawing a fill polygon for each.
+  ixall = list(ixc) + list(ixs)
+  iyall = list(iyc) + list(iys)
+  for ix,iy in map(None,ixall,iyall):
+    # --- For each point, deal with the grid cell up and to the right.
+    # --- This is done so that no two grid points draw over the same spot.
+    i1 = _corner1(ix  ,iy  ,px,py,+delpx,+delpy,numb,numbpx,numbpy,0,
+                  iii,xxc,yyc,xxs,yys,x,y,z,n)
+    i2 = _corner1(ix  ,iy+1,px,my,+delpx,-delmy,numb,numbpx,numbmy,1,
+                  iii,xxc,yyc,xxs,yys,x,y,z,n)
+    i3 = _corner1(ix+1,iy+1,mx,my,-delmx,-delmy,numb,numbmx,numbmy,0,
+                  iii,xxc,yyc,xxs,yys,x,y,z,n)
+    i4 = _corner1(ix+1,iy  ,mx,py,-delmx,+delpy,numb,numbmx,numbpy,1,
+                  iii,xxc,yyc,xxs,yys,x,y,z,n)
+    if i1[0] + i2[0] + i3[0] + i4[0] > 0:
+      n.append(i1[0] + i2[0] + i3[0] + i4[0])
+      if   i1[1] is not None: z.append(i1[1])
+      elif i2[1] is not None: z.append(i2[1])
+      elif i3[1] is not None: z.append(i3[1])
+      elif i4[1] is not None: z.append(i4[1])
+    # --- One special case needs to be dealt with. If there is no grid
+    # --- point in the lower left corner of a grid cell, it would otherwise
+    # --- be skipped.
+    if (ix > 0 and iii[py,ix,iy] >= 0 and max(iii[:,ix-1,iy]) == -1 and
+                   iii[px,ix-1,iy+1] >= 0 and iii[0,ix,iy+1] >= 0):
+      i2 = _corner1(ix-1,iy+1,px,my,+delpx,-delmy,numb,numbpx,numbmy,1,
+                    iii,xxc,yyc,xxs,yys,x,y,z,n)
+      i3 = _corner1(ix  ,iy+1,mx,my,-delmx,-delmy,numb,numbmx,numbmy,0,
+                    iii,xxc,yyc,xxs,yys,x,y,z,n)
+      i4 = _corner1(ix  ,iy  ,mx,py,-delmx,+delpy,numb,numbmx,numbpy,1,
+                    iii,xxc,yyc,xxs,yys,x,y,z,n)
+      if i2[0] + i3[0] + i4[0] > 0:
+        n.append(i2[0] + i3[0] + i4[0])
+        if   i2[1] is not None: z.append(i2[1])
+        elif i3[1] is not None: z.append(i3[1])
+        elif i4[1] is not None: z.append(i4[1])
+
+  if len(n) > 0:
+    # --- Now that the data is gathered, make the plot.
+    z = array(z)
+    z = z.astype('b')
+    plfp(z,y,x,n)
+
+def _corner1(ix,iy,sx,sy,delsx,delsy,nm,nmsx,nmsy,iparity,
+             iii,xxc,yyc,xxs,yys,x,y,z,n):
+  """
+Special routine which gathers the data to draw a polygon in the local grid
+cell. It must be called for each of the four corners of a grid cell.
+  """
+  nn = 0
+  numb = None
+  if iii[0,ix,iy] >= 0:
+    nn = nn + 1
+    i0 = iii[0,ix,iy]
+    x.append(xxc[i0])
+    y.append(yyc[i0])
+    numb = nm[i0]
+  for i in range(2):
+    if i == iparity:
+      if iii[sx,ix,iy] >= 0:
+        nn = nn + 1
+        i0 = iii[sx,ix,iy]
+        x.append(xxs[i0]+delsx[i0])
+        y.append(yys[i0])
+        numb = nmsx[i0]
+    else:
+      if iii[sy,ix,iy] >= 0:
+        nn = nn + 1
+        i0 = iii[sy,ix,iy]
+        x.append(xxs[i0])
+        y.append(yys[i0]+delsy[i0])
+        numb = nmsy[i0]
+  return nn,numb
+
+######################################################################
+######################################################################
 # x-y plane
-def pfxy(iz=None,izf=None,fullplane=1,plotsg=1,scale=1,
-         plotphi=1,subgridlen=1.,phicolor=blue,condcolor=cyan,
+def pfxy(iz=None,izf=None,fullplane=1,
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
+         subgridlen=1.,phicolor=blue,condcolor=cyan,
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=w3d.iz_axis z index of plane
   - fullplane=1: when true, plot all quandrants regardless of symmetries
-  - plotsg=1 when true, plots subgrid data
+  - cond=1: when true, plot grid point inside of conductors
+  - plotsg=1: when true, plots subgrid data
+  - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
@@ -199,13 +428,21 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       kw['ymax'] = w3d.ny
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
     apply(pcphixy,(iz,fullplane),kw)
-  plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1)
-  if fullplane and (w3d.l2symtry or w3d.l4symtry):
-    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1)
-  if fullplane and w3d.l4symtry:
-    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
-    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
-  if (plotsg):
+  if fill:
+    plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,1)
+    if fullplane and (w3d.l2symtry or w3d.l4symtry):
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,-1)
+    if fullplane and w3d.l4symtry:
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,1)
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,-1)
+  if cond:
+    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1)
+    if fullplane and (w3d.l2symtry or w3d.l4symtry):
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1)
+    if fullplane and w3d.l4symtry:
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
+  if plotsg:
     plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                 subgridlen,mglevel,1,1)
     plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
@@ -226,15 +463,18 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                   subgridlen,mglevel,-1,-1)
 
 # z-x plane
-def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,
-         plotphi=1,subgridlen=1.,phicolor=blue,condcolor=cyan,
+def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
+         subgridlen=1.,phicolor=blue,condcolor=cyan,
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=w3d.iy_axis y index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
-  - plotsg=1 when true, plots subgrid data
+  - cond=1: when true, plot grid point inside of conductors
+  - plotsg=1: when true, plots subgrid data
+  - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
@@ -270,10 +510,11 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       kw['ymax'] = w3d.nx
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
     apply(pcphizx,(iy,fullplane,lbeamframe),kw)
-  plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1)
-  if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
-    plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1)
-  if (plotsg):
+  if fill:
+    plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1)
+    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+      plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1)
+  if plotsg:
     plotsubgrid('x','z','y',0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
                 subgridlen,mglevel,1,1)
     plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
@@ -283,17 +524,24 @@ Plots conductors and contours of electrostatic potential in Z-X plane
                   subgridlen,mglevel,-1,1)
       plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
                   subgridlen,mglevel,-1,1)
+  if cond:
+    plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1)
+    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+      plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1)
 
 # z-y plane
-def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,
-         plotphi=1,subgridlen=1.,phicolor=blue,condcolor=cyan,
+def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
+         subgridlen=1.,phicolor=blue,condcolor=cyan,
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=w3d.ix_axis x index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
-  - plotsg=1 when true, plots subgrid data
+  - cond=1: when true, plot grid point inside of conductors
+  - plotsg=1: when true, plots subgrid data
+  - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
@@ -329,10 +577,15 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
       kw['ymax'] = w3d.ny
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
     apply(pcphizy,(ix,fullplane,lbeamframe),kw)
-  plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1)
-  if fullplane and (w3d.l2symtry or w3d.l4symtry):
-    plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1)
-  if (plotsg):
+  if fill:
+    plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,1,1)
+    if fullplane and w3d.l4symtry:
+      plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,-1,1)
+  if cond:
+    plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1)
+    if fullplane and (w3d.l2symtry or w3d.l4symtry):
+      plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1)
+  if plotsg:
     plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
                 subgridlen,mglevel,1,1)
     plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
@@ -349,7 +602,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 ######################################################################
 
 # x-y plane
-def pfxyg(iz=None,izf=None,fullplane=1,plotsg=1,plotphi=1,
+def pfxyg(iz=None,izf=None,fullplane=1,
+          cond=1,plotsg=1,fill=0,plotphi=1,
           phicolor=blue,subgridlen=1.,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
@@ -358,13 +612,15 @@ frame
 Same arguments as pfxy
   """
   if izf is not None: iz = izf
-  pfxy(iz=iz,fullplane=fullplane,plotsg=plotsg,scale=0,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfxy(iz=iz,fullplane=fullplane,scale=0,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
 
 # z-x plane
-def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,plotphi=1,
+def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
+          cond=1,plotsg=1,fill=0,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
@@ -373,13 +629,15 @@ frame
 Same arguments as pfzx
   """
   if iyf is not None: iy = iyf
-  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,scale=0,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
 
 # z-y plane
-def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,plotphi=1,
+def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
+          cond=1,plotsg=1,fill=0,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
@@ -388,8 +646,9 @@ frame
 Same arguments as pfzy
   """
   if ixf is not None: ix = ixf
-  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,scale=0,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
 
@@ -400,7 +659,8 @@ Same arguments as pfzy
 ######################################################################
  
 # x-y plane
-def pfxyi(iz=None,izf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
+def pfxyi(iz=None,izf=None,fullplane=1,
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
           phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -410,13 +670,15 @@ Same arguments as pfxy
   print "Notice: pfxyi is obsolete is should no longer be used"
   print "        It does the identical thing as pfxy"
   if izf is not None: iz = izf
-  pfxy(iz=iz,fullplane=fullplane,plotsg=plotsg,scale=scale,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfxy(iz=iz,fullplane=fullplane,scale=scale,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-x plane
-def pfzxi(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,plotphi=1,
+def pfzxi(iy=None,iyf=None,fullplane=1,lbeamframe=1,
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -426,13 +688,15 @@ Same arguments as pfzx
   print "Notice: pfzxi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzx"
   if iyf is not None: iy = iyf
-  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,
-       scale=scale,plotphi=plotphi,subgridlen=subgridlen,
+  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       scale=scale,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-y plane
-def pfzyi(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,plotphi=1,
+def pfzyi(ix=None,ixf=None,fullplane=1,lbeamframe=1,
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -442,8 +706,9 @@ Same arguments as pfzy
   print "Notice: pfzyi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzy"
   if ixf is not None: ix = ixf
-  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,
-       scale=scale,plotphi=plotphi,subgridlen=subgridlen,
+  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       scale=scale,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
