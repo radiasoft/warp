@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.6 2003/04/10 21:12:02 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.7 2003/08/07 23:32:55 dave Exp $"
 
 class PlaneSave:
   """
@@ -87,6 +87,9 @@ Input:
     else:
       sym_plane = 1
     self.f.sym_plane = sym_plane
+
+    # Write out the solver geometry flag
+    self.f.solvergeom = w3d.solvergeom
 
     # initializes list of species
     if type(js) == IntType:
