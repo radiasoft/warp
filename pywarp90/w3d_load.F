@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.5 $, $Date: 2004/12/07 11:44:57 $
+c@(#) File w3d_load.F, version $Revision: 1.6 $, $Date: 2004/12/07 22:23:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -102,7 +102,7 @@ c             f_2 = distribution normalization coefficient
 
         r_e = r_b*( bessi0(k1re)/bessi(2,k1re) - 
      &              4./(k1re**2)*( 2. + k1re*bessi(3,k1re)/bessi(2,k1re) ) 
-     &            )**-2 
+     &            )**(-2) 
 
         f_2 = aion*amu*eps0*vbeam**2*gammabar**3/
      &        (2.*Pi*(zion*echarge)**2)*(k1re/r_e)**2 
