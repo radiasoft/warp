@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.80 2002/06/12 20:48:34 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.81 2002/06/12 23:38:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -553,6 +553,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'cmin':None,'cmax':None,
                 'ldensityscale':0,'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
+                'xmesh':None,'ymesh':None,
                 'returngrid':0,
                 'checkargs':0,'allowbadargs':0}
 
@@ -767,8 +768,10 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Get grid mesh if it is needed
   if contours or hash or surface or cellarray:
-    xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
-    ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
+    if xmesh is not None or ymesh is not None: usermesh = 1
+    else:                                      usermesh = 0
+    if xmesh is None: xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
+    if ymesh is None: ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
@@ -780,23 +783,28 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it. The min and max are adjusted so that the patch for
   # --- each grid cell has the correct centering.
+  # --- If the user supplies a mesh, then use plf, a filled mesh plot, since
+  # --- the meshes may not be Cartesian.
   if cellarray:
-    if centering == 'node':
-      xminc = xmin
-      xmaxc = xmax + dx
-      yminc = ymin
-      ymaxc = ymax + dy
-    elif centering == 'cell':
-      xminc = xmin - dx/2.
-      xmaxc = xmax + dx/2.
-      yminc = ymin - dy/2.
-      ymaxc = ymax + dy/2.
-    elif centering == 'old':
-      xminc = xmin
-      xmaxc = xmax
-      yminc = ymin
-      ymaxc = ymax
-    pli(transpose(grid1),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
+    if not usermesh:
+      if centering == 'node':
+        xminc = xmin
+        xmaxc = xmax + dx
+        yminc = ymin
+        ymaxc = ymax + dy
+      elif centering == 'cell':
+        xminc = xmin - dx/2.
+        xmaxc = xmax + dx/2.
+        yminc = ymin - dy/2.
+        ymaxc = ymax + dy/2.
+      elif centering == 'old':
+        xminc = xmin
+        xmaxc = xmax
+        yminc = ymin
+        ymaxc = ymax
+      pli(transpose(grid1),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
+    else:
+      plf(grid1,ymesh,xmesh)
 
   # --- Plot particles
   if particles:
