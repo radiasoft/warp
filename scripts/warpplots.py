@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.24 2001/02/02 00:17:56 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.25 2001/02/02 18:02:49 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1045,15 +1045,21 @@ def ppzxy(iw=0,particles=1,**kw):
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['view'] = 9
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.xplmin,top.xplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 
   kw['view'] = 10
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.yplmin,top.yplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,win=top.xwindows,z=top.xp,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
@@ -1065,8 +1071,11 @@ def ppzx(iw=0,particles=1,**kw):
   "Plots Z-X"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.xplmin,top.xplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
@@ -1078,8 +1087,11 @@ def ppzy(iw=0,particles=1,**kw):
   "Plots Z-Y"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.yplmin,top.yplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
@@ -1091,8 +1103,11 @@ def ppzxp(iw=0,particles=1,**kw):
   "Plots Z-X'"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.xpplmin,top.xpplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
@@ -1104,8 +1119,11 @@ def ppzvx(iw=0,particles=1,**kw):
   "Plots Z-Vx"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
@@ -1117,8 +1135,11 @@ def ppzyp(iw=0,particles=1,**kw):
   "Plots Z-Y'"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.ypplmin,top.ypplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
@@ -1130,8 +1151,11 @@ def ppzvy(iw=0,particles=1,**kw):
   "Plots Z-Vy"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                    top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
@@ -1144,7 +1168,10 @@ def ppzvz(iw=0,particles=1,**kw):
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   (vzmin,vzmax) = getvzrange()
-  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
@@ -1156,7 +1183,10 @@ def ppxy(iw=0,particles=1,**kw):
   "Plots X-Y"
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
@@ -1169,7 +1199,10 @@ def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
   kw['particles'] = particles
-  kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
   kw['iz'] = iz
   kw['slope'] = slope
   kw['offset'] = offset
@@ -1185,7 +1218,10 @@ def ppyyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
   kw['particles'] = particles
-  kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
   kw['iz'] = iz
   kw['slope'] = slope
   kw['offset'] = offset
@@ -1200,7 +1236,10 @@ def ppxpyp(iw=0,particles=1,**kw):
   "Plots X'-Y'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
   kw['particles'] = particles
-  kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),
@@ -1214,8 +1253,11 @@ def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
   kw['particles'] = particles
-  kw['pplimits'] = (top.xplmin,top.xplmax,
-                    top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xplmin,top.xplmax,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   kw['iz'] = iz
   kw['slope'] = slope*vz
   kw['offset'] = offset*vz
@@ -1231,8 +1273,11 @@ def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
   kw['particles'] = particles
-  kw['pplimits'] = (top.yplmin,top.yplmax,
-                    top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.yplmin,top.yplmax,
+                      top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   kw['iz'] = iz
   kw['slope'] = slope*vz
   kw['offset'] = offset*vz
@@ -1248,7 +1293,10 @@ def ppxvz(iw=0,particles=1,**kw):
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
-  kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
@@ -1261,7 +1309,10 @@ def ppyvz(iw=0,particles=1,**kw):
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
-  kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
@@ -1303,8 +1354,11 @@ def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
     else:
       slope = 0.
   kw['particles'] = particles
-  kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
-                    top.xpplmin/xpscale,top.xpplmax/ypscale)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
+                      top.xpplmin/xpscale,top.xpplmax/ypscale)
   kw['slope'] = slope
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(rp,rr,kwdict=kw)
@@ -1317,7 +1371,10 @@ def pprvz(iw=0,particles=1,**kw):
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
-  kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
   rr = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
