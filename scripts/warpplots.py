@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.128 2004/09/09 20:50:00 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.129 2004/09/09 23:02:43 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -633,6 +633,8 @@ Note that either the x and y coordinates or the grid must be passed in.
          "only one of zz and grid can be specified"
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
          "centering must take one of the values 'node', 'cell', or 'old'"
+  assert (grid is None or len(shape(grid))==2), \
+         "the grid specified must be two dimensional"
 
   # --- If there are no particles and no grid to plot, just return
   if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
