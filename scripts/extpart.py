@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.23 2003/09/16 17:42:27 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.24 2003/09/23 19:37:18 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -272,19 +272,19 @@ routines (such as ppxxp).
       nn = top.nep[id,js]
       ntot = globalsum(nn)
       if ntot == 0: continue
-      t = gatherarray(top.tep[:nn,id,js]+0.,othersempty=1)
-      x = gatherarray(top.xep[:nn,id,js]+0.,othersempty=1)
-      y = gatherarray(top.yep[:nn,id,js]+0.,othersempty=1)
-      ux = gatherarray(top.uxep[:nn,id,js]+0.,othersempty=1)
-      uy = gatherarray(top.uyep[:nn,id,js]+0.,othersempty=1)
-      uz = gatherarray(top.uzep[:nn,id,js]+0.,othersempty=1)
+      t = gatherarray(top.tep[:nn,id,js],othersempty=1)
+      x = gatherarray(top.xep[:nn,id,js],othersempty=1)
+      y = gatherarray(top.yep[:nn,id,js],othersempty=1)
+      ux = gatherarray(top.uxep[:nn,id,js],othersempty=1)
+      uy = gatherarray(top.uyep[:nn,id,js],othersempty=1)
+      uz = gatherarray(top.uzep[:nn,id,js],othersempty=1)
       if self.laccumulate and not self.dumptofile:
-        self.tep[js].append(t)
-        self.xep[js].append(x)
-        self.yep[js].append(y)
-        self.uxep[js].append(ux)
-        self.uyep[js].append(uy)
-        self.uzep[js].append(uz)
+        self.tep[js].append(t+0.)
+        self.xep[js].append(x+0.)
+        self.yep[js].append(y+0.)
+        self.uxep[js].append(ux+0.)
+        self.uyep[js].append(uy+0.)
+        self.uzep[js].append(uz+0.)
       else:
         self.tep[js] = t
         self.xep[js] = x
