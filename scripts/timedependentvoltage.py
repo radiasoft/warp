@@ -75,8 +75,16 @@ Input for constructor:
     # --- the fields.
     if doitnow: fieldsol(-1)
 
+  def enable(self):
+    installbeforefs(self.applyvoltage)
+
   def disable(self):
     uninstallbeforefs(self.applyvoltage)
+
+  def __setstate__(self,dict):
+    # --- This is called when the instance is unpickled.
+    self.__dict__.update(dict)
+    self.enable()
 
   def applyvoltage(self,time=None):
     # --- AMR is being used, this routine will install itself there to
