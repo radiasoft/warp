@@ -15,10 +15,18 @@ def executecommand(s):
   e = os.system(s)
 
 for pubhome in pubhomes:
-  executecommand('cp pywarp90 '+pubhome+'/pywarp90'+date)
   executecommand('cp warpC.so '+pubhome+'/warpC'+date+'.so')
-  executecommand('cd '+pubhome+';chmod go+rx pywarp90'+date+' warpC'+date+'.so')
-  executecommand('cd '+pubhome+';ln -sf pywarp90'+date+' pywarp90')
+  executecommand('cd '+pubhome+';chmod go+rx warpC'+date+'.so')
   executecommand('cd '+pubhome+';ln -sf warpC'+date+'.so warpC.so')
   executecommand('cd '+pubhome+'/source/pywarp90;cvs update')
   executecommand('cd '+pubhome+'/scripts;cvs update')
+
+#for pubhome in pubhomes:
+#  executecommand('cp pywarp90 '+pubhome+'/pywarp90'+date)
+#  executecommand('cp warpC.so '+pubhome+'/warpC'+date+'.so')
+#  executecommand('cd '+pubhome+';chmod go+rx pywarp90'+date+' warpC'+date+'.so')
+#  executecommand('cd '+pubhome+';ln -sf pywarp90'+date+' pywarp90')
+#  executecommand('cd '+pubhome+';ln -sf warpC'+date+'.so warpC.so')
+#  executecommand('cd '+pubhome+'/source/pywarp90;cvs update')
+#  executecommand('cd '+pubhome+'/scripts;cvs update')
+
