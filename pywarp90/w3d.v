@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.176 $, $Date: 2004/12/03 01:07:33 $
+#@(#) File W3D.V, version $Revision: 3.177 $, $Date: 2004/12/06 23:30:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.176 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.177 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -95,8 +95,7 @@ distrbtn                  character*20  /"none"/
    #  Based on transformations of Hamiltonian defined equilibria in continuous 
    #  applied focusing channels (not presently implemented, future addition):
    #    "WB" or "Waterbag" = water-bag
-   #    "PA" or "Parabolic" = parabolic
-   #    "GA" or "Gaussian" = Gaussian  
+   #    "PA" or "Parabolic" = parabolic  
    #    "TE" or "ThermalEquilibrium" = thermal equilibrium
    #  Based on zero-space-charge Courant-Snyder invariants of lattices with  
    #  axially varying linear applied focusing: 
@@ -754,18 +753,30 @@ putsortedefield(n:integer,isort:integer,tex:real,tey:real,tez:real,
 
 
 *********** W3Dload:
+hl_rmax   real  [m] # maximum radius of continuous focusing (CF) equivalent 
+                    #  Hamiltonian equilibrium density and angle spreads  
+hl_nrdist integer   # number of radial data points of CF Hamiltonian eq 
+                    #  ranging from [0:hl_nrdist] -> [0,hl_rmax]. 
+hl_rdist(0:hl_nrdist)   _real
+   # Code set: particle density in r calculated for CF Hamiltonian eq load 
+hl_tdist(0:hl_nrdist)   _real
+   # Code set: particle temp spread in r calculated for CF Hamiltonian eq load
 bessi0(x:real) real function # Modified Bessel function I_0(x) for real x
 bessi1(x:real) real function # Modified Bessel function I_1(x) for real x
 bessi(n:integer,x:real) real function # Modified Bessel function I_n(x) 
                                       #  for real x and integer n >= 2
-zbrent(func:real,x1:real,x2:real,tol:real,itmax:integer) real function 
-                             # Brent routine for finding a root of fun(x) 
-                             # bracketed between x1 and x2 to tolerance tol 
-                             # within itmax iterations
-zbrent_test(x1:real,x2:real,tol:real,itmax:integer) real function
-watbagconstr(k1re:real) real function  # scaled constraint equation for a 
-                                       # waterbag equilbrium distribution in 
-                                       # continuous focusing
+
+
+
+
+#zbrent(func:real,x1:real,x2:real,tol:real,itmax:integer) real function 
+#                             # Brent routine for finding a root of fun(x) 
+#                             # bracketed between x1 and x2 to tolerance tol 
+#                             # within itmax iterations
+#zbrent_test(x1:real,x2:real,tol:real,itmax:integer) real function
+#watbagconstr(k1re:real) real function  # scaled constraint equation for a 
+#                                       # waterbag equilbrium distribution in 
+#                                       # continuous focusing
 
 
 ******** Subtimers3d dump:
