@@ -69,7 +69,7 @@ class panel(wxPanel):
 	if which is not None:self.which = which
         warp_path = os.path.dirname(warp.__file__)
         if warp_path <> '':warp_path+='/'
-        self.html.LoadPage(warp_path+'../doc/html/'+self.which+'.html')
+        self.html.LoadPage(warp_path+'doc/html/'+self.which+'.html')
 
     def OnBackButton(self, event):
         if not self.html.HistoryBack():
