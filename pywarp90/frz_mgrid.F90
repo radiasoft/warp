@@ -5816,10 +5816,10 @@ TYPE(CONDtype), POINTER :: c
    END if
    IF(ibnd<=necndbdy) then
      ne = ne + 1
-     dxm = MIN(1._8,ecdelmx(iii))*b%dr
-     dxp = MIN(1._8,ecdelpx(iii))*b%dr
-     dzm = MIN(1._8,ecdelmz(iii))*b%dz
-     dzp = MIN(1._8,ecdelpz(iii))*b%dz
+     dxm = ecdelmx(iii)*b%dr
+     dxp = ecdelpx(iii)*b%dr
+     dzm = ecdelmz(iii)*b%dz
+     dzp = ecdelpz(iii)*b%dz
      b%cndlast%volt0xm(ii)=ecvoltmx(iii)
      b%cndlast%volt0xp(ii)=ecvoltpx(iii)
      b%cndlast%volt0zm(ii)=ecvoltmz(iii)
@@ -5830,10 +5830,10 @@ TYPE(CONDtype), POINTER :: c
      b%cndlast%condidzp(ii)=ecnumbpz(iii)
    else
      no = no + 1
-     dxm = MIN(1._8,ocdelmx(iii))*b%dr
-     dxp = MIN(1._8,ocdelpx(iii))*b%dr
-     dzm = MIN(1._8,ocdelmz(iii))*b%dz
-     dzp = MIN(1._8,ocdelpz(iii))*b%dz
+     dxm = ocdelmx(iii)*b%dr
+     dxp = ocdelpx(iii)*b%dr
+     dzm = ocdelmz(iii)*b%dz
+     dzp = ocdelpz(iii)*b%dz
      b%cndlast%volt0xm(ii)=ocvoltmx(iii)
      b%cndlast%volt0xp(ii)=ocvoltpx(iii)
      b%cndlast%volt0zm(ii)=ocvoltmz(iii)
@@ -5891,6 +5891,10 @@ TYPE(CONDtype), POINTER :: c
    b%cndlast%dxp(ii)=dxp
    b%cndlast%dzm(ii)=dzm
    b%cndlast%dzp(ii)=dzp
+   dxm = MIN(b%dr,dxm)
+   dxp = MIN(b%dr,dxp)
+   dzm = MIN(b%dz,dzm)
+   dzp = MIN(b%dz,dzp)
    select case (bnd_method)
      case (egun)
        dxx=b%dr
@@ -5928,25 +5932,25 @@ TYPE(CONDtype), POINTER :: c
    b%cndlast%cfzm(ii) = 1._8/(dzm*dzz)
    b%cndlast%cfzp(ii) = 1._8/(dzp*dzz)
    b%cndlast%cf0(ii)  = -b%cndlast%cfxm(ii)-b%cndlast%cfxp(ii)-b%cndlast%cfzm(ii)-b%cndlast%cfzp(ii)
-   IF(dxm>=b%dr) then
+   IF(b%cndlast%dxm(ii)>=b%dr) then
      b%cndlast%phi0xm(ii)=0._8
    else
      b%cndlast%phi0xm(ii)=b%cndlast%cfxm(ii)*b%cndlast%volt0xm(ii)
      b%cndlast%cfxm(ii)=0._8
    END if
-   IF(dxp>=b%dr) then
+   IF(b%cndlast%dxp(ii)>=b%dr) then
      b%cndlast%phi0xp(ii)=0._8
    else
      b%cndlast%phi0xp(ii)=b%cndlast%cfxp(ii)*b%cndlast%volt0xp(ii)
      b%cndlast%cfxp(ii)=0._8
    END if
-   IF(dzm>=b%dz) then
+   IF(b%cndlast%dzm(ii)>=b%dz) then
      b%cndlast%phi0zm(ii)=0._8
    else
      b%cndlast%phi0zm(ii)=b%cndlast%cfzm(ii)*b%cndlast%volt0zm(ii)
      b%cndlast%cfzm(ii)=0._8
    END if
-   IF(dzp>=b%dz) then
+   IF(b%cndlast%dzp(ii)>=b%dz) then
      b%cndlast%phi0zp(ii)=0._8
    else
      b%cndlast%phi0zp(ii)=b%cndlast%cfzp(ii)*b%cndlast%volt0zp(ii)
