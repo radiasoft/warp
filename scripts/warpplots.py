@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.92 2003/01/15 20:21:05 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.93 2003/02/11 22:29:00 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -503,6 +503,8 @@ def ppgeneric_doc(x,y):
   - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
                             extrema (x for %(x)s and y for %(y)s)
   - cmin=min(grid), cmax=max(grid): min and max of data for coloration
+  - xbound=dirichlet: sets boundary condition on gridded data for x
+  - ybound=dirichlet: sets boundary condition on gridded data for y
   - particles=0: when true, plot particles
   - uselog=0: when true, logarithmic levels of the number density are used
   - color='fg': color of particles, when=='density', color by number density
@@ -561,6 +563,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'contours':None,'filled':0,'ccolor':'fg',
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,
+                'xbound':dirichlet,'ybound':dirichlet,
                 'ldensityscale':0,'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
@@ -740,6 +743,20 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- Divide out the particle counts by hand.
       grid = grid/where(greater(gridcount,0.),gridcount,1.)
 
+    # --- Enforce boundary conditions on the grid
+    if xbound == neumann:
+      grid[0,:] = 2.*grid[0,:]
+      grid[-1,:] = 2.*grid[-1,:]
+    elif xbound == periodic:
+      grid[0,:] = grid[0,:] + grid[-1,:]
+      grid[-1,:] = grid[0,:]
+    if ybound == neumann:
+      grid[:,0] = 2.*grid[:,0]
+      grid[:,-1] = 2.*grid[:,-1]
+    elif ybound == periodic:
+      grid[:,0] = grid[:,0] + grid[:,-1]
+      grid[:,-1] = grid[:,0]
+
     # --- If requested, return the grid and extrema, doing no plotting
     if returngrid: return (grid,xmin,xmax,ymin,ymax)
 
@@ -902,7 +919,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
       zrange = 1.5*maxnd(abs(grid1))
-      vo = VPythonobjects.VisualMesh(xmesh,ymesh,grid1,title=default_titlet,
+      vo = VPythonobjects.VisualMesh(zvalues=grid1,title=default_titlet,
                                      color=scolor,vrange=(xrange,yrange,zrange))
       vpythonscenelist.append(vo.scene)
     except ImportError:
