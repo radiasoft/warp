@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.63 $, $Date: 2003/01/15 14:49:09 $
+#@(#) File F3D.V, version $Revision: 3.64 $, $Date: 2003/01/23 21:23:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.63 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.64 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -347,6 +347,7 @@ srfrvinoutf(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
 vpois3d  (iwhich:integer,a:real,ak:real,kxsq:real,kysq:real,kzsq:real,
          attx:real,atty:real,attz:real,filt:real,
          lx:real,ly:real,lz:real,nx:integer,ny:integer,nz:integer,
+         nzfull:integer,
          w:real,xywork:real,zwork:real,ibc:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine #  The 3d Poisson solver
@@ -365,40 +366,46 @@ cosqx(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
 cosqy(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
 vcpft(r:real,i:real,n:integer,incp:integer,signp:integer,lenv:integer,
       lfd:integer) subroutine
-pipe3df  (iwhich, pipeshpe:real, rho:real, phi:real, kxsq:real, kysq:real,
-          kzsq:real, attx:real, atty:real, attz:real, filt:real,
-          xlen:real, ylen:real, zlen:real, nx, ny, nz, scrtch:real,
-          l2symtry:logical,l4symtry:logical)
+pipe3df(iwhich, pipeshpe:real, rho:real, phi:real, kxsq:real, kysq:real,
+        kzsq:real, attx:real, atty:real, attz:real, filt:real,
+        xlen:real, ylen:real, zlen:real, nx:integer, ny:integer, nz:integer,
+        nzfull:integer, scrtch:real,
+        l2symtry:logical,l4symtry:logical)
      subroutine #  External interface to capacity field solver
-pipest3d (pipeshpe:real, cap:real, phi:real, kxsq:real, kysq:real, kzsq:real,
-          attx:real, atty:real, attz:real, filt:real, xlen:real,
-          ylen:real, zlen:real, nx, ny, nz, scrtch:real, piperadi:real,
-          pipen:real,pipe8th:real,pipex:real,pipey:real,cap3d:real,kpvt,
-          l2symtry:logical,l4symtry:logical)
+pipest3d(pipeshpe:real, cap:real, phi:real, kxsq:real, kysq:real, kzsq:real,
+         attx:real, atty:real, attz:real, filt:real, xlen:real,
+         ylen:real, zlen:real,
+         nx:integer,ny:integer,nz:integer,nzfull:integer,
+         scrtch:real, piperadi:real,
+         pipen:real,pipe8th:real,pipex:real,pipey:real,cap3d:real,kpvt,
+         l2symtry:logical,l4symtry:logical)
      subroutine #  Sets up capacity matrix
-setcap3d (ncndpts,quadx:real,quady:real,quadz:real,quadcap:real,kpvt,nx,ny,nz,
-          phi:real,work:real,kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,
-          attz:real,xlen:real,ylen:real,zlen:real,filt:real,
-          l2symtry:logical,l4symtry:logical)
+setcap3d(ncndpts,quadx:real,quady:real,quadz:real,quadcap:real,kpvt:integer,
+         nx:integer,ny:integer,nz:integer,nzfull:integer,
+         phi:real,work:real,kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,
+         attz:real,xlen:real,ylen:real,zlen:real,filt:real,
+         l2symtry:logical,l4symtry:logical)
      subroutine # Sets up 3-d cap matrix
-capfs    (iwhich,nx,ny,nz,phi:real,rho:real,xlen:real,ylen:real,zlen:real,
-          kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,attz:real,
-          filt:real,work:real,workz:real,xmmax:real,
-          pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
+capfs(iwhich,nx:integer,ny:integer,nz:integer,nzfull:integer,
+      phi:real,rho:real,xlen:real,ylen:real,zlen:real,
+      kxsq:real,kysq:real,kzsq:real,attx:real,atty:real,attz:real,
+      filt:real,work:real,workz:real,xmmax:real,
+      pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # 3-d field solve using cap matrices
-cndctr3d (nx,ny,xmmax:real,dx:real,dy:real,quadradi:real,quadcent:real,ncndpts,
-          quadx:real,quady:real,quadz:real,quadv:real,nzpts,nendquad,nzquad,
-          qdslclen:real,pipeshpe:string,loadquad:logical)
+cndctr3d(nx,ny,xmmax:real,dx:real,dy:real,quadradi:real,quadcent:real,ncndpts,
+         quadx:real,quady:real,quadz:real,quadv:real,nzpts,nendquad,nzquad,
+         qdslclen:real,pipeshpe:string,loadquad:logical)
      subroutine # Finds points on quadrupole conductor surfaces
 findqdnd(nquad:integer,quadzs:real,quadde:real,quadvx:real,quadvy:real,
          zmmin:real,zgrid:real,nz:integer,dz:real,
          numends:integer,nendmax:integer,quadend:real,quadvlt:real,
          vshift:real,quadcent:real,quadradi:real)
      subroutine # Finds starts of quads that are on main grid
-vcap3d   (iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
-          atty:real,attz:real,filt:real,xlen:real,ylen:real,zlen:real,
-          nx,ny,nz,scrtch:real,xmmax:real,zmmin:real,zgrid:real,
-          pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
+vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
+       atty:real,attz:real,filt:real,xlen:real,ylen:real,zlen:real,
+       nx:integer,ny:integer,nz:integer,nzfull:integer,
+       scrtch:real,xmmax:real,zmmin:real,zgrid:real,
+       pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # External routine for capacity matrix field solve
 
 ******** ConductorGeometryGenerators:
