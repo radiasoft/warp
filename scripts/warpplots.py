@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.28 2001/02/08 00:03:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.29 2001/02/09 22:23:56 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1656,7 +1656,7 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
 ##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
 def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
-        width=1.):
+        width=1.,decomposed=1):
   "Same as plg but can plot multidimensional array"
   if x:
     if shape(x)!=shape(y) and (len(shape(x))==1 and shape(x)[0]!=shape(y)[0]):
@@ -1695,8 +1695,12 @@ def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
     yy=y[:,NewAxis]
   n = shape(xx)[1]
   for i in xrange(yy.shape[1]):
-    warpplg(yy[:,i],xx[:,i%n],color=color,linetype=linetype,
-            marks=marks,marker=marker,msize=msize,width=width)
+    if decomposed:
+      warpplg(yy[:,i],xx[:,i%n],color=color,linetype=linetype,
+              marks=marks,marker=marker,msize=msize,width=width)
+    else:
+      plg(yy[:,i],xx[:,i%n],color=color,type=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
 
 ##########################################################################
 ##########################################################################
