@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.5 2003/08/29 23:11:27 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.6 2003/10/09 23:33:11 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -46,10 +46,10 @@ Class for creating particle scraper for conductors
       self.conductors[c.condid] = c
       self.grid.getisinside(c)
 
-  def scrapeall(self):
+  def scrapeall(self,clear=0):
     for js in xrange(top.ns):
       self.scrape(js)
-      processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
+      if clear: processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
 
   def scrape(self,js):
     dx = self.grid.dx
@@ -67,8 +67,8 @@ Class for creating particle scraper for conductors
     isinside = self.grid.isinside
 
     # --- First, find any particles near a conductor
-    i1 = top.ins[0] - 1
-    i2 = top.ins[0] + top.nps[0] + 1
+    i1 = top.ins[js] - 1
+    i2 = top.ins[js] + top.nps[js] - 1
     top.pid[i1:i2,self.npid] = 0.
     xx = top.xp[i1:i2]
     yy = top.yp[i1:i2]
