@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.8 2001/06/01 21:56:13 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.9 2001/06/18 17:54:32 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -24,7 +24,7 @@ else:
 
 # --- Convenience function modeled after the iota of basis
 def iota(low,high=None,step=1):
-  if high==None:
+  if high is None:
     if step > 0:
       return arange(1,low+1,step)
     else:
@@ -222,7 +222,7 @@ Dump data into a pdb file
   packagelist.reverse()
   for pname in packagelist:
     pkg = eval(pname,__main__.__dict__)
-    if varsuffix == None: pkgsuffix = '@' + pname
+    if varsuffix is None: pkgsuffix = '@' + pname
     # --- Get variables in this package which have attribute attr.
     vlist = []
     for a in attr: vlist = vlist + pkg.varlist(a)
@@ -248,7 +248,7 @@ Dump data into a pdb file
           ff.write(vname+pkgsuffix,v)
   # --- Now, write out the python variables (that can be written out).
   # --- If supplied, the varsuffix is append to the names here too.
-  if varsuffix == None: varsuffix = ''
+  if varsuffix is None: varsuffix = ''
   for v in vars:
     try:
       vval = eval(v,__main__.__dict__,locals())

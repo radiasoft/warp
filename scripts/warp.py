@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.24 2001/06/05 16:53:12 dave Exp $"
+warp_version = "$Id: warp.py,v 1.25 2001/06/18 17:54:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -222,7 +222,7 @@ returns a digit reversed random number.
   nbase=None: base to use for digit reversing
   """
   if not i1:
-    if x == None:
+    if x is None:
       # --- Try various versions of ranf.
       try: return RNG.ranf()
       except: pass
@@ -455,7 +455,7 @@ def printtimers(file=None):
          with that name is created. If a file object, the data is written
          to that file (the file remains open).
   """
-  if file == None:
+  if file is None:
     ff = sys.stdout
     closeit = 0
   elif type(file) == type(""):
