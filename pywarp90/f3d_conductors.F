@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.19 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2779,11 +2779,11 @@ c source pre-accelerator.
 c The notation is that a negative distance means that the point is inside.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz
-      real(kind=8):: x0l,xl1,xl2,xlave
-      real(kind=8):: x0r,xr1,xr2,xrave
-      real(kind=8):: y0l,yl1,yl2,ylave
-      real(kind=8):: y0r,yr1,yr2,yrave
+      real(kind=8):: xx,yy,zz,aa,bb
+      real(kind=8):: x0l,xl1sq,xl2sq,xl1,xl2,xlave
+      real(kind=8):: x0r,xr1sq,xr2sq,xr1,xr2,xrave
+      real(kind=8):: y0l,yl1sq,yl2sq,yl1,yl2,ylave
+      real(kind=8):: y0r,yr1sq,yr2sq,yr1,yr2,yrave
       real(kind=8):: z0l,zl1,zl2,zlave
       real(kind=8):: z0r,zr1,zr2,zrave
 
@@ -2804,13 +2804,17 @@ c       --- Set temps
 
 c       --- Get z-intersect with left and right hand side of the plate
         z0l = z0 - 0.5*thickness
-        zl1 = zb - sqrt((zb-za+sqrt((za-z0l)**2-xx**2))**2 - yy**2)
-        zl2 = za - sqrt((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - xx**2)
+        aa = (2.*z0l*za - z0l**2 + xx**2)/(za+sqrt((za-z0l)**2-xx**2))
+        zl1 = (2.*aa*zb - aa**2 + yy**2)/(zb+sqrt((zb-aa)**2-yy**2))
+        bb = (2.*z0l*zb - z0l**2 + yy**2)/(zb+sqrt((zb-z0l)**2-yy**2))
+        zl2 = (2.*bb*za - bb**2 + xx**2)/(za+sqrt((za-bb)**2-xx**2))
         zlave = 0.5*(zl1 + zl2)
 
         z0r = z0 + 0.5*thickness
-        zr1 = zb - sqrt((zb-za+sqrt((za-z0r)**2-xx**2))**2 - yy**2)
-        zr2 = za - sqrt((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - xx**2)
+        aa = (2.*z0r*za - z0r**2 + xx**2)/(za+sqrt((za-z0r)**2-xx**2))
+        zr1 = (2.*aa*zb - aa**2 + yy**2)/(zb+sqrt((zb-aa)**2-yy**2))
+        bb = (2.*z0r*zb - z0r**2 + yy**2)/(zb+sqrt((zb-z0r)**2-yy**2))
+        zr2 = (2.*bb*za - bb**2 + xx**2)/(za+sqrt((za-bb)**2-xx**2))
         zrave = 0.5*(zr1 + zr2)
 
 c       --- Point far to the left of the plate
@@ -2819,14 +2823,36 @@ c       --- Point far to the left of the plate
           cycle
         endif
 
+c       xl1 = ((za-z0l)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+c       yl1 = ((zb-za+sqrt((za-z0l)**2-xx**2))**2 - (zb-zz)**2)
+c       xl2 = ((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - (za-zz)**2)
+c       yl2 = ((zb-z0l)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+        bb = (zz**2 - 2.*zz*zb + yy**2)/(zb+sqrt((zb-zz)**2+yy**2))
+        xl1sq = z0l**2 - bb**2 - 2.*(z0l + bb)*za
+        aa = (2.*z0l*za - z0l**2 + xx**2)/(za+sqrt((za-z0l)**2-xx**2))
+        yl1sq = aa**2 - zz**2 - 2.*(aa - zz)*zb
+        bb = (2.*z0l*zb - z0l**2 + yy**2)/(zb+sqrt((zb-z0l)**2-yy**2))
+        xl2sq = bb**2 - zz**2 - 2.*(bb - zz)*za
+        aa = (zz**2 - 2.*zz*za + xx**2)/(za+sqrt((za-zz)**2+xx**2))
+        yl2sq = z0l**2 - aa**2 - 2.*(z0l + aa)*zb
+
+c       xr1 = ((za-z0r)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+c       yr1 = ((zb-za+sqrt((za-z0r)**2-xx**2))**2 - (zb-zz)**2)
+c       xr2 = ((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - (za-zz)**2)
+c       yr2 = ((zb-z0r)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+        bb = (zz**2 - 2.*zz*zb + yy**2)/(zb+sqrt((zb-zz)**2+yy**2))
+        xr1sq = z0r**2 - bb**2 - 2.*(z0r + bb)*za
+        aa = (2.*z0r*za - z0r**2 + xx**2)/(za+sqrt((za-z0r)**2-xx**2))
+        yr1sq = aa**2 - zz**2 - 2.*(aa - zz)*zb
+        bb = (2.*z0r*zb - z0r**2 + yy**2)/(zb+sqrt((zb-z0r)**2-yy**2))
+        xr2sq = bb**2 - zz**2 - 2.*(bb - zz)*za
+        aa = (zz**2 - 2.*zz*za + xx**2)/(za+sqrt((za-zz)**2+xx**2))
+        yr2sq = z0r**2 - aa**2 - 2.*(z0r + aa)*zb
+
 c       --- Point to the left of plate
         if (zz <= zlave) then
-          xl1 = ((za-z0l)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
-          yl1 = ((zb-za+sqrt((za-z0l)**2-xx**2))**2 - (zb-zz)**2)
-          xl2 = ((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - (za-zz)**2)
-          yl2 = ((zb-z0l)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
-          xlave = 0.5*(xl1 + xl2)
-          ylave = 0.5*(yl1 + yl2)
+          xlave = 0.5*(xl1sq + xl2sq)
+          ylave = 0.5*(yl1sq + yl2sq)
           if (xlave < 0.) then
             xlave = -LARGEPOS
           else
@@ -2845,19 +2871,15 @@ c       --- Point to the left of plate
 
 c       --- Point in the plate
         if (zlave < zz .and. zz <= zrave) then
-          xl1 = sqrt((za-z0l)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
-          yl1 = sqrt((zb-za+sqrt((za-z0l)**2-xx**2))**2 - (zb-zz)**2)
-          xl2 = sqrt((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - (za-zz)**2)
-          yl2 = sqrt((zb-z0l)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xl1 = sqrt(xl1sq)
+          yl1 = sqrt(yl1sq)
+          xl2 = sqrt(xl2sq)
+          yl2 = sqrt(yl2sq)
           xlave = 0.5*(xl1 + xl2)
           ylave = 0.5*(yl1 + yl2)
 
-          xr1 = ((za-z0r)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
-          yr1 = ((zb-za+sqrt((za-z0r)**2-xx**2))**2 - (zb-zz)**2)
-          xr2 = ((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - (za-zz)**2)
-          yr2 = ((zb-z0r)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
-          xrave = 0.5*(xr1 + xr2)
-          yrave = 0.5*(yr1 + yr2)
+          xrave = 0.5*(xr1sq + xr2sq)
+          yrave = 0.5*(yr1sq + yr2sq)
           if (xrave < 0.) then
             xrave = -LARGEPOS
           else
@@ -2880,10 +2902,10 @@ c       --- Point in the plate
 
 c       --- Point to the right of plate
         if (zrave < zz) then
-          xr1 = sqrt((za-z0r)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
-          yr1 = sqrt((zb-za+sqrt((za-z0r)**2-xx**2))**2 - (zb-zz)**2)
-          xr2 = sqrt((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - (za-zz)**2)
-          yr2 = sqrt((zb-z0r)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xr1 = sqrt(xr1sq)
+          yr1 = sqrt(yr1sq)
+          xr2 = sqrt(xr2sq)
+          yr2 = sqrt(yr2sq)
           xrave = 0.5*(xr1 + xr2)
           yrave = 0.5*(yr1 + yr2)
           delpx(i) = xrave - xx
@@ -2909,7 +2931,7 @@ c source pre-accelerator.
 c The notation is that a negative distance means that the point is inside.
 
       integer(ISZ):: i,ii
-      real(kind=8):: xx,yy,zz
+      real(kind=8):: xx,yy,zz,aa,bb
       real(kind=8):: x1,y1,z1,z2,zave,dd
 
       do i=1,n
@@ -2924,8 +2946,12 @@ c       --- and the surface
         y1 = yy
         if (za < 1.e10 .and. zb < 1.e10) then
           do ii=1,5
-            z1 = zb - sqrt((zb-za+sqrt((za-z0)**2-x1**2))**2 - y1**2)
-            z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
+c           z1 = zb - sqrt((zb-za+sqrt((za-z0)**2-x1**2))**2 - y1**2)
+c           z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
+            aa = (2.*z0*za - z0**2 + x1**2)/(za+sqrt((za-z0)**2-x1**2))
+            z1 = (2.*aa*zb - aa**2 + y1**2)/(zb+sqrt((zb-aa)**2-y1**2))
+            bb = (2.*z0*zb - z0**2 + y1**2)/(zb+sqrt((zb-z0)**2-y1**2))
+            z2 = (2.*bb*za - bb**2 + x1**2)/(za+sqrt((za-bb)**2-x1**2))
             zave = 0.5*(z1 + z2)
             x1 = xx*(za - zave)/(za-zz)
             y1 = yy*(zb - zave)/(zb-zz)
