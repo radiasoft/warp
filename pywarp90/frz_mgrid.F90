@@ -4655,7 +4655,7 @@ has_diverged = .false.
 
 t_solve = wtime() - t_solve
 #ifdef MPIPARALLEL
- IF(my_index==0) &
+!IF(my_index==0) then
 #endif
   IF(lverbose>=1 .and. grid%gid(1)==basegrid%gid(1)) then
     write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
