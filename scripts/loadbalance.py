@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.23 2002/06/20 21:00:19 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.24 2002/07/18 01:05:24 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -110,18 +110,20 @@ that has already been done.
 
   # --- Correct the locations of conductor points for the field-solver.
   if(w3d.solvergeom == w3d.XYZgeom):
-    newiz = top.izslave[me]
-    if f3d.ncond > 0:
-      f3d.izcond[:f3d.ncond] = f3d.izcond[:f3d.ncond] + oldiz - newiz
-    if f3d.necndbdy > 0:
-      f3d.iecndz[:f3d.necndbdy] = f3d.iecndz[:f3d.necndbdy] + oldiz - newiz
-    if f3d.nocndbdy > 0:
-      f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
-    cleanconductors()
+    if top.fstype == 3:
+      newiz = top.izslave[me]
+      if f3d.ncond > 0:
+        f3d.izcond[:f3d.ncond] = f3d.izcond[:f3d.ncond] + oldiz - newiz
+      if f3d.necndbdy > 0:
+        f3d.iecndz[:f3d.necndbdy] = f3d.iecndz[:f3d.necndbdy] + oldiz - newiz
+      if f3d.nocndbdy > 0:
+        f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
+      cleanconductors()
 
   # --- Correct location of injection source.
   if(w3d.solvergeom == w3d.XYZgeom):
     if top.inject > 0:
+      newiz = top.izslave[me]
       w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz - newiz
   else:
     gchange_rhop_phip_rz()
@@ -314,11 +316,11 @@ def _adjustz():
   # --- If space-charge limited injection is turned on, then add additional
   # --- grid cells to the first processor so it will have the injection
   # --- surface completely covered.
-  if(w3d.solvergeom == w3d.XYZgeom):
-   if top.inject > 1:
-    zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
-    nzinj = int(max((top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+top.inj_d)) + 1
-    top.nzpslave[0] = max(top.nzpslave[0],nzinj)
+ #if(w3d.solvergeom == w3d.XYZgeom):
+ # if top.inject > 1:
+ #  zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
+ #  nzinj = int(max((top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+top.inj_d)) + 1
+ #  top.nzpslave[0] = max(top.nzpslave[0],nzinj)
 
   #---------------------------------------------------------------------------
   # --- Set the axial extent of each slaves domain to include
@@ -350,13 +352,6 @@ def _adjustz():
   w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
   w3d.zmmin = top.zmslmin[me]
   w3d.zmmax = top.zmslmax[me]
-  if(w3d.solvergeom == w3d.XYZgeom):
-   if top.fstype in [3,7] or f3d.nsorerr > 0:
-    # --- The additional check of nsorerr>0 is done since in some cases,
-    # --- the field solver may be turned off when the load balancing is done
-    # --- but used otherwise.
-    f3d.nzpsor = w3d.nz
-    f3d.nsorerr = (w3d.nx+1)*(w3d.ny+1)*(w3d.nz+1)/(.9*w3d.nx-1)
 
   # --- Change the alocation of everything effected are reset the meshes.
   gchange("Fields3d")
