@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.86 $, $Date: 2004/11/25 19:54:38 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.87 $, $Date: 2004/12/22 22:03:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3043,10 +3043,11 @@ c     attached - positive for even points, negative for odd points
 c   - the value chosen for inside of conductors is large enough so that
 c     is will not be the same as a subgrid point
 
-      integer(ISZ):: iii(0:nx,0:ny,0:nz)
+      integer(ISZ),allocatable:: iii(:,:,:)
       integer(ISZ):: ic,i,ix,iy,iz,id
 
 c     --- Set the conductor points.
+      allocate(iii(0:nx,0:ny,0:nz))
       iii = 0
       do ic=1,interior%n
         if (interior%ilevel(ic) /= mglevel) cycle
@@ -3189,7 +3190,7 @@ c       --- than the other point. If so, reset data for the other point.
 
       enddo
 
-
+      deallocate(iii)
       return
       end
 c=============================================================================
