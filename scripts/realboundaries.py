@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.27 2004/01/28 23:13:23 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.28 2004/02/09 19:55:58 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -633,7 +633,7 @@ Constructor arguments:
           if pa == 0.: pa = ap
           if gp > 0.: v1 = vx
           else: v1 = vy
-          cmlist[0] = s.getpipematrix(pa,v1,ox,oy)
+          cmlist[0] = s.getpipematrix(pa,pa,pa,v1,ox,oy)
         # --- First gap location
         if gl > 0.:
           withx = 0
@@ -655,7 +655,7 @@ Constructor arguments:
           if pa == 0.: pa = ap
           if gp > 0.: v2 = vy
           else: v2 = vx
-          cmlist[4] = s.getpipematrix(pa,v2,ox,oy)
+          cmlist[4] = s.getpipematrix(pa,pa,pa,v2,ox,oy)
         # --- Now append the list of 5 to the end of the main list of matrices.
         cm[id] = cmlist
       # --- Apply one of the five matrices.
