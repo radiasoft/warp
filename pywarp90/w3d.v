@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.108 $, $Date: 2003/05/27 22:15:56 $
+#@(#) File W3D.V, version $Revision: 3.109 $, $Date: 2003/06/02 22:19:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.108 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.109 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -318,6 +318,7 @@ inj_dx               real [m] /0./ # mesh spacing in x for injection
 inj_dy               real [m] /0./ # mesh spacing in y for injection
 inj_dz               real [m] /0./ # mesh spacing in z for injection
 inj_dz0              real [m] /0./ # mesh spacing in z for injection
+inj_addfdz           real     /0./ # fraction of dz to add to z position at injection
 linj_sphere          logical /.true./
 l_inj_rz             logical /.false./ # if true, make RZ injection with variable weights
 l_inj_regular        logical /.false./ # if true, inject one particle at each grid node and adjust weight accordingly
@@ -325,6 +326,7 @@ l_inj_delay_temp     logical /.false./ # if true, add temperature only after par
 l_inj_addtempz_abs   logical /.false./ # if true, longitudinal thermal velocity is positive
 l_inj_rec_inittime   logical /.false./ # if true, time of creation is recorded in pid
 l_inj_rec_initradius logical /.false./ # if true, radius of creation is recorded in pid
+l_inj_exact          logical /.false./ # if true, position and angle of injected particle computed analytically rather than interpolated
 inj_xmmin(inj_ninj)  _real [m] /0./ # Min x extent of injection mesh
 inj_ymmin(inj_ninj)  _real [m] /0./ # Min y extent of injection mesh
 inj_zmmin             real [m] /0./ # Min z extent of injection region
