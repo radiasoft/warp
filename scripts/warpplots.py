@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.3 2000/12/05 01:33:57 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.4 2000/12/05 20:11:42 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -456,15 +456,15 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   ir1 = top.ins[js-1]-1
   ir2 = top.ins[js-1]+top.nps[js-1]-1
   if ir2 <= ir1: return array([])
-  if zl or zu:
-    if not z: z = top.zp
-    if not zl: zl = -top.largepos
-    if not zu: zu = +top.largepos
+  if zl!=None or zu!=None:
+    if z == None: z = top.zp
+    if zl == None: zl = -top.largepos
+    if zu == None: zu = +top.largepos
     if zl > zu: print "Warning: zl > zu"
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
-  elif iz:
-    if not z: z = top.zp
+  elif iz!=None:
+    if z == None: z = top.zp
     if lparallel:
       zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
       zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
@@ -477,10 +477,9 @@ from window 0, getting all of the live partilces (whose uzp > 0).
     if psubset==[]: setup_subsets()
     ii = ir1 + compress(less(psubset[-iw-1],top.nps[js-1]),psubset[-iw-1])
   else:
-    if not win: win = top.zwindows + top.zbeam
-    if not z: z = top.zp
-    ii=compress(logical_and(less(win[0,iw],z[ir1:ir2]),
-                            less(z[ir1:ir2],win[1,iw])),
+    if win == None: win = top.zwindows[:,iw] + top.zbeam
+    if z == None: z = top.zp
+    ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
   ii = compress(not_equal(take(top.uzp,ii),0.),ii)
   return ii
