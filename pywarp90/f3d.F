@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.65 $, $Date: 2002/11/05 22:03:34 $
+c@(#) File F3D.M, version $Revision: 3.66 $, $Date: 2003/01/15 14:49:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6241,9 +6241,9 @@ c                 --- vertical electrode
             endif
 
 c           --- if within one cell in any direction, save the point
-            if (fuzz < abs(delx) .and. abs(delx) < 1.-fuzz .or.
-     &          fuzz < abs(dely) .and. abs(dely) < 1.-fuzz .or.
-     &          fuzz < abs(delz) .and. abs(delz) < 1.-fuzz) then
+            if (fuzz < abs(delx) .and. abs(delx) < 1.+fuzzsign*fuzz .or.
+     &          fuzz < abs(dely) .and. abs(dely) < 1.+fuzzsign*fuzz .or.
+     &          fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
               if (mod(ix_axis + ix + iy_axis + iy + iz + zparity,2) == 0) then
 c               --- even
                 necndbdy = necndbdy + 1
@@ -6253,12 +6253,12 @@ c               --- even
                 ecdelpy(necndbdy) = 2.
                 ecdelmz(necndbdy) = 2.
                 ecdelpz(necndbdy) = 2.
-                if (fuzz <  delx .and.  delx < 1.-fuzz) ecdelmx(necndbdy)= delx
-                if (fuzz <  dely .and.  dely < 1.-fuzz) ecdelmy(necndbdy)= dely
-                if (fuzz <  delz .and.  delz < 1.-fuzz) ecdelmz(necndbdy)= delz
-                if (fuzz < -delx .and. -delx < 1.-fuzz) ecdelpx(necndbdy)=-delx
-                if (fuzz < -dely .and. -dely < 1.-fuzz) ecdelpy(necndbdy)=-dely
-                if (fuzz < -delz .and. -delz < 1.-fuzz) ecdelpz(necndbdy)=-delz
+                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz) ecdelmx(necndbdy)= delx
+                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz) ecdelmy(necndbdy)= dely
+                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz) ecdelmz(necndbdy)= delz
+                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz) ecdelpx(necndbdy)=-delx
+                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz) ecdelpy(necndbdy)=-dely
+                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz) ecdelpz(necndbdy)=-delz
                 iecndx(necndbdy) = ix + ix_axis
                 iecndy(necndbdy) = iy + iy_axis
                 iecndz(necndbdy) = iz
@@ -6272,12 +6272,12 @@ c               --- odd
                 ocdelpy(nocndbdy) = 2.
                 ocdelmz(nocndbdy) = 2.
                 ocdelpz(nocndbdy) = 2.
-                if (fuzz <  delx.and. delx < 1.-fuzz) ocdelmx(nocndbdy) =  delx
-                if (fuzz <  dely.and. dely < 1.-fuzz) ocdelmy(nocndbdy) =  dely
-                if (fuzz <  delz.and. delz < 1.-fuzz) ocdelmz(nocndbdy) =  delz
-                if (fuzz < -delx.and.-delx < 1.-fuzz) ocdelpx(nocndbdy) = -delx
-                if (fuzz < -dely.and.-dely < 1.-fuzz) ocdelpy(nocndbdy) = -dely
-                if (fuzz < -delz.and.-delz < 1.-fuzz) ocdelpz(nocndbdy) = -delz
+                if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ocdelmx(nocndbdy) =  delx
+                if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ocdelmy(nocndbdy) =  dely
+                if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ocdelmz(nocndbdy) =  delz
+                if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ocdelpx(nocndbdy) = -delx
+                if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ocdelpy(nocndbdy) = -dely
+                if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ocdelpz(nocndbdy) = -delz
                 iocndx(nocndbdy) = ix + ix_axis
                 iocndy(nocndbdy) = iy + iy_axis
                 iocndz(nocndbdy) = iz
@@ -6453,9 +6453,9 @@ c         --- find distance in z from boundary
           endif
 
 c         --- if within one cell in any direction, save the point
-          if (fuzz < abs(delx) .and. abs(delx) < 1.-fuzz .or.
-     &        fuzz < abs(dely) .and. abs(dely) < 1.-fuzz .or.
-     &        fuzz < abs(delz) .and. abs(delz) < 1.-fuzz) then
+          if (fuzz < abs(delx) .and. abs(delx) < 1.+fuzzsign*fuzz .or.
+     &        fuzz < abs(dely) .and. abs(dely) < 1.+fuzzsign*fuzz .or.
+     &        fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
             if (mod(ix + iy + iz + zparity, 2) == 0) then
 c             --- even
               necndbdy = necndbdy + 1
@@ -6465,12 +6465,12 @@ c             --- even
               ecdelpy(necndbdy) = 2.
               ecdelmz(necndbdy) = 2.
               ecdelpz(necndbdy) = 2.
-              if (fuzz <  delx.and. delx < 1.-fuzz) ecdelmx(necndbdy) =  delx
-              if (fuzz <  dely.and. dely < 1.-fuzz) ecdelmy(necndbdy) =  dely
-              if (fuzz <  delz.and. delz < 1.-fuzz) ecdelmz(necndbdy) =  delz
-              if (fuzz < -delx.and.-delx < 1.-fuzz) ecdelpx(necndbdy) = -delx
-              if (fuzz < -dely.and.-dely < 1.-fuzz) ecdelpy(necndbdy) = -dely
-              if (fuzz < -delz.and.-delz < 1.-fuzz) ecdelpz(necndbdy) = -delz
+              if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ecdelmx(necndbdy) =  delx
+              if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ecdelmy(necndbdy) =  dely
+              if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ecdelmz(necndbdy) =  delz
+              if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ecdelpx(necndbdy) = -delx
+              if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ecdelpy(necndbdy) = -dely
+              if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ecdelpz(necndbdy) = -delz
               iecndx(necndbdy) = ix
               iecndy(necndbdy) = iy
               iecndz(necndbdy) = iz
@@ -6484,12 +6484,12 @@ c             --- odd
               ocdelpy(nocndbdy) = 2.
               ocdelmz(nocndbdy) = 2.
               ocdelpz(nocndbdy) = 2.
-              if (fuzz <  delx.and. delx < 1.-fuzz) ocdelmx(nocndbdy) =  delx
-              if (fuzz <  dely.and. dely < 1.-fuzz) ocdelmy(nocndbdy) =  dely
-              if (fuzz <  delz.and. delz < 1.-fuzz) ocdelmz(nocndbdy) =  delz
-              if (fuzz < -delx.and.-delx < 1.-fuzz) ocdelpx(nocndbdy) = -delx
-              if (fuzz < -dely.and.-dely < 1.-fuzz) ocdelpy(nocndbdy) = -dely
-              if (fuzz < -delz.and.-delz < 1.-fuzz) ocdelpz(nocndbdy) = -delz
+              if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ocdelmx(nocndbdy) =  delx
+              if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ocdelmy(nocndbdy) =  dely
+              if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ocdelmz(nocndbdy) =  delz
+              if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ocdelpx(nocndbdy) = -delx
+              if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ocdelpy(nocndbdy) = -dely
+              if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ocdelpz(nocndbdy) = -delz
               iocndx(nocndbdy) = ix
               iocndy(nocndbdy) = iy
               iocndz(nocndbdy) = iz
@@ -6742,9 +6742,9 @@ c             --- a conductor point.
               iycond(ncond) = iy
               izcond(ncond) = iz
               condvolt(ncond) = vinject(ij)
-            else if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &               delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &               delmz < 1.-fuzz) then
+            else if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
+     &               delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
+     &               delmz < 1.+fuzzsign*fuzz) then
 c             --- Add subgrid point
               if (mod(ix+iy+iz+zparity,2) == 0) then
 c               --- even
@@ -7330,9 +7330,9 @@ c             --- Make sure that distances are greater than zero.
               if (delpz < fuzz) delpz = 2.
 
 c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
+              if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
+     &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
+     &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz+zparity,2) == 0) then
 c                 --- even
                   necndbdy = necndbdy + 1
@@ -7928,9 +7928,9 @@ c             --- Make sure that distances are greater than zero.
               if (delpz < fuzz) delpz = 2.
 
 c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
+              if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
+     &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
+     &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz+zparity,2) == 0) then
                   necndbdy = necndbdy + 1
                   iecndx(necndbdy) = ix
@@ -8577,9 +8577,9 @@ c             --- Make sure that distances are greater than zero.
               if (delpz < fuzz) delpz = 2.
 
 c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
+              if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
+     &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
+     &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz+zparity,2) == 0) then
 c                 --- even
                   necndbdy = necndbdy + 1

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.62 $, $Date: 2002/11/05 22:03:34 $
+#@(#) File F3D.V, version $Revision: 3.63 $, $Date: 2003/01/15 14:49:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.62 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.63 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -150,6 +150,8 @@ icondlevel(ncondmax) _integer /-1/ # Coarseness level at which the point is on g
 icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
 icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
+fuzzsign      integer /-1/ # When -1, subgrid points with distances == 1 are
+                           # skipped, when +1 not skipped.
 ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
 necndbdy      integer /0/   # Number of points for even sub-grid boundaries
 ecndpvph(ncndmax)     _real -dump # Saves phi for even sub-grid boundaries
@@ -401,7 +403,8 @@ vcap3d   (iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
 
 ******** ConductorGeometryGenerators:
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
-                   dels:real,parity:integer,fuzz:real,dfill:integer) subroutine
+                   dels:real,parity:integer,fuzz:real,fuzzsign:integer,
+                   dfill:real) subroutine
 zplaneconductorf(zcent:real,zsign,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
@@ -444,5 +447,9 @@ zconeoutconductorf(r_zmin:real,r_zmax:real,length:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
