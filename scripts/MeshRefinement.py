@@ -1250,15 +1250,16 @@ be plotted.
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
     del ii[idim]
-    i01 = self.mins[ii[0]]
-    i02 = self.maxs[ii[0]]
-    i11 = self.mins[ii[1]]
-    i12 = self.maxs[ii[1]]
-    if not withguards:
-      i01 = i01 + self.deltas[ii[0]]*self.nguard*self.refinement
-      i02 = i02 - self.deltas[ii[0]]*self.nguard*self.refinement
-      i11 = i11 + self.deltas[ii[1]]*self.nguard*self.refinement
-      i12 = i12 - self.deltas[ii[1]]*self.nguard*self.refinement
+    if withguards:
+      i01 = self.mins[ii[0]]
+      i02 = self.maxs[ii[0]]
+      i11 = self.mins[ii[1]]
+      i12 = self.maxs[ii[1]]
+    else:
+      i01 = self.root.mins[ii[0]] + self.lower[ii[0]]*self.deltas[ii[0]]
+      i02 = self.root.mins[ii[0]] + self.upper[ii[0]]*self.deltas[ii[0]]
+      i11 = self.root.mins[ii[1]] + self.lower[ii[1]]*self.deltas[ii[1]]
+      i12 = self.root.mins[ii[1]] + self.upper[ii[1]]*self.deltas[ii[1]]
     xx = [i01,i01,i02,i02,i01]
     yy = [i11,i12,i12,i11,i11]
     if idim==2: xx,yy = yy,xx
@@ -1279,15 +1280,16 @@ be plotted.
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
     del ii[idim]
-    i01 = self.mins[ii[0]]
-    i02 = self.maxs[ii[0]]
-    i11 = self.mins[ii[1]]
-    i12 = self.maxs[ii[1]]
-    if not withguards:
-      i01 = i01 + self.dims[ii[0]]*self.nguard*self.refinement
-      i02 = i02 - self.dims[ii[0]]*self.nguard*self.refinement
-      i11 = i11 + self.dims[ii[1]]*self.nguard*self.refinement
-      i12 = i12 - self.dims[ii[1]]*self.nguard*self.refinement
+    if withguards:
+      i01 = self.mins[ii[0]]
+      i02 = self.maxs[ii[0]]
+      i11 = self.mins[ii[1]]
+      i12 = self.maxs[ii[1]]
+    else:
+      i01 = self.root.mins[ii[0]] + self.lower[ii[0]]*self.deltas[ii[0]]
+      i02 = self.root.mins[ii[0]] + self.upper[ii[0]]*self.deltas[ii[0]]
+      i11 = self.root.mins[ii[1]] + self.lower[ii[1]]*self.deltas[ii[1]]
+      i12 = self.root.mins[ii[1]] + self.upper[ii[1]]*self.deltas[ii[1]]
     xx = [i01,i01,i02,i02,i01]
     yy = [i11,i12,i12,i11,i11]
     if idim==2: xx,yy = yy,xx
