@@ -997,7 +997,7 @@ Fetches the E field. This should only be called at the root level grid.
         #put(ex,ii,tex)
         #put(ey,ii,tey)
         #put(ez,ii,tez)
-        putsortedefield(len(ex),isort,tex,tey,tez,ex,ey,ez)
+        putsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
 
     else:
 
@@ -1101,7 +1101,7 @@ blocknumber rather than the child number relative to the parent.
       #put(ex,isort,tex)
       #put(ey,isort,tey)
       #put(ez,isort,tez)
-      putsortedefield(len(ex),isort,tex,tey,tez,ex,ey,ez)
+      putsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
 
   def fetchphi(self):
     """
