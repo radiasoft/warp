@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.11 2003/05/27 22:50:40 dave Exp $"
+particles_version = "$Id: particles.py,v 1.12 2003/07/04 00:08:21 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -194,127 +194,127 @@ from window 0, getting all of the live partilces (whose uzp != 0).
 # The following return a specific coordinate of the selected particles
 # More documetation added after they are declared.
 #-------------------------------------------------------------------------
-def getn(iw=0,gather=1,**kw):
+def getn(iw=0,gather=1,bcast=0,**kw):
   "Returns number of particles in selection."
   ii = selectparticles(iw=iw,kwdict=kw)
   if lparallel and gather: return globalsum(len(ii))
   else: return len(ii)
 #-------------------------------------------------------------------------
-def getx(iw=0,gather=1,**kw):
+def getx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.xp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gety(iw=0,gather=1,**kw):
+def gety(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.yp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getz(iw=0,gather=1,**kw):
+def getz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.zp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getr(iw=0,gather=1,**kw):
+def getr(iw=0,gather=1,bcast=0,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gettheta(iw=0,gather=1,**kw):
+def gettheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = arctan2(take(top.yp,ii),take(top.xp,ii))
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvx(iw=0,gather=1,**kw):
+def getvx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvy(iw=0,gather=1,**kw):
+def getvy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvz(iw=0,gather=1,**kw):
+def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getux(iw=0,gather=1,**kw):
+def getux(iw=0,gather=1,bcast=0,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getuy(iw=0,gather=1,**kw):
+def getuy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getuz(iw=0,gather=1,**kw):
+def getuz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getxp(iw=0,gather=1,**kw):
+def getxp(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getyp(iw=0,gather=1,**kw):
+def getyp(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getrp(iw=0,gather=1,**kw):
+def getrp(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
   result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gettp(iw=0,gather=1,**kw):
+def gettp(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
   result = (-take(top.uxp,ii)*sin(tt)+take(top.uyp,ii)*cos(tt))/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getgaminv(iw=0,gather=1,**kw):
+def getgaminv(iw=0,gather=1,bcast=0,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getpid(iw=0,id=0,gather=1,**kw):
+def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   """Returns particle id number.
   -id=0: which pid value to return
   """
@@ -323,7 +323,7 @@ def getpid(iw=0,id=0,gather=1,**kw):
     result = take(top.pid[:,id],ii)
   else:
     result = array([])
-  if lparallel and gather: return gatherarray(result)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
