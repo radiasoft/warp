@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.151 $, $Date: 2005/04/01 23:05:38 $
+c@(#) File TOP.F, version $Revision: 3.152 $, $Date: 2005/04/05 23:46:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7372,7 +7372,7 @@ c Routines for handling particle blocks
 c=============================================================================
       subroutine checkparticleblock(block,is,nlower,nhigher)
       use Subtimerstop
-      use ParticleBlockModule
+      use ParticleBlockmodule
       type(ParticleBlock):: block
       integer(ISZ):: is,nlower,nhigher
 
@@ -7458,7 +7458,7 @@ c     --- ishft is zero.
 c=============================================================================
       subroutine shiftparticleblock(block,is,ishft)
       use Subtimerstop
-      use ParticleBlockModule
+      use ParticleBlockmodule
       type(ParticleBlock):: block
       integer(ISZ):: is,ishft
 
@@ -7547,7 +7547,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use Particles
-      use ParticleBlockModule
+      use ParticleBlockmodule
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
       type(ParticleBlock):: block
@@ -7603,7 +7603,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use Particles
-      use ParticleBlockModule
+      use ParticleBlockmodule
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
       type(ParticleBlock):: block
