@@ -15,8 +15,7 @@ getxxpslope(), getyypslope(): get x-x' and y-y' slopes
 addparticles(): add particles to the simulation
 """
 from warp import *
-import getzmom
-particles_version = "$Id: particles.py,v 1.1 2002/04/30 21:33:05 dave Exp $"
+particles_version = "$Id: particles.py,v 1.2 2002/05/08 14:00:57 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -434,6 +433,7 @@ Adds particles to the simulation
   if dofieldsol:
     fieldsol(-1)
   if resetmoments:
+    import getzmom
     getzmom.zmmnt()
     if top.it%top.nhist == 0:
       top.jhist = top.jhist - 1
