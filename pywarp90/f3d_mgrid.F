@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.46 $, $Date: 2002/10/09 02:24:23 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.47 $, $Date: 2002/11/05 22:03:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -338,7 +338,15 @@ c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
 
 c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c     --- all axis.
-      if (dz > 4./3.*dx) then
+      mglevelspart(mglevel+1) = (dz > 4./3.*dx)
+
+#ifdef MPIPARALLEL
+c     --- This must be a global operation since, due to roundoff, each
+c     --- processor can get a different value if dz == 4./3.*dx.
+      call parallellor(mglevelspart(mglevel+1))
+#endif
+
+      if (mglevelspart(mglevel+1)) then
         call setmglevelsrecur(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
      &                        mglevel+1,lx*2,ly*2,lz,
      &                        my_index,nslaves,izfsslave,nzfsslave)
@@ -460,7 +468,8 @@ c       --- Get the residual on the current grid.
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c       --- all axis.
 c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
-        if (0.5625*dxsqi > dzsqi) then
+c       if (0.5625*dxsqi > dzsqi) then
+        if (mglevelspart(mglevel+1)) then
 
 c         --- Alloate new work space
           allocate(phi2(0:nx/2,0:ny/2,-1:nz+1),rho2(0:nx/2,0:ny/2,0:nz))
