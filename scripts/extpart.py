@@ -7,7 +7,7 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.16 2003/08/29 23:09:36 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.17 2003/09/03 17:53:48 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -24,6 +24,10 @@ The creator options are:
  - nepmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
            otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
+ - name=None: descriptive name for location
+ - lautodump=1: when true, after the grid moves beyond the z location,
+                automatically dump the data to a file, clear the arrays and
+                disable itself. Also must have name set.
 
 One of iz or zz must be specified.
 
@@ -47,7 +51,8 @@ routines (such as ppxxp).
  - ptvy, ptvz, ptrace
   """
 
-  def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0):
+  def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
+               name=None,lautodump=1):
     # --- Save input values, getting default values when needed
     assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
     self.iz = iz
@@ -55,6 +60,8 @@ routines (such as ppxxp).
     if wz is None: self.wz = w3d.dz
     else:          self.wz = wz
     self.laccumulate = laccumulate
+    self.lautodump = lautodump
+    self.name = name
     if nepmax is None:
       self.nepmax = 10000
       if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
@@ -126,6 +133,14 @@ routines (such as ppxxp).
       if top.zzepwin[i] == self.zz and self.iz == -1: return i
     raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
 
+  def setupid(self):
+    top.nepwin = top.nepwin + 1
+    if top.nepmax < self.nepmax: top.nepmax = self.nepmax
+    err = gchange("ExtPart")
+    top.izepwin[-1] = self.iz
+    top.zzepwin[-1] = self.zz
+    top.wzepwin[-1] = self.wz
+
   def enable(self):
     # --- Add this window to the list
     # --- Only add this location to the list if it is not already there.
@@ -133,12 +148,7 @@ routines (such as ppxxp).
     # --- have the same location. For example one could be accumulating
     # --- while another isn't or the widths could be different.
     if self.enabled: return
-    top.nepwin = top.nepwin + 1
-    if top.nepmax < self.nepmax: top.nepmax = self.nepmax
-    err = gchange("ExtPart")
-    top.izepwin[-1] = self.iz
-    top.zzepwin[-1] = self.zz
-    top.wzepwin[-1] = self.wz
+    self.setupid()
     # --- Set so accumulate method is called after time steps
     installafterstep(self.accumulate)
     self.enabled = 1
@@ -156,6 +166,26 @@ routines (such as ppxxp).
     gchange("ExtPart")
     self.enabled = 0
 
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    if not self.enabled: return
+    try:    id = self.getid()
+    except: self.setupid()
+    if not isinstalledafterstep(self.accumulate):
+      installafterstep(self.accumulate)
+
+  def autodump(self):
+    if not self.lautodump or self.name is None: return
+    if not self.laccumulate: return
+    if self.iz >= 0: return
+    if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
+    import __main__
+    if self.name not in __main__.__dict__: return
+    self.disable()
+    if me == 0: pydump(self.name+'_ep.pdb',attr='None',vars=[self.name])
+    self.nepmax = 1
+    self.clear()
+
   def accumulate(self):
     # --- If top.nepwin is 0 then something is really wrong - this routine
     # --- should never be called it top.nepwin is zero.
@@ -166,7 +196,9 @@ routines (such as ppxxp).
     # --- If this windows is outside of the grid, then just return.
     if (self.iz == -1 and 
         (self.zz+self.wz < w3d.zmminglobal+top.zbeam or
-         self.zz-self.wz > w3d.zmmaxglobal+top.zbeam)): return
+         self.zz-self.wz > w3d.zmmaxglobal+top.zbeam)):
+      self.autodump()
+      return
     # --- Make sure the arrays didn't overflow. Note that this is not an
     # --- issue for lab frame windows.
     if globalmax(maxnd(top.nep)) == top.nepmax:
