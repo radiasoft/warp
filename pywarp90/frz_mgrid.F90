@@ -981,16 +981,16 @@ TYPE(GRIDtype), pointer :: gup
         b => g%bndlast
       else
         b => b%prev
-        call BNDtypefree(b%next)
+       !call BNDtypefree(b%next)
         call DelBNDtype(b%next)
       END if
       call del_cnds(b)
     end do
-    call BNDtypefree(b)
+   !call BNDtypefree(b)
     call DelBNDtype(b)
   END if
   NULLIFY(g%up%down)
-  call GRIDtypefree(g)
+ !call GRIDtypefree(g)
   call DelGRIDtype(g)
 
   ngrids=ngrids-1
@@ -1261,11 +1261,23 @@ TYPE(GRIDtype), pointer :: g
   if (associated(g%up)) then
     IF(associated(g%up%down)) NULLIFY(g%up%down)
   end if
+  if (associated(g%prev) .and. associated(g%next)) then
+    g%prev%next => g%next
+    g%next%prev => g%prev
+  else if (associated(g%prev)) then
+    NULLIFY(g%prev%next)
+  else if (associated(g%next)) then
+    NULLIFY(g%next%prev)
+  endif
 
   IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom) call del_grid_bnds(g)
   call del_overlaps(g)
 
-  call GRIDtypefree(g)
+! call GRIDtypefree(g)
+  NULLIFY(g%next)
+  NULLIFY(g%prev)
+  NULLIFY(g%up)
+  NULLIFY(g%down)
   call DelGRIDtype(g)
 
   return
@@ -1277,15 +1289,25 @@ TYPE(BNDtype), POINTER :: b,bnext
 INTEGER :: i
 
   b=>g%bndfirst
+  NULLIFY(g%bndfirst)
+  NULLIFY(g%bndlast)
   do WHILE(associated(b%next))
     bnext => b%next
     call del_cnds(b)
-    call BNDtypefree(b)
+    NULLIFY(b%next)
+    NULLIFY(b%prev)
+    NULLIFY(b%cndfirst)
+    NULLIFY(b%cndlast)
+   !call BNDtypefree(b)
     call DelBNDtype(b)
     b => bnext
   end do
   call del_cnds(b)
-  call BNDtypefree(b)
+  NULLIFY(b%next)
+  NULLIFY(b%prev)
+  NULLIFY(b%cndfirst)
+  NULLIFY(b%cndlast)
+ !call BNDtypefree(b)
   call DelBNDtype(b)
 
   return
@@ -1326,7 +1348,9 @@ subroutine del_cnd(c)
 implicit none
 TYPE(CONDtype), POINTER :: c
 
-  call CONDtypefree(c)
+  NULLIFY(c%next)
+  NULLIFY(c%prev)
+ !call CONDtypefree(c)
   call DelCONDtype(c)
 
 end subroutine del_cnd
@@ -1335,9 +1359,18 @@ subroutine del_overlaps(g)
 implicit none
 TYPE(GRIDtype) :: g
 
-IF(associated(g%neighbors)) call del_overlap(g%neighbors)
-IF(associated(g%parents)) call del_overlap(g%parents)
-IF(associated(g%children)) call del_overlap(g%children)
+IF(associated(g%neighbors)) then
+  call del_overlap(g%neighbors)
+  NULLIFY(g%neighbors)
+endif
+IF(associated(g%parents)) then
+  call del_overlap(g%parents)
+  NULLIFY(g%parents)
+endif
+IF(associated(g%children)) then
+  call del_overlap(g%children)
+  NULLIFY(g%children)
+endif
 
 end subroutine del_overlaps
 
@@ -1345,8 +1378,11 @@ recursive subroutine del_overlap(o)
 implicit none
 TYPE(OVERLAPtype), pointer :: o
 
-IF(associated(o%next)) call del_overlap(o%next)
-call OVERLAPtypefree(o)
+IF(associated(o%next)) then
+  call del_overlap(o%next)
+  NULLIFY(o%next)
+endif
+!call OVERLAPtypefree(o)
 call DelOVERLAPtype(o)
 
 end subroutine del_overlap
@@ -9187,7 +9223,10 @@ USE Multigridrz
 implicit none
 
   IF(.NOT.associated(basegrid)) return
-  IF(associated(basegrid)) call del_grid(basegrid)
+  IF(associated(basegrid)) then
+    call del_grid(basegrid)
+    NULLIFY(basegrid)
+  endif
 
 return
 end subroutine del_base
@@ -9247,6 +9286,7 @@ INTEGER, INTENT(IN) :: id
   END if
 
   call del_grid(grids_ptr(id)%grid)
+  NULLIFY(grids_ptr(id)%grid)
 
   return
 END subroutine del_subgrid
