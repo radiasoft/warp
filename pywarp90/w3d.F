@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.175 $, $Date: 2004/11/17 22:48:52 $
+c@(#) File W3D.F, version $Revision: 3.176 $, $Date: 2004/11/18 01:02:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -342,7 +342,12 @@ c  Also allocate the dynamic internal lattice arrays.
 
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
-      if (efetch == 3) then
+      if (efetch == 3 .and.
+     &    (solvergeom == XYZgeom .or.
+     &     solvergeom == RZgeom .or.
+     &     solvergeom == XZgeom .or.
+     &     solvergeom == Rgeom  .or.
+     &     solvergeom == Zgeom)) then
         nx_selfe = nxp
         ny_selfe = nyp
         nz_selfe = nzp
@@ -766,13 +771,22 @@ c  Field-solve for potential.
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (efetch == 3)
-     &  call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,boundxy)
+      if (efetch == 3 .and.
+     &    (solvergeom == XYZgeom .or.
+     &     solvergeom == RZgeom .or.
+     &     solvergeom == XZgeom .or.
+     &     solvergeom == Rgeom  .or.
+     &     solvergeom == Zgeom)) then
+        call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
+     &                  boundxy,boundxy,boundxy,boundxy)
+      endif
+
 c  Set the potential near the emitting surface.
       if (inject > 0 .and. inject < 4) then
         call getinj_phi()
       endif
+
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
       if (inject > 0 .and. caller == "w3dexe")
@@ -2878,14 +2892,14 @@ c            --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz,boundxy)
+     &                      dx,dy,dz,boundx0,boundxn,boundy0,boundyn)
       use GlobalVars
       use Subtimers3d
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
-      integer(ISZ):: boundxy
+      integer(ISZ):: boundx0,boundxn,boundy0,boundyn
 
 c Calculate the self-E via finite differences of phi.
 
@@ -2924,16 +2938,29 @@ c     --- of the guard cells.
       selfe(1,1:nx-1,ny,:) = tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
       selfe(2, 0,1:ny-1,:) = tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
       selfe(2,nx,1:ny-1,:) = tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
-      if (boundxy == dirichlet .or. boundxy == neumann) then
+
+      if (boundx0 == dirichlet .or. boundx0 == neumann) then
         selfe(1, 0, :,:) = 0.
-        selfe(1,nx, :,:) = 0.
-        selfe(2, :, 0,:) = 0.
-        selfe(2, :,ny,:) = 0.
-      else if (boundxy == periodic) then
+      else if (boundx0 == periodic) then
         selfe(1, 0, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
-        selfe(1,nx, :,:) = selfe(1, 0,:,:)
+      endif
+
+      if (boundxn == dirichlet .or. boundxn == neumann) then
+        selfe(1,nx, :,:) = 0.
+      else if (boundxn == periodic) then
+        selfe(1,nx, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
+      endif
+
+      if (boundy0 == dirichlet .or. boundy0 == neumann) then
+        selfe(2, :, 0,:) = 0.
+      else if (boundy0 == periodic) then
         selfe(2, :, 0,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
-        selfe(2, :,ny,:) = selfe(2,:, 0,:)
+      endif
+
+      if (boundyn == dirichlet .or. boundyn == neumann) then
+        selfe(2, :,ny,:) = 0.
+      else if (boundyn == periodic) then
+        selfe(2, :,ny,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
       endif
 
 c     --- Axial self field does not depend on the transverse boundary condition
