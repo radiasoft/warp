@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.31 $, $Date: 2003/04/22 21:50:49 $
+c@(#) File WXY.M, version $Revision: 3.32 $, $Date: 2003/06/02 17:44:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1481,7 +1481,11 @@ c     --- if any values are zero.
           if (lthick) then
             dtp(i1:i2) = dt
           else
-            dtp(i1:i2) = dt*vbeam/(uzp(i1:i2)*gaminv(i1:i2))
+            where (uzp(i1:i2) .ne. 0.)
+              dtp(i1:i2) = dt*vbeam/(uzp(i1:i2)*gaminv(i1:i2))
+            elsewhere
+              dtp(i1:i2) = 0.
+            endwhere
           endif
         endif
       enddo
