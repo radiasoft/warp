@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.9 2002/01/29 22:30:02 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.10 2002/10/30 22:30:27 dave Exp $"
 
 def extpartdoc():
   print """
@@ -30,9 +30,9 @@ Available methods:
  - enable(): Turns on collecting of data (only needed after disable)
 
 The follow all take an optional argument to specify species number.
- - nep: Get number of particles
- - t: Get time at which particle was saved
- - x, y, ux, uy, uz, vx, vy, vz, xp, yp, r, theta, rp: Get the various
+ - getn: Get number of particles
+ - gett: Get time at which particle was saved
+ - getx, y, ux, uy, uz, vx, vy, vz, xp, yp, r, theta, rp: Get the various
      coordinates or velocity of particles
 
 The following are available plot routines. All take an optional argument to
@@ -157,6 +157,7 @@ routines (such as ppxxp).
         self.uxep[js].append(ux)
         self.uyep[js].append(uy)
         self.uzep[js].append(uz)
+        top.nep[id,js] = 0
       else:
         self.tep[js] = t
         self.xep[js] = x
