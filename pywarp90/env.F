@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.16 $, $Date: 2003/02/05 18:49:32 $
+c@(#) File ENV.M, version $Revision: 3.17 $, $Date: 2003/02/10 21:52:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -691,8 +691,8 @@ c         --- Find quad at right edge of velocity advance step.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (quadze(iq)+offset - zl) / dz
-          if (fracr > fracl) frac = (zr - quadzs(iq)-offset) / dz
+          if (fracl > fracr) frac = (quadze(iq)+offset - zl) / abs(dz)
+          if (fracr > fracl) frac = (zr - quadzs(iq)-offset) / abs(dz)
 
 c         --- quadrupole fields, including residence fraction
           if (frac > 0.) then
@@ -726,8 +726,8 @@ c         --- Find multipole at left edge of velocity advance step.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (heleze(ih)+offset - zl) / dz
-          if (fracr > fracl) frac = (zr - helezs(ih)-offset) / dz
+          if (fracl > fracr) frac = (heleze(ih)+offset - zl) / abs(dz)
+          if (fracr > fracl) frac = (zr - helezs(ih)-offset) / abs(dz)
           if (frac == 0.) cycle
 
 c         --- Get only the quadrupole and uniform components
@@ -873,8 +873,8 @@ c         --- Find accl at right edge of velocity advance step.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (acclze(ia)+offset - zl) / dz
-          if (fracr > fracl) frac = (zr - acclzs(ia)-offset) / dz
+          if (fracl > fracr) frac = (acclze(ia)+offset - zl) / abs(dz)
+          if (fracr > fracl) frac = (zr - acclzs(ia)-offset) / abs(dz)
 
           ez = ez + acclez(ia)*frac
 
@@ -1247,3 +1247,21 @@ c Press, 1986, pg 292, Ch 10
       go to 1
       end
 c=========================================================================
+      subroutine envtypetest(n1,n2)
+      use TTester
+      integer(ISZ):: n1,n2
+      TYPE(ENVtype),POINTER:: newe
+      e1%nn = n1
+      e2%nn = n2
+      call gallot("TTester",0)
+      e1%aa(1:3) = 2.
+      e2%ee(2:4) = 1.
+c     newe => NewENVType()
+      ALLOCATE(newe)
+      call initENVtypepy(-1,newe,newe%id)
+      newe%nn = 20
+      call ENVtypeallot(newe)
+      call ENVtypeassociate(e1,"ack",newe)
+      return
+      end
+
