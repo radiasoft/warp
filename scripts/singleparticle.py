@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.13 2003/02/27 19:36:00 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.14 2003/03/26 23:37:30 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -25,12 +25,12 @@ done and no diagnostic moments are calculated. Creator arguments...
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
  - getx(i=0):  returns history of x for i'th particle
- - gety(i=0):  returns histort of y for i'th particle
- - getz(i=0):  returns histort of z for i'th particle
- - getvx(i=0): returns histort of vx for i'th particle
- - getvy(i=0): returns histort of vy for i'th particle
- - getvz(i=0): returns histort of vz for i'th particle
- - getgi(i=0): returns histort of gamma inverse for i'th particle
+ - gety(i=0):  returns history of y for i'th particle
+ - getz(i=0):  returns history of z for i'th particle
+ - getvx(i=0): returns history of vx for i'th particle
+ - getvy(i=0): returns history of vy for i'th particle
+ - getvz(i=0): returns history of vz for i'th particle
+ - getgi(i=0): returns history of gamma inverse for i'th particle
 
  - pxt(i=0), pyt(i=0), pzt(i=0), pvxt(i=0), pvyt(i=0), pvzt(i=0), pgit(i=0)
    pxy(i=0), pzx(i=0), pzy(i=0), pzvx(i=0), pzvy(i=0), pzvz(i=0)
@@ -287,7 +287,7 @@ is not alive."""
                     self.spvx[0].data(),self.spvy[0].data(),self.spvz[0].data(),
                     self.spgi[0].data()))
     else:
-      r = zeros((self.nn,7,self.spx[0].len()),'d')
+      r = zeros((self.nn,7,len(self.spx[0])),'d')
       for i in xrange (self.nn):
         r[i,0,:] = self.spx[i].data()
         r[i,1,:] = self.spy[i].data()
