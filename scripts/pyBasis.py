@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.48 2004/01/27 17:25:14 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.49 2004/01/27 17:26:53 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -741,6 +741,7 @@ def _sortvarsbysuffix(vlist,skip):
 renamed = {'f3d.bound0':'w3d.bound0',
            'f3d.boundnz':'w3d.boundnz',
            'f3d.boundxy':'w3d.boundxy',
+           'f3d.lzerophiedge':'w3d.lzerophiedge',
            'top.prwelips':'top.prwelipz'}
 
 def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
