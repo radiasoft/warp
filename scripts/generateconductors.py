@@ -3,6 +3,7 @@ This module contains classes for generating the conductor data from a
 combination of simple geometrical elements.
 The following elements are defined:
 
+Plane(z0=0.,zsign=1,theta=0.,phi=0.,...)
 Box(xsize,ysize,zsize,...)
 Cylinder(radius,length,theta=0.,phi=0.,...)
 ZCylinder(radius,length,...)
@@ -19,6 +20,9 @@ ZConeSlope(slope,intercept,length,...)
 ZConeOutSlope(slope,intercept,length,...)
 ZTorus(r1,r2,...)
 Beamletplate(za,zb,z0,thickness,...)
+ZSrfrvOut(rofzfunc,zmin,zmax,rmax,...)
+ZSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
+ZSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
@@ -38,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.21 2003/04/22 16:30:26 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.22 2003/04/24 16:40:36 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -629,6 +633,13 @@ Class to hold flag whether or not a point is inside a conductor.
 ##############################################################################
 ##############################################################################
 
+# This is extremely kludgey. The z grid cell size is saved in this variable
+# by the getdata function in Grid and then picked up in the Srfrv routines
+# to pass into the fortran. There is not simple way of passing this
+# information into the conductor object.
+_griddzkludge = [0.]
+
+##############################################################################
 class Grid:
   """
 Class holding the grid info.
@@ -698,6 +709,7 @@ Creates a grid object which can generate conductor data.
     dx = self.dx*self.mglevelslx[i]
     dy = self.dy*self.mglevelsly[i]
     dz = self.dz*self.mglevelslz[i]
+    _griddzkludge[0] = dz
     nx = self.mglevelsnx[i]
     ny = self.mglevelsny[i]
     iz = self.mglevelsiz[i]
@@ -771,6 +783,7 @@ Assembly on this grid.
 Installs the conductor data into the fortran database
     """
     self.dall.install()
+    f3d.gridmode = 1
 
   def getdistances(self,a,mglevel=0):
     """
@@ -852,6 +865,30 @@ assembly.
 ##############################################################################
 ##############################################################################
 ##############################################################################
+
+#============================================================================
+class Plane(Assembly):
+  """
+Plane class
+  - z0=0: locate of plane relative to zcent
+  - zsign=1: when positive, conductor is in the z>0 side
+  - theta=0,phi=0: normal of surface defining plane relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: box voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of box
+  - condid=1: conductor id of box, must be integer
+  """
+  def __init__(self,z0=0.,zsign=1.,theta=0.,phi=0.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1):
+    kwlist=['z0','zsign','theta','phi']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                           f3d.planeconductorf,f3d.planeconductord)
+    self.z0 = z0
+    self.zsign = zsign
+    self.theta = theta
+    self.phi = phi
 
 #============================================================================
 class Box(Assembly):
@@ -1328,5 +1365,115 @@ Plate from beamlet pre-accelerator
     ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
 
 #============================================================================
-#############################################################################
+#============================================================================
+class ZSrfrvOut(Assembly):
+  """
+Outside of a surface of revolution
+  - rofzfunc: name of python function describing surface
+  - zmin,zmax: z-extent of the surface
+  - rmax=largepos: max radius of the surface
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.zsrfrvoutconductorf,f3d.zsrfrvoutconductord)
+    self.rofzfunc = rofzfunc
+    self.zmin = zmin
+    self.zmax = zmax
+    self.rmax = rmax
 
+  def getkwlist(self):
+    self.griddz = _griddzkludge[0]
+    # --- Make sure the rofzfunc is in main.
+    # --- Note that this can only really work if a reference to the function
+    # --- is passed in (instead of the name).
+    if not f3d.lsrlinr and type(self.rofzfunc) == FunctionType:
+      import __main__
+      __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
+
+    # --- Get the name of the input function if a reference to the function
+    # --- was passed in.
+    if type(self.rofzfunc) == FunctionType:
+      self.rofzfunc = self.rofzfunc.__name__
+
+    return Assembly.getkwlist(self)
+#============================================================================
+class ZSrfrvIn(Assembly):
+  """
+Inside of a surface of revolution
+  - rofzfunc: name of python function describing surface
+  - zmin,zmax: z-extent of the surface
+  - rmin=0: min radius of the surface
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,rofzfunc,zmin,zmax,rmin=0,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.zsrfrvinconductorf,f3d.zsrfrvinconductord)
+    self.rofzfunc = rofzfunc
+    self.zmin = zmin
+    self.zmax = zmax
+    self.rmin = rmin
+
+  def getkwlist(self):
+    self.griddz = _griddzkludge[0]
+    # --- Make sure the rofzfunc is in main.
+    # --- Note that this can only really work if a reference to the function
+    # --- is passed in (instead of the name).
+    if not f3d.lsrlinr and type(self.rofzfunc) == FunctionType:
+      import __main__
+      __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
+
+    # --- Get the name of the input function if a reference to the function
+    # --- was passed in.
+    if type(self.rofzfunc) == FunctionType:
+      self.rofzfunc = self.rofzfunc.__name__
+
+    return Assembly.getkwlist(self)
+#============================================================================
+class ZSrfrvInOut(Assembly):
+  """
+Betweem surfaces of revolution
+  - rminofz,rmaxofz: names of python functions describing surfaces
+  - zmin,zmax: z-extent of the surface
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,rminofz,rmaxofz,zmin,zmax,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.zsrfrvoutconductorf,f3d.zsrfrvoutconductord)
+    self.rminofz = rminofz
+    self.rmaxofz = rmaxofz
+    self.zmin = zmin
+    self.zmax = zmax
+
+  def getkwlist(self):
+    self.griddz = _griddzkludge[0]
+    # --- Make sure the rminofz and rmaxofz are in main.
+    # --- Note that this can only really work if a reference to the function
+    # --- is passed in (instead of the name).
+    if not f3d.lsrlinr and type(self.rminofz) == FunctionType:
+      import __main__
+      __main__.__dict__[self.rminofz.__name__] = self.rminofz
+    if not f3d.lsrlinr and type(self.rmaxofz) == FunctionType:
+      import __main__
+      __main__.__dict__[self.rmaxofz.__name__] = self.rmaxofz
+
+    # --- Get the name of the input function if a reference to the function
+    # --- was passed in.
+    if type(self.rminofz) == FunctionType:
+      self.rminofz = self.rminofz.__name__
+    if type(self.rmaxofz) == FunctionType:
+      self.rmaxofz = self.rmaxofz.__name__
+
+    return Assembly.getkwlist(self)
