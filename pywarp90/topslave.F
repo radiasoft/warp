@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.6 $, $Date: 2001/10/27 00:12:45 $
+c TOPSLAVE.M, version $Revision: 1.7 $, $Date: 2001/10/29 22:41:29 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -371,6 +371,12 @@ c     --- Do reduction on whole beam moments.
 c     --- Get number of planes to exchange. The default values of zero are
 c     --- only applied to prevent kaboom from being called on the first
 c     --- and last processors.
+c     --- The 'min' is used since in some cases nzpslave can extend several
+c     --- grid cells beyond the particle domain. In those cases, left_nz
+c     --- would be greater than 1 even though those extra planes would not
+c     --- need to be exchanged. This code could be written using the
+c     --- variables zpslmin and zpslmax explicitly, in which case the 'min'
+c     --- would not be needed.
       left_nz = 0
       right_nz = 0
       if (my_index > 0) then
@@ -385,7 +391,23 @@ c     --- and last processors.
       endif
 
 c     --- Share z moments data at overlapping PE boundaries.
+
+c     --------------------------------------------------------------------
 c     --- Send data to the right.
+
+c     --- Check if data being sent overlaps with data being received.
+c     --- If so, wait for the incoming data first.
+      if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
+        call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
+     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+        do iz=left_iz,left_iz+left_nz
+          do im=1,NUMZMMNT
+            zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
+          enddo
+        enddo
+      endif
+
+c     --- Send the data (which is copied into temp1 to make it contiguous).
       if (my_index < nslaves-1) then
         do iz=right_iz,right_iz+right_nz
           do im=1,NUMZMMNT
@@ -395,20 +417,48 @@ c     --- Send data to the right.
         call MPI_ISEND(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
      &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
-      if (my_index > 0) then
+
+c     --- If there is no overlap, wait for the data after sending so
+c     --- that processors to the right do not have to also wait.
+      if (my_index > 0 .and. right_iz > left_iz+left_nz) then
         call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
      &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=left_iz,left_iz+left_nz
           do im=1,NUMZMMNT
             zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
+          enddo
+        enddo
+      endif
+
+c     --------------------------------------------------------------------
+c     --- Send summed data back to the left.
+
+c     --- Check if data being sent overlaps with data being received.
+c     --- If so, wait for the incoming data first.
+      if (my_index < nslaves-1 .and. right_iz <= left_iz+left_nz) then
+        call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
+     &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+        do iz=right_iz,right_iz+right_nz
+          do im=1,NUMZMMNT
+            zmmnts(iz,im) = temp1(im,iz-right_iz)
+          enddo
+        enddo
+      endif
+
+c     --- Send the data
+      if (my_index > 0) then
+        do iz=left_iz,left_iz+left_nz
+          do im=1,NUMZMMNT
             temp2(im,iz-left_iz) = zmmnts(iz,im)
           enddo
         enddo
-c       --- Send summed data back to the left.
         call MPI_ISEND(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
      &                 left_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
-      if (my_index < nslaves-1) then
+
+c     --- If there is no overlap, wait for the data after sending so
+c     --- that processors to the right do not have to also wait.
+      if (my_index < nslaves-1 .and. right_iz > left_iz+left_nz) then
         call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
      &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=right_iz,right_iz+right_nz
