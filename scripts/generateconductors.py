@@ -5,25 +5,47 @@ The following elements are defined:
 
 Plane(z0=0.,zsign=1,theta=0.,phi=0.,...)
 Box(xsize,ysize,zsize,...)
-Cylinder(radius,length,theta=0.,phi=0.,...)
-ZCylinder(radius,length,...)
-ZCylinderOut(radius,length,...)
-ZRoundedCylinder(radius,length,radius2,...)
-ZRoundedCylinderOut(radius,length,radius2,...)
-YCylinder(radius,length,...)
-XCylinder(radius,length,...)
-Sphere(radius,...)
-Cone(r_zmin,r_zmax,length,theta=0.,phi=0.,...)
-ZCone(r_zmin,r_zmax,length,...)
-ZConeOut(r_zmin,r_zmax,length,...)
-ConeSlope(slope,intercept,length,theta=0.,phi=0.,...)
-ZConeSlope(slope,intercept,length,...)
-ZConeOutSlope(slope,intercept,length,...)
-ZTorus(r1,r2,...)
-Beamletplate(za,zb,z0,thickness,...)
-ZSrfrvOut(rofzfunc,zmin,zmax,rmax,...)
-ZSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
-ZSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
+
+Cylinders:
+ Cylinder(radius,length,theta=0.,phi=0.,...)
+ ZCylinder(radius,length,...)
+ ZCylinderOut(radius,length,...)
+ ZCylinderElliptic(ellipticity,radius,length,...)
+ ZCylinderEllipticOut(ellipticity,radius,length,...)
+ ZRoundedCylinder(radius,length,radius2,...)
+ ZRoundedCylinderOut(radius,length,radius2,...)
+ XCylinder(radius,length,...)
+ XCylinderOut(radius,length,...)
+ YCylinder(radius,length,...)
+ YCylinderOut(radius,length,...)
+
+Cones:
+ Cone(r_zmin,r_zmax,length,theta=0.,phi=0.,...)
+ ZCone(r_zmin,r_zmax,length,...)
+ ZConeOut(r_zmin,r_zmax,length,...)
+ ConeSlope(slope,intercept,length,theta=0.,phi=0.,...)
+ ZConeSlope(slope,intercept,length,...)
+ ZConeOutSlope(slope,intercept,length,...)
+
+Other:
+ Sphere(radius,...)
+ ZElliptoid(ellipticity,radius,...)
+ ZTorus(r1,r2,...)
+ Beamletplate(za,zb,z0,thickness,...)
+
+Surfaces of revolution:
+ ZSrfrvOut(rofzfunc,zmin,zmax,rmax,...)
+ ZSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
+ ZSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
+ ZSrfrvEllipticOut(ellipticity,rofzfunc,zmin,zmax,rmax,...)
+ ZSrfrvEllipticIn(ellipticity,rofzfunc,zmin,zmax,rmin,...)
+ ZSrfrvEllipticInOut(ellipticity,rminofz,rmaxofz,zmin,zmax,...)
+ XSrfrvOut(rofzfunc,zmin,zmax,rmax,...)
+ XSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
+ XSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
+ YSrfrvOut(rofzfunc,zmin,zmax,rmax,...)
+ YSrfrvIn(rofzfunc,zmin,zmax,rmin,...)
+ YSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
@@ -73,7 +95,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.83 2004/09/07 20:04:40 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.84 2004/09/08 22:26:29 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -325,6 +347,203 @@ AssemblyMinus class.
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
     self.dxobject = pyOpenDX.DXCollection(l,r)
+
+#============================================================================
+class EllipticAssembly(Assembly):
+  """
+Elliptic assembly
+  """
+  def __init__(self,ellipticity,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+                    generatorf=None,generatord=None,generatori=None):
+    Assembly.__init__(self,v,x,y,z,condid,kwlist,
+                           self.ellipseconductorf,self.ellipseconductord,
+                           self.ellipseintercept)
+    self.ellipticity = ellipticity
+    self.circlegeneratorf = generatorf
+    self.circlegeneratord = generatord
+    self.circlegeneratori = generatori
+
+  def getextent(self,mins,maxs):
+    mins = copy.copy(mins)
+    maxs = copy.copy(maxs)
+    mins[1] = mins[1]*self.ellipticity
+    maxs[1] = maxs[1]*self.ellipticity
+    return Assembly.getextent(self,mins,maxs)
+
+  def ellipseconductorf(self,*argtuple):
+    arglist = list(argtuple)
+    y = arglist[-9]
+    delmy = arglist[-5]
+    delpy = arglist[-4]
+    arglist[-9] = y/self.ellipticity
+    apply(self.circlegeneratorf,arglist)
+    delmy[:] = delmy*self.ellipticity
+    delpy[:] = delpy*self.ellipticity
+
+  def ellipseconductord(self,*argtuple):
+    arglist = list(argtuple)
+    x = arglist[-4]
+    y = arglist[-3]
+    distance = arglist[-1]
+    arglist[-3] = y/self.ellipticity
+    apply(self.circlegeneratord,arglist)
+    tt = arctan2(y,x)
+    dx = distance*cos(tt)
+    dy = distance*sin(tt)*self.ellipticity
+    distance[:] = sqrt(dx**2 + dy**2)*sign(distance)
+
+  def ellipseintercept(self,*argtuple):
+    arglist = list(argtuple)
+    y = arglist[-10]
+    xi = arglist[-5]
+    yi = arglist[-4]
+    iphi = arglist[-1]
+    arglist[-10] = y/self.ellipticity
+    apply(self.circlegeneratori,arglist)
+    yi[:] = yi*self.ellipticity
+    iphi[:] = arctan2(sin(iphi),self.ellipticity*cos(iphi))
+
+#============================================================================
+class XAssembly(Assembly):
+  """
+Assembly aligned along X axis
+  """
+  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+                    generatorf=None,generatord=None,generatori=None):
+    Assembly.__init__(self,v,x,y,z,condid,kwlist,
+                           self.ellipseconductorf,self.ellipseconductord,
+                           self.ellipseintercept)
+    self.zgeneratorf = generatorf
+    self.zgeneratord = generatord
+    self.zgeneratori = generatori
+
+  def getextent(self,mins,maxs):
+    minscopy = copy.copy(mins)
+    maxscopy = copy.copy(maxs)
+    minscopy[0] = mins[1]
+    maxscopy[0] = maxs[1]
+    minscopy[1] = mins[2]
+    maxscopy[1] = maxs[2]
+    minscopy[2] = mins[0]
+    maxscopy[2] = maxs[0]
+    return Assembly.getextent(self,minscopy,maxscopy)
+
+  def ellipseconductorf(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-10] = argtuple[- 9]
+    arglist[- 9] = argtuple[- 8]
+    arglist[- 8] = argtuple[-10]
+    # --- permutate deltas
+    arglist[-7] = argtuple[-5]
+    arglist[-6] = argtuple[-4]
+    arglist[-5] = argtuple[-3]
+    arglist[-4] = argtuple[-2]
+    arglist[-3] = argtuple[-7]
+    arglist[-2] = argtuple[-6]
+    apply(self.zgeneratorf,arglist)
+
+  def ellipseconductord(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-4] = argtuple[-3]
+    arglist[-3] = argtuple[-2]
+    arglist[-2] = argtuple[-4]
+    apply(self.zgeneratord,arglist)
+
+  def ellipseintercept(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-11] = argtuple[-10]
+    arglist[-10] = argtuple[- 9]
+    arglist[- 9] = argtuple[-11]
+    # --- permutate intercept coordinates
+    arglist[-5] = argtuple[-4]
+    arglist[-4] = argtuple[-3]
+    arglist[-3] = argtuple[-5]
+    # --- Create temps for the surface normal angles
+    arglist[-2] = zeros(shape(argtuple[-2]),'d')
+    arglist[-1] = zeros(shape(argtuple[-1]),'d')
+    apply(self.zgeneratori,arglist)
+    # --- Undo the surface normals
+    ttheta = arglist[-2]
+    tphi = arglist[-1]
+    itheta = arctan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
+                     sin(tphi)*sin(ttheta))
+    iphi = atan2(cos(tphi)*sin(ttheta),cos(ttheta))
+    argtuple[-2][:] = itheta
+    argtuple[-1][:] = iphi
+
+#============================================================================
+class YAssembly(Assembly):
+  """
+Assembly aligned along Y axis
+  """
+  def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
+                    generatorf=None,generatord=None,generatori=None):
+    Assembly.__init__(self,v,x,y,z,condid,kwlist,
+                           self.ellipseconductorf,self.ellipseconductord,
+                           self.ellipseintercept)
+    self.zgeneratorf = generatorf
+    self.zgeneratord = generatord
+    self.zgeneratori = generatori
+
+  def getextent(self,mins,maxs):
+    minscopy = copy.copy(mins)
+    maxscopy = copy.copy(maxs)
+    minscopy[0] = mins[2]
+    maxscopy[0] = maxs[2]
+    minscopy[1] = mins[0]
+    maxscopy[1] = maxs[0]
+    minscopy[2] = mins[1]
+    maxscopy[2] = maxs[1]
+    return Assembly.getextent(self,minscopy,maxscopy)
+
+  def ellipseconductorf(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-10] = argtuple[- 8]
+    arglist[- 9] = argtuple[-10]
+    arglist[- 8] = argtuple[- 9]
+    # --- permutate deltas
+    arglist[-7] = argtuple[-3]
+    arglist[-6] = argtuple[-2]
+    arglist[-5] = argtuple[-7]
+    arglist[-4] = argtuple[-6]
+    arglist[-3] = argtuple[-5]
+    arglist[-2] = argtuple[-4]
+    apply(self.zgeneratorf,arglist)
+
+  def ellipseconductord(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-4] = argtuple[-2]
+    arglist[-3] = argtuple[-4]
+    arglist[-2] = argtuple[-3]
+    apply(self.zgeneratord,arglist)
+
+  def ellipseintercept(self,*argtuple):
+    arglist = list(argtuple)
+    # --- permutate coordinates
+    arglist[-11] = argtuple[- 9]
+    arglist[-10] = argtuple[-11]
+    arglist[- 9] = argtuple[-10]
+    # --- permutate intercept coordinates
+    arglist[-5] = argtuple[-3]
+    arglist[-4] = argtuple[-5]
+    arglist[-3] = argtuple[-4]
+    # --- Create temps for the surface normal angles
+    arglist[-2] = zeros(shape(argtuple[-2]),'d')
+    arglist[-1] = zeros(shape(argtuple[-1]),'d')
+    apply(self.zgeneratori,arglist)
+    # --- Undo the surface normals
+    ttheta = arglist[-2]
+    tphi = arglist[-1]
+    itheta = atan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
+                   cos(tphi)*sin(ttheta))
+    iphi = atan2(cos(ttheta),sin(tphi)*sin(ttheta))
+    argtuple[-2][:] = itheta
+    argtuple[-1][:] = iphi
 
 ##############################################################################
 class ConductorExtent:
@@ -1428,8 +1647,9 @@ Cylinder aligned with z-axis
     self.length = length
 
   def getextent(self):
-    return Assembly.getextent(self,[-self.radius,-self.radius,-self.length/2.],
-                                   [+self.radius,+self.radius,+self.length/2.])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-self.radius,-self.radius,-self.length/2.],
+                          [+self.radius,+self.radius,+self.length/2.])
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -1508,8 +1728,9 @@ Outside of a cylinder aligned with z-axis
     self.length = length
 
   def getextent(self):
-    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
-                                   [+largepos,+largepos,+self.length/2.])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-largepos,-largepos,-self.length/2.],
+                          [+largepos,+largepos,+self.length/2.])
 
   def createdxobject(self,rend=1.,kwdict={},**kw):
     kw.update(kwdict)
@@ -1578,9 +1799,9 @@ Outside of a cylinder with rounded corners aligned with z-axis
     self.dxobject = v
 
 #============================================================================
-class YCylinder(Assembly):
+class XCylinder(ZCylinder,XAssembly):
   """
-Cylinder aligned with y-axis
+Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
@@ -1588,21 +1809,15 @@ Cylinder aligned with y-axis
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
-    kwlist = ['radius','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      ycylinderconductorf,ycylinderconductord,
-                      ycylinderintercept)
-    self.radius = radius
-    self.length = length
-
-  def getextent(self):
-    return Assembly.getextent(self,[-self.radius,-self.length/2.,-self.radius],
-                                   [+self.radius,+self.length/2.,+self.radius])
+    ZCylinder.__init__(self,radius,length,
+                            voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                            self.generatorf,self.generatord,self.generatori)
 
 #============================================================================
-class XCylinder(Assembly):
+class XCylinderOut(ZCylinderOut,XAssembly):
   """
-Cylinder aligned with x-axis
+Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
@@ -1610,16 +1825,78 @@ Cylinder aligned with x-axis
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
-    kwlist = ['radius','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      xcylinderconductorf,xcylinderconductord,
-                      xcylinderintercept)
-    self.radius = radius
-    self.length = length
+    ZCylinderOut.__init__(self,radius,length,
+                               voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                            self.generatorf,self.generatord,self.generatori)
 
-  def getextent(self):
-    return Assembly.getextent(self,[-self.length/2.,-self.radius,-self.radius],
-                                   [+self.length/2.,+self.radius,+self.radius])
+#============================================================================
+class YCylinder(ZCylinder,YAssembly):
+  """
+Cylinder aligned with Y-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=1: conductor id of cylinder, must be integer
+  """
+  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1):
+    ZCylinder.__init__(self,radius,length,
+                            voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class YCylinderOut(ZCylinderOut,YAssembly):
+  """
+Cylinder aligned with Y-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=1: conductor id of cylinder, must be integer
+  """
+  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1):
+    ZCylinderOut.__init__(self,radius,length,
+                               voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class ZCylinderElliptic(ZCylinder,EllipticAssembly):
+  """
+Elliptical cylinder aligned with z-axis
+  - ellipticity: ratio of y radius to x radius
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=1: conductor id of cylinder, must be integer
+  """
+  def __init__(self,ellipticity,radius,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    ZCylinder.__init__(self,radius,length,
+                            voltage,xcent,ycent,zcent,condid)
+    EllipticAssembly.__init__(self,ellipticity,
+                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class ZCylinderEllipticOut(ZCylinderOut,EllipticAssembly):
+  """
+Outside an elliptical cylinder aligned with z-axis
+  - ellipticity: ratio of y radius to x radius
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=1: conductor id of cylinder, must be integer
+  """
+  def __init__(self,ellipticity,radius,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    ZCylinderOut.__init__(self,radius,length,
+                               voltage,xcent,ycent,zcent,condid)
+    EllipticAssembly.__init__(self,ellipticity,
+                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
 
 #============================================================================
 class Sphere(Assembly):
@@ -1638,8 +1915,9 @@ Sphere
     self.radius = radius
 
   def getextent(self):
-    return Assembly.getextent(self,[-self.radius,-self.radius,-self.radius],
-                                   [+self.radius,+self.radius,+self.radius])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-self.radius,-self.radius,-self.radius],
+                          [+self.radius,+self.radius,+self.radius])
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -1652,6 +1930,24 @@ Sphere
                        raddata=[self.radius],zcdata=[0.],rcdata=[0.],
                        kwdict=kw)
     self.dxobject = v
+
+#============================================================================
+class ZElliptoid(Sphere,EllipticAssembly):
+  """
+Elliptoidal sphere
+  - ellipticity: ratio of y radius to x radius
+  - radius: radius
+  - voltage=0: sphere voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of sphere
+  - condid=1: conductor id of sphere, must be integer
+  """
+  def __init__(self,ellipticity,radius,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    Sphere.__init__(self,radius,
+                         voltage,xcent,ycent,zcent,condid)
+    EllipticAssembly.__init__(self,ellipticity,
+                              voltage,xcent,ycent,zcent,condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
 
 #============================================================================
 class Cone(Assembly):
@@ -1791,8 +2087,9 @@ Torus
 
   def getextent(self):
     rmax = self.r1 + self.r2
-    return Assembly.getextent(self,[-rmax,-rmax,-self.r2],
-                                   [+rmax,+rmax,+self.r2])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-rmax,-rmax,-self.r2],
+                          [+rmax,+rmax,+self.r2])
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -1930,7 +2227,7 @@ Plate from beamlet pre-accelerator
 
 #============================================================================
 #============================================================================
-class Srfrv(Assembly):
+class Srfrv:
   """
 Generic surface of revolution. Contains utility routines to check the
 data and make sure it is consistent.
@@ -2004,7 +2301,7 @@ data and make sure it is consistent.
     plg(r,z,color=color)
 
 #============================================================================
-class ZSrfrvOut(Srfrv):
+class ZSrfrvOut(Srfrv,Assembly):
   """
 Outside of a surface of revolution
   - rofzfunc: name of python function describing surface
@@ -2082,8 +2379,9 @@ Outside of a surface of revolution
     return Assembly.getkwlist(self)
 
   def getextent(self):
-    return Assembly.getextent(self,[-self.rmax,-self.rmax,self.zmin],
-                                   [+self.rmax,+self.rmax,self.zmax])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-self.rmax,-self.rmax,self.zmin],
+                          [+self.rmax,+self.rmax,self.zmax])
 
   def draw(self,narcpoints=40,color='fg'):
     if self.usedata:
@@ -2104,7 +2402,7 @@ Outside of a surface of revolution
     self.dxobject = v
 
 #============================================================================
-class ZSrfrvIn(Srfrv):
+class ZSrfrvIn(Srfrv,Assembly):
   """
 Inside of a surface of revolution
   - rofzfunc: name of python function describing surface
@@ -2184,8 +2482,9 @@ Inside of a surface of revolution
   def getextent(self):
     if self.usedata: rmax = max(self.rofzdata)
     else:            rmax = largepos
-    return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
-                                   [+rmax,+rmax,self.zmax])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-rmax,-rmax,self.zmin],
+                          [+rmax,+rmax,self.zmax])
 
   def draw(self,narcpoints=40,color='fg'):
     if self.usedata:
@@ -2204,7 +2503,7 @@ Inside of a surface of revolution
     self.dxobject = v
 
 #============================================================================
-class ZSrfrvInOut(Srfrv):
+class ZSrfrvInOut(Srfrv,Assembly):
   """
 Between surfaces of revolution
   - rminofz,rmaxofz: names of python functions describing surfaces
@@ -2321,8 +2620,9 @@ Between surfaces of revolution
   def getextent(self):
     if self.usemaxdata: rmax = max(self.rmaxofzdata)
     else:               rmax = largepos
-    return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
-                                   [+rmax,+rmax,self.zmax])
+    getextent = self.__class__.__bases__[-1].getextent
+    return getextent(self,[-rmax,-rmax,self.zmin],
+                          [+rmax,+rmax,self.zmax])
 
   def draw(self,narcpoints=40,color='fg'):
     if self.usemindata:
@@ -2395,6 +2695,331 @@ Between surfaces of revolution
       v = pyOpenDX.DXCollection(vmin,vmax)
 
     self.dxobject = v
+
+#============================================================================
+class ZSrfrvEllipticOut(ZSrfrvOut,EllipticAssembly):
+  """
+Outside of an elliptical surface of revolution
+  - ellipticity: ratio of y radius to x radius
+  - rofzfunc: name of python function describing surface
+  - zmin,zmax: z-extent of the surface
+  - rmax=largepos: max radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofzdata=None: optional tablized data of radius of surface
+  - zdata=None: optional tablized data of z locations of rofzdata
+      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
+  - zcdata=None: z center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+  - raddata=None: optional radius of curvature of segments
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmax=largepos,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None):
+    ZSrfrvOut.__init__(self,rofzfunc,zmin,zmax,rmax,
+                       voltage,xcent,ycent,zcent,condid,
+                       rofzdata,zdata,raddata,
+                       zcdata,rcdata)
+    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
+                              condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class ZSrfrvEllipticIn(ZSrfrvIn,EllipticAssembly):
+  """
+Inside of an elliptical surface of revolution
+  - ellipticity: ratio of y radius to x radius
+  - rofzfunc: name of python function describing surface
+  - zmin,zmax: z-extent of the surface
+  - rmin=0: min radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofzdata=None: optional tablized data of radius of surface
+  - zdata=None: optional tablized data of z locations of rofzdata
+  - raddata=None: optional radius of curvature of segments
+      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
+  - zcdata=None: z center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmin=0,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None):
+    ZSrfrvIn.__init__(self,rofzfunc,zmin,zmax,rmin,
+                      voltage,xcent,ycent,zcent,condid,
+                      rofzdata,zdata,raddata,
+                      zcdata,rcdata)
+    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
+                              condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class ZSrfrvEllipticInOut(ZSrfrvInOut,EllipticAssembly):
+  """
+Between elliptical surfaces of revolution
+  - ellipticity: ratio of y radius to x radius
+  - rminofz,rmaxofz: names of python functions describing surfaces
+  - zmin,zmax: z-extent of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
+  - zmindata,zmaxdata=None: optional tablized data of z locations of r data
+  - radmindata,radmaxdata=None: optional radius of curvature of segments
+      radmindata[i] is radius for segment from zmindata[i] to zmindata[i+1]
+  - zcmindata,zcmaxdata=None: z center of circle or curved segment
+  - rcmindata,rcmaxdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
+    Note that if tablized data is given, the first two arguments are ignored.
+  """
+  def __init__(self,ellipticity,rminofz,rmaxofz,zmin,zmax,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rminofzdata=None,zmindata=None,radmindata=None,
+                    rcmindata=None,zcmindata=None,
+                    rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
+                    rcmaxdata=None,zcmaxdata=None):
+    ZSrfrvInOut.__init__(self,rminofz,rmaxofz,zmin,zmax,
+                         voltage,xcent,ycent,zcent,condid,
+                         rminofzdata,zmindata,radmindata,
+                         rcmindata,zcmindata,
+                         rmaxofzdata,zmaxdata,radmaxdata,
+                         rcmaxdata,zcmaxdata)
+    EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
+                              condid,self.kwlist,
+                              self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class XSrfrvOut(ZSrfrvOut,XAssembly):
+  """
+Outside of an surface of revolution aligned along to X axis
+  - rofxfunc: name of python function describing surface
+  - xmin,xmax: x-extent of the surface
+  - rmax=largepos: max radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofxdata=None: optional tablized data of radius of surface
+  - xdata=None: optional tablized data of x locations of rofxdata
+      raddata[i] is radius for segment from xdata[i] to xdata[i+1]
+  - xcdata=None: x center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+  - raddata=None: optional radius of curvature of segments
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and x data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,rofxfunc,xmin,xmax,rmax=largepos,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofxdata=None,xdata=None,raddata=None,
+                    xcdata=None,rcdata=None):
+    ZSrfrvOut.__init__(self,rofxfunc,xmin,xmax,rmax,
+                       voltage,xcent,ycent,zcent,condid,
+                       rofxdata,xdata,raddata,
+                       xcdata,rcdata)
+    XAssembly.__init__(self,voltage,xcent,ycent,zcent,
+                            condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class XSrfrvIn(ZSrfrvIn,XAssembly):
+  """
+Inside of a surface of revolution aligned along the X axis
+  - rofxfunc: name of python function describing surface
+  - xmin,xmax: x-extent of the surface
+  - rmin=0: min radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofxdata=None: optional tablized data of radius of surface
+  - xdata=None: optional tablized data of x locations of rofxdata
+  - raddata=None: optional radius of curvature of segments
+      raddata[i] is radius for segment from xdata[i] to xdata[i+1]
+  - xcdata=None: x center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and x data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,rofxfunc,xmin,xmax,rmin=0,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofxdata=None,xdata=None,raddata=None,
+                    xcdata=None,rcdata=None):
+    ZSrfrvIn.__init__(self,rofxfunc,xmin,xmax,rmin,
+                      voltage,xcent,ycent,zcent,condid,
+                      rofxdata,xdata,raddata,
+                      xcdata,rcdata)
+    XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class XSrfrvInOut(ZSrfrvInOut,XAssembly):
+  """
+Between surfaces of revolution aligned along the X axis
+  - rminofx,rmaxofx: names of python functions describing surfaces
+  - xmin,xmax: x-extent of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rminofxdata,rmaxofxdata=None: optional tablized data of radii of surface
+  - xmindata,xmaxdata=None: optional tablized data of x locations of r data
+  - radmindata,radmaxdata=None: optional radius of curvature of segments
+      radmindata[i] is radius for segment from xmindata[i] to xmindata[i+1]
+  - xcmindata,xcmaxdata=None: x center of circle or curved segment
+  - rcmindata,rcmaxdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and x data.
+    Note that if tablized data is given, the first two arguments are ignored.
+  """
+  def __init__(self,rminofx,rmaxofx,xmin,xmax,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rminofxdata=None,xmindata=None,radmindata=None,
+                    rcmindata=None,xcmindata=None,
+                    rmaxofxdata=None,xmaxdata=None,radmaxdata=None,
+                    rcmaxdata=None,xcmaxdata=None):
+    ZSrfrvInOut.__init__(self,rminofx,rmaxofx,xmin,xmax,
+                         voltage,xcent,ycent,zcent,condid,
+                         rminofxdata,xmindata,radmindata,
+                         rcmindata,xcmindata,
+                         rmaxofxdata,xmaxdata,radmaxdata,
+                         rcmaxdata,xcmaxdata)
+    XAssembly.__init__(self,voltage,xcent,ycent,zcent,
+                            condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class YSrfrvOut(ZSrfrvOut,YAssembly):
+  """
+Outside of an surface of revolution aligned along to Y axis
+  - rofyfunc: name of python function describing surface
+  - ymin,ymax: y-extent of the surface
+  - rmax=largepos: max radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofydata=None: optional tablized data of radius of surface
+  - ydata=None: optional tablized data of y locations of rofydata
+      raddata[i] is radius for segment from ydata[i] to ydata[i+1]
+  - ycdata=None: y center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+  - raddata=None: optional radius of curvature of segments
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and y data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,rofyfunc,ymin,ymax,rmax=largepos,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofydata=None,ydata=None,raddata=None,
+                    ycdata=None,rcdata=None):
+    ZSrfrvOut.__init__(self,rofyfunc,ymin,ymax,rmax,
+                       voltage,xcent,ycent,zcent,condid,
+                       rofydata,ydata,raddata,
+                       ycdata,rcdata)
+    YAssembly.__init__(self,voltage,xcent,ycent,zcent,
+                            condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class YSrfrvIn(ZSrfrvIn,YAssembly):
+  """
+Inside of a surface of revolution aligned along the Y axis
+  - rofyfunc: name of python function describing surface
+  - ymin,ymax: y-extent of the surface
+  - rmin=0: min radius of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rofydata=None: optional tablized data of radius of surface
+  - ydata=None: optional tablized data of y locations of rofydata
+  - raddata=None: optional radius of curvature of segments
+      raddata[i] is radius for segment from ydata[i] to ydata[i+1]
+  - ycdata=None: y center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and y data.
+    Note that if tablized data is given, the first argument is ignored.
+  """
+  def __init__(self,rofyfunc,ymin,ymax,rmin=0,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofydata=None,ydata=None,raddata=None,
+                    ycdata=None,rcdata=None):
+    ZSrfrvIn.__init__(self,rofyfunc,ymin,ymax,rmin,
+                      voltage,xcent,ycent,zcent,condid,
+                      rofydata,ydata,raddata,
+                      ycdata,rcdata)
+    YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
+
+#============================================================================
+class YSrfrvInOut(ZSrfrvInOut,YAssembly):
+  """
+Between surfaces of revolution aligned along the Y axis
+  - rminofy,rmaxofy: names of python functions describing surfaces
+  - ymin,ymax: y-extent of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  - rminofydata,rmaxofydata=None: optional tablized data of radii of surface
+  - ymindata,ymaxdata=None: optional tablized data of y locations of r data
+  - radmindata,radmaxdata=None: optional radius of curvature of segments
+      radmindata[i] is radius for segment from ymindata[i] to ymindata[i+1]
+  - ycmindata,ycmaxdata=None: y center of circle or curved segment
+  - rcmindata,rcmaxdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and y data.
+    Note that if tablized data is given, the first two arguments are ignored.
+  """
+  def __init__(self,rminofy,rmaxofy,ymin,ymax,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rminofydata=None,ymindata=None,radmindata=None,
+                    rcmindata=None,ycmindata=None,
+                    rmaxofydata=None,ymaxdata=None,radmaxdata=None,
+                    rcmaxdata=None,ycmaxdata=None):
+    ZSrfrvInOut.__init__(self,rminofy,rmaxofy,ymin,ymax,
+                         voltage,xcent,ycent,zcent,condid,
+                         rminofydata,ymindata,radmindata,
+                         rcmindata,ycmindata,
+                         rmayofxdata,ymaxdata,radmaxdata,
+                         rcmaxdata,ycmaxdata)
+    YAssembly.__init__(self,voltage,xcent,ycent,zcent,
+                            condid,self.kwlist,
+                            self.generatorf,self.generatord,self.generatori)
 
 #============================================================================
 class ZAnnulus(ZSrfrvInOut):
