@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.3 $, $Date: 2001/05/30 00:05:36 $
+#@(#) File HER.V, version $Revision: 3.4 $, $Date: 2001/06/26 17:29:04 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,7 +9,7 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher character*19 /"$Revision: 3.3 $"/  # Current code version, set by CVS
+versher       character*19 /"$Revision: 3.4 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
@@ -42,7 +42,8 @@ hertime    real              # Total runtime
 
 *********** HERflags dump:
 icharge    integer /1/ # The space-charge model...
-		       # 0: uses simpel g-factor model with a fixed pipe/beam radius of 1.6
+                       # 0: uses simpel g-factor model with a fixed pipe/beam
+                       #    radius of 1.6
                        # 1: uses simple g-factor space-charge model
                        # 2: includes envelope variation in space-charge model
                        # 7: uses Warp's RZ solver to find the longitudinal field
@@ -51,9 +52,12 @@ lperveance logical /.true./ # Turns on use of perveance (transverse self-field)
 lemittance logical /.true./ # Turns on use of emittance
 lallez     logical /.true./ # Turns on use of all axial fields
 lezcenter  logical /.false./ # If true, the Ez field at the beam center is used
-			     # If false, Ez is averaged transversely
-			     # For icharge == 7 only
-lviscous   logical /.false./ # If true, artificial viscosity is added			     
+                             # If false, Ez is averaged transversely
+                             # For icharge == 7 only
+lcurgrid   logical /.false./ # If true, calculate the line charge density and
+                             # the current using the grid
+                             # For icharge == 7 only
+lviscous   logical /.false./ # If true, artificial viscosity is added
 lsavehist  logical /.true./ # Turns on saving of history of envelope
 iprofile   integer /0/ # line-charge profile flag
                        # 0 uses hyperbolic-tangent profile
@@ -61,7 +65,8 @@ iprofile   integer /0/ # line-charge profile flag
                        # 2 uses flat-top profile with quadratic fall-off
                        # 3 uses flat-top profile with cubic fall-off
 islice     integer /0/ # reference slice number.
-                       # the location of this slice is compared to zuher to determine if the run has finished.
+                       # the location of this slice is compared to zuher to
+                       # determine if the run has finished.
 nsteps     integer /0/ # if nonzero, nsteps steps are taken; ignored otherwise
 
 *********** HERfield:
@@ -91,7 +96,7 @@ deval(niztmp)    _real # Temp space for getselffield, Bessel model
 nbessel           integer /20/ # Number of terms to use in the Bessel expansion
 besselzero(1024)   _real # Zeros of the Bessel function J0
 besselfactor(1024) _real # (J1(x))^(-2) in which x is a zero of the Bessel
-			 # function J0
+                         # function J0
 
 *********** HERhist dump:
 lhher integer
@@ -125,30 +130,37 @@ herrun(niz:integer,y:real,dsher:real,nther:integer,
        aion:real,zion:real,zlher:real,zuher:real,fviscous:real,islice:integer,
        nsteps:integer,icharge:integer,lezbeam:logical,lperveance:logical,
        lemittance:logical,lallez:logical,lezcenter:logical,lviscous:logical,
-       lsavehist:logical,lfail:logical) subroutine
+       lsavehist:logical,lcurgrid:logical,lfail:logical) subroutine
   # Runs HERMES kernel
-getappliedfield(t:real,dt:real,y:real,niz:integer) subroutine
+extebher(t:real,dt:real,y:real,niz:integer) subroutine
   # Gather applied fields
 getderivs(t:real,dt:real,y:real,dy:real,niz:integer,
        aion:real,zion:real,fviscous:real,
        icharge:integer,lezbeam:logical,lperveance:logical,lemittance:logical,
-       lallez:logical,lezcenter:logical,lviscous:logical,lfail:logical) subroutine
+       lallez:logical,lezcenter:logical,lviscous:logical,lcurgrid:logical,lfail:logical) subroutine
   # Calculates new envelope quantities based using applied and self fields
 onestep(y:real,dy:real,niz:integer,t:real,dt:real,
         aion:real,zion:real,fviscous:real,
         icharge:integer,lezbeam:logical,lperveance:logical,
         lemittance:logical,lallez:logical,lezcenter:logical,
-        lviscous:logical,lfail:logical) subroutine
+        lviscous:logical,lcurgrid:logical,lfail:logical) subroutine
   # One complete isochronous leapfrog integration step
+loadcharge(niz:integer,y:real,rpipe:real,icharge:integer,lfail:logical) subroutine 
+  # Loads the charge onto the RZ grid
 getselffield(niz:integer,y:real,eval:real,rpipe:real,icharge:integer,
           lezbeam:logical,lezcenter:logical,lfail:logical) subroutine
   # Calculates self axial field
-gethertmp(y:real,niz:integer,rpipe:real,icharge:integer,lfail:logical) subroutine
-  # Calculates the variables in the HERtmp group
+getradius(y:real,niz:integer,rpipe:real,icharge:integer) subroutine
+  # Calculates the beam radius
+getgfactor(niz:integer,rpipe:real,icharge:integer) subroutine
+  # Calculates the g-factor
+getcurrent(y:real,niz:integer,rpipe:real,icharge:integer,lcurgrid:logical,
+           lfail:logical) subroutine
+  # Calculates the current at the slices boundaries
 savehisther(t:real,y:real,niz:integer,nther:integer,lsavehist:logical)
     subroutine
-  # Checks if history needs to be save and saves it
+  # Checks if history needs to be saved and saves it
 savehisther1(t:real,y:real,niz:integer) subroutine
-  # Copies data into history arrays (experts only)
+  # Copies data into history arrays
 readbessel() subroutine
-  # Initialized the arrays besselzero and besselfactor.
+  # Initializes the arrays besselzero and besselfactor.

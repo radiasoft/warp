@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.3 $, $Date: 2001/05/30 00:05:35 $
+c@(#) File HER.M, version $Revision: 3.4 $, $Date: 2001/06/26 17:29:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -84,7 +84,13 @@ c     --- Initialize the LatticeInternal arrays
       dzli = 1./dzl
       call gchange("LatticeInternal",0)
       call setlattzt(0.,0.,0)
-      
+
+c     if (icharge == 0) then
+c --- Set the g-factor for the constant g-factor model
+c       do ii=1,niz
+c         gtemp(ii) = 2*log(1.6)
+c       enddo
+c     endif
       if (icharge == 7) then
 c ---   Allocate space for the RZ field solver
         call remark (" ***  field solver package RZ generating for Hermes  ***")
@@ -160,7 +166,6 @@ c  Deallocates dynamic storage used by test driver
 
       return
       end
-
 c=============================================================================
       subroutine herx()
       use Constant
@@ -210,7 +215,7 @@ c     --- Main loop of envelope code
 c     --- Run the HERMES kernel
       call herrun(niz,var,dther,nther,aion,zion,zlher,zuher,fviscous,islice,
      &            nsteps,icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &            lviscous,lsavehist,lfail)
+     &            lviscous,lsavehist,lcurgrid,lfail)
      
 c     --- Copy the data into separated arrays.
       do ii=1,niz
@@ -236,7 +241,7 @@ c     --- Copy the data into separated arrays.
 c=============================================================================
       subroutine herrun(niz,y,dther,nther,aion,zion,zlher,zuher,fviscous,
      &            islice,nsteps,icharge,lezbeam,lperveance,lemittance,lallez,
-     &            lezcenter,lviscous,lsavehist,lfail)
+     &            lezcenter,lviscous,lsavehist,lcurgrid,lfail)
       use Constant
       use Picglb
       use LatticeInternal
@@ -248,7 +253,7 @@ c=============================================================================
       real(kind=8):: dther,aion,zion,zlher,zuher
       real(kind=8):: fviscous
       integer(ISZ):: icharge,islice,nsteps
-      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid
       logical(ISZ):: lsavehist,lfail
 
 c Run the HERMES kernel, using the inputted array, y and the starting data.
@@ -267,9 +272,9 @@ c     --- Save the initial history
       
 c     --- Find initial forces
       call getderivs(t,dther,y,dy,niz,aion,zion,fviscous,icharge,
-     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail)
+     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
      
-c     --- Check that the distance traveled is less than the final distance
+c    --- Check that the distance traveled is less than the final distance
 c    --- to travel.
 
       if (nsteps==0) then
@@ -281,7 +286,7 @@ c    --- to travel.
 c         --- Advance the envelope and orbits;
           call onestep (y,dy,niz,t,dther,aion,zion,fviscous,
      &              icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &              lviscous,lfail)
+     &              lviscous,lcurgrid,lfail)
           if (lfail) exit
           t = t + dther
           call savehisther(t,y,niz,nther,lsavehist)
@@ -295,7 +300,7 @@ c         --- Advance the envelope and orbits;
 c           --- Advance the envelope and orbits;
           call onestep (y,dy,niz,t,dther,aion,zion,fviscous,
      &              icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &              lviscous,lfail)
+     &              lviscous,lcurgrid,lfail)
           if (lfail) exit
           t = t + dther
           call savehisther(t,y,niz,nther,lsavehist)
@@ -305,9 +310,8 @@ c           --- Advance the envelope and orbits;
       
       return
       end
-
 c=============================================================================
-      subroutine getappliedfield(t,dt,y,niz)
+      subroutine extebher(t,dt,y,niz)
       use Constant
       use Beam_acc
       use Picglb
@@ -337,9 +341,15 @@ c     niz  is the number of slices
       
       dta = abs(dt)
       
-      dzl = (y(9,niz) - y(9,1))/niz
-      zlmin = y(9,1) - dzl
-      zlmax = y(9,niz) + dzl
+      zlmin = y(9,1)
+      zlmax = y(9,niz)
+      do ii=1,niz
+        zlmin = min (zlmin,y(9,ii))
+        zlmax = max (zlmax,y(9,ii))
+      enddo
+      dzl = (zlmax - zlmin)/niz
+      zlmin = zlmin - dzl
+      zlmax = zlmax + dzl
       dzli = 1./dzl
       
       call setlattzt(0.,t,0)
@@ -429,7 +439,7 @@ c ---   Print warning if rpipe is zero
 c=============================================================================
       subroutine getderivs(t,dt,y,dy,niz,aion,zion,fviscous,
      &                  icharge,lezbeam,lperveance,lemittance,lallez,
-     &                  lezcenter,lviscous,lfail)
+     &                  lezcenter,lviscous,lcurgrid,lfail)
       use Constant
       use HERfield
       integer(ISZ):: niz
@@ -437,7 +447,7 @@ c=============================================================================
       real(kind=8):: aion,zion
       real(kind=8):: fviscous
       integer(ISZ):: icharge
-      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
 
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both residence corrected hard edged quadrupole elements 
@@ -457,10 +467,22 @@ c  linear space-charge forces.
       real(kind=8):: aviscous(niz)
 
 c     --- Get the applied fields.
-      call getappliedfield(t,dt,y,niz)
+      call extebher(t,dt,y,niz)
       
 c     --- Image forces are not yet implemented in HERMES
 
+c     --- Calculate the beam radius if needed
+      if (icharge < 7) call getradius(y,niz,rpipe,icharge)
+      if (icharge < 5) call getgfactor(niz,rpipe,icharge)
+      
+c     --- Calculate auxiliary variables needed for getselffield and getcurrent
+      call loadcharge (niz,y,rpipe,icharge,lfail)
+      if (lfail) return
+
+c     --- Calculate the current (needed for the envelope equation)
+      call getcurrent(y,niz,rpipe,icharge,lcurgrid,lfail)
+      if (lfail) return
+      
 c     --- Get self axial fields of beam.
       call getselffield (niz,y,ezbeam,rpipe,icharge,lezbeam,lezcenter,lfail)
       if (lfail) return
@@ -569,14 +591,14 @@ c       --- dbeta/dt
 c=============================================================================
       subroutine onestep(y,dy,niz,t,dt,aion,zion,fviscous,
      &            icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &            lviscous,lfail)
+     &            lviscous,lcurgrid,lfail)
       use Constant
       integer(ISZ):: niz
       real(kind=8):: y(16,niz),dy(16,niz)
       real(kind=8):: t,dt,aion,zion
       real(kind=8):: fviscous
       integer(ISZ):: icharge
-      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
 
 c ONESTEP  advances the set of the envelope equations using the
 c isochronous leapfrog algorithm.
@@ -615,7 +637,7 @@ c isochronous leapfrog algorithm.
       enddo
       
       call getderivs(t,dt,y,dy,niz,aion,zion,fviscous,icharge,
-     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail)
+     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
       if (lfail) return
 
       do j=1,niz
@@ -624,6 +646,127 @@ c isochronous leapfrog algorithm.
         y(10,j) = y(10,j) + halfdt*dy(10,j)
       enddo
      
+      return
+      end
+c=============================================================================
+      subroutine loadcharge(niz,y,rpipe,icharge,lfail)
+      use HERtmp
+      use Constant
+      use InMeshrz
+      use Picglbrz
+      use Fieldsrz
+      integer(ISZ):: niz
+      real(kind=8):: y(16,niz),rpipe(niz)
+      integer(ISZ):: icharge
+      logical(ISZ):: lfail
+
+c LOADCHARGE calculates the line-charge density within the slices.
+c If icharge == 7, it also loads the charge onto the RZ grid
+
+      real(kind=8):: fact1,fact2,part1,part2
+      real(kind=8):: rm,dtemp,ddtemp
+      real(kind=8):: zslmin, zslmax
+      integer(ISZ):: ii,ir,irm,iz,izl,izr
+      
+      if (icharge == 5 .or. icharge == 6) return
+c --- denmid not needed in these cases
+      
+c --- first calculate line-charge density inside the slices
+      denmid(niz)=0.0
+      do ii=1,niz-1
+        denmid(ii) = y(14,ii)/abs(y(9,ii+1) - y(9,ii))
+      enddo
+
+c --- load charge if icharge == 7 only
+      if (icharge < 7) return
+
+      rmmax = rpipe(1)
+      zmmin = y(9,1)
+      zmmax = y(9,niz)
+      do ii=1,niz
+        rmmax = max(rmmax,rpipe(ii))
+        zmmin = min(zmmin,y(9,ii))
+        zmmax = max(zmmax,y(9,ii))
+      enddo
+      dr = rmmax / nr
+      zmmin = zmmin - 4. * rmmax
+      zmmax = zmmax + 4. * rmmax
+      dz = (zmmax - zmmin) / nz
+      do ii = 0, nr
+        rmesh(ii) = ii * dr
+      enddo
+      do ii = 0, nz
+        zmesh(ii) = ii * dz + zmmin
+      enddo
+      call zeroarry(rho,nrz)
+c --- Load charge
+      do ii=1,niz-1
+        zslmin = min (y(9,ii),y(9,ii+1))
+        zslmax = max (y(9,ii),y(9,ii+1))
+        izl = (zslmin-zmmin)/dz
+        izr = (zslmax-zmmin)/dz
+        rm = (y(1,ii)*y(3,ii) + y(1,ii+1)*y(3,ii+1)) / 2.
+        dtemp = denmid(ii) / (pi * rm)
+        rm = sqrt(rm)/dr
+        irm = rm
+        rm = rm - irm
+        if (irm + 1> nr) then
+          print *, "Error in getselffield:"
+          print *, "Beam radius is larger than the aperture."
+          lfail = .true.
+          return
+        endif
+        fact1 = (zslmin-zmmin)/dz - izl
+        fact2 = (zslmax-zmmin)/dz - izr
+        if (irm > 0) then
+          part1 = (irm/2. - 0.25 - rm*(irm+rm/2.)*((rm**2)/2.+rm*irm-1-2*irm)/(2.*irm+1.))/irm
+          part2 = ((rm*(irm+rm/2.))**2)/((irm+1.)*(2.*irm+1.))
+        else
+          part1 = 4.*(rm**2)*(1-(rm**2)/2.) - 2.
+          part2 = (rm**2)/4.
+        endif
+        do iz = izl,izr+1
+          rho(0,iz) = rho(0,iz) + 2. * dtemp
+          do ir=1,irm-1  
+            rho(ir,iz) = rho(ir,iz) + dtemp
+          enddo
+          rho(irm,  iz) = rho(irm,  iz) + part1 * dtemp
+          rho(irm+1,iz) = rho(irm+1,iz) + part2 * dtemp
+        enddo
+c ---   Subtract missing contribution to izl
+        ddtemp = dtemp * (0.5+fact1-0.5*(fact1**2))
+        rho(0,izl) = rho(0,izl) - 2. * ddtemp
+        do ir=1,irm-1  
+          rho(ir,izl) = rho(ir,izl) - ddtemp
+        enddo
+        rho(irm,  izl) = rho(irm,  izl) - part1 * ddtemp
+        rho(irm+1,izl) = rho(irm+1,izl) - part2 * ddtemp
+c ---   Subtract missing contribution to izl+1
+        ddtemp = dtemp * 0.5 * (fact1**2)
+        rho(0,izl+1) = rho(0,izl+1) - 2. * ddtemp
+        do ir=1,irm-1  
+          rho(ir,izl+1) = rho(ir,izl+1) - ddtemp
+        enddo
+        rho(irm,  izl+1) = rho(irm,  izl+1) - part1 * ddtemp
+        rho(irm+1,izl+1) = rho(irm+1,izl+1) - part2 * ddtemp
+c ---   Subtract missing contribution to izr   
+        ddtemp = dtemp * 0.5 * ((1-fact2)**2)
+        rho(0,izr) = rho(0,izr) - 2. * ddtemp
+        do ir=1,irm-1  
+          rho(ir,izr) = rho(ir,izr) - ddtemp
+        enddo
+        rho(irm,  izr) = rho(irm,  izr) - part1 * ddtemp
+        rho(irm+1,izr) = rho(irm+1,izr) - part2 * ddtemp
+c ---   Subtract missing contribution to izr+1
+        ddtemp = dtemp * 0.5 * (2.-(fact2**2))       
+        rho(0,izr+1) = rho(0,izr+1) - 2. * ddtemp
+        do ir=1,irm-1  
+          rho(ir,izr+1) = rho(ir,izr+1) - ddtemp
+        enddo
+        rho(irm,  izr+1) = rho(irm,  izr+1) - part1 * ddtemp
+        rho(irm+1,izr+1) = rho(irm+1,izr+1) - part2 * ddtemp
+      enddo
+
       return
       end
 
@@ -657,15 +800,12 @@ c   icharge = 7 uses WARP's RZ solver
 
       real(kind=8):: frpieps
       real(kind=8):: del1,del2,fact1,fact2,fact3,part1,part2
-      real(kind=8):: rm,dtemp,ddtemp,phi1,phi2,phi3
-      real(kind=8):: kr, arg, besselterm(niz), left, right
+      real(kind=8):: rm,phi1,phi2,phi3
+      real(kind=8):: kr, arg, besselterm(niz),left,right,ddtemp
       real(kind=8):: sl,su
 
-      integer(ISZ):: ii,ir,irm,iz,izl,izr
+      integer(ISZ):: ii,ir,irm,iz
 
-      call gethertmp(y,niz,rpipe,icharge,lfail)
-      if (lfail) return
-      
       frpieps = 4.0*pi*eps0
 
 c calculate space-charge field at slice boundaries
@@ -787,86 +927,7 @@ c       Bessel series expansion with a smoothly varying line charge density
       elseif(icharge == 7)then
 c       use Warp's RZ package to find the field
 
-        rmmax = 0.
-        do ii=1,niz
-          rmmax = max(rmmax,rpipe(ii))
-        enddo
-        dr = rmmax / nr
-        zmmin = y(9,1) - 4. * rmmax
-        zmmax = y(9,niz) + 4. * rmmax
-        dz = (zmmax - zmmin) / nz
-        do ii = 0, nr
-          rmesh(ii) = ii * dr
-        enddo
-        do ii = 0, nz
-          zmesh(ii) = ii * dz + zmmin
-        enddo
-        call zeroarry(rho,nrz)
-c ---   Load charge
-        do ii=1,niz-1
-          izl = (y(9,ii)-zmmin)/dz
-          izr = (y(9,ii+1)-zmmin)/dz
-          rm = (y(1,ii)*y(3,ii) + y(1,ii+1)*y(3,ii+1)) / 2.
-          dtemp = denmid(ii) / (pi * rm)
-          rm = sqrt(rm)/dr
-          irm = rm
-          rm = rm - irm
-          if (irm + 1> nr) then
-            print *, "Error in getselffield:"
-            print *, "Beam radius is larger than the aperture."
-            lfail = .true.
-            return
-          endif
-          fact1 = (y(9,ii)-zmmin)/dz - izl
-          fact2 = (y(9,ii+1)-zmmin)/dz - izr
-          if (irm > 0) then
-            part1 = (irm/2. - 0.25 - rm*(irm+rm/2.)*((rm**2)/2.+rm*irm-1-2*irm)/(2.*irm+1.))/irm
-            part2 = ((rm*(irm+rm/2.))**2)/((irm+1.)*(2.*irm+1.))
-          else
-            part1 = 4.*(rm**2)*(1-(rm**2)/2.) - 2.
-            part2 = (rm**2)/4.
-          endif
-          do iz = izl,izr+1
-            rho(0,iz) = rho(0,iz) + 2. * dtemp
-            do ir=1,irm-1  
-              rho(ir,iz) = rho(ir,iz) + dtemp
-            enddo
-            rho(irm,  iz) = rho(irm,  iz) + part1 * dtemp
-            rho(irm+1,iz) = rho(irm+1,iz) + part2 * dtemp
-          enddo
-c ---     Subtract missing contribution to izl
-          ddtemp = dtemp * (0.5+fact1-0.5*(fact1**2))
-          rho(0,izl) = rho(0,izl) - 2. * ddtemp
-          do ir=1,irm-1  
-            rho(ir,izl) = rho(ir,izl) - ddtemp
-          enddo
-          rho(irm,  izl) = rho(irm,  izl) - part1 * ddtemp
-          rho(irm+1,izl) = rho(irm+1,izl) - part2 * ddtemp
-c ---     Subtract missing contribution to izl+1
-          ddtemp = dtemp * 0.5 * (fact1**2)
-          rho(0,izl+1) = rho(0,izl+1) - 2. * ddtemp
-          do ir=1,irm-1  
-            rho(ir,izl+1) = rho(ir,izl+1) - ddtemp
-          enddo
-          rho(irm,  izl+1) = rho(irm,  izl+1) - part1 * ddtemp
-          rho(irm+1,izl+1) = rho(irm+1,izl+1) - part2 * ddtemp
-c ---     Subtract missing contribution to izr   
-          ddtemp = dtemp * 0.5 * ((1-fact2)**2)
-          rho(0,izr) = rho(0,izr) - 2. * ddtemp
-          do ir=1,irm-1  
-            rho(ir,izr) = rho(ir,izr) - ddtemp
-          enddo
-          rho(irm,  izr) = rho(irm,  izr) - part1 * ddtemp
-          rho(irm+1,izr) = rho(irm+1,izr) - part2 * ddtemp
-c ---     Subtract missing contribution to izr+1
-          ddtemp = dtemp * 0.5 * (2.-(fact2**2))       
-          rho(0,izr+1) = rho(0,izr+1) - 2. * ddtemp
-          do ir=1,irm-1  
-            rho(ir,izr+1) = rho(ir,izr+1) - ddtemp
-          enddo
-          rho(irm,  izr+1) = rho(irm,  izr+1) - part1 * ddtemp
-          rho(irm+1,izr+1) = rho(irm+1,izr+1) - part2 * ddtemp
-        enddo
+c ---   The charge has been loaded already using loadcharge
 c ---   Calculate potential
         call vprz (1)
         call fieldsolrz (0)
@@ -991,108 +1052,149 @@ c     The routine is based on bessj1 from Numerical Recipes.
       return
       end
 c=============================================================================
-      subroutine gethertmp(y,niz,rpipe,icharge,lfail)
+      subroutine getradius(y,niz,rpipe,icharge)
       use HERtmp
       use Constant
       integer(ISZ):: niz,icharge
       real(kind=8):: y(16,niz), rpipe(niz)
-      logical(ISZ):: lfail
 
       integer(ISZ):: ii
-      real(kind=8):: del1, del2, part1, fact1, fact2
-      real(kind=8):: rmin,abmin,aval,bval,dlna, dlnb
-c --- calculate line-charge density inside the slices
-      denmid(niz)=0.0
-      do ii=1,niz-1
-        denmid(ii) = y(14,ii)/(y(9,ii+1) - y(9,ii))
-      enddo
+      real(kind=8):: rmin,aval,bval
 
-c --- calculate the beam radius and g-factor as needed to find Ez (not used if icharge==7)
+c --- calculate the beam radius as needed to find Ez
       if (icharge < 5) then
         do ii=1,niz
           rmin = 0.01*rpipe(ii)
-          abmin = rpipe(ii)
           aval = y(1,ii)
           bval = y(3,ii)
-          abmin = min(abmin,aval,bval)
           aval = min(max(rmin,aval),rpipe(ii))
           bval = min(max(rmin,bval),rpipe(ii))
           rad(ii) = sqrt(aval*bval)
         enddo
-      elseif (icharge == 5 .or. icharge == 6) then
+      else
         do ii=1,niz
           aval = y(1,ii)
           bval = y(3,ii)
           rad(ii) = sqrt(aval*bval)
         enddo
       endif
+      
+      return
+      end
+c=============================================================================
+      subroutine getgfactor(niz,rpipe,icharge)
+      use HERtmp
+      integer(ISZ):: niz,icharge
+      real(kind=8):: rpipe(niz)
 
+      integer(ISZ):: ii
+      
 c --- calculate space-charge geometric factor g
       if (icharge == 0) then
         do ii=1,niz
-          gtemp(ii) = 2*log(1.6)
+          gtemp(ii) = 2.*log(1.6)
         enddo
-      elseif (icharge == 1) then
-        do ii=1,niz
-          gtemp(ii) = 2.*log(rpipe(ii)/rad(ii))
-        enddo
-      elseif (2 <= icharge .and. icharge <= 4) then
+      elseif (icharge > 1) then
         do ii=1,niz
           gtemp(ii) = 2.*log(rpipe(ii)/rad(ii)) + 0.5
         enddo
+      else
+        do ii=1,niz
+          gtemp(ii) = 2.*log(rpipe(ii)/rad(ii))
+        enddo
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine getcurrent(y,niz,rpipe,icharge,lcurgrid,lfail)
+      use HERtmp
+      use Constant
+      use InMeshrz
+      use Picglbrz
+      use Fieldsrz
+      integer(ISZ):: niz,icharge
+      real(kind=8):: y(16,niz), rpipe(niz)
+      logical(ISZ):: lcurgrid,lfail
+
+      integer(ISZ):: ii, iz, ir
+      real(kind=8):: del1, del2, part1, part2, fact1, fact2
+      real(kind=8):: dlna, dlnb
+      real(kind=8):: zb, denleft, denright
 
 c --- calculate beam quantities on slice boundaries
 c ---  cur = beam current cur
 c ---  den = line-charge density
 c ---  denv = envelope-variation term 0.5*den*(d(ab)/dt)/(ab*clight)
 
-c --- values at beam head
-      y(13,1) = 0.0
-      y(15,1) = 0.0
-      denv(1) = 0.0
-c --- values at beam tail
-      y(13,niz) = 0.0
-      y(15,niz) = 0.0
-      denv(niz) = 0.0
-c --- values in beam body
-      do ii=2,niz-1
-        del1 = y(9,ii) - y(9,ii-1)
-        del2 = y(9,ii+1) - y(9,ii)
-        part1 = del1/(del1 + del2)
-        fact1 = del1/(del2*(del1 + del2))
-        fact2 = del2/(del1*(del1 + del2))
-        if (del1 < 0.) then
-          print *, "Slice overtaking has occurred at s = ", y(9,ii-1)
-          print *, "Slice ",ii-2," overtook slice ",ii-1
+      if (icharge == 7 .and. lcurgrid) then
+      
+c ---   Interpolate the line charge density from the grid
+        fact1 = 2.*pi*dr*dr
+        do ii=1, niz
+          zb = (y(9,ii)-zmmin)/dz
+          iz = zb
+          denleft  = 0.125*rho(0,iz)
+          denright = 0.125*rho(0,iz+1)
+          do ir = 1,nr
+            denleft  = denleft  + ir*rho(ir,iz)
+            denright = denright + ir*rho(ir,iz+1)
+          enddo
+          part2 = zb - iz
+          part1 = 1. - part2
+          y(15,ii) = fact1 * (part1 * denleft + part2 * denright)
+          y(13,ii) = y(15,ii) * y(10,ii) * clight
+        enddo
+      
+      else
+
+c ---   values at beam head
+        y(13,1) = 0.0
+        y(15,1) = 0.0
+        denv(1) = 0.0
+c ---   values at beam tail
+        y(13,niz) = 0.0
+        y(15,niz) = 0.0
+        denv(niz) = 0.0
+c ---   values in beam body
+        do ii=2,niz-1
+          del1 = y(9,ii) - y(9,ii-1)
+          del2 = y(9,ii+1) - y(9,ii)
+          part1 = del1/(del1 + del2)
+          fact1 = del1/(del2*(del1 + del2))
+          fact2 = del2/(del1*(del1 + del2))
+          if (del1 < 0.) then
+            print *, "Slice overtaking has occurred at s = ", y(9,ii-1)
+            print *, "Slice ",ii-2," overtook slice ",ii-1
+c ---       following Python-convention for array indexing
+            lfail = .true.
+            return
+          endif
+          if (del1 .ne. del1) then
+            print *, "At s = ", y(9,ii-1)
+            print *, "Position of slice", ii-1, " became NaN"
+            lfail = .true.
+            return
+          endif
+          dlna = (fact1*(y(1,ii+1)-y(1,ii)) + fact2*(y(1,ii)-y(1,ii-1)))/y(1,ii)
+          dlnb = (fact1*(y(3,ii+1)-y(3,ii)) + fact2*(y(3,ii)-y(3,ii-1)))/y(3,ii)
+          y(15,ii) = (1.0-part1)*denmid(ii-1) + part1*denmid(ii)
+          y(13,ii) = y(15,ii) * y(10,ii) *clight
+          denv(ii) = 0.5*y(15,ii)*(dlna + dlnb)
+        enddo
+        if (del2 < 0.) then
+          print *, "Slice overtaking has occurred at s = ", y(9,niz-1)
+          print *, "Slice ",niz-2," overtook slice ",niz-1
 c ---     following Python-convention for array indexing
           lfail = .true.
           return
         endif
-        if (del1 .ne. del1) then
-          print *, "At s = ", y(9,ii-1)
-          print *, "Position of slice", ii-1, " became NaN"
+        if (del2 .ne. del2) then
+          print *, "At s = ", y(9,niz-1)
+          print *, "Position of slice ", niz-1, " became NaN"
           lfail = .true.
           return
         endif
-        dlna = (fact1*(y(1,ii+1)-y(1,ii)) + fact2*(y(1,ii)-y(1,ii-1)))/dvnz(y(1,ii))
-        dlnb = (fact1*(y(3,ii+1)-y(3,ii)) + fact2*(y(3,ii)-y(3,ii-1)))/dvnz(y(3,ii))
-        y(15,ii) = (1.0-part1)*denmid(ii-1) + part1*denmid(ii)
-        y(13,ii) = y(15,ii) * y(10,ii) *clight
-        denv(ii) = 0.5*y(15,ii)*(dlna + dlnb)
-      enddo
-      if (del2 < 0.) then
-        print *, "Slice overtaking has occurred at s = ", y(9,niz-1)
-        print *, "Slice ",niz-2," overtook slice ",niz-1
-c ---   following Python-convention for array indexing
-        lfail = .true.
-        return
-      endif
-      if (del2 .ne. del2) then
-        print *, "At s = ", y(9,niz-1)
-        print *, "Position of slice ", niz-1, " became NaN"
-        lfail = .true.
-        return
       endif
 
 c --- calculate partial z-derivative of the line-charge density d(den)/dz 
@@ -1109,7 +1211,6 @@ c ---   don't bother otherwise
       
       return
       end
-   
 c=============================================================================
       subroutine getviscous(y,niz,aviscous,fviscous)
       use Constant
@@ -1158,7 +1259,6 @@ c       because this is what we actually need
       
       return
       end
-
 c=============================================================================
       subroutine savehisther(t,y,niz,nther,lsavehist)
       use HERhist
@@ -1186,6 +1286,7 @@ c=============================================================================
       use HERhist
       integer(ISZ):: niz
       real(kind=8):: t,y(16,niz)
+
       integer(ISZ):: ii
 
       jhher = jhher + 1
@@ -3278,3 +3379,4 @@ c --- These values were taken from Mathematica
       
       return
       end
+c=============================================================================
