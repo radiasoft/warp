@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.33 $, $Date: 2003/06/03 23:06:44 $
+c@(#) File WXY.M, version $Revision: 3.34 $, $Date: 2003/07/16 00:35:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -249,11 +249,10 @@ c     call zeroarry(curr,nzzarr+1)
       curr = 0.
       do is=1,ns
 c        --- Set charge density
-         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                    uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
-         enddo
+         ip = nps(is)
+         ipmin = ins(is)
+         call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                 uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
       enddo
       call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
 
@@ -879,12 +878,12 @@ c=============================================================================
       use Picglb3d
       use Beam_acc
       use Z_arrays
+      use Z_Moments, only: nzmmnt
       use Damped_eom
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
-
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
@@ -894,13 +893,19 @@ c  and also loads RHO at the new time level.
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres, bendradi
+!$    real(kind=8):: threadmaxp(6,16),threadminp(6,16)
+!$    real(kind=8):: threadzmmnts0(NUMZMMNT,16)
+!$    real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
+!$    real(kind=8):: sharedcurr(0:nzzarr,16)
+!$    integer(ISZ):: ithread,omp_get_thread_num
+!$    integer(ISZ):: nthread,omp_get_num_threads
+!$    real(kind=8):: aa(16),bb(16)
+      real(kind=8):: maxp(6),minp(6)
+      real(kind=8):: zmmnts0(NUMZMMNT)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
       integer(ISZ):: iter_dt,niter_dt_tmp
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
-
-c  Zero the bend radius and residence fraction
-      bendradi = 0.
-      bendres = 0.
 
 c  Zero rho only if particles are advanced
 c     if (center == "halfv") call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
@@ -914,13 +919,24 @@ c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns)
+     &                nplive,uxpo,uypo,uzpo,1,ns,maxp,minp,zmmnts0,zmmnts)
       endif
+
+!$OMP PARALLEL
+!$OMP&PRIVATE(ip,ipmin,i,ex,ey,ez,bx,by,bz)
+!$OMP&PRIVATE(xpo,ypo,zpo,uxpo,uypo,uzpo,gaminvo,ezo,iter_dt)
+!$OMP&PRIVATE(uxpadv,uypadv,uzpadv,bendres,bendradi)
+!$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
+
+c  Zero the bend radius and residence fraction
+      bendradi = 0.
+      bendres = 0.
 
 c  Loop over species
       do is=1,ns
 
 c  Loop over particle blocks; move each block separately
+!$OMP DO
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
@@ -1162,13 +1178,15 @@ c            --- Calculate moments over particles, now that we're sync'd
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(1),sm(is),sw(is),dt*0.5,2,
-     &                         nplive,uxpo,uypo,uzpo,is,ns)
+     &                         nplive,uxpo,uypo,uzpo,is,ns,
+     &                         maxp,minp,zmmnts0,zmmnts)
                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
      &                         sq(1),sm(is),sw(is),dt*0.5,2,
-     &                         nplive,uxpo,uypo,uzpo,is,ns)
+     &                         nplive,uxpo,uypo,uzpo,is,ns,
+     &                         maxp,minp,zmmnts0,zmmnts)
                endif
              endif
 c            --- Calculate current
@@ -1176,9 +1194,20 @@ c            --- Calculate current
      &                      sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
           endif
         enddo
+!$OMP END DO
 
       enddo
 c     --- End loop over species
+
+!$    if (center == "synchv" .or. center == "gen") then
+!$      ithread = omp_get_thread_num() + 1
+!$      nthread = omp_get_num_threads()
+!$      threadmaxp(:,ithread) = maxp
+!$      threadminp(:,ithread) = minp
+!$      threadzmmnts0(:,ithread) = zmmnts0
+!$      threadzmmnts(:,:,ithread) = zmmnts
+!$    endif
+!$OMP END PARALLEL
 
       if (center == "halfv") then
         do is=1,ns
@@ -1230,9 +1259,13 @@ c     ---  Do final stuff for moments calculation and fix current
       if (center == "synchv" .or. center == "gen") then
 
         if (ldiag) then
+!$        maxp = maxval(threadmaxp(:,1:nthread),2)
+!$        minp = minval(threadminp(:,1:nthread),2)
+!$        zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
+!$        zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
           call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
-     &                  sq(1),sm(1),sw(1),
-     &                  dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns)
+     &                  sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns,
+     &                  maxp,minp,zmmnts0,zmmnts)
           call getlabwn()
 c         --- load rho diagnostic qtys
           call rhodia3d()
@@ -1264,12 +1297,14 @@ c  For thin slice model, average out rho along the axis.
 
       if (periinz) then
 
+!$OMP DO
         do ix=0,nx
           do iy=0,ny
             rho(ix,iy,0)  = rho(ix,iy,0) + rho(ix,iy,nz)
             rho(ix,iy,nz) = rho(ix,iy,0)
           enddo
         enddo
+!$OMP END DO
 
       endif
 
@@ -1285,14 +1320,17 @@ c       --- In the setrhoxy routine, all of the charge was put at iz=0.
 
         if (nz > 1) then
           nzi = 1./real(nz)
+!$OMP DO
           do iy=0,ny
             do ix=0,nx
               rho(ix,iy,0) = rho(ix,iy,0)*nzi
             enddo
           enddo
+!$OMP END DO
         endif
 
 c       --- Distribute rho to all z planes.
+!$OMP DO
         do iz=1,nz
           do iy=0,ny
             do ix=0,nx
@@ -1300,6 +1338,7 @@ c       --- Distribute rho to all z planes.
             enddo
           enddo
         enddo
+!$OMP END DO
 
       endif
 
@@ -1466,6 +1505,7 @@ c     --- First check if the allocation size has changed
 
 c     --- Give an initial value to dtp if it has not already been set or
 c     --- if any values are zero.
+!$OMP DO PRIVATE(i1,i2)
       do is=1,ns
         i1 = ins(is)
         i2 = ins(is) + nps(is) - 1
@@ -1481,6 +1521,7 @@ c     --- if any values are zero.
           endif
         endif
       enddo
+!$OMP END DO
 
       if (lwxytimesubs) timeinitdtp = timeinitdtp + wtime() - substarttime
       return
@@ -1701,6 +1742,7 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
 c=========================================================================== 
       subroutine setrhoxy(rho1d,np,xp,yp,zp,zgrid,uzp,gaminv,q,wght)
       use Subtimersxy
+      use GlobalVars
       use InGen
       use InGenxy
       use InGen3d
@@ -1734,11 +1776,12 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:3), indx(0:3,np)
+      integer(ISZ):: moff(0:3), indx(0:3,0:nparpgrp-1)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:np-1), jj(0:np-1)
+      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:3,np)
+      real(kind=8):: s(0:3,0:nparpgrp-1)
+      integer(ISZ):: ipmin,nptmp
 
       integer(ISZ):: ip,i,j,ind0,m,ir
       real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
@@ -1749,6 +1792,16 @@ c     --- For both algorithms
 c       --- Call 3d version.
         call setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
       else
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,f,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,gyfact,gxfact,s,m,ii,jj),FIRSTPRIVATE(np)
+
+!$OMP DO
+
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
 
 c--------------------------------------
 c  Begin vectorized deposition loop
@@ -1762,7 +1815,7 @@ c  Set up offset array for vectorized deposition:
       moff(2) = nx+1
       moff(3) = nx+2
 
-c  Begin main loop over species
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy)
       dxi = 1./dx
@@ -1774,7 +1827,7 @@ c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         g = g*0.5
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
            i  = (xp(ip) - xmmin) * dxi
            u1 = (xp(ip) - xmmin) * dxi - i
@@ -1782,24 +1835,25 @@ c       --- transverse boundaries.
            j  = abs(yp(ip))*dyi
            v1 = abs(yp(ip))*dyi - j
            v0 = 1. - v1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
            gyfact = 1.
            if (j == 0) gyfact = 2.
-           s(0,ip) = u0 * v0 * f*gyfact
-           s(1,ip) = u1 * v0 * f*gyfact
-           s(2,ip) = u0 * v1 * f
-           s(3,ip) = u1 * v1 * f
+           s(0,ir) = u0 * v0 * f*gyfact
+           s(1,ir) = u1 * v0 * f*gyfact
+           s(2,ir) = u0 * v1 * f
+           s(3,ir) = u1 * v1 * f
         enddo
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
         g = g*0.25
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
            i  = abs(xp(ip))*dxi
            u1 = abs(xp(ip))*dxi - i
@@ -1807,23 +1861,24 @@ c       --- transverse boundaries.
            j  = abs(yp(ip))*dyi
            v1 = abs(yp(ip))*dyi - j
            v0 = 1. - v1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
            gxfact = 1.
            gyfact = 1.
            if (i == 0) gxfact = 2.
            if (j == 0) gyfact = 2.
-           s(0,ip) = u0 * v0 * f*gxfact*gyfact
-           s(1,ip) = u1 * v0 * f*gyfact
-           s(2,ip) = u0 * v1 * f*gxfact
-           s(3,ip) = u1 * v1 * f
+           s(0,ir) = u0 * v0 * f*gxfact*gyfact
+           s(1,ir) = u1 * v0 * f*gyfact
+           s(2,ir) = u0 * v1 * f*gxfact
+           s(3,ir) = u1 * v1 * f
         enddo
       else
 c       --- normal loop
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
            i  = (xp(ip) - xmmin) * dxi
            u1 = (xp(ip) - xmmin) * dxi - i
@@ -1831,33 +1886,36 @@ c       --- normal loop
            j  = (yp(ip) - ymmin) * dyi
            v1 = (yp(ip) - ymmin) * dyi - j
            v0 = 1. - v1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
-           s(0,ip) = u0 * v0 * f
-           s(1,ip) = u1 * v0 * f
-           s(2,ip) = u0 * v1 * f
-           s(3,ip) = u1 * v1 * f
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           s(0,ir) = u0 * v0 * f
+           s(1,ir) = u1 * v0 * f
+           s(2,ir) = u0 * v1 * f
+           s(3,ir) = u1 * v1 * f
         enddo
       endif
 c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
-      do ip = 1, np
-         if (uzp(ip) /= 0) then
-         do m = 0, 3
-            rho1d(indx(m,ip)) = rho1d(indx(m,ip)) + s(m,ip)
-         enddo
-         endif
+!$OMP CRITICAL (CRITICAL_SETRHOXY1)
+      do ir = 0,nptmp-1
+        if (uzp(ir+ipmin) /= 0) then
+          do m = 0, 3
+            rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
+        endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETRHOXY1)
 
 c--------------------------------------
 c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-c  Begin main loop over species
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy)
       dxi = 1./dx
@@ -1866,9 +1924,9 @@ c  Begin main loop over species
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
         g = g*0.5
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          ir = ip - 1
+          ir = ip - ipmin
           ii(ir) = (xp(ip) - xmmin) * dxi
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
@@ -1877,16 +1935,16 @@ c     --- vectorized loop to compute indices, weights
           v0     = 1. - v1
           gyfact = 1.
           if (jj(ir) == 0) gyfact = 2.
-          s(0,ip) = u0 * v0 * f*gyfact
-          s(1,ip) = u1 * v0 * f*gyfact
-          s(2,ip) = u0 * v1 * f
-          s(3,ip) = u1 * v1 * f
+          s(0,ir) = u0 * v0 * f*gyfact
+          s(1,ir) = u1 * v0 * f*gyfact
+          s(2,ir) = u0 * v1 * f
+          s(3,ir) = u1 * v1 * f
         enddo
       elseif (l4symtry) then
         g = g*0.25
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          ir = ip - 1
+          ir = ip - ipmin
           ii(ir) = abs(xp(ip))*dxi
           u1     = abs(xp(ip))*dxi - ii(ir)
           u0     = 1. - u1
@@ -1897,39 +1955,44 @@ c     --- vectorized loop to compute indices, weights
           gyfact = 1.
           if (ii(ir) == 0) gxfact = 2.
           if (jj(ir) == 0) gyfact = 2.
-          s(0,ip) = u0 * v0 * f*gxfact*gyfact
-          s(1,ip) = u1 * v0 * f*gyfact
-          s(2,ip) = u0 * v1 * f*gxfact
-          s(3,ip) = u1 * v1 * f
+          s(0,ir) = u0 * v0 * f*gxfact*gyfact
+          s(1,ir) = u1 * v0 * f*gyfact
+          s(2,ir) = u0 * v1 * f*gxfact
+          s(3,ir) = u1 * v1 * f
         enddo
       else
 c       --- normal loop
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-          ir = ip - 1
+          ir = ip - ipmin
           ii(ir) = (xp(ip) - xmmin) * dxi
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
           jj(ir) = (yp(ip) - ymmin) * dyi
           v1     = (yp(ip) - ymmin) * dyi - jj(ir)
           v0     = 1. - v1
-          s(0,ip) = u0 * v0 * f
-          s(1,ip) = u1 * v0 * f
-          s(2,ip) = u0 * v1 * f
-          s(3,ip) = u1 * v1 * f
+          s(0,ir) = u0 * v0 * f
+          s(1,ir) = u1 * v0 * f
+          s(2,ir) = u0 * v1 * f
+          s(3,ir) = u1 * v1 * f
         enddo
       endif
 c     --- scalar loop does the actual deposition
-      do ir = 0, np-1
-         if (uzp(ir+1) /= 0) then
-         rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir+1)
-         rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir+1)
-         rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir+1)
-         rho(ii(ir)+1,jj(ir)+1,0) = rho(ii(ir)+1,jj(ir)+1,0) + s(3,ir+1)
+!$OMP CRITICAL (CRITICAL_SETRHOXY2)
+      do ir = 0, nptmp-1
+         if (uzp(ir+ipmin) /= 0) then
+         rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir)
+         rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir)
+         rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir)
+         rho(ii(ir)+1,jj(ir)+1,0) = rho(ii(ir)+1,jj(ir)+1,0) + s(3,ir)
         endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETRHOXY2)
 
       endif
+
+      enddo
+!$OMP END PARALLEL
 
 c     --- End of slice version
       endif
@@ -1988,11 +2051,10 @@ c        --- get loop limits for particles if needed
          if (nps_i == -1) nps_u = nps(is)
 
 c        --- loop over particle blocks
-         do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-            ip = min(nparpgrp, ins_u+nps_u-ipmin)
-            call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                    uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
-         enddo
+         ip = nps_u
+         ipmin = ins_u
+         call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                 uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
       enddo
 
 c     --- enforce axial periodicity if rho was zeroed
@@ -2004,6 +2066,7 @@ c     --- enforce axial periodicity if rho was zeroed
 c=============================================================================
       subroutine setcurrxy(curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin,dz,
      &                     lthick)
+      use GlobalVars
       use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin,dz
@@ -2015,22 +2078,32 @@ c  If running slice version, puts all data at iz=0, else if running thick
 c  slice version, makes a call to the 3d version of setcurr.
 
       real(kind=8):: csum,g
-      integer(ISZ):: ip
+      integer(ISZ):: ip,ipmin
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
       if (lthick) then
 c       --- Call 3d version.
-        call setcurr(curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin)
+!$OMP PARALLEL PRIVATE(ip)
+!$OMP DO
+        do ipmin = 1,np,nparpgrp
+          ip = min(nparpgrp, np+1-ipmin)
+          call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                 q,wght,zbeam,dzz,zzmin)
+        enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
       else
 
 c       --- Sum the charge times velocity over all particles.
         g = wght*q/dz
         csum = 0.
+!$OMP PARALLEL DO REDUCTION(+:csum)
         do ip = 1,np
            csum = csum + gaminv(ip)*uzp(ip)
         enddo
+!$OMP END PARALLEL DO
         curr(0) = curr(0) + csum*g
 
       endif
@@ -2057,6 +2130,7 @@ c FFT/bend iterative field solver.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
+!$OMP PARALLEL PRIVATE(x,r)
       dxi = 1./dx
       bndfit = 0
       bndferr = 2.*bndftol
@@ -2067,6 +2141,7 @@ c       --- save phi for error measure
         call copyarry(phi(0,0,0),phisave(0,0),(nx+1)*(ny+1))
 
 c       --- add curvature terms to the source (rho) as a correction
+!$OMP DO
         do i = 1, nx-1
           x = xmmin + i*dx
           r = 1./(bendradi + x)
@@ -2075,6 +2150,7 @@ c       --- add curvature terms to the source (rho) as a correction
      &               + eps0*(phisave(i+1,j) - phisave(i-1,j))*0.5*dxi*r
           enddo
         enddo
+!$OMP END DO
 
 c       --- call Cartesian field solver
         call vpxy (-1)
@@ -2082,21 +2158,27 @@ c       --- call Cartesian field solver
 c       --- compute error
         bndferr = 0.
         phiref = 0.
+!$OMP DO REDUCTION(max:bndferr,phiref)
         do i = 0, nx
            do j = 0, ny
               bndferr = max( bndferr, abs(phi(i,j,0)-phisave(i,j)) )
               phiref = max( phiref, phi(i,j,0) )
            enddo
         enddo
+!$OMP END DO
 
 c       --- for debug, print out the error
+!$OMP SINGLE
         if (bnprflag) then
           write (outstr,9985) bndfit, bndferr
  9985     format ("Bent field iteration",i3," Rel Change = ",1pe12.4)
           call remark(outstr)
         endif
+!$OMP END SINGLE NOWAIT
 
       end do
+
+!$OMP END PARALLEL
 
 c     --- if failure to converge, report the bad news to user
       if (bndferr > bndftol) then
