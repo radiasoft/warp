@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.3 $, $Date: 2001/07/11 21:48:12 $
+c W3DSLAVE.M, version $Revision: 1.4 $, $Date: 2001/08/14 20:27:25 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -20,10 +20,14 @@ c===========================================================================
       use Z_arrays
       use LatticeInternal
       use Z_Moments
+      use InjectVars
+      use InjectVars3d
 
 c This is the routine which divies up the work aming the slaves.
 
       integer(ISZ):: i,is,overlap,bestnz
+      integer(ISZ):: nzinj
+      real(kind=8):: zinjmax(ninject)
       real(kind=8):: zperproc,avezpp,ztot,sumzslave,zlast
       real(kind=8):: zpmin,zpmax
       logical(ISZ):: initialized
@@ -222,6 +226,16 @@ c       --- sticking out the end.
       endif
 
 c---------------------------------------------------------------------------
+c     --- If space-charge limited injection is turned on, then add additional
+c     --- grid cells to the first processor so it will have the injection
+c     --- surface completely covered.
+      if (inject > 1) then
+        zinjmax = ainject**2/(rinject+sqrt(rinject**2-ainject**2))
+        nzinj = int(maxval(zinject + zinjmax - zmmin)/dz + inj_d) + 1
+        nzpslave(0) = max(nzpslave(0),nzinj)
+      endif
+
+c---------------------------------------------------------------------------
 c     --- Now set the axial extent of each slaves domain, which includes
 c     --- both the particle and field solve domain.
       do i=0,nslaves-1
@@ -367,6 +381,12 @@ c overlap, then the data is sent first to the right and then received from
 c the left. This is done so that processes to the right do not have to wait
 c for processes to the left. Note that process 0 always sends it data first
 c so that there won't be a lock up.
+c Since no two particles domains ever overlap, at most only two z planes
+c will ever have to be exchanged. The number of grid cells exchanged,
+c left_nz and right_nz, are limited to 2 or less. This allows the value
+c of nzpslave to overlap further than the 2 cells - currently needed only
+c for special cases of injection. Nonetheless, having the limits makes the
+c more robust to future changes.
 
       integer(ISZ):: left_pe,right_pe
       integer(ISZ):: left_iz,right_iz,left_nz,right_nz
@@ -391,6 +411,7 @@ c     --- planes to exchange.
       if (my_index > 0) then
         left_iz = izpslave(my_index) - izslave(my_index)
         left_nz=izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)+1
+        left_nz = min(left_nz, 2)
       else
         left_iz = 0
         left_nz = 1
@@ -398,6 +419,7 @@ c     --- planes to exchange.
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izslave(my_index)
         right_nz=izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
+        right_nz = min(right_nz, 2)
       else
         right_iz = nz
         right_nz = 1
@@ -548,13 +570,9 @@ c     --- First, send the data out to processors that need it.
       do i=0,nslaves-1
         if ( i /= my_index) then
           izsend = max(izfsslave(my_index),izpslave(i)-1) - izslave(my_index)
-     &             + inj_d-1
-c + inj_d-1: temporaty fix for inj_d>1 
           nzsend = min(izfsslave(my_index)+nzfsslave(my_index)-grid_overlap,
      &                 izpslave(i)+nzpslave(i)+1)
      &             - max(izfsslave(my_index),izpslave(i)-1) + 1
-     &             + inj_d-1
-c + inj_d-1: temporaty fix for inj_d>1
           if (nzsend > 0) then
             call MPI_ISEND(phi(0,0,izsend),nzsend*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
@@ -567,13 +585,9 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           izrecv = max(izpslave(my_index)-1,izfsslave(i)) - izslave(my_index)
-     &             + inj_d-1
-c + inj_d-1: temporaty fix for inj_d>1
           nzrecv = min(izpslave(my_index)+nzpslave(my_index)+1,
      &                 izfsslave(i)+nzfsslave(i)-grid_overlap)
      &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
-     &             + inj_d-1
-c + inj_d-1: temporaty fix for inj_d>1
           if (nzrecv > 0) then
             call MPI_RECV(phi(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
