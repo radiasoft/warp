@@ -1,5 +1,5 @@
 /* Created by David P. Grote */
-/* $Id: warpC_Forthon.c,v 1.1 2004/02/09 21:42:07 dave Exp $ */
+/* $Id: warpC_Forthon.c,v 1.2 2004/02/10 01:09:55 dave Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
@@ -22,6 +22,8 @@ void initwarpC()
   PyDict_SetItemString(d, "error", ErrorObject);
   if (PyErr_Occurred())
     Py_FatalError("can not initialize module warpC");
+
+  printf("Forthon edition\n");
 
   import_array();
 
