@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.5 2001/07/19 21:41:58 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.6 2001/07/20 23:27:08 dave Exp $"
 
 def extpartdoc():
   print """
@@ -184,6 +184,15 @@ routines (such as ppxxp).
   def rp(self,js=0): return self.xp(js)*cos(self.theta(js)) + \
                             self.yp(js)*sin(self.theta(js))
   def nep(self,js=0): return len(self.tep[js][:])
+
+  def xxpslope(self,js=0):
+    return (ave(self.x(js)*self.xp(js)) - ave(self.x(js))*ave(self.xp(js)))/ \
+           (ave(self.x(js)*self.x(js)) - ave(self.x(js))*ave(self.x(js)))
+  def yypslope(self,js=0):
+    return (ave(self.y(js)*self.yp(js)) - ave(self.y(js))*ave(self.yp(js)))/ \
+           (ave(self.y(js)*self.y(js)) - ave(self.y(js))*ave(self.y(js)))
+  def rrpslope(self,js=0):
+    return ave(self.r(js)*self.rp(js))/ave(self.r(js)**2)
 
   ############################################################################
   ############################################################################
