@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.132 2004/10/14 22:45:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.133 2004/11/13 01:32:04 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -39,8 +39,9 @@ getrho(), getphi(), setrho(), setphi()
 
 The following plot various particles projections.
 ppzxy(), ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppxy()
-ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz(), pprrp()
-pprvz(), pptrace()
+ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
+pptrace()
+pprrp(), pprtp(), pprvz()
 
 The following plot various particles projections using color.
 ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
@@ -1864,6 +1865,50 @@ def pprrp(iw=0,scale=0,**kw):
   return ppgeneric(rp,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pprrp.__doc__ = pprrp.__doc__ + ppgeneric_doc("r","r'")
+
+##########################################################################
+def pprtp(iw=0,scale=0,**kw):
+  """Plots R-Theta', If slope='auto', it is calculated from the moments.
+  - scale=0: when true, scale particle by 2*rms"""
+  checkparticleplotarguments(kw)
+  if ppmultispecies(pprtp,(iw,scale),kw): return
+  xscale = 1.
+  yscale = 1.
+  xpscale = 1.
+  ypscale = 1.
+  if scale:
+    iiw = max(0,iw)
+    xscale = 2.*top.xrms[iiw]
+    yscale = 2.*top.yrms[iiw]
+    xpscale = 2.*top.vxrms[iiw]/top.vzbar[iiw]
+    ypscale = 2.*top.vyrms[iiw]/top.vzbar[iiw]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xx = getx(ii=ii,gather=0)/xscale
+  yy = gety(ii=ii,gather=0)/yscale
+  xp = getxp(ii=ii,gather=0)/xpscale
+  yp = getyp(ii=ii,gather=0)/ypscale
+  rr = sqrt(xx**2 + yy**2)
+  tt = arctan2(yy,xx)
+  tp = -xp*sin(tt) + yp*cos(tt)
+  slope = kw.get('slope',0.)
+  if type(slope) == type(''):
+    aversq = globalave(rr**2)
+    avertp = globalave(rr*tp)
+    if aversq > 0.:
+      slope = avertp/aversq
+    else:
+      slope = 0.
+    kw['slope'] = slope
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
+                      top.xpplmin/xpscale,top.xpplmax/ypscale)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
+  settitles("Theta' vs R","R","Theta'",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(tp,rr,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pprtp.__doc__ = pprtp.__doc__ + ppgeneric_doc("r","theta'")
 
 ##########################################################################
 def pprvz(iw=0,**kw):
