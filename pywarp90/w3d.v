@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.156 $, $Date: 2004/07/08 19:18:59 $
+#@(#) File W3D.V, version $Revision: 3.157 $, $Date: 2004/07/09 19:17:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.156 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.157 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -310,13 +310,14 @@ nz_selfe integer /0/ +dump +parallel # Same as nz
 selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
  # calculated from phi via finite difference. Only used when top.efetch = 3
 
-*********** Efields3dParticles:
-exefield(:) _real
-eyefield(:) _real
-ezefield(:) _real
-xefield(:) _real
-yefield(:) _real
-zefield(:) _real
+*********** FieldSolveAPI:
+exfsapi(:) _real
+eyfsapi(:) _real
+ezfsapi(:) _real
+xfsapi(:) _real
+yfsapi(:) _real
+zfsapi(:) _real
+phifsapi(:) _real
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation

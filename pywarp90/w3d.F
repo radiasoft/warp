@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.160 $, $Date: 2004/07/08 19:20:50 $
+c@(#) File W3D.F, version $Revision: 3.161 $, $Date: 2004/07/09 19:17:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3694,13 +3694,13 @@ c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         do ip = ipmin,ipmin+nptmp-1
            i  = int((xp(ip) - xmmin) * dxi)
-           u1 = (xp(ip) - xmmin) * dxi - i
+           u1 =     (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
-           j  = int(abs(yp(ip))*dyi)
-           v1 = abs(yp(ip))*dyi - j
+           j  = int((abs(yp(ip)) - ymmin)*dyi)
+           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
            v0 = 1. - v1
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -3713,7 +3713,7 @@ c       --- transverse boundaries.
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
-           if (j == 0) gyfact = 2.
+           if (j == 0 .and. ymmin == 0.) gyfact = 2.
            s(0,ir) = u0 * v0 * w0 * g*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g
@@ -3728,14 +3728,14 @@ c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
         do ip = ipmin,ipmin+nptmp-1
-           i  = int(abs(xp(ip))*dxi)
-           u1 = abs(xp(ip))*dxi - i
+           i  = int((abs(xp(ip)) - xmmin)*dxi)
+           u1 =     (abs(xp(ip)) - xmmin)*dxi - i
            u0 = 1. - u1
-           j  = int(abs(yp(ip))*dyi)
-           v1 = abs(yp(ip))*dyi - j
+           j  = int((abs(yp(ip)) - ymmin)*dyi)
+           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
            v0 = 1. - v1
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -3749,8 +3749,8 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gxfact = 1.
            gyfact = 1.
-           if (i == 0) gxfact = 2.
-           if (j == 0) gyfact = 2.
+           if (i == 0 .and. xmmin == 0.) gxfact = 2.
+           if (j == 0 .and. ymmin == 0.) gyfact = 2.
            s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -3764,13 +3764,13 @@ c       --- transverse boundaries.
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
            i  = int((xp(ip) - xmmin) * dxi)
-           u1 = (xp(ip) - xmmin) * dxi - i
+           u1 =     (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
            j  = int((yp(ip) - ymmin) * dyi)
-           v1 = (yp(ip) - ymmin) * dyi - j
+           v1 =     (yp(ip) - ymmin) * dyi - j
            v0 = 1. - v1
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -3816,16 +3816,16 @@ c     --- vectorized loop to compute indices, weights
         do ip = ipmin,ipmin+nptmp-1
           ir = ip - ipmin
           ii(ir) = int((xp(ip) - xmmin) * dxi)
-          u1     = (xp(ip) - xmmin) * dxi - ii(ir)
+          u1     =     (xp(ip) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int(abs(yp(ip))*dyi)
-          v1     = abs(yp(ip))*dyi - jj(ir)
+          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
           kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     = (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
+          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gyfact = 1.
-          if (jj(ir) == 0) gyfact = 2.
+          if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
           s(0,ir) = u0 * v0 * w0 * g*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g
@@ -3838,19 +3838,19 @@ c     --- vectorized loop to compute indices, weights
       elseif (l4symtry) then
         do ip = ipmin,ipmin+nptmp-1
           ir = ip - ipmin
-          ii(ir) = int(abs(xp(ip))*dxi)
-          u1     = abs(xp(ip))*dxi - ii(ir)
+          ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
+          u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int(abs(yp(ip))*dyi)
-          v1     = abs(yp(ip))*dyi - jj(ir)
+          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
           kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     = (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
+          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gxfact = 1.
           gyfact = 1.
-          if (ii(ir) == 0) gxfact = 2.
-          if (jj(ir) == 0) gyfact = 2.
+          if (ii(ir) == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -4150,7 +4150,7 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use EFields3d
-      use EFields3dParticles
+      use FieldSolveAPI
       integer(ISZ):: ipmin,ip,is
       real(kind=8),target:: ex(ip),ey(ip),ez(ip)
 
@@ -4165,19 +4165,19 @@ c     --- Obtain the self-field from the electrostatic potential
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==XYZgeomMR) then
-        xefield => xp(ipmin:ipmin+ip-1)
-        yefield => yp(ipmin:ipmin+ip-1)
-        zefield => zp(ipmin:ipmin+ip-1)
-        exefield => ex
-        eyefield => ey
-        ezefield => ez
+        xfsapi => xp(ipmin:ipmin+ip-1)
+        yfsapi => yp(ipmin:ipmin+ip-1)
+        zfsapi => zp(ipmin:ipmin+ip-1)
+        exfsapi => ex
+        eyfsapi => ey
+        ezfsapi => ez
         call execuser("fetcheMR")
-        nullify(xefield)
-        nullify(yefield)
-        nullify(zefield)
-        nullify(exefield)
-        nullify(eyefield)
-        nullify(ezefield)
+        nullify(xfsapi)
+        nullify(yfsapi)
+        nullify(zfsapi)
+        nullify(exfsapi)
+        nullify(eyfsapi)
+        nullify(ezfsapi)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
@@ -6596,7 +6596,7 @@ c       --- for this processor.
       nn = i1 - 1
 
       pp = 0.
-      call setphi(nn,xx,yy,zz,pp)
+      call fetchphi(nn,xx,yy,zz,pp)
 
 c     --- Calculate the difference between phi at that point and phi on
 c     --- the emitting surface.
@@ -6651,29 +6651,40 @@ c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
       return
       end
 c=============================================================================
-      subroutine setphi(n,x,y,z,p)
+      subroutine fetchphi(n,x,y,z,p)
       use InGen3d
       use Picglb
+      use FieldSolveAPI
       integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n),p(n)
+      real(kind=8),target:: x(n),y(n),z(n),p(n)
 
 c     --- Call the appropriate routine to get the phi
       if(solvergeom==XYZgeom) then
-        call setphi3d(n,x,y,z,p)
+        call fetchphi3d(n,x,y,z,p)
       elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setphirz(n,x,y,z,p,zgrid)
       elseif(solvergeom==Zgeom) then
         call setphiz(n,z,p,zgrid)
       elseif(solvergeom==AMRgeom) then
         call cho_getphi3d(n,x,y,z,0.,p,-1,-1)
+      elseif(solvergeom==XYZgeomMR) then
+        xfsapi => x
+        yfsapi => y
+        zfsapi => z
+        phifsapi => p
+        call execuser("fetchphiMR")
+        nullify(xfsapi)
+        nullify(yfsapi)
+        nullify(zfsapi)
+        nullify(phifsapi)
       endif
 
-      call setphi_from_pgrd(n,x,y,z,p)
+      call fetchphi_from_pgrd(n,x,y,z,p)
 
       return
       end
 c=============================================================================
-      subroutine setphi3d(n,x,y,z,p)
+      subroutine fetchphi3d(n,x,y,z,p)
       use InGen3d
       use InMesh3d
       use Picglb3d
@@ -6759,7 +6770,7 @@ c Fetch phi at points.
       return
       end
 c===========================================================================
-      subroutine setphi_from_pgrd(np,xp,yp,zp,p)
+      subroutine fetchphi_from_pgrd(np,xp,yp,zp,p)
       use Lattice
       use LatticeInternal
       use PGRDdata
@@ -7822,7 +7833,7 @@ c       --- for this processor.
       nn = i1 - 1
 
       pp = 0.
-      call setphi(nn,xx,yy,zz,pp)
+      call fetchphi(nn,xx,yy,zz,pp)
 
 c     --- Calculate the difference between phi at that point and phi on
 c     --- the emitting surface.
