@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.107 2005/02/23 23:15:44 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.108 2005/03/03 00:54:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -230,6 +230,17 @@ Should never be directly created by the user.
                        condid=self.condid,conductor=self,
                        kwlist=self.getkwlist())
     return result
+
+  def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
+    if color is not None:
+      plg(r,z,color=color)
+      if fullplane:
+        plg(-array(r),z,color=color)
+    if filled is not None:
+      c = array([filled],typecode='b')
+      plfp(c,r,z,[len(r)])
+      if fullplane:
+        plfp(c,-array(r),z,[len(r)])
 
   def get_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100):
     """
@@ -1954,6 +1965,20 @@ Cylinder aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
+  def draw(self,color='fg',filled=None,fullplane=1,rmin=None):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 240.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    if rmin is None: rmin = 0.
+    r = [self.radius,self.radius,rmin,rmin,self.radius]
+    z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
 #============================================================================
 class ZRoundedCylinder(Assembly):
   """
@@ -2031,6 +2056,20 @@ Outside of a cylinder aligned with z-axis
                        normalsign=-1,
                        kwdict=kw)
     self.dxobject = v
+
+  def draw(self,color='fg',filled=None,fullplane=1,rmax=None):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 240.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmax=w3d.xmmax: outer range in r to include in plot
+    """
+    if rmax is None: rmax = w3d.xmmax
+    r = [self.radius,self.radius,rmax,rmax,self.radius]
+    z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
 class ZRoundedCylinderOut(Assembly):
@@ -2700,17 +2739,6 @@ data and make sure it is consistent.
     r.append(rdata[-1])
     z.append(zdata[-1])
     return r,z
-
-  def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
-    if color is not None:
-      plg(r,z,color=color)
-      if fullplane:
-        plg(-array(r),z,color=color)
-    if filled is not None:
-      c = array([filled],typecode='b')
-      plfp(c,r,z,[len(r)])
-      if fullplane:
-        plfp(c,-array(r),z,[len(r)])
 
 #============================================================================
 class ZSrfrvOut(Srfrv,Assembly):
