@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.44 $, $Date: 2002/09/20 22:05:00 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.45 $, $Date: 2002/09/26 21:14:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1985,80 +1985,83 @@ c     --- Call the work routine for each level
 
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
-      if (ncondmax > 0) then
-        allocate(isort(ncondmax))
-        call isortconductor(ncondmax,icondlevel,isort,icstart,mglevels)
+      if (ncond > 0) then
+        allocate(isort(ncond))
+        call isortconductor(ncond,icondlevel,isort,icstart,mglevels)
+        nn = ncond
         ncond = icstart(mglevels) - 1
-        call iswapconductor(ncond,isort,ncondmax,ixcond)
-        call iswapconductor(ncond,isort,ncondmax,iycond)
-        call iswapconductor(ncond,isort,ncondmax,izcond)
-        call iswapconductor(ncond,isort,ncondmax,condnumb)
-        call rswapconductor(ncond,isort,ncondmax,condvolt)
-        call iswapconductor(ncond,isort,ncondmax,icondlevel)
+        call iswapconductor(ncond,isort,nn,ixcond)
+        call iswapconductor(ncond,isort,nn,iycond)
+        call iswapconductor(ncond,isort,nn,izcond)
+        call iswapconductor(ncond,isort,nn,condnumb)
+        call rswapconductor(ncond,isort,nn,condvolt)
+        call iswapconductor(ncond,isort,nn,icondlevel)
         deallocate(isort)
       endif
 
 c     --- Sort even subgrid points
-      if (ncndmax > 0) then
-        allocate(isort(ncndmax))
-        call isortconductor(ncndmax,iecndlevel,isort,ecstart,mglevels)
+      if (necndbdy > 0) then
+        allocate(isort(necndbdy))
+        call isortconductor(necndbdy,iecndlevel,isort,ecstart,mglevels)
+        nn = necndbdy
         necndbdy = ecstart(mglevels) - 1
-        call iswapconductor(necndbdy,isort,ncndmax,iecndx)
-        call iswapconductor(necndbdy,isort,ncndmax,iecndy)
-        call iswapconductor(necndbdy,isort,ncndmax,iecndz)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelmx)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelmy)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelmz)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelpx)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelpy)
-        call rswapconductor(necndbdy,isort,ncndmax,ecdelpz)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvolt)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumb)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltmx)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltpx)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltmy)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltpy)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltmz)
-        call rswapconductor(necndbdy,isort,ncndmax,ecvoltpz)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbmx)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbpx)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbmy)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbpy)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbmz)
-        call iswapconductor(necndbdy,isort,ncndmax,ecnumbpz)
-        call iswapconductor(necndbdy,isort,ncndmax,iecndlevel)
+        call iswapconductor(necndbdy,isort,nn,iecndx)
+        call iswapconductor(necndbdy,isort,nn,iecndy)
+        call iswapconductor(necndbdy,isort,nn,iecndz)
+        call rswapconductor(necndbdy,isort,nn,ecdelmx)
+        call rswapconductor(necndbdy,isort,nn,ecdelmy)
+        call rswapconductor(necndbdy,isort,nn,ecdelmz)
+        call rswapconductor(necndbdy,isort,nn,ecdelpx)
+        call rswapconductor(necndbdy,isort,nn,ecdelpy)
+        call rswapconductor(necndbdy,isort,nn,ecdelpz)
+        call rswapconductor(necndbdy,isort,nn,ecvolt)
+        call iswapconductor(necndbdy,isort,nn,ecnumb)
+        call rswapconductor(necndbdy,isort,nn,ecvoltmx)
+        call rswapconductor(necndbdy,isort,nn,ecvoltpx)
+        call rswapconductor(necndbdy,isort,nn,ecvoltmy)
+        call rswapconductor(necndbdy,isort,nn,ecvoltpy)
+        call rswapconductor(necndbdy,isort,nn,ecvoltmz)
+        call rswapconductor(necndbdy,isort,nn,ecvoltpz)
+        call iswapconductor(necndbdy,isort,nn,ecnumbmx)
+        call iswapconductor(necndbdy,isort,nn,ecnumbpx)
+        call iswapconductor(necndbdy,isort,nn,ecnumbmy)
+        call iswapconductor(necndbdy,isort,nn,ecnumbpy)
+        call iswapconductor(necndbdy,isort,nn,ecnumbmz)
+        call iswapconductor(necndbdy,isort,nn,ecnumbpz)
+        call iswapconductor(necndbdy,isort,nn,iecndlevel)
         deallocate(isort)
       endif
     
 c     --- Sort odd subgrid points
-      if (ncndmax > 0) then
-        allocate(isort(ncndmax))
-        call isortconductor(ncndmax,iocndlevel,isort,ocstart,mglevels)
+      if (nocndbdy > 0) then
+        allocate(isort(nocndbdy))
+        call isortconductor(nocndbdy,iocndlevel,isort,ocstart,mglevels)
+        nn = nocndbdy
         nocndbdy = ocstart(mglevels) - 1
-        call iswapconductor(nocndbdy,isort,ncndmax,iocndx)
-        call iswapconductor(nocndbdy,isort,ncndmax,iocndy)
-        call iswapconductor(nocndbdy,isort,ncndmax,iocndz)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelmx)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelmy)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelmz)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelpx)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelpy)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocdelpz)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvolt)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumb)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltmx)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltpx)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltmy)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltpy)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltmz)
-        call rswapconductor(nocndbdy,isort,ncndmax,ocvoltpz)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbmx)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbpx)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbmy)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbpy)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbmz)
-        call iswapconductor(nocndbdy,isort,ncndmax,ocnumbpz)
-        call iswapconductor(nocndbdy,isort,ncndmax,iocndlevel)
+        call iswapconductor(nocndbdy,isort,nn,iocndx)
+        call iswapconductor(nocndbdy,isort,nn,iocndy)
+        call iswapconductor(nocndbdy,isort,nn,iocndz)
+        call rswapconductor(nocndbdy,isort,nn,ocdelmx)
+        call rswapconductor(nocndbdy,isort,nn,ocdelmy)
+        call rswapconductor(nocndbdy,isort,nn,ocdelmz)
+        call rswapconductor(nocndbdy,isort,nn,ocdelpx)
+        call rswapconductor(nocndbdy,isort,nn,ocdelpy)
+        call rswapconductor(nocndbdy,isort,nn,ocdelpz)
+        call rswapconductor(nocndbdy,isort,nn,ocvolt)
+        call iswapconductor(nocndbdy,isort,nn,ocnumb)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltmx)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltpx)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltmy)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltpy)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltmz)
+        call rswapconductor(nocndbdy,isort,nn,ocvoltpz)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbmx)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbpx)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbmy)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbpy)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbmz)
+        call iswapconductor(nocndbdy,isort,nn,ocnumbpz)
+        call iswapconductor(nocndbdy,isort,nn,iocndlevel)
         deallocate(isort)
       endif
 
