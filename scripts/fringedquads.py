@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.7 2004/01/24 01:26:07 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.8 2004/07/22 23:39:51 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -290,19 +290,24 @@ not, then the derivatives will be done with a finite difference of fringe.
   if quads and firstfringe == 0: top.quads = false
   if heles and firstfringe == 0: top.heles = false
 
-  # --- Zero out the field if requested, or if not all quads have fringes
-  # --- added, zero out the ones that do.
-  if lclear or firstfringe > 0:
+  # --- If requested, delete the hard edged data.
+  if lclear:
+    if quads:
+      top.nquad = firstfringe - 1
+      top.nqerr = firstfringe - 1
+      gchange("Lattice")
+    if heles:
+      top.nhele = firstfringe - 1
+      gchange("Lattice")
+  else:
     if quads:
       top.quadde[firstfringe:] = 0.
       top.quaddb[firstfringe:] = 0.
-      top.nquad = max(0,firstfringe-1)
     if heles:
       top.heleae[:,firstfringe:] = 0.
       top.heleam[:,firstfringe:] = 0.
       top.heleep[:,firstfringe:] = 0.
       top.helemp[:,firstfringe:] = 0.
-      top.nhele = max(0,firstfringe-1)
 
   # --- Turn on the fringed elements
   if top.nemlt > 0: top.emlts = true
