@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.1 2003/08/02 01:02:16 dave Exp $
+$Id: PWpyt.py,v 1.2 2003/09/15 23:48:29 dave Exp $
 """
 import tables
 import cPickle
@@ -83,9 +83,9 @@ class PW:
         return self.file
 
     def inquire_mode(self):
-        "inquire_mode() = mode('w', or 'a') of this file. Only 'w' supported"
+        "inquire_mode() = mode('w', or 'a') of this file."
         self.check_open()
-        return 'w'
+        return self.mode
 
     def inquire_group(self):
         "inquire_group() = present HDF group"
@@ -108,11 +108,16 @@ class PW:
         "open(filename, 'w')"
         self.close()
         assert mode in ['w','a'],"Improper mode: " + mode
+        self.__dict__['mode'] = mode
         self.__dict__['file'] = tables.openFile(filename,mode=mode,rootUEP=self.inquire_group())
-        self.__dict__['ints'] = self.inquire_file().createTable(self.inquire_group(),
-                                                           'ints',IntScalar,"Scalar Ints")
-        self.__dict__['floats'] = self.inquire_file().createTable(self.inquire_group(),
-                                                           'floats',FloatScalar,"Scalar Floats")
+        if mode == 'w':
+          self.__dict__['ints'] = self.inquire_file().createTable(self.inquire_group(),
+                                        'ints',IntScalar,"Scalar Ints")
+          self.__dict__['floats'] = self.inquire_file().createTable(self.inquire_group(),
+                                        'floats',FloatScalar,"Scalar Floats")
+        else:
+          self.__dict__['ints'] = self.inquire_file().root.ints
+          self.__dict__['floats'] = self.inquire_file().root.floats
 
     def make_group(self, name):
         """make_group(name) 
