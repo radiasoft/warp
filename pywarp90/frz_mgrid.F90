@@ -682,9 +682,9 @@ END module multigridrz
 subroutine slvfld1gridrz_bnd(u0,rho0,nr0,nz0,dr0,dz0,rxbnd,lzbnd,rzbnd,accuracy,ncmax,npre,npost,ncycle)
 USE multigridrz
 implicit none
+INTEGER(ISZ), INTENT(IN) :: nr0, nz0, rxbnd, lzbnd, rzbnd,ncmax,npre,npost,ncycle
 REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
-INTEGER(ISZ), INTENT(IN) :: nr0, nz0, rxbnd, lzbnd, rzbnd,ncmax,npre,npost,ncycle
 REAL(8), INTENT(IN) :: dr0, dz0,accuracy
 
 INTEGER(ISZ) :: nrp0, nzp0, j, l, nrc, nzc, np, i
@@ -1389,10 +1389,10 @@ subroutine rhoweightrz(xp,yp,zp,np,q,rho,nr,nz,dr,dz,zmin)
 USE constant
 implicit none
 
+INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(0:nr,0:nz), INTENT(INOUT) :: rho
 REAL(8), INTENT(IN) :: q, dr, dz, zmin
-INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 
 REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr)
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
@@ -1436,8 +1436,8 @@ subroutine rhobndrz(rho,nr,nz)
 USE multigridrz
 implicit none
 
-REAL(8), dimension(0:nr,0:nz), INTENT(IN OUT) :: rho
 INTEGER(ISZ), INTENT(IN) :: nr, nz
+REAL(8), dimension(0:nr,0:nz), INTENT(IN OUT) :: rho
 
 INTEGER(ISZ) :: irmax, izmax
 
@@ -1467,11 +1467,11 @@ subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin)
 USE constant
 implicit none
 
+INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
 REAL(8), INTENT(IN) :: dr, dz, zmin
-INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 
 REAL(8) :: invdr, invdz, rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
