@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.9 2001/03/14 21:51:47 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.10 2001/03/19 20:07:49 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -41,9 +41,15 @@ def convertiwtope(iw):
 contains that range (actually the center of the window)."""
   if 0 <= iw <= top.nzwind:
     zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
-    return compress(logical_and(less_equal(top.zpslmin,zz),
-                                      less(zz,top.zpslmax)),arange(npes))[0]
+    pe = compress(logical_and(less_equal(top.zpslmin,zz),
+                                    less(zz,top.zpslmax)),arange(npes))
+    if len(pe) > 0:
+      return pe[-1]
+    else:
+      # --- The zwindow is outside of the grid boundary.
+      return None
   else:
+    # --- The input iw is not a proper value.
     return None
 
 # --- Gathers windows data onto PE0.
@@ -59,14 +65,15 @@ def getwin_moments():
   # --- All of the moment data for each window is sent as a single array.
   for iw in range(1,top.nzwind+1):
     pe = convertiwtope(iw)
-    vdata = []
-    for v in vlist:
-      vdata.append(eval('top.'+v+'[iw]',__main__.__dict__,locals()))
-    vdata = mpi.bcast(array(vdata),pe)
-    i = 0
-    for v in vlist:
-      exec('top.'+v+'[iw] = vdata[i]',__main__.__dict__,locals())
-      i = i + 1
+    if pe != None:
+      vdata = []
+      for v in vlist:
+        vdata.append(eval('top.'+v+'[iw]',__main__.__dict__,locals()))
+      vdata = mpi.bcast(array(vdata),pe)
+      i = 0
+      for v in vlist:
+        exec('top.'+v+'[iw] = vdata[i]',__main__.__dict__,locals())
+        i = i + 1
 
 # --- Gathers windows history data onto PE0.
 # --- Still need to deal with linechg and hvzofz and other zmoments histories.
