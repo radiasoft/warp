@@ -12,7 +12,7 @@ from warp import *
 from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.3 2003/02/24 16:13:41 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.4 2003/04/16 22:59:47 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -37,8 +37,10 @@ def ppxyz(iw = 0,**kw):
   return
 
 ###########################################################################
-def viewisosurface1(data,isovalue,name='WARP viz'):
-  f = DXObject_fromarray(data)
+def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
+  if origins is None: origins = [0.,0.,0.]
+  if deltas is None: deltas = [1.,1.,1.]
+  f = DXObject_fromarray(data,origins,deltas)
 
   minput = {'data':f,'value':isovalue}
   moutput = ['surface']
