@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.7 $, $Date: 2001/10/29 22:41:29 $
+c TOPSLAVE.M, version $Revision: 1.8 $, $Date: 2001/11/06 22:01:32 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -234,30 +234,34 @@ c       --- Make sure that there is space for the incoming data.
      &                    buffer4,nquant*nrecvright,MPI_DOUBLE_PRECISION,right_pe,0,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
-        ip = ins(is) - nrecvleft
-        call copyarry(buffer3(1),xp(ip),nrecvleft)
-        call copyarry(buffer3(1+nrecvleft),yp(ip),nrecvleft)
-        call copyarry(buffer3(1+2*nrecvleft),zp(ip),nrecvleft)
-        call copyarry(buffer3(1+3*nrecvleft),uxp(ip),nrecvleft)
-        call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
-        call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
-        call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
-        if (npmaxi > 0)
-     &    call copyarry(buffer3(1+7*nrecvleft),pid(ip),nrecvleft)
-        ins(is) = ins(is) - nrecvleft
-        nps(is) = nps(is) + nrecvleft
+        if (nrecvleft > 0) then
+          ip = ins(is) - nrecvleft
+          call copyarry(buffer3(1),xp(ip),nrecvleft)
+          call copyarry(buffer3(1+nrecvleft),yp(ip),nrecvleft)
+          call copyarry(buffer3(1+2*nrecvleft),zp(ip),nrecvleft)
+          call copyarry(buffer3(1+3*nrecvleft),uxp(ip),nrecvleft)
+          call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
+          call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
+          call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
+          if (npmaxi > 0)
+     &      call copyarry(buffer3(1+7*nrecvleft),pid(ip),nrecvleft)
+          ins(is) = ins(is) - nrecvleft
+          nps(is) = nps(is) + nrecvleft
+	endif
 
-        ip = ins(is) + nps(is)
-        call copyarry(buffer4(1),xp(ip),nrecvright)
-        call copyarry(buffer4(1+nrecvright),yp(ip),nrecvright)
-        call copyarry(buffer4(1+2*nrecvright),zp(ip),nrecvright)
-        call copyarry(buffer4(1+3*nrecvright),uxp(ip),nrecvright)
-        call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
-        call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
-        call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
-        if (npmaxi > 0)
-     &    call copyarry(buffer4(1+7*nrecvright),pid(ip),nrecvright)
-        nps(is) = nps(is) + nrecvright
+        if (nrecvright > 0) then
+          ip = ins(is) + nps(is)
+          call copyarry(buffer4(1),xp(ip),nrecvright)
+          call copyarry(buffer4(1+nrecvright),yp(ip),nrecvright)
+          call copyarry(buffer4(1+2*nrecvright),zp(ip),nrecvright)
+          call copyarry(buffer4(1+3*nrecvright),uxp(ip),nrecvright)
+          call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
+          call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
+          call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
+          if (npmaxi > 0)
+     &      call copyarry(buffer4(1+7*nrecvright),pid(ip),nrecvright)
+          nps(is) = nps(is) + nrecvright
+	endif
 
 c What follows (but is commented out) is the preferred version, but
 c is causes a core dump for some unknown reason.
