@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.67 $, $Date: 2003/01/24 17:46:42 $
+#@(#) File TOP.V, version $Revision: 3.68 $, $Date: 2003/01/30 13:39:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.67 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.68 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -989,8 +989,8 @@ randoffset      integer [1]   /0/
 *********** InjectVars dump:
 inject    integer    /0/   # Type of injection, (0: turned off,
                            # 1: constant current,
-                           # 2: space-charge limited (Gauss's law),
-                           # 3: space-charge limited (Child-Langmuir))
+                           # 2: space-charge limited (Child-Langmuir),
+                           # 3: space-charge limited (Gauss's law))
 inj_param real       /1./  # Relaxation parameter for inject.  Mainly used
                            # for Egun iterative mode - set to 1 for time
                            # dependent injection, 0 for steady-state injection.
