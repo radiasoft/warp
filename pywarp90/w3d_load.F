@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.16 $, $Date: 2004/12/23 05:27:31 $
+c@(#) File w3d_load.F, version $Revision: 1.17 $, $Date: 2005/02/16 22:08:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -44,7 +44,7 @@ c     --- beam rms descriptions
       real(kind=8):: r_x, r_y, emit_x, emit_y
       integer(ISZ):: ir
 c     --- waterbag equilibrium 
-      real(kind=8):: sc_param_wb, k1re1, k1re2, rho
+      real(kind=8):: sc_param_wb, k1rel, k1rer, rho
       real(kind=8):: zbrent, bessi0, bessi
       external wb_constr
       common /wbconstrcom/ sc_param_wb 
@@ -91,16 +91,24 @@ c     --- waterbag equilibrium
 
 c       --- calculate k1re = k1*r_e using bracketed brent numerical root 
 c           find method in zbrent  
-c             k1re1 = left  bracket established from small argument exapansion 
-c             k1re2 = right bracket set to a point where the bessel function 
-c                     part of waterbagconstr() changes sign for 
-c                     sc_param_wb = 0.
+c             k1rel = left  bracket for k1re root 
+c             k1rer = right bracket for k1re root 
+c           Formulas are based on analytical limiting forms for small and 
+c           large k1re corresponding to large and small sc_param_wb > 1.   
+c           Breakpoints and limits were found using a Mathematica based 
+c           numerical analysis of the contraint equation.  The formulas given 
+c           should bracket the root for all space-charge strengths.  
 
         sc_param_wb = (r_b*k_beta0)**2/q_perv
-        k1re1 = (64./sc_param_wb)**0.25
-        k1re2 = 2. + 4./(sc_param_wb-1.)  
+        if (sc_param_wb .lt. 2.) then 
+          k1rel = 1.15*( 2./sqrt(sc_param_wb-1.) ) 
+          k1rer = 0.85*( 2./sqrt(sc_param_wb-1.) )
+        else 
+          k1rel = 1.05*( 4./sqrt(3.*(sc_param_wb - 17./18.)) )
+          k1rer = 0.95*( 4./sqrt(3.*(sc_param_wb - 17./18.)) )
+        endif 
 
-        k1re = zbrent(wb_constr,k1re1,k1re2,1.e-6,1000)
+        k1re = zbrent(wb_constr,k1rel,k1rer,1.e-6,1000)
 
 c       --- calculate properties of the distribution 
 c             r_e = edge radius where the density falls to zero 
@@ -227,14 +235,19 @@ c    k1re = k_1 * r_e       k_1 = wavenumber parameter
 c                           r_e = beam edge radius
 c
 
-      real(kind=8):: bessi0,bessi
-      real(kind=8):: sc_param_wb
+      real(kind=8):: bessi0, bessi
+      real(kind=8):: bessi0k1re, bessi2k1re, bessi3k1re
+      real(kind=8):: sc_param_wb 
       common /wbconstrcom/ sc_param_wb 
 
-      wb_constr = sc_param_wb - bessi0(k1re)**2/bessi(2,k1re)**2 + 
-     &  4./(k1re**2)*( 2.*bessi(2,k1re)/bessi0(k1re) +
-     &                 k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
-     &               )
+      bessi0k1re = bessi0(k1re) 
+      bessi2k1re = bessi(2,k1re)
+      bessi3k1re = bessi(3,k1re)
+
+      wb_constr = sc_param_wb - (bessi0k1re/bessi2k1re)**2 + 
+     &    4./(k1re**2)*( 2.*bessi0k1re/bessi2k1re +
+     &                   k1re*bessi0k1re*bessi3k1re/bessi2k1re**2
+     &                 )
 
       return 
       end 
