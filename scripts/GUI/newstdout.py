@@ -10,7 +10,7 @@ class newstdout_accumulate:
     def flush(self):
         pass         
 
-class newstdout:
+class newstdout_withCR:
     def __init__(self,winout):
         self.winout = winout
         self.lastCR = false 
@@ -25,5 +25,13 @@ class newstdout:
             self.lastCR = true
         else:
             self.winout.WriteText(s)
+    def flush(self):
+        pass         
+
+class newstdout:
+    def __init__(self,winout):
+        self.winout = winout
+    def write(self,s):
+        self.winout.WriteText(s)
     def flush(self):
         pass         
