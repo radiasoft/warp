@@ -27,8 +27,12 @@ class AMRTree(Visualizable):
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conds_installed_onbasegrid = []
+      self.dfill = 2
       installbeforefs(self.generate)
         
+    def addconductor(self,conductor):
+      self.conductors.append(conductor)
+
     def getabsgrad(self,f,dx,dy,dz):
       """
     get average of absolute value of grad(f).
@@ -481,7 +485,7 @@ class AMRTree(Visualizable):
     the charge density. If self.f is null, an error message is raised.
       """
       # return if not time to generate a new set of blocks
-      if(top.it%w3d.AMRgenerate_periodicity<>0):return
+      if(top.it%w3d.AMRgenerate_frequency<>0):return
       print 'generate grids at it = ',top.it
       
       # check if w3d.AMRlevels set properly and set defaut variables
@@ -539,7 +543,8 @@ class AMRTree(Visualizable):
       
       # set conductor data
       if w3d.solvergeom==w3d.XYZgeomMR:
-        pass # to be done
+        for cond in self.conductors:
+          self.blocks.installconductor(cond,dfill=self.dfill)
       else:
         # this loop is needed so that the grid are correctly registered when installing conductors
         if self.nblocks>0:
