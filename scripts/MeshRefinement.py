@@ -13,7 +13,7 @@ except ImportError:
 
 #########################################################################
 # Note that MRBlock is psyco.bind at the end of the file
-class MRBlock(object,MultiGrid,Visualizable):
+class MRBlock(MultiGrid,Visualizable):
   """
  - parent:
  - refinement=2:
