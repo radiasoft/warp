@@ -2,7 +2,8 @@
 import __main__
 from Numeric import *
 import ranlib
-warp_version = "$Id: warp.py,v 1.2 2000/10/26 21:18:40 dave Exp $"
+import sys
+warp_version = "$Id: warp.py,v 1.3 2000/11/21 19:58:25 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -18,10 +19,13 @@ except ImportError:
   npes = 0
   lparallel = 0
 
-if me == 0:
-  from gist import *
-else:
-  from gistdummy import *
+try:
+  if me == 0 and sys.platform != 'mac':
+    from gist import *
+  else:
+    from gistdummy import *
+except ImportError:
+  pass
 
 from pyBasis import *
 
@@ -43,12 +47,6 @@ from ctl import *
 package('wxy')
 package('w3d')
 package('top')
-
-# --- Import some extra packages which are used by various packages.
-import PR
-import PW
-import re
-import RandomArray
 
 # --- If running in parallel, import the parallel warp module
 if lparallel:
