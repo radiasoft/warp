@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.51 2003/01/16 16:51:30 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.52 2003/01/24 16:47:56 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2331,27 +2331,36 @@ Returns the scene use to draw the image
           if iii[ix+oo[0],iy+oo[1],iz+oo[2]] > 0:
             pp = newfacet(ix,iy,iz,oo,dd,+1,iii,dels,gridmin,griddd)
             if len(pp) == 0:
-              pp = newfacet(ix,iy,iz,oo,dd,-1,iii,dels,gridmin,griddd)
+              pp = newfacet(ix,iy,iz,oo,dd,0,iii,dels,gridmin,griddd)
             if len(pp) > 0:
               model.FacetedPolygon(pp,color=color)
         iii[ix:ix+2,iy:iy+2,iz:iz+2] = abs(iii[ix:ix+2,iy:iy+2,iz:iz+2])
   model.Display()
   return model.scene
 
+def nextdir(position,direction,parity):
+  parity = (sum(array(position)) + parity + 1) % 2
+  newdirection = [0,0,0]
+  if direction[0] != 0:   newdirection[1+parity] = 1
+  elif direction[1] != 0: newdirection[2-2*parity] = 1
+  elif direction[2] != 0: newdirection[parity] = 1
+  if position[0] == 1: newdirection[0] = -newdirection[0]
+  if position[1] == 1: newdirection[1] = -newdirection[1]
+  if position[2] == 1: newdirection[2] = -newdirection[2]
+  return newdirection
+
 # --- This would be a little less painful is lists were hashable.
 def newfacet(ix,iy,iz,oo,dd,parity,iii,dels,gridmin,griddd,
-  oodict = {  0:[0,0,0],100:[1,0,0], 10:[0,1,0],110:[1,1,0],
-              1:[0,0,1],101:[1,0,1], 11:[0,1,1],111:[1,1,1]},
-  dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
-             11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
-  dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
-             100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
-              10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
-             110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
-               1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
-             101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
-              11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
-             111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
+# dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
+#            11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
+# dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
+#            100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
+#             10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
+#            110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
+#              1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
+#            101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
+#             11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
+#            111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
   delsdict = { 11:0,211:1,101:2,121:3,110:4,112:5},
   too = lambda oo : 100*oo[0] + 10*oo[1] + oo[2],
   tdd = lambda dd : 100*(1+dd[0]) + 10*(1+dd[1]) + (1+dd[2])):
@@ -2370,16 +2379,18 @@ Work routine used by visualizeconductors.
       newpoint = (array([ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]]) +
                         dels[delsdict[tdd(currentdd)],ic-1]*array(currentdd))
       pp.append(newpoint*griddd+gridmin)
-      dirs = dirdict[too(currentoo)]
-      currentddnum = dirs[0][tdd(currentdd)]
-      nextddnum = (currentddnum + parity) % 3
-      nextdd = dddict[dirs[1][nextddnum]]
+      #dirs = dirdict[too(currentoo)]
+      #currentddnum = dirs[0][tdd(currentdd)]
+      #nextddnum = (currentddnum + 2*parity-1) % 3
+      #nextdd = dddict[dirs[1][nextddnum]]
+      nextdd = nextdir(currentoo,currentdd,parity)
       nextoo = currentoo
     else:
       nextoo = list(array(currentoo) + array(currentdd))
-      nextdirs = dirdict[too(nextoo)]
-      nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + parity) % 3
-      nextdd = dddict[nextdirs[1][nextddnum]]
+      #nextdirs = dirdict[too(nextoo)]
+      #nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + 2*parity-1) % 3
+      #nextdd = dddict[nextdirs[1][nextddnum]]
+      nextdd = nextdir(nextoo,-array(currentdd),parity)
       ncorners = ncorners + 1
     currentoo = nextoo
     currentdd = nextdd
