@@ -29,8 +29,15 @@ class AMRTree(Visualizable):
       self.conductors   = []
       self.conds_installed_onbasegrid = []
       self.dfill = 2
+      self.enable()
+
+    def enable(self):
       installbeforefs(self.generate)
         
+    def __setstate__(self,dict):
+      self.__dict__.update(dict)
+      self.enable()
+
     def addconductor(self,conductor):
       self.conductors.append(conductor)
 
