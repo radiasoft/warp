@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.15 2001/02/02 00:20:00 dave Exp $"
+warp_version = "$Id: warp.py,v 1.16 2001/02/08 00:04:21 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -108,6 +108,7 @@ print 'For more help, type warphelp()'
 # --- projections of particles, histories, as well as some line plots.
 from warpplots import *
 from histplots import *
+from pzplots import *
 
 # --- Import some online documentation modules.
 from warphelp import *
@@ -123,7 +124,8 @@ from printparametersrz import *
 # --- Declare the documentation for the warp module.
 def warpdoc():
   print """
-Imports the basic modules needed to run WARP.
+Imports the basic modules needed to run WARP, including
+Numeric, gist, warpplots, histplots, pzplots
 
 Create python versions of the constants
 amu, clight, echarge, emass, eps0, euler, jperev, mu0
