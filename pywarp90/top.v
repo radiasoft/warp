@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.90 $, $Date: 2003/06/02 22:35:45 $
+#@(#) File TOP.V, version $Revision: 3.91 $, $Date: 2003/06/03 23:06:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -34,7 +34,6 @@ NPARPGRP = 256             # Number of particle per group
 NSUBSETS = 3               # Max number of ptcl "subsets" for scatter plots
 NWINDOWS = 9               # Max number of diagnostic windows
 NUMZMMNT = 28              # Number of z moments
-MAXNUMLW = 50              # Max number of lab windows
 TNWINM  = 2*NWINDOWS               # Used only for data statements
 NWPNSP1 = NWINDOWS + NSUBSETS + 1  # Used only for data statements
 NEVER   = 0
@@ -61,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.90 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.91 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -646,8 +645,6 @@ ywindows(2,0:NWINDOWS)    real  [m]  /-99.,99.,TNWINM*0./
 zwindows(2,0:NWINDOWS)    real  [m] /-99.,99.,TNWINM*0./
    # "window" limits for x-y phase space plots, emittance calcs
    #  Window 0 is set to full mesh at generation
-zlw(MAXNUMLW)  real [m] /MAXNUMLW*0./
-   # z for lab windows
 xplmin   real  [m]          /0./ # Minimum x for plots; if 0, pkgs should set
 xplmax   real  [m]          /0./ # Maximum x for plots; if 0, pkgs should set
 yplmin   real  [m]          /0./ # Minimum y for plots; if 0, pkgs should set
@@ -705,10 +702,6 @@ npplot(NSUBSETS)          integer /50000,20000,5000/
    # Actual no. plotted is float(ntopick)/inclump - np
 inclump(NSUBSETS)         integer /51,51,51/
    # clump size for choosing which ptcls to plot-MUST DIVIDE npsplt(in Pspwork)
-iflabwn      integer /1/
-   # turns on lab window moments (0 off; 1 on)
-itlabwn      integer /0/
-   # Sets how often the lab moments are calculated
 charsbig integer /46/ # Number of characters per line for one-to-a-page plots
 charssma integer /60/ # Number of characters per line for four-to-a-page plots
 labels   logical /.false./ # Determines whether or not contours are labelled
@@ -1286,8 +1279,11 @@ zmmnts(0:nzmmnt,NUMZMMNT) _real   # Array used to calc Z moments
 
 ********** Lab_Moments dump:
 # Particle moment data as a function of time at locations in the lab frame
-nlabwn  integer   # number of lab windows
-ntlabwn integer   # Maximum number of times lab frame moments are calculated
+nlabwn  integer   /50/ # number of lab windows
+zlw(nlabwn) _real [m] /0./ # z for lab windows
+iflabwn integer /1/ # turns on lab window moments (0 off; 1 on)
+itlabwn integer /0/ # Sets how often the lab moments are calculated
+ntlabwn integer     # Maximum number of times lab frame moments are calculated
 ilabwn(nlabwn) _integer # Number of times lab frame moments have been calculated
 timelw(ntlabwn,nlabwn)  _real # Time in lab frame
 pnumlw(ntlabwn,nlabwn)  _real # Number of particles in lab frame

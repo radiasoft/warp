@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.90 $, $Date: 2003/06/02 22:27:07 $
+c@(#) File TOP.M, version $Revision: 3.91 $, $Date: 2003/06/03 23:06:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5134,6 +5134,38 @@ c         --- End of Z moments accumulation
       return
       end
 c=============================================================================
+      subroutine initlabwn(ntlabwnestimate)
+      use InDiag
+      use Hist
+      use Lab_Moments
+      integer(ISZ):: ntlabwnestimate
+
+c Initialize the lab window moments
+
+      integer(ISZ):: iwin,nl
+
+      nl = nlabwn
+      nlabwn = 0
+      do iwin = 1, nl
+         if (zlw(iwin) /= 0.) nlabwn = iwin
+      enddo
+
+      if (nlabwn > 0) then
+c       --- Note that the original code used abs(nhist), but it was giving
+c       --- the HPUX f90 compiler fits. The negative nhist feature was
+c       --- made obsolete anyway.
+        if (itlabwn == 0) itlabwn = max(1,nhist)
+c       --- ntlabwnestimate is an estimate of the number of time steps across
+c       --- the system, i.e. the number of times that data will be saved
+c       --- assuming nhist=1. That then needs to be scale by how often the
+c       --- data is collected.
+        if (ntlabwn == 0) ntlabwn = max(1,ntlabwnestimate/itlabwn)
+      endif
+      call gallot("Lab_Moments", 0)
+
+      return
+      end
+c=============================================================================
       subroutine getlabwn()
       use Beam_acc
       use InDiag
@@ -5150,13 +5182,16 @@ c  are actually calculated more or less often.
       real(kind=8):: w0,w1
       integer(ISZ):: i,ilw,iz
 
-      if (iflabwn == 0) return
+      if (nlabwn == 0) return
       if (mod(it,itlabwn) > 0) return
  
       do i = 1, nlabwn
         if (zlw(i) > (zbeam+zmmntmin) .and.
-     &      zlw(i) < (zbeam+zmmntmax) .and.
-     &      ilabwn(i) < ntlabwn) then
+     &      zlw(i) < (zbeam+zmmntmax)) then
+          if (ilabwn(i) == ntlabwn) then
+            ntlabwn = ntlabwn + max(10,int(ntlabwn/10))
+            call gchange("Lab_Moments",0)
+          endif
           ilabwn(i) = ilabwn(i) + 1
           ilw = ilabwn(i)
           iz = (zlw(i) - zbeam - zmmntmin)*dzmi
