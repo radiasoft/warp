@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.62 2001/12/21 18:52:26 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.63 2001/12/21 19:26:18 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2493,9 +2493,11 @@ be from none to all three.
    #return ppp
 ##########################################################################
 ##########################################################################
-def pcrhozy(ix=None,**kw):
+def pcrhozy(ix=None,fullplane=1,**kw):
   """Plots contours of charge density in the Z-Y plane
-     - ix=w3d.ix_axis X index of plane"""
+  - ix=w3d.ix_axis X index of plane
+  - fullplane=1: when true, plots rho in the symmetric quadrants
+  """
   if ix is None: ix = w3d.ix_axis
   if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
@@ -2510,12 +2512,17 @@ def pcrhozy(ix=None,**kw):
   rrr = getrho(ix=ix)
   if rrr is None: rrr = zeros((w3d.ny,w3d.nzfull),'d')
   ppgeneric(grid=transpose(rrr),kwdict=kw)
+  if fullplane and (w3d.l2symtry or w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,**kw):
+def pcrhozx(iy=None,fullplane=1,**kw):
   """Plots contours of charge density in the Z-X plane
-     - iy=w3d.iy_axis Y index of plane"""
+  - iy=w3d.iy_axis Y index of plane
+  - fullplane=1: when true, plots rho in the symmetric quadrants
+  """
   if iy is None: iy = w3d.iy_axis
   if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
@@ -2530,12 +2537,17 @@ def pcrhozx(iy=None,**kw):
   rrr = getrho(iy=iy)
   if rrr is None: rrr = zeros((w3d.nx,w3d.nzfull),'d')
   ppgeneric(grid=transpose(rrr),kwdict=kw)
+  if fullplane and (w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcrhoxy(iz=None,**kw):
+def pcrhoxy(iz=None,fullplane=1,**kw):
   """Plots contours of charge density in the X-Y plane
-     - iz=w3d.iz_axis Z index of plane"""
+  - iz=w3d.iz_axis: Z index of plane
+  - fullplane=1: when true, plots rho in the symmetric quadrants
+  """
   if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
@@ -2550,12 +2562,22 @@ def pcrhoxy(iz=None,**kw):
   rrr = getrho(iz=iz)
   if rrr is None: rrr = zeros((w3d.nx,w3d.ny),'d')
   ppgeneric(grid=rrr,kwdict=kw)
+  if fullplane and (w3d.l2symtry or w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=rrr,kwdict=kw)
+  if fullplane and (w3d.l4symtry):
+    kw['xmax'] = - kw['xmax']
+    ppgeneric(grid=rrr,kwdict=kw)
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=rrr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,**kw):
+def pcphizy(ix=None,fullplane=1,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
-     - ix=w3d.ix_axis X index of plane"""
+  - ix=w3d.ix_axis X index of plane
+  - fullplane=1: when true, plots phi in the symmetric quadrants
+  """
   if ix is None: ix = w3d.ix_axis
   if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
@@ -2570,12 +2592,17 @@ def pcphizy(ix=None,**kw):
   ppp = getphi(ix=ix)
   if ppp is None: ppp = zeros((w3d.ny,w3d.nzfull),'d')
   ppgeneric(grid=transpose(ppp),kwdict=kw)
+  if fullplane and (w3d.l2symtry or w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,**kw):
+def pcphizx(iy=None,fullplane=1,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
-     - iy=w3d.iy_axis Y index of plane"""
+  - iy=w3d.iy_axis Y index of plane
+  - fullplane=1: when true, plots phi in the symmetric quadrants
+  """
   if iy is None: iy = w3d.iy_axis
   if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
@@ -2590,12 +2617,17 @@ def pcphizx(iy=None,**kw):
   ppp = getphi(iy=iy)
   if ppp is None: ppp = zeros((w3d.nx,w3d.nzfull),'d')
   ppgeneric(grid=transpose(ppp),kwdict=kw)
+  if fullplane and (w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcphixy(iz=None,**kw):
+def pcphixy(iz=None,fullplane=1,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
-     - iz=w3d.iz_axis Z index of plane"""
+  - iz=w3d.iz_axis Z index of plane
+  - fullplane=1: when true, plots phi in the symmetric quadrants
+  """
   if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
@@ -2610,6 +2642,14 @@ def pcphixy(iz=None,**kw):
   ppp = getphi(iz=iz)
   if ppp is None: ppp = zeros((w3d.nx,w3d.ny),'d')
   ppgeneric(grid=ppp,kwdict=kw)
+  if fullplane and (w3d.l2symtry or w3d.l4symtry):
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=ppp,kwdict=kw)
+  if fullplane and (w3d.l4symtry):
+    kw['xmax'] = - kw['xmax']
+    ppgeneric(grid=ppp,kwdict=kw)
+    kw['ymax'] = - kw['ymax']
+    ppgeneric(grid=ppp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
