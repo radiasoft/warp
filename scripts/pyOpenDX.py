@@ -12,7 +12,7 @@ from warp import *
 from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.7 2004/05/20 20:09:29 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.8 2004/05/22 01:48:35 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -162,6 +162,8 @@ class DXCollection:
   def reset(self):
     DXDelete(self.dxobject)
     self.dxobject = None
+  def reference(self):
+    DXReference(self.dxobject)
 
 ###########################################################################
 #==========================================================================
