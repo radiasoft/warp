@@ -125,6 +125,9 @@ class MRBlock(MultiGrid,Visualizable):
       self.pbounds[1::2] = where(self.fullupper < self.rootdims,
                                 0,self.pbounds[1::2])
 
+      # --- Set so the solve is not parallelized
+      self.nslaves = 1
+
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
     if self.dims is not None:
@@ -454,7 +457,7 @@ the top level grid.
       if n == 0: continue
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w,
                   depositallparticles,lrootonly)
-    if not lrootonly:
+    if not lrootonly and lzero:
       self.accumulaterhofromsiblings()
       self.getrhofromsiblings()
       if not depositallparticles:
@@ -1429,11 +1432,14 @@ be plotted.
                       color=color[1:])
 
   def drawboxzy(self,ix=None,withguards=1,color=[],selfonly=0):
-    self.drawbox(ip=ix,idim=0,withguards=withguards,color=[],selfonly=selfonly)
+    self.drawbox(ip=ix,idim=0,withguards=withguards,color=color,
+                 selfonly=selfonly)
   def drawboxzx(self,iy=None,withguards=1,color=[],selfonly=0):
-    self.drawbox(ip=iy,idim=1,withguards=withguards,color=[],selfonly=selfonly)
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=color,
+                 selfonly=selfonly)
   def drawboxxy(self,iz=None,withguards=1,color=[],selfonly=0):
-    self.drawbox(ip=iz,idim=2,withguards=withguards,color=[],selfonly=selfonly)
+    self.drawbox(ip=iz,idim=2,withguards=withguards,color=color,
+                 selfonly=selfonly)
 
   def drawfilledbox(self,ip=None,idim=2,withguards=1,ibox=None,selfonly=0):
     if ip is None: ip = self.dims[idim]/2
@@ -1593,8 +1599,8 @@ Create DX object drawing the object.
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
-                    self.dx,self.dy,self.dz,self.l2symtry,self.l4symtry,
-                    self.conductors)
+                    self.dx,self.dy,self.dz,self.conductors,
+                    top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
     # --- Preset rho to increase performance (reducing the number of
     # --- multiplies in the main SOR sweep loop).
