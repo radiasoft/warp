@@ -74,7 +74,7 @@ if not lparallel:
   import pyOpenDX
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.60 2004/05/19 16:29:41 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.61 2004/05/19 19:54:28 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1411,6 +1411,7 @@ Outside of a cylinder aligned with z-axis
                        rofzdata=[self.radius,self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
                        raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       normalsign=-1,
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -1460,6 +1461,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
                        rendzmin=rend,rendzmax=rend,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+                       normalsign=-1,
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -1770,6 +1772,7 @@ Cone outside
                        rofzdata=[self.r_zmin,self.r_zmax],
                        zdata=[-self.length/2.,+self.length/2.],
                        raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       normalsign=-1,
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -1812,6 +1815,7 @@ Cone outside
                        rofzdata=[self.r_zmin,self.r_zmax],
                        zdata=[-self.length/2.,+self.length/2.],
                        raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       normalsign=-1,
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -2116,6 +2120,7 @@ Outside of a surface of revolution
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
+                       normalsign=-1,
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -2360,23 +2365,41 @@ Between surfaces of revolution
     rendzmin = 0.5*(rminzmin + rmaxzmin)
     rendzmax = 0.5*(rminzmax + rmaxzmax)
 
-    vmin = VPythonobjects.VisualRevolution(self.rminofz,self.zmin,self.zmax,
+   #if self.usemindata and self.usemaxdata:
+
+   #  --- This doesn't quite work and I didn't want to put the effort
+   #  --- in to fix it.
+   #  rr = concatenate((self.rmaxofzdata,array(self.rminofzdata)[::-1]))
+   #  zz = concatenate((self.zmaxdata,array(self.zmindata)[::-1]))
+   #  radmin = array(self.radmindata)
+   #  radmin = where(radmin < largepos,-radmin,largepos)
+   #  rad = concatenate((self.radmaxdata,[largepos],array(radmin)[::-1]))
+   #  zc = concatenate((self.zcmaxdata,[0.],array(self.zcmindata)[::-1]))
+   #  rc = concatenate((self.rcmaxdata,[0.],array(self.rcmindata)[::-1]))
+   #  v = VPythonobjects.VisualRevolution(' ',self.zmin,self.zmax,
+   #                   rendzmin=rendzmin,rendzmax=rendzmax,
+   #                   xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+   #                   rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+   #                   display=0,kwdict=kw)
+   #else:
+    if 1:
+      vmin = VPythonobjects.VisualRevolution(self.rminofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rminofzdata,zdata=self.zmindata,
                        raddata=self.radmindata,zcdata=self.zcmindata,
                        rcdata=self.rcmindata,
+                       normalsign=-1,
                        display=0,kwdict=kw)
-    vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
+      vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rmaxofzdata,zdata=self.zmaxdata,
                        raddata=self.radmaxdata,zcdata=self.zcmaxdata,
                        rcdata=self.rcmaxdata,
                        display=0,kwdict=kw)
-    self.vmin = vmin
-    self.vmax = vmax
-    v = pyOpenDX.DXCollection(vmin.dxobject,vmax.dxobject)
+      v = pyOpenDX.DXCollection(vmin.dxobject,vmax.dxobject)
+
     if display: pyOpenDX.DXImage(v)
     else:       self.dxobject = v
 
