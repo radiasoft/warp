@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.51 2001/08/25 01:08:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.52 2001/09/06 21:24:51 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -306,8 +306,6 @@ Simple interface to contour plotting, same arguments as plc
         levs = iota(0,levs)*(mx-mn)/levs + mn
       plc(zz,xx,yy,color=color,levs=levs,width=width,type=linetype)
     else:
-      print 'type zz,xx,yy',type(zz),type(xx),type(yy)
-      print 'shape zz,xx,yy',shape(zz),shape(xx),shape(yy)
       plc(zz,xx,yy,color=color,width=width,type=linetype)
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
   """
@@ -948,6 +946,11 @@ Note that either the x and y coordinates or the grid must be passed in.
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
 
+  # --- If there are no particles and no grid to plot, just return
+  if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
+  else: np = 0
+  if np == 0 and grid is None: return
+
   # --- Make sure that nothing is not plotted over a surface plot
   if surface:
     particles = 0
@@ -1083,8 +1086,9 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
   if contours and filled:
-    plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
-          color=ccolor,contours=contours,filled=filled)
+    if maxnd(grid1) != minnd(grid1):
+      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
+            color=ccolor,contours=contours,filled=filled)
 
   # --- Plot particles
   if particles:
@@ -1115,8 +1119,9 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
   if contours and not filled:
-    plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
-          color=ccolor,contours=contours,filled=filled)
+    if maxnd(grid1) != minnd(grid1):
+      plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
+            color=ccolor,contours=contours,filled=filled)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
@@ -1903,7 +1908,7 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
 ##########################################################################
 def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
          zmin=None,zmax=None,ncolor=None,usepalette=1,
-         marker="\1",msize=1.0,lframe=0,lparallel=lparallel):
+         marker="\1",msize=1.0,lframe=0):
   """Plots y versus x with color based in z
      - y is y coordinate
      - x is x coordinate
@@ -1915,30 +1920,41 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
      - msize=1.0 marker size
      - lframe=0 specifies whether or not to set plot limits
      - titles=1 specifies whether or not to plot titles
-     - lparallel whether to run in parallel"""
+  """
+
+  # --- If there are not particles to plot, just return
+  np = globalsum(len(x))
+  if np == 0: return
+
+  # --- Make sure the lengths of the input are the same
+  assert (len(y) == len(x) == len(z)),"x, y, and z must all be the same length"
+
+  # --- This routine can be expensive in parallel when there are many
+  # --- colors since synchronization is needed for each color.
+  # --- So, if there arn't too many particles, transfer everything to PE0
+  # --- and let it do the work.
+  if np < 1000000:
+    alllocal = 1
+    y = gatherarray(y)
+    x = gatherarray(x)
+    z = gatherarray(z)
+    if type(uz) == ArrayType: uz = gatherarray(uz)
+  else:
+    alllocal = 0
+
+  # --- Make sure arrays are 1-D
   rx = ravel(x)
   ry = ravel(y)
   rz = ravel(z)
-  if not lparallel:
-    if xmin is None and len(rx) > 0: xmin = min(rx)
-    if xmax is None and len(rx) > 0: xmax = max(rx)
-    if ymin is None and len(ry) > 0: ymin = min(ry)
-    if ymax is None and len(ry) > 0: ymax = max(ry)
-    if zmin is None and len(rz) > 0: zmin = min(rz)
-    if zmax is None and len(rz) > 0: zmax = max(rz)
-    if xmin is None: xmin = 0.
-    if xmax is None: xmax = 0.
-    if ymin is None: ymin = 0.
-    if ymax is None: ymax = 0.
-    if zmin is None: zmin = 0.
-    if zmax is None: zmax = 0.
-  else:
-    if xmin is None: xmin = globalmin(rx)
-    if xmax is None: xmax = globalmax(rx)
-    if ymin is None: ymin = globalmin(ry)
-    if ymax is None: ymax = globalmax(ry)
-    if zmin is None: zmin = globalmin(rz)
-    if zmax is None: zmax = globalmax(rz)
+
+  # --- Find extrema
+  if xmin is None: xmin = globalmin(rx)
+  if xmax is None: xmax = globalmax(rx)
+  if ymin is None: ymin = globalmin(ry)
+  if ymax is None: ymax = globalmax(ry)
+  if zmin is None: zmin = globalmin(rz)
+  if zmax is None: zmax = globalmax(rz)
+
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
   #if (lframadv) nf
@@ -1949,8 +1965,11 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
       c = int(240*ic/ncolor)
     else:
       c = color[ic%len(color)]
-    warpplp(take(y,ii),take(x,ii),
-            color=c,linetype="none",marker=marker,msize=msize)
+    if alllocal:
+      plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize)
+    else:
+      warpplp(take(y,ii),take(x,ii),
+              color=c,linetype="none",marker=marker,msize=msize)
   if (lframe): limits(xmin,xmax,ymin,ymax)
 
 
