@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.3 2003/01/22 17:14:11 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.4 2003/02/24 16:13:16 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -20,14 +20,16 @@ class VisualModel:
     self.triangles = []
     self.colors = []
     self.normals = []
+    self.connections = None
     self.twoSided = twoSided  # add every face twice with opposite normals
     if vrange is not None:
-      autoscale = 0
-      uniform = 1
+      self.vrange = vrange
+      self.autoscale = 0
+      self.uniform = 1
     else:
-      vrange = [10.,10.,10.]
-      autoscale = 1
-      uniform = 1
+      self.vrange = [10.,10.,10.]
+      self.autoscale = 1
+      self.uniform = 1
     self.title = title
     self.scene = scene
 
@@ -38,8 +40,8 @@ class VisualModel:
 
       if self.scene is None:
         self.scene = visual.display(exit=0,width=500,height=500,
-                                    uniform=uniform,title=self.title,
-                                    autoscale=autoscale,range=vrange)
+                                    uniform=self.uniform,title=self.title,
+                                    autoscale=self.autoscale,range=self.vrange)
 
       self.frame = visual.frame(display=self.scene)
       if not self.colors: self.colors=None
@@ -65,10 +67,11 @@ class VisualModel:
       pyOpenDX.DXAddArrayData(co,0,n,colors.astype(Float32))
       pyOpenDX.DXSetStringAttribute(co,'dep','positions')
 
-      connections = arange(n)
-      connections.shape = (nint(n/3),3)
+      if self.connections is None:
+        self.connections = arange(n)
+        self.connections.shape = (nint(n/3),3)
       cc = pyOpenDX.DXNewArray(pyOpenDX.TYPE_INT,pyOpenDX.CATEGORY_REAL,1,3)
-      pyOpenDX.DXAddArrayData(cc,0,nint(n/3),connections.astype(Int))
+      pyOpenDX.DXAddArrayData(cc,0,nint(n/3),self.connections.astype(Int))
       pyOpenDX.DXSetStringAttribute(cc,'ref','positions')
       pyOpenDX.DXSetStringAttribute(cc,'element type','triangles')
       pyOpenDX.DXSetStringAttribute(cc,'dep','connections')
@@ -78,7 +81,6 @@ class VisualModel:
       pyOpenDX.DXSetComponentValue(ff,'colors',co)
       pyOpenDX.DXSetComponentValue(ff,'normals',nn)
       pyOpenDX.DXSetComponentValue(ff,'connections',cc)
-      #pyOpenDX.DXSetComponentValue(ff,'box',bo)
       pyOpenDX.DXEndField(ff)
 
       pyOpenDX.DXReference(ff)
@@ -115,6 +117,11 @@ class VisualModel:
       self.FacetedTriangle( v[0], v[t+1], v[t+2] ,color=color)
 
   def DoSmoothShading(self):
+    rsq = sum(self.triangles**2,1)
+    ii = argsort(rsq)
+    # to be completed later
+
+  def DoSmoothShading1(self):
     """Change a faceted model to smooth shaded, by averaging normals at
     coinciding vertices.
     
@@ -159,7 +166,8 @@ class VisualModel:
 
   def Norm(self,v):
     magv = sqrt(sum(v**2))
-    return v/magv
+    if magv != 0.: return v/magv
+    else:          return v
 
 ########################################################################
 class VisualMesh (VisualModel):
@@ -170,12 +178,45 @@ color=None: can be specified as an [r,g,b] list
 scene=None: an already existing display scene. When None, create a new one.
 title='Mesh': Display title - only used when new scene created.
   """
-  def __init__(self, xvalues, yvalues, zvalues,
-               twoSided=1,color=None,
-               scene=None,title=None,vrange=None):
+  def __init__(self, xvalues=None, yvalues=None, zvalues=None,
+               xscaled=0,zscaled=1,
+               twoSided=1,color=None,color1=None,color2=None,
+               scene=None,title=None,vrange=None,viewer=None):
     if not title: title = 'Mesh'
     VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
-                              vrange=vrange)
+                              vrange=vrange,viewer=viewer)
+
+    assert zvalues is not None,"zvalues must be specified"
+
+    s = shape(zvalues)
+    if len(s) != 2:
+      print 'First argument must be a 2-Dimensional array'
+      return
+    if xvalues is None:
+      xvalues = arange(s[0])[:,NewAxis]*ones(s[1],'d')
+    elif len(shape(xvalues))==1:
+      xvalues = xvalues[:,NewAxis]*ones(s[1],'d')
+    if yvalues is None:
+      yvalues = arange(s[1])*ones(s[0],'d')[:,NewAxis]
+    elif len(shape(yvalues))==1:
+      yvalues = yvalues*ones(s[0],'d')[:,NewAxis]
+
+    if xscaled:
+      xrange = maxnd(xvalues) - minnd(xvalues)
+      xvalues = xvalues/xrange
+      yvalues = yvalues/xrange
+    if zscaled:
+      xrange = maxnd(xvalues) - minnd(xvalues)
+      zrange = maxnd(zvalues) - minnd(zvalues)
+      zvalues = zvalues/zrange*xrange/2.
+
+    if color1 is not None:
+      getcolor = 1
+      zmin = minnd(zvalues)
+      zmax = maxnd(zvalues)
+      if color2 is None: color2 = zeros(3,'d')
+    else:
+      getcolor = 0
 
     points = zeros( xvalues.shape + (3,), Float )
     points[...,0] = xvalues
@@ -184,6 +225,8 @@ title='Mesh': Display title - only used when new scene created.
 
     for i in range(zvalues.shape[0]-1):
       for j in range(zvalues.shape[1]-1):
+        if getcolor:
+          color = color1 + color2*(points[i,j,2] - zmin)/(zmax - zmin)
         self.FacetedPolygon([points[i,j], points[i,j+1],
                              points[i+1,j+1], points[i+1,j]],
                             color=color)
@@ -195,7 +238,7 @@ class VisualRevolution(VisualModel):
 Visualize surface of revolution
   """
   def __init__(self,srfrv,zzmin,zzmax,nz=20,nth=20,xoff=0,yoff=0,zoff=0,
-                    twoSided=1,color=None,
+                    twoSided=1,color=None,color1=None,color2=None,
                     scene=None,title=None,vrange=None):
     if not title: title = 'Surface of revolution'
     VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
@@ -210,6 +253,14 @@ Visualize surface of revolution
 
     xx = cos(2.*pi*arange(0,nth+1)/nth) + xoff
     yy = sin(2.*pi*arange(0,nth+1)/nth) + yoff
+
+    if color1 is not None:
+      getcolor = 1
+      zmin = minnd(zvalues)
+      zmax = maxnd(zvalues)
+      if color2 is None: color2 = zeros(3,'d')
+    else:
+      getcolor = 0
 
     for i in xrange(nz-1):
       for j in xrange(len(xx)-1):
