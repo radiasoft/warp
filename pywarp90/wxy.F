@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.28 $, $Date: 2002/11/06 01:39:04 $
+c@(#) File WXY.M, version $Revision: 3.29 $, $Date: 2003/02/24 19:02:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -701,7 +701,7 @@ c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
 
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
@@ -1203,7 +1203,8 @@ c         --- Apply particle boundary conditions
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,
      &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                     l2symtry,l4symtry,zzmin,dzzi)
+     &                     l2symtry,l4symtry,zzmin,dzzi,
+     &                     pboundxy,xmaxz(0),xminz(0),ymaxz(0),yminz(0))
           call processlostpart(is,clearlostpart,time,zbeam)
         enddo
 
