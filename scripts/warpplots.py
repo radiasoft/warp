@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.10 2001/01/13 03:50:21 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.11 2001/01/17 00:38:49 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -115,7 +115,7 @@ Does the work needed to start writing plots to a file automatically
   - makepsfile=0 allows the specification of a ps file instead of cgm
   - prefix=None optional prefix to use for plotfile name instead of runid
   - cgmlog=1 Set to 0 to inhibit cgmlog file creation
-"""
+  """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
   # --- Only PE0 (or serial processor) should run this routine.
@@ -129,6 +129,7 @@ Does the work needed to start writing plots to a file automatically
   # --- Create window(0), but have it only dump to the file pname for now.
   # --- Note that only plots made to window(0) are dumped to the file.
   window(0,display='',hcp=pname,dump=1)
+  print "Plot file name",pname
   # --- Set so all fma's dump plot to file.
   hcpon()
   if cgmlog:
@@ -353,9 +354,13 @@ Adds plotting subset to the list
   - js=0 is the species to create a subset for
   """
   global psubset
+  if lparallel:
+    totalnp = parallelsum(top.nps[js])
+    fracnp = float(top.nps[js])/float(totalnp)
+  else:
+    fracnp = 1.
   for i in xrange(0,len(top.npplot)):
-    ntopick=min(top.nps[js],
-                int(top.npplot[i]*float(top.nps[js])/float(top.np_s[js])+0.5))
+    ntopick=min(top.nps[js],int(top.npplot[i]*fracnp+0.5))
     ii = arrayrange(top.nps[0])
     rr = top.nps[0]*RandomArray.random(top.nps[0])
     ii = compress(less(rr,ntopick),ii)
@@ -900,7 +905,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
 
     # --- If parallel, do a reduction on the grid
-    if npes > 0: grid = parallelsum(grid)
+    if lparallel: grid = parallelsum(grid)
 
   elif (hash or contours or color=='density' or chopped):
     # --- Make sure that the grid size nx and ny are consistent with grid
@@ -1248,12 +1253,12 @@ def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
   tt = arctan2(yy,xx)
   rp = xp*cos(tt) + yp*sin(tt)
   if type(slope) == type(''):
-    if npes == 0:
-      aversq = ave(rr**2)
-      averrp = ave(rr*rp)
-    else:
+    if lparallel:
       aversq = globalave(rr**2)
       averrp = globalave(rr*rp)
+    else:
+      aversq = ave(rr**2)
+      averrp = ave(rr*rp)
     if aversq > 0.:
       slope = averrp/aversq
     else:
