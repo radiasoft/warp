@@ -540,3 +540,15 @@ class MultiGrid:
     #               whosendingright,izsendingright)
     #endif
 
+  def getresidual(self):
+    res = zeros(shape(self.phi),'d')
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+    rho = self.rho*reps0c
+    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+             self.phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
+             self.lcndbndy,self.icndbndy,self.conductors)
+    return res
+
