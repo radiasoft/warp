@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.173 $, $Date: 2004/11/30 01:11:25 $
+#@(#) File W3D.V, version $Revision: 3.174 $, $Date: 2004/11/30 18:39:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.173 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.174 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -748,6 +748,12 @@ putsortedefield(n:integer,isort:integer,tex:real,tey:real,tez:real,
                 ex:real,ey:real,ez:real)
       subroutine
 
+
+*********** W3Dload:
+bessi0(x:real) real function # Modified Bessel function I_0(x) for real x
+bessi1(x:real) real function # Modified Bessel function I_1(x) for real x
+bessi(n:integer,x:real) real function # Modified Bessel function I_n(x) 
+                                      #  for real x and integer n >= 2
 
 ******** Subtimers3d dump:
 lw3dtimesubs logical /.false./
