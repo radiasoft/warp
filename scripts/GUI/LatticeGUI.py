@@ -19,13 +19,14 @@ def create(parent):
  wxID_LATTICEGUIELEMNUMLABEL2, wxID_LATTICEGUIGETDRFTAP, 
  wxID_LATTICEGUIGETDRFTZE, wxID_LATTICEGUIGETDRFTZS, wxID_LATTICEGUIGETQUADDB, 
  wxID_LATTICEGUIGETQUADDE, wxID_LATTICEGUIGETQUADZE, wxID_LATTICEGUIGETQUADZS, 
- wxID_LATTICEGUIQUAD, wxID_LATTICEGUIQUADDBLABEL, wxID_LATTICEGUIQUADDBUNITS, 
- wxID_LATTICEGUIQUADDELABEL, wxID_LATTICEGUIQUADDEUNITS, 
- wxID_LATTICEGUIQUADLABEL, wxID_LATTICEGUIQUADZELABEL, 
- wxID_LATTICEGUIQUADZEUNITS, wxID_LATTICEGUIQUADZSLABEL, 
- wxID_LATTICEGUIQUADZSUNITS, wxID_LATTICEGUISETELEMENTNUM, 
- wxID_LATTICEGUISETMADLATTICE, wxID_LATTICEGUISETMADLATTICELABEL, 
-] = map(lambda _init_ctrls: wxNewId(), range(34))
+ wxID_LATTICEGUIMAKEUNIQUE, wxID_LATTICEGUIQUAD, wxID_LATTICEGUIQUADDBLABEL, 
+ wxID_LATTICEGUIQUADDBUNITS, wxID_LATTICEGUIQUADDELABEL, 
+ wxID_LATTICEGUIQUADDEUNITS, wxID_LATTICEGUIQUADLABEL, 
+ wxID_LATTICEGUIQUADZELABEL, wxID_LATTICEGUIQUADZEUNITS, 
+ wxID_LATTICEGUIQUADZSLABEL, wxID_LATTICEGUIQUADZSUNITS, 
+ wxID_LATTICEGUISETELEMENTNUM, wxID_LATTICEGUISETMADLATTICE, 
+ wxID_LATTICEGUISETMADLATTICELABEL, 
+] = map(lambda _init_ctrls: wxNewId(), range(35))
 
 class LatticeGUI(wxDialog):
     def _init_utils(self):
@@ -47,7 +48,8 @@ class LatticeGUI(wxDialog):
 
         self.SetElementNum = wxTextCtrl(id=wxID_LATTICEGUISETELEMENTNUM,
               name='SetElementNum', parent=self.ElementNum, pos=wxPoint(8, 48),
-              size=wxSize(40, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
+              size=wxSize(40, 22),
+              style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='0')
         self.SetElementNum.SetToolTipString('Sets element number')
         EVT_TEXT_ENTER(self.SetElementNum, wxID_LATTICEGUISETELEMENTNUM,
@@ -204,14 +206,14 @@ class LatticeGUI(wxDialog):
 
         self.DoStep = wxCheckBox(id=wxID_LATTICEGUIDOSTEP,
               label='Step on change', name='DoStep', parent=self.ElementNum,
-              pos=wxPoint(8, 96), size=wxSize(120, 24), style=0)
+              pos=wxPoint(8, 96), size=wxSize(120, 24), style=wxTAB_TRAVERSAL)
         self.DoStep.SetValue(false)
         self.DoStep.SetHelpText('When checked, execute step command on a change.')
         self.DoStep.SetToolTipString('Turns on code calculation on change')
         EVT_CHECKBOX(self.DoStep, wxID_LATTICEGUIDOSTEP, self.OnDostepCheckbox)
 
         self.SetMADLattice = wxTextCtrl(id=wxID_LATTICEGUISETMADLATTICE,
-              name='SetMADLattice', parent=self.ElementNum, pos=wxPoint(0, 168),
+              name='SetMADLattice', parent=self.ElementNum, pos=wxPoint(4, 168),
               size=wxSize(104, 22), style=wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='')
         self.SetMADLattice.SetToolTipString('Specify MAD lattice to use')
@@ -223,11 +225,21 @@ class LatticeGUI(wxDialog):
               parent=self.ElementNum, pos=wxPoint(8, 150), size=wxSize(88, 16),
               style=0)
 
+        self.MakeUnique = wxCheckBox(id=wxID_LATTICEGUIMAKEUNIQUE,
+              label='Unique elements', name='MakeUnique',
+              parent=self.ElementNum, pos=wxPoint(4, 192), size=wxSize(116, 24),
+              style=wxTAB_TRAVERSAL)
+        self.MakeUnique.SetValue(False)
+        self.MakeUnique.SetToolTipString('Make all elements of the lattice unique')
+        EVT_CHECKBOX(self.MakeUnique, wxID_LATTICEGUIMAKEUNIQUE,
+              self.OnMakeuniqueCheckbox)
+
     def __init__(self, parent):
         self._init_ctrls(parent)
         self.elemnum = 0
         self.sortedelems = sortlattice.sortlattice()
         self.madlattice = None
+        self.MADelementsunique = self.MakeUnique.GetValue()
         self.numelements = len(self.sortedelems)
         self.shownelem = None
         self.UpdatePanel()
@@ -321,7 +333,10 @@ class LatticeGUI(wxDialog):
         if ll:
             try:
                 self.madlattice = __main__.__dict__[ll]
-                self.madlattice.deepexpand()
+                if self.MADelementsunique:
+                    self.madlattice.deepexpand()
+                else:
+                    self.madlattice.expand(lredo=1)
                 self.madlattice.setextent(0.)
                 self.numelements = len(self.madlattice)
                 self.UpdatePanel()
@@ -333,6 +348,9 @@ class LatticeGUI(wxDialog):
             self.madlattice = None
             self.SetMADLattice.SetValue('')
             self.numelements = len(self.sortedelems)
+
+    def OnMakeuniqueCheckbox(self, event):
+        self.MADelementsunique = self.MakeUnique.GetValue()
             
 
 
