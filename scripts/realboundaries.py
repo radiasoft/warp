@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.32 2004/02/25 01:49:07 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.33 2004/02/25 21:01:29 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -109,25 +109,29 @@ Constructor arguments
   def getmatrix(s):
     # --- Get number of conductor points.
     n = len(s.xcond)
-    fxy.ncxy = n
-    fxy.ncxymax = n
-    # --- Point fortran arrays to coordinate and voltage data
-    fxy.forceassign("xcond",s.xcond)
-    fxy.forceassign("ycond",s.ycond)
-    fxy.forceassign("vcond",s.vcond)
-    # --- Create space for work arrays (in CapMatxy) and point the fortran
-    # --- arrays to it.
-    s.pcond = fzeros(n,'d')
-    s.qcond = fzeros(n,'d')
-    s.kpvtxy = fzeros(n)
-    fxy.forceassign("pcond",s.pcond)
-    fxy.forceassign("qcond",s.qcond)
-    fxy.forceassign("kpvtxy",s.kpvtxy)
-    # --- Create space for the matrix.
-    s.cmatxy = fzeros((n,n),'d')
-    fxy.forceassign("cmatxy",s.cmatxy)
-    # --- Calculate matrix
-    fieldsol(1)
+    if n > 0:
+      fxy.ncxy = n
+      fxy.ncxymax = n
+      # --- Point fortran arrays to coordinate and voltage data
+      fxy.forceassign("xcond",s.xcond)
+      fxy.forceassign("ycond",s.ycond)
+      fxy.forceassign("vcond",s.vcond)
+      # --- Create space for work arrays (in CapMatxy) and point the fortran
+      # --- arrays to it.
+      s.pcond = fzeros(n,'d')
+      s.qcond = fzeros(n,'d')
+      s.kpvtxy = fzeros(n)
+      fxy.forceassign("pcond",s.pcond)
+      fxy.forceassign("qcond",s.qcond)
+      fxy.forceassign("kpvtxy",s.kpvtxy)
+      # --- Create space for the matrix.
+      s.cmatxy = fzeros((n,n),'d')
+      fxy.forceassign("cmatxy",s.cmatxy)
+      # --- Calculate matrix
+      top.fstype = 1
+      fieldsol(1)
+    else:
+      top.fstype = 0
   #----------------------------------------------------------------------------
   def setmatrix(s,vcond=None):
     # --- Reset the mesh if requested
