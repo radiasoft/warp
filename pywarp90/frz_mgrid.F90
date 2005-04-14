@@ -221,16 +221,40 @@ TYPE(BNDtype), POINTER :: b
 return
 end subroutine init_basegrid
 
-subroutine add_grid(mothergrid,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
+subroutine add_grid(mothergrid,nr,nz,dri,dzi,rmini,zmini,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 implicit none
 TYPE(GRIDtype), pointer :: mothergrid
 INTEGER(ISZ), INTENT(IN) :: nr, nz, transit_min_r, transit_max_r, transit_min_z, transit_max_z
-REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+REAL(8), INTENT(IN) :: dri,dzi,rmini,zmini
 
 TYPE(GRIDtype), pointer :: g  ! new grid
 TYPE(GRIDtype), pointer :: gtmp  !temporary grid pointer
 INTEGER(ISZ) :: i,j,l,ls,jmin,jmax,lmin,lmax,ratio_r,ratio_z,nzs
 TYPE(BNDtype), POINTER :: b
+REAL(8) :: dr,dz,rmin,zmin
+
+! adjust new grid boundaries to fall onto mother grid lines
+! and recalculate mesh spacing for new grid
+
+  jmin = 1 + NINT( (rmini       -mothergrid%rmin) / mothergrid%dr)
+  jmax = 1 + NINT( (rmini+nr*dri-mothergrid%rmin) / mothergrid%dr)
+  lmin = 1 + NINT( (zmini       -mothergrid%zmin) / mothergrid%dz)
+  lmax = 1 + NINT( (zmini+nz*dzi-mothergrid%zmin) / mothergrid%dz)
+
+  rmin = mothergrid%rmin + (jmin-1) * mothergrid%dr
+  zmin = mothergrid%zmin + (lmin-1) * mothergrid%dz
+
+  dr = (jmax-jmin) * mothergrid%dr / nr
+  dz = (lmax-lmin) * mothergrid%dz / nz
+
+  if (lverbose>0) then
+    write(o_line,'("Adding refinement patch to grid ",i5)') mothergrid%gid(1)
+    call remark(trim(o_line))
+    write(o_line,'("Initial rmin, zmin, dr, dz ",4(" ",e12.5))') rmini,zmini,dri,dzi
+    call remark(trim(o_line))
+    write(o_line,'("New     rmin, zmin, dr, dz ",4(" ",e12.5))') rmin,zmin,dr,dz
+    call remark(trim(o_line))
+  end if
 
 ! Allocate new grid and initialize variables.
 
@@ -411,206 +435,6 @@ TYPE(BNDtype), POINTER :: b
 
   return
 end subroutine add_grid
-
-subroutine add_grid_in_parent(mothergrid,nr,nz,dri,dzi,rmini,zmini,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
-implicit none
-TYPE(GRIDtype), pointer :: mothergrid
-INTEGER(ISZ), INTENT(IN) :: nr, nz, transit_min_r, transit_max_r, transit_min_z, transit_max_z
-REAL(8), INTENT(IN) :: dri,dzi,rmini,zmini
-
-TYPE(GRIDtype), pointer :: g  ! new grid
-INTEGER(ISZ) :: i,j,l,ls,jmin,jmax,lmin,lmax,ratio_r,ratio_z,nzs
-REAL(8) :: dr,dz,rmin,zmin
-TYPE(BNDtype), POINTER :: b
-
-! adjust new grid boundaries to fall onto mother grid lines
-! and recalculate mesh spacing for new grid
-
-  jmin = 1 + NINT( (rmini       -mothergrid%rmin) / mothergrid%dr)
-  jmax = 1 + NINT( (rmini+nr*dri-mothergrid%rmin) / mothergrid%dr)
-  lmin = 1 + NINT( (zmini       -mothergrid%zmin) / mothergrid%dz)
-  lmax = 1 + NINT( (zmini+nz*dzi-mothergrid%zmin) / mothergrid%dz)
-
-  rmin = mothergrid%rmin + (jmin-1) * mothergrid%dr
-  zmin = mothergrid%zmin + (lmin-1) * mothergrid%dz
-
-  dr = (jmax-jmin) * mothergrid%dr / nr
-  dz = (lmax-lmin) * mothergrid%dz / nz
-
-! allocate new grid
-
-  g => NewGRIDtype()
-  nzs = 0
-  g%jmin=jmin
-  g%jmax=jmax
-  g%lmin=lmin
-  g%lmax=lmax
-  g%nr=nr
-  g%dr=dr
-  g%rmin=rmin
-  g%rmax=rmin+nr*dr
-  g%xmin=rmin
-  g%xmax=rmin+nr*dr
-  g%nz=nz
-  g%dz=dz
-  g%zmin=zmin
-  g%zminp=zmin
-  g%zmax=zmin+nz*dz
-  g%mgparam = basegrid%mgparam
-  g%npre = basegrid%npre
-  g%npost = basegrid%npost
-  g%ncycles = basegrid%ncycles
-  g%ncmax = basegrid%ncmax
-  g%npmin = basegrid%npmin
-  IF(jmin==1) then
-    g%transit_min_r = 0
-  else
-    g%transit_min_r = transit_min_r
-  END if
-  g%transit_max_r = transit_max_r
-  g%transit_min_z = transit_min_z
-  g%transit_max_z = transit_max_z
-  g%nguardx = nguardx
-  g%nguardz = nguardz
-#ifdef MPIPARALLEL
-  g%nzp   = nzpslave(my_index)
-  g%nrpar = nr
-  g%nzpar = g%nzp
-#else
-  g%nzp   = nz
-  g%nrpar = 0
-  g%nzpar = 0
-#endif
-  call GRIDtypeallot(g)
-  IF(n_avail_ids==0) then
-    g%gid=grids_nids+1
-    grids_nids=grids_nids+1
-  else
-    g%gid=avail_ids(n_avail_ids)
-    n_avail_ids=n_avail_ids-1
-  END if
-  IF(associated(mothergrid%down)) then
-    IF(associated(mothergrid%down%next)) then
-      mothergrid%down%next%prev => g
-      g%next => mothergrid%down%next
-    END if
-    g%prev => mothergrid%down
-    mothergrid%down%next => g
-    IF(associated(g%prev%down)) g%down => g%prev%down
-  else
-    mothergrid%down=>g
-  END if
-  g%up => mothergrid
-  ngrids=ngrids+1
-  mgridrz_ngrids = ngrids
-  g%phi=0.
-  g%rho=0.
-  g%loc_part=g%gid(1)
-  g%loc_part_fd=g%gid(1)
-
-! assign boundary types
-
-  IF(ABS(g%xmin-mothergrid%xmin)<0.1*mothergrid%dr) then
-    g%ixlbnd = mothergrid%ixlbnd
-  else
-    g%ixlbnd = dirichlet
-  END if
-  IF(ABS(g%rmax-mothergrid%rmax)<0.1*mothergrid%dr) then
-    g%ixrbnd = mothergrid%ixrbnd
-  else
-    g%ixrbnd = dirichlet
-  END if
-  IF(ABS(g%zmin-mothergrid%zmin)<0.1*mothergrid%dz) then
-    g%izlbnd = mothergrid%izlbnd
-  else
-    g%izlbnd = dirichlet
-  END if
-  IF(ABS(g%zmax-mothergrid%zmax)<0.1*mothergrid%dz) then
-    g%izrbnd = mothergrid%izrbnd
-  else
-    g%izrbnd = dirichlet
-  END if
-
-! computes commodity quantities for charge deposition
-
-  g%invdr = 1._8/dr
-  g%invdz = 1._8/dz
-  IF(solvergeom==RZgeom .or. solvergeom==Rgeom) then
-    ! computes divider by cell volumes to get density
-    IF(g%rmin==0.) then
-      j = 1
-      ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
-      ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
-      ! and Verboncoeur, J. of Comp. Phys.,
-      g%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
-      do j = 2, nr+1
-        g%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
-      end do
-    else
-      do j = 1, nr+1
-        g%invvol(j) = 1._8 / (2._8 * pi * (g%rmin+real(j-1,8)*dr) * dr * dz)
-      end do
-    END if
-    IF(solvergeom==Rgeom) g%invvol = g%invvol * dz
-  else ! solvergeom==XZgeom or solvergeom==XYgeom
-    g%invvol(:) = 1._8 / (dr * dz)
-  END if
-
-
-  IF(lverbose>=3) then
-    write(o_line,'(" Add grid ID: ",i5)') g%gid
-    call remark(trim(o_line))
-  END if
-  IF(solvergeom==Zgeom .or.solvergeom==Rgeom) then
-    g%nlevels=nlevels
-  else
-    call init_bnd(g,nr,nz,dr,dz,g%zmin,g%zmax)
-    g%nlevels=nlevels
-  END if
-  do i = 1,g%nlevels
-    IF(i==1) then
-      b => g%bndfirst
-    else
-      b => b%next
-    END if
-    b%izlbnd=g%izlbnd
-    b%izrbnd=g%izrbnd
-    IF(b%izlbnd==dirichlet) b%v(:,1)       = v_dirichlet
-    IF(b%izrbnd==dirichlet) b%v(:,b%nz+1:) = v_dirichlet
-    IF(g%ixlbnd==dirichlet) b%v(1,:)       = v_dirichlet
-    IF(g%ixrbnd==dirichlet) b%v(b%nr+1,:)  = v_dirichlet
-  END do
-
-! update grid pointers list array
-
-  call mk_grids_ptr()
-
-! initializes loc_part* arrays
-
-  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
-    lmin=1+nint((g%zmin-g%up%zmin)/g%up%dz)
-    lmax=1+nint((g%zmax-g%up%zmin)/g%up%dz)
-    g%up%loc_part(1,lmin:lmax-1)=g%gid(1)
-    g%up%loc_part_fd(1,lmin+transit_min_z:lmax-1-transit_max_z)=g%gid(1)
-  else
-!    g%up%loc_part(jmin:jmax-1,lmin:lmax-1)=g%gid(1)
-!    g%up%loc_part_fd(jmin+transit_min_r:jmax-1-transit_max_r,lmin+transit_min_z:lmax-1-transit_max_z)=g%gid(1)
-  END if
-
-! setup neighbors
-  if (lverbose>=3) call remark('set neighbors')
-  call set_overlaps(g,'n')
-! setup parents
-  if (lverbose>=3) call remark('set parents')
-  call set_overlaps(g,'p')
-! setup children
-  if (lverbose>=3) call remark('set children')
-  call set_overlaps(g,'c')
-
-!  call print_structure(grid)
-
-  return
-end subroutine add_grid_in_parent
 
 subroutine set_overlaps(g,which)
 TYPE(GRIDtype), pointer :: g,g2
@@ -7060,7 +6884,7 @@ INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), INTENT(IN) :: q
 
-REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz, zgrid
+REAL(8) :: r, rpos, zpos, ddr, ddz, oddr, oddz, zgrid
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
@@ -7085,7 +6909,8 @@ end do
     igrid = 1
     g=>basegrid
     ingrid=.false.
-    rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-g%rmin)*invdr(igrid)
+    r = SQRT(xp(i)*xp(i)+yp(i)*yp(i))    
+    rpos = (r-g%rmin)*invdr(igrid)
     zpos = (zp(i)-zmin(igrid))*invdz(igrid)
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
@@ -7095,7 +6920,7 @@ end do
       else
         igrid = g%loc_part(jn,ln)
         g=>grids_ptr(igrid)%grid
-        rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-g%rmin)*invdr(igrid)
+        rpos = (r-g%rmin)*invdr(igrid)
         zpos = (zp(i)-zmin(igrid))*invdz(igrid)
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
