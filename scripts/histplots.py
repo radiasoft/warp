@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.24 2005/01/19 20:15:24 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.25 2005/04/20 21:18:23 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -171,11 +171,13 @@ only required argument of course is the data to be plotted.
   else:        titler = titler + " Species %d"%js
 
   # --- Now actually make the plot after all of that ado.   
+  oldplsys = plsys(plsysval)
   pla(transpose(oord),absc,color=color,msize=msize,marks=marks,marker=marker,
       width=width,linetype=linetype,decomposed=0)
   if titles: ptitles(titlet,titleb,titlel,titler,plsysval)
   limits(xmin,xmax,ymin,ymax)
   if logplot: logxy(0,0)
+  plsys(oldplsys)
 
 
 #############################################################################
@@ -199,7 +201,6 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
   else:
     nzwind = _extractvarkw('nzwind',kw)
     for i in range(1,nzwind):
-      plsys(3+(i-1)%4)
       kw['titler'] = "z%1d = %6.3f"%(i,.5*(zwindows[0,i]+zwindows[1,i]))
       kw['plsysval'] = 3+(i-1)%4
       hpbasic(oord[i,...],kw)
