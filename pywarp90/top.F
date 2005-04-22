@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.152 $, $Date: 2005/04/05 23:46:57 $
+c@(#) File TOP.F, version $Revision: 3.153 $, $Date: 2005/04/22 21:16:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6810,9 +6810,13 @@ c       --- Loop from top of live particles to bottom of species block.
           gaminv(ip+ishft) = gaminv(ip)
           if (npid > 0) then
             pid(ip+ishft,:) = pid(ip,:)
-            pid(ip,:) = 0
           endif
+        enddo
+c       --- Move this into a seperate loop since some compilers were screwing
+c       --- up. This will also be slightly faster too, maybe.
+        do ip=npmax_s(is-1)+1,npmax_s(is-1)+1+ishft-1
           uzp(ip) = 0.
+          if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change lower bound of live particles
@@ -6837,9 +6841,13 @@ c       --- (ins(is) - npmax_s(is-1)) < -ishft
           gaminv(ip+ishft) = gaminv(ip)
           if (npid > 0) then
             pid(ip+ishft,:) = pid(ip,:)
-            pid(ip,:) = 0
           endif
+        enddo
+c       --- Move this into a seperate loop since some compilers were screwing
+c       --- up. This will also be slightly faster too, maybe.
+        do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishft+1,-1
           uzp(ip) = 0.
+          if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change number of particles if data is lost
