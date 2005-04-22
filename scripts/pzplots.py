@@ -78,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.17 2005/01/14 21:46:13 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.18 2005/04/22 16:39:40 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -176,10 +176,20 @@ def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]
   xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
   yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]
   dx = _extractvar('dx',varsuffix,'w3d')
   dy = _extractvar('dy',varsuffix,'w3d')
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  ppcell = pnumz/(pi*xrmsz*yrmsz/(dx*dy))*scale
+  if w3d.ny > 0:
+    beamarea = 4.*pi*xrmsz*yrmsz
+    beamarea = where(beamarea==0.,1.,beamarea)
+    ppcell = pnumz/(beamarea/(dx*dy))*scale
+    if w3d.l2symtry: ppcell = 2.*ppcell
+    if w3d.l4symtry: ppcell = 4.*ppcell
+  else:
+    beamradius = sqrt(2.)*rrmsz
+    beamradius = where(beamradius==0.,1.,beamradius)
+    ppcell = pnumz/(beamradius/dx)*scale
   warpplg(ppcell,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
