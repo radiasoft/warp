@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.197 $, $Date: 2005/04/05 16:33:53 $
+c@(#) File W3D.F, version $Revision: 3.198 $, $Date: 2005/04/25 23:28:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5006,6 +5006,7 @@ c     --- Obtain the self-field from the electrostatic potential
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==XYZgeomMR) then
+        isfsapi = is
         xfsapi => xp(ipmin:ipmin+ip-1)
         yfsapi => yp(ipmin:ipmin+ip-1)
         zfsapi => zp(ipmin:ipmin+ip-1)
@@ -5013,6 +5014,7 @@ c     --- Obtain the self-field from the electrostatic potential
         eyfsapi => ey
         ezfsapi => ez
         call execuser("fetcheMR")
+        isfsapi = -1
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
