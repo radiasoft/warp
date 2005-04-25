@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.91 $, $Date: 2005/04/01 23:10:35 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.92 $, $Date: 2005/04/25 21:54:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2517,7 +2517,7 @@ c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
       logical(ISZ):: partialcoarsening
-      logical(ISZ):: iszone=1
+      integer(ISZ):: iszone=1
 
 #ifdef MPIPARALLEL
       conductors%leveliz(mglevel) = izfsslave(my_index)
