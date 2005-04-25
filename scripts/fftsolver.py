@@ -1,0 +1,487 @@
+"""Class for doing complete FFT field solve"""
+# ToDo:
+#  - ???
+from warp import *
+import MA
+
+##############################################################################
+class FieldSolver3dBase(object):
+  
+  __w3dinputs__ = ['nx','ny','nz','nzfull',
+                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
+                   'zmminglobal','zmmaxglobal',
+                   'bound0','boundnz','boundxy','l2symtry','l4symtry',
+                   'solvergeom']
+  __f3dinputs__ = []
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
+  __flaginputs__ = {'forcesymmetries':1}
+
+  def __init__(self,**kw):
+    self.solvergeom = w3d.XYZgeom
+
+    # --- Save input parameters
+    for name in self.__class__.__w3dinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(w3d,name))
+        if kw.has_key(name): del kw[name]
+    for name in self.__class__.__f3dinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(f3d,name))
+        if kw.has_key(name): del kw[name]
+    for name in self.__class__.__topinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(top,name))
+        if kw.has_key(name): del kw[name]
+    for name,defvalue in self.__class__.__flaginputs__.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+        if kw.has_key(name): del kw[name]
+
+    # --- bounds is special since it will sometimes be set from the
+    # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
+    if 'bounds' not in self.__dict__:
+      if 'bounds' in kw:
+        self.bounds = kw['bounds']
+      else:
+        self.bounds = zeros(6)
+        self.bounds[0] = self.boundxy
+        self.bounds[1] = self.boundxy
+        self.bounds[2] = self.boundxy
+        self.bounds[3] = self.boundxy
+        self.bounds[4] = self.bound0
+        self.bounds[5] = self.boundnz
+        if self.l2symtry:
+          self.bounds[2] = neumann
+          if self.boundxy == periodic: self.bounds[3] = neumann
+          if self.forcesymmetries: self.ymmin = 0.
+        elif self.l4symtry:
+          self.bounds[0] = neumann
+          self.bounds[2] = neumann
+          if self.boundxy == periodic: self.bounds[1] = neumann
+          if self.boundxy == periodic: self.bounds[3] = neumann
+          if self.forcesymmetries: self.xmmin = 0.
+          if self.forcesymmetries: self.ymmin = 0.
+
+    # --- pbounds is special since it will sometimes be set from the
+    # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
+    if 'pbounds' not in self.__dict__:
+      if 'pbounds' in kw:
+        self.pbounds = kw['pbounds']
+      else:
+        self.pbounds = zeros(6)
+        self.pbounds[0] = self.pboundxy
+        self.pbounds[1] = self.pboundxy
+        self.pbounds[2] = self.pboundxy
+        self.pbounds[3] = self.pboundxy
+        self.pbounds[4] = self.pbound0
+        self.pbounds[5] = self.pboundnz
+        if self.l2symtry:
+          self.pbounds[2] = reflect
+          if self.pboundxy == periodic: self.pbounds[3] = reflect
+        elif self.l4symtry:
+          self.pbounds[0] = reflect
+          self.pbounds[2] = reflect
+          if self.pboundxy == periodic: self.pbounds[1] = reflect
+          if self.pboundxy == periodic: self.pbounds[3] = reflect
+
+    # --- If there are any remaning keyword arguments, raise an error.
+    assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
+
+    # --- Set set parallel related paramters and calculate mesh sizes
+    if self.nslaves <= 1:
+      self.nzfull = self.nz
+      self.zmminglobal = self.zmmin
+      self.zmmaxglobal = self.zmmax
+    self.dx = (self.xmmax - self.xmmin)/self.nx
+    self.dy = (self.ymmax - self.ymmin)/self.ny
+    self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+    self.xsymmetryplane = 0.
+    self.ysymmetryplane = 0.
+
+    self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
+    self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
+    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+
+    # --- Create extra variables which are used in various places
+    self.nxp = self.nx
+    self.nyp = self.ny
+    self.nzp = self.nz
+
+    # --- Create phi and rho arrays and other arrays. These are created
+    # --- with fortran ordering so no transpose and copy is needed when
+    # --- they are passed to fortran.
+    self.rho = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
+    self.phi = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
+    self.rstar = fzeros(3+self.nz,'d')
+    if self.efetch == 3:
+      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+      self.nx_selfe = self.nx
+      self.ny_selfe = self.ny
+      self.nz_selfe = self.nz
+    else:
+      self.selfe = 0.
+      self.nx_selfe = 0
+      self.ny_selfe = 0
+      self.nz_selfe = 0
+    self.rhop = self.rho
+    self.phip = self.phi
+
+    # --- Create a conductor object, which by default is empty.
+    self.conductors = None
+    self.conductorlist = []
+
+    # --- At the start, assume that there are no bends. This is corrected
+    # --- in the solve method when there are bends.
+    self.linbend = false
+
+  def setrho(self,x,y,z,uz,q,w):
+    n = len(x)
+    if n == 0: return
+    setrho3d(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+
+  def setrhoselect(self,x,y,z,uz,q,w):
+    n = len(x)
+    if n == 0: return
+    setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+
+  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+    n = len(x)
+    if n == 0: return
+    sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
+           self.xmmin,self.ymmin,self.zmmin,
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
+           ex,ey,ez,self.l2symtry,self.l4symtry)
+
+  def fetchphifrompositions(self,x,y,z,phi):
+    n = len(x)
+    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+              self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
+              self.l2symtry,self.l4symtry)
+
+  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    if lzero: self.rho[...] = 0.
+    for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
+      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+    self.makerhoperiodic()
+    self.getrhoforfieldsolve()
+
+  def makerhoperiodic(self):
+    trho = transpose(self.rho)
+    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
+      trho[:,:,0] = trho[:,:,0] + trho[:,:,-1]
+      trho[:,:,-1] = trho[:,:,0]
+    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
+      trho[:,0,:] = trho[:,0,:] + trho[:,-1,:]
+      trho[:,-1,:] = trho[:,0,:]
+    if self.pbounds[0] == 1 and not self.l4symtry:
+       trho[:,:,0] = 2.*trho[:,:,0]
+    if self.pbounds[1] == 1: trho[:,:,-1] = 2.*trho[:,:,-1]
+    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry):
+       trho[:,0,:] = 2.*trho[:,0,:]
+    if self.pbounds[3] == 1: trho[:,-1,:] = 2.*trho[:,-1,:]
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
+      if self.nslaves > 1:
+        self.makerhoperiodic_parallel()
+      else:
+        trho[0,:,:] = trho[0,:,:] + trho[-1,:,:]
+        trho[-1,:,:] = trho[0,:,:]
+    if self.pbounds[4] == 1: trho[0,:,:] = 2.*trho[0,:,:]
+    if self.pbounds[5] == 1: trho[-1,:,:] = 2.*trho[-1,:,:]
+
+  def getrhoforfieldsolve(self):
+    if self.nslaves > 1:
+      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
+                            self.nx,self.ny,self.nz,self.rho,
+                            me,self.nslaves,
+                          top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
+
+  def makerhoperiodic_parallel(self):
+    tag = 70
+    if me == self.nslaves-1:
+      request = mpi.isend(self.rho[:,:,nz],0,tag)
+      self.rho[:,:,nz],status = mpi.recv(0,tag)
+    elif me == 0:
+      rhotemp,status = mpi.recv(self.nslaves-1,tag)
+      self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
+      request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
+    if me == 0 or me == self.nslaves-1:
+      status = request.wait()
+
+  def fetche(self):
+    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+
+  def fetchphi(self):
+    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
+
+  def getselfe(self,recalculate=0):
+    if type(self.selfe) != ArrayType:
+      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+    if recalculate:
+      getselfe3d(self.phi,self.nx,self.ny,self.nz,
+                 self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+    return self.selfe
+
+  def solve(self,iwhich=0):
+    raise "solve must be implemented"
+
+  ##########################################################################
+  # Define the basic plot commands
+  def genericpf(self,kw,pffunc):
+    kw['conductors'] = self.conductors
+    kw['solver'] = self
+    pffunc(**kw)
+  def pfxy(self,**kw): self.genericpf(kw,pfxy)
+  def pfzx(self,**kw): self.genericpf(kw,pfzx)
+  def pfzy(self,**kw): self.genericpf(kw,pfzy)
+  def pfxyg(self,**kw): self.genericpf(kw,pfxyg)
+  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
+  def pfzyg(self,**kw): self.genericpf(kw,pfzyg)
+
+  def __getstate__(self):
+    """
+Check whether this instance is the registered solver so that upon unpickling
+it knows whether to re-register itself.
+    """
+    dict = self.__dict__.copy()
+    if self is getregisteredsolver():
+      dict['iamtheregisteredsolver'] = 1
+    else:
+      dict['iamtheregisteredsolver'] = 0
+    return dict
+
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    if self.iamtheregisteredsolver:
+      registersolver(self)
+      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+        w3d.rho = self.rho
+        w3d.phi = self.phi
+        w3d.nxp = self.nx
+        w3d.nyp = self.ny
+        w3d.nzp = self.nz
+        w3d.rhop = self.rho
+        w3d.phip = self.phi
+
+
+##############################################################################
+class FFTSolver2d(FieldSolver3dBase):
+  __w3dinputs__ = FieldSolver3dBase.__w3dinputs__ + ['filt']
+  def __init__(self,**kw):
+    FieldSolver3dBase.__init__(self,**kw)
+
+    # --- Allocate the ksq and att arrays
+    self.kxsq = zeros(self.nx,'d')
+    self.kysq = zeros(self.ny,'d')
+    self.kzsq = zeros(self.nz+1,'d')
+    self.attx = zeros(self.nx,'d')
+    self.atty = zeros(self.ny,'d')
+    self.attz = zeros(self.nz+1,'d')
+
+    # --- Allocate work arrays
+    nmxyz = max(self.nx,self.ny,self.nz)
+    nmxy = max(self.nx,self.ny)
+    self.scratch = fzeros((nmxyz,nmxy),'d')
+    self.xywork = fzeros((1+self.nx,1+self.ny),'d')
+    self.zwork = 0. # --- zwork isn't used during the solve
+
+    # --- Initialize itself
+    self.solve(1)
+
+    # --- Clear out the z part so it doesn't contribute
+    self.kzsq[:] = 0.
+    self.attz[:] = 1.
+
+  def vp3d(self,iwhich):
+    lx = self.xmmax - self.xmmin
+    ly = self.ymmax - self.ymmin
+    lz = 1.
+    vpois3d(iwhich,self.phi,self.phi,self.kxsq,self.kysq,self.kzsq,
+            self.attx,self.atty,self.attz,self.filt,lx,ly,lz,
+            self.nx,self.ny,self.nz,self.nzfull,
+            self.scratch,self.xywork,self.zwork,0,self.l2symtry,self.l4symtry,
+            self.bound0,self.boundnz,self.boundxy)
+
+  def solve(self,iwhich=0):
+
+    if iwhich == 1:
+      self.vp3d(1)
+      return
+  
+    # --- This is much faster when transposed to C ordering.
+    #self.phi[:,:,1:-1] = self.rho
+    tphi = transpose(self.phi[:,:,1:-1])
+    trho = transpose(self.rho)
+    tphi[:,:,:] = trho
+
+    vp3d(12)
+    vp3d(3)
+    vp3d(4)
+    vp3d(13)
+
+    tphi = transpose(self.phi)
+    if self.bound0 == neumann: tphi[0,:,:] = tphi[1,:,:]
+    if self.bound0 == periodic: tphi[0,:,:] = tphi[-3,:,:]
+    if self.boundnz == neumann: tphi[-1,:,:] = tphi[-3,:,:]
+    if self.boundnz == periodic: tphi[-2:,:,:] = tphi[:2,:,:]
+
+##############################################################################
+class RelativisticFFTSolver2d(object):
+  def __init__(self,beamspecies=0,backgroundspecies=[],
+                    ignorebeamez=1,ignorebackgroundez=1,**kw):
+
+    self.beamspecies = beamspecies
+    self.backgroundspecies = backgroundspecies
+    self.ignorebeamez = ignorebeamez
+    self.ignorebackgroundez = ignorebackgroundez
+
+    # --- Create separate solvers for the two particle types and initialize them
+    self.beamsolver = FFTSolver2d(**kw)
+    self.beamsolver.solve(iwhich=1)
+    if len(self.backgroundspecies) > 0:
+      self.backgroundsolver = FFTSolver2d(**kw)
+      self.backgroundsolver.solve(iwhich=1)
+
+    # --- Make the w3d arrays point to the ones in the beamsolver.
+    # --- That was an arbitrary choice.
+#   if (self.beamsolver.nx == w3d.nx and
+#       self.beamsolver.ny == w3d.ny and
+#       self.beamsolver.nz == w3d.nz):
+#     w3d.rho = self.beamsolver.rho
+#     w3d.phi = self.beamsolver.phi
+#     w3d.nxp = self.beamsolver.nx
+#     w3d.nyp = self.beamsolver.ny
+#     w3d.nzp = self.beamsolver.nz
+#     w3d.rhop = self.beamsolver.rho
+#     w3d.phip = self.beamsolver.phi
+
+  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    if lzero:
+      self.beamsolver.rho[...] = 0.
+      if len(self.backgroundspecies) > 0:
+        self.backgroundsolver.rho[...] = 0.
+
+    js = self.beamspecies
+    i,n,q,w = top.ins[js],top.nps[js],top.sq[js],top.sw[js]
+    if n > 0:
+      self.beamsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],
+                             top.uzp[i:i+n],q,w)
+      self.beamsolver.makerhoperiodic()
+      self.beamsolver.getrhoforfieldsolve()
+
+    if len(self.backgroundspecies) > 0:
+      for js in self.backgroundspecies:
+        i,n,q,w = top.ins[js],top.nps[js],top.sq[js],top.sw[js]
+        if n > 0:
+          self.backgroundsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],
+                                       top.zp[i:i+n],top.uzp[i:i+n],q,w)
+      self.backgroundsolver.makerhoperiodic()
+      self.backgroundsolver.getrhoforfieldsolve()
+
+
+  def solve(self):
+
+    self.beamsolver.solve()
+    if len(self.backgroundspecies) > 0:
+      self.backgroundsolver.solve()
+
+    # --- Setup the phi's for with the proper accounting
+    # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
+    # --- The background gets the sum of the beam and background phi's
+
+    # --- First make a copy of the beam's phi since it is overwritten below
+    # --- The operations below are faster when the arrays are in C ordering
+    if len(self.backgroundspecies) > 0:
+      tbeamphitemp = transpose(self.beamsolver.phi.copy())
+      tbeackgroundphi = transpose(self.backgroundsolver.phi)
+
+    tbeamphi = transpose(self.beamsolver.phi)
+
+    # --- Calculate gammabar, avoiding roundoff from subtraction of
+    # --- similar numbers
+    js = self.beamspecies
+    ke = jperev*top.ekin_s[js]/dvnz(top.aion_s[js]*amu*clight**2)
+    gammabar = 1. + ke
+
+    # --- Now calculate the beam's phi in place
+    multiply(tbeamphi,1./gammabar**2,tbeamphi)
+    if len(self.backgroundspecies) > 0:
+      add(tbeamphi,tbeackgroundphi,tbeamphi)
+
+    if len(self.backgroundspecies) > 0:
+      # --- Sum the phi's for the background
+      add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
+
+  def fetche(self):
+
+    if w3d.isfsapi-1 == self.beamspecies:
+      self.beamsolver.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                          w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+      if self.ignorebeamez: w3d.ezfsapi = 0.
+    else:
+      self.backgroundsolver.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,
+                                                w3d.zfsapi,
+                                                w3d.exfsapi,w3d.eyfsapi,
+                                                w3d.ezfsapi)
+      if self.ignorebackgroundez: w3d.ezfsapi = 0.
+
+  def fetchphi(self):
+    # --- For present purposes, the results from this routine are never
+    # --- used. Also, presently, there is no way of telling which species
+    # --- the data is for.
+    w3d.phifsapi[:] = 0.
+
+  def __getstate__(self):
+    """
+Check whether this instance is the registered solver so that upon unpickling
+it knows whether to re-register itself.
+    """
+    dict = self.__dict__.copy()
+    if self is getregisteredsolver():
+      dict['iamtheregisteredsolver'] = 1
+    else:
+      dict['iamtheregisteredsolver'] = 0
+    return dict
+
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    if self.iamtheregisteredsolver:
+      registersolver(self)
+      if (self.beamsolver.nx == w3d.nx and
+          self.beamsolver.ny == w3d.ny and
+          self.beamsolver.nz == w3d.nz):
+        w3d.rho = self.beamsolver.rho
+        w3d.phi = self.beamsolver.phi
+        w3d.nxp = self.beamsolver.nx
+        w3d.nyp = self.beamsolver.ny
+        w3d.nzp = self.beamsolver.nz
+        w3d.rhop = self.beamsolver.rho
+        w3d.phip = self.beamsolver.phi
+
+  ##########################################################################
+  # Define the basic plot commands
+  def genericpf(self,kw,pffunc):
+    kw['conductors'] = None
+    kw['phicolor'] = blue
+    kw['solver'] = self.beamsolver
+    pffunc(**kw)
+    if len(self.backgroundspecies) > 0:
+      kw['phicolor'] = green
+      kw['solver'] = self.backgroundsolver
+      pffunc(**kw)
+  def pfxy(self,**kw): self.genericpf(kw,pfxy)
+  def pfzx(self,**kw): self.genericpf(kw,pfzx)
+  def pfzy(self,**kw): self.genericpf(kw,pfzy)
+  def pfxyg(self,**kw): self.genericpf(kw,pfxyg)
+  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
+  def pfzyg(self,**kw): self.genericpf(kw,pfzyg)
+
