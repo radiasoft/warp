@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.90 2005/03/08 18:28:08 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.91 2005/04/26 17:33:27 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -43,6 +43,7 @@ cleanconductors: not a plot routine, buts removes conductor points not
 # --- Convenience function to plot the sub-grid data
 def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
              conductors):
+  if conductors is None: return
   interior = conductors.interior
   nn = interior.n
   if nn > 0:
@@ -74,6 +75,7 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
 
 def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
                 signy,signx,conductors):
+  if conductors is None: return
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
   pp = ((pp + conductors.leveliz[mglevel]) % 2)
@@ -186,6 +188,7 @@ def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,signy,signx,
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
   """
+  if conductors is None: return
   interior = conductors.interior
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
@@ -445,6 +448,7 @@ def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx,
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
   """
+  if f3dcond is None: return
   # --- Get the numbers of conductor points
   nc = f3dcond.ncond
   ne = f3dcond.necndbdy
@@ -1474,6 +1478,7 @@ def findunique(i):
   return result
 
 def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors):
+  if conductors is None: return
   ncolor = len(color)
   if conductors.interior.n > 0: nn = conductors.interior.numb
   else:             nn = array([])
@@ -2699,6 +2704,7 @@ Sets the voltage on a conductor, given an id.
  - conductors=f3d.conductors: allows alternate conductor to be set other
                               than the default ones
   """
+  if conductors is None: return
   interior = conductors.interior
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
@@ -2901,6 +2907,7 @@ Creates 3-D visualization of the conductors based off of the subgrid data.
 
 Returns the scene use to draw the image
   """
+  if conductors is None: return
   if lparallel: return
   try:
     import VPythonobjects
