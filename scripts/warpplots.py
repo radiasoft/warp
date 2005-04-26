@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.152 2005/04/01 17:52:09 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.153 2005/04/26 17:39:49 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -166,17 +166,22 @@ Does the work needed to start writing plots to a file automatically
 # --- setup has been called, this just creates a window which is attached to
 # --- the already created device. Otherwise, open a window attached to a
 # --- new device.
-def winon(winnum=0,dpi=100,suffix=None):
+def winon(winnum=0,dpi=100,prefix=None,suffix=None):
   """
 Opens up an X window
   - winnum=0 is the window number
   - dpi=100 is the dots per inch (either 100 or 75)
+  - prefix=None: if given, opens a new file with the same suffix number as
+                 the one for window 0. Winnum cannot be 0 and setup must have
+                 already been called. Warning - this will overwrite a file
+                 with the same name.
+                 Both prefix and suffix can be specified.
   - suffix=None: if given, opens a new file with the same suffix number as
                  the one for window 0. Winnum cannot be 0 and setup must have
                  already been called. Warning - this will overwrite a file
                  with the same name.
   """
-  if suffix is None:
+  if suffix is None and prefix is None:
     if winnum==0 and sys.platform != 'win32':
       # --- If display isn't set, no X plot window will appear since window0
       # --- is already attached to a device (the plot file).
@@ -192,7 +197,10 @@ Opens up an X window
     if setup.pname[-2:] == 'ps': numb = setup.pname[-7:]
     elif setup.pname[-3:] == 'cgm': numb = setup.pname[-8:]
     # --- Create file name
-    pname = arraytostr(top.runid)+'_'+suffix+numb
+    pname = arraytostr(top.runid)
+    if prefix is not None: pname = prefix + pname
+    if suffix is not None: pname = pname + '_' + suffix
+    pname = pname + numb
     # --- Open window
     window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
 
