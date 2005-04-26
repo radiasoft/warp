@@ -207,3 +207,228 @@ have direct control over the sor iterations.
   def solve6(self):
     pass
 
+
+
+class MultiGridwithBoltzmannElectrons(MultiGrid):
+  def __init__(self,iondensity,electrontemperature,plasmapotential=0.,**kw):
+    self.iondensity = iondensity
+    self.electrontemperature = electrontemperature
+    self.plasmapotential = plasmapotential
+    MultiGrid.__init__(self,**kw)
+
+
+  #===========================================================================
+  def solve1(self,iwhich=0):
+    # --- No initialization needed
+    if iwhich == 1: return
+
+    # --- Create temp arrays
+    phisave = fzeros(shape(self.phi),'d')
+    bendx = fzeros(((self.nx+1)*(self.ny+1)),'d')
+
+    # --- Initialize temporaries
+    nxy    = (self.nx+1)*(self.ny+1)
+    nxyz   = (self.nx+1)*(self.ny+1)*(self.nz+1)
+    dxsqi  = 1./self.dx**2
+    dysqi  = 1./self.dy**2
+    dzsqi  = 1./self.dz**2
+    reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
+    rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
+
+    checkconductors(self.nx,self.ny,self.nz,self.nzfull,
+                    self.dx,self.dy,self.dz,self.conductors,
+                    top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+
+    # --- Preset rho to increase performance (reducing the number of
+    # --- multiplies in the main SOR sweep loop).
+    if not self.linbend:
+      # --- Do the operation in place (to avoid temp arrays)
+      multiply(self.rho,reps0c,self.rho)
+    else:
+      raise "Bends not yet supported"
+
+
+    #   --- Main multigrid v-cycle loop. Calculate error each iteration since
+    #   --- very few iterations are done.
+    self.mgiters[0] = 0
+    self.mgerror[0] = 2.*self.mgtol + 1.
+    while (self.mgerror[0] > self.mgtol and self.mgiters[0] < self.mgmaxiters):
+      self.mgiters[0] = self.mgiters[0] + 1
+
+      # --- Save current value of phi
+      phisave[:,:,:] = self.phi + 0.
+      f = fzeros(shape(self.rho),'d')
+
+      # --- Do one vcycle.
+      self.vcycle(0,self.nx,self.ny,self.nz,self.nzfull,
+                  self.dx,self.dy,self.dz,self.phi,self.rho,f,
+                  self.rstar,self.linbend,bendx,self.bounds,
+                  self.mgparam,self.mgform,self.mgmaxlevels,
+                  self.downpasses,self.uppasses,self.lcndbndy,
+                  self.icndbndy,self.conductors)
+
+      # --- Calculate the change in phi.
+      subtract(phisave,self.phi,phisave)
+      absolute(phisave,phisave)
+      self.mgerror[0] = MA.maximum(phisave)
+
+    # --- For Dirichlet boundary conditions, copy data into guard planes
+    # --- For other boundary conditions, the guard planes are used during
+    # --- the solve are so are already set.
+    if (self.bounds[4] == 0): self.phi[:,:,0] = self.phi[:,:,1]
+    if (self.bounds[5] == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
+
+    # --- Make a print out.
+    if (self.mgerror[0] > self.mgtol):
+      print "Multigrid: Maximum number of iterations reached"
+    print ("Multigrid: Error converged to %11.3e in %4d v-cycles"%
+           (self.mgerror[0],self.mgiters[0]))
+
+    # --- Restore rho
+    if (not self.linbend):
+      multiply(self.rho,1./reps0c,self.rho)
+
+  #===========================================================================
+  def vcycle(self,mglevel,nx,ny,nz,nzfull,dx,dy,dz,
+                  phi,rho,f,rstar,linbend,bendx,bounds,mgparam,mgform,
+                  mgmaxlevels,downpasses,uppasses,lcndbndy,icndbndy,conductors):
+   
+    res = fzeros((3+nx,3+ny,7+nz),'d')
+
+    dxsqi = 1./dx**2
+    dysqi = 1./dy**2
+    dzsqi = 1./dz**2
+    C = 2.*(dxsqi + dysqi + dzsqi)
+    phi0 = self.plasmapotential
+    te = self.electrontemperature
+
+    localbounds = bounds.copy()
+
+    for i in range(downpasses):
+      self.relax3d(mglevel,nx,ny,nz,nzfull,phi,rho,f,res,rstar,
+                   dxsqi,dysqi,dzsqi,linbend,bendx,
+                   localbounds,mgparam,mgform,lcndbndy,icndbndy,conductors)
+
+    # --- Check if this is the finest level. If so, then don't do any further
+    # --- coarsening. This is the same check that is done in getmglevels.
+    # --- If grid is not at its coarsest level in any of the axis or and
+    # --- all dimensions are even, continue the coarsening.
+    if ((nx%4) == 0 and (ny%4) == 0 and (nzfull%4) == 0 and
+        mglevel < mgmaxlevels):
+
+      # --- Get the residual on the current grid.
+      residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
+               mglevel,localbounds,mgparam,mgform,false,
+               lcndbndy,icndbndy,conductors)
+      rhoe = self.iondensity*exp((phi-phi0)/te)
+      res[1:-1,1:-1,2:-2] = res[1:-1,1:-1,2:-2]*C - rhoe/eps0
+      del rhoe
+
+      # --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+      # --- all axis.  This is the same check that is done in getmglevels.
+      # --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      partialcoarsening = (dz > 4./3.*dx)
+      if partialcoarsening:
+
+        # --- Allocate new work space
+        phi2 = fzeros((1+nx/2,1+ny/2,2+nz+1),'d')
+        rho2 = fzeros((1+nx/2,1+ny/2,1+nz),'d')
+
+        # --- Ratio of old to new constant needed to scale the residual for
+        # --- the restriction.
+        ff = (dxsqi+dysqi+dzsqi)/(dxsqi*0.25 + dysqi*0.25 + dzsqi)
+        restrict2d(nx,ny,nz,nzfull,res,rho2,ff,localbounds)
+
+        # --- Continue at the next coarsest level.
+        self.vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
+                    dx*2,dy*2,dz,phi2,rho2,rstar,linbend,bendx,bounds,
+                    mgparam,mgform,mgmaxlevels,downpasses,uppasses,
+                    lcndbndy,icndbndy,conductors)
+
+        # --- Add in resulting error.
+        expand2d(nx/2,ny/2,nz,nzfull,phi2,phi,localbounds)
+
+      else:
+
+        localboundsH = bounds.copy()
+
+        nznew = nz/2
+        lparity = 0
+        rparity = 0
+
+        # --- Alloate new work space
+        phiH = fzeros((1+nx/2,1+ny/2,2+nznew+1),'d')
+        rhoH = fzeros((1+nx/2,1+ny/2,1+nznew),'d')
+
+        rhocopy = fzeros((3+nx,3+ny,7+nz),'d')
+        rhocopy[1:-1,1:-1,3:-3] = rho
+
+        restrict3d(nx,ny,nz,nzfull,rhocopy,
+                   nx/2,ny/2,nznew,nznew,rhoH,
+                   1.,localbounds,localboundsH,0)
+        del rhocopy
+
+        res[1:-1,1:-1,3:-3] = res[1:-1,1:-1,3:-3] - f
+        dH = fzeros((1+nx/2,1+ny/2,1+nznew),'d')
+        restrict3d(nx,ny,nz,nzfull,res,
+                   nx/2,ny/2,nznew,nznew,dH,
+                   1.,localbounds,localboundsH,0)
+
+        phicopy = fzeros((3+nx,3+ny,7+nz),'d')
+        phicopy[1:-1,1:-1,2:-2] = phi
+        restrict3d(nx,ny,nz,nzfull,phicopy,
+                   nx/2,ny/2,nznew,nznew,phiH[:,:,1:-1],
+                   1.,localbounds,localboundsH,0)
+        phiHcopy = phiH.copy()
+        del phicopy
+        resH = fzeros((3+nx/2,3+ny/2,4+nznew+3),'d')
+        residual(nx/2,ny/2,nz/2,nzfull/2,0.25*dxsqi,0.25*dysqi,0.25*dzsqi,
+                 phiH,rhoH,resH,
+                 mglevel+1,localboundsH,mgparam,mgform,false,
+                 lcndbndy,icndbndy,conductors)
+        rhoe = self.iondensity*exp((phiH[:,:,1:-1]-phi0)/te)
+        resH[1:-1,1:-1,3:-3] = resH[1:-1,1:-1,3:-3]*C - rhoe/eps0
+        del rhoe
+
+        fH = resH[1:-1,1:-1,3:-3] - dH
+
+        # --- Continue at the next coarsest level.
+        self.vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
+                    dx*2,dy*2,dz*2,phiH,rhoH,fH,rstar,linbend,bendx,bounds,
+                    mgparam,mgform,mgmaxlevels,downpasses,uppasses,
+                    lcndbndy,icndbndy,conductors)
+
+        eH = phiH - phiHcopy
+
+        # --- Add in resulting error.
+        expand3d(nx,ny,nz,nz,phi,
+                 nx/2,ny/2,nz/2,nz/2,eH,localbounds,0.)
+
+    # --- Do final SOR passes.
+    for i in range(uppasses):
+      self.relax3d(mglevel,nx,ny,nz,nzfull,phi,rho,f,res,rstar,
+                   dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
+                   mgparam,mgform,lcndbndy,icndbndy,conductors)
+
+  #===========================================================================
+  def relax3d(self,mglevel,nx,ny,nz,nzfull,phi,rho,f,res,rstar,
+                   dxsqi,dysqi,dzsqi,linbend,bendx,bounds,mgparam,mgform,
+                   lcndbndy,icndbndy,conductors):
+
+    C = 2.*(dxsqi + dysqi + dzsqi)
+    phi0 = self.plasmapotential
+    te = self.electrontemperature
+
+    # --- Put desired potential onto conductors in phi array.
+    cond_potmg(conductors.interior,nx,ny,nz,phi,mglevel,false,mgform,false)
+
+    # --- Should be done with even-odd ordering to be more correct
+    residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
+             mglevel,bounds,mgparam,mgform,false,
+             lcndbndy,icndbndy,conductors)
+    rhoe = self.iondensity*exp((phi[:,:,1:-1]-phi0)/te)
+    res[1:-1,1:-1,3:-3] = res[1:-1,1:-1,3:-3]*C - rhoe/eps0
+    phi[:,:,1:-1] = phi[:,:,1:-1] - (res[1:-1,1:-1,3:-3] - f)/(-C - rhoe/(eps0*te))
+
+
+
