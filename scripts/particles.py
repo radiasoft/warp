@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.26 2005/04/05 20:22:15 dave Exp $"
+particles_version = "$Id: particles.py,v 1.27 2005/04/26 17:32:44 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -50,7 +50,8 @@ Adds plotting subset to the list
   for i in xrange(0,len(top.npplot)):
     ntopick=min(top.nps[js],int(top.npplot[i]*fracnp+0.5))
     ii = arrayrange(top.nps[0])
-    rr = top.nps[0]*RandomArray.random(top.nps[0])
+    #rr = top.nps[0]*RandomArray.random(top.nps[0])
+    rr = top.nps[0]*ranf(zeros(top.nps[0]))
     ii = compress(less(rr,ntopick),ii)
     psubset.append(ii.astype('i'))
 #----------------------------------------------------------------------------
@@ -154,7 +155,7 @@ be None, in which case the main dictionary will be searched,
 returning __main__.__dict__[name+suffix]. Also, object can be a dictionary
 itself. Finally, if the object is specified but name+suffix is not found and
 if checkmain is true, then the main dictionary will again be searched. If
-nothing if found and default is specified, it is returned, otherwise an
+nothing is found and default is specified, it is returned, otherwise an
 exception is raised.
   """
   assert name is not None,"A name must be supplied"
@@ -208,12 +209,14 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   - ii=None: If ii is supplied, it is just returned.
   - lost=false: When true, returns indices to the lost particles rather than
                 the live particles
+  - suffix=None: When specified, variables with the specified suffix will be
+                 used rather than the arrays from top.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,"ii":None,
-                "lost":false,
+                "lost":false,"suffix":'',
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -255,8 +258,7 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     return partlist
 
   # --- If lost is true, append the suffix lost to the variable names
-  if lost: suffix = 'lost'
-  else:    suffix = ''
+  if lost: suffix = 'lost' + suffix
 
   ins = getattrwithsuffix(top,'ins',suffix)
   nps = getattrwithsuffix(top,'nps',suffix)
@@ -357,7 +359,7 @@ def getn(iw=0,gather=1,bcast=0,**kw):
 def getx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     result = take(x,ii)
@@ -369,7 +371,7 @@ def getx(iw=0,gather=1,bcast=0,**kw):
 def gety(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     y = getattrwithsuffix(top,'yp',suffix)
     result = take(y,ii)
@@ -381,7 +383,7 @@ def gety(iw=0,gather=1,bcast=0,**kw):
 def getz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     z = getattrwithsuffix(top,'zp',suffix)
     result = take(z,ii)
@@ -393,7 +395,7 @@ def getz(iw=0,gather=1,bcast=0,**kw):
 def getr(iw=0,gather=1,bcast=0,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -406,7 +408,7 @@ def getr(iw=0,gather=1,bcast=0,**kw):
 def gettheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -419,7 +421,7 @@ def gettheta(iw=0,gather=1,bcast=0,**kw):
 def getvx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     ux = getattrwithsuffix(top,'uxp',suffix)
     gaminv = getattrwithsuffix(top,'gaminv',suffix)
@@ -432,7 +434,7 @@ def getvx(iw=0,gather=1,bcast=0,**kw):
 def getvy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     uy = getattrwithsuffix(top,'uyp',suffix)
     gaminv = getattrwithsuffix(top,'gaminv',suffix)
@@ -445,7 +447,7 @@ def getvy(iw=0,gather=1,bcast=0,**kw):
 def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     uz = getattrwithsuffix(top,'uzp',suffix)
     gaminv = getattrwithsuffix(top,'gaminv',suffix)
@@ -458,7 +460,7 @@ def getvz(iw=0,gather=1,bcast=0,**kw):
 def getvr(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -474,7 +476,7 @@ def getvr(iw=0,gather=1,bcast=0,**kw):
 def getvtheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -490,7 +492,7 @@ def getvtheta(iw=0,gather=1,bcast=0,**kw):
 def getux(iw=0,gather=1,bcast=0,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     ux = getattrwithsuffix(top,'uxp',suffix)
     result = take(ux,ii)
@@ -502,7 +504,7 @@ def getux(iw=0,gather=1,bcast=0,**kw):
 def getuy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     uy = getattrwithsuffix(top,'uyp',suffix)
     result = take(uy,ii)
@@ -514,7 +516,7 @@ def getuy(iw=0,gather=1,bcast=0,**kw):
 def getuz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     uz = getattrwithsuffix(top,'uzp',suffix)
     result = take(uz,ii)
@@ -526,7 +528,7 @@ def getuz(iw=0,gather=1,bcast=0,**kw):
 def getxp(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     ux = getattrwithsuffix(top,'uxp',suffix)
     uz = getattrwithsuffix(top,'uzp',suffix)
@@ -539,7 +541,7 @@ def getxp(iw=0,gather=1,bcast=0,**kw):
 def getyp(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     uy = getattrwithsuffix(top,'uyp',suffix)
     uz = getattrwithsuffix(top,'uzp',suffix)
@@ -552,7 +554,7 @@ def getyp(iw=0,gather=1,bcast=0,**kw):
 def getrp(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -570,7 +572,7 @@ def getrp(iw=0,gather=1,bcast=0,**kw):
 def gettp(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     x = getattrwithsuffix(top,'xp',suffix)
     y = getattrwithsuffix(top,'yp',suffix)
@@ -588,7 +590,7 @@ def gettp(iw=0,gather=1,bcast=0,**kw):
 def getgaminv(iw=0,gather=1,bcast=0,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if len(ii) > 0:
     gaminv = getattrwithsuffix(top,'gaminv',suffix)
     result = take(gaminv,ii)
@@ -603,7 +605,7 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
          if id=-1, returns all pids.
   """
   lost = kw.get('lost',0)
-  suffix = (kw.get('lost',0) and 'lost') or ''
+  suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
   if lost: dopid = (top.npidlostmax > 0)
   else:    dopid = (top.npmaxi == top.npmax)
   if dopid:
