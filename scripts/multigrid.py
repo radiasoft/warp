@@ -191,7 +191,7 @@ class MultiGrid(object):
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
-    for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
+    for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
