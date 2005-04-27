@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.25 $, $Date: 2005/03/27 21:45:48 $
+c@(#) File w3d_injection.F, version $Revision: 1.26 $, $Date: 2005/04/27 00:40:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -45,7 +45,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj
       real(kind=8):: sphericalcorrection
-      real(kind=8):: vtx,vty
+      real(kind=8):: vtx,vty,larmorfreq
       real(kind=8):: fulldt_s
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: p2x,p2y,p2z,w2x,w2y,w2z,area
@@ -167,21 +167,28 @@ c           --- Make sure there is enough temp space
             endif
 
 c           --- set random numbers
-c           --- xt(ip) used to hold f(r**2)=constant
-c           --- yt(ip) used to hold f(theta)=constant if injection
+c           --- rt(ip) used to hold f(r**2)=constant
+c           --- tt(ip) used to hold f(theta)=constant if injection
 c           --- is over an elliptical surface
             do ip = 1,nn
-              xt(ip) = wrandom(xrandom,injctcnt+ip-1,dig1,1,1)
-              xt(ip) = xt(ip)*(1.-(ainjmin(ij)*ainji)**2) +
+              rt(ip) = wrandom(xrandom,injctcnt+ip-1,dig1,1,1)
+              rt(ip) = rt(ip)*(1.-(ainjmin(ij)*ainji)**2) +
      &                            (ainjmin(ij)*ainji)**2
-              yt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
+              tt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
             enddo
 
-c           --- or xt(ip) used to hold f(r)~(h+(1-h)r^2)
+c           --- Transform the positions into a Gaussian if distrbtn is GA0
+            if (distrbtn == "GA0") then
+              do ip = 1,nn
+                rt(ip) = -log(rt(ip))
+              enddo
+            endif
+
+c           --- or rt(ip) used to hold f(r)~(h+(1-h)r^2)
             if (hollow == 2) then
               do ip = 1,nn
-                xt(ip) = (1 + hollow_h)*xt(ip)/
-     &               (hollow_h + sqrt(hollow_h**2 + (1. - hollow_h**2)*xt(ip)))
+                rt(ip) = (1 + hollow_h)*rt(ip)/
+     &               (hollow_h + sqrt(hollow_h**2 + (1. - hollow_h**2)*rt(ip)))
               enddo
             endif
 
@@ -190,7 +197,7 @@ c           --- Get velocity distribution.
 c             --- For the K-V load, need another random number.
               do ip = 1,nn
                 t = wrandom(vtrandom,injctcnt+ip-1,dig3,1,1)
-                rr = sqrt(1. - xt(ip))
+                rr = sqrt(1. - rt(ip))
                 uxt(ip) = rr*cos(2.*pi*t)
                 uyt(ip) = rr*sin(2.*pi*t)
               enddo
@@ -224,19 +231,25 @@ c           --- (data is loaded into particle arrays)
             zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*fulldt_s*(it+1)
             zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
 
+c           --- Precalculate larmor frequency if needed. The code assumes
+c           --- that the beam was injected in a field free region.
+            if (linj_includebz0) then
+              larmorfreq = -0.5*sq(is)*bz0/sm(is)/gammabar
+            endif
+
 c           --- Initialize positions as rectangular or elliptical depending on linj_rectangle
             if(linj_rectangle) then
               do ip=1,nn
-                xt(ip) = ainj*(2.*xt(ip)-1.0)
-                yt(ip) = binj*(2.*yt(ip)-1.0)
+                xt(ip) = ainj*(2.*rt(ip)-1.0)
+                yt(ip) = binj*(2.*tt(ip)-1.0)
               enddo
             else
               do ip=1,nn
-c               --- Convert r**2 into r and yt into a random angle
-                xt_tmp = sqrt(xt(ip))
-                yt_tmp = 2.*pi*yt(ip)
-                xt(ip) = ainj*xt_tmp*cos(yt_tmp)
-                yt(ip) = binj*xt_tmp*sin(yt_tmp)
+c               --- Convert r**2 into r and tt into a random angle
+                rt(ip) = sqrt(rt(ip))
+                tt(ip) = 2.*pi*tt(ip)
+                xt(ip) = ainj*rt(ip)*cos(tt(ip))
+                yt(ip) = binj*rt(ip)*sin(tt(ip))
               enddo
             endif
             do ip=1,nn
@@ -264,6 +277,10 @@ c             --- Only save particle if it is within the injection region.
                   uzp(ii) = vzinj + abs(0.5*vthz_s(is)*uzt(ip))
                 else
                   uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
+                endif
+                if (linj_includebz0) then
+                  uxp(ii) = uxp(ii) - larmorfreq*ainj*rt(ip)*sin(tt(ip))
+                  uyp(ii) = uyp(ii) + larmorfreq*binj*rt(ip)*cos(tt(ip))
                 endif
                 if (lrelativ) then
                   gaminv(ii) = sqrt(1.-
