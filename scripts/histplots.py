@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.25 2005/04/20 21:18:23 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.26 2005/04/27 18:32:56 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -1355,7 +1355,7 @@ def hptotale(kwdict={},**kw):
   hefld = _extractvarkw('hefld',kw)
   hekzbeam = _extractvarkw('hekzbeam',kw)
   hekperp = _extractvarkw('hekperp',kw)
-  hpbasic(hefld+hekzbeam+hekperp,kw)
+  hpbasic(hefld[:,NewAxis]+hekzbeam+hekperp,kw)
 
 
 def hpthermale(iw=0,kwdict={},**kw):
