@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.140 $, $Date: 2005/04/01 23:05:38 $
+#@(#) File TOP.V, version $Revision: 3.141 $, $Date: 2005/04/27 00:41:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.140 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.141 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1209,6 +1209,9 @@ linj_efromgrid logical /.false./ # When true, the special calculation of the
                                  # be set.
 linj_rectangle logical /.false./ # Flags whether injection is over a
                                  # rectangular region and not elliptical  
+linj_includebz0 /.false./ # Include the solenoidal field bz0, giving the
+                          # particles a vtheta corresponding to the Larmor
+                          # frequency
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
 nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
@@ -1928,7 +1931,7 @@ nps(ns)  _integer /0/  # Number of particles in species
 ndts(ns) _integer /1/  # Stride for time step advance for each species
 ldts(ns) _logical  /1/
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
-                       # species. Only makes sense in steaday and and
+                       # species. Only makes sense in steady state and
                        # transverse slice modes.
 gaminv(npmax)  _real  [1]   /1./ # inverse relativistic gamma factor
 xp(npmaxb)     _real  [m]        # X-positions of particles
