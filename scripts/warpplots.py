@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.153 2005/04/26 17:39:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.154 2005/04/27 17:00:54 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -130,6 +130,9 @@ Does the work needed to start writing plots to a file automatically
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
+  # --- Give setup.pname a value. This is only needed for the parallel case
+  # --- and is actually never used.
+  setup.pname = '.000.cgm'
   # --- Only PE0 (or serial processor) should run this routine.
   if me > 0: return
   # --- Set cgmfilesize
