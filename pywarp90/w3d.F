@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.198 $, $Date: 2005/04/25 23:28:34 $
+c@(#) File W3D.F, version $Revision: 3.199 $, $Date: 2005/04/29 17:51:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4872,6 +4872,7 @@ c=============================================================================
 
 c Ensures that the phip and rhop arrays are setup properly.
 c Also, setup rhoptmp for the case when species have different time step sizes.
+c The setup of rhoptmp is skipped is ns == -1.
 
       integer(ISZ):: js,i,oldnsndts
       integer(ISZ),allocatable:: lirhoptmp(:)
@@ -4908,6 +4909,9 @@ c         --- If the sizes are not the same, then allocate the group
           call gallot('Fields3dParticles',0)
         endif
       endif
+
+c     --- If -1 was passed in for ns, then skip the setup of rhoptmp
+      if (ns == -1) return
 
 c     --- Setup rhoptmp
 
@@ -6141,9 +6145,9 @@ c===========================================================================
 
 c     --- Ensure that the phip array is setup properly
       if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
-c       --- zeros are passed in since the arguments are only needed for
-c       --- setting up rhoptmp.
-        call setupFields3dParticles(0,0,0)
+c       --- Note the -1 is passed in for ns as a flag to skip the
+c       --- setting up of rhoptmp.
+        call setupFields3dParticles(-1,0,0)
       endif
 
 #ifndef MPIPARALLEL
