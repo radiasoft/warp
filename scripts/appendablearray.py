@@ -9,7 +9,7 @@ import Numeric
 _pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.10 2005/03/24 21:31:51 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.11 2005/04/29 17:30:30 dave Exp $"
 
 class AppendableArray:
   """
@@ -82,9 +82,9 @@ Other methods include len, data, setautobump, cleardata, reshape
       self._array[:len(self),...] = a
   def _allocatearray(self):
     if self._unitshape is None:
-      self._array = zeros(self._maxlen,self._typecode)
+      self._array = Numeric.zeros(self._maxlen,self._typecode)
     else:
-      self._array = zeros([self._maxlen]+list(self._unitshape),self._typecode)
+      self._array = Numeric.zeros([self._maxlen]+list(self._unitshape),self._typecode)
   def append(self,data):
     if self._unitshape is None:
       # --- If data is just a scalar, then set length to one. Otherwise
@@ -139,7 +139,7 @@ specified on creation.
     self._unitshape = newunitshape
     self._allocatearray()
     # --- Copy data from old to new
-    ii = [None] + list(minimum(oldunitshape,newunitshape))
+    ii = [None] + list(Numeric.minimum(oldunitshape,newunitshape))
     ss = map(slice,ii)
     self._array[ss] = oldarray[ss]
 
