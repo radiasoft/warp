@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.200 $, $Date: 2005/04/30 17:29:44 $
+c@(#) File W3D.F, version $Revision: 3.201 $, $Date: 2005/04/30 17:41:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1623,7 +1623,16 @@ c           for center = "synchv" or "gen" regardless of interpdk,
 c           but the vpush is only done for interpdk=1 if allspecl=1.
             elseif (center == "synchv" .or. center == "gen"
      &        .or. center == "hbor1") then
-              if ((center == "synchv" .and. (interpdk(is) == 0
+c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
+c            --- This is needed for the call to getzmmnt below.
+             if (center == "gen" .or. center == "synchv") then
+               do i=1,ip
+                 uxpo(i) = uxp(ipmin+i-1)
+                 uypo(i) = uyp(ipmin+i-1)
+                 uzpo(i) = uzp(ipmin+i-1)
+               enddo
+             endif
+             if ((center == "synchv" .and. (interpdk(is) == 0
      &          .or. allspecl)) 
      &         .or. center == "gen" .or. (center == "hbor1"
      &          .and. interpdk(is) .ne. 0)) then
@@ -1635,12 +1644,6 @@ c               Exception, if allspecl = 1, then we synchronize every
 c               step, using half Boris if interpdk = 1.
 c               More generally hbor1 provides 1st half of a Boris
 c               step, hbor2 provides 2nd half.
-c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
-               do i=1,ip
-                  uxpo(i) = uxp(ipmin+i-1)
-                  uypo(i) = uyp(ipmin+i-1)
-                  uzpo(i) = uzp(ipmin+i-1)
-               enddo
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
      &                       bendradi,-halfdt_s,0.,.false.)
