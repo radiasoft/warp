@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.29 $, $Date: 2005/02/25 22:08:37 $
+c TOPSLAVE.M, version $Revision: 1.30 $, $Date: 2005/04/30 17:23:36 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -816,15 +816,17 @@ c=============================================================================
 c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
-      real(kind=8):: data2(ndata)
+      real(kind=8),allocatable:: data2(:)
       integer(ISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
+      deallocate(data2)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelsumrealarray = timeparallelsumrealarray + wtime() - substarttime
@@ -840,15 +842,17 @@ c=============================================================================
 c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
-      integer(ISZ):: data2(ndata)
+      integer(ISZ),allocatable:: data2(:)
       integer(ISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_INTEGER,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
+      deallocate(data2)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelsumintegerarray = timeparallelsumintegerarray + wtime() - substarttime
@@ -864,15 +868,17 @@ c==========================================================================
 c Find the max of data over all processors.  Resulting data is broadcast
 c to all processors.
 
-      real(kind=8):: data2(ndata)
+      real(kind=8),allocatable:: data2(:)
       integer(ISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
+      deallocate(data2)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelmaxrealarray = timeparallelmaxrealarray + wtime() - substarttime
@@ -888,15 +894,17 @@ c==========================================================================
 c Find the min of data over all processors.  Resulting data is broadcast
 c to all processors.
 
-      real(kind=8):: data2(ndata)
+      real(kind=8),allocatable:: data2(:)
       integer(ISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+      allocate(data2(ndata))
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
+      deallocate(data2)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallelminrealarray = timeparallelminrealarray + wtime() - substarttime
