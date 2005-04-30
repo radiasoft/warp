@@ -168,7 +168,7 @@ class FieldSolver3dBase(object):
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
-    for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
+    for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
@@ -323,10 +323,10 @@ class FFTSolver2d(FieldSolver3dBase):
     trho = transpose(self.rho)
     tphi[:,:,:] = trho
 
-    vp3d(12)
-    vp3d(3)
-    vp3d(4)
-    vp3d(13)
+    self.vp3d(12)
+    self.vp3d(3)
+    self.vp3d(4)
+    self.vp3d(13)
 
     tphi = transpose(self.phi)
     if self.bound0 == neumann: tphi[0,:,:] = tphi[1,:,:]
@@ -371,7 +371,7 @@ class RelativisticFFTSolver2d(object):
         self.backgroundsolver.rho[...] = 0.
 
     js = self.beamspecies
-    i,n,q,w = top.ins[js],top.nps[js],top.sq[js],top.sw[js]
+    i,n,q,w = top.ins[js]-1,top.nps[js],top.sq[js],top.sw[js]
     if n > 0:
       self.beamsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],
                              top.uzp[i:i+n],q,w)
@@ -380,7 +380,7 @@ class RelativisticFFTSolver2d(object):
 
     if len(self.backgroundspecies) > 0:
       for js in self.backgroundspecies:
-        i,n,q,w = top.ins[js],top.nps[js],top.sq[js],top.sw[js]
+        i,n,q,w = top.ins[js]-1,top.nps[js],top.sq[js],top.sw[js]
         if n > 0:
           self.backgroundsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],
                                        top.zp[i:i+n],top.uzp[i:i+n],q,w)
