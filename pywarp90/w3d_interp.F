@@ -130,10 +130,12 @@ c       particle out of bounds of the field array.  IF it does,
 c       apply particle b.c.s.  Don't change the v's so use
 c       scratch arrays.  Also this won't do the right
 c       thing for absorbing b.c.'s.
-        call stckxy3d(nps(is),xbar,xmmax,xmmin,dx,ybar,ymmax,
+        call stckxy3d(npd,xbar,xmmax,xmmin,dx,ybar,ymmax,
      &                   ymmin,dy,zbar,zmmin,dz,uxscratch,
      &                   uyscratch,uzscratch,gaminvscratch,
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
+        call zpartbndwithdata(npd,zbar,uzscratch,gaminvscratch,
+     &                        zmmax,zmmin,dz,zgrid)
 
 c       Now get average velocity using these positions
         call getveff(npd,is,ipmin,xbar,ybar,zbar,"corrector")
