@@ -88,23 +88,32 @@ c     3D xpush with interpolation between drift kinetic and full PIC
       use DKInterp
       use DKInterptmp
       use InGen
+      use InGen3d
+      use Picglb
+      use InMesh3d
+      use Picglb3d
       integer(ISZ):: npd,is,ipmin
-      integer(ISZ):: ip,i,ipmin1
+      integer(ISZ):: ip,i,ipmin1,ipc
       real(kind=8):: xpr(npd),ypr(npd),zpr(npd),xbar(npd)
       real(kind=8):: ybar(npd),zbar(npd)
       real(kind=8):: acntrbar
-      ipmin1=ipmin-1
-      do i=1,npd      
-        ip=i+ipmin1
-        xpr(i)=xp(ip)
-        ypr(i)=yp(ip)
-        zpr(i)=zp(ip)
-      enddo
+      real(kind=8):: uxscratch(npd),uyscratch(npd),uzscratch(npd)
+      real(kind=8):: gaminvscratch(npd)
 c     get effective velocities for old positions
-      call getveff(npd,is,ipmin,xpr,ypr,zpr,"predictor")
+      call getveff(npd,is,ipmin,xp(ipmin),yp(ipmin),zp(ipmin),"predictor")
 c     push to get x': (predictor)
 c     If acntr is 0, skip to push to get final x
       if (acntr(is) > 1.e-20) then
+
+c      BEGIN predictor-corrector loop for v_eff
+       do ipc = 1,npredcor
+        ipmin1=ipmin-1
+        do i=1,npd      
+          ip=i+ipmin1
+          xpr(i)=xp(ip)
+          ypr(i)=yp(ip)
+          zpr(i)=zp(ip)
+        enddo
 c       print*,"xpush1",ipmin,dt,alpha(1)
 c       print*,npd,xpr(1),ypr(1),zpr(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
         call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,gaminv(ipmin),dt)
@@ -116,12 +125,24 @@ c       Now construct averaged positions; self.actr is centering param
           ybar(i)=acntr(is)*ypr(i)+acntrbar*yp(ip)
           zbar(i)=acntr(is)*zpr(i)+acntrbar*zp(ip)
         enddo
+c       Note need to make sure the trial position doesn't move a 
+c       particle out of bounds of the field array.  IF it does,
+c       apply particle b.c.s.  Don't change the v's so use
+c       scratch arrays.  Also this won't do the right
+c       thing for absorbing b.c.'s.
+        call stckxy3d(nps(is),xbar,xmmax,xmmin,dx,ybar,ymmax,
+     &                   ymmin,dy,zbar,zmmin,dz,uxscratch,
+     &                   uyscratch,uzscratch,gaminvscratch,
+     &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
 
 c       Now get average velocity using these positions
         call getveff(npd,is,ipmin,xbar,ybar,zbar,"corrector")
-c       and do the final particle push (corrector) using these veffs.
+       enddo
+c      END predictor-corrector loop for v_eff
+
       endif
 
+c     Now do the final particle push (corrector) using these veffs.
 c     This time call xpush3d with xp, etc, so that the
 c     real particle arrays  will be updated to the new values
 c     note if interpolation is such that veff is the pure v,
@@ -130,7 +151,7 @@ c     the result of the final push will be identical to
 c     a full conventional push.
         
 c     print*,"xpush2",dt,alpha(1)
-c      print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+c     print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
       call xpush3d (npd,xp(ipmin),yp(ipmin),zp(ipmin),uxeff,
      &               uyeff,uzeff,gaminv(ipmin),dt)
 
