@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.153 $, $Date: 2005/04/22 21:16:35 $
+c@(#) File TOP.F, version $Revision: 3.154 $, $Date: 2005/05/01 23:50:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6368,6 +6368,52 @@ c     --- other boundary condition (particles absorbed or reflected)
 
 #endif
 c --- end of ifelse above for paralle version.
+
+      return
+      end
+c=============================================================================
+      subroutine zpartbndwithdata(n,z,uz,gaminv,zmmax,zmmin,dz,zgrid)
+      use GlobalVars
+      use InGen
+      use InPart
+      integer(ISZ):: n
+      real(kind=8):: z(n),uz(n),gaminv(n)
+      real(kind=8):: zmmax,zmmin,dz,zgrid
+
+c  Impose boundary conditions on z
+
+      real(kind=8):: syslen
+      integer(ISZ):: is,ip
+
+      if (pbound0==periodic) then
+c     --- periodic boundary condition
+        syslen = zmmax - zmmin
+        do ip=1,n
+          if (z(ip) < zgrid + zmmin)
+     &      z(ip) = z(ip) + syslen*int((zgrid + zmmax - z(ip))/syslen)
+          if (z(ip) > zgrid + zmmax)
+     &      z(ip) = z(ip) - syslen*int((z(ip) - zgrid - zmmin)/syslen)
+        enddo
+      else
+c     --- other boundary condition (particles absorbed or reflected)
+        do ip=1,n
+          if ((z(ip)-zgrid) >= zmmax) then
+            if(pboundnz==absorb) then
+              gaminv(ip) = 0.
+            elseif(pboundnz==reflect) then
+              z(ip) = 2.*zgrid + 2.*zmmax - z(ip)
+              uz(ip) = -uz(ip)
+            end if
+          elseif ((z(ip)-zgrid) <= zmmin) then
+            if(pbound0==absorb) then
+              gaminv(ip) = 0.
+            elseif(pbound0==reflect) then
+              z(ip) = 2.*zgrid + 2.*zmmin - z(ip)
+              uz(ip) = -uz(ip)
+            end if
+          endif
+        enddo
+      endif
 
       return
       end
