@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.48 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1490,7 +1490,7 @@ c       --- Check if it hits the cylinder.
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
                 theta = pi*0.5
-                phi = atan2(yy,xx)+pi
+                phi = atan2(-yy,-xx)
               endif
             endif
           endif
@@ -3873,7 +3873,7 @@ c         --- z value is within the segment.
 c                 --- These angles need to be verified.
                   itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
      &                              (r_sr(il) - r_sr(il+1))*inside)
-                  iphi(i) = atan2(yy,xx)
+                  iphi(i) = atan2(yy*inside,xx*inside)
                 endif
               endif
               if (z_sr(il) <= z2 .and. z2 <= z_sr(il+1)) then
@@ -3886,7 +3886,7 @@ c                 --- These angles need to be verified.
 c                 --- These angles need to be verified.
                   itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
      &                              (r_sr(il) - r_sr(il+1))*inside)
-                  iphi(i) = atan2(yy,xx)
+                  iphi(i) = atan2(yy*inside,xx*inside)
                 endif
               endif
             else
@@ -3906,7 +3906,7 @@ c             --- Check if the intersection point is within the line segment.
               if (z_sr(il) <= zz .and. zz <= z_sr(il+1) .and.
      &            ((rad_sr(il) > 0. .and. rr > rc_sr(il)) .or.
      &             (rad_sr(il) < 0. .and. rr < rc_sr(il)))) then
-c               --- If it is, and the point if the best so far, then save
+c               --- If it is, and the point is the best so far, then save
 c               --- the data.
                 if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
      &              (ttemp > tt(i) .and. tt(i) < 0.)) then
@@ -4472,7 +4472,7 @@ c       --- Check if it hits the inner cylinder.
                 yy = -vy(i)*ttemp + y(i) - ycent
                 rr = sqrt(xx**2 + yy**2)
                 itheta(i) = pi*0.5
-                iphi(i) = atan2(yy,xx)
+                iphi(i) = atan2(-yy,-xx)
               endif
             endif
           endif
