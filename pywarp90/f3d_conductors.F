@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.49 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -643,13 +643,13 @@ c normal angle of the surface at that point.
           yi(i) = vy(i)*tt + y(i)
           zi(i) = vz(i)*tt + z(i)
 
-          if (zsign > 0.) then
-            itheta(i) = pi + theta
-            iphi(i) = phi
-          else
-            itheta(i) = theta
-            iphi(i) = phi
-          endif
+c         --- Note that the theta and phi input do not have the same meaning
+c         --- as the itheta and iphi output. The input are a rotation about
+c         --- the y-axis and a rotation about the new x-axis. The output are
+c         --- a rotation about the z-axis and a rotation about the new y-axis.
+c         --- It was not meant to be confusing, but that is how it turned out.
+          itheta(i) = acos(-ctheta*cphi)
+          iphi(i) = atan2(-zsign*sphi,-zsign*stheta*cphi)
 
         endif
       enddo
