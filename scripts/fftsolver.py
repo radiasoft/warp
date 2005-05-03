@@ -295,7 +295,7 @@ class FFTSolver2d(FieldSolver3dBase):
     self.zwork = 0. # --- zwork isn't used during the solve
 
     # --- Initialize itself
-    self.solve(1)
+    self.vp3d(1)
 
     # --- Clear out the z part so it doesn't contribute
     self.kzsq[:] = 0.
@@ -314,7 +314,8 @@ class FFTSolver2d(FieldSolver3dBase):
   def solve(self,iwhich=0):
 
     if iwhich == 1:
-      self.vp3d(1)
+      # --- This has already been initialized so don't do anything.
+      # --- If vp3d(1) were called, it would mess up kzsq.
       return
   
     # --- This is much faster when transposed to C ordering.
@@ -346,10 +347,8 @@ class RelativisticFFTSolver2d(object):
 
     # --- Create separate solvers for the two particle types and initialize them
     self.beamsolver = FFTSolver2d(**kw)
-    self.beamsolver.solve(iwhich=1)
     if len(self.backgroundspecies) > 0:
       self.backgroundsolver = FFTSolver2d(**kw)
-      self.backgroundsolver.solve(iwhich=1)
 
     # --- Make the w3d arrays point to the ones in the beamsolver.
     # --- That was an arbitrary choice.
