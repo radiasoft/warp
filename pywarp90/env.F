@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.32 $, $Date: 2004/12/03 22:35:42 $
+c@(#) File ENV.M, version $Revision: 3.33 $, $Date: 2005/05/10 16:35:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -747,7 +747,7 @@ c     --- Initialize variables to the values from the uniform fields.
       xex   = 0.
       yey   = 0.
       ez = 0.
-      bz = 0.
+      bz = bz0
       faccl = 0.
 
 c     --- Hard edge quadrupoles
