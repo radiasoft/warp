@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.201 $, $Date: 2005/04/30 17:41:01 $
+c@(#) File W3D.F, version $Revision: 3.202 $, $Date: 2005/05/10 16:36:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1354,8 +1354,10 @@ c     call zeroarry (bendradi,nparpgrp)
       bendradi = 0.
 
 c  Zero the moments if center is synchv
-      if ((center == "synchv" .or. center == "gen" ).and. npmax>0) then
-        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+      if (center == "synchv" .or. center == "gen") then
+c       --- 0. is passed in as a dummy for all of the particles coordinates
+c       --- which are not used at this time.
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
      &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
@@ -1759,7 +1761,7 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
 
 c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
-      if ((center == "synchv" .or. center == "gen") .and. npmax>0) then
+      if (center == "synchv" .or. center == "gen") then
 #ifdef _OPENMP
         tempmaxp = max(tempmaxp,maxval(threadmaxp(:,1:nthread),3))
         tempminp = min(tempminp,minval(threadminp(:,1:nthread),3))
@@ -1767,7 +1769,7 @@ c     ---  Do final stuff for moments calculation
         tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
         deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
-        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
      &                sq(1),sm(1),sw(1),halfdt,3,nplive,uxpo,uypo,uzpo,
      &                1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         call getlabwn()
