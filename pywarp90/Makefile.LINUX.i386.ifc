@@ -1,22 +1,24 @@
 ARCH = LINUX
 MACHINE = LINUX
 HOME = /home/dave
-PYVERS = 2.1
-PYTHON = /usr/local
-PYWRAPPERHOME = $(HOME)/pywrapper
+PYVERS = 2.2
+PYTHON = /usr
+PYWRAPPERHOME = ./pywrapper
 PYWRAPPERARGS =
 PROF = #-Mprof=lines
-#OPT = -O3 -xK -tpp6 -ip -unroll -prefetch # for Pentium III
-OPT = -O3 -xW -tpp7 -ip -unroll -prefetch # for Pentium IV
-#OPT = -g
+OPT = -g -O3 -xK -tpp6 -ip -unroll -prefetch # for Pentium III
+#OPT = -O3 -xW -tpp7 -ip -unroll -prefetch # for Pentium IV
 POPT = -O0
-PYMODULEOPT = -O1
+PYMODULEOPT = -O0
+OPT = -g
+POPT = -g
+PYMODULEOPT = -g
 WITHCHP = #-DWITHCHP
-F90FREE  = ifc -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
-F90FIXED = ifc -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
+F90FREE  = ifort -free -r8 -DIFC -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
+F90FIXED = ifort -132 -r8 -DIFC -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
 CC = cc
 SO = so
-LD = ifc -Bdynamic -132 -r8 -C90 -Zp8 $(ARGS) $(OPT)
+LD = ifort -nofor_main -Bdynamic -132 -r8 -C90 -Zp8 $(ARGS) $(OPT)
 EXPORT = -Qoption,ld,-export-dynamic
 FORTLIB =
 LINKLIB = -ldl -lutil -lpthread
@@ -28,14 +30,16 @@ LAPACKLIB = -L/home/dave/lapack_ifc/LAPACK -llapackifc -lblasifc
 NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
 OLD = OLD1
 
+# Add Chombo package
 CHPLIBS = #-L/home/dave/Chombo/Chombo/lib -lpic3d.Linux.icc.ifc -lparticletools3d.Linux.icc.ifc -lamrnodeelliptic3d.Linux.icc.ifc -larrayview3d.Linux.icc.ifc -lamrtools3d.Linux.icc.ifc -lboxtools3d.Linux.icc.ifc -lintrins -lhdf5
 
-WARPSCRIPTS = $(HOME)/scripts
+WARPSCRIPTS = $(HOME)/scriptsnew
 OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB) $(CHPLIBS)
-OTHERSOS = 
+OTHERSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/Numeric/*.so \
+	   $(PYTHON)/lib/python$(PYVERS)/site-packages/Numeric/*/*.so
 
 warp: warpC.$(SO)
-	#cp warpC.$(SO) $(WARPSCRIPTS)
+	mv warpC.$(SO) $(WARPSCRIPTS)
 
 static: build_static
 
@@ -47,7 +51,7 @@ build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
 	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
-	cc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
+	icc -g -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
 	$(LD) -shared -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
 	$(RNGOBJ) $(OTHERLIBS)
 
