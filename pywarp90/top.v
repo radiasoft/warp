@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.142 $, $Date: 2005/04/27 17:06:19 $
+#@(#) File TOP.V, version $Revision: 3.143 $, $Date: 2005/05/10 16:35:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.142 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.143 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1720,6 +1720,11 @@ ihcurrz integer /1/          # Multiplier for hcurrz memory size (autoset)
 hcurrz(0:nzzarr*ihcurrz,0:lenhist,0:nszarr)  _real [m/s]
             limited (0:nzzarr,0:jhist,0:nszarr)
             +zhist           # Current versus space and time
+lhpnumz logical /.false./    # Turns on history of particle number
+ihpnumz integer /0 /         # Multiplier for hpnumz memory size (autoset)
+hpnumz(0:nzmmnt*ihpnumz,0:lenhist,0:nshist)  _real [m-r]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # Simulation particle number
 lhepsxz logical /.false./    # Turns on history of X emittance
 ihepsxz integer /0 /         # Multiplier for hepsxz memory size (autoset)
 hepsxz(0:nzmmnt*ihepsxz,0:lenhist,0:nshist)  _real [m-r]
