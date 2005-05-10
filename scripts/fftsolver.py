@@ -377,9 +377,9 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       top.bgrdnz = w3d.nz
       top.bgrdns = 1
       gchange('BGRDdata')
-      top.bgrddx[0] = w3d.dx
-      top.bgrddy[0] = w3d.dy
-      top.bgrddz[0] = w3d.dz
+      top.bgrddx[0] = (w3d.xmmax - w3d.xmmin)/w3d.nx
+      top.bgrddy[0] = (w3d.ymmax - w3d.ymmin)/w3d.ny
+      top.bgrddz[0] = (w3d.zmmax - w3d.zmmin)/w3d.nz
 
       resetlat()
       setlatt()
@@ -432,11 +432,9 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       # --- Fill in the bgrd arrays
       vz = top.vbeam_s[self.beamspecies]
       phib = self.beamsolver.phi[:,:,1:-1]
-      Az = -vz*eps0*mu0*phib
-      print 'start',shape(top.bgrdbx)
+      Az = +vz*eps0*mu0*phib
       top.bgrdbx[:,1:-1,:,0] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-      top.bgrdby[:,1:-1,:,0] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
-      print 'done'
+      top.bgrdby[1:-1,:,:,0] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
 
       # --- Sum the phi's
 
