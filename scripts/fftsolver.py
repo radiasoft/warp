@@ -225,6 +225,7 @@ class FieldSolver3dBase(object):
   def getselfe(self,recalculate=0):
     if type(self.selfe) != ArrayType:
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+      recalculate = 1
     if recalculate:
       getselfe3d(self.phi,self.nx,self.ny,self.nz,
                  self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
@@ -337,18 +338,51 @@ class FFTSolver2d(FieldSolver3dBase):
 
 ##############################################################################
 class RelativisticFFTSolver2d(object):
+  """
+Transverse 2-D field solver, ignores self Ez and Bz.
+  beamspecies=0:
+  backgroundspecies=[]:
+  ignorebeamez=1:
+  ignorebackgroundez=1:
+  useselfb=0: When true, use B fields directly rather that just E/gamma**2
+  """
   def __init__(self,beamspecies=0,backgroundspecies=[],
-                    ignorebeamez=1,ignorebackgroundez=1,**kw):
+                    ignorebeamez=1,ignorebackgroundez=1,
+                    useselfb=0,**kw):
 
     self.beamspecies = beamspecies
     self.backgroundspecies = backgroundspecies
     self.ignorebeamez = ignorebeamez
     self.ignorebackgroundez = ignorebackgroundez
+    self.useselfb = useselfb
 
     # --- Create separate solvers for the two particle types and initialize them
     self.beamsolver = FFTSolver2d(**kw)
     if len(self.backgroundspecies) > 0:
       self.backgroundsolver = FFTSolver2d(**kw)
+
+    if self.useselfb:
+      # --- Create bgrd element the same size as the field grid.
+      # --- !!!! This assumes that there are no other bgrd elements !!!!
+      top.nbgrd = 0
+      gchange("Lattice")
+      top.bgrdzs[0] = w3d.zmmin
+      top.bgrdze[0] = w3d.zmmax
+      top.bgrdxs[0] = w3d.xmmin
+      top.bgrdys[0] = w3d.ymmin
+      top.bgrdid[0] = 1
+
+      top.bgrdnx = w3d.nx
+      top.bgrdny = w3d.ny
+      top.bgrdnz = w3d.nz
+      top.bgrdns = 1
+      gchange('BGRDdata')
+      top.bgrddx[0] = w3d.dx
+      top.bgrddy[0] = w3d.dy
+      top.bgrddz[0] = w3d.dz
+
+      resetlat()
+      setlatt()
 
     # --- Make the w3d arrays point to the ones in the beamsolver.
     # --- That was an arbitrary choice.
@@ -393,32 +427,55 @@ class RelativisticFFTSolver2d(object):
     if len(self.backgroundspecies) > 0:
       self.backgroundsolver.solve()
 
-    # --- Setup the phi's for with the proper accounting
-    # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
-    # --- The background gets the sum of the beam and background phi's
+    if self.useselfb:
+      
+      # --- Fill in the bgrd arrays
+      vz = top.vbeam_s[self.beamspecies]
+      phib = self.beamsolver.phi[:,:,1:-1]
+      Az = -vz*eps0*mu0*phib
+      print 'start',shape(top.bgrdbx)
+      top.bgrdbx[:,1:-1,:,0] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+      top.bgrdby[:,1:-1,:,0] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
+      print 'done'
 
-    # --- First make a copy of the beam's phi since it is overwritten below
-    # --- The operations below are faster when the arrays are in C ordering
-    if len(self.backgroundspecies) > 0:
-      tbeamphitemp = transpose(self.beamsolver.phi.copy())
-      tbeackgroundphi = transpose(self.backgroundsolver.phi)
+      # --- Sum the phi's
 
-    tbeamphi = transpose(self.beamsolver.phi)
+      # --- The operations below are faster when the arrays are in C ordering
+      if len(self.backgroundspecies) > 0:
+        tbeackgroundphi = transpose(self.backgroundsolver.phi)
+        tbeamphi = transpose(self.beamsolver.phi)
 
-    # --- Calculate gammabar, avoiding roundoff from subtraction of
-    # --- similar numbers
-    js = self.beamspecies
-    ke = jperev*top.ekin_s[js]/dvnz(top.aion_s[js]*amu*clight**2)
-    gammabar = 1. + ke
+        add(tbeamphi,tbeackgroundphi,tbeamphi)
+        tbeackgroundphi[...] = tbeamphi
 
-    # --- Now calculate the beam's phi in place
-    multiply(tbeamphi,1./gammabar**2,tbeamphi)
-    if len(self.backgroundspecies) > 0:
-      add(tbeamphi,tbeackgroundphi,tbeamphi)
+    else:
 
-    if len(self.backgroundspecies) > 0:
-      # --- Sum the phi's for the background
-      add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
+      # --- Setup the phi's for with the proper accounting
+      # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
+      # --- The background gets the sum of the beam and background phi's
+
+      # --- First make a copy of the beam's phi since it is overwritten below
+      # --- The operations below are faster when the arrays are in C ordering
+      if len(self.backgroundspecies) > 0:
+        tbeamphitemp = transpose(self.beamsolver.phi.copy())
+        tbeackgroundphi = transpose(self.backgroundsolver.phi)
+
+      tbeamphi = transpose(self.beamsolver.phi)
+
+      # --- Calculate gammabar, avoiding roundoff from subtraction of
+      # --- similar numbers
+      js = self.beamspecies
+      ke = jperev*top.ekin_s[js]/dvnz(top.aion_s[js]*amu*clight**2)
+      gammabar = 1. + ke
+
+      # --- Now calculate the beam's phi in place
+      multiply(tbeamphi,1./gammabar**2,tbeamphi)
+      if len(self.backgroundspecies) > 0:
+        add(tbeamphi,tbeackgroundphi,tbeamphi)
+
+      if len(self.backgroundspecies) > 0:
+        # --- Sum the phi's for the background
+        add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
 
   def fetche(self):
 
