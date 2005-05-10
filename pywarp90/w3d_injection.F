@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.26 $, $Date: 2005/04/27 00:40:16 $
+c@(#) File w3d_injection.F, version $Revision: 1.27 $, $Date: 2005/05/10 16:37:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -180,7 +180,7 @@ c           --- is over an elliptical surface
 c           --- Transform the positions into a Gaussian if distrbtn is GA0
             if (distrbtn == "GA0") then
               do ip = 1,nn
-                rt(ip) = -log(rt(ip))
+                rt(ip) = -0.5*log(rt(ip))
               enddo
             endif
 
