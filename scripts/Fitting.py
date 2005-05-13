@@ -1,5 +1,4 @@
-"""Least squares fitting function.
-Module Fitting.py
+""" Module Fitting.py
 
 by:      Rami A. Kishek
 Created: July 17, 2001
@@ -10,7 +9,7 @@ This module contains the following fitting functions of general use:
 
 lsqfit ... Least Squares fit of a straight line to approximate a set of pts.
 """
-Fitting_version = "$Id: Fitting.py,v 1.3 2003/08/07 19:00:57 dave Exp $"
+Fitting_version = "$Id: Fitting.py,v 1.4 2005/05/13 06:02:04 ramiak Exp $"
 import Numeric
 
 def Fittingdoc():
