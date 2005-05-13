@@ -30,7 +30,7 @@ from rami_scripts import *
 from Fitting import *
 import __main__, os, sys
 
-postrack_version = "$Id: postrack.py,v 1.2 2002/08/14 21:08:45 ramiak Exp $"
+postrack_version = "$Id: postrack.py,v 1.3 2005/05/13 06:04:13 ramiak Exp $"
 def postrackdoc():
   import postrack
   print postrack.__doc__

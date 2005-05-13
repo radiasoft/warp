@@ -3,7 +3,7 @@ Module orbitrack.py
 by Rami A. Kishek
 Created: May 29, 2001
 
-Last Modified: Jan 30, 2002
+Last Modified: 11/30/04
 
 Need to define a few variables before importing this function:
     'nrun' = # of steps to run
@@ -24,7 +24,7 @@ import __main__
 from rami_scripts import *
 import getzmom
 
-orbitrack_version = "$Id: orbitrack.py,v 1.2 2002/08/14 21:07:53 ramiak Exp $"
+orbitrack_version = "$Id: orbitrack.py,v 1.3 2005/05/13 06:04:12 ramiak Exp $"
 def orbitrackdoc():
   import orbitrack
   print orbitrack.__doc__
@@ -33,7 +33,7 @@ def orbitrackdoc():
 
 runid = arraytostr(top.runid)
 
-tvars = ["x_", "y_", "xp_", "yp_"]
+tvars = ["x_", "y_", "xp_", "yp_", "vz_"]
 colors = ["fg", "red", "blue", "green", "magenta", "cyan"]
 
 moms = def_vars1 + add_vars
@@ -41,24 +41,33 @@ nrun = __main__.__dict__["nrun"]
 try: num_part = __main__.__dict__["num_part"]
 except: num_part = 0
 
+### -- Important Keep lost particles so as not to screw up tracking of particle trajectories
+top.clearlostpart = 0
+
 # --- Allocate arrays for moments and trajectories
 
 for mom in moms:
     __main__.__dict__[mom+runid] = zeros((top.ns,(nrun/top.nhist)+1), 'd')
     __main__.__dict__["zscale"+runid] = zeros(((nrun/top.nhist)+1,), 'd')
 
-for var in tvars:
-    __main__.__dict__[var+runid] = zeros((top.ns,(nrun/top.nhist)+1,num_part), 'd')
+def init_traj(jslist=None):
+    """ initialize arrays for storing particle trajectories """
+    if jslist is None:  # Default is all species
+        jslist = range(0,top.ns)
+    for var in tvars:
+        __main__.__dict__[var+runid] = zeros((len(jslist),(nrun/top.nhist)+1,num_part), 'd')
 
 
 #============================================================================
 
-def find_trajects():
+def find_trajects(jslist=None):
     """ Extract particle trajectories """
+    if jslist is None:  # Default is all species
+        jslist = range(0,top.ns)
     for var in tvars:
-        for spec in range(0,top.ns):
+        for spec in range(0,len(jslist)):
             __main__.__dict__[var+runid][spec][top.it/top.nhist] = eval(
-                    "get"+var[:-1]+"(js="+`spec`+",iw=-1)[0:num_part]")
+                    "get"+var[:-1]+"(js="+`jslist[spec]`+",iw=-1)[0:num_part]")
 
 
 def save_trajects(crun="0"):
