@@ -1,5 +1,4 @@
-"""Generates Thermal KV distribution
-Module ParaKV.py
+"""Module ParaKV.py
 
  by: Rami A. Kishek
  Date: June 5, 2001
@@ -37,12 +36,12 @@ Module ParaKV.py
                 at the edge.
  test_T_prof ... function to check temperature profile.
  dualgauss  ... generates a dual-Guassian profile
- loadvels   ... loads a given temperature distribution
+ loadvels   ... loads a given velocity distribution
 """
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.3 2003/08/07 19:00:57 dave Exp $"
+ParaKV_version = "$Id: ParaKV.py,v 1.4 2005/05/13 06:05:20 ramiak Exp $"
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__
