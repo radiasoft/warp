@@ -1,10 +1,10 @@
-"""Generate B field data for solenoids for bgrd element
+"""
 # Module b_fields.py
 #
 # by: Rami A. Kishek (based on algorithm by I. Haber)
 # created: September 22, 2000
 #
-#	Last Modified: Jan. 16, 2001
+#	Last Modified: Jan. 5, 2005
 #
 # This script provides the following functions used in to generate
 # bgrd data for solenoids using a formula
@@ -17,11 +17,12 @@
 #
 #   plot_bofz	... Plot magnetic field of brgd elements vs z
 #   plot_bofx	... Plot magnetic field of brgd elements vs x
+#   plot_bofy	... Plot magnetic field of brgd elements vs y
 #   comp_bofz   ... Plots comparisons of different bgrdids
 #
 # ==================
 """
-b_fields_version = "$Id: b_fields.py,v 1.3 2003/08/07 19:00:58 dave Exp $"
+b_fields_version = "$Id: b_fields.py,v 1.4 2005/05/13 06:01:16 ramiak Exp $"
 from warp import *
 from rami_scripts import *
 
@@ -261,7 +262,49 @@ yplot, zplot define coords of desired plot axis
     plg( yoffset+yscale*top.bgrdbz[:,iiy,iiz,nspec],
                                 xoffset+xscale*xgrd[:], marker="z", type="dash")
     if titles:  ptitles(titlet, titleb, titlel, titler)
-	#
+    #
+    fma()
+
+#===========
+
+def plot_bofy(nspec=0, xplot=0, zplot=0, plot_title="", kwdict={},  **kw):
+    """ plot_bofy(nspec=0, xplot=0, zplot=0, plot_title="", kwdict={},  **kw)
+    Plots bgrd field of element species 'nspec' vs. axis // x
+yplot, zplot define coords of desired plot axis
+    - 'xscale': 100.
+    - 'xoffset': 0.0
+    - 'yscale': 1.0e4
+    - 'yoffset': 0.0
+    - 'width': 2.0
+    - 'marks': 1
+    - 'msize': 1.0
+    - 'titleb', 'titlel', 'titlet', 'titler'
+    - 'titles': 1
+    """
+    # --- Dictionary specifying plot defaults
+    pldef = {'xscale': 100., 'xoffset': 0.0, 'yscale': 1.0e4, 'yoffset': 0.0,
+             'width': 2.0, 'marks': 1, 'msize': 1.0,
+             'titleb': "X (cm)", 'titlel': "B (Gauss)",
+             'titlet': "B-field of Bgrd element vs. x", 'titler': "", 'titles': 1}
+    if plot_title <> "": pldef['titlet'] = plot_title
+    pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
+    for key in pldef.keys():    exec key+"=pldef['"+key+"']"
+    #
+    iiz = nint(zplot/top.bgrddz[nspec]) + nint(top.bgrdnz/2)
+    iix = nint(xplot/top.bgrddx[nspec]) + nint(top.bgrdnx/2)
+    #
+    # --- Calculate x positions in grid to use for plotting fields
+    ygrd = iota(-top.bgrdny/2, top.bgrdny/2)*top.bgrddy[nspec]
+    #
+    pldefault(width=width, marks=marks, msize=msize)
+    plg( yoffset+yscale*top.bgrdbx[iix,:,iiz,nspec],
+                                xoffset+xscale*ygrd[:], marker="x", type="solid")
+    plg( yoffset+yscale*top.bgrdby[iix,:,iiz,nspec],
+                                xoffset+xscale*ygrd[:], marker="y", type="dot")
+    plg( yoffset+yscale*top.bgrdbz[iix,:,iiz,nspec],
+                                xoffset+xscale*ygrd[:], marker="z", type="dash")
+    if titles:  ptitles(titlet, titleb, titlel, titler)
+    #
     fma()
 
 #===========
@@ -303,7 +346,7 @@ xplot, yplot define coords of desired plot axis
     plg( yoffset+yscale*top.bgrdbz[iix,iiy,:,nspec],
                                 xoffset+xscale*zgrd[:], marker="z", type="dash")
     if titles:  ptitles(titlet, titleb, titlel, titler)
-	#
+    #
     fma()
 
 #===========

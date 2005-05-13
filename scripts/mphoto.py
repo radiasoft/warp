@@ -4,7 +4,7 @@
 # by: Agust Valfells
 # created: Sep. 22, 2000
 #
-#	Last Modified: 3/1/2002
+#	Last Modified: 4/20/2005
 #
 # Set of functions to generate tif photos and other goodies from
 # 'rho' arrays in WARP, processed to look like experiment pictures.
@@ -20,7 +20,6 @@
 #   but are available for use in partial processing:
 # median_filter ... Provides median filtering capability of the photo
 # unfold    ... unfolds the symmetry of the 'rho' information
-# save_tif ...  Saves photo array into 'tif' file
 # ==================
 """
 #===========
@@ -29,8 +28,9 @@
 yes = 1; no = 0
 from warp import *
 import Numeric, os, string
+from tifrw import *
 
-mphoto_version = "$Id: mphoto.py,v 1.2 2002/08/14 21:07:04 ramiak Exp $"
+mphoto_version = "$Id: mphoto.py,v 1.3 2005/05/13 06:02:44 ramiak Exp $"
 def mphotodoc():
   import mphoto
   print mphoto.__doc__
@@ -144,29 +144,49 @@ and 4 for 4-fold -> unfold over x and y)
 	return photo_array
 
 
-################## Save Array to Tif ##########################################
+# ################## Save Array to Tif ##########################################
+# 
+# def save_tif(matrix, filename = None):
+#     """ save_tif(matrix, filename = "temp.tif")
+#     Saves a 2-D array "matrix" into a tif picture file.
+#     """
+#     S = Numeric.ravel(matrix)
+#     M,N = Numeric.shape(matrix)
+# 
+#     min_val = float(Numeric.minimum.reduce(S))
+#     max_val = float(Numeric.maximum.reduce(S))
+#     if max_val <> min_val:
+#         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
+#     matrix = matrix.astype('b')					#Convert to binary
+#     matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
+# 
+#     if filename is None:    filename = "temp.tif"
+# 
+#     tif = "P5\n#TIF version of array\n%d %d\n255\n%s" % (M, N,
+#                                 Numeric.ravel(matrix).tostring())
+#     f_tif = open(filename,'wb')
+#     f_tif.write(tif)
+#     f_tif.close()
+# 
+# ################## Read Array from Tif ##########################################
+# 
+# def read_tif(phpath):
+#     """ read_tif(phpath): read tif photo speicified by phpath and
+#         return as a 2-D array
+#     """
+#     f_tif = open(phpath,'rb')
+#     tif = f_tif.read()
+#     f_tif.close()
+#     #
+#     header, matrix = tif.split('\n255\n')
+#     dims = tuple([int(s) for s in header.split('\n')[-1].split()])
+#     #
+#     matrix = Numeric.array(list(matrix))
+#     matrix = Numeric.reshape(matrix, dims)
+#     dummy  = matrix.astype('l')
+#     matrix = Numeric.where(dummy<0, dummy+255, dummy)
+#     return Numeric.transpose(matrix), dims
 
-def save_tif(matrix, filename = None):
-    """ save_tif(matrix, filename = "temp.tif")
-    Saves a 2-D array "matrix" into a tif picture file.
-    """
-    S = Numeric.ravel(matrix)
-    M,N = Numeric.shape(matrix)
-
-    min_val = float(Numeric.minimum.reduce(S))
-    max_val = float(Numeric.maximum.reduce(S))
-    if max_val <> min_val:
-        matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
-    matrix = matrix.astype('b')					#Convert to binary
-    matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
-	
-    if filename is None:    filename = "temp.tif"
-	
-    tif = "P5\n#TIF version of array\n%d %d\n255\n%s" % (M, N,
-                                Numeric.ravel(matrix).tostring())
-    f_tif = open(filename,'wb')
-    f_tif.write(tif)
-    f_tif.close()
 
 ########################### Info File ################################################
 
