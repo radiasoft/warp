@@ -2,7 +2,7 @@
 # by: Rami A. Kishek    (some functions based on Grote's scripts)
 # created: Aug. 30, 2000
 #
-#	Last Modified: 5/12/2005
+#	Last Modified: 5/13/2005
 #
 # Contains many convenience functions used in Rami's Python Input decks
 # and other modules:
@@ -60,7 +60,7 @@ MODS #####################################
 
 11/19/04 - fixed dispersion functions
 5/11/05  - added relative plotting option
-5/12/05  - partially fixed hepsd calc expressions
+5/13/05  - partially fixed hepsd calc expressions
 """
 #===========
 # GLOBALS + INITIALIZATION
@@ -73,7 +73,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.4 2005/05/13 06:10:16 ramiak Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.5 2005/05/13 15:33:53 ramiak Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
@@ -250,7 +250,7 @@ def calc_mom(l3d=no, lhist=no):
 
     # --- Dispersion moments
     hdisp    = m["vzbar"]*(m["xvzbar"]-(m["xbar"]*m["vzbar"]))/(m["vzrms"])**2
-    print "rms Dispersion", sqrt(sum(sum(hdisp**2)))/top.it
+    print "ave Dispersion", ave(hdisp[0,:])
 
     # --- hepsnd
 
@@ -266,7 +266,7 @@ def calc_mom(l3d=no, lhist=no):
     hDpd  = (m["vxvzbar"]-(m["vxbar"]*m["vzbar"]))/(m["vzrms"])
 
     hepsd = sqrt(((m["xrms"]**2)-(hDd**2)) * (m["vxrms"]**2-(hDpd**2)) -
-                 (m["xvxbar"]-m["xbar"]*m["vxbar"]-hDd*hDpd)**2 )*4.0/(m["vzbar"]*top.gammabar)
+                 (m["xvxbar"]-m["xbar"]*m["vxbar"]-hDd*hDpd)**2 )*4.0/m["vzbar"]
 
 
 # ==================
