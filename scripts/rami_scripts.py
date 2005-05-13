@@ -2,7 +2,7 @@
 # by: Rami A. Kishek    (some functions based on Grote's scripts)
 # created: Aug. 30, 2000
 #
-#	Last Modified: 7/31/2002
+#	Last Modified: 5/12/2005
 #
 # Contains many convenience functions used in Rami's Python Input decks
 # and other modules:
@@ -42,7 +42,7 @@
 #   plot_linechg	... Plot Line Charge as function of t
 #   plot_rot	... Plot beam rotation angle
 #   plot_remit  ... Plot generalized Emittances with rotations, Eg, Eh
-#   plot_disp	... Plot dispersion function < x * (uzp-vz)/vz >
+#   plot_disp	... Plot dispersion function vz * < x * (uzp-vz) > / < (uzp-vz)^2 >
 #   plot_demit  ... Plot generalized Emittance with dispersion, Ed, Ed2
 #   plot_comp	... Compare several runs
 #   comp_exp    ... Compares Current Run to Experimental Output of UMERBeam.m
@@ -55,6 +55,12 @@
 # OPTIONAL:
 #   save_multi  ... Save multiple runs with multiple random seeds
 # ==================
+
+MODS #####################################
+
+11/19/04 - fixed dispersion functions
+5/11/05  - added relative plotting option
+5/12/05  - partially fixed hepsd calc expressions
 """
 #===========
 # GLOBALS + INITIALIZATION
@@ -67,7 +73,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.3 2005/01/12 17:17:40 dave Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.4 2005/05/13 06:10:16 ramiak Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
@@ -78,11 +84,11 @@ def_vars1 = ["hpnum", "hvzbar", "hvzrms",
 def_vars2 = ["zscale", "nx", "ny", "xmmax", "ymmax"]
 def_vars =  def_vars1 + def_vars2
 add_vars = ["hepsg", "hepsh"]                   # -- saved if _long
-add_hmom = ["hepsd", "hepsd2", "hdisp", "hrot"] # -- calculated using calc_mom
+add_hmom = ["hepsd", "hdisp", "hrot"]           # -- calculated using calc_mom
 
 # -- Moments required to calculate additional moments:
-req_mom  = ["vzbar", "vzrms", "xvzbar", "vxvzbar", "xsqbar", "xpsqbar", "xxpbar",
-	        "xybar", "xbar", "ybar", "xrms", "yrms"]
+req_mom  = ["vzbar", "vzrms", "xvzbar", "vxvzbar", "xsqbar", "xpsqbar", "xxpbar", "epsnx",
+	        "xybar", "xbar", "ybar", "xrms", "yrms", "vxbar", "vxrms"]  #"xvxbar", "vxsqbar"
 
 #===========
 
@@ -171,9 +177,9 @@ def make_nice_output(nwin=0, *files):
     """ make_nice_output(nwin=0, *files)
 	# --- Generate nice ouput to the terminal and any extra files """
 
-    oneliner = "it = %5d zbeam = %9.5f 2*xrms = %7.2f xbar = %6.2f emity = %7.2f nplive = %8d\n" %\
-                (top.it,top.zbeam-aper_dist, 2.0*top.xrms[nwin,-1]*1.e3, top.xbar[nwin]*1.e3,
-                 top.epsy[nwin]*1.e6, top.nplive)
+    oneliner = "it = %5d zbeam = %9.5f 2*yrms = %7.2f xbar = %6.2f emitx = %7.2f nplive = %8d\n" %\
+                (top.it,top.zbeam-aper_dist, 2.0*top.yrms[nwin]*1.e3, top.xbar[nwin]*1.e3,
+                 top.epsx[nwin]*1.e6, top.nplive)
     files = (sys.stdout,)+files         # Write to terminal
     for fid in files:
         fid.write(oneliner)
@@ -199,27 +205,29 @@ def init_cmom(l3d=yes, lhist=yes, lcalc_mom=yes):
     Saves histories of proper moments needed for additional moment calculation
     using calc_mom().
     """
-    if l3d and lhist:
-        top.lhvzofz = true
-        for mom in def_vars1[1:]:
-            exec "top.l"+mom+"z = true"
-        if lcalc_mom:
-          for mom in req_mom[0:]:
-            exec "top.lh"+mom+"z = true"
-          for mom in add_vars:
-            exec "top.l"+mom+"z = true"
+    if lhist:
+        if l3d:
+            top.lhvzofz = true
+            for mom in def_vars1[1:]:
+                exec "top.l"+mom+"z = true"
+            if lcalc_mom:
+                for mom in req_mom[0:]:
+                    exec "top.lh"+mom+"z = true"
+                for mom in add_vars:
+                    exec "top.l"+mom+"z = true"
+#         elif lcalc_mom:
+#             for mom in req_mom[0:]:
+#                 exec "top.lh"+mom+" = true"
+
 
 #===========
 
 def calc_mom(l3d=no, lhist=no):
     """ calc_mom(l3d=no, lhist=no)
-    <WARNING: THERE IS A BUG HERE -> NEEDS FIXING>
     # To be invoked at end of run; l3d=yes for zmoments;
     #   lhist=yes for history of z-mom (BE SURE to INVOKE init_cmom() at start of run)
 	# Calculates:
-	#		hepsd2 = emittance conserved in dispersion
-	#		hepsd  = emittance conserved in dispersion
-	# 				 (Simplified expression: <x'*delta> ~ D' ~ 0)
+	#		hepsd = emittance conserved in dispersion
 	#		hdisp  = Dispersion moment <x*delta>/<delta^2>
 	#       hepsg, hepsh = Generalized emits w/ QROT
 	#       hrot   = Beam rotation angle
@@ -235,17 +243,31 @@ def calc_mom(l3d=no, lhist=no):
     for mom in req_mom:
         m[mom] = eval("top."+pre+mom+suf)
     if lhist and l3d:   m["vzbar"] = m["vzof"]
-    # --- Dispersion moments
-    hdisp    = m["xvzbar"]*m["vzbar"]/(m["vzrms"])**2
-    hxpvzbar = m["vxvzbar"]/m["vzbar"]
-    hxbydel  = m["xvzbar"]/m["vzrms"]
-    hxpbydel = hxpvzbar/m["vzrms"]
-    hepsd  = 4.*sqrt((m["xsqbar"]-(hxbydel)**2)*(m["xpsqbar"]) - (m["xxpbar"])**2)
-    hepsd2 = 4.*sqrt((m["xsqbar"]-(hxbydel)**2)*(m["xpsqbar"]-(hxpbydel**2)) -
-     				 (m["xxpbar"]-(hxbydel*hxpbydel))**2)
+
     # --- Rotation Moments
     hdxy = m["xybar"] - (m["xbar"]*m["ybar"])
     hrot = 0.5*arctan(2*hdxy/(m["xrms"]**2-m["yrms"]**2))
+
+    # --- Dispersion moments
+    hdisp    = m["vzbar"]*(m["xvzbar"]-(m["xbar"]*m["vzbar"]))/(m["vzrms"])**2
+    print "rms Dispersion", sqrt(sum(sum(hdisp**2)))/top.it
+
+    # --- hepsnd
+
+    # --- Code to correct for missing moments
+    m["vxsqbar"] = (m["vxrms"]**2) + (m["vxbar"]**2)
+    if "hxvxbar" in dir(top):   m["xvxbar"] = top.hxvxbar   #!! NEEDS FIXING
+    elif "hxvxbar" in dir(__main__): m["xvxbar"] = __main__.hxvxbar
+    else:
+        print "\n\n!! You are making an inaccurate assumption about 'xvxbar' !!\n\n"
+        m["xvxbar"] = m["xxpbar"]*m["vzbar"]
+
+    hDd   = (m["xvzbar"] - (m["xbar"]*m["vzbar"]))/(m["vzrms"])
+    hDpd  = (m["vxvzbar"]-(m["vxbar"]*m["vzbar"]))/(m["vzrms"])
+
+    hepsd = sqrt(((m["xrms"]**2)-(hDd**2)) * (m["vxrms"]**2-(hDpd**2)) -
+                 (m["xvxbar"]-m["xbar"]*m["vxbar"]-hDd*hDpd)**2 )*4.0/(m["vzbar"]*top.gammabar)
+
 
 # ==================
 
@@ -262,6 +284,7 @@ def seek_name(var, l3d=no, lhist=no):
         if var == "hvzbar":
             try:                return "transpose(top.hvzbarz)"
             except NameError:   return "transpose(top.hvzofz)"
+        if var == "hzbeam":     return "top.hzbeam"
         if var == "hpnum":      return "top.pnumz"
         if var == "hlinechg":   return "transpose(top.hlinechg)"
         if var == "hcurr":      return "transpose(top.hcurrz)"
@@ -276,15 +299,15 @@ def seek_name(var, l3d=no, lhist=no):
 
 # ==================
 
-def save_data(crun="0", vars=def_vars, l3d=no, lhist=no):
-    """ save_data(crun="0", vars=def_vars, l3d=no, lhist=no)
-	#   Uses PW.PW routine to save vars in pdb format.
-	#       default vars stored in list 'def_vars'
-	#	Read output using
-	#       restore("filename.pdb")
-	#   or
-	#		out = PR.PR("filename.pdb")
-	#		out.???
+def save_data(crun="0", vars=def_vars, l3d=no, lhist=no, llw=no):
+    """ save_data(crun="0", vars=def_vars, l3d=no, lhist=no, llw=no)
+    #   Uses PW.PW routine to save vars in pdb format.
+    #       default vars stored in list 'def_vars'
+    #   Read output using
+    #       restore("filename.pdb")
+    #   or
+    #       out = PR.PR("filename.pdb")
+    #       out.???
     """
     runid = arraytostr(top.runid)
     outfile = PW.PW("data."+runid+crun+".pdb")
@@ -292,20 +315,32 @@ def save_data(crun="0", vars=def_vars, l3d=no, lhist=no):
     for vname in vars:
         __main__.__dict__[vname+runid] = eval(seek_name(vname, l3d, lhist))
         outfile.write( vname+runid, eval(vname+runid, __main__.__dict__) )
+    if llw:     # Lab Windows used
+        for vname in ['hlinechg', 'hcurr', 'htime']+def_vars1:
+            __main__.__dict__[vname[1:]+'lw'+runid] = eval('transpose(top.'+vname[1:]+'lw)')
+            outfile.write( vname[1:]+'lw'+runid, eval(vname[1:]+'lw'+runid, __main__.__dict__) )
+#        __main__.__dict__["timelw"+runid] = eval('transpose(top.timelw)')
+#        outfile.write( 'timelw'+runid, eval('timelw'+runid, __main__.__dict__) )
+        __main__.__dict__["ESPREADlw"+runid] = transpose(eval(
+            '(emass/echarge)*(top.vzbarlw*top.vzrmslw)' ))
+        outfile.write( 'ESPREADlw'+runid, eval('ESPREADlw'+runid, __main__.__dict__) )
+        __main__.__dict__["ekinlw"+runid] = transpose(eval(
+            '0.5*(emass/echarge)*(top.vzbarlw**2)' ))
+        outfile.write( 'ekinlw'+runid, eval('ekinlw'+runid, __main__.__dict__) )
     outfile.close()
 
 # ==================
 
-def save_data3(crun="0", vars=def_vars, lhist=no):
-    """ save_data3(crun="0", vars=def_vars, lhist=no)
+def save_data3(crun="0", vars=def_vars, lhist=no, llw=no):
+    """ save_data3(crun="0", vars=def_vars, lhist=no, llw=no)
         Same as save_data with l3d=yes, for 3D runs with zmoment mesh
     """
-    save_data(crun=crun, vars=vars, l3d=yes, lhist=lhist)
+    save_data(crun=crun, vars=vars, l3d=yes, lhist=lhist, llw=llw)
 
 # ==================
 
-def save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no):
-    """ save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no)
+def save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no, llw=no):
+    """ save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no, llw=no)
 	#   Uses PW.PW routine to save vars in pdb format.
 	#       default vars stored in variables 'def_vars' + 'add_vars'
 	#	Read output using
@@ -314,7 +349,7 @@ def save_long(crun="0", vars=def_vars+add_vars+add_hmom, l3d=no, lhist=no):
 	#		out = PR.PR("filename.pdb")
 	#		out.???
     """
-    save_data(crun, vars, l3d, lhist)
+    save_data(crun, vars, l3d, lhist, llw)
 
 #===========
 
@@ -332,10 +367,10 @@ def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
 	    strobe = # of points to be strobed (1)
     """
     # --- Dictionary specifying plot defaults
-    pldef = {'nwin': None, 'begin':0, 'strobe':1,
+    pldef = {'nwin': None, 'begin':0, 'end': -1, 'strobe':1,
              'type': "solid", 'color': 'fg', 'width': 2.0,
              'marks': 0, 'marker': None, 'msize': 1.0,
-             'logplot': no,
+             'logplot': no, 'lrel': 0,
              'xmin': 'e', 'xmax': 'e', 'ymin': 'e', 'ymax': 'e',
              'xscale': 1.0, 'xoffset': 0.0, 'yscale': 1.0, 'yoffset': 0.0,
              'titleb': "S (m)", 'titlel': "", 'titlet': "", 'titler': "", 'titles': 1}
@@ -348,7 +383,11 @@ def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
     if xaxis == "": xaxis = "zscale"
     if vars == ():  vars = ("hvzbar",)
     #
-    absc = xoffset + xscale*eval(xaxis+runid, __main__.__dict__)[...,  begin::strobe]
+    if (len(eval(xaxis+runid, __main__.__dict__).shape) > 1) and (nwin is not None) and (
+        eval(xaxis+runid, __main__.__dict__).shape[0] > 1):
+        absc = xoffset + xscale*eval(xaxis+runid, __main__.__dict__)[nwin,  begin:end:strobe]
+    else:
+        absc = xoffset + xscale*eval(xaxis+runid, __main__.__dict__)[...,  begin:end:strobe]
     for vname in vars:
         if 'x' in vname: marker = 'x'
         elif 'y' in vname: marker = 'y'
@@ -356,9 +395,12 @@ def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
         elif 'h' in vname[1:]:  marker = 'h'
         elif '2' in vname:  marker = '2'
         if nwin is None:
-            oord = yoffset + yscale*eval(vname+runid, __main__.__dict__)[ ..., begin::strobe]
+            ordinate = eval(vname+runid, __main__.__dict__)[ ..., begin:end:strobe]
         else:
-            oord = yoffset + yscale*eval(vname+runid, __main__.__dict__)[nwin, begin::strobe]
+            ordinate = eval(vname+runid, __main__.__dict__)[nwin, begin:end:strobe]
+        oord = yoffset + yscale*ordinate
+        if lrel:    # Plot ordinate relative to initial value
+            oord = oord/oord[..., 0]
         if logplot: oord = log(oord)
         plg( oord, absc, color=color, width=width, type=type,
              marks=marks, marker=marker, msize=msize )
@@ -380,6 +422,19 @@ def plot_env(runid=None,  kwdict={}, **kw):
 
 #===========
 
+def plot_xenv(runid=None,  kwdict={}, **kw):
+    """ plot_xenv(runid=None, kwdict={}, **kw)
+        Plots ENVS in x, using gen_plot
+    """
+    pldef = {'nwin': 0, 'marks': 1, 'yscale': 2.e3,
+             'titlel': "X,Y 2*RMS Envs (mm)", 'titlet': "Beam Envelope from"}
+    pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
+    try:    gen_plot(("hxrms",), "zscale", runid, pldef)
+    except NameError:
+        gen_plot(("xenv",), "zscale", runid, pldef, yscale=1.e3)
+
+#===========
+
 def plot_emit(runid=None,  kwdict={}, **kw):
     """ plot_emit(runid=None, kwdict={}, **kw)
         Plots EMITS in x and y, using gen_plot
@@ -392,6 +447,18 @@ def plot_emit(runid=None,  kwdict={}, **kw):
 
 #===========
 
+def plot_xemit(runid=None,  kwdict={}, **kw):
+    """ plot_xemit(runid=None, kwdict={}, **kw)
+        Plots EMITS in x, using gen_plot
+    """
+    pldef = {'nwin': 0, 'marks': 1, 'yscale': 1.e6,
+             'titlel': "X,Y 4*RMS Emits (mm-mr)", 'titlet': "Beam Emmittance from"}
+    pldef.update(kwdict);    pldef.update(kw)    # Override defaults & import new params
+    try:                gen_plot(("hepsx",), "zscale", runid, pldef)
+    except NameError:   gen_plot(("xemit",), "zscale", runid, pldef)
+
+#===========
+
 def plot_nemit(runid=None,  kwdict={}, **kw):
     """ plot_nemit(runid=None, kwdict={}, **kw)
         Plots NORMALIZED EMITS in x and y, using gen_plot
@@ -399,9 +466,6 @@ def plot_nemit(runid=None,  kwdict={}, **kw):
     pldef = {'nwin': 0, 'marks': 1, 'yscale': 1.e6,
              'titlel': "X,Y 4*RMS Emits (mm-mr)", 'titlet': "Beam Emmittance from"}
     pldef.update(kwdict);    pldef.update(kw)    # Override defaults & import new params
-    if runid is None:
-        runid = arraytostr(top.runid)
-        pldef['titlet'] = pldef["titlet"]+' '+runid
     gen_plot(("hepsx"+runid+"*hvzbar"+runid+"/clight",
               "hepsy"+runid+"*hvzbar"+runid+"/clight"),
               "zscale"+runid, runid="", kwdict=pldef)
@@ -489,7 +553,7 @@ def plot_ekin(runid=None,  kwdict={}, **kw):
     try:                vzb = eval("hvzbar"+runid, __main__.__dict__)
     except NameError:   vzb = eval("vzbar"+runid, __main__.__dict__)
     __main__.__dict__["ekin"+runid] = 0.5*(emass/echarge)*(vzb**2)
-    pldef = {'nwin': 0, 'titlel': "Ekin (eV)", 'titlet': "Ekin from"}
+    pldef = {'nwin': 0, 'titlel': "Ekin (eV)", 'titlet': "E_kin from"}
     pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
     gen_plot(("ekin", ), "zscale", runid, pldef)
 
@@ -523,7 +587,7 @@ def plot_remit(runid=None,  kwdict={}, **kw):
         Plots GEN EMITS w/ Rotation, Eg, Eh, using gen_plot
     """
     pldef = {'nwin': 0, 'marks': 1, 'yscale': 1.e6,
-             'titlel': "4*RMS Emits (mm-mr)", 'titlet': "Eg, Eh from"}
+             'titlel': "4*RMS Emits (mm-mr)", 'titlet': "E_g, E_h from"}
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
     try:                gen_plot(("hepsg", "hepsh"), "zscale", runid, pldef)
     except NameError:   gen_plot(("remit", "hemit"), "zscale", runid, pldef, nwin=None)
@@ -546,9 +610,9 @@ def plot_demit(runid=None, kwdict={}, **kw):
         Plots GEN EMIT w/ Dispersion in x, Ed (+Ed2), using gen_plot
     """
     pldef = {'nwin': 0, 'yscale': 1.e6,
-             'titlel': "4*RMS Emits (mm-mr)", 'titlet': "Ed, Ed2 from"}
+             'titlel': "4*RMS Emits (mm-mr)", 'titlet': "E_d from"}
     pldef.update(kwdict);  pldef.update(kw)    # Override defaults & import new params
-    gen_plot(("hepsd", "hepsd2"), "zscale", runid, pldef)
+    gen_plot(("hepsd",), "zscale", runid, pldef)
 
 #===========
 
@@ -600,18 +664,25 @@ def tablewrite(outfile, tdata, sep='\t', fmt="%12.8f"):
 #    tdata = map(lambda s : string.split(string.strip(s), sep), tdata)
 #    return array(map(lambda s:map(float,s),tdata))
 
-def tableread(expfile, sep='\t'):
-    """ tdata = tableread(expfile, sep='\t')
+def tableread(expfile, sep='\t', R1=0, C1=0):
+    """ tdata = tableread(expfile, sep='\t', R1=0, C1=0)
         Reads a table of numeric data in formatted txt file 'expfile',
         which contains the numbers in columns separated by separator 'sep'.
+        R1 and C1 are the first row and column to begin download
+        R2 and C2 are the last row and column
     """
     import string
     tdata = open(expfile, 'r').readlines()
+    for ii in range(0,R1): del tdata[ii]
     for line in tdata:
         lineno = tdata.index(line)
         line = string.split(string.strip(line), sep)
+        for ii in range(0,C1): del line[ii]
         tdata[lineno] = line
-        for el in line:  tdata[lineno][line.index(el)] = float(el)
+        for ii in range(0, len(line)):
+            el = line[ii]
+            if el == '': el = 0.0
+            tdata[lineno][ii] = float(el)
     return array(tdata, 'd')
 
 
