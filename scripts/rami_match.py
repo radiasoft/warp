@@ -19,7 +19,7 @@ from warp import *
 import LinearAlgebra
 import singleparticle
 
-rami_match_version = "$Id: rami_match.py,v 1.3 2005/01/12 17:17:40 dave Exp $"
+rami_match_version = "$Id: rami_match.py,v 1.4 2005/05/13 06:08:27 ramiak Exp $"
 def rami_matchdoc():
   import rami_match
   print rami_match.__doc__
@@ -54,10 +54,10 @@ average of the initial and final values
   if s is None:
     try: s = 2*nstpp
     except: s = 320
-  top.a0=0.5*(top.a0+2.*top.xrms[0,-1])
-  top.b0=0.5*(top.b0+2.*top.yrms[0,-1])
-  top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0,-1]/top.vbeam),top.ap0)
-  top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0,-1]/top.vbeam),top.bp0)
+  top.a0=0.5*(top.a0+2.*top.xrms[0])
+  top.b0=0.5*(top.b0+2.*top.yrms[0])
+  top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
+  top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
   print ("a0 = %9.6f b0 = %9.6f ap0 = %9.6f bp0 = %9.6f" %
          (top.a0, top.b0, top.ap0, top.bp0))
   for i in xrange(imtch):
@@ -65,14 +65,14 @@ average of the initial and final values
     step(s)
     print "-"*70
     print ("a error = %18.13e a' error = %18.13e"%
-      (2.*top.xrms[0,-1]-top.a0,2.*top.vxrms[0,-1]/top.vzbar[0]-abs(top.ap0)))
+           (2.*top.xrms[0]-top.a0,2.*top.vxrms[0]/top.vzbar[0]-abs(top.ap0)))
     print ("b error = %18.13e b' error = %18.13e"%
-      (2.*top.yrms[0]-top.b0,2.*top.vyrms[0]/top.vzbar[0]-abs(top.bp0)))
+           (2.*top.yrms[0]-top.b0,2.*top.vyrms[0]/top.vzbar[0]-abs(top.bp0)))
     print "-"*70
-    top.a0=0.5*(top.a0+2.*top.xrms[0,-1])
-    top.b0=0.5*(top.b0+2.*top.yrms[0,-1])
-    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0,-1]/top.vbeam),top.ap0)
-    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0,-1]/top.vbeam),top.bp0)
+    top.a0=0.5*(top.a0+2.*top.xrms[0])
+    top.b0=0.5*(top.b0+2.*top.yrms[0])
+    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
+    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
     print ("a0 = %9.6f b0 = %9.6f ap0 = %9.6f bp0 = %9.6f" %
            (top.a0, top.b0, top.ap0, top.bp0))
 
@@ -85,16 +85,16 @@ average of the initial and final values, then Y is set equal to X
   - s=128 the number of time steps across the region to be matched
   """
   for i in xrange(imtch):
-    top.a0=0.5*(top.a0+2.*top.xrms[0,-1]) #xrms[0,-1]+yrms[0,-1]
+    top.a0=0.5*(top.a0+2.*top.xrms[0]) #xrms[0]+yrms[0]
     top.b0=top.a0
-    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0,-1]/top.vbeam),top.ap0)
-    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0,-1]/top.vbeam),top.bp0)
+    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
+    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
     minit()
     step(s)
     print ("a error = %18.13e a' error = %18.13e"%
-           (2.*top.xrms[0,-1]-top.a0,2.*top.vxrms[0,-1]/top.vzbar[0]-top.ap0))
+           (2.*top.xrms[0]-top.a0,2.*top.vxrms[0]/top.vzbar[0]-top.ap0))
     print ("b error = %18.13e b' error = %18.13e"%
-           (2.*top.yrms[0,-1]-top.b0,2.*top.vyrms[0,-1]/top.vzbar[0]+top.bp0))
+           (2.*top.yrms[0]-top.b0,2.*top.vyrms[0]/top.vzbar[0]+top.bp0))
 
 
 # --- This is an unrelated function which can be used to calculate sigma0
