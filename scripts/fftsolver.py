@@ -2,6 +2,7 @@
 # ToDo:
 #  - ???
 from warp import *
+from lattice import addnewbgrd,addnewbsqgrad
 import MA
 
 ##############################################################################
@@ -363,39 +364,35 @@ Transverse 2-D field solver, ignores self Ez and Bz.
 
     if self.useselfb:
       # --- Create bgrd element the same size as the field grid.
-      # --- !!!! This assumes that there are no other bgrd elements !!!!
-      top.nbgrd = 0
-      gchange("Lattice")
-      top.bgrdzs[0] = w3d.zmmin
-      top.bgrdze[0] = w3d.zmmax
-      top.bgrdxs[0] = w3d.xmmin
-      top.bgrdys[0] = w3d.ymmin
-      top.bgrdid[0] = 1
+      w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
+      w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+      self.bgrdid = addnewbgrd(zs=w3d.zmmin,ze=w3d.zmmax,
+                               xs=w3d.xmmin,ys=w3d.ymmin,
+                               dx=w3d.dx,dy=w3d.dy,
+                               nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
 
-      top.bgrdnx = w3d.nx
-      top.bgrdny = w3d.ny
-      top.bgrdnz = w3d.nz
-      top.bgrdns = 1
-      gchange('BGRDdata')
-      top.bgrddx[0] = (w3d.xmmax - w3d.xmmin)/w3d.nx
-      top.bgrddy[0] = (w3d.ymmax - w3d.ymmin)/w3d.ny
-      top.bgrddz[0] = (w3d.zmmax - w3d.zmmin)/w3d.nz
+      if max(w3d.interpdk) > 0.:
+      # --- Create bsqgrad element the same size as the field grid.
+        self.bsqgradid = addnewbsqgrad(zs=w3d.zmmin,ze=w3d.zmmax,
+                                       xs=w3d.xmmin,ys=w3d.ymmin,
+                                       dx=w3d.dx,dy=w3d.dy,
+                                       nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
 
       resetlat()
       setlatt()
 
     # --- Make the w3d arrays point to the ones in the beamsolver.
     # --- That was an arbitrary choice.
-#   if (self.beamsolver.nx == w3d.nx and
-#       self.beamsolver.ny == w3d.ny and
-#       self.beamsolver.nz == w3d.nz):
-#     w3d.rho = self.beamsolver.rho
-#     w3d.phi = self.beamsolver.phi
-#     w3d.nxp = self.beamsolver.nx
-#     w3d.nyp = self.beamsolver.ny
-#     w3d.nzp = self.beamsolver.nz
-#     w3d.rhop = self.beamsolver.rho
-#     w3d.phip = self.beamsolver.phi
+    if (self.beamsolver.nx == w3d.nx and
+        self.beamsolver.ny == w3d.ny and
+        self.beamsolver.nz == w3d.nz):
+      w3d.rho = self.beamsolver.rho
+      w3d.phi = self.beamsolver.phi
+      w3d.nxp = self.beamsolver.nx
+      w3d.nyp = self.beamsolver.ny
+      w3d.nzp = self.beamsolver.nz
+      w3d.rhop = self.beamsolver.rho
+      w3d.phip = self.beamsolver.phi
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero:
@@ -421,20 +418,26 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       self.backgroundsolver.getrhoforfieldsolve()
 
 
-  def solve(self):
+  def calcbfieldsumphi(self):
+      # --- Calculate the B field from the phi from the beam and sum the phi's
+      # --- of the beam and background
+      # --- Also, calculate bsqgrad if needed
 
-    self.beamsolver.solve()
-    if len(self.backgroundspecies) > 0:
-      self.backgroundsolver.solve()
-
-    if self.useselfb:
-      
       # --- Fill in the bgrd arrays
       vz = top.vbeam_s[self.beamspecies]
       phib = self.beamsolver.phi[:,:,1:-1]
       Az = +vz*eps0*mu0*phib
-      top.bgrdbx[:,1:-1,:,0] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-      top.bgrdby[1:-1,:,:,0] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
+      id = self.bgrdid - 1
+      top.bgrdbx[:,1:-1,:,id] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+      top.bgrdby[1:-1,:,:,id] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
+
+      if top.bsqgradns:
+        id = self.bgrdid - 1
+        bsq = top.bgrdbx[...,id]**2 + top.bgrdbx[...,id]**2
+        id = self.bsqgradid - 1
+        top.bsqgrad[0,:,:,1:-1,id] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dz)
+        top.bsqgrad[1,1:-1,:,:,id] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dx)
+        top.bsqgrad[2,:,1:-1,:,id] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
 
       # --- Sum the phi's
 
@@ -446,9 +449,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
         add(tbeamphi,tbeackgroundphi,tbeamphi)
         tbeackgroundphi[...] = tbeamphi
 
-    else:
-
-      # --- Setup the phi's for with the proper accounting
+  def gammacorrectsumphi(self):
       # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
       # --- The background gets the sum of the beam and background phi's
 
@@ -474,6 +475,17 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       if len(self.backgroundspecies) > 0:
         # --- Sum the phi's for the background
         add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
+
+  def solve(self):
+
+    self.beamsolver.solve()
+    if len(self.backgroundspecies) > 0:
+      self.backgroundsolver.solve()
+
+    if self.useselfb:
+      self.calcbfieldsumphi()
+    else:
+      self.gammacorrectsumphi()
 
   def fetche(self):
 
