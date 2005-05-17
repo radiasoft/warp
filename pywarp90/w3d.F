@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.202 $, $Date: 2005/05/10 16:36:51 $
+c@(#) File W3D.F, version $Revision: 3.203 $, $Date: 2005/05/17 17:36:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3326,6 +3326,7 @@ c       --- Get number of particles to be loaded for this species.
         zmid = .5 * (zimax_s(is) + zimin_s(is)) + zbeam
         zlen = zimax_s(is) - zimin_s(is)
         zleni = 1./zlen
+        if (zlen == 0) zleni = 0.
         ip = ins(is) - 1
 !$OMP SINGLE
 #ifdef _OPENMP
