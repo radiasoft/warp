@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.50 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -5138,11 +5138,11 @@ c
       real(kind=8):: zero,one,two,b0,b1,b2,r1,r0,p1,p0
       real(kind=8):: sq1,sq0,arg,c1m,c1p,c0m,c0p
       integer(ISZ):: noreal,noroot
-      complex*16 x1,x2,x3,x4,u1,u2,u3,ci,dcmplx
+      complex*16 x1,x2,x3,x4,u1,u2,u3,ci
       one=1.d0
       zero=0.d0
       two=2.d0
-      ci=dcmplx(zero,one)
+      ci=cmplx(zero,one)
 c     calculate the coefficients of the auxilliary cubic
       b0=-(a1**2+a0*a3**2-4.d0*a0*a2)
       b1=a1*a3-4.d0*a0
@@ -5191,11 +5191,11 @@ c      calculate the actual roots from the quadratics
       end
       subroutine solvequadratic(a0,a1,x1,x2)
       real(kind=8):: a0,a1
-      complex*16 x1,x2,rt,ci,dcmplx
+      complex*16 x1,x2,rt,ci
       real(kind=8):: zero,two,r
       zero=0.d0
       two=2.d0
-      ci=dcmplx(0.d0,1.d0)
+      ci=cmplx(0.d0,1.d0)
       r=a1**2-4.d0*a0
       if (r.ge.zero) rt=dsqrt(r)
       if(r.lt.zero) rt=ci*dsqrt(-r)
@@ -5215,7 +5215,7 @@ c
 c
       real(kind=8):: one,two,three,third,root3,sixth,a2d3,q,r,t,roott,arg
       real(kind=8):: s1,s2,re,ai,phi,amp
-      complex*16 x1,x2,x3,ci,dcmplx
+      complex*16 x1,x2,x3,ci
       one=1.d0
       two=2.d0
       three=3.d0
@@ -5223,7 +5223,7 @@ c
       root3=dsqrt(three)
       third=one/three
       sixth=one/6.d0
-      ci=dcmplx(0.d0,1.d0)
+      ci=cmplx(0.d0,1.d0)
       a2d3=a2*third
       q=a1/3.d0-a2**2/9.d0
       r=(a1*a2-3.d0*a0)/6.d0-a2**3/27.d0

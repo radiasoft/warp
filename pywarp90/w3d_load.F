@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.17 $, $Date: 2005/02/16 22:08:49 $
+c@(#) File w3d_load.F, version $Revision: 1.18 $, $Date: 2005/05/18 17:00:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -46,14 +46,14 @@ c     --- beam rms descriptions
 c     --- waterbag equilibrium 
       real(kind=8):: sc_param_wb, k1rel, k1rer, rho
       real(kind=8):: zbrent, bessi0, bessi
-      external wb_constr
+      real(kind=8), external:: wb_constr
       common /wbconstrcom/ sc_param_wb 
 c     --- thermal equilibrium 
       integer(ISZ):: ig 
       real(kind=8):: sc_param_te, logdelta_est, logdelta_1, logdelta_2
       real(kind=8):: te_delta_est 
       real(kind=8):: rnorm, wl, wr
-      external te_constr_log
+      real(kind=8), external:: te_constr_log
       common /teconstrcom/ sc_param_te 
 c     --- distribution loading 
       real(kind=8):: hl_sumrdist
@@ -1372,7 +1372,7 @@ c=============================================================================
       use W3DloadTE
       real(kind=8):: sc_param, delta_1, delta_2, tol 
       real(kind=8):: zbrent
-      external te_constr
+      real(kind=8), external:: te_constr
 
 c Test root finding 
 
