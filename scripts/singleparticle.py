@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.18 2005/03/12 00:49:44 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.19 2005/05/19 18:33:38 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -279,6 +279,7 @@ is not alive."""
       self.spvy = []
       self.spvz = []
       self.spgi = []
+      if package()[0] == 'wxy': self.spdt = []
       for i in xrange(self.nn):
         self.spt.append(AppendableArray(maxsteps,typecode='d'))
         self.spx.append(AppendableArray(maxsteps,typecode='d'))
@@ -288,6 +289,8 @@ is not alive."""
         self.spvy.append(AppendableArray(maxsteps,typecode='d'))
         self.spvz.append(AppendableArray(maxsteps,typecode='d'))
         self.spgi.append(AppendableArray(maxsteps,typecode='d'))
+        if package()[0] == 'wxy':
+          self.spdt.append(AppendableArray(maxsteps,typecode='d'))
       self.spsavedata()
 
   #----------------------------------------------------------------------
@@ -306,6 +309,8 @@ is not alive."""
         self.spvy[i].append(top.uyp[self.ip1 + i])
         self.spvz[i].append(top.uzp[self.ip1 + i])
         self.spgi[i].append(top.gaminv[self.ip1 + i])
+        if package()[0] == 'wxy':
+          self.spdt[i].append(wxy.dtp[self.ip1 + i])
 
   #----------------------------------------------------------------------
   def getsavedata(self):
@@ -335,6 +340,7 @@ is not alive."""
   def getvy(self,i=0): return self.spvy[i].data()*self.spgi[i].data()
   def getvz(self,i=0): return self.spvz[i].data()*self.spgi[i].data()
   def getgi(self,i=0): return self.spgi[i].data()
+  def getdt(self,i=0): return self.spdt[i].data()
 
   #----------------------------------------------------------------------
   def pxt(self,i=0,**kw):
