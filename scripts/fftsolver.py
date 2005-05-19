@@ -307,7 +307,8 @@ class FFTSolver2d(FieldSolver3dBase):
     lx = self.xmmax - self.xmmin
     ly = self.ymmax - self.ymmin
     lz = 1.
-    vpois3d(iwhich,self.phi,self.phi,self.kxsq,self.kysq,self.kzsq,
+    vpois3d(iwhich,self.phi[:,:,1:-1],self.phi[:,:,1:-1],
+            self.kxsq,self.kysq,self.kzsq,
             self.attx,self.atty,self.attz,self.filt,lx,ly,lz,
             self.nx,self.ny,self.nz,self.nzfull,
             self.scratch,self.xywork,self.zwork,0,self.l2symtry,self.l4symtry,
@@ -319,17 +320,29 @@ class FFTSolver2d(FieldSolver3dBase):
       # --- This has already been initialized so don't do anything.
       # --- If vp3d(1) were called, it would mess up kzsq.
       return
-  
+
+    ikxmin = 1
+    if self.l4symtry: ikxmin = 0
+    ikymin = 1
+    if self.l2symtry or self.l4symtry: ikymin = 0
+
     # --- This is much faster when transposed to C ordering.
     #self.phi[:,:,1:-1] = self.rho
     tphi = transpose(self.phi[:,:,1:-1])
     trho = transpose(self.rho)
     tphi[:,:,:] = trho
 
+    # --- The temporary setting of bound0 forces vp3d to loop from
+    # --- iz=0,nz
+    s0 = self.bound0
+    self.bound0 = dirichlet
     self.vp3d(12)
-    self.vp3d(3)
-    self.vp3d(4)
+    attenuate(self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+              self.attx,self.atty,self.attz,ikxmin,ikymin,1,1,0)
+    rhotophi(self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+             self.kxsq,self.kysq,self.kzsq,ikxmin,ikymin,1,1,0)
     self.vp3d(13)
+    self.bound0 = s0
 
     tphi = transpose(self.phi)
     if self.bound0 == neumann: tphi[0,:,:] = tphi[1,:,:]
@@ -431,9 +444,9 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       top.bgrdbx[:,1:-1,:,id] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
       top.bgrdby[1:-1,:,:,id] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
 
-      if top.bsqgradns:
+      if 0 and top.bsqgradns:
         id = self.bgrdid - 1
-        bsq = top.bgrdbx[...,id]**2 + top.bgrdbx[...,id]**2
+        bsq = top.bgrdbx[...,id]**2 + top.bgrdby[...,id]**2
         id = self.bsqgradid - 1
         top.bsqgrad[0,:,:,1:-1,id] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dz)
         top.bsqgrad[1,1:-1,:,:,id] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dx)
