@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.114 $, $Date: 2005/03/12 00:55:34 $
+c@(#) File F3D.M, version $Revision: 3.115 $, $Date: 2005/05/19 18:37:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -722,14 +722,14 @@ c           --- precalculate min's.
             endif
 c           --- attenuate transposed array
             call attenuate(nx_tran,ny_tran-1,nzfull,a,attx(ix),atty(iy),attz,
-     &                     ikxm,ikym,1,0)
+     &                     ikxm,ikym,1,0,1)
           else
             iz = my_index*nz
-            call attenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1)
+            call attenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
           endif
 #else
 c  Normal call for serial version.
-          call attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1)
+          call attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
 #endif
 
         endif
@@ -762,14 +762,14 @@ c         --- min's.
           endif
 c         --- make conversion with transposed array
           call rhotophi(nx_tran,ny_tran-1,nzfull,a,kxsq(ix),kysq(iy),kzsq,
-     &                  ikxm,ikym,1,0)
+     &                  ikxm,ikym,1,0,1)
         else
           iz = my_index*nz
-          call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1)
+          call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
         endif
 #else
 c  Call for Serial version
-        call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1)
+        call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
 #endif
 
       endif
@@ -958,10 +958,10 @@ c ----------------------------------------------------------------------------
 #ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
         iz = my_index*nz
-        call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1)
+        call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
 #else
 c  Call for Serial version
-        call unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1)
+        call unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
 #endif
 
       endif
@@ -976,11 +976,11 @@ c ----------------------------------------------------------------------------
 #ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
         iz = my_index*nz
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1)
+        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
 #else
 c  Call for Serial version
 #endif
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1)
+        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
 
       endif
 
@@ -1565,8 +1565,8 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy)
-      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
+      subroutine attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy,esz)
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
@@ -1576,7 +1576,7 @@ c grid dimensions passed are not the true grid dimensions.
       integer(ISZ):: ikx,iky,ikz
 
 !$OMP DO
-      do ikz = 0, nz-1
+      do ikz = 0, nz-esz
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
             a(ikx,iky,ikz) = a(ikx,iky,ikz)*attx(ikx)*atty(iky)*attz(ikz)
@@ -1588,8 +1588,9 @@ c grid dimensions passed are not the true grid dimensions.
       return
       end
 c=============================================================================
-      subroutine unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy)
-      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
+      subroutine unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,
+     &                       esx,esy,esz)
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
       real(kind=8):: a(0:nx,0:ny,0:nz-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
@@ -1599,7 +1600,7 @@ c grid dimensions passed are not the true grid dimensions.
       integer(ISZ):: ikx,iky,ikz
 
 !$OMP DO
-      do ikz = 0, nz-1
+      do ikz = 0, nz-esz
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
             a(ikx,iky,ikz) = a(ikx,iky,ikz)/(attx(ikx)*atty(iky)*attz(ikz))
@@ -1611,8 +1612,8 @@ c grid dimensions passed are not the true grid dimensions.
       return
       end
 c=============================================================================
-      subroutine rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
-      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
+      subroutine rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy,esz)
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
@@ -1623,7 +1624,7 @@ c grid dimensions passed are not the true grid dimensions.
       real(kind=8):: oneok
 
 !$OMP DO
-      do ikz = 0, nz-1
+      do ikz = 0, nz-esz
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
             oneok = 1./(kxsq(ikx) + kysq(iky) + kzsq(ikz))
@@ -1636,8 +1637,8 @@ c grid dimensions passed are not the true grid dimensions.
       return
       end
 c=============================================================================
-      subroutine phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
-      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
+      subroutine phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy,esz)
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
@@ -1647,7 +1648,7 @@ c grid dimensions passed are not the true grid dimensions.
       integer(ISZ):: ikx,iky,ikz
 
 !$OMP DO
-      do ikz = 0, nz-1
+      do ikz = 0, nz-esz
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
             a(ikx,iky,ikz) = a(ikx,iky,ikz)*(kxsq(ikx) + kysq(iky) + kzsq(ikz))
