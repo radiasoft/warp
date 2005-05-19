@@ -45,6 +45,7 @@ addnewemlt: Adds a new emlt element
 addnewmmlt: Adds a new mmlt element
 addnewaccl: Adds a new accl element
 addnewbgrd: Adds a new bgrd element
+addnewbsqgrad: Adds a new bsqgrad element
 addnewpgrd: Adds a new pgrd element
 plotemlt: plots the multipole components
 plotmmlt: plots the multipole components
@@ -59,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.43 2005/01/31 18:12:33 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.44 2005/05/19 18:33:04 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1549,8 +1550,8 @@ drft arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1608,8 +1609,8 @@ bend arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1667,8 +1668,8 @@ dipo arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1735,8 +1736,8 @@ quad and qdel arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1811,8 +1812,8 @@ sext arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1868,8 +1869,8 @@ hele arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -1974,8 +1975,8 @@ emlt arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -2274,8 +2275,8 @@ accl arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -2328,7 +2329,8 @@ accl arrays with the same suffices:
 # --- BGRD --- XXX
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sp=0.,cp=0.,
-               sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None):
+               sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
+               nx=None,ny=None,nz=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
 appropriate location.
@@ -2336,7 +2338,7 @@ Required arguments:
   - zs, ze: specify the start and end of the element
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
-  - id: data set ID corresponding to already existing bgrd multipole data
+  - id: data set ID corresponding to already existing bgrd data
 Or, one or more 3-D field arrays may be specified
   - bx, by, bz
   - dx,dy: transverse grid cell size must also be specified
@@ -2344,14 +2346,19 @@ The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
   """
-  # --- Make sure either an 'id' or a dataset, 'es', was passed in.
-  assert None not in [id,bx,by,bz], \
-         "either an 'id' or a dataset, bx, by, or bz, must be passed in"
+  # --- Make sure that enough input was given to create the B arrays
+  assert (id is not None) or \
+         ((bx is not None or by is not None or bz is not None) and \
+          (dx is not None and dy is not None)) or \
+         (dx is not None and dy is not None and
+          nx is not None and ny is not None and nz is not None),\
+         """either an 'id' or a dataset, bx, by, or bz, with dx and dy, or all
+of dx, dy, nx, ny, nz, must be passed in"""
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -2360,7 +2367,7 @@ bgrd arrays with the same suffices:
   # --- there are already bgrds, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
   # --- Note that this uses that same check as in resetlat, that bgrdid > 0,
-  # --- to determine whether or not an bgrd is defined.
+  # --- to determine whether or not a bgrd is defined.
   ie = 0
   # --- Find which element the new one goes before.
   while (ie <= top.nbgrd and top.bgrdzs[ie] <= zs and top.bgrdid[ie] > 0):
@@ -2402,26 +2409,134 @@ bgrd arrays with the same suffices:
   else:
     # --- Otherwise, create a new dataset.
     top.bgrdns = top.bgrdns + 1
+    top.bgrdid[ie] = top.bgrdns
     # --- Get array size
-    if bx is not None: nx,ny,nz = shape(bx)
-    if by is not None: nx,ny,nz = shape(by)
-    if bz is not None: nx,ny,nz = shape(bz)
+    if bx is not None: nx,ny,nz = array(shape(bx)) - array([1,1,1])
+    if by is not None: nx,ny,nz = array(shape(by)) - array([1,1,1])
+    if bz is not None: nx,ny,nz = array(shape(bz)) - array([1,1,1])
     # --- Make sure that the arrays are big enough
-    top.bgrdnx = max(nx-1,top.bgrdnx)
-    top.bgrdny = max(ny-1,top.bgrdny)
-    top.bgrdnz = max(nz-1,top.bgrdnz)
-    gchange("Mult_data")
+    top.bgrdnx = max(nx,top.bgrdnx)
+    top.bgrdny = max(ny,top.bgrdny)
+    top.bgrdnz = max(nz,top.bgrdnz)
+    gchange("BGRDdata")
     # --- Copy the data in
     top.bgrddx[-1] = dx
     top.bgrddy[-1] = dy
     top.bgrddz[-1] = (ze - zs)/(nz - 1)
-    if bx is not None: top.bgrdbx[:nx,:ny,:nz,-1] = bx
-    if by is not None: top.bgrdby[:nx,:ny,:nz,-1] = by
-    if bz is not None: top.bgrdbz[:nx,:ny,:nz,-1] = bz
+    if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
+    if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
+    if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
 
   # --- Return the id of the new dataset. This allows the user to refer to
-  # --- this new dataset without having to knowne its actual number.
+  # --- this new dataset without having to know its actual number.
   return top.bgrdid[ie]
+
+# ----------------------------------------------------------------------------
+# --- BSQGRAD --- XXX
+def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
+                  ph=0.,sp=0.,cp=0.,
+                  sf=0.,sc=1.,sy=0,dx=None,dy=None,
+                  bsqgrad=None,
+                  nx=None,ny=None,nz=None,nc=3):
+  """
+Adds a new bsqgrad element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+Optionally, id may be specified, using a previously defined dataset
+takes precedence):
+  - id: data set ID corresponding to already existing bsqgrad data
+Or, the 4-D field array may be specified
+  - bsqgrad
+  - dx,dy: transverse grid cell size must also be specified
+The following are all optional and have the same meaning and default as the
+bsqgrad arrays with the same suffices:
+  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy,nc
+  """
+  # --- Make sure that enough input was given to create the B arrays
+  assert (id is not None) or \
+         ((bsqgrad is not None) and \
+          (dx is not None and dy is not None)) or \
+         (dx is not None and dy is not None and
+          nx is not None and ny is not None and nz is not None),\
+         """either an 'id' or a dataset, bx, by, or bz, with dx and dy, or all
+of dx, dy, nx, ny, nz, must be passed in"""
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
+
+  # --- Get a dict of the input arguments and their values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already bsqgrads, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that bsqgradid > 0,
+  # --- to determine whether or not a bsqgrad is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.nbsqgrad and top.bsqgradzs[ie] <= zs and
+         top.bsqgradid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.nbsqgrad or top.bsqgradid[-1] != 0:
+    top.nbsqgrad = top.nbsqgrad + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.bsqgradzs,'ze':top.bsqgradze,
+           'xs':top.bsqgradxs,'ys':top.bsqgradys,
+           'ap':top.bsqgradap,'ax':top.bsqgradax,'ay':top.bsqgraday,
+           'ox':top.bsqgradox,'oy':top.bsqgradoy,'ph':top.bsqgradph,
+           'sp':top.bsqgradsp,'cp':top.bsqgradcp,
+           'sf':top.bsqgradsf,'sc':top.bsqgradsc,
+           'sy':top.bsqgradsy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.nbsqgrad:
+    top.bsqgradid[ie+1:] = top.bsqgradid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- their values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the 3-D field grid dataset
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.bsqgradid[ie] = id
+  else:
+    # --- Otherwise, create a new dataset.
+    top.bsqgradns = top.bsqgradns + 1
+    top.bsqgradid[ie] = top.bsqgradns
+    # --- Get array size
+    if bsqgrad is not None: nc,nx,ny,nz=array(shape(bsqgrad))-array([0,1,1,1])
+    # --- Make sure that the arrays are big enough
+    top.bsqgradnx = max(nx,top.bsqgradnx)
+    top.bsqgradny = max(ny,top.bsqgradny)
+    top.bsqgradnz = max(nz,top.bsqgradnz)
+    top.bsqgradnc = nc
+    gchange("BSQGRADdata")
+    # --- Copy the data in
+    top.bsqgraddx[-1] = dx
+    top.bsqgraddy[-1] = dy
+    top.bsqgraddz[-1] = (ze - zs)/(nz - 1)
+    if bsqgrad is not None: top.bsqgrad[:nx+1,:ny+1,:nz+1,-1] = bsqgrad
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to know its actual number.
+  return top.bsqgradid[ie]
 
 # ----------------------------------------------------------------------------
 # --- PGRD --- XXX
@@ -2437,7 +2552,7 @@ Required arguments:
   - zs, ze: specify the start and end of the element
 Optionally, id may be specified, using a previously defined dataset
 takes precedence):
-  - id: data set ID corresponding to already existing pgrd multipole data
+  - id: data set ID corresponding to already existing pgrd data
 Or, 3-D phi array may be specified
   - phi
   - dx,dy: transverse grid cell size must also be specified
@@ -2451,8 +2566,8 @@ pgrd arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -2461,7 +2576,7 @@ pgrd arrays with the same suffices:
   # --- there are already pgrds, then find the place where the new one is to
   # --- be inserted and shift the existing data to open up a space.
   # --- Note that this uses that same check as in resetlat, that pgrdid > 0,
-  # --- to determine whether or not an pgrd is defined.
+  # --- to determine whether or not a pgrd is defined.
   ie = 0
   # --- Find which element the new one goes before.
   while (ie <= top.npgrd and top.pgrdzs[ie] <= zs and top.pgrdid[ie] > 0):
@@ -2504,21 +2619,22 @@ pgrd arrays with the same suffices:
   else:
     # --- Otherwise, create a new dataset.
     top.pgrdns = top.pgrdns + 1
+    top.pgrdid[ie] = top.pgrdns
     # --- Get array size
-    nx,ny,nz = shape(phi)
+    nx,ny,nz = array(shape(phi)) - array([1,1,1])
     # --- Make sure that the arrays are big enough
-    top.pgrdnx = max(nx-1,top.pgrdnx)
-    top.pgrdny = max(ny-1,top.pgrdny)
-    top.pgrdnz = max(nz-1,top.pgrdnz)
-    gchange("Mult_data")
+    top.pgrdnx = max(nx,top.pgrdnx)
+    top.pgrdny = max(ny,top.pgrdny)
+    top.pgrdnz = max(nz,top.pgrdnz)
+    gchange("PGRDdata")
     # --- Copy the data in
     top.pgrddx[-1] = dx
     top.pgrddy[-1] = dy
     top.pgrddz[-1] = (ze - zs)/(nz - 1)
-    top.pgrd[:nx,:ny,:nz,-1] = phi
+    top.pgrd[:nx+1,:ny+1,:nz+1,-1] = phi
 
   # --- Return the id of the new dataset. This allows the user to refer to
-  # --- this new dataset without having to knowne its actual number.
+  # --- this new dataset without having to know its actual number.
   return top.pgrdid[ie]
 
 # ----------------------------------------------------------------------------
