@@ -97,6 +97,16 @@ class FieldSolver3dBase(object):
       self.nzfull = self.nz
       self.zmminglobal = self.zmmin
       self.zmmaxglobal = self.zmmax
+    else:
+      if self.nzfull == 0:
+        self.nzfull = self.nz
+        self.zmminglobal = self.zmmin
+        self.zmmaxglobal = self.zmmax
+        self.nz = self.nzfull/self.nslaves
+        self.zmmin = self.zmminglobal + me*self.nz*w3d.dz
+        self.zmmax = self.zmminglobal + (me+1)*self.nz*w3d.dz
+        if me == self.nslaves-1: self.zmmax = self.zmmaxglobal
+
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
@@ -200,7 +210,7 @@ class FieldSolver3dBase(object):
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
       getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nx,self.ny,self.nz,self.rho,
+                            self.nx,self.ny,self.nz,self.rhop,
                             me,self.nslaves,
                           top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
 
@@ -284,10 +294,10 @@ class FFTSolver2d(FieldSolver3dBase):
     # --- Allocate the ksq and att arrays
     self.kxsq = zeros(self.nx,'d')
     self.kysq = zeros(self.ny,'d')
-    self.kzsq = zeros(self.nz+1,'d')
+    self.kzsq = zeros(self.nzfull+1,'d')
     self.attx = zeros(self.nx,'d')
     self.atty = zeros(self.ny,'d')
-    self.attz = zeros(self.nz+1,'d')
+    self.attz = zeros(self.nzfull+1,'d')
 
     # --- Allocate work arrays
     nmxyz = max(self.nx,self.ny,self.nz)
@@ -310,7 +320,7 @@ class FFTSolver2d(FieldSolver3dBase):
     vpois3d(iwhich,self.phi[:,:,1:-1],self.phi[:,:,1:-1],
             self.kxsq,self.kysq,self.kzsq,
             self.attx,self.atty,self.attz,self.filt,lx,ly,lz,
-            self.nx,self.ny,self.nz,self.nzfull,
+            self.nx,self.ny,self.nz,self.nz,
             self.scratch,self.xywork,self.zwork,0,self.l2symtry,self.l4symtry,
             self.bound0,self.boundnz,self.boundxy)
 
@@ -418,8 +428,8 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     if n > 0:
       self.beamsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],
                              top.uzp[i:i+n],q,w)
-      self.beamsolver.makerhoperiodic()
-      self.beamsolver.getrhoforfieldsolve()
+    self.beamsolver.makerhoperiodic()
+    self.beamsolver.getrhoforfieldsolve()
 
     if len(self.backgroundspecies) > 0:
       for js in self.backgroundspecies:
