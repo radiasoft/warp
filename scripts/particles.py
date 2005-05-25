@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.27 2005/04/26 17:32:44 dave Exp $"
+particles_version = "$Id: particles.py,v 1.28 2005/05/25 00:03:46 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -466,8 +466,9 @@ def getvr(iw=0,gather=1,bcast=0,**kw):
     y = getattrwithsuffix(top,'yp',suffix)
     ux = getattrwithsuffix(top,'uxp',suffix)
     uy = getattrwithsuffix(top,'uyp',suffix)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
-    result = take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt)
+    result = (take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt))*take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -482,8 +483,9 @@ def getvtheta(iw=0,gather=1,bcast=0,**kw):
     y = getattrwithsuffix(top,'yp',suffix)
     ux = getattrwithsuffix(top,'uxp',suffix)
     uy = getattrwithsuffix(top,'uyp',suffix)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
-    result = -take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt)
+    result = (-take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt))*take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
