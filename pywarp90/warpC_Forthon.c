@@ -1,5 +1,5 @@
 /* Created by David P. Grote */
-/* $Id: warpC_Forthon.c,v 1.3 2004/02/19 00:15:51 dave Exp $ */
+/* $Id: warpC_Forthon.c,v 1.4 2005/05/26 17:25:25 dave Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
@@ -16,6 +16,7 @@ static struct PyMethodDef warpC_methods[] = {
 void initwarpC(void)
 {
   PyObject *m, *d;
+  PyObject *pystdout;
   m = Py_InitModule("warpC", warpC_methods);
   d = PyModule_GetDict(m);
   ErrorObject = PyString_FromString("warpC.error");
@@ -23,7 +24,8 @@ void initwarpC(void)
   if (PyErr_Occurred())
     Py_FatalError("can not initialize module warpC");
 
-  printf("Forthon edition\n");
+  pystdout = PySys_GetObject("stdout");
+  PyFile_WriteString("Forthon edition\n",pystdout);
 
   import_array();
 
