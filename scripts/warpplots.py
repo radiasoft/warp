@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.154 2005/04/27 17:00:54 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.155 2005/05/27 22:40:18 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1794,6 +1794,24 @@ def ppzvr(iw=0,**kw):
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvr.__doc__ = ppzvr.__doc__ + ppgeneric_doc('z','vr')
+
+##########################################################################
+def ppzvtheta(iw=0,**kw):
+  "Plots Z-Vtheta"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzvtheta,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Vtheta vs Z","Z","Vtheta",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getvtheta(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvtheta.__doc__ = ppzvtheta.__doc__ + ppgeneric_doc('z','vtheta')
 
 ##########################################################################
 def ppzrp(iw=0,**kw):
