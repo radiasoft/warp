@@ -1,7 +1,7 @@
 """Creates the function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.5 2004/09/14 17:33:59 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.6 2005/05/27 22:38:27 dave Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -21,6 +21,7 @@ def _getelem(elem,zlatmin,zlatmax):
   return ii,nn
 
 def _plotele(x,z,c,n1,n2):
+  if c is None: return
   if n1 > 0:
     cc = (c*ones(n1)).astype('b')
     nn = n2*ones(n1)
@@ -31,14 +32,14 @@ def _plotele(x,z,c,n1,n2):
     x.shape = (n1,n2)
     pla(transpose(x),transpose(z))
 
-def _addelement(zs,ze,zend,ang,dh,zele,xele,zaxis,xaxis,zz,xx,zl,xl):
+def _addelement(zs,ze,zend,dh,zele,xele,zaxis,xaxis,zz,xx,zl,xl):
   dl = ze - zs
-  z0 = zaxis[-1] + (zs - zend)*cos(ang)
-  x0 = xaxis[-1] + (zs - zend)*sin(ang)
-  z1 = z0 + dl*cos(ang)
-  x1 = x0 + dl*sin(ang)
-  zz = zz + list(z0 + zele*dl*cos(ang) - xele*dh*sin(ang))
-  xx = xx + list(x0 + xele*dh*cos(ang) + zele*dl*sin(ang))
+  z0 = zaxis[-1] + (zs - zend)
+  x0 = xaxis[-1]
+  z1 = z0 + dl
+  x1 = x0
+  zz = zz + list(z0 + zele*dl)
+  xx = xx + list(x0 + xele*dh)
   zaxis = zaxis + [z0,z1]
   xaxis = xaxis + [x0,x1]
   zl = zl + [0.5*(z0+z1)]
@@ -237,6 +238,10 @@ type, and should draw any general lattice.
     def pgrdlab(np,pgrdlab=pgrdlab):
       return pgrdlab
 
+  if bendlab is not None and type(bendlab) is not FunctionType:
+    def bendlab(np,bendlab=bendlab):
+      return bendlab
+
   # --- Create work arrays
   zaxis = []
   xaxis = []
@@ -297,7 +302,6 @@ type, and should draw any general lattice.
   xaxis.append(0.)
 
   # --- Initialize "counters"
-  ang  = 0.
   zend = zlatmin
 
   # --- loop over all elements in range
@@ -320,7 +324,7 @@ type, and should draw any general lattice.
     if ilatspc == 'q':
       # --- load quadrapole element (focussing or defocussing)
       zaxis,xaxis,zq,xq,zl,xl = _addelement(top.quadzs[nq],top.quadze[nq],
-                                            zend,ang,dh,zquad,xquad,
+                                            zend,dh,zquad,xquad,
                                             zaxis,xaxis,zq,xq,zl,xl)
       cl.append(quadlab(nq))
       zend = top.quadze[nq]
@@ -328,7 +332,7 @@ type, and should draw any general lattice.
     if ilatspc == 'h':
       # --- load hele element
       zaxis,xaxis,zh,xh,zl,xl = _addelement(top.helezs[nh],top.heleze[nh],
-                                            zend,ang,dh,zhele,xhele,
+                                            zend,dh,zhele,xhele,
                                             zaxis,xaxis,zh,xh,zl,xl)
       cl.append(helelab(nh))
       zend = top.heleze[nh]
@@ -336,7 +340,7 @@ type, and should draw any general lattice.
     elif ilatspc == 'e':
       # --- load emlt element 
       zaxis,xaxis,ze,xe,zl,xl = _addelement(top.emltzs[ne],top.emltze[ne],
-                                            zend,ang,dh,zemlt,xemlt,
+                                            zend,dh,zemlt,xemlt,
                                             zaxis,xaxis,ze,xe,zl,xl)
       zend = top.emltze[ne]
       cl.append(emltlab(ne))
@@ -344,7 +348,7 @@ type, and should draw any general lattice.
     elif ilatspc == 'm':
       # --- load mmlt element 
       zaxis,xaxis,zm,xm,zl,xl = _addelement(top.mmltzs[nm],top.mmltze[nm],
-                                            zend,ang,dh,zmmlt,xmmlt,
+                                            zend,dh,zmmlt,xmmlt,
                                             zaxis,xaxis,zm,xm,zl,xl)
       zend = top.mmltze[nm]
       cl.append(mmltlab(nm))
@@ -352,7 +356,7 @@ type, and should draw any general lattice.
     elif ilatspc == 'b':
       # --- load bgrd element 
       zaxis,xaxis,zb,xb,zl,xl = _addelement(top.bgrdzs[nb],top.bgrdze[nb],
-                                            zend,ang,dh,zbgrd,xbgrd,
+                                            zend,dh,zbgrd,xbgrd,
                                             zaxis,xaxis,zb,xb,zl,xl)
       zend = top.bgrdze[nb]
       cl.append(bgrdlab(nb))
@@ -360,7 +364,7 @@ type, and should draw any general lattice.
     elif ilatspc == 'p':
       # --- load pgrd element 
       zaxis,xaxis,zp,xp,zl,xl = _addelement(top.pgrdzs[np],top.pgrdze[np],
-                                            zend,ang,dh,zpgrd,xpgrd,
+                                            zend,dh,zpgrd,xpgrd,
                                             zaxis,xaxis,zp,xp,zl,xl)
       zend = top.pgrdze[np]
       cl.append(pgrdlab(np))
@@ -368,7 +372,7 @@ type, and should draw any general lattice.
     elif ilatspc == 'a':
       # --- load accelerator element 
       zaxis,xaxis,za,xa,zl,xl = _addelement(top.acclzs[na],top.acclze[na],
-                                            zend,ang,dh,zaccl,xaccl,
+                                            zend,dh,zaccl,xaccl,
                                             zaxis,xaxis,za,xa,zl,xl)
       zend = top.acclze[na]
       cl.append(accllab(na))
@@ -378,12 +382,12 @@ type, and should draw any general lattice.
       dl = top.dipoze[nd] - top.dipozs[nd]
       if nc-1 in ic and top.bendzs[nc-1] == top.dipozs[nd]: sf = 0.5
       else:                                                 sf = 1.0
-      z0 = zaxis[-1] + (top.dipozs[nd] - zend)*cos(ang)
-      x0 = xaxis[-1] + (top.dipozs[nd] - zend)*sin(ang)
-      zd = zd + list(z0 + zdipo*dl*cos(ang) - sf*xdipo*dh*sin(ang))
-      xd = xd + list(x0 + sf*xdipo*dh*cos(ang) + zdipo*dl*sin(ang))
-      z1 = z0 + dl*cos(ang)
-      x1 = x0 + dl*sin(ang)
+      z0 = zaxis[-1] + (top.dipozs[nd] - zend)
+      x0 = xaxis[-1]
+      zd = zd + list(z0 + zdipo*dl)
+      xd = xd + list(x0 + sf*xdipo*dh)
+      z1 = z0 + dl
+      x1 = x0
       zaxis = zaxis + [z0,z1]
       xaxis = xaxis + [x0,x1]
       zend = top.dipoze[nd] 
@@ -411,8 +415,8 @@ type, and should draw any general lattice.
       nc = nc + 1
     
   # --- Add the last point
-  zaxis.append(zaxis[-1] + (zlatmax - zend)*cos(ang))
-  xaxis.append(xaxis[-1] + (zlatmax - zend)*sin(ang))
+  zaxis.append(zaxis[-1] + (zlatmax - zend))
+  xaxis.append(xaxis[-1])
 
   if ilinflg == 0:
     xq,zq = array(xq),array(zq)
@@ -440,6 +444,7 @@ type, and should draw any general lattice.
     tolabfrm(zlatmin,len(xl),xl,zl)
 
   # --- plot the lattice
+  _plotele(xc,zc,bendcolor,len(ic),len(zbend))
   _plotele(xq,zq,quadcolor,len(iq),len(zquad))
   _plotele(xh,zh,helecolor,len(ih),len(zhele))
   _plotele(xe,ze,emltcolor,len(ie),len(zemlt))
@@ -447,7 +452,6 @@ type, and should draw any general lattice.
   _plotele(xb,zb,bgrdcolor,len(ib),len(zbgrd))
   _plotele(xp,zp,pgrdcolor,len(ip),len(zpgrd))
   _plotele(xa,za,acclcolor,len(ia),len(zaccl))
-  _plotele(xc,zc,bendcolor,len(ic),len(zbend))
   _plotele(xd,zd,dipocolor,len(id),len(zdipo))
 
   # --- Plot the axis
