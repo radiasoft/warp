@@ -395,11 +395,13 @@ Transverse 2-D field solver, ignores self Ez and Bz.
                                nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
 
       if max(w3d.interpdk) > 0.:
-      # --- Create bsqgrad element the same size as the field grid.
+        # --- Create bsqgrad element the same size as the field grid.
         self.bsqgradid = addnewbsqgrad(zs=w3d.zmmin,ze=w3d.zmmax,
                                        xs=w3d.xmmin,ys=w3d.ymmin,
                                        dx=w3d.dx,dy=w3d.dy,
                                        nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
+        # --- Turn on the use of bsqgrad
+        w3d.igradb = 1
 
       resetlat()
       setlatt()
@@ -447,20 +449,25 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       # --- Also, calculate bsqgrad if needed
 
       # --- Fill in the bgrd arrays
+      # --- Note that array operations are done transposed for efficiency.
+      phib = transpose(self.beamsolver.phi[:,:,1:-1])
+
       vz = top.vbeam_s[self.beamspecies]
-      phib = self.beamsolver.phi[:,:,1:-1]
       Az = +vz*eps0*mu0*phib
       id = self.bgrdid - 1
-      top.bgrdbx[:,1:-1,:,id] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-      top.bgrdby[1:-1,:,:,id] = -(Az[2:,:,:] - Az[:-2,:,:])/(2.*w3d.dx)
+      bgrdbx = transpose(top.bgrdbx[...,id])
+      bgrdby = transpose(top.bgrdby[...,id])
+      bgrdbx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+      bgrdby[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
 
-      if 0 and top.bsqgradns:
+      if 1 and top.bsqgradns:
         id = self.bgrdid - 1
-        bsq = top.bgrdbx[...,id]**2 + top.bgrdby[...,id]**2
+        bsq = bgrdbx**2 + bgrdby**2
         id = self.bsqgradid - 1
-        top.bsqgrad[0,:,:,1:-1,id] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dz)
-        top.bsqgrad[1,1:-1,:,:,id] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dx)
-        top.bsqgrad[2,:,1:-1,:,id] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
+        bsqgrad = transpose(top.bsqgrad[:,:,:,:,id])
+        bsqgrad[1:-1,:,:,0] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dz)
+        bsqgrad[:,:,1:-1,1] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dx)
+        bsqgrad[:,1:-1,:,2] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
 
       # --- Sum the phi's
 
