@@ -1,7 +1,7 @@
 """Fixes beam so that it exactly agress with the specified beam paramters
 """
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.7 2005/01/12 17:17:39 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.8 2005/05/27 22:40:03 dave Exp $"
 
 # --- Fixes 1st and 2nd moments
 def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None, 
@@ -54,8 +54,10 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None,
 
   # --- Fix velocity to match emittance and envelope angle
   # --- First, remove any average velocity
-  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0,-1],0.)
-  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0,-1],0.)
+  if top.lrelativ: gi = top.gaminv
+  else:            gi = 1.
+  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0,-1]/gi,0.)
+  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0,-1]/gi,0.)
   # --- Then remove any coherent velocity
   top.xxpbar[0] = ave(getx()*getxp())
   top.yypbar[0] = ave(gety()*getyp())
