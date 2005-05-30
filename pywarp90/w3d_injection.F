@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.27 $, $Date: 2005/05/10 16:37:19 $
+c@(#) File w3d_injection.F, version $Revision: 1.28 $, $Date: 2005/05/30 06:39:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -327,6 +327,9 @@ c             --- and the particle arrays are unallocated.
               call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
             endif
 c           --- get E self-field at initial positions
+            at = 0.
+            bt = 0.
+            apt = 0.
             call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
 
@@ -423,6 +426,9 @@ c             --- Make sure there is enough temp space
               endif
 
 c             --- calculate new E self-fields
+              at = 0.
+              bt = 0.
+              apt = 0.
               call inj_sete3d(nn,xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,injpid),
      &                        inj_dz,at,bt,apt)
 
@@ -1014,6 +1020,9 @@ c           --- Make equivalences so names make sense below
             bendradi => ypct
 
 c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
             bx = 0.
             by = 0.
             bz = 0.
@@ -1108,6 +1117,9 @@ c           --- Make equivalences so names make sense below
             bendradi => ypct
 
 c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
             bx = 0.
             by = 0.
             bz = 0.
@@ -2476,9 +2488,9 @@ c the tangential fields near the emitting surface can also be included.
 c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
-      real(kind=8):: xx(npart),yy(npart),zz(npart)
-      real(kind=8):: tex(npart),tey(npart),tez(npart)
-      integer(ISZ):: ijp(npart)
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:)
+      real(kind=8),allocatable:: tex(:),tey(:),tez(:)
+      integer(ISZ),allocatable:: ijp(:)
       integer(ISZ):: ip,ix,iy,iz,ij
       real(kind=8):: rinj,rinji,rr2,wr,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en,etx,ety
@@ -2492,6 +2504,10 @@ c any conductor surface.
 c     --- The user can force the code to skip the special calculation of the 
 c     --- E fields for particles behind the virtual surface.
       if (linj_efromgrid) return
+
+      allocate(xx(npart),yy(npart),zz(npart))
+      allocate(tex(npart),tey(npart),tez(npart))
+      allocate(ijp(npart))
 
       if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
 
