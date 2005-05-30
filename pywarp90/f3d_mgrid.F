@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.92 $, $Date: 2005/04/25 21:54:47 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.93 $, $Date: 2005/05/30 06:37:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2633,8 +2633,8 @@ c Makes call to the recursive routine which generates the conductors.
       integer(ISZ):: globalb0,globalbnz
       integer(ISZ):: localb0,localbnz
       integer(ISZ):: iiii
-c     integer(ISZ):: getthestupidnumber
-c     integer(ISZ):: getthestupidevennumber,getthestupidoddnumber
+      integer(ISZ):: getthestupidnumber
+      integer(ISZ):: getthestupidevennumber,getthestupidoddnumber
 
 c     --- nzfull and zmminglobal are needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
@@ -2674,22 +2674,22 @@ c       --- Set the grid parameters for this level
 
 c       --- Get the conductors for this level
 c       --- The stupidnumber things help get around a compiler bug.
-        ic1 = conductors%interior%n + 1
-c       iiii = getthestupidnumber(conductors)
-        iiii = conductors%interior%n
-        ie1 = conductors%evensubgrid%n + 1
-c       iiii = getthestupidevennumber(conductors)
-        iiii = conductors%evensubgrid%n
-        io1 = conductors%oddsubgrid%n + 1
-c       iiii = getthestupidoddnumber(conductors)
-        iiii = conductors%oddsubgrid%n
+c       ic1 = conductors%interior%n + 1
+c       ie1 = conductors%evensubgrid%n + 1
+c       io1 = conductors%oddsubgrid%n + 1
+        ic1 = getthestupidnumber(conductors) + 1
+        ie1 = getthestupidevennumber(conductors) + 1
+        io1 = getthestupidoddnumber(conductors) + 1
         bound0 = localb0
         boundnz = localbnz
         call setcndtr3d(xmmin,ymmin,zmmin1,zbeam,zgrid,nx1,ny1,nz1,dx1,dy1,dz1,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
-        ic2 = conductors%interior%n
-        ie2 = conductors%evensubgrid%n
-        io2 = conductors%oddsubgrid%n
+c       ic2 = conductors%interior%n
+c       ie2 = conductors%evensubgrid%n
+c       io2 = conductors%oddsubgrid%n
+        ic2 = getthestupidnumber(conductors)
+        ie2 = getthestupidevennumber(conductors)
+        io2 = getthestupidoddnumber(conductors)
         conductors%interior%ilevel(ic1:ic2) = il
         conductors%evensubgrid%ilevel(ie1:ie2) = il
         conductors%oddsubgrid%ilevel(io1:io2) = il
