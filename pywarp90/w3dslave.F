@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.23 $, $Date: 2005/05/30 06:42:37 $
+c W3DSLAVE.M, version $Revision: 1.24 $, $Date: 2005/05/30 07:24:21 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -675,11 +675,21 @@ c iz=-1 and +1.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- First, calculate what data needs to be sent and received.
+c     --- Note that special cases are needed for the first and last processors
+c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nslaves-1
-        izglobal = max(izfsslave(my_index),izpslave(i)-1)
+        if (my_index == 0) then
+          izglobal = max(izfsslave(my_index)-1,izpslave(i)-1)
+        else
+          izglobal = max(izfsslave(my_index),izpslave(i)-1)
+        endif
         izmaxp   = izpslave(i)+nzpslave(i)+1
-        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
+        if (my_index == nslaves-1) then
+          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
+        else
+          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
+        endif
 
         izsend(i) = izglobal - izfsslave(my_index)
         nzsend(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -687,31 +697,22 @@ c     --- Data to be sent
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
-        izglobal = max(izpslave(my_index)-1,izfsslave(i))
+        if (i == 0) then
+          izglobal = max(izpslave(my_index)-1,izfsslave(i)-1)
+        else
+          izglobal = max(izpslave(my_index)-1,izfsslave(i))
+        endif
         izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
-        izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
+        if (i == nslaves-1) then
+          izmaxfs  = izfsslave(i)+nzfsslave(i)+1
+        else
+          izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
+        endif
 
         izrecv(i) = izglobal - izpslave(my_index)
         nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
       enddo
  
-c     --- Correct the send and recv arrays to include the guard cells of the
-c     --- first and last processor.
-      if (my_index == 0 .and. izpslave(0) == 0) then
-        izsend(0) = -1
-        nzsend(0) = nzsend(0) + 1
-        izrecv(0) = -1
-        nzrecv(0) = nzrecv(0) + 1
-      endif
-      if (my_index == nslaves-1) then
-        izmaxp  = izpslave(my_index)+nzpslave(my_index)+1
-        izmaxfs = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
-        if (izmaxp > izmaxfs) then
-          nzsend(0) = nzsend(0) + (izmaxp - izmaxfs)
-          nzrecv(0) = nzrecv(0) + (izmaxp - izmaxfs)
-        endif
-      endif
-
 c     --- Send the data out to processors that need it.
       w = 0
       do i=0,nslaves-1
