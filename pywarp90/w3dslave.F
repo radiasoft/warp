@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.22 $, $Date: 2004/11/13 01:35:54 $
+c W3DSLAVE.M, version $Revision: 1.23 $, $Date: 2005/05/30 06:42:37 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -695,6 +695,23 @@ c     --- Then, gather up the data sent to this processor.
         nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
       enddo
  
+c     --- Correct the send and recv arrays to include the guard cells of the
+c     --- first and last processor.
+      if (my_index == 0 .and. izpslave(0) == 0) then
+        izsend(0) = -1
+        nzsend(0) = nzsend(0) + 1
+        izrecv(0) = -1
+        nzrecv(0) = nzrecv(0) + 1
+      endif
+      if (my_index == nslaves-1) then
+        izmaxp  = izpslave(my_index)+nzpslave(my_index)+1
+        izmaxfs = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
+        if (izmaxp > izmaxfs) then
+          nzsend(0) = nzsend(0) + (izmaxp - izmaxfs)
+          nzrecv(0) = nzrecv(0) + (izmaxp - izmaxfs)
+        endif
+      endif
+
 c     --- Send the data out to processors that need it.
       w = 0
       do i=0,nslaves-1
