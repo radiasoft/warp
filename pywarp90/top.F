@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.154 $, $Date: 2005/05/01 23:50:34 $
+c@(#) File TOP.F, version $Revision: 3.155 $, $Date: 2005/05/31 01:11:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2716,16 +2716,23 @@ c               --- Note that this really should not be used since the
 c               --- accl element does a better job.  The transverse
 c               --- fields should only be kicks at the entrance and exit.
                 f = 1./(2.*v+2.)
-                rpow = dvnz(trpmqoff(ip))**(2*v)
+                rpow = trpmqoff(ip)**(2*v)
                 ex(ip) = ex(ip)-tfrac(ip)*heleep(ii,iele)*rpow*f*txpmqoff(ip)
                 ey(ip) = ey(ip)-tfrac(ip)*heleep(ii,iele)*rpow*f*typmqoff(ip)
                 ez(ip) = ez(ip)+tfrac(ip)*heleae(ii,iele)*rpow
+              else if (n == 1 .and. v == 0) then
+c               --- The pure dipole term needs special treatment since it
+c               --- breaks down at r = 0.
+                cosnt = cos(helepe(ii,iele))
+                sinnt = sin(helepe(ii,iele))
+                ex(ip) = ex(ip) + tfrac(ip)*heleae(ii,iele)*cosnt
+                ey(ip) = ey(ip) + tfrac(ip)*heleae(ii,iele)*sinnt
               else
 c               --- rest of components
                 f = 1. + 2.*v/n
                 cosnt = cos(n*(ttpmqoff(ip)-helepe(ii,iele)))
                 sinnt = sin(n*(ttpmqoff(ip)-helepe(ii,iele)))
-                rpow = dvnz(trpmqoff(ip))**(n-2+2*v)
+                rpow = trpmqoff(ip)**(n-2+2*v)
                 ex(ip) = ex(ip) + tfrac(ip)*heleae(ii,iele)*rpow*
      &                         (f*txpmqoff(ip)*cosnt + typmqoff(ip)*sinnt)
                 ey(ip) = ey(ip) + tfrac(ip)*heleae(ii,iele)*rpow*
@@ -2739,16 +2746,23 @@ c               --- Solenoid field
 c               --- The transverse fields should only be kicks at the entrance
 c               --- and exit.
                 f = 1./(2.*v+2.)
-                rpow = dvnz(trpmqoff(ip))**(2*v)
+                rpow = trpmqoff(ip)**(2*v)
                 bx(ip) = bx(ip)-tfrac(ip)*helemp(ii,iele)*rpow*f*txpmqoff(ip)
                 by(ip) = by(ip)-tfrac(ip)*helemp(ii,iele)*rpow*f*typmqoff(ip)
                 bz(ip) = bz(ip)+tfrac(ip)*heleam(ii,iele)*rpow
+              else if (n == 1 .and. v == 0) then
+c               --- The pure dipole term needs special treatment since it
+c               --- breaks down at r = 0.
+                cosnt = cos(helepm(ii,iele))
+                sinnt = sin(helepm(ii,iele))
+                bx(ip) = bx(ip) - tfrac(ip)*heleam(ii,iele)*sinnt
+                by(ip) = by(ip) + tfrac(ip)*heleam(ii,iele)*cosnt
               else
 c               --- rest of components
                 f = 1. + 2.*v/n
                 cosnt = cos(n*(ttpmqoff(ip)-helepm(ii,iele)))
                 sinnt = sin(n*(ttpmqoff(ip)-helepm(ii,iele)))
-                rpow = dvnz(trpmqoff(ip))**(n-2+2*v)
+                rpow = trpmqoff(ip)**(n-2+2*v)
                 bx(ip) = bx(ip) + tfrac(ip)*heleam(ii,iele)*rpow*
      &                         (f*txpmqoff(ip)*sinnt - typmqoff(ip)*cosnt)
                 by(ip) = by(ip) + tfrac(ip)*heleam(ii,iele)*rpow*
@@ -2858,10 +2872,36 @@ c           --- Apply accelerating field and it's pseudomultipoles.
                 coeff = mltsf(ip)*
      &                     (esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                      esemlt(izm(ip)+1,in,imm(ip))*wzm(ip))
-                rpow = dvnz(rr(ip))**(2*v)
+                rpow = rr(ip)**(2*v)
                 tex(ip) = tex(ip) - coeffp*rpow*f*xxx(ip)
                 tey(ip) = tey(ip) - coeffp*rpow*f*yyy(ip)
                 tez(ip) = tez(ip) + coeff*rpow
+              endif
+            enddo
+          else if (n==1 .and. v == 0) then
+c           --- The pure dipole term needs special treatment since it
+c           --- breaks down at r = 0.
+            do ip=1,np
+              if (imm(ip) > 0) then
+                alpha = mltph(ip) +
+     &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeff = mltsf(ip)*
+     &                     (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = mltsf(ip)*
+     &                     (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                cosnt = cos(alpha)
+                sinnt = sin(alpha)
+                tex(ip) = tex(ip) + coeff*cosnt
+                tey(ip) = tey(ip) + coeff*sinnt
+                alpha = tt(ip) - alpha
+                cosnt = cos(alpha)
+                sinnt = sin(alpha)
+                tez(ip) = tez(ip) + rr(ip)*(coeffp*cosnt - alphap*coeff*sinnt)
               endif
             enddo
           else
@@ -2883,7 +2923,7 @@ c           --- Apply the rest of the multipoles.
      &                      esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
-                rpow = dvnz(rr(ip))**(n-2+2*v)
+                rpow = rr(ip)**(n-2+2*v)
                 tex(ip)=tex(ip) + coeff*rpow*(f*xxx(ip)*cosnt + yyy(ip)*sinnt)
                 tey(ip)=tey(ip) + coeff*rpow*(f*yyy(ip)*cosnt - xxx(ip)*sinnt)
                 tez(ip)=tez(ip) + fz*dvnz(rr(ip))**(n+2*v)*
@@ -3009,10 +3049,36 @@ c           --- Apply solenoidal field component and it's pseudomultipoles.
                 coeff = mltsf(ip)*
      &                    (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
      &                     msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
-                rpow = dvnz(rr(ip))**(2*v)
+                rpow = rr(ip)**(2*v)
                 tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
                 tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
                 tbz(ip) = tbz(ip) + coeff*rpow
+              endif
+            enddo
+          else if (n == 1 .and. v == 0) then
+c           --- The pure dipole term needs special treatment since it
+c           --- breaks down at r = 0.
+            do ip=1,np
+              if (imm(ip) > 0) then
+                alpha = mltph(ip) +
+     &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeff = mltsf(ip)*
+     &                     (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = mltsf(ip)*
+     &                     (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                cosnt = cos(alpha)
+                sinnt = sin(alpha)
+                tbx(ip) = tbx(ip) - coeff*rpow*sinnt
+                tby(ip) = tby(ip) + coeff*rpow*cosnt
+                alpha = tt(ip) - alpha
+                cosnt = cos(alpha)
+                sinnt = sin(alpha)
+                tbz(ip) = tbz(ip) + rr(ip)*(coeffp*sinnt + alphap*coeff*cosnt)
               endif
             enddo
           else
@@ -3034,7 +3100,7 @@ c           --- Apply the rest of the multipoles.
      &                      msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
                 cosnt = cos(n*alpha)
                 sinnt = sin(n*alpha)
-                rpow = dvnz(rr(ip))**(n-2+2*v)
+                rpow = rr(ip)**(n-2+2*v)
                 tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
                 tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
                 tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
