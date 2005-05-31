@@ -78,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.18 2005/04/22 16:39:40 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.19 2005/05/31 00:59:16 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -141,8 +141,8 @@ def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(pnumz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(pnumz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("No. of simulation particles versus Z",titleb,"(number)",
             _gettitler(js))
@@ -190,8 +190,8 @@ def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     beamradius = sqrt(2.)*rrmsz
     beamradius = where(beamradius==0.,1.,beamradius)
     ppcell = pnumz/(beamradius/dx)*scale
-  warpplg(ppcell,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ppcell,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("No. of particles per cell versus Z",titleb,"(number)",
             _gettitler(js))
@@ -224,8 +224,8 @@ def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X coordinate versus Z",titleb,"(m)",
             _gettitler(js))
@@ -258,8 +258,8 @@ def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y coordinate versus Z",titleb,"(m)",
             _gettitler(js))
@@ -292,8 +292,8 @@ def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zbarz = _extractvar('zbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(zbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(zbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean axial location versus Z",titleb,"(m)",
             _gettitler(js))
@@ -326,8 +326,8 @@ def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X' versus Z",titleb,"(rad)",
             _gettitler(js))
@@ -360,8 +360,8 @@ def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y' versus Z",titleb,"(rad)",
             _gettitler(js))
@@ -394,8 +394,8 @@ def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxbarz = _extractvar('vxbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vxbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vxbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vx versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -428,8 +428,8 @@ def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vybarz = _extractvar('vybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vy versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -462,8 +462,8 @@ def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzbarz = _extractvar('vzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vz versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -496,8 +496,8 @@ def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xybarz = _extractvar('xybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X  and Y  versus Z",titleb,"(m^2)",
             _gettitler(js))
@@ -530,8 +530,8 @@ def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xypbarz = _extractvar('xypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X  and Y' versus Z",titleb,"(m-rad)",
             _gettitler(js))
@@ -564,8 +564,8 @@ def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yxpbarz = _extractvar('yxpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(yxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(yxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y  and X' versus Z",titleb,"(m-rad)",
             _gettitler(js))
@@ -598,8 +598,8 @@ def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpypbarz = _extractvar('xpypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xpypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xpypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X' and Y' versus Z",titleb,"(rad^2)",
             _gettitler(js))
@@ -632,8 +632,8 @@ def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xsqbarz = _extractvar('xsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
@@ -666,8 +666,8 @@ def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ysqbarz = _extractvar('ysqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
@@ -700,8 +700,8 @@ def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zsqbarz = _extractvar('zsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(zsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(zsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Z-squared versus Z",titleb,"(m^2)",
             _gettitler(js))
@@ -734,8 +734,8 @@ def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xpsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xpsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean X' squared versus Z",titleb,"(rad^2)",
             _gettitler(js))
@@ -768,8 +768,8 @@ def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ypsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ypsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Y' squared versus Z",titleb,"(rad^2)",
             _gettitler(js))
@@ -802,8 +802,8 @@ def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vxsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vxsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vx squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
@@ -836,8 +836,8 @@ def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vysqbarz = _extractvar('vysqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vy squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
@@ -870,8 +870,8 @@ def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vzsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vzsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean Vz squared versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
@@ -904,8 +904,8 @@ def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X and X' versus Z",titleb,"(m-rad)",
             _gettitler(js))
@@ -938,8 +938,8 @@ def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(yypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(yypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)",
             _gettitler(js))
@@ -972,8 +972,8 @@ def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zvzbarz = _extractvar('zvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(zvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(zvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Z and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
@@ -1006,8 +1006,8 @@ def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xvzbarz = _extractvar('xvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of X and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
@@ -1040,8 +1040,8 @@ def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yvzbarz = _extractvar('yvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(yvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(yvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Y and Vz versus Z",titleb,"(m^2/s)",
             _gettitler(js))
@@ -1074,8 +1074,8 @@ def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vxvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vxvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Vx and Vz versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
@@ -1108,8 +1108,8 @@ def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vyvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vyvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Mean product of Vy and Vz versus Z",titleb,"((m/s)^2)",
             _gettitler(js))
@@ -1142,8 +1142,8 @@ def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS X versus Z",titleb,"(m)",
             _gettitler(js))
@@ -1176,8 +1176,8 @@ def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Y versus Z",titleb,"(m)",
             _gettitler(js))
@@ -1210,8 +1210,8 @@ def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   zrmsz = _extractvar('zrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Z versus Z",titleb,"(m)",
             _gettitler(js))
@@ -1244,8 +1244,8 @@ def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS R versus Z",titleb,"(m)",
             _gettitler(js))
@@ -1278,8 +1278,8 @@ def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xprmsz = _extractvar('xprmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS X' versus Z",titleb,"(rad)",
             _gettitler(js))
@@ -1312,8 +1312,8 @@ def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yprmsz = _extractvar('yprmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(yprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(yprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("RMS Y' versus Z",titleb,"(rad)",
             _gettitler(js))
@@ -1346,8 +1346,8 @@ def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsxz = _extractvar('epsxz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("X-X' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
@@ -1380,8 +1380,8 @@ def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsyz = _extractvar('epsyz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Y-Y' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
@@ -1414,8 +1414,8 @@ def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epszz = _extractvar('epszz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Z-Z' emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
@@ -1448,8 +1448,8 @@ def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnxz = _extractvar('epsnxz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("X-X' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
@@ -1482,8 +1482,8 @@ def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnyz = _extractvar('epsnyz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Y-Y' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
@@ -1516,8 +1516,8 @@ def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnzz = _extractvar('epsnzz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
             _gettitler(js))
@@ -1550,8 +1550,8 @@ def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsgz = _extractvar('epsgz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
@@ -1584,8 +1584,8 @@ def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epshz = _extractvar('epshz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
             _gettitler(js))
@@ -1618,8 +1618,8 @@ def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsngz = _extractvar('epsngz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
      ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
              _gettitler(js))
@@ -1652,8 +1652,8 @@ def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   epsnhz = _extractvar('epsnhz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
      ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
              _gettitler(js))
@@ -1686,8 +1686,8 @@ def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vxrmsz = _extractvar('vxrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vxrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vxrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vx versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -1720,8 +1720,8 @@ def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vyrmsz = _extractvar('vyrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vyrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vyrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vy versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -1754,8 +1754,8 @@ def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzrmsz = _extractvar('vzrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(vzrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vzrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("True RMS Vz versus Z",titleb,"(m/s)",
             _gettitler(js))
@@ -1793,8 +1793,8 @@ def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   sxz = (xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Slope of x-x' phase space",titleb,"(1)",
             _gettitler(js))
@@ -1832,8 +1832,8 @@ def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   syz = (yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Slope of y-y' phase space",titleb,"(1)",
             _gettitler(js))
@@ -1864,8 +1864,8 @@ def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhomidz = _extractvar('rhomidz',varsuffix,'top')*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(rhomidz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(rhomidz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. on axis versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
@@ -1894,8 +1894,8 @@ def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhomaxz = _extractvar('rhomaxz',varsuffix,'top')*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(rhomaxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(rhomaxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. max-over-X,Y versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
@@ -1926,8 +1926,8 @@ def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   curr = _extractvar('curr',varsuffix,'top')[...,js]*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(curr,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(curr,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Current",titleb,"(Amps)",
             _gettitler(js))
@@ -1959,8 +1959,8 @@ def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   egap = _extractvar('egap',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(egap,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(egap,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Gap Electric Field",titleb,"(V/m)")
 
 ##########################################################################
@@ -1989,8 +1989,8 @@ def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   linechg = _extractvar('linechg',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(linechg,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(linechg,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Line Charge",titleb,"(C/m)")
 pplchg = pzlchg
 pzlinechg = pzlchg
@@ -2021,8 +2021,8 @@ def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   vzofz = _extractvar('vzofz',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(vzofz,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(vzofz,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Axial Velocity",titleb,"(m/s)")
 ppvzofz = pzvzofz
 
@@ -2052,8 +2052,8 @@ def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   ezax = _extractvar('ezax',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(ezax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ezax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Z Electric Field on Axis",titleb,"(V/m)")
 ppezax = pzezax
 
@@ -2083,8 +2083,8 @@ def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   phiax = _extractvar('phiax',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(phiax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(phiax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Electrostatic Potential on Axis",titleb,"(V)")
   if lframe:
     phiplmin = _extractvar('phiplmin',varsuffix,'top')*scale
@@ -2125,8 +2125,8 @@ def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rhoax = _extractvar('rhoax',varsuffix,'top')*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
-  warpplg(rhoax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(rhoax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge Density on Axis",titleb,"(C)")
 pprhoax = pzrhoax
 
@@ -2158,8 +2158,8 @@ def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(2.*xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(2.*xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X envelope (2*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2198,8 +2198,8 @@ def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   xpedgez = (xxpbarz-xbarz*xpbarz)/ \
             where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xpedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(xpedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X' envelope",titleb,"(m)",
             _gettitler(js))
@@ -2232,8 +2232,8 @@ def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(2.*yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(2.*yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y envelope (2*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2272,8 +2272,8 @@ def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   ypedgez = (yypbarz-ybarz*ypbarz)/ \
             where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ypedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(ypedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y' envelope",titleb,"(m)",
             _gettitler(js))
@@ -2306,8 +2306,8 @@ def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam R envelope (sqrt(2)*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2342,10 +2342,10 @@ def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
   xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(xbarz+2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  warpplg(xbarz-2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(xbarz+2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(xbarz-2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X edges (xbar+-2*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2379,10 +2379,10 @@ def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
   yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(ybarz+2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  warpplg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(ybarz+2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2415,10 +2415,10 @@ def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
     else: titleb = "Z"
   rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  warpplg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
-          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  plg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+      linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam R edges (+-sqrt(2)*rms)",titleb,"(m)",
             _gettitler(js))
@@ -2456,8 +2456,8 @@ def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   sxz = 2.*(xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam X' envelope",titleb,"(rad)",
             _gettitler(js))
@@ -2495,8 +2495,8 @@ def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   syz = 2.*(yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
-  warpplg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+  plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+      marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Beam Y' envelope",titleb,"(rad)",
             _gettitler(js))
