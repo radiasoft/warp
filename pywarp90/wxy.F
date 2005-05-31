@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.53 $, $Date: 2005/03/24 00:16:26 $
+c@(#) File WXY.M, version $Revision: 3.54 $, $Date: 2005/05/31 01:05:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1138,12 +1138,12 @@ c           --- Magnetic field increment to momenta
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                    ex, ey, ez, sq(is), sm(is), dtp(ipmin), 1.0)
-c           --- Magnetic field increment to momenta
-            call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
+c           --- Magnetic field increment to momenta
+            call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
 
 c         --- PUSHV
           elseif (center == "lpushv") then
@@ -1158,6 +1158,9 @@ c           --- Set quad, dipole E and B;  All: Bz
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                    ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+c           --- Advance relativistic Gamma factor
+            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                    gamadv,lrelativ)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
@@ -1219,6 +1222,9 @@ c            --- Get field from accelerating elements (depends on dtp)
 c            --- Half electric field increment to momenta
              call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                     ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+c            --- Advance relativistic Gamma factor
+             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                     gamadv,lrelativ)
 c            --- Half magnetic field increment to momenta
              call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                     bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
