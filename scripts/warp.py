@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.84 2005/03/17 19:15:17 dave Exp $"
+warp_version = "$Id: warp.py,v 1.85 2005/05/31 01:00:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -409,7 +409,9 @@ def registersolver(solver):
   """
 Registers the solver to be used in the particle simulation.
  - solver: is the solver object. It must have the methods loadrho, solve, and
-           fetche defined
+           fetche defined. fetchb and fetchphi will also be needed in some
+           cases.
+
   """
   _fieldsolver[0] = solver
 def getregisteredsolver():
@@ -423,6 +425,9 @@ def fieldsolMR():
 def fetcheMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
   _fieldsolver[0].fetche()
+def fetchbMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].fetchb()
 def fetchphiMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
   _fieldsolver[0].fetchphi()
@@ -436,6 +441,7 @@ def initfieldsolver():
 __main__.__dict__['loadrhoMR'] = loadrhoMR
 __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
+__main__.__dict__['fetchbMR'] = fetchbMR
 __main__.__dict__['fetchphiMR'] = fetchphiMR
 __main__.__dict__['initfieldsolver'] = initfieldsolver
 
