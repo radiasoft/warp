@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.203 $, $Date: 2005/05/17 17:36:31 $
+c@(#) File W3D.F, version $Revision: 3.204 $, $Date: 2005/05/31 01:22:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1437,8 +1437,25 @@ c  Loop over particle blocks; move each block separately
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
+c           --- Zero out B field arrays, but only if B is going
+c             to be recomputed; B doesn't get recomputed if 
+c             center is "synchv" and interpdk is nonzero and allspecl
+c             is 0
+            if (.not. (center .eq. "synchv" .and. interpdk(is) .ne. 0 
+     &          .and. .not. allspecl)) then
+               do i = 1,ip
+                  bx(i) = 0.
+                  by(i) = 0.
+                  bz(i) = 0.
+               enddo
+            endif
+
 c           --- Obtain the self-field from the electrostatic potential
             call fetche3d(ipmin,ip,is)
+            if (lcallfetchb) then
+              call fetchb3dfrompositions(is,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                                   bx,by,bz)
+            endif
 
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
@@ -1458,18 +1475,6 @@ c           --- correction.
               call sete3d_relativity(ip,ex,ey,vbeam)
             end if
 
-c           --- Zero out B field arrays, but only if B is going
-c             to be recomputed; B doesn't get recomputed if 
-c             center is "synchv" and interpdk is nonzero and allspecl
-c             is 0
-            if (.not. (center .eq. "synchv" .and. interpdk(is) .ne. 0 
-     &          .and. .not. allspecl)) then
-               do i = 1,ip
-                  bx(i) = 0.
-                  by(i) = 0.
-                  bz(i) = 0.
-               enddo
-            endif
 c           --- Compute lag average for experimental damping algorithm
             if (eomdamp /= 0.) then
               call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
@@ -1513,6 +1518,9 @@ c              --- Correction to z on entry/exit to accelerator gap
 c              --- First half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+c              --- Advance relativistic Gamma factor
+               call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                       gamadv,lrelativ)
 c              --- Magnetic field increment to momenta
 c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction before and half after Bpush
@@ -1667,6 +1675,9 @@ c              --- Set quad, dipole E and B; All: Bz
 c              --- Half electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+c              --- Advance relativistic Gamma factor
+               call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                       gamadv,lrelativ)
 c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction
 c              --- Half magnetic field increment to momenta
@@ -5050,6 +5061,120 @@ c     --- Obtain the self-field from the electrostatic potential
 
 !$OMP MASTER
       if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine fetche3dfrompositions(is,n,x,y,z,ex,ey,ez)
+      use GlobalVars
+      use Subtimers3d
+      use Picglb
+      use Picglb3d
+      use InGen
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+      use Efields3d
+      use FieldSolveAPI
+      integer(ISZ):: is,n
+      real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
+
+c     --- Obtain the self-field from the electrostatic potential
+c     --- This is nearly the same as fetche except that the positions
+c     --- are passed in via the argument list rather than through the
+c     --- particles group.
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==XYZgeom) then
+        call sete3d(phip(0,0,-1),selfe(1,0,0,0),n,
+     &              x,y,z,
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
+     &              efetch,ex,ey,ez,l2symtry,l4symtry)
+      elseif(solvergeom==XYZgeomMR) then
+        isfsapi = is
+        xfsapi => x
+        yfsapi => y
+        zfsapi => z
+        exfsapi => ex
+        eyfsapi => ey
+        ezfsapi => ez
+        call execuser("fetcheMR")
+        isfsapi = -1
+        nullify(xfsapi)
+        nullify(yfsapi)
+        nullify(zfsapi)
+        nullify(exfsapi)
+        nullify(eyfsapi)
+        nullify(ezfsapi)
+c     elseif(solvergeom==RZgeom) then
+c       call setemgridrz(ipmin,ip,is,ex,ey,ez)
+      elseif(solvergeom==XZgeom) then
+         call fieldweightxz(x,z,ex,ez,n,zgridprv)
+      elseif(solvergeom==Zgeom) then
+         call fieldweightz(z,ez,n,zgridprv)
+      elseif(solvergeom==Rgeom) then
+         call fieldweightr(x,y,ex,ey,n)
+      elseif(solvergeom==AMRgeom) then
+        call cho_gete3d(n,x,y,z,zgridprv,ex,ey,ez,is,-1)
+      else
+        ex = 0.
+        ey = 0.
+        ez = 0.
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine fetchb3dfrompositions(is,n,x,y,z,bx,by,bz)
+      use GlobalVars
+      use Subtimers3d
+      use Picglb
+      use Picglb3d
+      use InGen
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+      use Efields3d
+      use FieldSolveAPI
+      integer(ISZ):: is,n
+      real(kind=8),target:: x(n),y(n),z(n),bx(n),by(n),bz(n)
+
+c     --- Obtain the magnetic self-field
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==XYZgeomMR) then
+        isfsapi = is
+        xfsapi => x
+        yfsapi => y
+        zfsapi => z
+        bxfsapi => bx
+        byfsapi => by
+        bzfsapi => bz
+        call execuser("fetchbMR")
+        isfsapi = -1
+        nullify(xfsapi)
+        nullify(yfsapi)
+        nullify(zfsapi)
+        nullify(bxfsapi)
+        nullify(byfsapi)
+        nullify(bzfsapi)
+      else
+        bx = 0.
+        by = 0.
+        bz = 0.
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timefetchb3d = timefetchb3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
