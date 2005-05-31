@@ -17,8 +17,9 @@ class FieldSolver3dBase(object):
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
   __flaginputs__ = {'forcesymmetries':1}
 
-  def __init__(self,**kw):
+  def __init__(self,useselfb=0,**kw):
     self.solvergeom = w3d.XYZgeom
+    self.useselfb = useselfb
 
     # --- Save input parameters
     for name in self.__class__.__w3dinputs__:
@@ -140,6 +141,10 @@ class FieldSolver3dBase(object):
       self.nz_selfe = 0
     self.rhop = self.rho
     self.phip = self.phi
+    if self.useselfb:
+      self.bx = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
+      self.by = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
+      self.bz = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = None
@@ -170,6 +175,22 @@ class FieldSolver3dBase(object):
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry)
+
+  def fetchbfrompositions(self,x,y,z,bx,by,bz):
+    n = len(x)
+    if n == 0: return
+    getgrid3d(n,x,y,z,bx,self.nx,self.ny,self.nz,self.bx,
+              self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.l2symtry,self.l4symtry)
+    getgrid3d(n,x,y,z,by,self.nx,self.ny,self.nz,self.by,
+              self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.l2symtry,self.l4symtry)
+    getgrid3d(n,x,y,z,bz,self.nx,self.ny,self.nz,self.bz,
+              self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.l2symtry,self.l4symtry)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
@@ -229,6 +250,10 @@ class FieldSolver3dBase(object):
   def fetche(self):
     self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+
+  def fetchb(self):
+    self.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                             w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
 
   def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
@@ -372,36 +397,32 @@ Transverse 2-D field solver, ignores self Ez and Bz.
   """
   def __init__(self,beamspecies=0,backgroundspecies=[],
                     ignorebeamez=1,ignorebackgroundez=1,
-                    useselfb=0,**kw):
+                    useselfb=0,usebeamb=0,useselfbsqgrad=0,**kw):
 
     self.beamspecies = beamspecies
     self.backgroundspecies = backgroundspecies
     self.ignorebeamez = ignorebeamez
     self.ignorebackgroundez = ignorebackgroundez
     self.useselfb = useselfb
+    self.usebeamb = usebeamb
+    self.useselfbsqgrad = useselfbsqgrad and (max(w3d.interpdk) > 0.)
 
     # --- Create separate solvers for the two particle types and initialize them
-    self.beamsolver = FFTSolver2d(**kw)
+    self.beamsolver = FFTSolver2d(useselfb=self.useselfb or self.usebeamb,**kw)
     if len(self.backgroundspecies) > 0:
       self.backgroundsolver = FFTSolver2d(**kw)
 
-    if self.useselfb:
-      # --- Create bgrd element the same size as the field grid.
+    if self.useselfbsqgrad:
       w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
       w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
-      self.bgrdid = addnewbgrd(zs=w3d.zmmin,ze=w3d.zmmax,
-                               xs=w3d.xmmin,ys=w3d.ymmin,
-                               dx=w3d.dx,dy=w3d.dy,
-                               nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
 
-      if max(w3d.interpdk) > 0.:
-        # --- Create bsqgrad element the same size as the field grid.
-        self.bsqgradid = addnewbsqgrad(zs=w3d.zmmin,ze=w3d.zmmax,
-                                       xs=w3d.xmmin,ys=w3d.ymmin,
-                                       dx=w3d.dx,dy=w3d.dy,
-                                       nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
-        # --- Turn on the use of bsqgrad
-        w3d.igradb = 1
+      # --- Create bsqgrad element the same size as the field grid.
+      self.bsqgradid = addnewbsqgrad(zs=w3d.zmmin,ze=w3d.zmmax,
+                                     xs=w3d.xmmin,ys=w3d.ymmin,
+                                     dx=w3d.dx,dy=w3d.dy,
+                                     nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
+      # --- Turn on the use of bsqgrad
+      w3d.igradb = 1
 
       resetlat()
       setlatt()
@@ -443,31 +464,37 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       self.backgroundsolver.getrhoforfieldsolve()
 
 
+  def calcbeambfield(self):
+      # --- Fill in the bgrd arrays
+      # --- Note that array operations are done transposed for efficiency.
+      phib = transpose(self.beamsolver.phi)
+
+      vz = top.vbeam_s[self.beamspecies]
+      Az = +vz*eps0*mu0*phib
+      bgrdbx = transpose(self.beamsolver.bx)
+      bgrdby = transpose(self.beamsolver.by)
+      bgrdbx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+      bgrdby[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
+
+  def calcbeambsqgrad(self):
+    if self.useselfbsqgrad:
+      bgrdbx = transpose(self.beamsolver.bx)
+      bgrdby = transpose(self.beamsolver.by)
+
+      bsq = bgrdbx**2 + bgrdby**2
+      id = self.bsqgradid - 1
+      bsqgrad = transpose(top.bsqgrad[:,:,:,:,id])
+      bsqgrad[1:-1,:,:,0] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dz)
+      bsqgrad[:,:,1:-1,1] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dx)
+      bsqgrad[:,1:-1,:,2] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
+
   def calcbfieldsumphi(self):
       # --- Calculate the B field from the phi from the beam and sum the phi's
       # --- of the beam and background
       # --- Also, calculate bsqgrad if needed
-
-      # --- Fill in the bgrd arrays
-      # --- Note that array operations are done transposed for efficiency.
-      phib = transpose(self.beamsolver.phi[:,:,1:-1])
-
-      vz = top.vbeam_s[self.beamspecies]
-      Az = +vz*eps0*mu0*phib
-      id = self.bgrdid - 1
-      bgrdbx = transpose(top.bgrdbx[...,id])
-      bgrdby = transpose(top.bgrdby[...,id])
-      bgrdbx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-      bgrdby[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
-
-      if 1 and top.bsqgradns:
-        id = self.bgrdid - 1
-        bsq = bgrdbx**2 + bgrdby**2
-        id = self.bsqgradid - 1
-        bsqgrad = transpose(top.bsqgrad[:,:,:,:,id])
-        bsqgrad[1:-1,:,:,0] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dz)
-        bsqgrad[:,:,1:-1,1] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dx)
-        bsqgrad[:,1:-1,:,2] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
+      
+      self.calcbeambfield()
+      self.calcbeambsqgrad()
 
       # --- Sum the phi's
 
@@ -482,6 +509,11 @@ Transverse 2-D field solver, ignores self Ez and Bz.
   def gammacorrectsumphi(self):
       # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
       # --- The background gets the sum of the beam and background phi's
+
+      # --- Calculate the beam's beam field before applying the gamma correction
+      if self.usebeamb:
+        self.calcbeambfield()
+        self.calcbeambsqgrad()
 
       # --- First make a copy of the beam's phi since it is overwritten below
       # --- The operations below are faster when the arrays are in C ordering
@@ -529,6 +561,27 @@ Transverse 2-D field solver, ignores self Ez and Bz.
                                                 w3d.exfsapi,w3d.eyfsapi,
                                                 w3d.ezfsapi)
       if self.ignorebackgroundez: w3d.ezfsapi = 0.
+
+  def fetchb(self):
+
+    if w3d.isfsapi-1 == self.beamspecies:
+      if self.useselfb:
+        self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                            w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+      else:
+        w3d.bxfsapi = 0.
+        w3d.byfsapi = 0.
+        w3d.bzfsapi = 0.
+    else:
+      if self.usebeamb:
+        self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                            w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+      else:
+        w3d.bxfsapi = 0.
+        w3d.byfsapi = 0.
+        w3d.bzfsapi = 0.
+
+      if self.ignorebackgroundez: w3d.bzfsapi = 0.
 
   def fetchphi(self):
     # --- For present purposes, the results from this routine are never
