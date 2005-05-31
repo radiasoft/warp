@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.28 $, $Date: 2005/05/30 06:39:58 $
+c@(#) File w3d_injection.F, version $Revision: 1.29 $, $Date: 2005/05/31 01:25:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -279,8 +279,10 @@ c             --- Only save particle if it is within the injection region.
                   uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
                 endif
                 if (linj_includebz0) then
-                  uxp(ii) = uxp(ii) - larmorfreq*ainj*rt(ip)*sin(tt(ip))
-                  uyp(ii) = uyp(ii) + larmorfreq*binj*rt(ip)*cos(tt(ip))
+                  rt(ip) = sqrt((xp(ii)+xinject(ij))**2 + (yp(ii)+yinject(ij))**2)
+                  tt(ip) = atan2(yp(ii)+yinject(ij),xp(ii)+xinject(ij))
+                  uxp(ii) = uxp(ii) - larmorfreq*rt(ip)*sin(tt(ip))
+                  uyp(ii) = uyp(ii) + larmorfreq*rt(ip)*cos(tt(ip))
                 endif
                 if (lrelativ) then
                   gaminv(ii) = sqrt(1.-
@@ -326,10 +328,18 @@ c             --- and the particle arrays are unallocated.
               call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,1)
               call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
             endif
+
 c           --- get E self-field at initial positions
-            at = 0.
-            bt = 0.
-            apt = 0.
+            if (linj_efromgrid) then
+              call fetche3dfrompositions(is,nn,xp(ins(is)),yp(ins(is)),
+     &                                   zp(ins(is)),at,bt,apt)
+              call fetchb3dfrompositions(is,nn,xp(ins(is)),yp(ins(is)),
+     &                                   zp(ins(is)),xt,yt,zt)
+            else
+              at = 0.
+              bt = 0.
+              apt = 0.
+            endif
             call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
 
@@ -370,6 +380,11 @@ c           --- do half velocity advance with E fields
             call epusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
      &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gaminv(ins(is)),uxp(ins(is)),uyp(ins(is)),
+     &                    uzp(ins(is)),
+     &                    gamadv,lrelativ)
+
 c           --- do half velocity advance with B fields
             call bpusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
      &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
@@ -381,16 +396,16 @@ c           --- do full position advance
      &                    gaminv(ins(is)),bpt(1))
 
 c           --- Calculate Gamma inverse
-            if (lrelativ) then
-              do ip=ins(is),ins(is)+nn-1
-                gaminv(ip) = 1./sqrt(1. +
-     &                            (uxp(ip)**2+uyp(ip)**2+uzp(ip)**2)*clightsqi)
-              enddo
-            else
-              do ip=ins(is),ins(is)+nn-1
-                gaminv(ip) = 1.
-              enddo
-            endif
+c           if (lrelativ) then
+c             do ip=ins(is),ins(is)+nn-1
+c               gaminv(ip) = 1./sqrt(1. +
+c    &                            (uxp(ip)**2+uyp(ip)**2+uzp(ip)**2)*clightsqi)
+c             enddo
+c           else
+c             do ip=ins(is),ins(is)+nn-1
+c               gaminv(ip) = 1.
+c             enddo
+c           endif
 
 c           --- setrho is now done by the setrho call in padvnc3d.
 
@@ -426,9 +441,16 @@ c             --- Make sure there is enough temp space
               endif
 
 c             --- calculate new E self-fields
-              at = 0.
-              bt = 0.
-              apt = 0.
+              if (linj_efromgrid) then
+                call fetche3dfrompositions(is,nn,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                                     at,bt,apt)
+                call fetchb3dfrompositions(is,nn,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                                     xt,yt,zt)
+              else
+                at = 0.
+                bt = 0.
+                apt = 0.
+              endif
               call inj_sete3d(nn,xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,injpid),
      &                        inj_dz,at,bt,apt)
 
@@ -464,6 +486,10 @@ c             --- complete the E advance
               call epusht3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                      at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
+c             --- Advance relativistic Gamma factor
+              call gammaadv(nn,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                      gamadv,lrelativ)
+
 c             --- Now, move velocites back one half a step
 c             --- first half of a backward B advance
               call bpush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -473,6 +499,10 @@ c             --- first half of a backward B advance
 c             --- then half of a backward E advance
               call epush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                     at(1),bt(1),apt(1),sq(is),sm(is),-0.5*fulldt_s)
+
+c             --- Advance relativistic Gamma factor
+              call gammaadv(nn,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                      gamadv,lrelativ)
 
 c           --- end of loop over species and injection sources
             enddo
@@ -1045,6 +1075,10 @@ c           --- and to make the following code look cleaner.
             id => pid(ins(is):ins(is)+npinje_s(is)-1,injpid)
 
 c           --- get E self-field at initial positions
+            if (linj_efromgrid) then
+              call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
+              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+            endif
             call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
 
 c           --- get external fields at initial positions
@@ -1056,6 +1090,9 @@ c           --- Fetch the time step size
 
 c           --- do half velocity advance with E fields
             call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
+
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 c           --- do half velocity advance with B fields
             call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),tt,0.5,ibpush)
@@ -1166,6 +1203,10 @@ c           --- only particles that have been injected this time step.
 #endif
 
 c           --- calculate new E self-fields
+            if (linj_efromgrid) then
+              call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
+              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+            endif
             call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
 
 c           --- Get external fields at current positions.
@@ -1178,12 +1219,18 @@ c           --- complete B advance
 c           --- complete the E advance
             call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
 
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
+
 c           --- Now, move velocites back one half a step
 c           --- first half of a backward B advance
             call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),-0.5*fulldt_s,ibpush)
 
 c           --- then half of a backward E advance
             call epush3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),-0.5*fulldt_s)
+
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 #ifdef MPIPARALLEL
 c           --- Copy data back into the particle arrays
