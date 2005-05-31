@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.143 $, $Date: 2005/05/10 16:35:06 $
+#@(#) File TOP.V, version $Revision: 3.144 $, $Date: 2005/05/31 01:12:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.143 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.144 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -995,6 +995,8 @@ zbeamcomoffset            real /0./
 relativity                integer /0/
    # Level of relativitistic corrections.
    #  1: scale transverse self E-field by 1/gamma**2
+lcallfetchb               logical /.false./
+   # When true, the fetchb routine is called during the time step
 clearlostpart             integer /1/
    # When 0, do not clear lost particles, when 1, swap lost particles with
    # ones at the end of the array (much faster), when 2, shift particles to
