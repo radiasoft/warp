@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.155 $, $Date: 2005/05/31 01:11:17 $
+c@(#) File TOP.F, version $Revision: 3.156 $, $Date: 2005/06/01 22:21:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -8243,7 +8243,7 @@ c approximate in that when the resulting particles are loaded back onto
 c the same 2-D grid from which the distribution is taken, the distribution
 c is not exactly reproduced. (The exact version is still under development.)
 
-      real(kind=8):: dyi,ni,nip1,ninti,sumn,sumnx,wy
+      real(kind=8):: dyi,ni,nip1,ninti,sumny,sumnx,wy
       real(kind=8):: rnrev
       integer     :: i,ip,ix,iy
       real(kind=8):: n1x(0:nx),n1y(0:ny)
@@ -8258,26 +8258,12 @@ c       x(i) = .5/np + wranf()*(np-1.)/np
         y(i) = .5/np + (i-1.)/np
       enddo
 
-c     --- n = n/sum(n)
-      sumn = 0.
-      do ix=0,nx
-        do iy=0,ny
-          sumn = sumn + n(ix,iy)
-        enddo
-      enddo
-      do ix=0,nx
-        do iy=0,ny
-          n(ix,iy) = n(ix,iy)/sumn
-        enddo
-      enddo
-
 c     --- n1y = sum(n,1)
       do iy=0,ny
-        n1y(iy) = 0.
-        do ix=0,nx
-          n1y(iy) = n1y(iy) + n(ix,iy)
-        enddo
+        n1y(iy) = sum(n(:,iy))
       enddo
+      sumny = sum(n1y) - 0.5*n1y(0) - 0.5*n1y(ny)
+      n1y = n1y/sumny
 
 c     --- ninty(0:ny) = psum(n1y) - 0.5*n1y(0) - 0.5*n1y
       ninty(0) = 0.
@@ -8306,13 +8292,9 @@ c     --- expression is required.
         wy = y(ip)*dyi - iy
 
 c       --- n1x = (n(,iy)*(1.-wy)+n(,iy+1)*wy)/sum(n(,iy)*(1.-wy)+n(,iy+1)*wy)
-        sumnx = 0.
-        do ix=0,nx
-          sumnx = sumnx + n(ix,iy)*(1.-wy)+n(ix,iy+1)*wy
-        enddo
-        do ix=0,nx
-          n1x(ix) = (n(ix,iy)*(1.-wy)+n(ix,iy+1)*wy)/sumnx
-        enddo
+        n1x = n(:,iy)*(1. - wy) + n(:,iy+1)*wy
+        sumnx = sum(n1x) - 0.5*n1x(0) - 0.5*n1x(nx)
+        n1x = n1x/sumnx
 
 c       --- nintx = psum(n1x) - 0.5*n1x
         nintx(0) = 0.
@@ -8333,13 +8315,6 @@ c       --- nintx = psum(n1x) - 0.5*n1x
         else
           x(ip) = ((x(ip) - ninti)/ni  + i)*dx
         endif
-      enddo
-
-c     --- Return n to it original value
-      do ix=0,nx
-        do iy=0,ny
-          n(ix,iy) = n(ix,iy)*sumn
-        enddo
       enddo
 
       return
