@@ -412,6 +412,9 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     if len(self.backgroundspecies) > 0:
       self.backgroundsolver = FFTSolver2d(**kw)
 
+    if self.useselfb:
+      top.lcallfetchb = true
+
     if self.useselfbsqgrad:
       w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
       w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
@@ -465,23 +468,23 @@ Transverse 2-D field solver, ignores self Ez and Bz.
 
 
   def calcbeambfield(self):
-      # --- Fill in the bgrd arrays
-      # --- Note that array operations are done transposed for efficiency.
-      phib = transpose(self.beamsolver.phi)
+    # --- Fill in the bgrd arrays
+    # --- Note that array operations are done transposed for efficiency.
+    phib = transpose(self.beamsolver.phi)
 
-      vz = top.vbeam_s[self.beamspecies]
-      Az = +vz*eps0*mu0*phib
-      bgrdbx = transpose(self.beamsolver.bx)
-      bgrdby = transpose(self.beamsolver.by)
-      bgrdbx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-      bgrdby[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
+    vz = top.vbeam_s[self.beamspecies]
+    Az = +vz*eps0*mu0*phib
+    bx = transpose(self.beamsolver.bx)
+    by = transpose(self.beamsolver.by)
+    bx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+    by[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
 
   def calcbeambsqgrad(self):
     if self.useselfbsqgrad:
-      bgrdbx = transpose(self.beamsolver.bx)
-      bgrdby = transpose(self.beamsolver.by)
+      bx = transpose(self.beamsolver.bx)
+      by = transpose(self.beamsolver.by)
 
-      bsq = bgrdbx**2 + bgrdby**2
+      bsq = bx**2 + by**2
       id = self.bsqgradid - 1
       bsqgrad = transpose(top.bsqgrad[:,:,:,:,id])
       bsqgrad[1:-1,:,:,0] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dz)
@@ -489,54 +492,54 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       bsqgrad[:,1:-1,:,2] = (bsq[:,2:,:] - bsq[:,:-2,:])/(2.*w3d.dy)
 
   def calcbfieldsumphi(self):
-      # --- Calculate the B field from the phi from the beam and sum the phi's
-      # --- of the beam and background
-      # --- Also, calculate bsqgrad if needed
+    # --- Calculate the B field from the phi from the beam and sum the phi's
+    # --- of the beam and background
+    # --- Also, calculate bsqgrad if needed
       
+    self.calcbeambfield()
+    self.calcbeambsqgrad()
+
+    # --- Sum the phi's
+
+    # --- The operations below are faster when the arrays are in C ordering
+    if len(self.backgroundspecies) > 0:
+      tbeackgroundphi = transpose(self.backgroundsolver.phi)
+      tbeamphi = transpose(self.beamsolver.phi)
+
+      add(tbeamphi,tbeackgroundphi,tbeamphi)
+      tbeackgroundphi[...] = tbeamphi
+
+  def gammacorrectsumphi(self):
+    # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
+    # --- The background gets the sum of the beam and background phi's
+
+    # --- Calculate the beam's beam field before applying the gamma correction
+    if self.usebeamb:
       self.calcbeambfield()
       self.calcbeambsqgrad()
 
-      # --- Sum the phi's
+    # --- First make a copy of the beam's phi since it is overwritten below
+    # --- The operations below are faster when the arrays are in C ordering
+    if len(self.backgroundspecies) > 0:
+      tbeamphitemp = transpose(self.beamsolver.phi.copy())
+      tbeackgroundphi = transpose(self.backgroundsolver.phi)
 
-      # --- The operations below are faster when the arrays are in C ordering
-      if len(self.backgroundspecies) > 0:
-        tbeackgroundphi = transpose(self.backgroundsolver.phi)
-        tbeamphi = transpose(self.beamsolver.phi)
+    tbeamphi = transpose(self.beamsolver.phi)
 
-        add(tbeamphi,tbeackgroundphi,tbeamphi)
-        tbeackgroundphi[...] = tbeamphi
+    # --- Calculate gammabar, avoiding roundoff from subtraction of
+    # --- similar numbers
+    js = self.beamspecies
+    ke = jperev*top.ekin_s[js]/dvnz(top.aion_s[js]*amu*clight**2)
+    gammabar = 1. + ke
 
-  def gammacorrectsumphi(self):
-      # --- The beam gets the background phi plus 1/gamma**2 * the beam phi
-      # --- The background gets the sum of the beam and background phi's
+    # --- Now calculate the beam's phi in place
+    multiply(tbeamphi,1./gammabar**2,tbeamphi)
+    if len(self.backgroundspecies) > 0:
+      add(tbeamphi,tbeackgroundphi,tbeamphi)
 
-      # --- Calculate the beam's beam field before applying the gamma correction
-      if self.usebeamb:
-        self.calcbeambfield()
-        self.calcbeambsqgrad()
-
-      # --- First make a copy of the beam's phi since it is overwritten below
-      # --- The operations below are faster when the arrays are in C ordering
-      if len(self.backgroundspecies) > 0:
-        tbeamphitemp = transpose(self.beamsolver.phi.copy())
-        tbeackgroundphi = transpose(self.backgroundsolver.phi)
-
-      tbeamphi = transpose(self.beamsolver.phi)
-
-      # --- Calculate gammabar, avoiding roundoff from subtraction of
-      # --- similar numbers
-      js = self.beamspecies
-      ke = jperev*top.ekin_s[js]/dvnz(top.aion_s[js]*amu*clight**2)
-      gammabar = 1. + ke
-
-      # --- Now calculate the beam's phi in place
-      multiply(tbeamphi,1./gammabar**2,tbeamphi)
-      if len(self.backgroundspecies) > 0:
-        add(tbeamphi,tbeackgroundphi,tbeamphi)
-
-      if len(self.backgroundspecies) > 0:
-        # --- Sum the phi's for the background
-        add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
+    if len(self.backgroundspecies) > 0:
+      # --- Sum the phi's for the background
+      add(tbeamphitemp,tbeackgroundphi,tbeackgroundphi)
 
   def solve(self):
 
