@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.205 $, $Date: 2005/06/01 22:39:10 $
+c@(#) File W3D.F, version $Revision: 3.206 $, $Date: 2005/06/02 00:03:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5151,7 +5151,12 @@ c     --- Obtain the magnetic self-field
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if (.not. lcallfetchb) return
+      if (.not. lcallfetchb) then
+        bx = 0.
+        by = 0.
+        bz = 0.
+        return
+      endif
 
       if(solvergeom==XYZgeomMR) then
         isfsapi = is
