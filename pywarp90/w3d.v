@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.187 $, $Date: 2005/05/31 01:14:02 $
+#@(#) File W3D.V, version $Revision: 3.188 $, $Date: 2005/06/02 19:44:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.187 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.188 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -102,6 +102,8 @@ distrbtn                  character*20  /"none"/
    #    "WB0" or "Waterbag0" = water-bag  
    #    "PA0" or "Parabolic0" = parabolic
    #    "GA0" or "Gaussian0" = Gaussian
+   #  "preload" = User preloaded distribution - in this case, the species
+   #              quantities are calculated from base quantities
 distr_l                   character*8  /"neuffer"/
    # longitudinal velocity distribution for cigar load: either "neuffer"
    # for hard edged distribution (Vlasov equilibrium), or "gaussian" for
