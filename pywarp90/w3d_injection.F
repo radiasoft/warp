@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.29 $, $Date: 2005/05/31 01:25:49 $
+c@(#) File w3d_injection.F, version $Revision: 1.30 $, $Date: 2005/06/02 00:03:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -339,6 +339,9 @@ c           --- get E self-field at initial positions
               at = 0.
               bt = 0.
               apt = 0.
+              xt = 0.
+              yt = 0.
+              zt = 0.
             endif
             call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
@@ -347,9 +350,6 @@ c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
 c           --- The reusing of variable makes for very confusing naming!
             do ip=1,nn
-              xt(ip) = 0.
-              yt(ip) = 0.
-              zt(ip) = 0.
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
@@ -450,15 +450,15 @@ c             --- calculate new E self-fields
                 at = 0.
                 bt = 0.
                 apt = 0.
+                xt = 0.
+                yt = 0.
+                zt = 0.
               endif
               call inj_sete3d(nn,xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,injpid),
      &                        inj_dz,at,bt,apt)
 
 c             --- get external fields at current positions
               do ip=1,nn
-                xt(ip) = 0.
-                yt(ip) = 0.
-                zt(ip) = 0.
                 uxt(ip) = 0.
                 uyt(ip) = 1.
               enddo
