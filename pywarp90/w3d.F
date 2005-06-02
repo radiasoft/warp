@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.206 $, $Date: 2005/06/02 00:03:51 $
+c@(#) File W3D.F, version $Revision: 3.207 $, $Date: 2005/06/02 19:07:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -377,7 +377,9 @@ c  use a user-set npmax directly)
       if (xrandom == "grid") npmax = nxstripe*nystripe*nzstripe
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
 
-      call alotpart
+      if (distrbtn .ne. "preload") then
+        call alotpart
+      endif
       call alotlostpart
 
 c  Load the particles, calculate the charge density
@@ -3213,7 +3215,7 @@ c  Set npm to loop through all possible particles
 
 c  If not loading any particles, skip the next big section, but still calculate
 c  values for sq and sm. For parallel version, also update the value for sw.
-      if (npm > 0) then
+      if (npm > 0 .and. distrbtn .ne. "preload") then
 
 c  Prepare for arbitrary particle distribution in z.  This coding will only
 c  load a beam approximately matching the distribution.  A gathering of
@@ -3946,7 +3948,7 @@ c--------------------------------
 c  End main loop over species
 c--------------------------------
 
-c     --- end of if checking for positive npm
+c     --- end of if checking for positive npm and distrbtn is not preload
       endif
 
 c     --- Find maximum of zdist, which is used to scale sw.  See below.
