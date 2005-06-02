@@ -15,11 +15,14 @@ getmesh3d(): returns tuple of 3 3-d arrays holding the coordinates of the
              three dimensions
 averagezdata(): Does local averaging over the first dimension of the input
                 array. Can also do down select on the data.
+getdatafromtextfile(): Reads in table data from a text file, returning an array
+                       that holds that data.
 
 """
 from warp import *
+from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.8 2005/01/13 19:21:29 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.9 2005/06/02 18:31:06 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -211,4 +214,55 @@ except:
     for i in range(len(ll)):
       tt.append((i,ll[i]))
     return tt
+
+# --- Convenience function to read in data from a text file
+def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,typecode='d',
+                        fortranordering=1):
+  """
+Reads data in from a text file. The data is assumed to be laid out on a
+logically Cartesian mesh.
+ - filename: must be supplied
+ - nskip=0: numbers of lines at the beginning of the file to skip
+            e.g. lines with file info and comments
+ - dims=[]: must be supplied - the size of each dimension
+ - nquantities=1: number of quantities in the file
+ - fortranordering=1: when true, the data will be in fortran ordering, where
+                      the index that varies that fastest in the file will be
+                      the first index. Otherwise use C ordering.
+  """
+
+  # --- Get total number of data values and make an array big enough to hold
+  # --- them.
+  ntot = nquantities*product(dims)
+  data = zeros(ntot,typecode)
+
+  ff = open(filename,'r')
+
+  # --- Loop over the file, reading on one line at a time.
+  # --- Each whole line is put into data at once.
+  i = 0
+  while i < ntot:
+    dataline = map(eval,string.split(ff.readline()))
+    nd = len(dataline)
+    data[i:i+nd] = dataline
+    i = i + nd
+
+  # --- If nquantities, then add another dimension to the data array
+  if nquantities > 1:
+    dims = [nquantities] + list(dims)
+  else:
+    dims = list(dims)
+
+  # --- Set array to have proper shape.
+  if fortranordering:
+    # --- This gives the array fortran ordering, where the index that varies
+    # --- that fastest in the file will be the first index.
+    dims.reverse()
+    data.shape = tuple(dims)
+    data = transpose(data)
+  else:
+    # --- C ordering
+    data.shape = tuple(dims)
+
+  return data
 
