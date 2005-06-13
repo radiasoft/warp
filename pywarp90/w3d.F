@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.207 $, $Date: 2005/06/02 19:07:52 $
+c@(#) File W3D.F, version $Revision: 3.208 $, $Date: 2005/06/13 23:47:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6356,7 +6356,8 @@ c         The loop is in bendfieldsol3d
 c     --- If no field solve, return 
       if ( fstype == -1) return 
 
-      if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12) then
+      if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
+     &    .or. fstype == 13) then
 c       --- SOR and multigrid field solvers - deal with bends directly and set
 c       --- axial boundary conditions (call to perphi3d is not needed)
 c       --- Chombo knows nothing of bends and does its own b.c.'s
@@ -6408,6 +6409,7 @@ c=============================================================================
       use GridBoundary3d
       use Fields3d
       use LatticeInternal
+      use BoltzmannElectrons
       use Parallel
       integer(ISZ):: iwhich
 
@@ -6550,6 +6552,14 @@ c         --- Chombo AMR  full-multigrid solver
         if (iwhich <= 0) then
           call execuser('fieldsolMR')
         endif
+
+      elseif (fstype == 13) then
+
+        call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+     &                      rstar,linbend,
+     &                      bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                      xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                      iondensity,electrontemperature,plasmapotential)
 
       endif
 
