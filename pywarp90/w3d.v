@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.188 $, $Date: 2005/06/02 19:44:08 $
+#@(#) File W3D.V, version $Revision: 3.189 $, $Date: 2005/06/13 23:46:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.188 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.189 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -346,6 +346,13 @@ xfsapi(:) _real
 yfsapi(:) _real
 zfsapi(:) _real
 phifsapi(:) _real
+
+
+*********** BoltzmannElectrons dump:
+# Parameters controlling the Boltzmann-Electrons.
+iondensity          real # Base ion density, multiplier on Boltzmann exponential
+electrontemperature real [eV] # Electron temperature in units of eV
+plasmapotential     real # Potential of plasma
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
