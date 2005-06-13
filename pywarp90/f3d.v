@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.124 $, $Date: 2005/05/19 18:37:18 $
+#@(#) File F3D.V, version $Revision: 3.125 $, $Date: 2005/06/13 23:48:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.124 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.125 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -276,6 +276,34 @@ cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
     # Sets voltage on interior of conductors
 
 
+*********** MultigridBE3d dump:
+multigridbe3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
+             dx:real,dy:real,dz:real,phi:real,rho:real,
+             rstar:real,linbend:logical,
+             bound0:integer,boundnz:integer,boundxy:integer,
+             l2symtry:logical,l4symtry:logical,
+             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+             iondensity:real,electrontemperature:real,plasmapotential:real)
+   subroutine
+   # Solves Poisson's equation using the multigrid method, including the
+   # Boltzmann electron term. This uses variables
+   # from the f3d package to control the iterations and conductors.
+multigridbe3dsolve(iwhich:integer,
+             nx:integer,ny:integer,nz:integer,nzfull:integer,
+             dx:real,dy:real,dz:real,phi:real,rho:real,
+             rstar:real,linbend:logical,bounds:integer,
+             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+             mgparam:real,mgform:integer,mgiters:integer,
+             mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
+             downpasses:integer,uppasses:integer,
+             lcndbndy:logical,laddconductor:logical,icndbndy:integer,
+             lbuildquads:logical,gridmode:integer,conductors:ConductorType,
+             my_index:integer,nslaves:integer,
+             izfsslave:integer,nzfsslave:integer)
+             iondensity:real,electrontemperature:real,plasmapotential:real)
+   subroutine
+   # Solves Poisson's equation using the multigrid method, including the
+   # Boltzmann electron term. All input is through the argument list.
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
