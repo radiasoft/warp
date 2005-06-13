@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.44 2005/05/19 18:33:04 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.45 2005/06/13 23:45:05 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2422,7 +2422,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
     # --- Copy the data in
     top.bgrddx[-1] = dx
     top.bgrddy[-1] = dy
-    top.bgrddz[-1] = (ze - zs)/(nz - 1)
+    top.bgrddz[-1] = (ze - zs)/nz
     if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
     if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
     if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
@@ -2531,7 +2531,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
     # --- Copy the data in
     top.bsqgraddx[-1] = dx
     top.bsqgraddy[-1] = dy
-    top.bsqgraddz[-1] = (ze - zs)/(nz - 1)
+    top.bsqgraddz[-1] = (ze - zs)/nz
     if bsqgrad is not None: top.bsqgrad[:nx+1,:ny+1,:nz+1,-1] = bsqgrad
 
   # --- Return the id of the new dataset. This allows the user to refer to
@@ -2630,7 +2630,7 @@ pgrd arrays with the same suffices:
     # --- Copy the data in
     top.pgrddx[-1] = dx
     top.pgrddy[-1] = dy
-    top.pgrddz[-1] = (ze - zs)/(nz - 1)
+    top.pgrddz[-1] = (ze - zs)/nz
     top.pgrd[:nx+1,:ny+1,:nz+1,-1] = phi
 
   # --- Return the id of the new dataset. This allows the user to refer to
