@@ -1,28 +1,69 @@
 # Calculate the residual of Poisson's equation.  The residual has the units
-# of Q/M**3 (same units as rho)
+# of volts, same as phi.
 from warp import *
-residual_version = "$Id: residual.py,v 1.3 2004/06/01 20:13:31 dave Exp $"
+residual_version = "$Id: residual.py,v 1.4 2005/06/13 23:43:56 dave Exp $"
 
-def getresidual(phi=None,rho=None,dx=None,dy=None,dz=None):
+#print "Maximum residual = %e" % max(abs(ravel(residual)))
+
+def getresidual(phi=None,rho=None,dx=None,dy=None,dz=None,
+                iondensity=None,electrontemperature=None,plasmapotential=None):
   if phi is None: phi = w3d.phi
   if rho is None: rho = w3d.rho
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
   if dz is None: dz = w3d.dz
-  residual = zeros(shape(rho),"d")
+  if iondensity is None: iondensity = w3d.iondensity
+  if electrontemperature is None: electrontemperature = w3d.electrontemperature
+  if plasmapotential is None: plasmapotential = w3d.plasmapotential
 
-  residual[1:-1,1:-1,1:-1] = (eps0*(
-     (phi[0:-2,1:-1,2:-2] -
-   2.*phi[1:-1,1:-1,2:-2] +
-      phi[2:  ,1:-1,2:-2])/dx**2 +
-     (phi[1:-1,0:-2,2:-2] -
-   2.*phi[1:-1,1:-1,2:-2] +
-      phi[1:-1,2:  ,2:-2])/dy**2 +
-     (phi[1:-1,1:-1,1:-3] -
-   2.*phi[1:-1,1:-1,2:-2] +
-      phi[1:-1,1:-1,3:-1])/dz**2)+
-      rho[1:-1,1:-1,1:-1])
+  # --- Get an array that adds guard cells transversely.
+  pshape = list(shape(phi))
+  pshape[0] = pshape[0] + 2
+  pshape[1] = pshape[1] + 2
+  ppp = zeros(pshape,'d')
+  ppp[1:-1,1:-1,:] = phi
 
-  return residual
+  # --- Set the guard cells appropriately for the boundary conditions.
+  # --- The guards cells in z are assumed already set.
+  if w3d.boundxy == top.neumann:
+    ppp[0,:,:] = ppp[2,:,:]
+    ppp[-1,:,:] = ppp[-3,:,:]
+    ppp[:,0,:] = ppp[:,2,:]
+    ppp[:,-1,:] = ppp[:,-3,:]
+  elif w3d.boundxy == top.periodic:
+    ppp[0,:,:] = ppp[-3,:,:]
+    ppp[-1,:,:] = ppp[2,:,:]
+    ppp[:,0,:] = ppp[:,-3,:]
+    ppp[:,-1,:] = ppp[:,2,:]
 
-#print "Maximum residual = %e" % max(abs(ravel(residual)))
+  # --- First calculate del squared phi plus rho/eps0
+  eee = (
+   (ppp[0:-2,1:-1,1:-1] + ppp[2:,1:-1,1:-1] - 2.*ppp[1:-1,1:-1,1:-1])/dx**2
+  +(ppp[1:-1,0:-2,1:-1] + ppp[1:-1,2:,1:-1] - 2.*ppp[1:-1,1:-1,1:-1])/dy**2
+  +(ppp[1:-1,1:-1,0:-2] + ppp[1:-1,1:-1,2:] - 2.*ppp[1:-1,1:-1,1:-1])/dz**2
+  +rho/eps0)
+
+  # --- If Boltzmann electron terms are given, then include the electrons
+  # --- charge density.
+  if iondensity != 0. and electrontemperature != 0.:
+    eee = eee - (iondensity*exp(
+                 (ppp[1:-1,1:-1,1:-1]-plasmapotential)/electrontemperature)
+                 /eps0)
+
+
+  # --- Rescale the error by the coefficient of ppp[1:-1,1:-1,1:-1].
+  eee = eee/(2./dx**2+2./dy**2+2./dz**2)
+
+  # --- Clear out the boundaries which are Dirichlet.
+  if w3d.boundxy == top.dirichlet:
+    eee[0,:,:] = 0.
+    eee[-1,:,:] = 0.
+    eee[:,0,:] = 0.
+    eee[:,-1,:] = 0.
+  if w3d.bound0 == top.dirichlet:
+    eee[:,:,0] = 0.
+  if w3d.boundnz == top.dirichlet:
+    eee[:,:,-1] = 0.
+
+  return eee
+
