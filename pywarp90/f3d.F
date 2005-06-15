@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.115 $, $Date: 2005/05/19 18:37:18 $
+c@(#) File F3D.M, version $Revision: 3.116 $, $Date: 2005/06/15 21:10:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5605,7 +5605,7 @@ c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setcndtrrz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
-      else if (fstype == 7 .or.
+      else if (fstype == 7 .or. fstype == 13 .or.
      &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
@@ -7289,7 +7289,7 @@ c     --- Call the appropriate version of the routine.
      &                    xmin,xmax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
      &                    ix_axis,xmesh,l2symtry,l4symtry,condid)
-      else if (fstype == 7 .or.
+      else if (fstype == 7 .or. fstype == 13 .or.
      &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
@@ -7889,7 +7889,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
-      if (fstype == 7 .or.
+      if (fstype == 7 .or. fstype == 13 .or.
      &    solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
@@ -8516,7 +8516,7 @@ c     --- Call the appropriate routine
      &                     lzend,xmin,xmax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dz,nx,nz,
      &                     ix_axis,xmesh,l2symtry,l4symtry,condid)
-      else if (fstype == 7 .or.
+      else if (fstype == 7 .or. fstype == 13 .or.
      &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
