@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.2 $, $Date: 2005/06/15 21:09:10 $
+c version $Revision: 1.3 $, $Date: 2005/06/15 22:49:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -744,33 +744,33 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
-c     --- Save values just outside conductor surfaces. Only save phi at the
-c     --- subgrid points which are to be used at the current level of
-c     --- grid refinement.
-      if (lcndbndy) then
-        if (parity == 0) then
-          i1 = conductors%evensubgrid%istart(mglevel)
-          i2 = conductors%evensubgrid%istart(mglevel+1)-1
-          do ic = i1,i2
-            ix = conductors%evensubgrid%indx(0,ic)
-            iy = conductors%evensubgrid%indx(1,ic)
-            iz = conductors%evensubgrid%indx(2,ic)
-            conductors%evensubgrid%prevphi(ic) = phi(ix,iy,iz)
-          enddo
-        else
-          i1 = conductors%oddsubgrid%istart(mglevel)
-          i2 = conductors%oddsubgrid%istart(mglevel+1)-1
-          do ic = i1,i2
-            ix = conductors%oddsubgrid%indx(0,ic)
-            iy = conductors%oddsubgrid%indx(1,ic)
-            iz = conductors%oddsubgrid%indx(2,ic)
-            conductors%oddsubgrid%prevphi(ic) = phi(ix,iy,iz)
-          enddo
-        endif
-      endif
-
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
+
+c       --- Save values just outside conductor surfaces. Only save phi at the
+c       --- subgrid points which are to be used at the current level of
+c       --- grid refinement.
+        if (lcndbndy) then
+          if (parity == 0) then
+            i1 = conductors%evensubgrid%istart(mglevel)
+            i2 = conductors%evensubgrid%istart(mglevel+1)-1
+            do ic = i1,i2
+              ix = conductors%evensubgrid%indx(0,ic)
+              iy = conductors%evensubgrid%indx(1,ic)
+              iz = conductors%evensubgrid%indx(2,ic)
+              conductors%evensubgrid%prevphi(ic) = phi(ix,iy,iz)
+            enddo
+          else
+            i1 = conductors%oddsubgrid%istart(mglevel)
+            i2 = conductors%oddsubgrid%istart(mglevel+1)-1
+            do ic = i1,i2
+              ix = conductors%oddsubgrid%indx(0,ic)
+              iy = conductors%oddsubgrid%indx(1,ic)
+              iz = conductors%oddsubgrid%indx(2,ic)
+              conductors%oddsubgrid%prevphi(ic) = phi(ix,iy,iz)
+            enddo
+          endif
+        endif
 
 !$OMP DO
         do iz=izmin,izmax
