@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.3 $, $Date: 2005/06/15 22:49:21 $
+c version $Revision: 1.4 $, $Date: 2005/06/17 23:46:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -20,6 +20,7 @@ c=============================================================================
       use Conductor3d
       use Multigrid3d
       use Parallel
+c     use ifcore
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -31,6 +32,8 @@ c=============================================================================
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+
+c     call for_set_fpe(FPE_M_TRAP_INV)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -230,6 +233,7 @@ c=============================================================================
      &                              my_index,nslaves,izfsslave,nzfsslave,
      &                          iondensity,electrontemperature,plasmapotential)
       use ConductorTypemodule
+      use BEtemp
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -335,11 +339,13 @@ c       --- Alloate new work space
           stop
         endif
 
-c       --- Calculate the coarsend phi
+c       --- Calculate the coarsened phi
         call copyphiwithguardcells(nx,ny,nz,nzfull,phi,res,bounds)
         call restrictbe3d(nx,ny,nz,nzfull,res,1,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,bounds,lzoffset)
+        call cond_potmgbe(conductors%interior,nxcoarse,nycoarse,nzcoarse,
+     &                    phicoarse,mglevel+1)
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call residualbe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,res,
@@ -371,6 +377,9 @@ c       --- Calculate L(R phi), adding it into rhocoarse
      &                  iondensity,electrontemperature,plasmapotential)
         rhocoarse = rhocoarse + rescoarse(0:nx,0:ny,0:nz)
         deallocate(rescoarse)
+        call cond_potmgbezero(conductors%interior,
+     &                        nxcoarse,nycoarse,nzcoarse,
+     &                        rhocoarse,mglevel+1,0,0)
 
 c       --- Save the current coarsened phi since it is needed to apply
 c       --- the corrections after relaxations.
@@ -395,10 +404,15 @@ c       --- Continue at the next coarsest level.
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
+        if (mglevel==0) then
+          allocate(uuu(0:nxcoarse,0:nycoarse,-1:nzcoarse+1))
+          uuu = phicoarse
+          allocate(vvv(0:nxcoarse,0:nycoarse,-1:nzcoarse+1))
+          vvv = phicoarsesave
+        endif
         call expandbe3d(nx,ny,nz,nzfull,phi,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,lzoffset)
-        call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
 
         deallocate(phicoarse,rhocoarse,phicoarsesave)
 
@@ -540,11 +554,7 @@ c     --- Do the loops.
 !$OMP END DO
 
 c     --- Set appropriate boundary values
-c     if (bounds(0) == 0) ucoarse(nxcoarse,:,:) = 0.
-c     if (bounds(1) == 0) ucoarse(nxcoarse,:,:) = 0.
       if (bounds(1) == 2) ucoarse(nxcoarse,:,:) = ucoarse(0,:,:)
-c     if (bounds(2) == 0) ucoarse(:,nycoarse,:) = 0.
-c     if (bounds(3) == 0) ucoarse(:,nycoarse,:) = 0.
       if (bounds(3) == 2) ucoarse(:,nycoarse,:) = ucoarse(:,0,:)
 
       if (delz == 1) then
@@ -796,13 +806,13 @@ c       --- grid refinement.
 
               rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
      &                              electrontemperature)
+c             rhoe = min(rhoe,1*iondensity)
               denom = -2.*(dxsqi+dysqi+dzsqi) - rhoe/eps0/electrontemperature
               Lphi =  (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
      &             +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
      &             +  (phi(ix  ,iy  ,izm1)+phi(ix  ,iy  ,izp1))*dzsqi
      &              -  phi(ix,iy,iz)*2.*(dxsqi+dysqi+dzsqi) - rhoe/eps0
               phi(ix,iy,iz) = phi(ix,iy,iz) - mgparam*(Lphi - rho(ix,iy,iz))/denom
-
             enddo
           enddo
         enddo
@@ -862,6 +872,28 @@ c at all levels, phi is being operated on directly.
         iy = interior%indx(1,ic)
         iz = interior%indx(2,ic)
         phi(ix,iy,iz) = interior%volt(ic)
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine cond_potmgbezero(interior,nx,ny,nz,u,mglevel,delt,delz)
+      use ConductorInteriorTypemodule
+      type(ConductorInteriorType):: interior
+      integer(ISZ):: nx,ny,nz,mglevel,delt,delz
+      real(kind=8):: u(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
+
+c Set data at conductor points to zero.
+
+      integer(ISZ):: ic,ix,iy,iz
+
+!$OMP DO
+      do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
+        ix = interior%indx(0,ic)
+        iy = interior%indx(1,ic)
+        iz = interior%indx(2,ic)
+        u(ix,iy,iz) = 0.
       enddo
 !$OMP END DO
 
@@ -1092,15 +1124,7 @@ c     --- Calculate the residual.
 !$OMP END DO
 
 c     --- Zero the residual inside conductors.
-!$OMP DO
-      do ic = conductors%interior%istart(mglevel),
-     &        conductors%interior%istart(mglevel+1)-1
-        ix = conductors%interior%indx(0,ic)
-        iy = conductors%interior%indx(1,ic)
-        iz = conductors%interior%indx(2,ic)
-        res(ix,iy,iz) = 0.
-      enddo
-!$OMP END DO
+      call cond_potmgbezero(conductors%interior,nx,ny,nz,res,mglevel,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
@@ -1111,7 +1135,6 @@ c       --- Calculate the residual near the conductor.
      &                   dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
      &                   iondensity,electrontemperature,plasmapotential)
       endif
-
 
 c     --- Transverse boundaries
       if (bounds(0) == 0) res(-1:0,:,:) = 0.
@@ -1146,7 +1169,7 @@ c=============================================================================
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1), res(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1), res(-1:nx+1,-1:ny+1,-1:nz+1)
       real(kind=8):: dxsqi,dysqi,dzsqi
       integer(ISZ):: bounds(0:5),icndbndy
       real(kind=8):: iondensity,electrontemperature,plasmapotential
@@ -1265,9 +1288,9 @@ c       --- calculate the new phi based on the boundary conditions
           delxsqi = dxsqi/delx
           delysqi = dysqi/dely
           delzsqi = dzsqi/delz
-          rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
+          rhoe = iondensity*exp((pijk-plasmapotential)/
      &                          electrontemperature)
-          phi(ix,iy,iz) = + (pxm+pxp)*delxsqi
+          res(ix,iy,iz) = + (pxm+pxp)*delxsqi
      &                    + (pym+pyp)*delysqi
      &                    + (pzm+pzp)*delzsqi
      &                    - rhoe/eps0
