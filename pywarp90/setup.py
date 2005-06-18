@@ -88,5 +88,8 @@ setup (name = "warpC",
                                 libraries=libraries,
                                 extra_objects=warpobjects,
                                 extra_link_args=['-g']+
-                                             fcompiler.extra_link_args)]
+                                             fcompiler.extra_link_args,
+                                extra_compile_args=fcompiler.extra_compile_args
+                               )]
+
        )
