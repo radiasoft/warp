@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.4 $, $Date: 2005/06/17 23:46:55 $
+c version $Revision: 1.5 $, $Date: 2005/06/18 00:55:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -20,7 +20,7 @@ c=============================================================================
       use Conductor3d
       use Multigrid3d
       use Parallel
-c     use ifcore
+      use ifcore
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -33,7 +33,7 @@ c     use ifcore
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
       real(kind=8):: iondensity,electrontemperature,plasmapotential
 
-c     call for_set_fpe(FPE_M_TRAP_INV)
+      call for_set_fpe(FPE_M_TRAP_INV)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -804,9 +804,13 @@ c       --- grid refinement.
               if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
               if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
-              rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
-     &                              electrontemperature)
-c             rhoe = min(rhoe,1*iondensity)
+              if (iondensity .ne. 0.) then
+                rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
+     &                                electrontemperature)
+c               rhoe = min(rhoe,1*iondensity)
+              else
+                rhoe = 0.
+              endif
               denom = -2.*(dxsqi+dysqi+dzsqi) - rhoe/eps0/electrontemperature
               Lphi =  (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
      &             +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
@@ -1035,13 +1039,17 @@ c       --- calculate the new phi based on the boundary conditions
           delxsqi = dxsqi/delx
           delysqi = dysqi/dely
           delzsqi = dzsqi/delz
-          rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
-     &                              electrontemperature)
+          if (iondensity .ne. 0.) then
+            rhoe = iondensity*exp((pijk-plasmapotential)/
+     &                            electrontemperature)
+          else
+            rhoe = 0.
+          endif
           denom = -(Cx*delxsqi+Cy*delysqi+Cz*delzsqi)
      &            -rhoe/eps0/electrontemperature
           Lphi = (pxm+pxp)*delxsqi + (pym+pyp)*delysqi + (pzm+pzp)*delzsqi
      &           -rhoe/eps0
-          phi(ix,iy,iz) = phi(ix,iy,iz) - mgparam*(Lphi - rho(ix,iy,iz))/denom
+          phi(ix,iy,iz) = pijk - mgparam*(Lphi - rho(ix,iy,iz))/denom
         endif
       enddo
 !$OMP END DO
@@ -1110,8 +1118,12 @@ c     --- Calculate the residual.
             if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
             if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
-            rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
-     &                            electrontemperature)
+            if (iondensity .ne. 0.) then
+              rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
+     &                              electrontemperature)
+            else
+              rhoe = 0.
+            endif
             res(ix,iy,iz) = (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
      &                   +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
      &                   +  (phi(ix  ,iy  ,izm1)+phi(ix  ,iy  ,izp1))*dzsqi
@@ -1129,11 +1141,11 @@ c     --- Zero the residual inside conductors.
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
         call condbndyresbe(conductors%evensubgrid,nx,ny,nz,phi,res,
-     &                   dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                   iondensity,electrontemperature,plasmapotential)
+     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
+     &                     iondensity,electrontemperature,plasmapotential)
         call condbndyresbe(conductors%oddsubgrid,nx,ny,nz,phi,res,
-     &                   dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                   iondensity,electrontemperature,plasmapotential)
+     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
+     &                     iondensity,electrontemperature,plasmapotential)
       endif
 
 c     --- Transverse boundaries
@@ -1235,7 +1247,7 @@ c       --- set temporaries for boundaries
         if (iz == nz .and. bounds(5) < 1) cycle
 
 c       --- Set temporaries with initial values.
-        pijk = subgrid%prevphi(ic)
+        pijk = phi(ix,iy,iz)
         pxm = phi(ixm1,iy   ,iz   ) - pijk
         pxp = phi(ixp1,iy   ,iz   ) - pijk
         pym = phi(ix   ,iym1,iz   ) - pijk
@@ -1288,8 +1300,13 @@ c       --- calculate the new phi based on the boundary conditions
           delxsqi = dxsqi/delx
           delysqi = dysqi/dely
           delzsqi = dzsqi/delz
-          rhoe = iondensity*exp((pijk-plasmapotential)/
-     &                          electrontemperature)
+          print*,pijk,ix,iy,iz
+          if (iondensity .ne. 0.) then
+            rhoe = iondensity*exp((pijk-plasmapotential)/
+     &                            electrontemperature)
+          else
+            rhoe = 0.
+          endif
           res(ix,iy,iz) = + (pxm+pxp)*delxsqi
      &                    + (pym+pyp)*delysqi
      &                    + (pzm+pzp)*delzsqi
