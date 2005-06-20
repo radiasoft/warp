@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.5 $, $Date: 2005/06/18 00:55:46 $
+c version $Revision: 1.6 $, $Date: 2005/06/20 22:14:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -233,7 +233,6 @@ c=============================================================================
      &                              my_index,nslaves,izfsslave,nzfsslave,
      &                          iondensity,electrontemperature,plasmapotential)
       use ConductorTypemodule
-      use BEtemp
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -404,12 +403,6 @@ c       --- Continue at the next coarsest level.
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
-        if (mglevel==0) then
-          allocate(uuu(0:nxcoarse,0:nycoarse,-1:nzcoarse+1))
-          uuu = phicoarse
-          allocate(vvv(0:nxcoarse,0:nycoarse,-1:nzcoarse+1))
-          vvv = phicoarsesave
-        endif
         call expandbe3d(nx,ny,nz,nzfull,phi,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,lzoffset)
@@ -1300,7 +1293,6 @@ c       --- calculate the new phi based on the boundary conditions
           delxsqi = dxsqi/delx
           delysqi = dysqi/dely
           delzsqi = dzsqi/delz
-          print*,pijk,ix,iy,iz
           if (iondensity .ne. 0.) then
             rhoe = iondensity*exp((pijk-plasmapotential)/
      &                            electrontemperature)
