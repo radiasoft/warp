@@ -179,15 +179,15 @@ class FieldSolver3dBase(object):
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)
     if n == 0: return
-    getgrid3d(n,x,y,z,bx,self.nx,self.ny,self.nz,self.bx,
+    getgrid3d(n,x,y,z,bx,self.nx,self.ny,self.nz,self.bx[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
               self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
               self.l2symtry,self.l4symtry)
-    getgrid3d(n,x,y,z,by,self.nx,self.ny,self.nz,self.by,
+    getgrid3d(n,x,y,z,by,self.nx,self.ny,self.nz,self.by[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
               self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
               self.l2symtry,self.l4symtry)
-    getgrid3d(n,x,y,z,bz,self.nx,self.ny,self.nz,self.bz,
+    getgrid3d(n,x,y,z,bz,self.nx,self.ny,self.nz,self.bz[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
               self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
               self.l2symtry,self.l4symtry)
