@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.6 $, $Date: 2005/06/20 22:14:20 $
+c version $Revision: 1.7 $, $Date: 2005/06/21 15:56:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -20,7 +20,7 @@ c=============================================================================
       use Conductor3d
       use Multigrid3d
       use Parallel
-      use ifcore
+c     use ifcore
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -33,7 +33,7 @@ c=============================================================================
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
       real(kind=8):: iondensity,electrontemperature,plasmapotential
 
-      call for_set_fpe(FPE_M_TRAP_INV)
+c     call for_set_fpe(FPE_M_TRAP_INV)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -337,6 +337,9 @@ c       --- Alloate new work space
      &           ": could not allocate res to shape ",nx,ny,nz
           stop
         endif
+        phicoarse = 0.
+        rhocoarse = 0.
+        res = 0.
 
 c       --- Calculate the coarsened phi
         call copyphiwithguardcells(nx,ny,nz,nzfull,phi,res,bounds)
@@ -366,6 +369,7 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
      &           nxcoarse,nycoarse,nzcoarse
           stop
         endif
+        rescoarse = 0.
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call residualbe(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
@@ -1316,6 +1320,7 @@ c=============================================================================
       real(kind=8):: phiin(0:nx,0:ny,-1:nz+1)
       real(kind=8):: phiout(-1:nx+1,-1:ny+1,-1:nz+1)
 
+      phiout = 0.
       phiout(0:nx,0:ny,-1:nz+1) = phiin
 
 c     --- Transverse boundaries
