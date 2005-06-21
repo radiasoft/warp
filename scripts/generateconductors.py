@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.109 2005/03/08 18:28:08 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.110 2005/06/21 16:20:06 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1510,7 +1510,7 @@ Creates a grid object which can generate conductor data.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
-    if top.fstype in [7,11,12]:
+    if top.fstype in [7,11,12,13]:
       conductors = ConductorType()
       getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
                   conductors,

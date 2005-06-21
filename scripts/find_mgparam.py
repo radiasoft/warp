@@ -1,7 +1,7 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.18 2004/08/06 23:40:48 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.19 2005/06/21 16:20:06 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -35,8 +35,8 @@ time.
                    out phi.
   """
   if solver is None:
-    if(w3d.solvergeom == w3d.XYZgeom and top.fstype != 7):
-      print "The fstype must be set to 7"
+    if(w3d.solvergeom == w3d.XYZgeom and top.fstype not in [7,13]):
+      print "The fstype must be set to 7 or 13"
       return
     if(w3d.solvergeom == w3d.Zgeom): return
     if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):

@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.59 2005/01/12 17:13:35 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.60 2005/06/21 16:20:06 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -642,7 +642,7 @@ Constructor arguments:
     currpkg = getcurrpkg()
     if currpkg == 'w3d':
       # --- Make sure that an appropriate field solver is turned on.
-      if top.fstype not in [3,7]: top.fstype = 7
+      if top.fstype not in [3,7,13]: top.fstype = 7
       # --- Make sure the gridmode is set properly
       f3d.gridmode = 1
     # # --- Turn off the call to setconductor in the fortran
