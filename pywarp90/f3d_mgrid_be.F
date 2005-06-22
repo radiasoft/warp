@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.8 $, $Date: 2005/06/22 00:47:19 $
+c version $Revision: 1.9 $, $Date: 2005/06/22 17:53:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -14,7 +14,8 @@ c=============================================================================
      &                          rstar,linbend,
      &                          bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                          xmmin,ymmin,zmmin,zbeam,zgrid,
-     &                          iondensity,electrontemperature,plasmapotential)
+     &                          iondensity,electrontemperature,plasmapotential,
+     &                          electrondensitymaxscale)
       use GlobalVars
       use PSOR3d
       use Conductor3d
@@ -32,6 +33,7 @@ c     use ifcore
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c     call for_set_fpe(FPE_M_TRAP_INV)
 
@@ -61,7 +63,8 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                        lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                        gridmode,conductors,
      &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        iondensity,electrontemperature,plasmapotential)
+     &                        iondensity,electrontemperature,plasmapotential,
+     &                        electrondensitymaxscale)
 
       return
       end
@@ -75,7 +78,8 @@ c=============================================================================
      &                              lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                              gridmode,conductors,
      &                              my_index,nslaves,izfsslave,nzfsslave,
-     &                        iondensity,electrontemperature,plasmapotential)
+     &                        iondensity,electrontemperature,plasmapotential,
+     &                        electrondensitymaxscale)
       use Subtimersf3d
       use ConductorTypemodule
       use Constant
@@ -98,6 +102,7 @@ c=============================================================================
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
 c mesh. The fieldsolver allows internal conductors with subgrid scale
@@ -169,7 +174,8 @@ c       --- Do one vcycle.
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave,nzfsslave,
-     &                iondensity,electrontemperature,plasmapotential)
+     &                iondensity,electrontemperature,plasmapotential,
+     &                electrondensitymaxscale)
 
 c       --- Calculate the change in phi.
 
@@ -231,7 +237,8 @@ c=============================================================================
      &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors,
      &                              my_index,nslaves,izfsslave,nzfsslave,
-     &                          iondensity,electrontemperature,plasmapotential)
+     &                          iondensity,electrontemperature,plasmapotential,
+     &                          electrondensitymaxscale)
       use ConductorTypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
@@ -249,6 +256,7 @@ c=============================================================================
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
@@ -284,7 +292,8 @@ c     --- Do initial relaxation iterations
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright,
-     &                 iondensity,electrontemperature,plasmapotential)
+     &                 iondensity,electrontemperature,plasmapotential,
+     &                 electrondensitymaxscale)
       enddo
 
 c     --- Check if this is the finest level. If so, then don't do any further
@@ -356,7 +365,8 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call residualbe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,res,
      &                  mglevel,bounds,mgparam,
      &                  lcndbndy,icndbndy,conductors,
-     &                  iondensity,electrontemperature,plasmapotential)
+     &                  iondensity,electrontemperature,plasmapotential,
+     &                  electrondensitymaxscale)
         call copyrhowithguardcells(nx,ny,nz,nzfull,rho,res,bounds)
         call restrictbe3d(nx,ny,nz,nzfull,res,0,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
@@ -379,7 +389,8 @@ c       --- Calculate L(R phi), adding it into rhocoarse
      &                  phicoarse,rescoarse,
      &                  mglevel+1,bounds,mgparam,
      &                  lcndbndy,icndbndy,conductors,
-     &                  iondensity,electrontemperature,plasmapotential)
+     &                  iondensity,electrontemperature,plasmapotential,
+     &                  electrondensitymaxscale)
         rhocoarse = rhocoarse + rescoarse(0:nx,0:ny,0:nz)
         deallocate(rescoarse)
         call cond_potmgbezero(conductors%interior,
@@ -405,7 +416,8 @@ c       --- Continue at the next coarsest level.
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslavec,nzfsslavec,
-     &                iondensity,electrontemperature,plasmapotential)
+     &                iondensity,electrontemperature,plasmapotential,
+     &                electrondensitymaxscale)
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
@@ -426,7 +438,8 @@ c     --- Do final relaxation passes.
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright,
-     &                 iondensity,electrontemperature,plasmapotential)
+     &                 iondensity,electrontemperature,plasmapotential,
+     &                 electrondensitymaxscale)
       enddo
 
       return
@@ -660,7 +673,8 @@ c=============================================================================
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright,
-     &                     iondensity,electrontemperature,plasmapotential)
+     &                     iondensity,electrontemperature,plasmapotential,
+     &                     electrondensitymaxscale)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: mglevel,nx,ny,nz,nzfull
@@ -678,6 +692,7 @@ c=============================================================================
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.  It makes calls to the routines which specify internal
@@ -810,13 +825,15 @@ c       --- surface of the conductor boundaries.
            call condbndymgbe(conductors%evensubgrid,nx,ny,nz,phi,rho,
      &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
      &                       mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential)
+     &                       iondensity,electrontemperature,plasmapotential,
+     &                       electrondensitymaxscale)
           endif
           if (parity == 1) then
            call condbndymgbe(conductors%oddsubgrid,nx,ny,nz,phi,rho,
      &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
      &                       mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential)
+     &                       iondensity,electrontemperature,plasmapotential,
+     &                       electrondensitymaxscale)
           endif
         endif
 
@@ -887,7 +904,8 @@ c Set data at conductor points to zero.
 c=============================================================================
       subroutine condbndymgbe(subgrid,nx,ny,nz,phi,rho,dxsqi,dysqi,dzsqi,
      &                        mgparam,bounds,mglevel,icndbndy,
-     &                        iondensity,electrontemperature,plasmapotential)
+     &                        iondensity,electrontemperature,plasmapotential,
+     &                        electrondensitymaxscale)
       use Constant
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
@@ -896,6 +914,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1042,7 +1061,8 @@ c=============================================================================
       subroutine residualbe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,res,
      &                      mglevel,bounds,mgparam,
      &                      lcndbndy,icndbndy,conductors,
-     &                      iondensity,electrontemperature,plasmapotential)
+     &                      iondensity,electrontemperature,plasmapotential,
+     &                      electrondensitymaxscale)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
@@ -1055,6 +1075,7 @@ c=============================================================================
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c Calculate the residual on the grid including the BE term.
 
@@ -1125,10 +1146,12 @@ c     --- Zero the residual inside conductors.
 c       --- Calculate the residual near the conductor.
         call condbndyresbe(conductors%evensubgrid,nx,ny,nz,phi,res,
      &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                     iondensity,electrontemperature,plasmapotential)
+     &                     iondensity,electrontemperature,plasmapotential,
+     &                     electrondensitymaxscale)
         call condbndyresbe(conductors%oddsubgrid,nx,ny,nz,phi,res,
      &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                     iondensity,electrontemperature,plasmapotential)
+     &                     iondensity,electrontemperature,plasmapotential,
+     &                     electrondensitymaxscale)
       endif
 
 c     --- Transverse boundaries
@@ -1163,7 +1186,8 @@ c     --- Longitudinal boundaries
 c=============================================================================
       subroutine condbndyresbe(subgrid,nx,ny,nz,phi,res,dxsqi,dysqi,dzsqi,
      &                         bounds,mglevel,icndbndy,
-     &                         iondensity,electrontemperature,plasmapotential)
+     &                         iondensity,electrontemperature,plasmapotential,
+     &                         electrondensitymaxscale)
       use Constant
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
@@ -1172,6 +1196,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dysqi,dzsqi
       integer(ISZ):: bounds(0:5),icndbndy
       real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
