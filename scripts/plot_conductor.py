@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.92 2005/05/27 22:35:54 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.93 2005/06/22 17:26:53 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -41,7 +41,7 @@ cleanconductors: not a plot routine, buts removes conductor points not
 ######################################################################
 
 # --- Convenience function to plot the sub-grid data
-def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
+def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
              conductors):
   if conductors is None: return
   interior = conductors.interior
@@ -69,12 +69,12 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
   if numb is not None:
     cnumb = take(cnumb,ii)
     ii = compress(equal(cnumb,numb),ii)
-  xx = (take(ixc,ii)*dx+xmin)*signx
-  yy = (take(iyc,ii)*dy+ymin)*signy
+  xx = (take(ixc,ii)*dx+xmin)*xscale
+  yy = (take(iyc,ii)*dy+ymin)*yscale
   warpplp(yy,xx,color=color)
 
 def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
-                signy,signx,conductors):
+                yscale,xscale,conductors):
   if conductors is None: return
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
@@ -120,12 +120,12 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
   ii = compress(logical_and(equal(izc[:nn],izp),equal(level[:nn],1)),arange(nn))
   dx = dx*lx
   dy = dy*ly
-  xx = (take(ixc,ii)*dx+xmin)*signx
-  yy = (take(iyc,ii)*dy+ymin)*signy
-  delmx = take(delmx,ii)*dx*signx
-  delpx = take(delpx,ii)*dx*signx
-  delmy = take(delmy,ii)*dy*signy
-  delpy = take(delpy,ii)*dy*signy
+  xx = (take(ixc,ii)*dx+xmin)*xscale
+  yy = (take(iyc,ii)*dy+ymin)*yscale
+  delmx = take(delmx,ii)*dx*xscale
+  delpx = take(delpx,ii)*dx*xscale
+  delmy = take(delmy,ii)*dy*yscale
+  delpy = take(delpy,ii)*dy*yscale
   if numb is not None:
     numbmx = take(numbmx,ii)
     numbpx = take(numbpx,ii)
@@ -182,7 +182,7 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     pp = array(pp)
     pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
 
-def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,signy,signx,
+def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,yscale,xscale,
                  conductors):
   """
 Plots conductors, filling them in with a solid color. The color is given
@@ -299,12 +299,12 @@ by the conductor number.
   # --- the appropriate refinement level.
   iic = compress(logical_and(equal(izc,izp),equal(levelc,1)),arange(nc))
   iis = compress(logical_and(equal(izs,izp),equal(levels,1)),arange(ns))
-  dx = dx*lx*signx
-  dy = dy*ly*signy
+  dx = dx*lx*xscale
+  dy = dy*ly*yscale
   ixc = take(ixc,iic)
   iyc = take(iyc,iic)
-  xxc = ixc*dx+xmin*signx
-  yyc = iyc*dy+ymin*signy
+  xxc = ixc*dx+xmin*xscale
+  yyc = iyc*dy+ymin*yscale
   numb = take(numb,iic)
   ixs = take(ixs,iis)
   iys = take(iys,iis)
@@ -442,7 +442,7 @@ cell. It must be called for each of the four corners of a grid cell.
         numb = nmsy[i0]
   return nn,numb
 
-def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx,
+def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,yscale,xscale,
                     f3dcond,f3dmg):
   """
 Plots conductors, filling them in with a solid color. The color is given
@@ -561,12 +561,12 @@ by the conductor number.
   # --- the appropriate refinement level.
   iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
   iis = compress(logical_and(equal(izs,iz),equal(levels,1)),arange(ns))
-  dx = dx*lx*signx
-  dy = dy*ly*signy
+  dx = dx*lx*xscale
+  dy = dy*ly*yscale
   ixc = take(ixc,iic)
   iyc = take(iyc,iic)
-  xxc = ixc*dx+xmin*signx
-  yyc = iyc*dy+ymin*signy
+  xxc = ixc*dx+xmin*xscale
+  yyc = iyc*dy+ymin*yscale
   numb = take(numb,iic)
   ixs = take(ixs,iis)
   iys = take(iys,iis)
@@ -798,6 +798,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
+  - xscale,yscale=1: scaling factor applied to x and y axis
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
@@ -815,6 +816,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- These input arguments are also accepted by ppgeneric so are treated
+  # --- differently.
+  xscale = kwdict.get('xscale',1)
+  yscale = kwdict.get('yscale',1)
 
   if solver is None:
     # --- Check is a solver is registered, and if so, call the appropriate
@@ -870,42 +876,43 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       kwdict['ccolor'] = selfecolor
       pcselfexy(*(comp,iz,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,1,1,conductors)
+    plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,1,-1,conductors)
+      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,-xscale,conductors)
     if fullplane and solver.l4symtry:
-      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-1,1,conductors)
-      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-1,-1,conductors)
+      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-yscale,xscale,conductors)
+      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-yscale,-xscale,
+                   conductors)
   if cond:
-    plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1,
+    plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,yscale,xscale,
              conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1,
+      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-yscale,xscale,
                conductors)
     if fullplane and solver.l4symtry:
-      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1,
+      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,yscale,-xscale,
                conductors)
-      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1,
-               conductors)
+      plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,
+               -yscale,-xscale,conductors)
   if plotsg:
     plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,1,-1,conductors)
+                  subgridlen,mglevel,yscale,-xscale,conductors)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,1,-1,conductors)
+                  subgridlen,mglevel,yscale,-xscale,conductors)
     if fullplane and solver.l4symtry:
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-1,-1,conductors)
+                  subgridlen,mglevel,-yscale,-xscale,conductors)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-1,-1,conductors)
+                  subgridlen,mglevel,-yscale,-xscale,conductors)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
@@ -923,6 +930,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
+  - xscale,yscale=1: scaling factor applied to x and y axis
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
@@ -940,6 +948,11 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- These input arguments are also accepted by ppgeneric so are treated
+  # --- differently.
+  xscale = kwdict.get('xscale',1)
+  yscale = kwdict.get('yscale',1)
 
   if solver is None:
     # --- Check is a solver is registered, and if so, call the appropriate
@@ -989,24 +1002,24 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       kwdict['ccolor'] = selfecolor
       pcselfezx(*(comp,iy,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors)
+    plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-1,1,conductors)
+      plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-yscale,xscale,conductors)
   if plotsg:
     plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
       plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
   if cond:
-    plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1,
+    plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,yscale,xscale,
              conductors)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1,
+      plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-yscale,xscale,
                conductors)
 
 # z-r plane
@@ -1028,6 +1041,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
+  - xscale,yscale=1: scaling factor applied to x and y axis
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
   - plotselfe=0: when true, plot contours or vectors of the electric field
@@ -1045,6 +1059,11 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- These input arguments are also accepted by ppgeneric so are treated
+  # --- differently.
+  xscale = kwdict.get('xscale',1)
+  yscale = kwdict.get('yscale',1)
 
   if solver is None:
     # --- Check is a solver is registered, and if so, call the appropriate
@@ -1094,25 +1113,25 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
       kwdict['ccolor'] = selfecolor
       pcselfezy(*(comp,ix,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,1,1,conductors)
+    plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,-1,1,conductors)
+      plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,-yscale,xscale,conductors)
   if cond:
-    plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1,
+    plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,yscale,xscale,
              conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1,
+      plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-yscale,xscale,
                conductors)
   if plotsg:
     plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                subgridlen,mglevel,1,1,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
       plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                  subgridlen,mglevel,-1,1,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
