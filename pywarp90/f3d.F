@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.116 $, $Date: 2005/06/15 21:10:14 $
+c@(#) File F3D.M, version $Revision: 3.117 $, $Date: 2005/06/22 00:38:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1297,8 +1297,9 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
-     &          aux1,naux1,aux2,naux2)
+      call dcft(1_4,zwork,1_4,int(nz+1,4),zwork,1_4,int(nz+1,4),
+     &          int(nz,4),int(nx+(1-esx),4),int(+1,4),1.,
+     &          aux1,int(naux1,4),aux2,int(naux2,4))
  
 !$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
@@ -1326,8 +1327,9 @@ c       --- if non-zero.
 
 c       --- do the transforms
 
-        call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
-     &            aux1,naux1,aux2,naux2)
+        call dcft(0_4,zwork,1_4,int(nz+1,4),zwork,1_4,
+     &            int(nz+1,4),int(nz,4),int(nx+(1-esx),4),int(+1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
         call vrpft2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
 
         do iz = 0, nz-1
@@ -1399,8 +1401,9 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
-     &          aux1,naux1,aux2,naux2)
+      call dcft(1_4,zwork,1_4,int(nz+1,4),zwork,1_4,int(nz+1,4),
+     &          int(nz,4),int(nx+(1-esx),4),int(-1,4),1.,
+     &          aux1,int(naux1,4),aux2,int(naux2,4))
 
 !$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
@@ -1415,8 +1418,9 @@ c     --- different from last time (deallocating if needed).
 c       --- do the transforms
 
         call vrpfti2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
-        call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
-     &            aux1,naux1,aux2,naux2)
+        call dcft(0_4,zwork,1_4,int(nz+1,4),zwork,1_4,
+     &            int(nz+1,4),int(nz,4),int(nx+(1-esx),4),int(-1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
 
 c       --- shift k-space origin back and apply normalization factor
 c       --- if non-zero.
@@ -2507,7 +2511,9 @@ c     --- must allocate the work space each time.
       endif
 
 c     --- Initialize the auxiliary arrays
-      call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
+      call dcft(1_4,w,1_4,int(nx+1,4),w,int(1,4),int(nx+1,4),
+     &          int(nx,4),int(ny/2,4),int(-isign,4),1.,
+     &          aux1,int(naux1,4),aux2,int(naux2,4))
 
 c     do setup
       if (isetup == 1) then
@@ -2541,7 +2547,9 @@ c     do forward transform
           w(ii,0   ,jj) = a(0,iy)
           w(ii,nx/2,jj) = c(nx/2)*(a(nx/2,iy) + a(nx/2,iy))
         enddo
-        call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,+1,1.,aux1,naux1,aux2,naux2)
+        call dcft(0_4,w,1_4,int(nx+1,4),w,1_4,int(nx+1,4),
+     &            int(nx,4),int(ny/2,4),int(+1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
         call vrpft2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
         do iy=0,ny-1
           ii = mod(iy,2) + 1
@@ -2576,7 +2584,9 @@ c     do backward transform
           enddo
         enddo
         call vrpfti2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
-        call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,-1,1.,aux1,naux1,aux2,naux2)
+        call dcft(0_4,w,1_4,int(nx+1,4),w,1_4,int(nx+1,4),
+     &            int(nx,4),int(ny/2,4),int(-1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
         do iy=0,ny-1
           ii = mod(iy,2) + 1
           jj = iy/2 + 1
@@ -2648,7 +2658,9 @@ c     --- Allocate the work space needed by dcft
       endif
 
 c     --- Initialize the auxiliary arrays
-      call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
+      call dcft(1_4,w,1_4,int(ny+1,4),w,1_4,int(ny+1,4),
+     &          int(ny,4),int(nx/2,4),int(-isign,4),1.,
+     &          aux1,int(naux1,4),aux2,int(naux2,4))
 
 c     do setup
       if (isetup == 1) then
@@ -2682,7 +2694,9 @@ c     do forward transform
           w(ii,0,jj) = a(ix,0)
           w(ii,ny/2,jj) = c(ny/2)*(a(ix,ny/2) + a(ix,ny/2))
         enddo
-        call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,+1,1.,aux1,naux1,aux2,naux2)
+        call dcft(0_4,w,1_4,int(ny+1,4),w,1_4,int(ny+1,4),
+     &            int(ny,4),int(nx/2,4),int(+1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
         call vrpft2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
         do ix=0,nx-1
           ii = mod(ix,2) + 1
@@ -2717,7 +2731,9 @@ c     do backward transform
           enddo
         enddo
         call vrpfti2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
-        call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,-1,1.,aux1,naux1,aux2,naux2)
+        call dcft(0_4,w,1_4,int(ny+1,4),w,1_4,int(ny+1,4),
+     &            int(ny,4),int(nx/2,4),int(-1,4),1.,
+     &            aux1,int(naux1,4),aux2,int(naux2,4))
         do ix=0,nx-1
           ii = mod(ix,2) + 1
           jj = ix/2 + 1
