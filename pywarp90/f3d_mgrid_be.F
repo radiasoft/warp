@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.7 $, $Date: 2005/06/21 15:56:20 $
+c version $Revision: 1.8 $, $Date: 2005/06/22 00:47:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -305,6 +305,12 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfull/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
+        partialcoarsening = (dz > 4./3.*dx)
+        if (partialcoarsening) then
+          nzcoarse = nz
+          nzfullcoarse = nzfull
+        endif
+
         dxcoarse = dx*nx/nxcoarse
         dycoarse = dy*ny/nycoarse
         dzcoarse = dz*nzfull/nzfullcoarse
@@ -337,9 +343,6 @@ c       --- Alloate new work space
      &           ": could not allocate res to shape ",nx,ny,nz
           stop
         endif
-        phicoarse = 0.
-        rhocoarse = 0.
-        res = 0.
 
 c       --- Calculate the coarsened phi
         call copyphiwithguardcells(nx,ny,nz,nzfull,phi,res,bounds)
@@ -369,7 +372,6 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
      &           nxcoarse,nycoarse,nzcoarse
           stop
         endif
-        rescoarse = 0.
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call residualbe(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
@@ -450,20 +452,7 @@ c Restrict to a coarser grid.
       integer(ISZ):: izcoarsemin,izcoarsemax
       real(kind=8):: r,w,dx,dy,dz,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
 
-c     --- Set the loop limits, including edges when appropriate.
-      ixcoarsemin = 1
-      ixcoarsemax = nxcoarse-1
-      iycoarsemin = 1
-      iycoarsemax = nycoarse-1
-      izcoarsemin = 0
-      izcoarsemax = nzcoarse
-      if (bounds(0) >  0) ixcoarsemin = 0
-      if (bounds(1) == 1) ixcoarsemax = nxcoarse
-      if (bounds(2) >  0) iycoarsemin = 0
-      if (bounds(3) == 1) iycoarsemax = nycoarse
-      if (bounds(4) == 0) izcoarsemin = 1
-      if (bounds(5) == 0) izcoarsemax = nzcoarse - 1
-
+c     --- Set the loop limits, always including edges.
       ixcoarsemin = 0
       ixcoarsemax = nxcoarse
       iycoarsemin = 0
@@ -586,9 +575,6 @@ c The expansion is only transverse.
       real(kind=8):: wx,wy,wz
 
 c     --- Set the loop limits, including edges when appropriate.
-      izmin = 0
-      izmax = nz
-
       ixmin = 1
       ixmax = nx-1
       iymin = 1
@@ -596,9 +582,7 @@ c     --- Set the loop limits, including edges when appropriate.
       izmin = 0
       izmax = nz
       if (bounds(0) >  0) ixmin = 0
-c     if (bounds(1) == 1) ixmax = nx
       if (bounds(2) >  0) iymin = 0
-c     if (bounds(3) == 1) iymax = ny
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz - 1
 
@@ -804,7 +788,7 @@ c       --- grid refinement.
               if (iondensity .ne. 0.) then
                 rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
      &                                electrontemperature)
-c               rhoe = min(rhoe,1*iondensity)
+                rhoe = min(rhoe,electrondensitymaxscale*iondensity)
               else
                 rhoe = 0.
               endif
@@ -1039,6 +1023,7 @@ c       --- calculate the new phi based on the boundary conditions
           if (iondensity .ne. 0.) then
             rhoe = iondensity*exp((pijk-plasmapotential)/
      &                            electrontemperature)
+            rhoe = min(rhoe,electrondensitymaxscale*iondensity)
           else
             rhoe = 0.
           endif
@@ -1118,6 +1103,7 @@ c     --- Calculate the residual.
             if (iondensity .ne. 0.) then
               rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
      &                              electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
             else
               rhoe = 0.
             endif
@@ -1148,17 +1134,21 @@ c       --- Calculate the residual near the conductor.
 c     --- Transverse boundaries
       if (bounds(0) == 0) res(-1:0,:,:) = 0.
       if (bounds(1) == 0) res(nx:nx+1,:,:) = 0.
-      if (bounds(0) == 1) res(-1,:,:) = res(1,:,:)
-      if (bounds(1) == 1) res(nx+1,:,:) = res(nx-1,:,:)
-      if (bounds(0) == 2) res(-1,:,:) = res(nx-1,:,:)
-      if (bounds(1) == 2) res(nx:nx+1,:,:) = res(0:1,:,:)
+      if (bounds(0) == 1)
+     &  res(-1,iymin:iymax,izmin:izmax) = res(1,iymin:iymax,izmin:izmax)
+      if (bounds(1) == 1)
+     &  res(nx+1,iymin:iymax,izmin:izmax) = res(nx-1,iymin:iymax,izmin:izmax)
+      if (bounds(0) == 2)
+     &  res(-1,iymin:iymax,izmin:izmax) = res(nx-1,iymin:iymax,izmin:izmax)
+      if (bounds(1) == 2)
+     &  res(nx:nx+1,iymin:iymax,izmin:izmax) = res(0:1,iymin:iymax,izmin:izmax)
 
       if (bounds(2) == 0) res(:,-1:0,:) = 0.
       if (bounds(3) == 0) res(:,ny:ny+1,:) = 0.
-      if (bounds(2) == 1) res(:,-1,:) = res(:,1,:)
-      if (bounds(3) == 1) res(:,ny+1,:) = res(:,ny-1,:)
-      if (bounds(2) == 2) res(:,-1,:) = res(:,ny-1,:)
-      if (bounds(3) == 2) res(:,ny:ny+1,:) = res(:,0:1,:)
+      if (bounds(2) == 1) res(:,-1,izmin:izmax) = res(:,1,izmin:izmax)
+      if (bounds(3) == 1) res(:,ny+1,izmin:izmax) = res(:,ny-1,izmin:izmax)
+      if (bounds(2) == 2) res(:,-1,izmin:izmax) = res(:,ny-1,izmin:izmax)
+      if (bounds(3) == 2) res(:,ny:ny+1,izmin:izmax) = res(:,0:1,izmin:izmax)
 
 c     --- Longitudinal boundaries
       if (bounds(4) == 0) res(:,:,-1:0) = 0.
@@ -1300,6 +1290,7 @@ c       --- calculate the new phi based on the boundary conditions
           if (iondensity .ne. 0.) then
             rhoe = iondensity*exp((pijk-plasmapotential)/
      &                            electrontemperature)
+            rhoe = min(rhoe,electrondensitymaxscale*iondensity)
           else
             rhoe = 0.
           endif
@@ -1320,16 +1311,15 @@ c=============================================================================
       real(kind=8):: phiin(0:nx,0:ny,-1:nz+1)
       real(kind=8):: phiout(-1:nx+1,-1:ny+1,-1:nz+1)
 
-      phiout = 0.
       phiout(0:nx,0:ny,-1:nz+1) = phiin
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) phiout(-1,:,:) = phiout(0,:,:)
-      if (bounds(1) == 0) phiout(nx+1,:,:) = phiout(nx,:,:)
-      if (bounds(0) == 1) phiout(-1,:,:) = phiout(1,:,:)
-      if (bounds(1) == 1) phiout(nx+1,:,:) = phiout(nx-1,:,:)
-      if (bounds(0) == 2) phiout(-1,:,:) = phiout(nx-1,:,:)
-      if (bounds(1) == 2) phiout(nx:nx+1,:,:) = phiout(0:1,:,:)
+      if (bounds(0) == 0) phiout(-1,0:ny,:) = phiout(0,0:ny,:)
+      if (bounds(1) == 0) phiout(nx+1,0:ny,:) = phiout(nx,0:ny,:)
+      if (bounds(0) == 1) phiout(-1,0:ny,:) = phiout(1,0:ny,:)
+      if (bounds(1) == 1) phiout(nx+1,0:ny,:) = phiout(nx-1,0:ny,:)
+      if (bounds(0) == 2) phiout(-1,0:ny,:) = phiout(nx-1,0:ny,:)
+      if (bounds(1) == 2) phiout(nx:nx+1,0:ny,:) = phiout(0:1,0:ny,:)
 
       if (bounds(2) == 0) phiout(:,-1,:) = phiout(:,0,:)
       if (bounds(3) == 0) phiout(:,ny+1,:) = phiout(:,ny,:)
@@ -1339,12 +1329,12 @@ c     --- Transverse boundaries
       if (bounds(3) == 2) phiout(:,ny:ny+1,:) = phiout(:,0:1,:)
 
 c     --- Longitudinal boundaries
-      if (bounds(4) == 0) phiout(:,:,-1) = phiout(:,:,0)
-      if (bounds(5) == 0) phiout(:,:,nz+1) = phiout(:,:,nz)
-      if (bounds(4) == 1) phiout(:,:,-1) = phiout(:,:,1)
-      if (bounds(5) == 1) phiout(:,:,nz+1) = phiout(:,:,nz-1)
-      if (bounds(4) == 2 .and. nz == nzfull) phiout(:,:,-1) = phiout(:,:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
+c     if (bounds(4) == 0) phiout(:,:,-1) = phiout(:,:,0)
+c     if (bounds(5) == 0) phiout(:,:,nz+1) = phiout(:,:,nz)
+c     if (bounds(4) == 1) phiout(:,:,-1) = phiout(:,:,1)
+c     if (bounds(5) == 1) phiout(:,:,nz+1) = phiout(:,:,nz-1)
+c     if (bounds(4) == 2 .and. nz == nzfull) phiout(:,:,-1) = phiout(:,:,nz-1)
+c     if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
 
       return
       end
@@ -1357,19 +1347,19 @@ c=============================================================================
       rhoout(0:nx,0:ny,0:nz) = rhoin - rhoout(0:nx,0:ny,0:nz)
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) rhoout(-1,:,:) = rhoout(0,:,:)
-      if (bounds(1) == 0) rhoout(nx+1,:,:) = rhoout(nx,:,:)
-      if (bounds(0) == 1) rhoout(-1,:,:) = rhoout(1,:,:)
-      if (bounds(1) == 1) rhoout(nx+1,:,:) = rhoout(nx-1,:,:)
-      if (bounds(0) == 2) rhoout(-1,:,:) = rhoout(nx-1,:,:)
-      if (bounds(1) == 2) rhoout(nx:nx+1,:,:) = rhoout(0:1,:,:)
+      if (bounds(0) == 0) rhoout(-1,0:ny,0:nz) = rhoout(0,0:ny,0:nz)
+      if (bounds(1) == 0) rhoout(nx+1,0:ny,0:nz) = rhoout(nx,0:ny,0:nz)
+      if (bounds(0) == 1) rhoout(-1,0:ny,0:nz) = rhoout(1,0:ny,0:nz)
+      if (bounds(1) == 1) rhoout(nx+1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
+      if (bounds(0) == 2) rhoout(-1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
+      if (bounds(1) == 2) rhoout(nx:nx+1,0:ny,0:nz) = rhoout(0:1,0:ny,0:nz)
 
-      if (bounds(2) == 0) rhoout(:,-1,:) = rhoout(:,0,:)
-      if (bounds(3) == 0) rhoout(:,ny+1,:) = rhoout(:,ny,:)
-      if (bounds(2) == 1) rhoout(:,-1,:) = rhoout(:,1,:)
-      if (bounds(3) == 1) rhoout(:,ny+1,:) = rhoout(:,ny-1,:)
-      if (bounds(2) == 2) rhoout(:,-1,:) = rhoout(:,ny-1,:)
-      if (bounds(3) == 2) rhoout(:,ny:ny+1,:) = rhoout(:,0:1,:)
+      if (bounds(2) == 0) rhoout(:,-1,0:nz) = rhoout(:,0,0:nz)
+      if (bounds(3) == 0) rhoout(:,ny+1,0:nz) = rhoout(:,ny,0:nz)
+      if (bounds(2) == 1) rhoout(:,-1,0:nz) = rhoout(:,1,0:nz)
+      if (bounds(3) == 1) rhoout(:,ny+1,0:nz) = rhoout(:,ny-1,0:nz)
+      if (bounds(2) == 2) rhoout(:,-1,0:nz) = rhoout(:,ny-1,0:nz)
+      if (bounds(3) == 2) rhoout(:,ny:ny+1,0:nz) = rhoout(:,0:1,0:nz)
 
 c     --- Longitudinal boundaries
       if (bounds(4) == 0) rhoout(:,:,-1) = rhoout(:,:,0)
