@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.189 $, $Date: 2005/06/13 23:46:50 $
+#@(#) File W3D.V, version $Revision: 3.190 $, $Date: 2005/06/22 00:48:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.189 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.190 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -350,9 +350,18 @@ phifsapi(:) _real
 
 *********** BoltzmannElectrons dump:
 # Parameters controlling the Boltzmann-Electrons.
-iondensity          real # Base ion density, multiplier on Boltzmann exponential
+iondensity          real      # Base ion density, multiplier on Boltzmann
+                              # exponential for field solvers including
+                              # Boltzmann electrons
 electrontemperature real [eV] # Electron temperature in units of eV
-plasmapotential     real # Potential of plasma
+                              # for field solvers including Boltzmann electrons
+plasmapotential     real      # Potential of plasma
+                              # for field solvers including Boltzmann electrons
+electrondensitymaxscale real /2./ # Limit of electron density relative to
+                                  # iondensity. This should be large enough
+                                  # to not affect the solution, but small
+                                  # enough to prevent divergences during
+                                  # field solve.
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
