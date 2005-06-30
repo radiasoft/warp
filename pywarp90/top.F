@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.156 $, $Date: 2005/06/01 22:21:22 $
+c@(#) File TOP.F, version $Revision: 3.157 $, $Date: 2005/06/30 00:58:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6810,9 +6810,12 @@ c way to the end of the species block minus nhigher.  If there is not
 c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
-      integer(ISZ):: nadd,i,ishft
+      integer(ISZ):: nadd,i,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Make sure that ins has a sensible value
+      if (ins(is) == 0 .and. npmax_s(is) == 0) ins(is) = 1
 
 c     --- If there is already enough space, then return.
       if (ins(is)-npmax_s(is-1)-1 >= nlower .and.
@@ -6857,15 +6860,15 @@ c     --- Now, there is enough room to shift the particles appropriately.
 c     --- Even though there may be enough space needed for the new particles,
 c     --- the shift should still be done for the case when lfullshft is true.
 c     --- Note that is some cases no shift will be needed.  In those cases,
-c     --- ishft comes out to be zero and shftpart returns immediately when
-c     --- ishft is zero.
+c     --- ishift comes out to be zero and shftpart returns immediately when
+c     --- ishift is zero.
       if (lfullshft) then
-        ishft = npmax_s(is) - ins(is) - nps(is) + 1 - nhigher
+        ishift = npmax_s(is) - ins(is) - nps(is) + 1 - nhigher
       else
-        ishft = max(0,nlower - (ins(is)-npmax_s(is-1)-1)) +
+        ishift = max(0,nlower - (ins(is)-npmax_s(is-1)-1)) +
      &          min(0,(npmax_s(is)-ins(is)-nps(is)+1) - nhigher)
       endif
-      call shftpart(is,ishft)
+      call shftpart(is,ishift)
 
 !$OMP MASTER
       if (ltoptimesubs) timechckpart = timechckpart + wtime() - substarttime
@@ -6874,25 +6877,25 @@ c     --- ishft is zero.
       return
       end
 c=============================================================================
-      subroutine shftpart(is,ishft)
+      subroutine shftpart(is,ishift)
       use InPart
       use Particles
-      integer(ISZ):: is,ishft
-      call shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
+      integer(ISZ):: is,ishift
+      call shftpartwork(is,ishift,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
      &                  xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       return
       end
 c=============================================================================
-      subroutine shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
+      subroutine shftpartwork(is,ishift,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
      &                        xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       use Subtimerstop
-      integer(ISZ):: is,ishft
+      integer(ISZ):: is,ishift
       integer(ISZ):: npmax,npmaxi,ns,npmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
       real(kind=8):: gaminv(npmax),pid(npmaxi,npid)
 
-c Shift particles by 'ishft'.  All of the data from the low end of the
+c Shift particles by 'ishift'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
 c below the live particles may include newly injected particles which
 c have not been included into the simulation yet.
@@ -6905,70 +6908,70 @@ c the arrays.
       if (ltoptimesubs) substarttime = wtime()
 
 c     --- return if shift is zero
-      if (ishft == 0) return
+      if (ishift == 0) return
 
 c     --- Positive and negative shifts are treated differently since
 c     --- a negative shift may result in lost data.
-      if (ishft > 0) then
+      if (ishift > 0) then
 
 c       --- Loop from top of live particles to bottom of species block.
         do ip=ins(is)+nps(is)-1, npmax_s(is-1)+1, -1
-          xp(ip+ishft) = xp(ip)
-          yp(ip+ishft) = yp(ip)
-          zp(ip+ishft) = zp(ip)
-          uxp(ip+ishft) = uxp(ip)
-          uyp(ip+ishft) = uyp(ip)
-          uzp(ip+ishft) = uzp(ip)
-          gaminv(ip+ishft) = gaminv(ip)
+          xp(ip+ishift) = xp(ip)
+          yp(ip+ishift) = yp(ip)
+          zp(ip+ishift) = zp(ip)
+          uxp(ip+ishift) = uxp(ip)
+          uyp(ip+ishift) = uyp(ip)
+          uzp(ip+ishift) = uzp(ip)
+          gaminv(ip+ishift) = gaminv(ip)
           if (npid > 0) then
-            pid(ip+ishft,:) = pid(ip,:)
+            pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
 c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
-        do ip=npmax_s(is-1)+1,npmax_s(is-1)+1+ishft-1
+        do ip=npmax_s(is-1)+1,npmax_s(is-1)+1+ishift-1
           uzp(ip) = 0.
           if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change lower bound of live particles
-        ins(is) = ins(is) + ishft
+        ins(is) = ins(is) + ishift
 
       else
-c       --- Loop from -ishft above bottom of species block to top of live
+c       --- Loop from -ishift above bottom of species block to top of live
 c       --- particles.  Note that particles will be clobbered if
-c       --- (ins(is) - npmax_s(is-1)) < -ishft
-        if (ins(is) - npmax_s(is-1) < -ishft) then
+c       --- (ins(is) - npmax_s(is-1)) < -ishift
+        if (ins(is) - npmax_s(is-1) < -ishift) then
           print*,"WARNING: shftpart: particle data will be lost since there is"
           print*,"                   not enough space in the arrays."
         endif
 
-        do ip=npmax_s(is-1)+1-ishft, ins(is)+nps(is)-1
-          xp(ip+ishft) = xp(ip)
-          yp(ip+ishft) = yp(ip)
-          zp(ip+ishft) = zp(ip)
-          uxp(ip+ishft) = uxp(ip)
-          uyp(ip+ishft) = uyp(ip)
-          uzp(ip+ishft) = uzp(ip)
-          gaminv(ip+ishft) = gaminv(ip)
+        do ip=npmax_s(is-1)+1-ishift, ins(is)+nps(is)-1
+          xp(ip+ishift) = xp(ip)
+          yp(ip+ishift) = yp(ip)
+          zp(ip+ishift) = zp(ip)
+          uxp(ip+ishift) = uxp(ip)
+          uyp(ip+ishift) = uyp(ip)
+          uzp(ip+ishift) = uzp(ip)
+          gaminv(ip+ishift) = gaminv(ip)
           if (npid > 0) then
-            pid(ip+ishft,:) = pid(ip,:)
+            pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
 c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
-        do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishft+1,-1
+        do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishift+1,-1
           uzp(ip) = 0.
           if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change number of particles if data is lost
-        if (ins(is) - npmax_s(is-1) < -ishft) then
-          nps(is) = nps(is) - (-ishft - (ins(is) - npmax_s(is-1)))
+        if (ins(is) - npmax_s(is-1) < -ishift) then
+          nps(is) = nps(is) - (-ishift - (ins(is) - npmax_s(is-1)))
           ins(is) = npmax_s(is-1) + 1
         else
 c         --- change lower bound only
-          ins(is) = ins(is) + ishft
+          ins(is) = ins(is) + ishift
         endif
 
       endif
@@ -7418,7 +7421,7 @@ c space but not enough room above or below, the lost particles are shifted
 c appropriately. If there is not enough space, add more to the arrays.
 c Particle data is shifted appropriately.
 
-      integer(ISZ):: nadd,i,ishft
+      integer(ISZ):: nadd,i,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -7456,9 +7459,9 @@ c       --- Increase size of the block for species 'is'.
       endif
 
 c     --- Now, there is enough room to shift the particles appropriately.
-      ishft = max(0,nlower - (inslost(is)-npmaxlost_s(is-1)-1)) +
+      ishift = max(0,nlower - (inslost(is)-npmaxlost_s(is-1)-1)) +
      &        min(0,(npmaxlost_s(is)-inslost(is)-npslost(is)+1) - nhigher)
-      call shftlostpart(is,ishft)
+      call shftlostpart(is,ishift)
 
 !$OMP MASTER
       if (ltoptimesubs) timechcklostpart = timechcklostpart + wtime() - substarttime
@@ -7467,16 +7470,16 @@ c     --- Now, there is enough room to shift the particles appropriately.
       return
       end
 c=============================================================================
-      subroutine shftlostpart(is,ishft)
+      subroutine shftlostpart(is,ishift)
       use Subtimerstop
       use InPart
       use LostParticles
       use Particles
-      integer(ISZ):: is,ishft
+      integer(ISZ):: is,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      call shftpartwork(is,ishft,npmaxlost,npmaxlost,ns,npmaxlost_s,
+      call shftpartwork(is,ishift,npmaxlost,npmaxlost,ns,npmaxlost_s,
      &                  inslost,npslost,npid,
      &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                  gaminvlost,pidlost)
@@ -7506,7 +7509,7 @@ c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
       integer(ISZ):: ilower,ihigher,spacebelow,spaceabove
-      integer(ISZ):: naddbelow,naddabove,i,ishft
+      integer(ISZ):: naddbelow,naddabove,i,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -7552,8 +7555,8 @@ c       --- them up to make space below for species is.
 
 c     --- Now, there is enough room to shift the particles appropriately.
 c     --- Note that in some cases no shift will be needed.  In those cases,
-c     --- ishft comes out to be zero and shftpart returns immediately when
-c     --- ishft is zero.
+c     --- ishift comes out to be zero and shftpart returns immediately when
+c     --- ishift is zero.
       if (is == 1) then
         ilower = 0
       else
@@ -7566,8 +7569,8 @@ c     --- ishft is zero.
       endif
       spacebelow = block%ins(is) - ilower - 1
       spaceabove = ihigher - block%ins(is) - block%nps(is)
-      ishft = max(0,nlower - spacebelow) + min(0,spaceabove - nhigher)
-      call shiftparticleblock(block,is,ishft)
+      ishift = max(0,nlower - spacebelow) + min(0,spaceabove - nhigher)
+      call shiftparticleblock(block,is,ishift)
 
 !$OMP MASTER
       if (ltoptimesubs) timecheckparticleblock = timecheckparticleblock + wtime() - substarttime
@@ -7576,13 +7579,13 @@ c     --- ishft is zero.
       return
       end
 c=============================================================================
-      subroutine shiftparticleblock(block,is,ishft)
+      subroutine shiftparticleblock(block,is,ishift)
       use Subtimerstop
       use ParticleBlockmodule
       type(ParticleBlock):: block
-      integer(ISZ):: is,ishft
+      integer(ISZ):: is,ishift
 
-c Shift particles by 'ishft'.
+c Shift particles by 'ishift'.
 c Assumes that the is enough space in the particle arrays to make the
 c shift without clobbering other particles or going past the ends of
 c the arrays.
@@ -7592,30 +7595,30 @@ c the arrays.
       if (ltoptimesubs) substarttime = wtime()
 
 c     --- return if shift is zero
-      if (ishft == 0) return
+      if (ishift == 0) return
 
 c     --- Positive and negative shifts are treated differently since
 c     --- a negative shift may result in lost data.
-      if (ishft > 0) then
+      if (ishift > 0) then
 
 c       --- Loop only over live particles
         do ip=block%ins(is)+block%nps(is)-1, block%ins(is), -1
-          block%xp(ip+ishft) = block%xp(ip)
-          block%yp(ip+ishft) = block%yp(ip)
-          block%zp(ip+ishft) = block%zp(ip)
-          block%uxp(ip+ishft) = block%uxp(ip)
-          block%uyp(ip+ishft) = block%uyp(ip)
-          block%uzp(ip+ishft) = block%uzp(ip)
-          block%gaminv(ip+ishft) = block%gaminv(ip)
+          block%xp(ip+ishift) = block%xp(ip)
+          block%yp(ip+ishift) = block%yp(ip)
+          block%zp(ip+ishift) = block%zp(ip)
+          block%uxp(ip+ishift) = block%uxp(ip)
+          block%uyp(ip+ishift) = block%uyp(ip)
+          block%uzp(ip+ishift) = block%uzp(ip)
+          block%gaminv(ip+ishift) = block%gaminv(ip)
           if (block%npid > 0) then
-            block%pid(ip+ishft,:) = block%pid(ip,:)
+            block%pid(ip+ishift,:) = block%pid(ip,:)
 c           block%pid(ip,:) = 0
           endif
 c         block%uzp(ip) = 0.
         enddo
 
 c       --- change lower bound of live particles
-        block%ins(is) = block%ins(is) + ishft
+        block%ins(is) = block%ins(is) + ishift
 
       else
 c       --- Loop only over live particles.
@@ -7625,33 +7628,33 @@ c       --- Note that particles will be clobbered if shifted onto species below.
         else
           ilower = block%ins(is-1) + block%nps(is-1) - 1
         endif
-        if (block%ins(is) - ilower - 1 < -ishft) then
+        if (block%ins(is) - ilower - 1 < -ishift) then
           print*,"WARNING: shiftparticleblock: particle data will be lost"
           print*,"         since there is  not enough space in the arrays."
         endif
 
         do ip=block%ins(is), block%ins(is)+block%nps(is)-1
-          block%xp(ip+ishft) = block%xp(ip)
-          block%yp(ip+ishft) = block%yp(ip)
-          block%zp(ip+ishft) = block%zp(ip)
-          block%uxp(ip+ishft) = block%uxp(ip)
-          block%uyp(ip+ishft) = block%uyp(ip)
-          block%uzp(ip+ishft) = block%uzp(ip)
-          block%gaminv(ip+ishft) = block%gaminv(ip)
+          block%xp(ip+ishift) = block%xp(ip)
+          block%yp(ip+ishift) = block%yp(ip)
+          block%zp(ip+ishift) = block%zp(ip)
+          block%uxp(ip+ishift) = block%uxp(ip)
+          block%uyp(ip+ishift) = block%uyp(ip)
+          block%uzp(ip+ishift) = block%uzp(ip)
+          block%gaminv(ip+ishift) = block%gaminv(ip)
           if (block%npid > 0) then
-            block%pid(ip+ishft,:) = block%pid(ip,:)
+            block%pid(ip+ishift,:) = block%pid(ip,:)
 c           block%pid(ip,:) = 0
           endif
 c         block%uzp(ip) = 0.
         enddo
 
 c       --- change number of particles if data is lost
-        if (block%ins(is) - ilower - 1 < -ishft) then
-          block%nps(is) = block%nps(is) - (-ishft - (block%ins(is) - ilower - 1))
+        if (block%ins(is) - ilower - 1 < -ishift) then
+          block%nps(is) = block%nps(is) - (-ishift - (block%ins(is) - ilower - 1))
           block%ins(is) = ilower + 1
         else
 c         --- change lower bound only
-          block%ins(is) = block%ins(is) + ishft
+          block%ins(is) = block%ins(is) + ishift
         endif
 
       endif
