@@ -5907,6 +5907,11 @@ TYPE(CONDtype), POINTER :: c
    b%cndlast%nbbnd = b%cndlast%nbbnd + 1
   end do
 
+  ! --- nbbnd has been changed above and since some points may be rejected,
+  ! --- it may be less then its value when the allocate was done. To make
+  ! --- the array lengths consistent, a change is done on the arrays.
+  call CONDtypechange(b%cndlast)
+
 end subroutine addconductors_rz
 
 subroutine test_subgrid_rz()
