@@ -73,7 +73,7 @@ have direct control over the sor iterations.
     elif self.method == 5:
       if not withegun: installafterfs(self.solve5)
     elif self.method == 6:
-      if not withegun: installafterfs(self.solve6)
+      top.fstype = 13
 
   def solve0(self):
     # --- These two lines are needed to turn on the field solver, which is
@@ -205,11 +205,21 @@ have direct control over the sor iterations.
     w3d.phi[:,:,:] = minimum(self.phi0,w3d.phi)
 
   def solve6(self):
-    pass
+    multigridbe3df(-1,w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,
+                   w3d.dx,w3d.dy,w3d.dz,w3d.phi,w3d.rho,
+                   w3d.rstar,top.linbend,w3d.bound0,w3d.boundnz,w3d.boundxy,
+                   w3d.l2symtry,w3d.l4symtry,
+                   w3d.xmmin,w3d.ymmin,w3d.zmmin,top.zbeam,top.zgrid,
+                   self.rhoion,self.te,self.phi0)
 
 
 
 class MultiGridwithBoltzmannElectrons(MultiGrid):
+  """
+!!!!!!!!!!!!!!!!!!
+This is not complete - do not use!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!
+  """
   def __init__(self,iondensity,electrontemperature,plasmapotential=0.,**kw):
     self.iondensity = iondensity
     self.electrontemperature = electrontemperature
@@ -243,7 +253,8 @@ class MultiGridwithBoltzmannElectrons(MultiGrid):
     # --- multiplies in the main SOR sweep loop).
     if not self.linbend:
       # --- Do the operation in place (to avoid temp arrays)
-      multiply(self.rho,reps0c,self.rho)
+      trho = transpose(self.rho)
+      multiply(trho,reps0c,trho)
     else:
       raise "Bends not yet supported"
 
@@ -256,7 +267,9 @@ class MultiGridwithBoltzmannElectrons(MultiGrid):
       self.mgiters[0] = self.mgiters[0] + 1
 
       # --- Save current value of phi
-      phisave[:,:,:] = self.phi + 0.
+      tphisave = transpose(phisave)
+      tphi = transpose(self.phi)
+      tphisave[:,:,:] = tphi
       f = fzeros(shape(self.rho),'d')
 
       # --- Do one vcycle.
@@ -268,9 +281,9 @@ class MultiGridwithBoltzmannElectrons(MultiGrid):
                   self.icndbndy,self.conductors)
 
       # --- Calculate the change in phi.
-      subtract(phisave,self.phi,phisave)
-      absolute(phisave,phisave)
-      self.mgerror[0] = MA.maximum(phisave)
+      subtract(tphisave,tphi,tphisave)
+      absolute(tphisave,tphisave)
+      self.mgerror[0] = MA.maximum(tphisave)
 
     # --- For Dirichlet boundary conditions, copy data into guard planes
     # --- For other boundary conditions, the guard planes are used during
