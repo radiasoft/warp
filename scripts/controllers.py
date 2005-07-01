@@ -47,7 +47,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.7 2004/09/09 19:43:12 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.8 2005/07/01 17:18:07 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -68,6 +68,10 @@ class ControllerFunction:
 # --- other references are deleted. If the user deletes an instance that
 # --- has a method referred to in a function list, then that method will also
 # --- be removed from the list.
+#
+# --- This class also provides what is effectively a picklable function
+# --- reference. Though it is not complete, since in some cases, functions
+# --- won't be restorable.
   """
 
   def __init__(self,name=None):
@@ -88,9 +92,8 @@ class ControllerFunction:
     dict = self.__dict__.copy()
     del dict['funcs']
     funcnamelist = []
-    for f in self.controllerfunclist():
-      if type(f) != ListType:
-        funcnamelist.append(f.__name__)
+    for f in self.controllerfuncnames():
+      funcnamelist.append(f)
     dict['funcnamelist'] = funcnamelist
     return dict
 
@@ -126,6 +129,21 @@ class ControllerFunction:
     "Checks if there are any functions installed"
     return len(self.funcs) > 0
 
+  def controllerfuncnames(self):
+    "Returns the names of the functions in the list, skipping methods"
+    for f in self.funcs:
+      if type(f) == ListType:
+        continue
+      elif type(f) == StringType:
+        import __main__
+        if f in __main__.__dict__:
+          result = f
+        else:
+          continue
+      else:
+        result = f.__name__
+      yield result
+
   def controllerfunclist(self):
     funclistcopy = copy.copy(self.funcs)
     for f in funclistcopy:
@@ -134,7 +152,7 @@ class ControllerFunction:
         if object is None:
           self.funcs.remove(f)
           continue
-        result = [object,f[1]]
+        result = getattr(object,f[1])
       elif type(f) == StringType:
         import __main__
         if f in __main__.__dict__:
@@ -191,12 +209,10 @@ class ControllerFunction:
           return 1
     return 0
 
-  def callfuncsinlist(self):
+  def callfuncsinlist(self,*args,**kw):
     bb = time.time()
     for f in self.controllerfunclist():
-      if type(f) == ListType:
-        f = getattr(f[0],f[1])
-      f()
+      f(*args,**kw)
     aa = time.time()
     return aa - bb
 
