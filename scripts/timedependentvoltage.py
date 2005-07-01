@@ -26,6 +26,11 @@ Input for constructor:
 
  - voltfunc: user supplied function which takes a single argument, the current
              time. It returns the voltage at that time.
+
+ - aftervoltset=None: an optional function that will be called after the
+                      voltage is set. It must take one argument, the current
+                      value of the voltage. More functions can be installed
+                      using the method installaftervoltset.
   """
 
   def __init__(self,condid=0,discrete=true,
@@ -39,6 +44,13 @@ Input for constructor:
            (tieffenback and maxvoltage is not None and risetime is not None)),\
            "If Tieffenback profile is used, both a maxvoltage and a risetime must be specified"
 
+    # --- Check to make sure that at least one method of calculating the
+    # --- voltage is specified.
+    assert (tieffenback or
+            voltdata is not None or
+            voltfunc is not None),\
+           "At least one method of calculating the voltage must be specified"
+
     if type(condid) == IntType: self.condid = [condid]
     else:                       self.condid = condid
     self.tieffenback = tieffenback
@@ -49,18 +61,24 @@ Input for constructor:
     self.falltime = falltime
     self.voltdata = voltdata
     self.timedata = timedata
-    self.voltfunc = voltfunc
     self.discrete = discrete
     self.setvinject = setvinject
-    self.aftervoltset = aftervoltset
 
-    # --- Select method of calculating the voltage
-    self.getvolt = None
-    if self.tieffenback: self.getvolt = self.tieffenbackvoltage
-    elif self.voltdata is not None: self.getvolt = self.voltagefromdata
-    elif self.voltfunc is not None: self.getvolt = self.voltfunc
-    assert self.getvolt is not None, \
-           "At least one method of calculating the voltage must be specified"
+    if voltfunc is None:
+      self.voltfunc = voltfunc
+    else:
+      # --- The ControllerFunction is used so that the voltfunc attribute
+      # --- can be pickled.
+      self.voltfunc = ControllerFunction()
+      self.voltfunc.installfuncinlist(voltfunc)
+
+    if aftervoltset is None:
+      self.aftervoltset = aftervoltset
+    else:
+      # --- The ControllerFunction is used so that the aftervoltset attribute
+      # --- can be pickled.
+      self.aftervoltset = ControllerFunction()
+      self.aftervoltset.installfuncinlist(aftervoltset)
 
     # --- Save history of voltage
     self.hvolt = []
@@ -85,6 +103,17 @@ Input for constructor:
     # --- This is called when the instance is unpickled.
     self.__dict__.update(dict)
     self.enable()
+
+  def getvolt(self,time):
+    # --- Select method of calculating the voltage
+    if self.tieffenback: return self.tieffenbackvoltage(time)
+    elif self.voltdata is not None: return self.voltagefromdata(time)
+    elif self.voltfunc is not None:
+      # --- Note that there should only ever be one function installed.
+      for f in self.voltfunc.controllerfunclist():
+        result = f(time)
+      return result
+    raise "At least one method of calculating the voltage must be specified"
 
   def applyvoltage(self,time=None):
     # --- AMR is being used, this routine will install itself there to
@@ -112,7 +141,8 @@ Input for constructor:
                             conductors=cond)
     self.hvolt.append(volt)
     self.htime.append(time)
-    if self.aftervoltset is not None: self.aftervoltset(volt)
+    if self.aftervoltset is not None:
+      self.aftervoltset.callfuncsinlist(volt)
 
   def tieffenbackvoltage(self,time):
     risetime = self.risetime
@@ -148,6 +178,22 @@ Input for constructor:
             self.voltdata[self.index+1]*wt)
     return volt
 
+  def installaftervoltset(self,func):
+    """
+Installs a function to be called after the voltage is set. Note that
+the function must take one argument, the current value of the voltage.
+    """
+    self.aftervoltset.installfuncinlist(func)
+  def uninstallaftervoltset(self,func):
+    """
+Uninstalls a function which was called after the voltage is set.
+    """
+    self.aftervoltset.uninstallfuncinlist(func)
+  def isinstallaftervoltset(self,func):
+    """
+Checks if a function is installed that is called after the voltage is set.
+    """
+    return self.aftervoltset.isinstallfuncinlist(func)
 
 
 
