@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.85 2005/05/31 01:00:24 dave Exp $"
+warp_version = "$Id: warp.py,v 1.86 2005/07/01 17:20:04 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -768,9 +768,10 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Do some setup for the RZ solver
   if getcurrpkg() == 'w3d' and w3d.solvergeom==w3d.RZgeom: mk_grids_ptr()
   # --- Load the charge density (since it was not saved)
-  loadrho()
-  # --- Recalculate the fields (since it was not saved)
-  if dofieldsol: fieldsol(0)
+  if w3d.solvergeom != w3d.XYZgeomMR:
+    loadrho()
+    # --- Recalculate the fields (since it was not saved)
+    if dofieldsol: fieldsol(0)
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
 
