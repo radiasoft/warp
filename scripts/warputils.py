@@ -22,7 +22,7 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.9 2005/06/02 18:31:06 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.10 2005/07/01 17:18:29 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -183,6 +183,16 @@ def minnd(x):
   """Return the min element of an array of any dimension"""
   xtemp = reshape(x,tuple([product(array(x.shape))]))
   return min(xtemp)
+# --- Returns the sum of the multiarray
+def sumnd(x):
+  """Return the total sum of an array of any dimension"""
+  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  return sum(xtemp)
+# --- Returns the sum of the multiarray
+def avend(x):
+  """Return the average of an array of any dimension"""
+  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  return sum(xtemp)/len(xtemp)
 
 # Gets next available filename with the format 'root.nnn.suffix'.
 def getnextfilename(root,suffix):
