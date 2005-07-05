@@ -393,7 +393,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
   backgroundspecies=[]:
   ignorebeamez=1:
   ignorebackgroundez=1:
-  useselfb=0: When true, use B fields directly rather that just E/gamma**2
+  useselfb=0: When true, use B fields directly rather than just E/gamma**2
   """
   def __init__(self,beamspecies=0,backgroundspecies=[],
                     ignorebeamez=1,ignorebackgroundez=1,
@@ -473,11 +473,19 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     phib = transpose(self.beamsolver.phi)
 
     vz = top.vbeam_s[self.beamspecies]
-    Az = +vz*eps0*mu0*phib
+    Az = (+vz*eps0*mu0)*phib
     bx = transpose(self.beamsolver.bx)
     by = transpose(self.beamsolver.by)
-    bx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
-    by[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
+    #bx[:,1:-1,:] = +(Az[:,2:,:] - Az[:,:-2,:])/(2.*w3d.dy)
+    #by[:,:,1:-1] = -(Az[:,:,2:] - Az[:,:,:-2])/(2.*w3d.dx)
+
+    bx[:,1:-1,:] = Az[:,2:,:]
+    subtract(bx[:,1:-1,:],Az[:,:-2,:],bx[:,1:-1,:])
+    multiply(bx[:,1:-1,:],1./(2.*w3d.dy),bx[:,1:-1,:])
+
+    by[:,:,1:-1] = Az[:,:,:-2]
+    subtract(by[:,:,1:-1],Az[:,:,2:],by[:,:,1:-1])
+    multiply(by[:,:,1:-1],1./(2.*w3d.dx),by[:,:,1:-1])
 
   def calcbeambsqgrad(self):
     if self.useselfbsqgrad:
@@ -576,7 +584,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
         w3d.byfsapi = 0.
         w3d.bzfsapi = 0.
     else:
-      if self.usebeamb:
+      if self.usebeamb or self.useselfb:
         self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                             w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
       else:
