@@ -225,8 +225,10 @@ class FieldSolver3dBase(object):
       else:
         trho[0,:,:] = trho[0,:,:] + trho[-1,:,:]
         trho[-1,:,:] = trho[0,:,:]
-    if self.pbounds[4] == 1: trho[0,:,:] = 2.*trho[0,:,:]
-    if self.pbounds[5] == 1: trho[-1,:,:] = 2.*trho[-1,:,:]
+    if self.pbounds[4] == 1 and self.zmmin == self.zmminglobal:
+      trho[0,:,:] = 2.*trho[0,:,:]
+    if self.pbounds[5] == 1 and self.zmmax == self.zmmaxglobal:
+      trho[-1,:,:] = 2.*trho[-1,:,:]
 
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
