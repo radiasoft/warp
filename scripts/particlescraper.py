@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.27 2005/03/17 18:30:38 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.28 2005/07/05 19:40:42 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -78,6 +78,15 @@ conductors are an argument.
   def disable(self):
     if isinstalledparticlescraper(self.scrapeall):
       uninstallparticlescraper(self.scrapeall)
+
+  def __setstate__(self,dict):
+    # --- This is called when the instance is unpickled.
+    # --- WARNING!!! When an instance in unpickled, the conductors referrenced
+    # --- will be copies of the original conductors passed in - the restarted
+    # --- run will have two copies, the original one (if it still exists) and
+    # --- a copy refered to by the instances conductor list.
+    self.__dict__.update(dict)
+    self.installscraper()
 
   def registerconductors(self,newconductors):
     if self.grid is None: self.grid = Grid()
