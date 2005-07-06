@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.157 $, $Date: 2005/06/30 00:58:14 $
+c@(#) File TOP.F, version $Revision: 3.158 $, $Date: 2005/07/06 01:26:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4563,8 +4563,8 @@ c  the fact that particles with larger dtscale would normally contribute more
 c  if nominal dt would be used since they would spend proportionately more
 c  time in any location.
 
-      real(kind=8):: pp(0:17,np)
-      integer(ISZ):: iz(np)
+      real(kind=8),allocatable:: pp(:,:)
+      integer(ISZ),allocatable:: iz(:)
       integer(ISZ):: im,izm,iw,ip,icell,i,js
       real(kind=8):: dti,dtip1,wz1,wz0,zwin
       real(kind=8):: oneondt,clighti,vzi
@@ -4631,6 +4631,9 @@ c        --- the work arrays to be thread private when called with itask==2.
       endif
 
       if (itask == 2) then
+
+        allocate(pp(0:17,np),iz(np))
+
 c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so lost particles don't contribute
         do ip = 1, np
@@ -5073,6 +5076,8 @@ c-------------------------------------------------------------------------
 
 c         --- End of Z moments accumulation
         endif
+
+        deallocate(pp,iz)
 
       endif
 
