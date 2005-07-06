@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.209 $, $Date: 2005/06/22 17:53:40 $
+c@(#) File W3D.F, version $Revision: 3.210 $, $Date: 2005/07/06 22:18:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4043,12 +4043,13 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,0:nparpgrp-1)
+      integer(ISZ):: moff(0:7)
+      integer(ISZ),allocatable:: indx(:,:)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
+      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,0:nparpgrp-1)
+      real(kind=8),allocatable:: s(:,:)
 
       integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
@@ -4088,6 +4089,13 @@ c       --- transverse boundaries.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
 !$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
 !$OMP&FIRSTPRIVATE(np)
+
+      if (depos == "vector") then 
+        allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
+      elseif (depos == "scalar") then
+        allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1),
+     &           s(0:7,0:nparpgrp-1))
+      endif
 
 !$OMP DO
       do ipmin = 1,np,nparpgrp
@@ -4315,6 +4323,12 @@ c     --- scalar loop does the actual deposition
       enddo
 !$OMP END DO
 
+      if (depos == "vector") then 
+        deallocate(indx,s)
+      elseif (depos == "scalar") then
+        deallocate(ii,jj,kk,s)
+      endif
+
 !$OMP END PARALLEL
 
       if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
@@ -4353,12 +4367,12 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,0:nparpgrp-1)
+      integer(ISZ),allocatable:: moff(:), indx(:,:)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
+      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,0:nparpgrp-1)
+      real(kind=8),allocatable:: s(:,:)
 
       integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
@@ -4398,6 +4412,13 @@ c       --- transverse boundaries.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
 !$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
 !$OMP&FIRSTPRIVATE(np)
+
+      if (depos == "vector") then 
+        allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
+      elseif (depos == "scalar") then
+        allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1),
+     &           s(0:7,0:nparpgrp-1))
+      endif
 
 !$OMP DO
       do ipmin = 1,np,nparpgrp
@@ -4631,6 +4652,12 @@ c     --- scalar loop does the actual deposition
 
       enddo
 !$OMP END DO
+
+      if (depos == "vector") then 
+        deallocate(indx,s)
+      elseif (depos == "scalar") then
+        deallocate(ii,jj,kk,s)
+      endif
 
 !$OMP END PARALLEL
 
