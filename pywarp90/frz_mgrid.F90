@@ -3062,7 +3062,7 @@ do redblack = 1, 2
   END if
 
 #ifdef MPIPARALLEL
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
 #endif
 
 call updateguardcellsrz(f=f, ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
@@ -9196,7 +9196,7 @@ TYPE(BNDtype), pointer :: b
       mglevelsny(mglevel) = 0
 #ifdef MPIPARALLEL
       mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
-      mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz-1
+      mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz!-1
 #else
       mglevelsnzfull(mglevel) = b%nz
       mglevelsiz(mglevel) = 0
