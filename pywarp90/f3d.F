@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.117 $, $Date: 2005/06/22 00:38:28 $
+c@(#) File F3D.M, version $Revision: 3.118 $, $Date: 2005/07/07 23:10:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -2312,11 +2312,13 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dsinf(1,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
+      call dsinf(1_4,a,1_4,int(1+nx,4),a,1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
+     &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
       if (isetup == 1) return
 
-      call dsinf(0,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
+      call dsinf(0_4,a,1_4,int(1+nx,4),a,1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
+     &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
 #endif
 
@@ -2441,11 +2443,13 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dsinf(1,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
+      call dsinf(1_4,a,int(1+nx,4),1_4,a,int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
+     &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
       if (isetup == 1) return
  
-      call dsinf(0,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
+      call dsinf(0_4,a,int(1+nx,4),1_4,a,int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
+     &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
 #endif
 
