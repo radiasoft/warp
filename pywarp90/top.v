@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.145 $, $Date: 2005/06/13 23:47:37 $
+#@(#) File TOP.V, version $Revision: 3.146 $, $Date: 2005/07/08 16:10:00 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.145 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.146 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -68,8 +68,8 @@ largepos real    /LARGEPOS/ # Large positive number
 smallpos real    /SMALLPOS/ # Small positive number
 
 *********** GlobalVars:
-nparpgrp  integer /NPARPGRP/ # Number of particles per group. Effects size
-                             # of temporaries and cache use.
+nparpgrp  integer /NPARPGRP/ +dump # Number of particles per group. Effects
+                                   # size of temporaries and cache use.
 dirichlet integer /0/        # constant for boundary condition (constant potential)
 neumann   integer /1/        # constant for boundary condition (derivative = 0)
 periodic  integer /2/        # constant for boundary condition 
