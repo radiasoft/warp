@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.11 2004/09/13 19:47:20 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.12 2005/07/08 18:15:26 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -61,7 +61,7 @@ def step(n=1,maxcalls=None,command=None):
       except:
         pass
   if maxcalls is None: maxcalls = n
-  top.maxcalls = maxcalls
+  top.maxcalls = int(maxcalls)
   ncalls = n
   top.ncall = 0
   while top.ncall < ncalls:
