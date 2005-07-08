@@ -53,9 +53,9 @@ contains
   function mpi_global_compute_real(DATA,op)
     implicit none
     REAL(8) :: DATA, mpi_global_compute_real
-    INTEGER(4) :: op
+    INTEGER(ISZ) :: op
 !    WRITE(0,*) 'enter mpi_allreduce '
-      call mpi_allreduce(data,mpi_global_compute_real,1_4,mpi_double_precision,op,mpi_comm_world,ierr)
+      call mpi_allreduce(data,mpi_global_compute_real,1_4,mpi_double_precision,int(op,4),mpi_comm_world,ierr)
 !    WRITE(0,*) 'exit mpi_allreduce '
     return
   end function mpi_global_compute_real
