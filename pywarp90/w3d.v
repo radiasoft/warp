@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.190 $, $Date: 2005/06/22 00:48:15 $
+#@(#) File W3D.V, version $Revision: 3.191 $, $Date: 2005/07/09 15:12:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.190 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.191 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -521,10 +521,10 @@ grdbsq(3,npint) _real [t**2/m]   # components of gradbsq (z,x,y)
 dbsqdz(npint)   _real [T**2/m]    # dB^2/dz
 bsqi(npint)     _real [1/T**2]    # 1/B^2
 bsq(npint)      _real [1/T**2]    # B^2
-vparoverB(npint) _real [m/s*T]    # v_parallel/B
-vparsq(npint)   _real [m**2/s**2] # vparallel^2
-vperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
-vsq(npint)      _real [m**2/s**2] # v^2
+uparoverB(npint) _real [m/s*T]    # v_parallel/B
+uparsq(npint)   _real [m**2/s**2] # vparallel^2
+uperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
+usq(npint)      _real [m**2/s**2] # v^2
 bx(npfield)     _real [T]          # Bx 
 by(npfield)     _real [T]          # By
 bz(npfield)     _real [T]          # Bz 
