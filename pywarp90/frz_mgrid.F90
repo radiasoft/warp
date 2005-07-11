@@ -20,6 +20,7 @@ INTEGER(ISZ), parameter :: egun=0, ecb=1
 
 #ifdef MPIPARALLEL
   INTEGER(ISZ) :: nworkpproc, workfact=8
+  logical(ISZ) :: l_mpi_barriers=.true. 
 #else
   INTEGER(ISZ) :: my_index = 0
 #endif
@@ -2149,10 +2150,13 @@ return
 END function restrict
 
 !pgi$r nobounds
-subroutine subrestrict(unew, uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
+subroutine subrestrict(unew, uold, nxnew, nznew, &
+                       xminold, xmaxold, zminold, zmaxold,  &
+                       xminnew, xmaxnew, zminnew, zmaxnew, &
+                       izlbnd, izrbnd)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, izlbnd, izrbnd
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), DIMENSION(1:nxnew+1,1:nznew+1), INTENT(OUT) :: unew
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
@@ -3062,7 +3066,10 @@ do redblack = 1, 2
   END if
 
 #ifdef MPIPARALLEL
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
+!  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
 call updateguardcellsrz(f=f, ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
@@ -3243,7 +3250,9 @@ do redblack = 1, 2
   END if
 
 #ifdef MPIPARALLEL
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
 #endif
 
 END do !redblack=1, 2
@@ -3360,7 +3369,9 @@ do redblack = 1, 2
   lsw = 3-lsw
 
 #ifdef MPIPARALLEL
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
 #endif
 
 call updateguardcellsrz(f=f, ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
@@ -3422,7 +3433,7 @@ END subroutine relaxbndxzwguard
     end if
 !    IF(bndy(level)%izlbnd<0) write(o_line,*) my_index, ' recv from ',p_down,ir
 
-    if(ir>0) call MPI_WAITALL(ir,mpi_req(1:ir),mpistatus(:,1:ir),mpierror)
+    if(ir>0 .and. l_mpi_barriers) call MPI_WAITALL(ir,mpi_req(1:ir),mpistatus(:,1:ir),mpierror)
 
   end subroutine exchange_fbndz
 
@@ -3540,7 +3551,7 @@ END subroutine relaxbndxzwguard
      end do
     END if
 
-    call parallelbarrier()
+    if (l_mpi_barriers) call parallelbarrier()
 
   end subroutine check_fbndz
   subroutine exchange_resbndz(rho, izlbnd, izrbnd)
@@ -3588,7 +3599,7 @@ END subroutine relaxbndxzwguard
    end if
 
 !    call parallelbarrier()
-    if(ir>0) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
+    if(ir>0 .and. l_mpi_barriers) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
     IF(izrbnd<0) then
       rho(:,nz+1) = rho(:,nz+1) + fu(:)
       deallocate(fu)
@@ -3599,6 +3610,7 @@ END subroutine relaxbndxzwguard
     end if
 
   end subroutine exchange_resbndz
+
    subroutine merge_work(f, level, izlbnd, izrbnd)
     REAL(8), INTENT(IN OUT) :: f(1:,1:)!f(1:nr+1,1:nz+1)
     INTEGER(ISZ), INTENT(IN) :: level, izlbnd, izrbnd
@@ -3608,7 +3620,6 @@ END subroutine relaxbndxzwguard
     real(8), allocatable, dimension(:,:) :: fd, fu
 
 !    write(o_line,*) my_index,':enter merge'
-
     ir = 0
 
 !    if(my_index==0) write(o_line,*) my_index, 'enter merge, level = ',level
@@ -3616,26 +3627,31 @@ END subroutine relaxbndxzwguard
     nz     = bndcurrent%next%nz
     p_up   = -izrbnd-1
     p_down = -izlbnd-1
-
     IF(MOD(my_index/bndcurrent%nworkpproc,2)==0) then
     ! send up
       ir = ir +1
-      call mpi_isend(f(1,1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+!      call mpi_isend(f(1:nr+1,1:nz/2+1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+      call mpi_isend(f(1,1),(nr+1)*(nz/2+1),mpi_double_precision,p_up,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
     ! receive up
       ir = ir +1
       allocate(fu(nr+1,nz/2+1:nz+1))
-      call mpi_irecv(fu(1,nz/2+1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,mpi_comm_world,mpi_req(ir),mpierror)
+      fu=0.
+      call mpi_irecv(fu(1,nz/2+1),(nr+1)*(nz/2+1),mpi_double_precision,p_up,2,mpi_comm_world,mpi_req(ir),mpierror)
+!      call mpi_irecv(fu,(nr+1)*(nz/2+1),mpi_real8,p_up,2,mpi_comm_world,mpi_req(ir),mpierror)
     else
     ! send down
       ir = ir +1
-      call mpi_isend(f(1,nz/2+1),int(SIZE(f,1)*(nz/2+1)),mpi_real8,p_down,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+!      call mpi_isend(f(1:nr+1,nz/2+1:nz+1),(nr+1)*(nz/2+1),mpi_real8,p_down,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
+      call mpi_isend(f(1,nz/2+1),int(SIZE(f,1)*(nz/2+1)),mpi_double_precision,p_down,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
     ! receive down
       ir = ir +1
       allocate(fd(nr+1,1:nz/2+1))
-      call mpi_irecv(fd(1,1),(nr+1)*(nz/2+1),mpi_real8,p_down,2,mpi_comm_world,mpi_req(ir),mpierror)
+      fd=0.
+      call mpi_irecv(fd(1,1),(nr+1)*(nz/2+1),mpi_double_precision,p_down,2,mpi_comm_world,mpi_req(ir),mpierror)
+!      call mpi_irecv(fd,(nr+1)*(nz/2+1),mpi_real8,p_down,2,mpi_comm_world,mpi_req(ir),mpierror)
     END if
 
-    if(ir>0) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
+    if(ir>0 .and. l_mpi_barriers) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
 
      IF(MOD(my_index/bndcurrent%nworkpproc,2)==0) then
        f(:,nz/2+2:nz+1) = fu(:,nz/2+2:nz+1)
@@ -4073,6 +4089,7 @@ else
 !                             ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
 !  else
   IF(bnd%next%l_merged) res=0.
+  res = 0.
   IF(solvergeom==RZgeom) then
     IF(vlocs) then
       call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
@@ -4083,7 +4100,7 @@ else
               ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub)
       call subrestrict(res(1,nzresmin), &
                              ressub, &
-                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,bnd%izlbnd,bnd%izrbnd)
       deallocate(ressub)
     END if
   else ! solvergeom==XZgeom or solvergeom==XYgeom
@@ -4101,12 +4118,10 @@ else
   v = 0.0_8
   IF(.not.sub) inveps0 = 1.
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
-!    tmp = MAXVAL(ABS(v))
     call mgbndrzwguard(j=j-1, u=v(0,0), rhs=res(1,1), bnd=bnd%next,  &
                        nr=nrnext, nz=nznext, dr=drnext, dz=dznext, rmin=rmin, npre=npre, npost=npost, &
-                       ncycle=ncycle, sub=.TRUE., relax_only=.FALSE., npmin=npmin, mgparam=mgparam)
+                       ncycle=ncycle, sub=.TRUE., relax_only=.false., npmin=npmin, mgparam=mgparam)
     level = j
-!    IF(i>1 .and. MAXVAL(ABS(v))>tmp) WRITE(0,*) i,tmp,MAXVAL(ABS(v)),level
   end do
   IF(.not.sub) inveps0 = 1./eps0
   call apply_voltagewguard(v,bnd%next,0._8)
@@ -4117,7 +4132,9 @@ else
   call apply_voltagewguard(u,bnd,voltf)
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
 #ifdef MPIPARALLEL
-  call exchange_fbndz(u,bnd%izlbnd,bnd%izrbnd)
+  if (.not. bnd%l_merged) then
+    call exchange_fbndz(u,bnd%izlbnd,bnd%izrbnd)
+  end if
 #endif
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npost,voltfact=voltf,mgparam=mgparam, &
@@ -5094,7 +5111,6 @@ REAL(8), INTENT(IN OUT) :: rho0(nx0+1,ny0+1)
   IF(mgridrz_ncmax==0) return
 
   IF(iwhich==1) return
-
 !  call distribute_rho(basegrid)
   if (basegrid%ixlbnd==dirichlet .or. basegrid%ixlbnd==patchbnd) basegrid%phi(1,1:ny0+1)     = u0(1,:)
   if (basegrid%ixrbnd==dirichlet .or. basegrid%ixrbnd==patchbnd) basegrid%phi(nx0+1,1:ny0+1) = u0(nx0+1,:)
