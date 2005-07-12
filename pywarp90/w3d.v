@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.191 $, $Date: 2005/07/09 15:12:46 $
+#@(#) File W3D.V, version $Revision: 3.192 $, $Date: 2005/07/12 19:30:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.191 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.192 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -307,7 +307,7 @@ attz(0:nzfull)         _real           # Attenuation factor as fcn. of kz
 kxsq(0:nx-1)           _real [1/m**2]  # Discrete analog to kx^2/4Pi
 kysq(0:ny-1)           _real [1/m**2]  # Discrete analog to ky^2/4Pi
 kzsq(0:nzfull)         _real [1/m**2]  # Discrete analog to kz^2/4Pi
-rstar(-1:nz+1)         _real [m] +dump # Radius of curv of refrnce orbit
+rstar(-1:nz+1)         _real [m]       # Radius of curv of refrnce orbit
 phiprv(0:nx,0:nz)      _real [V]       # Prev phi at y_mid, for error test
 phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch) 
 xywork(2,0:nx,0:ny)    _real           # Work space for transverse FFTs
@@ -461,10 +461,13 @@ ypct(npgrp)      _real
 *********** Multipole dump:
 # Electrostatic multipole moments of the electrostatic potential
 nmom                  integer  /1/  # number of terms in multipole expansion  
+nzmom                 integer  /0/  # Number of z grid points in the
+                                    # multipolar decomposition, should be the
+                                    # same as w3d.nz
 lazi(nmom)            _integer      # azimuthal mode numbers of moments 
 irpow(nmom)           _integer      # radial powers of moments 
-rmomcex(nmom,0:nz)    _real    [1]  # multipoles, cos(theta) expansion terms 
-rmomsex(nmom,0:nz)    _real    [1]  # multipoles, sin(theta) expansion terms
+rmomcex(nmom,0:nzmom) _real    [1]  # multipoles, cos(theta) expansion terms 
+rmomsex(nmom,0:nzmom) _real    [1]  # multipoles, sin(theta) expansion terms
 
 *********** Apertures dump:
 # This group contains data describing the size and location of a circular
