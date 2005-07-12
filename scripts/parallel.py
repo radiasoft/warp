@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.25 2003/08/11 18:17:03 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.26 2005/07/12 19:29:40 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -304,7 +304,7 @@ def globalop(a,localop,mpiop,defaultval):
   else:
     local = defaultval
   if not lparallel: return local
-  return mpi.allreduce(local,eval("mpi."+mpiop))
+  return mpi.allreduce(local,getattr(mpi,mpiop))
 
 # ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
@@ -328,11 +328,11 @@ def parallelop(a,mpiop):
   if type(a) == type(array([])):
     a1d = ravel(a) + 0
     for i in range(len(a1d)):
-      a1d[i] = mpi.allreduce(a1d[i],eval("mpi."+mpiop))
+      a1d[i] = mpi.allreduce(a1d[i],getattr(mpi,mpiop))
     a1d.shape = shape(a)
     return a1d
   else:
-    return mpi.allreduce(a,eval("mpi."+mpiop))
+    return mpi.allreduce(a,getattr(mpi,mpiop))
 
 
 # ---------------------------------------------------------------------------
