@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.210 $, $Date: 2005/07/06 22:18:59 $
+c@(#) File W3D.F, version $Revision: 3.211 $, $Date: 2005/07/12 19:37:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -566,7 +566,7 @@ c injection, there may not be any particles yet but still want to run.
          if (it == 1) then
            nplive = 1
          else
-!           print*," *** W3DEXE: stopping, nplive =",nplive
+!          print*," *** W3DEXE: stopping, nplive =",nplive
 !$OMP MASTER
            if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
 !$OMP END MASTER
@@ -777,7 +777,6 @@ c  Set lattice; this is done just before field solve, and so is
 c  relative to ZBEAM in the same way that self-fields are.
 
       call setlatt
-      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
 
 c  Field-solve for potential.
 
@@ -6382,6 +6381,10 @@ c         The loop is in bendfieldsol3d
 
 c     --- If no field solve, return 
       if ( fstype == -1) return 
+
+c     --- Calculate rstar here since it is only used by the field solver and
+c     --- to ensure that it is set when the field solver is called.
+      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
 
       if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
      &    .or. fstype == 13) then
