@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.149 $, $Date: 2004/09/15 21:32:55 $
+c@(#) File DW3D.F, version $Revision: 3.150 $, $Date: 2005/07/12 00:56:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -206,8 +206,11 @@ c  Sets 1d array for the charge density on the axis
       use Picglb3d
       use Fields3d
       use Z_arrays
+#ifdef MPIPARALLEL
+      use Parallel
+#endif
 
-      integer(ISZ):: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: zz,wzg,dzi
 
       if(.not. lsrhoax3d) return
@@ -216,17 +219,26 @@ c  Sets 1d array for the charge density on the axis
 
       ix = ix_axis
       iy = iy_axis
-      zz = zzmin + zbeam - zgrid - zmmin
+
+      rhoax = 0.
+
+#ifdef MPIPARALLEL
+      iz0 = izfsslave(my_index)
+#else
+      iz0 = 0
+#endif
+
+      zz = zzmin + zbeam - zgrid - zmminglobal
 
       if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nzzarr
-          rhoax(iz) = rho(ix,iy,iz)
+        do iz=0,nz
+          rhoax(iz+iz0) = rho(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi)
+          izg = int((iz*dzz + zz)*dzi) - iz0
           if (0 <= izg .and. izg < nz) then
-            wzg =   (iz*dzz + zz)*dzi  - izg
+            wzg = (iz*dzz + zz)*dzi - iz0 - izg
             rhoax(iz) = rho(ix,iy,izg)*(1. - wzg) + rho(ix,iy,izg+1)*wzg
           else if (izg == nz) then
             rhoax(iz) = rho(ix,iy,izg)
@@ -250,8 +262,11 @@ c  Sets 1d array for the potential on the axis
       use Picglb
       use Picglb3d
       use Fields3d
+#ifdef MPIPARALLEL
+      use Parallel
+#endif
 
-      integer(ISZ):: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: zz,wzg,dzi
 
       if(.not. lsphiax3d) return
@@ -260,20 +275,27 @@ c  Sets 1d array for the potential on the axis
 
       ix = ix_axis
       iy = iy_axis
-      zz = zzmin + zbeam - zgrid - zmmin
+      
+      phiax = 0.
 
-      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nzzarr
-          phiax(iz) = phi(ix,iy,iz)
+#ifdef MPIPARALLEL
+      iz0 = izfsslave(my_index)
+#else
+      iz0 = 0
+#endif
+
+      zz = zzmin + zbeam - zgrid - zmminglobal
+
+      if (nzfull == nzzarr .and. abs(zz) <= dz*1.e-5) then
+        do iz=0,nz
+          phiax(iz+iz0) = phi(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi)
-          if (0 <= izg .and. izg < nz) then
-            wzg =   (iz*dzz + zz)*dzi  - izg
+          izg = int((iz*dzz + zz)*dzi) - iz0
+          if (0 <= izg .and. izg <= nz) then
+            wzg = (iz*dzz + zz)*dzi - iz0  - izg
             phiax(iz) = phi(ix,iy,izg)*(1. - wzg) + phi(ix,iy,izg+1)*wzg
-          else if (izg == nz) then
-            phiax(iz) = phi(ix,iy,izg)
           endif
         enddo
       endif
@@ -294,28 +316,40 @@ c  Sets 1d array for the space charge E field on the axis
       use Picglb3d
       use Z_arrays
       use Fields3d
+#ifdef MPIPARALLEL
+      use Parallel
+#endif
 
-      integer(ISZ):: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: wx,wy,zz,wzg,wx1,wy1,dzi
 
       if(.not. lsezax3d) return
 
       dzi = 1./dz
 
-      ix = -xmmin/dx
-      wx = -xmmin/dx - ix
+      ix = int(-xmmin/dx)
+      wx = int(-xmmin/dx) - ix
       wx1 = 1. - wx
-      iy = -ymmin/dy
-      wy = -ymmin/dy - iy
+      iy = int(-ymmin/dy)
+      wy = int(-ymmin/dy) - iy
       wy1 = 1. - wy
-      zz = zzmin + zbeam - zgrid - zmmin
+
+      ezax = 0.
+
+#ifdef MPIPARALLEL
+      iz0 = izfsslave(my_index)
+#else
+      iz0 = 0
+#endif
+
+      zz = zzmin + zbeam - zgrid - zmminglobal
 
       if ((xmmax == -xmmin .and.  ymmax == -ymmin) .or.
      &    (wx == 0. .and. wy == 0.)) then
         do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi)
+          izg = int((iz*dzz + zz)*dzi) - iz0
           if (0 <= izg .and. izg <= nz-1) then
-            wzg = int((iz*dzz + zz)*dzi) - izg
+            wzg = (iz*dzz + zz)*dzi - iz0 - izg
             ezax(iz) = ((phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*(1.-wzg) +
      &                  (phi(ix,iy,izg  ) - phi(ix,iy,izg+2))*    wzg )*0.5*dzi
           else if (izg == nz) then
@@ -324,9 +358,9 @@ c  Sets 1d array for the space charge E field on the axis
         enddo
       else
         do iz=0,nzzarr
-          izg = int((iz*dzz + zz)*dzi)
+          izg = int((iz*dzz + zz)*dzi) - iz0
           if (0 <= izg .and. izg <= nz) then
-            wzg = int((iz*dzz + zz)*dzi) - izg
+            wzg = (iz*dzz + zz)*dzi - iz0 - izg
         ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1*(1.-wzg)+
      &            (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1*(1.-wzg)+
      &            (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy *(1.-wzg)+
