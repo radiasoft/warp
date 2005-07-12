@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.146 $, $Date: 2005/07/08 16:10:00 $
+#@(#) File TOP.V, version $Revision: 3.147 $, $Date: 2005/07/12 19:32:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.146 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.147 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1937,11 +1937,11 @@ sw(ns) _real [1]  /0./ -parallel # Species weight
                        # (real particles per simulation particles)
 ins(ns)  _integer /1/  # Index of first particle in species
 nps(ns)  _integer /0/  # Number of particles in species
-ndts(ns) _integer /1/  # Stride for time step advance for each species
-ldts(ns) _logical  /1/
-dtscale(ns) _real /1./ # Scale factor applied to time step size for each
-                       # species. Only makes sense in steady state and
-                       # transverse slice modes.
+ndts(ns) _integer /1/  -parallel # Stride for time step advance for each species
+ldts(ns) _logical  /1/ -parallel
+dtscale(ns) _real /1./ -parallel # Scale factor applied to time step size for
+                                 # each species. Only makes sense in steady
+                                 # state and transverse slice modes.
 gaminv(npmax)  _real  [1]   /1./ # inverse relativistic gamma factor
 xp(npmaxb)     _real  [m]        # X-positions of particles
 yp(npmaxb)     _real  [m]        # Y-positions of particles
@@ -1976,12 +1976,12 @@ uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
-*********** Scraped_Particles dump parallel:
+*********** Scraped_Particles dump:
 # Arrays for scraped particles
 scr_np             integer  /0/   # Total no. of scraped particles. 
 scr_npmax          integer  /0/   # Max. no. of scraped particles.
 scr_npbunch        integer  /10000/ # Number of particles in a bunch
-scr_ns             integer  /1/   # number of species
+scr_ns             integer  /0/   # number of species
 scr_ins(scr_ns)        _integer /1/   # Index of first particle in species
 scr_nps(scr_ns)        _integer /0/   # Number of particles in species
 scr_xp(scr_npmax)  _real    [m]   # X-position
