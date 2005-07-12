@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.211 $, $Date: 2005/07/12 19:37:20 $
+c@(#) File W3D.F, version $Revision: 3.212 $, $Date: 2005/07/12 21:48:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6353,6 +6353,7 @@ c===========================================================================
       use Subtimers3d
       use Timers
       use InGen
+      use Picglb, only: zgrid
       use InGen3d
       use InMesh3d
       use Picglb3d
