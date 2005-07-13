@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.50 2005/07/12 19:28:46 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.51 2005/07/13 01:27:10 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -210,7 +210,19 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- This check is for dynamic arrays - if array is unallocated,
         # --- the getpyobject routine returns None.
         v = pkg.getpyobject(vname)
-        if v is None: continue
+
+        if v is None:
+          # --- If v is None, then replace it with a dummy array. In this
+          # --- part of the routine, the data is not actually written out,
+          # --- but only the type of the variable is needed. The variable
+          # --- can't just be skipped since it may be allocated on some
+          # --- other processors, so space must still be made in the dump file.
+          vartype = pkg.getvartype(vname)
+          if   vartype == 'double':  v = zeros(1,'d')
+          elif vartype == 'integer': v = zeros(1)
+
+        # --- Skip complex since they can't currently be written out to
+        # --- the file.
         if type(v) == ArrayType and v.typecode() == Complex: continue
 
         # --- Set name of variable in pdb file
@@ -639,6 +651,10 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
+      elif vname == 'npmaxlost_s' and p == 'top':
+        itriple = array([me,me,1,0,top.ns,1])
+        s = p+'.forceassign(vname,\
+               ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...])'
       elif p == 'top' and vname in ['inslost','npslost']:
         # --- These have already been restored above since they are
         # --- needed to read in the lost particles.
