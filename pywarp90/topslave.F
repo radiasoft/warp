@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.32 $, $Date: 2005/07/14 18:24:59 $
+c TOPSLAVE.M, version $Revision: 1.33 $, $Date: 2005/07/14 18:48:39 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -33,6 +33,11 @@ c     integer(4  ):: blocklengths(100),displacements(100)
       integer(4  ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(4  ):: mpinewtype,mpirequest
       integer(4  ):: messid = 20
+
+c     --- This is needed for a kind parameter on the logical constant
+c     --- passed into chckpart below.
+      integer,parameter:: isz=ISZ
+
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -292,7 +297,7 @@ c       --- Make sure that there is space for the incoming data.
         do is=1,ns
           call chckpart(int(is,ISZ),
      &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ),
-     &                  .false._ISZ)
+     &                  .false._isz)
         enddo
 #ifdef VAMPIR
       call VTEND(40,IERR)
