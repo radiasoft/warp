@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.31 $, $Date: 2005/07/07 23:06:53 $
+c TOPSLAVE.M, version $Revision: 1.32 $, $Date: 2005/07/14 18:24:59 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -290,8 +290,9 @@ c       --- First send the number of particles to be sent
 #endif
 c       --- Make sure that there is space for the incoming data.
         do is=1,ns
-          call chckpart(int(is,8),int(nrecvleft(is),8),int(nrecvright(is),8),
-     &                  .false._8)
+          call chckpart(int(is,ISZ),
+     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ),
+     &                  .false._ISZ)
         enddo
 #ifdef VAMPIR
       call VTEND(40,IERR)
