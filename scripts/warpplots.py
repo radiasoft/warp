@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.155 2005/05/27 22:40:18 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.156 2005/07/16 00:22:39 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1217,7 +1217,8 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   levs = cmin + arange(n)*unit
   llist = nonzero(less(abs(levs),0.1*unit))
   if len(llist) > 0:
-     array_set(levs,llist,0.0)
+     #array_set(levs,llist,0.0)
+     for i in llist: levs[i] = 0.
   return levs
 
 #-----------------------------------------------------------------------
