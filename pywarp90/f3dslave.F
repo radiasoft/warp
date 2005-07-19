@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.24 $, $Date: 2005/07/07 23:06:53 $
+c F3DSLAVE.M, version $Revision: 1.25 $, $Date: 2005/07/19 23:21:51 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -177,7 +177,7 @@ c       --- chunks of data, i.e. nn times number of bytes per real.
 
 c       --- Do all of the communication at once.
         call MPI_ALLTOALL(phi(0,0,0),1_4,mpinewtype2,
-     &                    phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+     &                    phi_trnsps,int(nn*nz,4),MPI_DOUBLE_PRECISION,
      &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
@@ -297,7 +297,7 @@ c the temp space.
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+        call MPI_ALLTOALL(phi_trnsps,int(nn*nz,4),MPI_DOUBLE_PRECISION,
      &                    phi(0,0,0),1_4,mpinewtype2,
      &                    MPI_COMM_WORLD,mpierror)
 
@@ -885,7 +885,7 @@ c       --- processor.
 c       --- Do all but that one first.
         if (js < nslaves) then
 
-c         --- Find all processors who data extent overlaps the right
+c         --- Find all processors whose data extent overlaps the right
 c         --- end of this processor.
           ie = js
           do while (ie < nslaves .and. 
