@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.37 2005/03/17 21:40:29 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.38 2005/07/19 01:40:12 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -31,11 +31,15 @@ Creation arguments:
  - doloadrho=0: Specifies whether the charge density is recalculated
  - dofs=0: Specifies whether the fields are recalculated
  - verbose=0: Prints output
+ - nzguard=0: Number of extra guard cells to include in the field arrays for
+              the particles. Only needed in special cases, possibly when
+              the interpolated mover is used since intermediate positions
+              in the algorithm may be out of bounds otherwise.
 Note, if particles on cover a few grid cells, then distribution is
 recalculated on a finer mesh to give better balancing.
   """
   def __init__(self,padright=None,padleft=0.,when=None,doitnow=0,
-               doloadrho=0,dofs=0,verbose=0):
+               doloadrho=0,dofs=0,verbose=0,nzguard=0):
     if not lparallel: return
     if when is None:
       self.when = {10:1,100:10,1000000:20}
@@ -46,6 +50,7 @@ recalculated on a finer mesh to give better balancing.
     self.doloadrho = doloadrho
     self.dofs = dofs
     self.verbose = verbose
+    self.nzguard = nzguard
     if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
@@ -98,7 +103,7 @@ recalculated on a finer mesh to give better balancing.
     for key,value in self.when.items():
       if top.it < key: ii = min(ii,value)
 
-    # --- Just return is load balancing not done now.
+    # --- Just return if load balancing not done now.
     if not lforce and (top.it%ii) != 0: return
 
     if (top.it%ii) == 0 and self.verbose:
@@ -152,12 +157,14 @@ recalculated on a finer mesh to give better balancing.
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=self.padleft,
                          reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz,
-                         zminp=zminp,zmaxp=zmaxp,verbose=self.verbose)
+                         zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
+                         nzguard=self.nzguard)
     getphiforparticles()
 
 #########################################################################
 #########################################################################
-def setparticledomains(zslave,doloadrho=1,dofs=1,padleft=0.,padright=0.,reorg=0):
+def setparticledomains(zslave,doloadrho=1,dofs=1,padleft=0.,padright=0.,
+                       reorg=0,nzguard=0):
   """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
@@ -171,6 +178,8 @@ that has already been done.
             are to be shifted across multiple processors, otherwise use
             zpartbnd which is fastest when particles are to be shifted only to
             nearest neighbors.
+ - nzguard=0: Number of extra guard cells to include in the field arrays for
+              the particles.
   """
   if not lparallel: return
   # --- It is assumed that the user supplied decomposition is specified
@@ -189,13 +198,16 @@ that has already been done.
 
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
-  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz)
-  top.nzpslave[:] = int((top.zpslmax - w3d.zmminglobal)/w3d.dz)-top.izpslave+1
+  top.izpslave[:] = max(0,int((top.zpslmin - w3d.zmminglobal)/w3d.dz) -
+                          nzguard)
+  top.nzpslave[:] = (int((top.zpslmax - w3d.zmminglobal)/w3d.dz) -
+                     top.izpslave + 1 + nzguard)
 
-  # --- Make sure that the last processor doesn't have grid cells
+  # --- Make sure that the processors don't have grid cells
   # --- sticking out the end.
-  if top.izpslave[-1]+top.nzpslave[-1] > w3d.nzfull:
-    top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
+  top.nzpslave[:] = where(top.izpslave+top.nzpslave > w3d.nzfull,
+                          w3d.nzfull - top.izpslave,
+                          top.nzpslave)
 
   # --- Adjust the Z data
   #_adjustz()
@@ -223,7 +235,7 @@ that has already been done.
 #########################################################################
 def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
                          reorg=0,pnumz=None,zmin=None,dz=None,
-                         zminp=None,zmaxp=None,verbose=0):
+                         zminp=None,zmaxp=None,verbose=0,nzguard=0):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -244,6 +256,8 @@ grid points.
  - zminp,zmaxp=None: optional min and max of the region that must be included
                      in the decomposition
  - verbose=0: when true, prints out timing information
+ - nzguard=0: Number of extra guard cells to include in the field arrays for
+              the particles.
   """
   if not lparallel: return
   starttime = wtime()
@@ -270,7 +284,8 @@ grid points.
 
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
-                     padleft=padleft,padright=padright,reorg=reorg)
+                     padleft=padleft,padright=padright,reorg=reorg,
+                     nzguard=nzguard)
   endtime = wtime()
   if verbose: print "Load balance time = ",endtime - starttime
 
