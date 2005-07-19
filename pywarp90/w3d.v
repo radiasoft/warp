@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.192 $, $Date: 2005/07/12 19:30:44 $
+#@(#) File W3D.V, version $Revision: 3.193 $, $Date: 2005/07/19 23:23:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.192 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.193 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -317,6 +317,9 @@ zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
+nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
+                     # the particle domains. Only applies for the parallel
+                     # version.
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
 phip(0:nxp,0:nyp,-1:nzp+1) _real +fassign # Potential used by the particles to
@@ -922,4 +925,5 @@ timeperrho3d_slave real /0./
 timegetrhoforfieldsolve3d real /0./
 timeperphi3d_slave real /0./
 timegetphiforparticles3d real /0./
+timegetphiforfields3d real /0./
 
