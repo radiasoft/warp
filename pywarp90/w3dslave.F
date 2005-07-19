@@ -1,13 +1,12 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.26 $, $Date: 2005/07/07 23:06:11 $
+c W3DSLAVE.M, version $Revision: 1.27 $, $Date: 2005/07/19 23:27:16 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
       subroutine init_w3d_parallel
       use Subtimers3d
       use Parallel
-      use Databuffers
       use InGen
       use InGen3d
       use InDiag
@@ -190,10 +189,20 @@ c       --- Set from field solver decompostion
         do i=0,nslaves-1
           izpslave(i) = izfsslave(i)
           nzpslave(i) = nzfsslave(i) - (overlap - 1)
+c         --- These shouldn't include the guard cells
           zpslmin(i) = izpslave(i)*dz + zmmin
           zpslmax(i) = (izpslave(i)+nzpslave(i))*dz + zmmin
+c         --- Now include the guard cells
+          izpslave(i) = izpslave(i) - nzpguard
+          nzpslave(i) = nzpslave(i) + 2*nzpguard
+c         --- Make sure that the processors doesn't have grid cells
+c         --- sticking out the ends.
+          if (izpslave(i) < 0) then
+            nzpslave(i) = nzpslave(i) + izpslave(i)
+            izpslave(i) = 0
+          endif
+          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
         enddo
-        nzpslave(nslaves-1) = nzfsslave(nslaves-1)
         zpslmax(nslaves-1) = zmmax
 
       else
@@ -245,15 +254,17 @@ c       --- not be exactly the same as zmmax due to roundoff.
 c       --- Set iz and nz. This is done so that zmesh(izpslave) < zpslmin, and
 c       --- zmesh(izpslave+nzpslave) > zpslmax.
         do i=0,nslaves-1
-          izpslave(i) = int((zpslmin(i) - zmmin)/dz)
-          nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i) + 1
+          izpslave(i) = int((zpslmin(i) - zmmin)/dz) - nzpguard
+          nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i) + 1 +
+     &                  2*nzpguard
+c         --- Make sure that the processors doesn't have grid cells
+c         --- sticking out the end.
+          if (izpslave(i) < 0) then
+            nzpslave(i) = nzpslave(i) + izpslave(i)
+            izpslave(i) = 0
+          endif
+          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
         enddo
-
-c       --- Make sure that the last processors doesn't have grid cells
-c       --- sticking out the end.
-        if (izpslave(nslaves-1)+nzpslave(nslaves-1) > nz) then
-          nzpslave(nslaves-1) = nz - izpslave(nslaves-1)
-        endif
 
       endif
 
@@ -373,15 +384,12 @@ c total number of particles.
       return
       end
 c===========================================================================
-      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp,
-     &                                    my_index,nslaves,izpslave,nzpslave)
+      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
       use Subtimers3d
       use GlobalVars
-      use Databuffers
+      use Parallel
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c This routine sums rhop in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rhop back to the left
@@ -404,20 +412,14 @@ c for special cases of injection. Nonetheless, having the limits makes the
 c more robust to future changes.
 
       integer(4  ):: left_pe,right_pe
-      integer(4  ):: left_iz,right_iz,left_nz,right_nz
+      integer(4  ):: left_iz,right_iz,left_nz,right_nz,nn
       integer(4  ):: ix,iy,iz
+      integer(ISZ),allocatable:: buffer2d(:,:,:)
       include "mpif.h"
       integer(4  ):: messid = 50
       integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-
-c     --- Allocate some buffer space.
-      if (b2d1 < nxp .or. b2d2 < nyp) then
-        b2d1 = nxp
-        b2d2 = nyp
-        call gchange("Databuffers",0)
-      endif
 
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -429,15 +431,13 @@ c     --- planes to exchange.
       if (my_index > 0) then
         left_iz = 0
         left_nz=izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)+1
-        left_nz = min(left_nz, 2_4)
       else
         left_iz = 0
         left_nz = 1
       endif
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izpslave(my_index)
-        right_nz=izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
-        right_nz = min(right_nz, 2_4)
+        right_nz = izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
       else
         right_iz = nzp
         right_nz = 1
@@ -446,7 +446,9 @@ c     --- planes to exchange.
 c     --- Check if data being sent overlaps with data being received.
 c     --- If so, wait for the incoming data first.
       if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
-        call MPI_RECV(buffer2d,int(left_nz*(nxp+1)*(nyp+1),4),
+        nn = left_nz*(nxp+1)*(nyp+1)
+        allocate(buffer2d(0:nxp,0:nyp,left_nz))
+        call MPI_RECV(buffer2d,nn,
      &                MPI_DOUBLE_PRECISION,
      &                left_pe,messid,MPI_COMM_WORLD,mpistatus,mpierror)
 
@@ -454,12 +456,14 @@ c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
 c       --- be correct, so explicitly writing out the loops may not work.
         call sumarry(buffer2d,rhop(0,0,left_iz),left_nz*(nxp+1)*(nyp+1))
+        deallocate(buffer2d)
 
       endif
 
 c     --- Send rhop to the process to the right
       if (my_index < nslaves-1) then
-        call MPI_ISEND(rhop(0,0,right_iz),int(right_nz*(nxp+1)*(nyp+1),4),
+        nn = right_nz*(nxp+1)*(nyp+1)
+        call MPI_ISEND(rhop(0,0,right_iz),nn,
      &                 MPI_DOUBLE_PRECISION,
      &                 right_pe,messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
@@ -467,7 +471,9 @@ c     --- Send rhop to the process to the right
 c     --- If there is no overlap, wait for the data after sending so
 c     --- that processors to the right do not have to also wait.
       if (my_index > 0 .and. right_iz > left_iz+left_nz) then
-        call MPI_RECV(buffer2d,int(left_nz*(nxp+1)*(nyp+1),4),
+        nn = left_nz*(nxp+1)*(nyp+1)
+        allocate(buffer2d(0:nxp,0:nyp,left_nz))
+        call MPI_RECV(buffer2d,nn,
      &                MPI_DOUBLE_PRECISION,
      &                left_pe,messid,MPI_COMM_WORLD,mpistatus,mpierror)
 
@@ -475,6 +481,7 @@ c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
 c       --- be correct, so explicitly writing out the loops may not work.
         call sumarry(buffer2d,rhop(0,0,left_iz),left_nz*(nxp+1)*(nyp+1))
+        deallocate(buffer2d)
 
       endif
 
@@ -530,18 +537,13 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
-     &                                          my_index,nslaves,
-     &                                          izfsslave,nzfsslave,
-     &                                          izpslave,nzpslave)
+      subroutine getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
       use Subtimers3d
+      use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" rho from
@@ -693,17 +695,9 @@ c     --- Note that special cases are needed for the first and last processors
 c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nslaves-1
-        if (my_index == 0) then
-          izglobal = max(izfsslave(my_index)-1,izpslave(i)-1)
-        else
-          izglobal = max(izfsslave(my_index),izpslave(i)-1)
-        endif
+        izglobal = max(izfsslave(my_index)-1,izpslave(i)-1)
         izmaxp   = izpslave(i)+nzpslave(i)+1
-        if (my_index == nslaves-1) then
-          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
-        else
-          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
-        endif
+        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
 
         izsend(i) = izglobal - izfsslave(my_index)
         nzsend(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -711,17 +705,9 @@ c     --- Data to be sent
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
-        if (i == 0) then
-          izglobal = max(izpslave(my_index)-1,izfsslave(i)-1)
-        else
-          izglobal = max(izpslave(my_index)-1,izfsslave(i))
-        endif
+        izglobal = max(izpslave(my_index)-1,izfsslave(i)-1)
         izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
-        if (i == nslaves-1) then
-          izmaxfs  = izfsslave(i)+nzfsslave(i)+1
-        else
-          izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
-        endif
+        izmaxfs  = izfsslave(i)+nzfsslave(i)+1
 
         izrecv(i) = izglobal - izpslave(my_index)
         nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -761,6 +747,104 @@ c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetphiforparticles3d = timegetphiforparticles3d + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end                                                                       
+c===========================================================================
+      subroutine getphiforfields3d(nx,ny,nz,phi)
+      use Subtimers3d
+      use Parallel
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+
+c Get the phi for the full extent where the fields are. This gets phi from
+c neighboring processors, and at the very least gets phi in the guard planes,
+c iz=-1 and +1.
+
+      integer(4  ):: i,nn
+      integer(4  ):: izglobal,izmax,izmaxfs
+      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      include "mpif.h"
+      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(4  ):: mpierror,w
+      integer(4  ):: messid = 81
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- First, calculate what data needs to be sent and received.
+c     --- Note that special cases are needed for the first and last processors
+c     --- so that the guard cells are filled properly.
+c     --- Data to be sent
+      do i=0,nslaves-1
+        if (my_index == 0) then
+          izglobal = max(izfsslave(my_index)-1,izslave(i)-1)
+        else
+          izglobal = max(izfsslave(my_index),izslave(i)-1)
+        endif
+        izmax   = izslave(i)+nzslave(i)+1
+        if (my_index == nslaves-1) then
+          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
+        else
+          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-1
+        endif
+
+        izsend(i) = izglobal - izfsslave(my_index)
+        nzsend(i) = min(izmax,izmaxfs) - izglobal + 1
+      enddo
+
+c     --- Then, gather up the data sent to this processor.
+      do i=0,nslaves-1
+        if (i == 0) then
+          izglobal = max(izslave(my_index)-1,izfsslave(i)-1)
+        else
+          izglobal = max(izslave(my_index)-1,izfsslave(i))
+        endif
+        izmax   = izslave(my_index)+nzslave(my_index)+1
+        if (i == nslaves-1) then
+          izmaxfs  = izfsslave(i)+nzfsslave(i)+1
+        else
+          izmaxfs  = izfsslave(i)+nzfsslave(i)-1
+        endif
+
+        izrecv(i) = izglobal - izslave(my_index)
+        nzrecv(i) = min(izmax,izmaxfs) - izglobal + 1
+      enddo
+ 
+c     --- Send the data out to processors that need it.
+      w = 0
+      do i=0,nslaves-1
+        if (nzsend(i) > 0) then
+          if ( i /= my_index) then
+            w = w + 1
+            nn = nzsend(i)*(nx+1)*(ny+1)
+            call MPI_ISEND(phi(0,0,izsend(i)),nn,
+     &                     MPI_DOUBLE_PRECISION,
+     &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        endif
+      enddo
+
+c     --- Then, gather up the data sent to this processor.
+      do i=0,nslaves-1
+        if ( i /= my_index) then
+          if (nzrecv(i) > 0) then
+            nn = nzrecv(i)*(nx+1)*(ny+1)
+            call MPI_RECV(phi(0,0,izrecv(i)),nn,
+     &                    MPI_DOUBLE_PRECISION,
+     &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+          endif
+        endif
+      enddo
+ 
+c     --- This is needed since the sends are done without buffering.
+c     --- No problems have been seem without it, but this just for robustness.
+c     if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegetphiforfields3d = timegetphiforfields3d + wtime() - substarttime
 !$OMP END MASTER
 
       return
