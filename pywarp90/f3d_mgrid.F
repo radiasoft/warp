@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.93 $, $Date: 2005/05/30 06:37:47 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.94 $, $Date: 2005/07/19 23:21:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2480,6 +2480,17 @@ c=============================================================================
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: iszzero = 0
+
+      integer(ISZ):: mglevel
+      integer(ISZ):: izfsslavef(0:nslaves-1),nzfsslavef(0:nslaves-1)
+      integer(ISZ):: nxfine,nyfine,nzfine,nzfullfine
+      real(kind=8):: dxfine,dyfine,dzfine
+      real(kind=8):: lx,ly,lz
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
+      real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
+      logical(ISZ):: partialcoarsening
 
 c     --- Only do this calculation if it is needed. This
 c     --- is for parallel version. There, this is a global operation and
@@ -2491,9 +2502,107 @@ c     --- skip it.
      &    maxval(conductors%levelly) > 1 .or.
      &    maxval(conductors%levellz) > 1) return
 
-      call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1.,1.,1.,
-     &                      conductors,
-     &                      my_index,nslaves,izfsslave,nzfsslave)
+c     call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,iszzero,1.,1.,1.,
+c    &                      conductors,
+c    &                      my_index,nslaves,izfsslave,nzfsslave)
+
+
+      mglevel = 0
+      izfsslavef = izfsslave
+      nzfsslavef = nzfsslave
+      nxfine = nx
+      nyfine = ny
+      nzfine = nz
+      nzfullfine = nzfull
+      dxfine = dx
+      dyfine = dy
+      dzfine = dz
+      lx = 1.
+      ly = 1.
+      lz = 1.
+
+      do while (.true.)
+
+#ifdef MPIPARALLEL
+        conductors%leveliz(mglevel) = izfsslavef(my_index)
+        conductors%levelnz(mglevel) = nzfsslavef(my_index)
+#else
+        conductors%leveliz(mglevel) = 0
+        conductors%levelnz(mglevel) = nzfine
+#endif
+        conductors%levellx(mglevel) = lx
+        conductors%levelly(mglevel) = ly
+        conductors%levellz(mglevel) = lz
+        conductors%levels = mglevel + 1
+
+        if (nxfine < 4 .or. nyfine < 4 .or. nzfullfine < 4 .or. mglevel == 100)
+     &    exit
+
+c       --- Calculate the size of the next coarsest grid. If the current
+c       --- size is twice and odd integer, the next coarsest size will be
+c       --- n/2+1, gauranteeing that it is even.
+c       --- Note that nzcoarse is only used if full-coarsening is done.
+        nxcoarse = nxfine/2
+        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
+        nycoarse = nyfine/2
+        if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
+        nzcoarse = nzfine/2
+        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+        nzfullcoarse = nzfullfine/2
+        if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+
+        dxcoarse = dxfine*nxfine/nxcoarse
+        dycoarse = dyfine*nyfine/nycoarse
+        dzcoarse = dzfine*nzfullfine/nzfullcoarse
+        cxf = dxcoarse/dxfine
+        cyf = dycoarse/dyfine
+        czf = dzcoarse/dzfine
+
+c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c       --- all axis.
+        partialcoarsening = (dzfine > 4./3.*dxfine)
+
+#ifdef MPIPARALLEL
+c       --- This must be a global operation since, due to roundoff, each
+c       --- processor can get a different value if dz == 4./3.*dx.
+c       call parallellor(partialcoarsening)
+#endif
+
+        if (partialcoarsening) then
+          nxfine = nxcoarse
+          nyfine = nycoarse
+          nzfullfine = nzfullfine
+          dxfine = dxcoarse
+          dyfine = dycoarse
+          mglevel = mglevel + 1
+          lx = lx*cxf
+          ly = ly*cyf
+        else
+
+#ifdef MPIPARALLEL
+c         --- Find domains in coarser grid
+          call mgdividenz(nslaves,izfsslavef,nzfsslavef,izfsslavec,nzfsslavec,
+     &                    nzfullfine,nzfullcoarse)
+c         --- Set new value of nz
+          nzcoarse = nzfsslavec(my_index)
+#endif
+
+          nxfine = nxcoarse
+          nyfine = nycoarse
+          nzfine = nzcoarse
+          nzfullfine = nzfullcoarse
+          dxfine = dxcoarse
+          dyfine = dycoarse
+          dzfine = dzcoarse
+          mglevel = mglevel + 1
+          lx = lx*cxf
+          ly = ly*cyf
+          lz = lz*czf
+          izfsslavef = izfsslavec
+          nzfsslavef = nzfsslavec
+
+        endif
+      enddo
 
       return
       end
@@ -2509,11 +2618,11 @@ c=============================================================================
       real(kind=8):: lx,ly,lz
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves),nzfsslave(0:nslaves)
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
 
-      integer(ISZ):: izfsslavec(0:nslaves),nzfsslavec(0:nslaves)
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
       logical(ISZ):: partialcoarsening
