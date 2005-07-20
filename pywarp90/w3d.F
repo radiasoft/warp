@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.212 $, $Date: 2005/07/12 21:48:35 $
+c@(#) File W3D.F, version $Revision: 3.213 $, $Date: 2005/07/20 00:02:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4862,8 +4862,6 @@ c       --- If rhop is not associated with rho, then copy the data.
 
 #else
 
-      use Parallel
-
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
@@ -4871,9 +4869,7 @@ c  whose field solve region overlap its particle region.
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho(0,0,0))
       elseif (solvergeom==XYZgeom) then
-        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
-     &                             my_index,nslaves,
-     &                             izfsslave,nzfsslave,izpslave,nzpslave)
+        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
       end if
 
 #endif
@@ -4881,23 +4877,16 @@ c  whose field solve region overlap its particle region.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
-     &                                 my_index,nslaves,
-     &                                 izfsslave,nzfsslave,izpslave,nzpslave)
+      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
       integer(ISZ):: nx,ny,nz,nxp,nyp,nzp
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      real(kind=8):: zmminglobal,dz
 
 #ifdef MPIPARALLEL
 
-      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,
-     &                              my_index,nslaves,izpslave,nzpslave)
-      call getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
-     &                                    my_index,nslaves,
-     &                                    izfsslave,nzfsslave,izpslave,nzpslave)
+      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      call getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
 
 #endif
 
@@ -5056,20 +5045,40 @@ c     --- Obtain the self-field from the electrostatic potential
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==XYZgeomMR) then
         isfsapi = is
+#ifdef XLF
+c       --- The pointer assignment breaks with the xlf compilers, so instead
+c       --- new arrays are allocated and those are used as the work space.
+c       --- This is less efficient since there is overhead in the allocation
+c       --- and the data needs to be copied around.
+        allocate(xfsapi(ip),yfsapi(ip),zfsapi(ip))
+        allocate(exfsapi(ip),eyfsapi(ip),ezfsapi(ip))
+        xfsapi = xp(ipmin:ipmin+ip-1)
+        yfsapi = yp(ipmin:ipmin+ip-1)
+        zfsapi = zp(ipmin:ipmin+ip-1)
+#else
         xfsapi => xp(ipmin:ipmin+ip-1)
         yfsapi => yp(ipmin:ipmin+ip-1)
         zfsapi => zp(ipmin:ipmin+ip-1)
         exfsapi => ex
         eyfsapi => ey
         ezfsapi => ez
+#endif
         call execuser("fetcheMR")
         isfsapi = -1
+#ifdef XLF
+        ex = exfsapi
+        ey = eyfsapi
+        ez = ezfsapi
+        deallocate(xfsapi,yfsapi,zfsapi)
+        deallocate(exfsapi,eyfsapi,ezfsapi)
+#else
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
+#endif
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
@@ -6348,6 +6357,31 @@ c        call getphiforparticlesz()
       return
       end
 c===========================================================================
+      subroutine getphiforfields()
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+
+c This gets the phi at iz=nz and in the guard cells. It is only needed for
+c the 3d FFT and tridiagonal based solvers for the parallel version.
+
+#ifdef MPIPARALLEL
+
+c     --- Distribute phi among the processes so each has phi in its
+c     --- particle domain.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+c       call getphiforparticlesrz()
+c      else if(solvergeom==Zgeom) then
+c        call getphiforparticlesz()
+      elseif (solvergeom==XYZgeom) then
+        call getphiforfields3d(nx,ny,nz,phi(0,0,-1))
+      end if
+#endif
+
+      return
+      end
+c===========================================================================
       subroutine fieldsol3d(iwhich)
       use GlobalVars
       use Subtimers3d
@@ -6409,11 +6443,13 @@ c       --- If not in bend, call VP3D
           call copyarry (rho(0,0,izmin), phi(0,0,izmin), (nx+1)*(ny+1)*(tnz))
         endif
         call vp3d (iwhich)
+        call getphiforfields(nx,ny,nz,phi)
         if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
 
       else
 c       --- Call perturbative bent beam field solver
         call bendfieldsol3d
+        call getphiforfields(nx,ny,nz,phi)
         if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
 
       endif
