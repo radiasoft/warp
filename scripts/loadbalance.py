@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.39 2005/07/19 19:56:54 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.40 2005/07/20 00:16:52 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -198,13 +198,14 @@ that has already been done.
 
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
-  top.izpslave[:] = max(0,int((top.zpslmin - w3d.zmminglobal)/w3d.dz) -
-                          nzguard)
+  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz) - nzguard)
   top.nzpslave[:] = (int((top.zpslmax - w3d.zmminglobal)/w3d.dz) -
                      top.izpslave + 1 + 2*nzguard)
 
   # --- Make sure that the processors don't have grid cells
   # --- sticking out the end.
+  top.nzpslave[:] = where(top.izpslave<0,top.nzpslave+top.izpslave,top.nzpslave)
+  top.izpslave[:] = where(top.izpslave<0,0,top.izpslave)
   top.nzpslave[:] = where(top.izpslave+top.nzpslave > w3d.nzfull,
                           w3d.nzfull - top.izpslave,
                           top.nzpslave)
