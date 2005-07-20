@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.110 2005/06/21 16:20:06 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.111 2005/07/20 20:39:40 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2722,12 +2722,15 @@ data and make sure it is consistent.
     return data
 
   def getplotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints):
+    # --- Note that the zcent is added here but not any transverse offsets.
+    # --- Perhaps a flag could be added specifying whether to add xcent
+    # --- or ycent.
     r = []
     z = []
     for i in range(len(rdata)-1):
       if raddata[i] == largepos:
         r.append(rdata[i])
-        z.append(zdata[i])
+        z.append(zdata[i]+self.zcent)
       else:
         zz = span(zdata[i],zdata[i+1],narcpoints)
         if raddata[i] > 0.:
@@ -2735,9 +2738,9 @@ data and make sure it is consistent.
         else:
           rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
         r = r + list(rr)
-        z = z + list(zz)
+        z = z + list(zz+self.zcent)
     r.append(rdata[-1])
-    z.append(zdata[-1])
+    z.append(zdata[-1]+self.zcent)
     return r,z
 
 #============================================================================
