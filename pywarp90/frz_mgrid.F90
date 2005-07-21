@@ -7515,7 +7515,17 @@ INTEGER(ISZ) :: igrid, nr, nz
 #endif
   end do
 
-  IF(bound0==periodic) then
+  if(boundxy==periodic) then
+    IF(ngrids>1) then
+      write(o_line,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
+      call remark(trim(o_line))
+      stop
+    END if
+    basegrid%rho(1,:) = basegrid%rho(1,:) + basegrid%rho(basegrid%nr+1,:)
+    basegrid%rho(basegrid%nr+1,:) = basegrid%rho(1,:)
+  end if
+
+  IF((bound0==periodic .and. (solvergeom==RZgeom .or. solvergeom==XZgeom)) .or. (boundxy==periodic .and. solvergeom==XYgeom)) then
 #ifdef MPIPARALLEL
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported on parallel platform, aborting.'
       call remark(trim(o_line))
