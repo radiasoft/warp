@@ -4289,7 +4289,7 @@ select case (ixrbnd)
     case (neumann)
       f(ixmax-1,:) = f(ixmax-3,:)
     case (periodic)
-      f(ixmax-1,:) = f(1,1) ! Shouldn't this be (1,:)?
+      f(ixmax-1,:) = f(1,:) 
     case default
 end select
 select case (izlbnd)
