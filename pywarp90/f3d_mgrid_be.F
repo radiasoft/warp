@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.9 $, $Date: 2005/06/22 17:53:40 $
+c version $Revision: 1.10 $, $Date: 2005/07/27 22:39:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1216,7 +1216,7 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi
+      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi,ppp
       real(kind=8):: delx,dely,delz
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
@@ -1269,42 +1269,49 @@ c       --- Set temporaries with initial values.
         delx = 1.
         dely = 1.
         delz = 1.
+        ppp = 1.
         dosubgrid = .false.
 
 c       --- the point lower in x is inside the conductor
         if (dels(0,ic) < 1.) then
           pxm = (volt(0,ic) - pijk)/dels(0,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(0,ic)
+          ppp = min(ppp,dels(0,ic))
           dosubgrid = .true.
         endif
 c       --- the point higher in x is inside the conductor
         if (dels(1,ic) < 1.) then
           pxp = (volt(1,ic) - pijk)/dels(1,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(1,ic)
+          ppp = min(ppp,dels(1,ic))
           dosubgrid = .true.
         endif
 c       --- the point lower in y is inside the conductor
         if (dels(2,ic) < 1.) then
           pym = (volt(2,ic) - pijk)/dels(2,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(2,ic)
+          ppp = min(ppp,dels(2,ic))
           dosubgrid = .true.
         endif
 c       --- the point higher in y is inside the conductor
         if (dels(3,ic) < 1.) then
           pyp = (volt(3,ic) - pijk)/dels(3,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(3,ic)
+          ppp = min(ppp,dels(3,ic))
           dosubgrid = .true.
         endif
 c       --- the point lower in z is inside the conductor
         if (dels(4,ic) < 1.) then
           pzm = (volt(4,ic) - pijk)/dels(4,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(4,ic)
+          ppp = min(ppp,dels(4,ic))
           dosubgrid = .true.
         endif
 c       --- the point higher in z is inside the conductor
         if (dels(5,ic) < 1.) then
           pzp = (volt(5,ic) - pijk)/dels(5,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(5,ic)
+          ppp = min(ppp,dels(5,ic))
           dosubgrid = .true.
         endif
 c       --- calculate the new phi based on the boundary conditions
@@ -1319,10 +1326,10 @@ c       --- calculate the new phi based on the boundary conditions
           else
             rhoe = 0.
           endif
-          res(ix,iy,iz) = + (pxm+pxp)*delxsqi
-     &                    + (pym+pyp)*delysqi
-     &                    + (pzm+pzp)*delzsqi
-     &                    - rhoe/eps0
+          res(ix,iy,iz) = (+ (pxm+pxp)*delxsqi
+     &                     + (pym+pyp)*delysqi
+     &                     + (pzm+pzp)*delzsqi
+     &                     - rhoe/eps0)*ppp
         endif
       enddo
 !$OMP END DO
