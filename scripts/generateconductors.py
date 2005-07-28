@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.111 2005/07/20 20:39:40 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.112 2005/07/28 21:34:31 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -252,6 +252,7 @@ Should never be directly created by the user.
     - t_max=None : max time
     - nt=100     : nb of cells
     """
+    if me<>0:return
     tminl=0.
     tmaxl=top.time
     tmine=0.
@@ -351,56 +352,68 @@ Should never be directly created by the user.
     ixmax = min(w3d.nx, int((xmax-w3d.xmmin)/w3d.dx)+1)
     iymax = min(w3d.ny, int((ymax-w3d.ymmin)/w3d.dy)+1)
     izmax = min(w3d.nz, int((zmax-w3d.zmmin)/w3d.dz)+1)
-    izminp = izmin+1
-    izmaxp = izmax+1
 
     if me>0:izmin=max(izmin,2)
+
+    izminp = izmin+1
+    izmaxp = izmax+1
     
     # accumulate charge due to integral form of Gauss Law
     q = 0.
-    if izmax<w3d.nz:   q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
-                                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*w3d.dx*w3d.dy/w3d.dz
-    if izmin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
-                                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*w3d.dx*w3d.dy/w3d.dz
-    if ixmax<w3d.nx:   q += sum(sum(w3d.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
-                                   -w3d.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
-    if ixmin>0:        q += sum(sum(w3d.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
-                                   -w3d.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
-    if iymax<w3d.ny:   q += sum(sum(w3d.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
-                                   -w3d.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
-    if iymin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
-                                   -w3d.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
+    if izmaxp>=izminp:
+     if 0<=izmax<w3d.nz:   
+       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
+                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*w3d.dx*w3d.dy/w3d.dz
+     if 0<izmin<=w3d.nz:    
+       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
+                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*w3d.dx*w3d.dy/w3d.dz
+     if 0<=ixmax<w3d.nx: 
+       q += sum(sum(w3d.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -w3d.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
+     if 0<ixmin<=w3d.nx:     
+       q += sum(sum(w3d.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -w3d.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
+     if 0<=iymax<w3d.ny:
+       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
+                   -w3d.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
+     if 0<iymin<=w3d.ny:     
+       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
+                   -w3d.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
 
-    # compute total charge inside volume
-    qc = sum(sum(sum(w3d.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*w3d.dx*w3d.dy*w3d.dz
+     # compute total charge inside volume
+     qc = sum(sum(sum(w3d.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*w3d.dx*w3d.dy*w3d.dz
 
-    # correct for symmetries
-    if w3d.l4symtry:
+     # correct for symmetries
+     if w3d.l4symtry:
       q=q*4.
       qc=qc*4.
-    elif w3d.l2symtry:
+     elif w3d.l2symtry:
       q=q*2.
       qc=qc*2.
-    if w3d.l2symtry or w3d.l4symtry:
+     if w3d.l2symtry or w3d.l4symtry:
       if iymin==0:
-        if izmax<w3d.nz  : q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmaxp+1] -w3d.phi[ixmin:ixmax+1,iymin,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
-        if izmin>0:        q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izminp-1] -w3d.phi[ixmin:ixmax+1,iymin,izminp] )*w3d.dx*w3d.dy/w3d.dz
-        if ixmax<w3d.nx:   q -= 2.*sum(w3d.phi[ixmax+1,iymin,izminp:izmaxp+1]-w3d.phi[ixmax,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
-        if ixmin>0:        q -= 2.*sum(w3d.phi[ixmin-1,iymin,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
+        if 0<=izmax< w3d.nz: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmaxp+1] -w3d.phi[ixmin:ixmax+1,iymin,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
+        if 0< izmin<=w3d.nz: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izminp-1] -w3d.phi[ixmin:ixmax+1,iymin,izminp] )*w3d.dx*w3d.dy/w3d.dz
+        if 0<=ixmax< w3d.nx: q -= 2.*sum(w3d.phi[ixmax+1,iymin,izminp:izmaxp+1]-w3d.phi[ixmax,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
+        if 0< ixmin<=w3d.nx: q -= 2.*sum(w3d.phi[ixmin-1,iymin,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
         qc -= 2.*sum(sum(w3d.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
-    if w3d.l4symtry:
+     if w3d.l4symtry:
       if ixmin==0:
-        if izmax<w3d.nz  : q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmaxp+1] -w3d.phi[ixmin,iymin:iymax+1,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
-        if izmin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izminp-1] -w3d.phi[ixmin,iymin:iymax+1,izminp] )*w3d.dx*w3d.dy/w3d.dz
-        if iymax<w3d.ny:   q -= 2.*sum(w3d.phi[ixmin,iymax+1,izminp:izmaxp+1]-w3d.phi[ixmin,iymax,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
-        if iymin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin-1,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
+        if 0<=izmax< w3d.nz: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmaxp+1] -w3d.phi[ixmin,iymin:iymax+1,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
+        if 0< izmin<=w3d.nz: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izminp-1] -w3d.phi[ixmin,iymin:iymax+1,izminp] )*w3d.dx*w3d.dy/w3d.dz
+        if 0<=iymax< w3d.ny: q -= 2.*sum(w3d.phi[ixmin,iymax+1,izminp:izmaxp+1]-w3d.phi[ixmin,iymax,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
+        if 0< iymin<=w3d.ny: q -= 2.*sum(w3d.phi[ixmin,iymin-1,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
         qc -= 2.*sum(sum(w3d.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
       if ixmin==0 and iymin==0:
-        if izmax<w3d.nz  : q += (w3d.phi[ixmin,iymin,izmaxp+1]-w3d.phi[ixmin,iymin,izmaxp])*w3d.dx*w3d.dy/w3d.dz
-        if izmin>0:        q += (w3d.phi[ixmin,iymin,izminp-1]-w3d.phi[ixmin,iymin,izminp])*w3d.dx*w3d.dy/w3d.dz
+        if 0<=izmax< w3d.nz: q += (w3d.phi[ixmin,iymin,izmaxp+1]-w3d.phi[ixmin,iymin,izmaxp])*w3d.dx*w3d.dy/w3d.dz
+        if 0< izmin<=w3d.nz: q += (w3d.phi[ixmin,iymin,izminp-1]-w3d.phi[ixmin,iymin,izminp])*w3d.dx*w3d.dy/w3d.dz
         qc += sum(w3d.rho[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dy*w3d.dz
-
-    self.imageparticles_data += [[top.time,q*eps0+qc]]
+    else:
+      qc = 0.
+      
+    qc=parallelsum(qc)
+    
+    if me==0:self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
       window(0)
@@ -4134,7 +4147,7 @@ containing a list of primitives.
         self.cond = self.parts[i].installed
       else:    
         self.cond += self.parts[i].installed
-    if(install):self.install(l_verbose)
+    if(install):self.install(l_verbose=l_verbose)
     
   def install(self,grid=None,l_verbose=1,l_recursive=1):
     """
@@ -4143,6 +4156,7 @@ containing a list of primitives.
     if l_verbose:print 'installing',self.name,'( ID=',self.condid,')...'
     if w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom:
         if grid is None:grid=frz.basegrid
+        print grid.gid
         for part in self.parts:
             installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
                         zmin=part.zmin,zmax=part.zmax,
