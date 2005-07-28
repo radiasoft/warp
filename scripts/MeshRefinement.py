@@ -504,20 +504,127 @@ not be fetched from there (it is set negative).
 Loads the charge density from the particles. This should only be called for
 the top level grid.
     """
+    # check if subcycling or selfb is turned on for at least one species
+    # and create rhospecies if not done already
+    if len(compress(top.ndts>1,top.ndts))>0 or sum(top.lselfb)>0:
+      if not self.__dict__.has_key('rhospecies'):
+        self.idts  =compress(top.ndts>1,arange(top.ns))
+        self.iselfb=compress(top.lselfb,arange(top.ns))
+        self.createrhospecies(lrootonly)
+        for js in range(top.ns):
+         if top.ndts[js]>1 or top.lselfb[js]:
+          self.initrhospecies(1,js,lrootonly)
+          x=top.xp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
+          y=top.yp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
+          z=top.zp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
+          uz=top.uzp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
+          self.setrho(x,y,z,uz,top.sq[js],top.sw[js],
+                      depositallparticles,lrootonly)
+          self.initrhospecies(2,js,lrootonly)
+    
+    # zeros arrays if needed   
     if lzero: self.zerorho(lrootonly)
-    for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
+
+    # deposit charge
+    for js,i,n,q,w in zip(arange(top.ns),top.ins-1,top.nps,top.sq,top.sw):
       if n == 0: continue
+      # deposit species according to subcycling rule governed by ndts.
+      if top.ndts[js]>1 or top.lselfb[js]:
+        if (top.it+1)%top.ndts[js]==0: 
+          self.pointrhotorhospecies(js,lrootonly)
+          self.zerorho(lrootonly)
+        else:
+          self.addrhospecies(js,lrootonly)
+          continue      
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w,
                   depositallparticles,lrootonly)
+      if (top.ndts[js]>1 or top.lselfb[js]) and ((top.it+1)%top.ndts[js]==0):
+        self.pointrhotorhocopy(lrootonly)
+        self.addrhospecies(js,lrootonly)
+    # distribute charge density among blocks
     if not lrootonly and lzero:
+      self.propagaterhobetweenpatches(depositallparticles)
+      if sum(top.lselfb)>0:
+        for js in self.iselfb:
+          self.pointrhotorhospecies(js,lrootonly)
+          self.propagaterhobetweenpatches(depositallparticles)
+          self.pointrhotorhocopy(lrootonly)
+    self.makerhoperiodic()
+    self.getrhoforfieldsolve()
+
+  def propagaterhobetweenpatches(self,depositallparticles):
       self.accumulaterhofromsiblings()
       self.getrhofromsiblings()
       if not depositallparticles:
         #self.gatherrhofromchildren_reversed()
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
-    self.makerhoperiodic()
-    self.getrhoforfieldsolve()
+
+  def createrhospecies(self,lrootonly=0):
+    self.rhospecies = {}
+    for i in self.idts:
+      self.rhospecies[i] = fzeros(shape(self.rho),'d')
+    for i in self.iselfb:
+      if i not in self.rhospecies.keys():
+        self.rhospecies[i] = fzeros(shape(self.rho),'d')
+    if not lrootonly:
+      for child in self.children:
+        child.idts  =self.idts
+        child.iselfb=self.iselfb
+        child.createrhospecies()
+
+  def initrhospecies(self,op,js,lrootonly=0):
+    if op==1:
+      self.rhocopy  = self.rho
+      self.rho      = self.rhospecies[js]
+      self.rho[...] = 0.
+    if op==2:
+      self.rho     = self.rhocopy
+    if not lrootonly:
+      for child in self.children:
+        child.initrhospecies(op,js)
+
+  def pointrhotorhospecies(self,js,lrootonly=0):
+    # make rhocopy point to rho, rho point to rhospecies[js] 
+    self.rhocopy  = self.rho
+    self.rho      = self.rhospecies[js]
+    if not lrootonly:
+      for child in self.children:
+        child.pointrhotorhospecies(js)
+
+  def addrhospecies(self,js,lrootonly=0):
+    # add rhospecies[js] to rho
+    self.rho    += self.rhospecies[js]
+    if not lrootonly:
+      for child in self.children:
+        child.addrhospecies(js)
+
+  def pointrhotorhocopy(self,lrootonly=0):
+    # make rho point to rhocopy 
+    self.rho     = self.rhocopy
+    if not lrootonly:
+      for child in self.children:
+        child.pointrhotorhocopy()
+
+  def addrhospeciesold(self,js,op,lrootonly=0):
+    if op==1:
+      # make rhocopy point to rho, rho point to rhospecies[js] and zero it
+      self.rhocopy  = self.rho
+      self.rho      = self.rhospecies[js]
+      self.rho[...] = 0.
+      print self.blocknumber,op,'rhocopy=rho'
+    if op==2:
+      # add rhospecies[js] to rho
+      self.rho    += self.rhospecies[js]
+      print self.blocknumber,op,'rho+=rhospecies'
+    if op==3:
+      # make rho point to rhocopy and add rhospecies to rho
+      self.rho     = self.rhocopy
+      self.rho    += self.rhospecies[js]
+      print self.blocknumber,op,'rho=rhocopy'
+    if not lrootonly:
+      for child in self.children:
+        child.addrhospecies(js,op)
 
   def zerorho(self,lrootonly=0):
     if not self.isfirstcall(): return
@@ -973,10 +1080,52 @@ Get rho from overlapping siblings where they own the region.
     # --- which is needed on the boundaries will be up to date.
     if not self.islastcall(): return
 
+    # check if selfb is turned on for at least one species
+    # and create phispecies if not done already
+    if (self is self.root) and sum(top.lselfb)>0:
+      if not self.__dict__.has_key('phispecies'):
+        self.iselfb=compress(top.lselfb,arange(top.ns))
+        self.createphispecies()
+
+    # solve on phi
     self.setphiboundaries()
     MultiGrid.solve(self,iwhich)
+    # solve on phispecies as needed
+    if sum(top.lselfb)>0:
+      for js in self.iselfb:
+        self.pointphitophispecies(js,lselfonly=1)
+        self.setphiboundaries()
+        MultiGrid.solve(self,iwhich)
+        self.pointphitophicopy(lselfonly=1)
+        # scale phispecies by -(1-1/gamma*2) store into top.fselfb
+        self.phispecies[js]*=top.fselfb[js]
+    # solve for children
     for child in self.children:
       child.solve(iwhich)
+
+  def createphispecies(self,lrootonly=0):
+    self.phispecies = {}
+    for i in self.iselfb:
+      if i not in self.phispecies.keys():
+        self.phispecies[i] = fzeros(shape(self.phi),'d')
+    if not lrootonly:
+      for child in self.children:
+        child.createphispecies()
+
+  def pointphitophispecies(self,js,lselfonly=0):
+    # make phicopy point to phi, phi point to phispecies[js] 
+    self.phicopy  = self.phi
+    self.phi      = self.phispecies[js]
+    if not lselfonly:
+      for child in self.children:
+        child.pointphitophispecies(js)
+
+  def pointphitophicopy(self,lselfonly=0):
+    # make phi point to phicopy 
+    self.phi     = self.phicopy
+    if not lselfonly:
+      for child in self.children:
+        child.pointphitophicopy()
 
   def setphiboundaries(self):
     """
@@ -1054,10 +1203,27 @@ Sets phi on the boundaries, using the values from the parent grid
     """
 Fetches the E field. This should only be called at the root level grid.
     """
+    if w3d.api_xlf2 is true:
+      w3d.xfsapi=top.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                      w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
     #self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
     #                                w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+
+    # add E transverse from phispecies as needed
+    js=w3d.jsapi
+    if top.lselfb[js]:
+      exfsapispecies=zeros(shape(w3d.exfsapi),'d')
+      eyfsapispecies=zeros(shape(w3d.eyfsapi),'d')
+      ezfsapispecies=zeros(shape(w3d.ezfsapi),'d')
+      self.pointphitophispecies(js)
+      self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                       exfsapispecies,eyfsapispecies,ezfsapispecies)
+      w3d.exfsapi+=exfsapispecies
+      w3d.eyfsapi+=eyfsapispecies
+      self.pointphitophicopy(js)
 
   def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
