@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.54 $, $Date: 2005/05/31 01:05:17 $
+c@(#) File WXY.M, version $Revision: 3.55 $, $Date: 2005/07/28 21:40:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -865,6 +865,49 @@ c     --- azimuthal magnetic field
       return
       end
 c=============================================================================
+      subroutine fetchexy(ipmin,ip,is,ex,ey,ez)
+      use GlobalVars
+      use Subtimers3d
+      use Picglb
+      use Picglb3d
+      use InGen
+      use InGenxy
+      use InMesh3d
+      use Particles
+      use Fields3d
+      use Fields3dParticles
+      use Efields3d
+      use FieldSolveAPI
+      integer(ISZ):: ipmin,ip,is
+      real(kind=8), dimension(ip) :: ex,ey,ez,zpo
+            
+      if(solvergeom/=XYgeom) then
+c       --- Obtain the self-field from the electrostatic potential
+        if (lwithez) then
+c         --- Note that zp, zgrid, and zmmin are all passed in as zero
+c         --- to avoid any possible funny business with rounding.
+c         --- ds is passed in for dz since that is the distance between
+c         --- the locations where phi is known.
+          zpo = zp(ipmin:ipmin+ip-1)
+          zp(ipmin:ipmin+ip-1) = 0.
+          call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
+     &                efetch,ex,ey,ez,l2symtry,l4symtry)
+c         --- The zp is preserved so that the small correction done
+c         --- in setdtp is still used.
+          zp(ipmin:ipmin+ip-1) = zpo
+        else
+          call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                efetch,ex,ey,ez,l2symtry,l4symtry)
+        endif
+      elseif(solvergeom==XYgeom) then
+        call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,zgridprv)
+      end if
+      return
+      end
+
+c=============================================================================
       subroutine padvncxy(center)
       use Subtimersxy
       use GlobalVars
@@ -982,30 +1025,7 @@ c  Loop over particle blocks; move each block separately
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
-c          call fetche3d(ipmin,ip,is,ex,ey,ez)
-          if(solvergeom/=XYgeom) then
-c           --- Obtain the self-field from the electrostatic potential
-            if (lwithez) then
-c             --- Note that zp, zgrid, and zmmin are all passed in as zero
-c             --- to avoid any possible funny business with rounding.
-c             --- ds is passed in for dz since that is the distance between
-c             --- the locations where phi is known.
-              zpo = zp(ipmin:ipmin+ip-1)
-              zp(ipmin:ipmin+ip-1) = 0.
-              call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
-     &                    efetch,ex,ey,ez,l2symtry,l4symtry)
-c             --- The zp is preserved so that the small correction done
-c             --- in setdtp is still used.
-              zp(ipmin:ipmin+ip-1) = zpo
-            else
-              call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                    efetch,ex,ey,ez,l2symtry,l4symtry)
-            endif
-          elseif(solvergeom==XYgeom) then
-            call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,zgridprv)
-          end if
+          call fetchexy(ipmin,ip,is,ex,ey,ez)
 
 c           --- Scale the self E-field to get the lowest order relativistic
 c           --- correction.
