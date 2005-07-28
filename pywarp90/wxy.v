@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.43 $, $Date: 2004/12/08 21:36:24 $
+#@(#) File WXY.V, version $Revision: 3.44 $, $Date: 2005/07/28 21:40:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.43 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.44 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -79,7 +79,8 @@ vpxy(iwhich:integer)
              subroutine # Call field solver
 loadrhoxy(ins,nps,is,lzero:logical)
              subroutine # Simple interface to setrhoxy
-
+fetchexy(ipmin:integer,ip:integer,is:integer,ex:real,ey:real,ez:real)
+	     subroutine # Returns electric field on particles from phi
 
 *********** Subtimersxy:
 lwxytimesubs logical /.false./
