@@ -238,6 +238,10 @@ class MultiGrid(object):
       status = request.wait()
 
   def fetche(self):
+    if w3d.api_xlf2:
+      w3d.xfsapi=top.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
@@ -311,7 +315,6 @@ class MultiGrid(object):
                      self.gridmode,
                      self.conductors,
                      top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
-
     if self.efetch == 3:
       MultiGrid.getselfe(self,recalculate=1)
 
