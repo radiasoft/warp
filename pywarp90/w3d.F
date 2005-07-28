@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.213 $, $Date: 2005/07/20 00:02:42 $
+c@(#) File W3D.F, version $Revision: 3.214 $, $Date: 2005/07/28 21:39:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -92,6 +92,13 @@ c  Put ny to zero for RZ geometry and setup a few flags
 
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
+        fstype = 10
+        lsezax3d = .false.
+        lsrhoax3d = .false.
+        lsphiax3d = .false.
+        lrhodia3d = .false.
+      elseif(solvergeom==XYgeom) then
+        nz = 0
         fstype = 10
         lsezax3d = .false.
         lsrhoax3d = .false.
@@ -233,9 +240,10 @@ c  so that by default izfsmax = nz (for full field solve).
       if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
+      write(0,*) 'gchange Fields3d',nx,ny,nz
       call gchange("Fields3d", 0)
       vbeamfrm = vbeam
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
+      if(solvergeom==XYZgeom   .or. solvergeom==XYgeom .or. solvergeom==XYZgeomMR) then
         if (l2symtry) then
           ymmin = 0.
         elseif (l4symtry) then
@@ -262,6 +270,8 @@ c  Calculate mesh dimensioning quantities
         dy = dx
       elseif(solvergeom==XZgeom) then
         dy = 1.
+      elseif(solvergeom==XYgeom) then
+        dz = 1.
       elseif(solvergeom==Zgeom) then
         dx = 1.
         dy = 1.
@@ -281,7 +291,7 @@ c  Calculate mesh dimensioning quantities
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       ix_axis = nint(-xmmin/dx)
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or. solvergeom==AMRgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or. solvergeom==AMRgeom .or. solvergeom==XYgeom) then
         iy_axis = nint(-ymmin/dy)
       else ! RZgeom, XZgeom, Zgeom, Rgeom
         iy_axis = 0
@@ -304,6 +314,8 @@ c  Initialize base grid for RZ solver
      &   solvergeom==Rgeom  .or.
      &   solvergeom==Zgeom) then
         call init_base(nx,nz,dx,dz,xmmin,zmmin)
+      elseif(solvergeom==XYgeom) then
+        call init_base(nx,ny,dx,dy,xmmin,ymmin)
       end if
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
@@ -352,6 +364,7 @@ c phi (Ex, Ey, Ez) on the mesh.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
+     &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
      &     solvergeom == Zgeom)) then
         nx_selfe = nxp
@@ -790,6 +803,7 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
+     &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
      &     solvergeom == Zgeom)) then
         call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
@@ -1316,6 +1330,7 @@ c=============================================================================
       use GridBoundary3d
       use DKInterp
       use DKInterptmp
+      use FieldSolveAPI
       character(*):: center_in
       character(len=len(center_in)):: center
 
@@ -1398,7 +1413,7 @@ c  Set storage for field arrays if not adequate already
 
 c  Loop over species
       do is=1,ns
-
+        jsapi=is-1
 c  Advance species according to subcycling rule governed by ndts.
         if (mod(it,ndts(is))/=0) then
           cycle
@@ -4704,12 +4719,12 @@ c     --- zero rhop if requested
         if (solvergeom == XYZgeom) then
           call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
         endif
-        if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
+        if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
      &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
       end if
 
 c     --- change AMR grid if necessary
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
      &   solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
 
 c     --- set limits on loop over species
@@ -4753,8 +4768,18 @@ c              --- rhop is passed into it, this must be done here.
                if (mod(it+1,ndts(is))==0) then
 c                 --- If this species is being advanced this step, then
 c                 --- deposit its rho into rhoptmp.
+#ifdef XLF
+                  allocate(rhopcopy(0:nxp,0:nyp,0:nzp))                   
+                  rhopcopy = rhop
+#else
+#ifdef XLF2
+                  allocate(rhopcopy(0:nxp,0:nyp,0:nzp))                   
+                  rhopcopy = rhop
+#else
                   rhopcopy => rhop
                   rhop => rhoptmp(:,:,:,jsrhoptmp(is-1))
+#endif
+#endif
                   rhop = 0.
                else
 c                 --- If this species is not being advanced this step, then
@@ -4770,8 +4795,20 @@ c                 --- just add its saved rhoptmp into rhop.
              if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
 c               --- If this species is being advanced this step, then restore
 c               --- rhop and copy its rho into rhop.
+#ifdef XLF
+                rhoptmp(:,:,:,jsrhoptmp(is-1)) = rhop
+                rhop = rhop + rhopcopy
+                deallocate(rhopcopy)
+#else
+#ifdef XLF2
+                rhoptmp(:,:,:,jsrhoptmp(is-1)) = rhop
+                rhop = rhop + rhopcopy
+                deallocate(rhopcopy)
+#else
                 rhop => rhopcopy
                 rhop = rhop + rhoptmp(:,:,:,jsrhoptmp(is-1))
+#endif
+#endif
              end if
            endif
          elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
@@ -4784,6 +4821,18 @@ c          --- loop over particle blocks
              else
                call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,wpid),ip,
      &                          sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
+             end if
+           enddo
+         elseif(solvergeom==XYgeom) then
+c          --- loop over particle blocks
+           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+             ip = min(nparpgrp, ins_u+nps_u-ipmin)
+             if(wpid==0) then
+               call rhoweightrz(xp(ipmin),yp(ipmin),yp(ipmin),ip,
+     &                          sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
+             else
+               call rhoweightrz_weights(xp(ipmin),yp(ipmin),yp(ipmin),pid(ipmin,wpid),ip,
+     &                          sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
              end if
            enddo
          elseif(solvergeom==Zgeom) then
@@ -4866,6 +4915,9 @@ c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
+      else if(solvergeom==XYgeom) then
+        call remark("XYgeom not tested in parallel")
+        stop
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho(0,0,0))
       elseif (solvergeom==XYZgeom) then
@@ -4948,7 +5000,7 @@ c     --- If -1 was passed in for ns, then skip the setup of rhoptmp
       if (ns == -1) return
 
 c     --- Setup rhoptmp
-
+      if(ns==0) return
 c     --- First, count how many species take larger time steps and increase
 c     --- the size of the arrays appropriately.
       oldnsndts = nsndts
@@ -5056,6 +5108,14 @@ c       --- and the data needs to be copied around.
         yfsapi = yp(ipmin:ipmin+ip-1)
         zfsapi = zp(ipmin:ipmin+ip-1)
 #else
+#ifdef XLF2
+        api_xlf2 = .true.
+        ipapi    = ip
+        ipminapi = ipmin
+        exfsapi => ex
+        eyfsapi => ey
+        ezfsapi => ez
+#else
         xfsapi => xp(ipmin:ipmin+ip-1)
         yfsapi => yp(ipmin:ipmin+ip-1)
         zfsapi => zp(ipmin:ipmin+ip-1)
@@ -5063,14 +5123,20 @@ c       --- and the data needs to be copied around.
         eyfsapi => ey
         ezfsapi => ez
 #endif
+#endif
         call execuser("fetcheMR")
         isfsapi = -1
 #ifdef XLF
-        ex = exfsapi
-        ey = eyfsapi
-        ez = ezfsapi
+        ex(1:ip) = exfsapi
+        ey(1:ip) = eyfsapi
+        ez(1:ip) = ezfsapi
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(exfsapi,eyfsapi,ezfsapi)
+#else
+#ifdef XLF2
+        nullify(exfsapi)
+        nullify(eyfsapi)
+        nullify(ezfsapi)
 #else
         nullify(xfsapi)
         nullify(yfsapi)
@@ -5079,10 +5145,13 @@ c       --- and the data needs to be copied around.
         nullify(eyfsapi)
         nullify(ezfsapi)
 #endif
+#endif
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(xp(ipmin),zp(ipmin),ex,ez,ip,zgridprv)
+      elseif(solvergeom==XYgeom) then
+         call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,0.)
       elseif(solvergeom==Zgeom) then
          call fieldweightz(zp(ipmin),ez,ip,zgridprv)
       elseif(solvergeom==Rgeom) then
@@ -5150,6 +5219,8 @@ c     elseif(solvergeom==RZgeom) then
 c       call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(x,z,ex,ez,n,zgridprv)
+      elseif(solvergeom==XYgeom) then
+         call fieldweightxz(x,y,ex,ey,n,0.)
       elseif(solvergeom==Zgeom) then
          call fieldweightz(z,ez,n,zgridprv)
       elseif(solvergeom==Rgeom) then
@@ -5273,7 +5344,6 @@ c=============================================================================
       use Subtimers3d
       use GlobalVars
       use Z_arrays
-      use InGen3d, only: solvergeom, RZgeom, XZgeom, Zgeom
       integer(ISZ):: np,pboundxy
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -5434,6 +5504,8 @@ c=============================================================================
 c      --- Put ny to zero for RZ geometry
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
+      elseif(solvergeom==XYgeom) then
+        nz = 0
       elseif(solvergeom==Zgeom) then
         nx = 0
         ny = 0
@@ -5524,6 +5596,9 @@ c     --- Call the appropriate routine to get the phi
         call fetchphi3d(n,x,y,z,p)
       elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setphirz(n,x,y,z,p,zgrid)
+      elseif(solvergeom==XYgeom) then
+        call remark("fetchphi not implemented in XY.")
+        stop
       elseif(solvergeom==Zgeom) then
         call setphiz(n,z,p,zgrid)
       elseif(solvergeom==AMRgeom) then
@@ -6347,6 +6422,9 @@ c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
         call getphiforparticlesrz()
+      elseif (solvergeom==XYgeom) then
+        call remark("getphiforparticles not implemented in parallel for XYgeom.")
+        stop
 c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
@@ -6610,7 +6688,11 @@ c         --- put forward by Lantz
 #endif
       elseif (fstype == 10) then
 c         --- RZ full-multigrid solver
-       call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz)
+       if (solvergeom==RZgeom .or. solvergeom==XZgeom) then
+         call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz)
+       elseif (solvergeom==XYgeom) then
+         call multigridxyf2(iwhich,phi(:,:,0),rho(:,:,0),nx,ny)
+       endif
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
         call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
