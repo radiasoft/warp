@@ -11,7 +11,7 @@ import timing as t
 import time
 import __main__
 
-secondaries_version = "$Id: Secondaries.py,v 1.1 2005/06/21 22:00:30 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.2 2005/07/28 21:48:57 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -133,9 +133,13 @@ Class for generating secondaries
         yplost = take(top.yplost[i1:i2],iit)
         zplost = take(top.zplost[i1:i2],iit)
         # exclude particles out of computational box 
-        condition = (xplost>xmin) & (xplost<xmax) & \
-                    (yplost>ymin) & (yplost<ymax) & \
-                    (zplost>zmin) & (zplost<zmax)
+        if w3d.solvergeom==w3d.RZgeom:
+          condition = (sqrt(xplost**2+yplost**2)<xmax) & \
+                      (zplost>zmin) & (zplost<zmax)
+        else:
+          condition = (xplost>xmin) & (xplost<xmax) & \
+                      (yplost>ymin) & (yplost<ymax) & \
+                      (zplost>zmin) & (zplost<zmax)
         # exclude particles recently created
         if self.min_age is not None:
           inittime = take(top.pidlost[i1:i2,top.tpid-1],iit)
@@ -268,7 +272,14 @@ Class for generating secondaries
 #            pid[:,self.xoldpid]=xnew-vx*top.dt
 #            pid[:,self.yoldpid]=ynew-vy*top.dt
 #            pid[:,self.zoldpid]=znew-vz*top.dt
-            if xnew[0]<=xmin or xnew[0]>=xmax or ynew[0]<=ymin or ynew[0]>=ymax or znew[0]<=zmin or znew[0]>=zmax:
+            if w3d.solvergeom==w3d.RZgeom:
+               condition = (sqrt(xnew[0]**2+ynew[0]**2)>xmax) or \
+                           (znew[0]<zmin) or (znew[0]>zmax)
+            else:
+               condition = (xnew[0]<xmin) & (xnew[0]>xmax) & \
+                           (ynew[0]<ymin) & (ynew[0]>ymax) & \
+                           (znew[0]<zmin) & (znew[0]>zmax)
+            if condition:
               print 'WARNING: new particle outside boundaries',xnew[0],ynew[0],znew[0]
               __main__.outparts+=[[xnew[0],ynew[0],znew[0],xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
