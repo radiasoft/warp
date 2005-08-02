@@ -59,7 +59,7 @@ warpobjects = warpobjects + ['dtop.o',
                              'fft.o','util.o',
                              'fxy_mgrid.o',
                              'dwrz.o',
-                             'frz_mgrid.o']
+                             'frz_mgrid.o','frz_mgrid_be.o']
 if parallel:
   warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
                                'w3dslave.o']
