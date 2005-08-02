@@ -4374,7 +4374,9 @@ end subroutine apply_voltagewguard
 
 subroutine solve_multigridrz(grid,accuracy,l_for_timing)
 ! solve field for u with density rhoinit.
+use BoltzmannElectrons
 implicit none
+
 
 ! input/output variables
 TYPE(GRIDtype) :: grid
@@ -4400,6 +4402,10 @@ IF(l_jump) then
  call solve_multigridrz_jump(grid,accuracy,l_for_timing)
  return
 END if
+if (electrontemperature > 0) then
+ call multigridberzf(grid,accuracy)
+ return
+endif
 
 t_relax = 0.
 t_restrict = 0.
