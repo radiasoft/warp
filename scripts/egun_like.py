@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.36 2005/02/25 22:33:05 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.37 2005/08/02 21:48:46 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -91,24 +91,30 @@ def plottraces():
   pyg_idler()
   
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
-        laccumulate_zmoments=None,rhoparam=None,
+        laccumulate_zmoments=None,rhoparam=None,averagerho=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         ipstep=None,egundata_window=-1,plottraces_window=-1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
         resetlostpart=0):
   """
 Performs steady-state iterations
-  - iter=1 number of iterations to perform
-  - ipsave=0 number of particles to save from the last iteration
-  - save_same_part=0 when true, save same particles each time step instead
-    of random particles, i.e. saves particle trajectories
-  - maxtime=3*transittime maximum time each iteration will run
+  - iter=1: number of iterations to perform
+  - ipsave=0: number of particles to save from the last iteration
+  - save_same_part=0: when true, save same particles each time step instead
+                      of random particles, i.e. saves particle trajectories
+  - maxtime=3*transittime: maximum time each iteration will run
   - laccumulate_zmoments=false: When set to true, z-moments are accumulated
-    over multiple iterations. Note that getzmom.zmmnt(3) must be called
-    by the user to finish the moments calculation.
+                                over multiple iterations. Note that
+                                getzmom.zmmnt(3) must be called by the user to
+                                finish the moments calculation.
   - rhoparam=None: Amount of previous rho to mix in with the current rho. This
-    can help the relaxation toward a steady state. Caution should be used
-    when using this option.
+                   can help the relaxation toward a steady state. Caution
+                   should be used when using this option.
+  - averagerho=None: The number of iterates after which rho is to be averaged.
+                     This automatically adjusts rhoparam so that a running
+                     average of rho is maintained.
+                     rhoparam = 1. - 1./(n+1), where n is the number of
+                     iterations that rho has been averaged over.
   - lstatusline=1: when try, a line is printed and continuously updated
                    showing the status of the simulation.
   - insertbeforeiter=None: function to be called before each iteration.
@@ -142,6 +148,12 @@ Performs steady-state iterations
 
   if ipsave is not None: _ipsave = ipsave
   if save_same_part is not None: _save_same_part = save_same_part
+
+  # --- Check if rhoparam is to be set automatically
+  if averagerho is not None:
+    n = gun_iter + 1 - averagerho
+    rhoparam = 1. - 1./(n+1.)
+    del n 
 
   # --- Save current value of top.nhist
   nhist = top.nhist
@@ -568,7 +580,7 @@ def recovergun():
 
 ########################################################################
 def gunmg(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
-        laccumulate_zmoments=None,rhoparam=None,
+        laccumulate_zmoments=None,rhoparam=None,averagerho=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         nmg=0,conductors=None,egundata_window=2,plottraces_window=1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
@@ -608,7 +620,7 @@ Performs steady-state iterations in a cascade using different resolutions.
   # if nmg=0, do a normal gun solve
   if(nmg==0):
     return gun(iter,ipsave,save_same_part,maxtime,
-        laccumulate_zmoments,rhoparam,
+        laccumulate_zmoments,rhoparam,averagerho,
         lstatusline,insertbeforeiter,insertafteriter,
         None,egundata_window,plottraces_window,
         egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
@@ -686,7 +698,7 @@ Performs steady-state iterations in a cascade using different resolutions.
       if(iter>1):
         # first iteration is performed with top.inj_param=1 (except i=0)
         gun(1,0,save_same_part,maxtime,
-            laccumulate_zmoments,rhoparam,
+            laccumulate_zmoments,rhoparam,averagerho,
             lstatusline,insertbeforeiter,insertafteriter,
             None,egundata_window,plottraces_window,
             egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
@@ -694,7 +706,7 @@ Performs steady-state iterations in a cascade using different resolutions.
         top.inj_param = 0.5
         if(iter>2):
           gun(iter-2,0,save_same_part,maxtime,
-              laccumulate_zmoments,rhoparam,
+              laccumulate_zmoments,rhoparam,averagerho,
               lstatusline,insertbeforeiter,insertafteriter,
               None,egundata_window,plottraces_window,
               egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
@@ -709,7 +721,7 @@ Performs steady-state iterations in a cascade using different resolutions.
          installafterstep(setrhonext)
       # perform last iteration
       gun(1,ipsave,save_same_part,maxtime,
-          laccumulate_zmoments,rhoparam,
+          laccumulate_zmoments,rhoparam,averagerho,
           lstatusline,insertbeforeiter,insertafteriter,
           None,egundata_window,plottraces_window,
           egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
@@ -725,7 +737,7 @@ Performs steady-state iterations in a cascade using different resolutions.
 ########################################################################
 def gunamr(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         nmg=0,AMRlevels=0,
-        laccumulate_zmoments=None,rhoparam=None,
+        laccumulate_zmoments=None,rhoparam=None,averagerho=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         conductors=None,ipstep=None,egundata_window=-1,plottraces_window=-1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
@@ -763,13 +775,13 @@ Performs steady-state iterations in a cascade using different resolutions.
   global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
   if nmg>0:
    gunmg(itersub,itersub,ipsave,save_same_part,maxtime,
-         laccumulate_zmoments,rhoparam,
+         laccumulate_zmoments,rhoparam,averagerho,
          lstatusline,insertbeforeiter,insertafteriter,
          nmg,conductors,egundata_window,plottraces_window,
          egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
   else:
    gun(itersub,ipsave,save_same_part,maxtime,
-            laccumulate_zmoments,rhoparam,
+            laccumulate_zmoments,rhoparam,averagerho,
             lstatusline,insertbeforeiter,insertafteriter,
             None,egundata_window,plottraces_window,
             egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
@@ -784,6 +796,11 @@ Performs steady-state iterations in a cascade using different resolutions.
     AMRtree.generate()
     w3d.AMRgenerate_periodicity = 1000000
     fieldsol(-1)
+    # --- Check if rhoparam is to be set automatically
+    if averagerho is not None:
+      n = gun_iter + 1 - averagerho
+      rhoparam = 1. - 1./(n+1.)
+      del n 
     if rhoparam is not None:
       if iter == 1:
         ipsavetemp = ipsave
@@ -792,14 +809,14 @@ Performs steady-state iterations in a cascade using different resolutions.
         ipsavetemp = None
         ipsteptemp = None
       gun(1,ipsavetemp,save_same_part,maxtime,
-          laccumulate_zmoments,None,
+          laccumulate_zmoments,None,None,
           lstatusline,insertbeforeiter,insertafteriter,
           ipsteptemp,egundata_window,plottraces_window,
           egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
       iter = iter - 1
     if iter > 0:
       gun(iter,ipsave,save_same_part,maxtime,
-          laccumulate_zmoments,rhoparam,
+          laccumulate_zmoments,rhoparam,averagerho,
           lstatusline,insertbeforeiter,insertafteriter,
           None,egundata_window,plottraces_window,
           egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
