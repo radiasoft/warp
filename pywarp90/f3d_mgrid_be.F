@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.10 $, $Date: 2005/07/27 22:39:24 $
+c version $Revision: 1.11 $, $Date: 2005/08/02 21:27:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -645,7 +645,7 @@ c     --- Set the loop limits, including edges when appropriate.
      &                           wy *    wz *phicoarse(nxcoarse,jy+1,jz+1)
             enddo
           endif
-          if (bounds(1) > 0) then
+          if (bounds(3) > 0) then
             do ix=0,nx-1
               jx = int(ix*dx)
               wx =     ix*dx - jx
@@ -847,8 +847,8 @@ c     --- end of loop over even and odd points
       if (bounds(3) == 2) phi(:,ny,:) = phi(:,0,:)
 
 c     --- set phi in the z guard planes
-      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,0)
-      if (bounds(5) == 1) phi(:,:,nz+1)   = phi(:,:,nz)
+      if (bounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
+      if (bounds(5) == 0) phi(:,:,nz+1)   = phi(:,:,nz)
       if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
       if (bounds(5) == 1) phi(:,:,nz+1)   = phi(:,:,nz-1)
       if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
@@ -978,12 +978,12 @@ c       --- set temporaries for boundaries
 
 c       --- Set temporaries with initial values.
         pijk = subgrid%prevphi(ic)
-        pxm = phi(ixm1,iy   ,iz   ) - pijk
-        pxp = phi(ixp1,iy   ,iz   ) - pijk
-        pym = phi(ix   ,iym1,iz   ) - pijk
-        pyp = phi(ix   ,iyp1,iz   ) - pijk
-        pzm = phi(ix   ,iy   ,izm1) - pijk
-        pzp = phi(ix   ,iy   ,izp1) - pijk
+        pxm = phi(ixm1,iy  ,iz  ) - pijk
+        pxp = phi(ixp1,iy  ,iz  ) - pijk
+        pym = phi(ix  ,iym1,iz  ) - pijk
+        pyp = phi(ix  ,iyp1,iz  ) - pijk
+        pzm = phi(ix  ,iy  ,izm1) - pijk
+        pzp = phi(ix  ,iy  ,izp1) - pijk
         delx = 1.
         dely = 1.
         delz = 1.
@@ -1260,12 +1260,12 @@ c       --- set temporaries for boundaries
 
 c       --- Set temporaries with initial values.
         pijk = phi(ix,iy,iz)
-        pxm = phi(ixm1,iy   ,iz   ) - pijk
-        pxp = phi(ixp1,iy   ,iz   ) - pijk
-        pym = phi(ix   ,iym1,iz   ) - pijk
-        pyp = phi(ix   ,iyp1,iz   ) - pijk
-        pzm = phi(ix   ,iy   ,izm1) - pijk
-        pzp = phi(ix   ,iy   ,izp1) - pijk
+        pxm = phi(ixm1,iy  ,iz  ) - pijk
+        pxp = phi(ixp1,iy  ,iz  ) - pijk
+        pym = phi(ix  ,iym1,iz  ) - pijk
+        pyp = phi(ix  ,iyp1,iz  ) - pijk
+        pzm = phi(ix  ,iy  ,izm1) - pijk
+        pzp = phi(ix  ,iy  ,izp1) - pijk
         delx = 1.
         dely = 1.
         delz = 1.
