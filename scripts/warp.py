@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.86 2005/07/01 17:20:04 dave Exp $"
+warp_version = "$Id: warp.py,v 1.87 2005/08/02 21:33:36 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -573,12 +573,34 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
 ##############################################################################
 ##############################################################################
 ##############################################################################
+def fixrestoresfrombeforeelementoverlaps(filename):
+  """This checks if the lattice overlap data is inconsistent with the
+lattice input. This should only ever happen if an old dump file is
+read in, one created before the element overlaps where implemented.
+If this is the case, the lattice is reset and the overlap data generated."""
+  doreset = 0
+  if top.ndrft >= 0 and sum(top.odrftnn) < top.ndrft+1: doreset = 1
+  if top.nbend >= 0 and sum(top.obendnn) < top.nbend+1: doreset = 1
+  if top.ndipo >= 0 and sum(top.odiponn) < top.ndipo+1: doreset = 1
+  if top.nquad >= 0 and sum(top.oquadnn) < top.nquad+1: doreset = 1
+  if top.nsext >= 0 and sum(top.osextnn) < top.nsext+1: doreset = 1
+  if top.nhele >= 0 and sum(top.ohelenn) < top.nhele+1: doreset = 1
+  if top.nemlt >= 0 and sum(top.oemltnn) < top.nemlt+1: doreset = 1
+  if top.nmmlt >= 0 and sum(top.ommltnn) < top.nmmlt+1: doreset = 1
+  if top.naccl >= 0 and sum(top.oacclnn) < top.naccl+1: doreset = 1
+  if top.nbgrd >= 0 and sum(top.obgrdnn) < top.nbgrd+1: doreset = 1
+  if top.npgrd >= 0 and sum(top.opgrdnn) < top.npgrd+1: doreset = 1
+  if top.nbsqgrad >= 0 and sum(top.obsqgradnn) < top.nbsqgrad+1: doreset = 1
+  if doreset:
+    resetlat()
+    setlatt()
+  
 def fixrestoreswithmomentswithoutspecies(filename):
   """This is called automatically by restart to fix the arrays which have
   changed shape. It needs to be called by hand after restore.
   """
   # --- Open the file
-  ff = PR.PR(filename)
+  ff = PR.PR(filename,verbose=0)
   # --- First, check if the file has the old moments in it.
   ek = ff.read('ek@top')
   if type(ek) == ArrayType:
@@ -657,6 +679,7 @@ def fixrestoreswithmomentswithoutspecies(filename):
       a[...,-1] = d
 
 def restoreolddump(filename):
+  fixrestoresfrombeforeelementoverlaps(filename)
   fixrestoreswithmomentswithoutspecies(filename)
 
 ##############################################################################
@@ -760,15 +783,10 @@ Reads in data from file, redeposits charge density and does field solve
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
   if top.inject > 0: fill_inj()
-  # --- Set the lattice internal variables. Only needed if reading in a dump
-  # --- that was made before the overlapping elements was implemented.
-  # --- Otherwise is doesn't hurt anything.
-  resetlat()
-  setlatt()
   # --- Do some setup for the RZ solver
   if getcurrpkg() == 'w3d' and w3d.solvergeom==w3d.RZgeom: mk_grids_ptr()
   # --- Load the charge density (since it was not saved)
-  if w3d.solvergeom != w3d.XYZgeomMR:
+  if not (w3d.solvergeom in [w3d.XYZgeomMR,w3d.RZgeom]):
     loadrho()
     # --- Recalculate the fields (since it was not saved)
     if dofieldsol: fieldsol(0)
