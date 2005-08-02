@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.40 2005/07/20 00:16:52 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.41 2005/08/02 21:47:16 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -198,7 +198,7 @@ that has already been done.
 
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
-  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz) - nzguard)
+  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz) - nzguard
   top.nzpslave[:] = (int((top.zpslmax - w3d.zmminglobal)/w3d.dz) -
                      top.izpslave + 1 + 2*nzguard)
 
