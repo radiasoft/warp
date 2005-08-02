@@ -29,8 +29,8 @@ fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
 	Forthon -a $(DEBUG) --macros top.v wrz dwrz.F
 
-frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz.v
-	Forthon -a $(DEBUG) frz frz_mgrid.F90
+frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_mgrid_be.F frz.v
+	Forthon -a $(DEBUG) frz frz_mgrid.F90 frz_mgrid_be.F
 
 herpy.$(SO): toppy.$(SO) her.F her.v
 	Forthon -a $(DEBUG) her
