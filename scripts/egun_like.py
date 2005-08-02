@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.38 2005/08/02 22:26:24 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.39 2005/08/02 22:31:41 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -149,12 +149,6 @@ Performs steady-state iterations
   if ipsave is not None: _ipsave = ipsave
   if save_same_part is not None: _save_same_part = save_same_part
 
-  # --- Check if rhoparam is to be set automatically
-  if averagerho is not None and averagerho >= gun_iter:
-    n = gun_iter + 1 - averagerho
-    rhoparam = 1. - 1./(n+1.)
-    del n 
-
   # --- Save current value of top.nhist
   nhist = top.nhist
   top.nhist = 0
@@ -278,6 +272,12 @@ Performs steady-state iterations
 
     # --- turn off field solver
     top.fstype = -1
+
+    # --- Check if rhoparam is to be set automatically
+    if averagerho is not None and averagerho <= gun_iter:
+      n = gun_iter + 1 - averagerho
+      rhoparam = 1. - 1./(n+1.)
+      del n 
 
     # --- If rhoparam is not None, then save the previous rho
     if rhoparam is not None:
