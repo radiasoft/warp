@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.39 $, $Date: 2005/07/28 21:41:25 $
+#@(#) File FRZ.V, version $Revision: 3.40 $, $Date: 2005/08/03 01:07:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.39 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.40 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -237,6 +237,12 @@ adjust_lpfd(f:real,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:real
 setphirz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
          # get phi in p from RZ grid at locations [x,y,z]
 
+residualberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
+             phi:real,res:real,mglevel:integer,bounds:integer,mgparam:integer,
+             lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+             iondensity:real,electrontemperature:real,plasmapotential:real,
+             electrondensitymaxscale:real) subroutine
+
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
 # The stencil for the iterative calculation of the potential f is given by
@@ -388,3 +394,8 @@ children  _OVERLAPtype
 
 %%%%%%%% GRDPTRtype:
 grid _GRIDtype
+
+******** Subtimersfrz:
+lfrztimesubs logical /.false./
+timemultigridrzsolve   real /0./
+
