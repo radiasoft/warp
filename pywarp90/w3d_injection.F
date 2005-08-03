@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.30 $, $Date: 2005/06/02 00:03:04 $
+c@(#) File w3d_injection.F, version $Revision: 1.31 $, $Date: 2005/08/03 01:05:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -177,6 +177,12 @@ c           --- is over an elliptical surface
               tt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
             enddo
 
+            if (l_inj_regular) then
+              do ip=1,nn
+                rt(ip) = (ip-1.)/(nn-1.)
+              enddo
+            endif
+
 c           --- Transform the positions into a Gaussian if distrbtn is GA0
             if (distrbtn == "GA0") then
               do ip = 1,nn
@@ -238,11 +244,21 @@ c           --- that the beam was injected in a field free region.
             endif
 
 c           --- Initialize positions as rectangular or elliptical depending on linj_rectangle
+            spreadx = 1
+            spready = 1
             if(linj_rectangle) then
               do ip=1,nn
                 xt(ip) = ainj*(2.*rt(ip)-1.0)
                 yt(ip) = binj*(2.*tt(ip)-1.0)
               enddo
+            else if (l_inj_rz) then
+              do ip=1,nn
+                tt(ip) = 2.*pi*tt(ip)
+                xt(ip) = ainj*rt(ip)*cos(tt(ip))
+                yt(ip) = binj*rt(ip)*sin(tt(ip))
+              enddo
+              spreadx = 1
+              spready = 0
             else
               do ip=1,nn
 c               --- Convert r**2 into r and tt into a random angle
@@ -255,10 +271,10 @@ c               --- Convert r**2 into r and tt into a random angle
             do ip=1,nn
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
-              ixx = abs(xt(ip) - inj_xmmin(ij))*dxi
-              iyy = abs(yt(ip) - inj_ymmin(ij))*dyi
-              wxx = abs(xt(ip) - inj_xmmin(ij))*dxi - ixx
-              wyy = abs(yt(ip) - inj_ymmin(ij))*dyi - iyy
+              ixx = spreadx*(abs(xt(ip) - inj_xmmin(ij))*dxi)
+              iyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi)
+              wxx = spreadx*(abs(xt(ip) - inj_xmmin(ij))*dxi - ixx)
+              wyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi - iyy)
               zs = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
      &             inj_grid(ixx+1,iyy  ,ij)*      wxx *(1. - wyy) +
      &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
@@ -266,6 +282,9 @@ c             --- The absolute values are needed for the cases of symmetry.
 c             --- Only save particle if it is within the injection region.
               if (inj_zmmin <= zs+zinj .and. zs+zinj < inj_zmmax) then
                 ii = ins(is) - 1 - npinjtmp(is,ij)
+c               --- Clear out any old data from pid
+                pid(ii,:) = 0.
+c               --- Save the particle data
                 xp(ii) = xt(ip)
                 yp(ii) = yt(ip)
                 zp(ii) = zs
@@ -278,6 +297,8 @@ c             --- Only save particle if it is within the injection region.
                 else
                   uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
                 endif
+c               --- Save the particle weight
+                if (l_inj_rz) pid(ii,wpid) = 2.*rt(ip)
                 if (linj_includebz0) then
                   rt(ip) = sqrt((xp(ii)+xinject(ij))**2 + (yp(ii)+yinject(ij))**2)
                   tt(ip) = atan2(yp(ii)+yinject(ij),xp(ii)+xinject(ij))
@@ -294,8 +315,6 @@ c             --- Only save particle if it is within the injection region.
                 else
                   gaminv(ii) = 1.
                 endif
-c               --- Clear out any old data from pid
-                pid(ii,:) = 0.
 c               --- Save the ID of the injection source.
                 pid(ii,injpid) = ij
 c               --- Save SSN 
