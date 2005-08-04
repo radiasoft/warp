@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.26 2005/04/27 18:32:56 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.27 2005/08/04 18:12:27 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -33,7 +33,10 @@ hpbasictext = """
   - plsysval=1: Plot system to make plot in (quadrant plots for example)
     see work.gs for the plot system values.
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
+
 hpbasicwintext = (
 """  - iw=0: Window to chose from""" + hpbasictext +
 """  - lzshift=0: specifies whether the z-axis is shifted by the window
@@ -69,7 +72,9 @@ hpbasicconttext = (
   - titles=true: When false, no titles are printed
   - filled=0: When true, plot filled contours
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables""")
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot.""")
 hpzarraytext = (
   """
   - contour=0 when 1 plots contours
@@ -85,7 +90,7 @@ plotting routines, along with their default values.
   """ + hpbasictext
 
 ###########################################################################
-def _extractvar(name,varsuffix=None,pkg='top'):
+def _extractvar(name,varsuffix=None,pkg='top',ff=None):
   """
 Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
@@ -97,17 +102,22 @@ returned.
     # --- fortran variable in the specified package.
     if varsuffix is not None:
       vname = name + str(varsuffix)
-      try:
-        result = eval(vname,__main__.__dict__)
-      except:
-        result = None
+      try:    result = ff.read(vname)
+      except: result = None
       if result is not None: return result
-    return eval(pkg+'.'+name,globals())
+      try:    result = __main__.__dict__[vname]
+      except: result = None
+      if result is not None: return result
+    try:    result = ff.read(name+'@'+pkg)
+    except: result = None
+    if result is not None: return result
+    return getattr(packageobject(pkg),name)
   else:
     return name
 
 def _extractvarkw(name,kw,pkg='top'):
-  return _extractvar(name,kw.get('varsuffix',None),pkg=pkg)
+  return _extractvar(name,kw.get('varsuffix',None),pkg=pkg,
+                     ff=kw.get('ff',None))
 
 ###########################################################################
 def hpbasic(oord,kwdict={},**kw):
@@ -125,7 +135,7 @@ only required argument of course is the data to be plotted.
                 'lhzbeam':0,'lvsz':0,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
                 'plsysval':1,'width':1.,'linetype':'solid',
-                'varsuffix':None}
+                'varsuffix':None,'ff':None}
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
@@ -133,8 +143,8 @@ only required argument of course is the data to be plotted.
   if badargs: raise "bad argument ",string.join(badargs.keys())
   for arg in kwvalues.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
-  iend = _extractvar(iend,varsuffix)
-  oord = _extractvar(oord,varsuffix)
+  iend = _extractvar(iend,varsuffix,ff=ff)
+  oord = _extractvar(oord,varsuffix,ff=ff)
   if perspecies: oord = oord[...,js]
 
   # --- Now complete the setup
@@ -144,7 +154,7 @@ only required argument of course is the data to be plotted.
   if type(yscale) != type(array([])): yscale = array([yscale])
   if not absc:
     if lhzbeam or lvsz:
-      hzbeam = _extractvar("hzbeam",varsuffix)
+      hzbeam = _extractvar("hzbeam",varsuffix,ff=ff)
       absc = hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
@@ -152,7 +162,7 @@ only required argument of course is the data to be plotted.
         else:
           titleb = "Z"
     else:
-      thist = _extractvar("thist",varsuffix)
+      thist = _extractvar("thist",varsuffix,ff=ff)
       absc = thist[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
@@ -222,7 +232,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
                 'jend':'nzzarr','jstep':None,'lhzbeam':0,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,
                 'titles':1,'levs':10,'filled':0,'width':1.,'linetype':'solid',
-                'varsuffix':None}
+                'varsuffix':None,'ff':None}
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
@@ -230,11 +240,11 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   badargs = checkarguments(kwvalues,kwdefaults)
   if badargs: raise "bad argument ",string.join(badargs.keys())
 
-  iend = _extractvar(iend,varsuffix)
-  jend = _extractvar(jend,varsuffix)
-  oord = _extractvar(oord,varsuffix)
+  iend = _extractvar(iend,varsuffix,ff=ff)
+  jend = _extractvar(jend,varsuffix,ff=ff)
+  oord = _extractvar(oord,varsuffix,ff=ff)
   if perspecies: oord = oord[...,js]
-  oordmesh = _extractvar(oordmesh,varsuffix)
+  oordmesh = _extractvar(oordmesh,varsuffix,ff=ff)
 
   # --- Some special arguments
   if istep is None: istep = max(iend/20,1)
@@ -256,7 +266,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   # --- Now complete the setup
   if not absc:
     if lhzbeam:
-      hzbeam = _extractvar('hzbeam',varsuffix)
+      hzbeam = _extractvar('hzbeam',varsuffix,ff=ff)
       absc = hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
@@ -264,7 +274,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
         else:
           titleb = "Z"
     else:
-      thist = _extractvar('thist',varsuffix)
+      thist = _extractvar('thist',varsuffix,ff=ff)
       absc = thist[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
