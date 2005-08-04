@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.40 $, $Date: 2005/08/03 01:07:25 $
+#@(#) File FRZ.V, version $Revision: 3.41 $, $Date: 2005/08/04 00:53:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.40 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.41 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -273,6 +273,7 @@ cfxp(nbbnd)     _real     # stencil coefficients for relaxation iteration at j+1
 cfzm(nbbnd)     _real     # stencil coefficients for relaxation iteration at l-1
 cfzp(nbbnd)     _real     # stencil coefficients for relaxation iteration at l+1
 dt(nbbnd)       _real     # overall coefficient for relaxation
+phi0(nbbnd)     _real     # phi in conductor at j,l
 phi0xm(nbbnd)   _real     # phi in conductor at j-1 (phi0xm=cfxm*volt0xm)
 phi0xp(nbbnd)   _real     # phi in conductor at j+1 (phi0xp=cfxp*volt0xp)
 phi0zm(nbbnd)   _real     # phi in conductor at l-1 (phi0zm=cfzm*volt0zm)
