@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.1 $, $Date: 2005/08/02 21:19:12 $
+c version $Revision: 1.2 $, $Date: 2005/08/04 00:51:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -43,7 +43,7 @@ c     --- for the production version of the code.
      &                        0,mgerror,accuracy,
      &                        grid%npre,grid%npost,
      &                        lcndbndy,laddconductor,icndbndy,
-     &                        gridmode,conductors,
+     &                        gridmode,grid%bndfirst,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        iondensity,electrontemperature,plasmapotential,
      &                        electrondensitymaxscale)
@@ -58,13 +58,13 @@ c=============================================================================
      &                              mgmaxlevels,mgerror,mgtol,
      &                              downpasses,uppasses,
      &                              lcndbndy,laddconductor,icndbndy,
-     &                              gridmode,conductors,
+     &                              gridmode,bnd,
      &                              my_index,nslaves,izfsslave,nzfsslave,
      &                        iondensity,electrontemperature,plasmapotential,
      &                        electrondensitymaxscale)
       use Subtimersfrz
-      use ConductorTypemodule
       use GRIDtypemodule
+      use BNDtypemodule
       use Constant
       integer(ISZ):: nx,nz,nzfull
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
@@ -78,7 +78,7 @@ c=============================================================================
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor
       integer(ISZ):: icndbndy,gridmode
-      type(ConductorType):: conductors
+      type(BNDtype):: bnd
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       real(kind=8):: iondensity,electrontemperature,plasmapotential
@@ -95,26 +95,32 @@ c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3.
 
       integer(ISZ):: i,ii,k,ix,iz
       real(kind=8),allocatable:: phisave(:,:)
+      real(kind=8):: xminodx
       character(72):: errline
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lfrztimesubs) substarttime = wtime()
 
 c     --- Make sure that the conductor data is consistent.
-      if (gridmode == 0) then
-        conductors%interior%n = 0
-        conductors%evensubgrid%n = 0
-        conductors%oddsubgrid%n = 0
-        if (laddconductor) call execuser("calladdconductor")
-      endif
-      call checkconductors(nx,0,nz,nzfull,dx,dx,dz,conductors,
-     &                     my_index,nslaves,izfsslave,nzfsslave)
+c     if (gridmode == 0) then
+c       conductors%interior%n = 0
+c       conductors%evensubgrid%n = 0
+c       conductors%oddsubgrid%n = 0
+c       if (laddconductor) call execuser("calladdconductor")
+c     endif
+c     call checkconductors(nx,0,nz,nzfull,dx,dx,dz,conductors,
+c    &                     my_index,nslaves,izfsslave,nzfsslave)
 
 !$OMP PARALLEL
 !$OMP&PRIVATE(ii,i,k,ix,iz)
 
 c     --- Prepare rho by dividing it by -eps0
       rho = -rho/eps0
+
+c     --- Calculate grid min in grid cells.
+c     --- Note that it needs to be a real number in case xmmin is not an
+c     --- integer multiple of dx.
+      xminodx = xmmin/dx
 
       allocate(phisave(-1:nx+1,-1:nz+1),stat=allocerror)
       if (allocerror /= 0) then
@@ -134,9 +140,9 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- Do one vcycle.
-        call vcycleberz(0,nx,nz,nzfull,dx,dz,phi,rho,
+        call vcycleberz(0,nx,nz,nzfull,dx,dz,xminodx,phi,rho,
      &                  bounds,mgparam,mgmaxlevels,
-     &                  downpasses,uppasses,lcndbndy,icndbndy,conductors,
+     &                  downpasses,uppasses,lcndbndy,icndbndy,bnd,
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  iondensity,electrontemperature,plasmapotential,
      &                  electrondensitymaxscale)
@@ -195,24 +201,24 @@ c     --- Undo the change of rho
       return
       end
 c=============================================================================
-      RECURSIVE subroutine vcycleberz(mglevel,nx,nz,nzfull,dx,dz,
+      RECURSIVE subroutine vcycleberz(mglevel,nx,nz,nzfull,dx,dz,xminodx,
      &                                phi,rho,bounds,
      &                                mgparam,
      &                                mgmaxlevels,downpasses,uppasses,
-     &                                lcndbndy,icndbndy,conductors,
+     &                                lcndbndy,icndbndy,bnd,
      &                                my_index,nslaves,izfsslave,nzfsslave,
      &                          iondensity,electrontemperature,plasmapotential,
      &                          electrondensitymaxscale)
-      use ConductorTypemodule
       use GRIDtypemodule
+      use BNDtypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,nz,nzfull
-      real(kind=8):: dx,dz
+      real(kind=8):: dx,dz,xminodx
       real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
-      type(ConductorType):: conductors
+      type(BNDtype):: bnd
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       integer(ISZ):: my_index,nslaves
@@ -232,6 +238,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dzcoarsesqi
+      real(kind=8):: xminodxcoarse
       integer(ISZ):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
       integer(ISZ):: lzoffset,rzoffset
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -248,8 +255,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial relaxation iterations
       do i=1,downpasses
-        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,dxsqi,dzsqi,bounds,mgparam,
-     &                 lcndbndy,icndbndy,conductors,
+        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,dxsqi,dzsqi,xminodx,
+     &                 bounds,mgparam,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright,
@@ -282,6 +289,7 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         dzcoarse = dz*nzfull/nzfullcoarse
         dxcoarsesqi = 1./dxcoarse**2
         dzcoarsesqi = 1./dzcoarse**2
+        xminodxcoarse = xminodx*nxcoarse/nx
 
         lzoffset = 0
         rzoffset = 0
@@ -322,16 +330,15 @@ c       --- Calculate the coarsened phi
         call restrictberz(nx,nz,nzfull,phi,1,1,
      &                    nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                    bounds,bounds,lzoffset)
-        call cond_potmgberz(conductors%interior,nxcoarse,nzcoarse,
-     &                      phicoarse,mglevel+1)
+        call cond_potmgberz(bnd%next,nxcoarse,nzcoarse,phicoarse,mglevel+1)
         call applytransversebcberz(nxcoarse,nzcoarse,phicoarse,bounds)
         call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
      &                               phicoarse,bounds)
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call residualberz(nx,nz,nzfull,dxsqi,dzsqi,phi,res,
+        call residualberz(nx,nz,nzfull,dxsqi,dzsqi,xminodx,phi,res,
      &                    mglevel,bounds,mgparam,
-     &                    lcndbndy,icndbndy,conductors,
+     &                    lcndbndy,icndbndy,bnd,
      &                    iondensity,electrontemperature,plasmapotential,
      &                    electrondensitymaxscale)
         res(0:nx,0:nz) = rho - res(0:nx,0:nz)
@@ -346,16 +353,15 @@ c       print*,"max r1 ",mglevel,maxval(abs(rhocoarse))
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call residualberz(nxcoarse,nzcoarse,nzfullcoarse,
-     &                    dxcoarsesqi,dzcoarsesqi,
+     &                    dxcoarsesqi,dzcoarsesqi,xminodxcoarse,
      &                    phicoarse,rescoarse,
      &                    mglevel+1,bounds,mgparam,
-     &                    lcndbndy,icndbndy,conductors,
+     &                    lcndbndy,icndbndy,bnd%next,
      &                    iondensity,electrontemperature,plasmapotential,
      &                    electrondensitymaxscale)
         rhocoarse = rhocoarse + rescoarse(0:nx,0:nz)
 c       print*,"max r2 ",mglevel,maxval(abs(rhocoarse))
-c       call cond_potmgbezerorz(conductors%interior,
-c    &                          nxcoarse,nzcoarse,
+c       call cond_potmgbezerorz(bnd%next,nxcoarse,nzcoarse,
 c    &                          rhocoarse,mglevel+1,0,0)
 
 c       --- Save the current coarsened phi since it is needed to apply
@@ -371,10 +377,9 @@ c       --- the corrections after relaxations.
 
 c       --- Continue at the next coarsest level.
         call vcycleberz(mglevel+iszone,nxcoarse,nzcoarse,nzfullcoarse,
-     &                  dxcoarse,dzcoarse,phicoarse,rhocoarse,
-     &                  bounds,mgparam,
-     &                  mgmaxlevels,downpasses,uppasses,
-     &                  lcndbndy,icndbndy,conductors,
+     &                  dxcoarse,dzcoarse,xminodxcoarse,phicoarse,rhocoarse,
+     &                  bounds,mgparam,mgmaxlevels,downpasses,uppasses,
+     &                  lcndbndy,icndbndy,bnd%next,
      &                  my_index,nslaves,izfsslavec,nzfsslavec,
      &                  iondensity,electrontemperature,plasmapotential,
      &                  electrondensitymaxscale)
@@ -396,8 +401,8 @@ c       deallocate(phicoarse,rhocoarse,phicoarsesave)
 
 c     --- Do final relaxation passes.
       do i=1,uppasses
-        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,dxsqi,dzsqi,bounds,mgparam,
-     &                 lcndbndy,icndbndy,conductors,
+        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,dxsqi,dzsqi,xminodx,
+     &                 bounds,mgparam,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright,
@@ -411,8 +416,6 @@ c=============================================================================
       subroutine restrictberz(nx,nz,nzfull,u,delx,delz,
      &                        nxcoarse,nzcoarse,nzfullcoarse,ucoarse,
      &                        bounds,boundscoarse,lzoffset)
-      use ConductorTypemodule
-      use ConductorSubGridTypemodule
       integer(ISZ):: nx,nz,nzfull,delx,delz
       integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
       real(kind=8):: u(-1:nx+1,-1:nz+1)
@@ -553,23 +556,24 @@ c     --- Set the loop limits, including edges when appropriate.
       end
 c=============================================================================
       subroutine relaxberz(mglevel,nx,nz,nzfull,phi,rho,
-     &                     dxsqi,dzsqi,bounds,
-     &                     mgparam,lcndbndy,icndbndy,conductors,
+     &                     dxsqi,dzsqi,xminodx,bounds,
+     &                     mgparam,lcndbndy,icndbndy,bnd,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright,
      &                     iondensity,electrontemperature,plasmapotential,
      &                     electrondensitymaxscale)
       use Constant
-      use ConductorTypemodule
+      use BNDtypemodule
+      use CONDtypemodule
       integer(ISZ):: mglevel,nx,nz,nzfull
       real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
-      real(kind=8):: dxsqi,dzsqi
+      real(kind=8):: dxsqi,dzsqi,xminodx
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
-      type(ConductorType):: conductors
+      type(BNDtype):: bnd
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -601,11 +605,13 @@ c The boundaries are then reset, the previous value was destroyed.
       integer(ISZ):: ix,iz
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       integer(ISZ):: ix1
-      integer(ISZ):: i1,i2,ic
+      integer(ISZ):: ic,ii
+      real(kind=8):: rr
       real(kind=8):: rhoe,denom,Lphi
+      type(CONDtype):: cnd
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmgberz(conductors%interior,nx,nz,phi,mglevel)
+      call cond_potmgberz(bnd,nx,nz,phi,mglevel)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -633,23 +639,15 @@ c       --- Save values just outside conductor surfaces. Only save phi at the
 c       --- subgrid points which are to be used at the current level of
 c       --- grid refinement.
         if (lcndbndy) then
-          if (parity == 0) then
-            i1 = conductors%evensubgrid%istart(mglevel)
-            i2 = conductors%evensubgrid%istart(mglevel+1)-1
-            do ic = i1,i2
-              ix = conductors%evensubgrid%indx(0,ic)
-              iz = conductors%evensubgrid%indx(2,ic)
-              conductors%evensubgrid%prevphi(ic) = phi(ix,iz)
+          do ic = 1,bnd%nb_conductors
+            if (ic == 1) cnd = bnd%cndfirst
+            if (ic > 1) cnd = cnd%next
+            do ii = 1,cnd%nbbnd
+              ix = cnd%jj(ii) - 1
+              iz = cnd%kk(ii) - 1
+              cnd%phi0(ii) = phi(ix,iz)
             enddo
-          else
-            i1 = conductors%oddsubgrid%istart(mglevel)
-            i2 = conductors%oddsubgrid%istart(mglevel+1)-1
-            do ic = i1,i2
-              ix = conductors%oddsubgrid%indx(0,ic)
-              iz = conductors%oddsubgrid%indx(2,ic)
-              conductors%oddsubgrid%prevphi(ic) = phi(ix,iz)
-            enddo
-          endif
+          enddo
         endif
 
 !$OMP DO
@@ -667,15 +665,16 @@ c       --- grid refinement.
               endif
               if (.true.) then
 c               --- ZR
-                if (ix == 0) then
+                rr = ix + xminodx
+                if (rr == 0.) then
                   denom = -4.*dxsqi - 2.*dzsqi - rhoe/eps0/electrontemperature
                   Lphi =  4.*(phi(1,iz) - phi(0,iz))*dxsqi
      &                  + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*dzsqi
      &                  - rhoe/eps0
                 else
                   denom = -2.*dxsqi - 2.*dzsqi - rhoe/eps0/electrontemperature
-                  Lphi =  ((ix-0.5)*phi(ix-1,iz) - 2*ix*phi(ix,iz) +
-     &                     (ix+0.5)*phi(ix+1,iz))*dxsqi/ix
+                  Lphi =  ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
+     &                     (rr+0.5)*phi(ix+1,iz))*dxsqi/rr
      &                  + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
      &                  - rhoe/eps0
                 endif
@@ -694,24 +693,15 @@ c               --- ZX
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
-          if (parity == 0) then
-           call condbndymgberz(conductors%evensubgrid,nx,nz,phi,rho,
-     &                       dxsqi,dzsqi,mgparam,bounds,
+         call condbndymgberz(bnd,parity,nx,nz,phi,rho,
+     &                       dxsqi,dzsqi,xminodx,mgparam,bounds,
      &                       mglevel,icndbndy,
      &                       iondensity,electrontemperature,plasmapotential,
      &                       electrondensitymaxscale)
-          endif
-          if (parity == 1) then
-           call condbndymgberz(conductors%oddsubgrid,nx,nz,phi,rho,
-     &                       dxsqi,dzsqi,mgparam,bounds,
-     &                       mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential,
-     &                       electrondensitymaxscale)
-          endif
         endif
 
 c       --- Put desired potential onto conductors in phi array.
-        call cond_potmgberz(conductors%interior,nx,nz,phi,mglevel)
+        call cond_potmgberz(bnd,nx,nz,phi,mglevel)
 
 c       --- set phi in the guard planes
 c       --- This must be done inside the loop over parities so that the
@@ -725,59 +715,73 @@ c     --- end of loop over even and odd points
       return
       end
 c=============================================================================
-      subroutine cond_potmgberz(interior,nx,nz,phi,mglevel)
-      use ConductorInteriorTypemodule
-      type(ConductorInteriorType):: interior
+      subroutine cond_potmgberz(bnd,nx,nz,phi,mglevel)
+      use BNDtypemodule
+      use CONDtypemodule
+      type(BNDtype):: bnd
       integer(ISZ):: nx,nz,mglevel
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
 
 c Set conductor points to the desired potential. The potential is used since
 c at all levels, phi is being operated on directly.
 
-      integer(ISZ):: ic,ix,iz
+      type(CONDtype):: cnd
+      integer(ISZ):: ic,ii,ix,iz
 
 !$OMP DO
-      do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
-        ix = interior%indx(0,ic)
-        iz = interior%indx(2,ic)
-        phi(ix,iz) = interior%volt(ic)
-      enddo
+      do ic = 1,bnd%nb_conductors
+        if (ic == 1) cnd = bnd%cndfirst
+        if (ic > 1) cnd = cnd%next
+        do ii = 1,cnd%ncond
+          ix = cnd%jcond(ii) - 1
+          iz = cnd%kcond(ii) - 1
+          phi(ix,iz) = cnd%voltage(ii)
+        enddo
 !$OMP END DO
+      enddo
 
       return
       end
 c=============================================================================
-      subroutine cond_potmgbezerorz(interior,nx,nz,u,mglevel,delt,delz)
-      use ConductorInteriorTypemodule
-      type(ConductorInteriorType):: interior
+      subroutine cond_potmgbezerorz(bnd,nx,nz,u,mglevel,delt,delz)
+      use BNDtypemodule
+      use CONDtypemodule
+      type(BNDtype):: bnd
       integer(ISZ):: nx,nz,mglevel,delt,delz
       real(kind=8):: u(-delt:nx+delt,-delz:nz+delz)
 
 c Set data at conductor points to zero.
 
-      integer(ISZ):: ic,ix,iz
+      type(CONDtype):: cnd
+      integer(ISZ):: ic,ii,ix,iz
 
 !$OMP DO
-      do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
-        ix = interior%indx(0,ic)
-        iz = interior%indx(2,ic)
-        u(ix,iz) = 0.
-      enddo
+      do ic = 1,bnd%nb_conductors
+        if (ic == 1) cnd = bnd%cndfirst
+        if (ic > 1) cnd = cnd%next
+        do ii = 1,cnd%ncond
+          ix = cnd%jcond(ii) - 1
+          iz = cnd%kcond(ii) - 1
+          u(ix,iz) = 0.
+        enddo
 !$OMP END DO
+      enddo
 
       return
       end
 c=============================================================================
-      subroutine condbndymgberz(subgrid,nx,nz,phi,rho,dxsqi,dzsqi,
+      subroutine condbndymgberz(bnd,parity,nx,nz,phi,rho,dxsqi,dzsqi,xminodx,
      &                          mgparam,bounds,mglevel,icndbndy,
      &                          iondensity,electrontemperature,plasmapotential,
      &                          electrondensitymaxscale)
       use Constant
-      use ConductorSubGridTypemodule
-      type(ConductorSubGridType):: subgrid
+      use BNDtypemodule
+      use CONDtypemodule
+      type(BNDtype):: bnd
+      integer(ISZ):: parity
       integer(ISZ):: nx,nz,mglevel
       real(kind=8):: phi(-1:nx+1,-1:nz+1), rho(0:nx,0:nz)
-      real(kind=8):: dxsqi,dzsqi,mgparam
+      real(kind=8):: dxsqi,dzsqi,xminodx,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
       real(kind=8):: iondensity,electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
@@ -800,131 +804,154 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
+      type(CONDtype):: cnd
       real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,Lphi
-      real(kind=8):: delx,delz,Cx,Cz
+      real(kind=8):: delx,delz,Cx,Cz,rr
       real(kind=8):: delxsqi,delzsqi
-      integer(ISZ):: ic
+      integer(ISZ):: ic,ii,i1,i2
       integer(ISZ):: ix,iz
       logical(ISZ):: dosubgrid
-      real(kind=8),pointer:: dels(:,:),volt(:,:)
+      real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
 
-      dels => subgrid%dels
-      volt => subgrid%volt
+c     --- These should really be passed in
+      dxi = sqrt(dxsqi)
+      dzi = sqrt(dzsqi)
 
 c     --- loop over points near surface of conductors
+      do ic = 1,bnd%nb_conductors
+        if (ic == 1) cnd = bnd%cndfirst
+        if (ic > 1) cnd = cnd%next
+        if (parity == 0) then
+c         --- red is even
+          i1 = 1
+          i2 = cnd%nbbndred
+        else
+c         --- black is odd
+          i1 = cnd%nbbndred + 1
+          i2 = cnd%nbbnd
+        endif
+
 !$OMP DO
-      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+        do ii = i1,i2
 
-        ix = subgrid%indx(0,ic)
-        iz = subgrid%indx(2,ic)
+          ix = cnd%jj(ii) - 1
+          iz = cnd%kk(ii) - 1
+          rr = ix + xminodx
 
-        if (ix == 0  .and. bounds(0) < 1) cycle
-        if (ix == nx .and. bounds(1) < 1) cycle
+          if (ix == 0  .and. bounds(0) < 1) cycle
+          if (ix == nx .and. bounds(1) < 1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+          if (iz == 0  .and. bounds(4) < 1) cycle
+          if (iz == nz .and. bounds(5) < 1) cycle
 
-c       --- Set temporaries with initial values.
-        pik = subgrid%prevphi(ic)
-        if (ix == 0) then
-          pxm = 0.
-          pxp = 4.*(phi(1,iz) - pik)
-        else
-          pxm = (1.-0.5/ix)*(phi(ix-1,iz) - pik)
-          pxp = (1.+0.5/ix)*(phi(ix+1,iz) - pik)
-        endif
-        pzm = phi(ix  ,iz-1) - pik
-        pzp = phi(ix  ,iz+1) - pik
-        delx = 1.
-        delz = 1.
-        if (ix == 0) then
-          Cx = 4.
-        else
-          Cx = 2.
-        endif
-        Cz = 2.
-        dosubgrid = .false.
+c         --- Set temporaries with initial values.
+          pik = cnd%phi0(ii)
+          if (rr == 0.) then
+            pxm = 0.
+            pxp = 4.*(phi(1,iz) - pik)
+          else
+            pxm = (1.-0.5/rr)*(phi(ix-1,iz) - pik)
+            pxp = (1.+0.5/rr)*(phi(ix+1,iz) - pik)
+          endif
+          pzm = phi(ix,iz-1) - pik
+          pzp = phi(ix,iz+1) - pik
+          delx = 1.
+          delz = 1.
+          if (rr == 0.) then
+            Cx = 4.
+          else
+            Cx = 2.
+          endif
+          Cz = 2.
+          dosubgrid = .false.
 
-c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
-          if (ix > 0) then
-            pxm = (1.-0.5/ix)*(volt(0,ic) - pik)/dels(0,ic)
-            Cx = Cx - 1. + 1./dels(0,ic)
-            if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(0,ic)
+          dxm = cnd%dxm(ii)*dxi
+          dxp = cnd%dxp(ii)*dxi
+          dzm = cnd%dzm(ii)*dzi
+          dzp = cnd%dzp(ii)*dzi
+
+c         --- the point lower in x is inside the conductor
+          if (dxm < 1.) then
+            if (rr > 0.) then
+              pxm = (1.-0.5/rr)*(cnd%volt0xm(ii) - pik)/dxm
+              Cx = Cx - 1. + 1./dxm
+              if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
+              dosubgrid = .true.
+            endif
+          endif
+c         --- the point higher in x is inside the conductor
+          if (dxp < 1.) then
+            if (rr == 0.) then
+              pxp = 4.*(cnd%volt0xp(ii) - pik)/dxp
+              Cx = 4./dxp
+            else
+              pxp = (1.+0.5/rr)*(cnd%volt0xp(ii) - pik)/dxp
+              Cx = Cx - 1. + 1./dxp
+            endif
+            if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxp
             dosubgrid = .true.
           endif
-        endif
-c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
-          if (ix == 0) then
-            pxp = 4.*(volt(1,ic) - pik)/dels(1,ic)
-            Cx = 4./dels(1,ic)
-          else
-            pxp = (1.+0.5/ix)*(volt(1,ic) - pik)/dels(1,ic)
-            Cx = Cx - 1. + 1./dels(1,ic)
+c         --- the point lower in z is inside the conductor
+          if (dzm < 1.) then
+            pzm = (cnd%volt0zm(ii) - pik)/dzm
+            Cz = Cz - 1. + 1./dzm
+            if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzm
+            dosubgrid = .true.
           endif
-          if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(1,ic)
-          dosubgrid = .true.
-        endif
-c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
-          pzm = (volt(4,ic) - pik)/dels(4,ic)
-          Cz = Cz - 1. + 1./dels(4,ic)
-          if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(4,ic)
-          dosubgrid = .true.
-        endif
-c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
-          pzp = (volt(5,ic) - pik)/dels(5,ic)
-          Cz = Cz - 1. + 1./dels(5,ic)
-          if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(5,ic)
-          dosubgrid = .true.
-        endif
-c       --- calculate the new phi based on the boundary conditions
-        if (dosubgrid) then
-          delxsqi = dxsqi/delx
-          delzsqi = dzsqi/delz
-          if (iondensity .ne. 0.) then
-            rhoe = iondensity*exp((pik-plasmapotential)/
-     &                            electrontemperature)
-            rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-          else
-            rhoe = 0.
+c         --- the point higher in z is inside the conductor
+          if (dzp < 1.) then
+            pzp = (cnd%volt0zp(ii) - pik)/dzp
+            Cz = Cz - 1. + 1./dzp
+            if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzp
+            dosubgrid = .true.
           endif
-          denom = - Cx*delxsqi - Cz*delzsqi
-     &            -rhoe/eps0/electrontemperature
-          Lphi = (pxm+pxp)*delxsqi + (pzm+pzp)*delzsqi
-     &           -rhoe/eps0
-          phi(ix,iz) = pik - mgparam*(Lphi - rho(ix,iz))/denom
-        endif
-      enddo
+c         --- calculate the new phi based on the boundary conditions
+          if (dosubgrid) then
+            delxsqi = dxsqi/delx
+            delzsqi = dzsqi/delz
+            if (iondensity .ne. 0.) then
+              rhoe = iondensity*exp((pik-plasmapotential)/
+     &                              electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+            else
+              rhoe = 0.
+            endif
+            denom = - Cx*delxsqi - Cz*delzsqi
+     &              -rhoe/eps0/electrontemperature
+            Lphi = (pxm+pxp)*delxsqi + (pzm+pzp)*delzsqi
+     &             -rhoe/eps0
+            phi(ix,iz) = pik - mgparam*(Lphi - rho(ix,iz))/denom
+          endif
+        enddo
 !$OMP END DO
+      enddo
 
       return
       end
 c=============================================================================
-      subroutine residualberz(nx,nz,nzfull,dxsqi,dzsqi,phi,res,
+      subroutine residualberz(nx,nz,nzfull,dxsqi,dzsqi,xminodx,phi,res,
      &                        mglevel,bounds,mgparam,
-     &                        lcndbndy,icndbndy,conductors,
+     &                        lcndbndy,icndbndy,bnd,
      &                        iondensity,electrontemperature,plasmapotential,
      &                        electrondensitymaxscale)
       use Constant
-      use ConductorTypemodule
+      use BNDtypemodule
       integer(ISZ):: nx,nz,nzfull
-      real(kind=8):: dxsqi,dzsqi
+      real(kind=8):: dxsqi,dzsqi,xminodx
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
       real(kind=8):: res(-1:nx+1,-1:nz+1)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
-      type(ConductorType):: conductors
+      type(BNDtype):: bnd
       real(kind=8):: iondensity,electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Calculate the residual on the grid including the BE term.
 
       real(kind=8):: rhoe
+      real(kind=8):: rr
       integer(ISZ):: ix,iz,ic
       integer(ISZ):: ixmin,ixmax,izmin,izmax
 
@@ -958,13 +985,14 @@ c    &                +  (phi(ix  ,iz-1) + phi(ix  ,iz+1))*dzsqi
 c    &                -  phi(ix,iz)*2.*(dxsqi + dzsqi)
 c    &                 - rhoe/eps0
 
-            if (ix == 0) then
+            rr = ix + xminodx
+            if (rr == 0.) then
               res(ix,iz) = 4*(phi(1,iz) - phi(0,iz))*dxsqi
      &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*dzsqi
      &                   - rhoe/eps0
             else
-              res(ix,iz) = ((ix-0.5)*phi(ix-1,iz) - 2*ix*phi(ix,iz) +
-     &                      (ix+0.5)*phi(ix+1,iz))*dxsqi/ix
+              res(ix,iz) = ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
+     &                      (rr+0.5)*phi(ix+1,iz))*dxsqi/rr
      &                   + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
      &                   - rhoe/eps0
             endif
@@ -974,16 +1002,12 @@ c    &                 - rhoe/eps0
 !$OMP END DO
 
 c     --- Zero the residual inside conductors.
-      call cond_potmgbezerorz(conductors%interior,nx,nz,res,mglevel,1,1)
+      call cond_potmgbezerorz(bnd,nx,nz,res,mglevel,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
-        call condbndyresberz(conductors%evensubgrid,nx,nz,phi,res,
-     &                       dxsqi,dzsqi,bounds,mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential,
-     &                       electrondensitymaxscale)
-        call condbndyresberz(conductors%oddsubgrid,nx,nz,phi,res,
-     &                       dxsqi,dzsqi,bounds,mglevel,icndbndy,
+        call condbndyresberz(bnd,nx,nz,phi,res,dxsqi,dzsqi,xminodx,bounds,
+     &                       mglevel,icndbndy,
      &                       iondensity,electrontemperature,plasmapotential,
      &                       electrondensitymaxscale)
       endif
@@ -1007,16 +1031,17 @@ c     --- Longitudinal boundaries
       return
       end
 c=============================================================================
-      subroutine condbndyresberz(subgrid,nx,nz,phi,res,dxsqi,dzsqi,
+      subroutine condbndyresberz(bnd,nx,nz,phi,res,dxsqi,dzsqi,xminodx,
      &                           bounds,mglevel,icndbndy,
      &                           iondensity,electrontemperature,plasmapotential,
      &                           electrondensitymaxscale)
       use Constant
-      use ConductorSubGridTypemodule
-      type(ConductorSubGridType):: subgrid
+      use BNDtypemodule
+      use CONDtypemodule
+      type(BNDtype):: bnd
       integer(ISZ):: nx,nz,mglevel
       real(kind=8):: phi(-1:nx+1,-1:nz+1), res(-1:nx+1,-1:nz+1)
-      real(kind=8):: dxsqi,dzsqi
+      real(kind=8):: dxsqi,dzsqi,xminodx
       integer(ISZ):: bounds(0:5),icndbndy
       real(kind=8):: iondensity,electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
@@ -1039,97 +1064,111 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
+      type(CONDtype):: cnd
       real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,Lphi,ppp
       real(kind=8):: delx,delz
       real(kind=8):: delxsqi,delzsqi
-      integer(ISZ):: ic
+      real(kind=8):: rr
+      integer(ISZ):: ic,ii
       integer(ISZ):: ix,iz
       logical(ISZ):: dosubgrid
-      real(kind=8),pointer:: dels(:,:),volt(:,:)
+      real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
 
-      dels => subgrid%dels
-      volt => subgrid%volt
+c     --- These should really be passed in
+      dxi = sqrt(dxsqi)
+      dzi = sqrt(dzsqi)
 
 c     --- loop over points near surface of conductors
+      do ic = 1,bnd%nb_conductors
+        if (ic == 1) cnd = bnd%cndfirst
+        if (ic > 1) cnd = cnd%next
+
 !$OMP DO
-      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+        do ii = 1,cnd%nbbnd
 
-        ix = subgrid%indx(0,ic)
-        iz = subgrid%indx(2,ic)
+          ix = cnd%jj(ii) - 1
+          iz = cnd%kk(ii) - 1
+          rr = ix + xminodx
 
-        if (ix == 0  .and. bounds(0) < 1) cycle
-        if (ix == nx .and. bounds(1) < 1) cycle
+          if (ix == 0  .and. bounds(0) < 1) cycle
+          if (ix == nx .and. bounds(1) < 1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+          if (iz == 0  .and. bounds(4) < 1) cycle
+          if (iz == nz .and. bounds(5) < 1) cycle
 
-c       --- Set temporaries with initial values.
-        pik = phi(ix,iz)
-        if (ix == 0) then
-          pxm = 0.
-          pxp = 4.*(phi(1,iz) - pik)
-        else
-          pxm = (1.-0.5/ix)*(phi(ix-1,iz) - pik)
-          pxp = (1.+0.5/ix)*(phi(ix+1,iz) - pik)
-        endif
-        pzm = phi(ix  ,iz-1) - pik
-        pzp = phi(ix  ,iz+1) - pik
-        delx = 1.
-        delz = 1.
-        ppp = 1.
-        dosubgrid = .false.
+c         --- Set temporaries with initial values.
+          pik = phi(ix,iz)
+          if (rr == 0.) then
+            pxm = 0.
+            pxp = 4.*(phi(1,iz) - pik)
+          else
+            pxm = (1.-0.5/rr)*(phi(ix-1,iz) - pik)
+            pxp = (1.+0.5/rr)*(phi(ix+1,iz) - pik)
+          endif
+          pzm = phi(ix  ,iz-1) - pik
+          pzp = phi(ix  ,iz+1) - pik
+          delx = 1.
+          delz = 1.
+          ppp = 1.
+          dosubgrid = .false.
 
-c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
-          if (ix > 0) then
-            pxm = (1.-0.5/ix)*(volt(0,ic) - pik)/dels(0,ic)
-            if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(0,ic)
-            ppp = min(ppp,dels(0,ic))
+          dxm = cnd%dxm(ii)*dxi
+          dxp = cnd%dxp(ii)*dxi
+          dzm = cnd%dzm(ii)*dzi
+          dzp = cnd%dzp(ii)*dzi
+
+c         --- the point lower in x is inside the conductor
+          if (dxm < 1.) then
+            if (rr > 0.) then
+              pxm = (1.-0.5/rr)*(cnd%volt0xm(ii) - pik)/dxm
+              if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
+              ppp = min(ppp,dxm)
+              dosubgrid = .true.
+            endif
+          endif
+c         --- the point higher in x is inside the conductor
+          if (dxp < 1.) then
+            if (rr == 0.) then
+              pxp = 4.*(cnd%volt0xp(ii) - pik)/dxp
+            else
+              pxp = (1.+0.5/rr)*(cnd%volt0xp(ii) - pik)/dxp
+            endif
+            if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxp
+            ppp = min(ppp,dxp)
             dosubgrid = .true.
           endif
-        endif
-c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
-          if (ix == 0) then
-            pxp = 4.*(volt(1,ic) - pik)/dels(1,ic)
-          else
-            pxp = (1.+0.5/ix)*(volt(1,ic) - pik)/dels(1,ic)
+c         --- the point lower in z is inside the conductor
+          if (dzm < 1.) then
+            pzm = (cnd%volt0zm(ii) - pik)/dzm
+            if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzm
+            ppp = min(ppp,dzm)
+            dosubgrid = .true.
           endif
-          if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(1,ic)
-          ppp = min(ppp,dels(1,ic))
-          dosubgrid = .true.
-        endif
-c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
-          pzm = (volt(4,ic) - pik)/dels(4,ic)
-          if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(4,ic)
-          ppp = min(ppp,dels(4,ic))
-          dosubgrid = .true.
-        endif
-c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
-          pzp = (volt(5,ic) - pik)/dels(5,ic)
-          if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(5,ic)
-          ppp = min(ppp,dels(5,ic))
-          dosubgrid = .true.
-        endif
-c       --- calculate the new phi based on the boundary conditions
-        if (dosubgrid) then
-          delxsqi = dxsqi/delx
-          delzsqi = dzsqi/delz
-          if (iondensity .ne. 0.) then
-            rhoe = iondensity*exp((pik-plasmapotential)/
-     &                            electrontemperature)
-            rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-          else
-            rhoe = 0.
+c         --- the point higher in z is inside the conductor
+          if (dzp < 1.) then
+            pzp = (cnd%volt0zp(ii) - pik)/dzp
+            if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzp
+            ppp = min(ppp,dzp)
+            dosubgrid = .true.
           endif
-          res(ix,iz) = (+ (pxm+pxp)*delxsqi
-     &                  + (pzm+pzp)*delzsqi
-     &                  - rhoe/eps0)*ppp
-        endif
-      enddo
+c         --- calculate the new phi based on the boundary conditions
+          if (dosubgrid) then
+            delxsqi = dxsqi/delx
+            delzsqi = dzsqi/delz
+            if (iondensity .ne. 0.) then
+              rhoe = iondensity*exp((pik-plasmapotential)/
+     &                              electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+            else
+              rhoe = 0.
+            endif
+            res(ix,iz) = (+ (pxm+pxp)*delxsqi
+     &                    + (pzm+pzp)*delzsqi
+     &                    - rhoe/eps0)*ppp
+          endif
+        enddo
 !$OMP END DO
+      enddo
 
       return
       end
