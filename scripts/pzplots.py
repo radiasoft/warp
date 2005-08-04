@@ -78,14 +78,14 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.19 2005/05/31 00:59:16 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.20 2005/08/04 17:58:58 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
   print pzplots.__doc__
 
 ###########################################################################
-def _extractvar(name,varsuffix=None,pkg='top'):
+def _extractvar(name,varsuffix=None,pkg='top',ff=None):
   """
 Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
@@ -97,12 +97,16 @@ returned.
     # --- fortran variable in the specified package.
     if varsuffix is not None:
       vname = name + str(varsuffix)
-      try:
-        result = eval(vname,__main__.__dict__)
-      except:
-        result = None
+      try:    result = ff.read(vname)
+      except: result = None
       if result is not None: return result
-    return eval(pkg+'.'+name,globals())
+      try:    result = __main__.__dict__[vname]
+      except: result = None
+      if result is not None: return result
+    try:    result = ff.read(name+'@'+pkg)
+    except: result = None
+    if result is not None: return result
+    return getattr(packageobject(pkg),name)
   else:
     return name
 
@@ -116,7 +120,7 @@ def _gettitler(js):
 ##########################################################################
 def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots pnumz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -134,13 +138,15 @@ def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  pnumz = _extractvar('pnumz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(pnumz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -150,7 +156,7 @@ def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots number of particles per cell versus z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -168,18 +174,20 @@ def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]
-  dx = _extractvar('dx',varsuffix,'w3d')
-  dy = _extractvar('dy',varsuffix,'w3d')
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  pnumz = _extractvar('pnumz',varsuffix,'top',ff)[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]
+  rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]
+  dx = _extractvar('dx',varsuffix,'w3d',ff)
+  dy = _extractvar('dy',varsuffix,'w3d',ff)
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   if w3d.ny > 0:
     beamarea = 4.*pi*xrmsz*yrmsz
     beamarea = where(beamarea==0.,1.,beamarea)
@@ -199,7 +207,7 @@ def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -217,13 +225,15 @@ def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -233,7 +243,7 @@ def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -251,13 +261,15 @@ def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -267,7 +279,7 @@ def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -285,13 +297,15 @@ def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zbarz = _extractvar('zbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zbarz = _extractvar('zbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(zbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -301,7 +315,7 @@ def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -319,13 +333,15 @@ def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xpbarz = _extractvar('xpbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -335,7 +351,7 @@ def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -353,13 +369,15 @@ def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  ypbarz = _extractvar('ypbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -369,7 +387,7 @@ def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -387,13 +405,15 @@ def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxbarz = _extractvar('vxbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vxbarz = _extractvar('vxbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vxbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -403,7 +423,7 @@ def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -421,13 +441,15 @@ def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vybarz = _extractvar('vybarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vybarz = _extractvar('vybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -437,7 +459,7 @@ def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -455,13 +477,15 @@ def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzbarz = _extractvar('vzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vzbarz = _extractvar('vzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -471,7 +495,7 @@ def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xybarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -489,13 +513,15 @@ def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xybarz = _extractvar('xybarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xybarz = _extractvar('xybarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -505,7 +531,7 @@ def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -523,13 +549,15 @@ def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xypbarz = _extractvar('xypbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xypbarz = _extractvar('xypbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -539,7 +567,7 @@ def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yxpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -557,13 +585,15 @@ def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yxpbarz = _extractvar('yxpbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yxpbarz = _extractvar('yxpbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(yxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -573,7 +603,7 @@ def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -591,13 +621,15 @@ def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpypbarz = _extractvar('xpypbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xpypbarz = _extractvar('xpypbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xpypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -607,7 +639,7 @@ def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -625,13 +657,15 @@ def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xsqbarz = _extractvar('xsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xsqbarz = _extractvar('xsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -641,7 +675,7 @@ def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ysqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -659,13 +693,15 @@ def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ysqbarz = _extractvar('ysqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  ysqbarz = _extractvar('ysqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -675,7 +711,7 @@ def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -693,13 +729,15 @@ def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zsqbarz = _extractvar('zsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zsqbarz = _extractvar('zsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(zsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -709,7 +747,7 @@ def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xpsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -727,13 +765,15 @@ def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xpsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -743,7 +783,7 @@ def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots ypsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -761,13 +801,15 @@ def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ypsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -777,7 +819,7 @@ def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -795,13 +837,15 @@ def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vxsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -811,7 +855,7 @@ def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vysqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -829,13 +873,15 @@ def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vysqbarz = _extractvar('vysqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vysqbarz = _extractvar('vysqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -845,7 +891,7 @@ def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzsqbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -863,13 +909,15 @@ def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vzsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -879,7 +927,7 @@ def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xxpbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -897,13 +945,15 @@ def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -913,7 +963,7 @@ def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yypbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -931,13 +981,15 @@ def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yypbarz = _extractvar('yypbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(yypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -947,7 +999,7 @@ def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -965,13 +1017,15 @@ def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zvzbarz = _extractvar('zvzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zvzbarz = _extractvar('zvzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(zvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -981,7 +1035,7 @@ def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -999,13 +1053,15 @@ def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xvzbarz = _extractvar('xvzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xvzbarz = _extractvar('xvzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1015,7 +1071,7 @@ def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1033,13 +1089,15 @@ def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yvzbarz = _extractvar('yvzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yvzbarz = _extractvar('yvzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(yvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1049,7 +1107,7 @@ def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1067,13 +1125,15 @@ def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vxvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1083,7 +1143,7 @@ def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
               marks=0,marker=None,msize=1.,width=1.,lframe=0,
-              titleb=None,titles=1,varsuffix=None):
+              titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vyvzbarz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1101,13 +1161,15 @@ def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vyvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1117,7 +1179,7 @@ def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1135,13 +1197,15 @@ def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1151,7 +1215,7 @@ def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1169,13 +1233,15 @@ def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1185,7 +1251,7 @@ def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots zrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1203,13 +1269,15 @@ def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zrmsz = _extractvar('zrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zrmsz = _extractvar('zrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1219,7 +1287,7 @@ def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1237,13 +1305,15 @@ def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1253,7 +1323,7 @@ def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots xprmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1271,13 +1341,15 @@ def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xprmsz = _extractvar('xprmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xprmsz = _extractvar('xprmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1287,7 +1359,7 @@ def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots yprmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1305,13 +1377,15 @@ def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yprmsz = _extractvar('yprmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yprmsz = _extractvar('yprmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(yprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1321,7 +1395,7 @@ def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsxz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1339,13 +1413,15 @@ def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsxz = _extractvar('epsxz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsxz = _extractvar('epsxz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1355,7 +1431,7 @@ def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsyz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1373,13 +1449,15 @@ def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsyz = _extractvar('epsyz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsyz = _extractvar('epsyz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1389,7 +1467,7 @@ def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epszz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1407,13 +1485,15 @@ def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epszz = _extractvar('epszz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epszz = _extractvar('epszz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1423,7 +1503,7 @@ def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnxz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1441,13 +1521,15 @@ def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnxz = _extractvar('epsnxz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsnxz = _extractvar('epsnxz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1457,7 +1539,7 @@ def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnyz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1475,13 +1557,15 @@ def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnyz = _extractvar('epsnyz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsnyz = _extractvar('epsnyz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1491,7 +1575,7 @@ def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnzz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1509,13 +1593,15 @@ def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnzz = _extractvar('epsnzz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsnzz = _extractvar('epsnzz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1525,7 +1611,7 @@ def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsgz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1543,13 +1629,15 @@ def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsgz = _extractvar('epsgz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsgz = _extractvar('epsgz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1559,7 +1647,7 @@ def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epshz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1577,13 +1665,15 @@ def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epshz = _extractvar('epshz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epshz = _extractvar('epshz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1593,7 +1683,7 @@ def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsngz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1611,13 +1701,15 @@ def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsngz = _extractvar('epsngz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsngz = _extractvar('epsngz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1627,7 +1719,7 @@ def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots epsnhz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1645,13 +1737,15 @@ def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnhz = _extractvar('epsnhz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  epsnhz = _extractvar('epsnhz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1661,7 +1755,7 @@ def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vxrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1679,13 +1773,15 @@ def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxrmsz = _extractvar('vxrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vxrmsz = _extractvar('vxrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vxrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1695,7 +1791,7 @@ def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vyrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1713,13 +1809,15 @@ def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vyrmsz = _extractvar('vyrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vyrmsz = _extractvar('vyrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vyrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1729,7 +1827,7 @@ def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots vzrmsz along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1747,13 +1845,15 @@ def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzrmsz = _extractvar('vzrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  vzrmsz = _extractvar('vzrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(vzrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1763,7 +1863,7 @@ def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
                marks=0,marker=None,msize=1.,width=1.,lframe=0,
-               titleb=None,titles=1,varsuffix=None):
+               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots slope of x-x' phase space versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1781,18 +1881,20 @@ def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
-  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top',ff)[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top',ff)[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]
   sxz = (xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz**2,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1802,7 +1904,7 @@ def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
                marks=0,marker=None,msize=1.,width=1.,lframe=0,
-               titleb=None,titles=1,varsuffix=None):
+               titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots slope of y-y' phase space versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1820,18 +1922,20 @@ def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
-  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
+  yypbarz = _extractvar('yypbarz',varsuffix,'top',ff)[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top',ff)[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]
   syz = (yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz**2,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1841,7 +1945,7 @@ def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rhomidz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1857,13 +1961,15 @@ def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rhomidz = _extractvar('rhomidz',varsuffix,'top')*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  rhomidz = _extractvar('rhomidz',varsuffix,'top',ff)*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(rhomidz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. on axis versus Z",titleb,"(C/m^3)")
@@ -1871,7 +1977,7 @@ def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots rhomaxz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1887,13 +1993,15 @@ def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rhomaxz = _extractvar('rhomaxz',varsuffix,'top')*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  rhomaxz = _extractvar('rhomaxz',varsuffix,'top',ff)*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(rhomaxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. max-over-X,Y versus Z",titleb,"(C/m^3)")
@@ -1901,7 +2009,7 @@ def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots current along z-axis
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -1919,13 +2027,15 @@ def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  curr = _extractvar('curr',varsuffix,'top')[...,js]*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  curr = _extractvar('curr',varsuffix,'top',ff)[...,js]*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(curr,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -1936,7 +2046,7 @@ ppcurr = pzcurr
 ##########################################################################
 def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots smeared Ez along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1952,13 +2062,15 @@ def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  egap = _extractvar('egap',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  egap = _extractvar('egap',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(egap,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Gap Electric Field",titleb,"(V/m)")
@@ -1966,7 +2078,7 @@ def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots linecharge along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1982,13 +2094,15 @@ def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  linechg = _extractvar('linechg',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  linechg = _extractvar('linechg',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(linechg,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Line Charge",titleb,"(C/m)")
@@ -1998,7 +2112,7 @@ pzlinechg = pzlchg
 ##########################################################################
 def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots Vz along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -2014,13 +2128,15 @@ def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzofz = _extractvar('vzofz',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  vzofz = _extractvar('vzofz',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(vzofz,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Axial Velocity",titleb,"(m/s)")
@@ -2029,7 +2145,7 @@ ppvzofz = pzvzofz
 ##########################################################################
 def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots Self Ez along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -2045,13 +2161,15 @@ def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ezax = _extractvar('ezax',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  ezax = _extractvar('ezax',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(ezax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Z Electric Field on Axis",titleb,"(V/m)")
@@ -2060,7 +2178,7 @@ ppezax = pzezax
 ##########################################################################
 def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots electrostatic potential along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -2076,21 +2194,23 @@ def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  phiax = _extractvar('phiax',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  phiax = _extractvar('phiax',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(phiax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Electrostatic Potential on Axis",titleb,"(V)")
   if lframe:
-    phiplmin = _extractvar('phiplmin',varsuffix,'top')*scale
-    phiplmax = _extractvar('phiplmax',varsuffix,'top')*scale
-    zzmin = _extractvar('zzmin',varsuffix,'top')
-    zzmax = _extractvar('zzmax',varsuffix,'top')
+    phiplmin = _extractvar('phiplmin',varsuffix,'top',ff)*scale
+    phiplmax = _extractvar('phiplmax',varsuffix,'top',ff)*scale
+    zzmin = _extractvar('zzmin',varsuffix,'top',ff)
+    zzmax = _extractvar('zzmax',varsuffix,'top',ff)
     if ((phiplmin != 0.0)&(phiplmax == 0.0)):
       limits(zzmin,zzmax,phiplmin)
     elif ((phiplmin == 0.0)&(phiplmax != 0.0)):
@@ -2102,7 +2222,7 @@ ppphiax = pzphiax
 ##########################################################################
 def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots space-charge density along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -2118,13 +2238,15 @@ def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rhoax = _extractvar('rhoax',varsuffix,'top')*scale
-  zplmesh = _extractvar('zplmesh',varsuffix,'top')
+  rhoax = _extractvar('rhoax',varsuffix,'top',ff)*scale
+  zplmesh = _extractvar('zplmesh',varsuffix,'top',ff)
   plg(rhoax,zoffset+zplmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge Density on Axis",titleb,"(C)")
@@ -2133,7 +2255,7 @@ pprhoax = pzrhoax
 ##########################################################################
 def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X envelope (twice X rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2151,13 +2273,15 @@ def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(2.*xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2168,7 +2292,7 @@ pzxedge = pzenvx
 ##########################################################################
 def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X' envelope versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2186,18 +2310,20 @@ def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
-  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top',ff)[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top',ff)[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]
   xpedgez = (xxpbarz-xbarz*xpbarz)/ \
             where(greater(xrmsz,0.),xrmsz,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xpedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2207,7 +2333,7 @@ def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y envelope (twice Y rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2225,13 +2351,15 @@ def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(2.*yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2242,7 +2370,7 @@ pzyedge = pzenvy
 ##########################################################################
 def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y' envelope versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2260,18 +2388,20 @@ def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
-  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
+  yypbarz = _extractvar('yypbarz',varsuffix,'top',ff)[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top',ff)[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]
   ypedgez = (yypbarz-ybarz*ypbarz)/ \
             where(greater(yrmsz,0.),yrmsz,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ypedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2281,7 +2411,7 @@ def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
            marks=0,marker=None,msize=1.,width=1.,lframe=0,
-           titleb=None,titles=1,varsuffix=None):
+           titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam R envelope (root 2 R rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2299,13 +2429,15 @@ def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2316,7 +2448,7 @@ pzredge = pzenvr
 ##########################################################################
 def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X edges (centroid +- twice X rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2334,14 +2466,16 @@ def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]*scale
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(xbarz+2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   plg(xbarz-2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
@@ -2353,7 +2487,7 @@ def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y edges (centroid +- twice Y rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2371,14 +2505,16 @@ def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]*scale
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(ybarz+2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   plg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
@@ -2390,7 +2526,7 @@ def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
              marks=0,marker=None,msize=1.,width=1.,lframe=0,
-             titleb=None,titles=1,varsuffix=None):
+             titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam R edges (+- root 2 R rms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2408,13 +2544,15 @@ def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  rrmsz = _extractvar('rrmsz',varsuffix,'top',ff)[...,js]*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
       linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   plg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
@@ -2426,7 +2564,7 @@ def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam X' envelope (2*xxpbar/xrms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2444,18 +2582,20 @@ def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
-  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top',ff)[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top',ff)[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top',ff)[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top',ff)[...,js]
   sxz = 2.*(xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
@@ -2465,7 +2605,7 @@ def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
 ##########################################################################
 def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
             marks=0,marker=None,msize=1.,width=1.,lframe=0,
-            titleb=None,titles=1,varsuffix=None):
+            titleb=None,titles=1,varsuffix=None,ff=None):
   """Plots beam Y' envelope (2*yypbar/yrms) versus Z
   - js=-1: species number, zero based. When -1, plots data combined from all
            species
@@ -2483,18 +2623,20 @@ def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles
   - varsuffix=None: When specified, variables with that suffix are used
-                    instead of the fortran variables"""
+                    instead of the fortran variables
+  - ff=None: An opened file object can be specified as the place from which to
+             get the data to plot."""
   if zscale == 0.: raise "zscale must be nonzero"
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
-  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
+  yypbarz = _extractvar('yypbarz',varsuffix,'top',ff)[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top',ff)[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top',ff)[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top',ff)[...,js]
   syz = 2.*(yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz,1.)*scale
-  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top',ff)
   plg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
       marks=marks,marker=marker,msize=msize,width=width)
   if titles:
