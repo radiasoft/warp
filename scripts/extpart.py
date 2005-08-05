@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.43 2005/04/06 00:56:30 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.44 2005/08/05 22:25:48 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -521,14 +521,14 @@ functions.
       ztext =  "z = %f m"%self.zz
     return ztext + ttext
 
-  def ppmultispecies(self,pp,args,kw):
-    kw['js'] = args[0]
-    result = ppmultispecies(self.pxy,args,kw)
-    del kw['js']
-    return result
+#?def ppmultispecies(self,pp,args,kw):
+#?  kw['js'] = args[0]
+#?  result = ppmultispecies(self.pxy,args,kw)
+#?  del kw['js']
+#?  return result
 
   def ppmultispecies(self,pp,args,kw):
-    """Check is js is -1 or a list, in which case call the pp function for
+    """Check if js is -1 or a list, in which case call the pp function for
 each species and each one in the list. Also assign colors accordingly
     """
     args = list(args)
