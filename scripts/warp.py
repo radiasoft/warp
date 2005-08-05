@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.87 2005/08/02 21:33:36 dave Exp $"
+warp_version = "$Id: warp.py,v 1.88 2005/08/05 22:25:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -419,6 +419,9 @@ def getregisteredsolver():
 def loadrhoMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
   _fieldsolver[0].loadrho(lzero=not top.laccumulate_rho)
+def loadjMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].loadj(lzero=not top.laccumulate_rho)
 def fieldsolMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
   _fieldsolver[0].solve()
@@ -439,6 +442,7 @@ def initfieldsolver():
         __main__.__dict__['AMRtree'] = AMRtree
         gchange('AMR')
 __main__.__dict__['loadrhoMR'] = loadrhoMR
+__main__.__dict__['loadjMR'] = loadjMR
 __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
 __main__.__dict__['fetchbMR'] = fetchbMR
