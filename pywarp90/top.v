@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.148 $, $Date: 2005/07/28 21:37:35 $
+#@(#) File TOP.V, version $Revision: 3.149 $, $Date: 2005/08/05 22:18:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.148 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.149 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -962,11 +962,12 @@ ifeears                   integer /0/
    # Specifies type of Eears: 0-none, 1-linear, 2-Ezax
 fstype                    integer /0/
    # Specifies type of field solve
-   # -1: none, 0:sine-sine-periodic FFT,
+   # -1: none
+   #  0:sine-sine-periodic FFT,
    #  1: 8-fold symmetric capacity matrix in kz space,
    #  2: capacity matrix for quadrupoles,
    #  3: SOR (obsolete, use 7, multigrid),
-   #  4: 2d sine-sine FFT + tridiag in z),
+   #  4: 2d sine-sine FFT + tridiag in z,
    #  5: general capacity matrix in kz space,
    #  6: general capacity matrix,
    #  7: multigrid solver,
@@ -976,6 +977,13 @@ fstype                    integer /0/
    # 11: Chombo AMR/multigrid solver
    # 12: Use field solver registered in python
    # 13: 3d multigrid with Boltzmann electrons
+bfstype                   integer /-1/
+   # Specifies type of field solver to use to calculate the B fields
+   # -1: none
+   #  0:sine-sine-periodic FFT,
+   #  4: 2d sine-sine FFT + tridiag in z,
+   #  7: multigrid solver,
+   # 12: Use field solver registered in python
 ztransformtype            integer /0/
    # Specifies the type of z transform
    #  0: periodic FFT
