@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.214 $, $Date: 2005/07/28 21:39:08 $
+c@(#) File W3D.F, version $Revision: 3.215 $, $Date: 2005/08/05 22:19:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -115,6 +115,10 @@ c  Put ny to zero for RZ geometry and setup a few flags
       elseif(solvergeom==AMRgeom) then
         fstype = 11
       endif
+
+c  If a B field solver is being used, then turn on the fetching of the B field
+
+      if (bfstype >= 0) lcallfetchb = .true.
 
 c Set wpid if needed and not set by user
       if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
@@ -240,7 +244,6 @@ c  so that by default izfsmax = nz (for full field solve).
       if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
-      write(0,*) 'gchange Fields3d',nx,ny,nz
       call gchange("Fields3d", 0)
       vbeamfrm = vbeam
       if(solvergeom==XYZgeom   .or. solvergeom==XYgeom .or. solvergeom==XYZgeomMR) then
@@ -317,6 +320,10 @@ c  Initialize base grid for RZ solver
       elseif(solvergeom==XYgeom) then
         call init_base(nx,ny,dx,dy,xmmin,ymmin)
       end if
+
+c  Initialize the B field solver if it is being used
+
+      if (bfstype >= 0) call init_bfieldsolver()
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
       call vp3d (1)
@@ -402,6 +409,7 @@ c  Load the particles, calculate the charge density
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
       call loadrho3d(-1,-1,-1,.true.)
+      if (bfstype >= 0) call loadj3d(-1,-1,-1,.true.)
       call remark(" ---  done")
 
 c  Set up for injection
@@ -795,6 +803,7 @@ c  Field-solve for potential.
 
       if (lbeforefs) call execuser("beforefs")
       call fieldsol3d(-1)
+      call bfieldsol3d(-1)
       if (lafterfs) call execuser("afterfs")
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
@@ -1862,6 +1871,7 @@ c        if (any((mod(it,ndts)==0) .and. (nps>0))) then
  
 c       --- Collect charge density (3d)
         call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
+        if (bfstype >= 0) call loadj3d(-1,-1,-1,.not. laccumulate_rho)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
@@ -5235,61 +5245,6 @@ c       call setemgridrz(ipmin,ip,is,ex,ey,ez)
 
 !$OMP MASTER
       if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
-!$OMP END MASTER
-      return
-      end
-c=============================================================================
-      subroutine fetchb3dfrompositions(is,n,x,y,z,bx,by,bz)
-      use GlobalVars
-      use Subtimers3d
-      use Picglb
-      use Picglb3d
-      use InGen
-      use InGen3d
-      use InMesh3d
-      use Fields3d
-      use Fields3dParticles
-      use Efields3d
-      use FieldSolveAPI
-      integer(ISZ):: is,n
-      real(kind=8),target:: x(n),y(n),z(n),bx(n),by(n),bz(n)
-
-c     --- Obtain the magnetic self-field
-
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if (.not. lcallfetchb) then
-        bx = 0.
-        by = 0.
-        bz = 0.
-        return
-      endif
-
-      if(solvergeom==XYZgeomMR) then
-        isfsapi = is
-        xfsapi => x
-        yfsapi => y
-        zfsapi => z
-        bxfsapi => bx
-        byfsapi => by
-        bzfsapi => bz
-        call execuser("fetchbMR")
-        isfsapi = -1
-        nullify(xfsapi)
-        nullify(yfsapi)
-        nullify(zfsapi)
-        nullify(bxfsapi)
-        nullify(byfsapi)
-        nullify(bzfsapi)
-      else
-        bx = 0.
-        by = 0.
-        bz = 0.
-      endif
-
-!$OMP MASTER
-      if (lw3dtimesubs) timefetchb3d = timefetchb3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
