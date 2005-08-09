@@ -22,7 +22,7 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.10 2005/07/01 17:18:29 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.11 2005/08/09 20:33:52 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -227,7 +227,7 @@ except:
 
 # --- Convenience function to read in data from a text file
 def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,typecode='d',
-                        fortranordering=1):
+                        fortranordering=1,converter=float):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
 logically Cartesian mesh.
@@ -239,6 +239,9 @@ logically Cartesian mesh.
  - fortranordering=1: when true, the data will be in fortran ordering, where
                       the index that varies that fastest in the file will be
                       the first index. Otherwise use C ordering.
+ - converter=float: Function which converts the strings into numbers. This should
+                    be the type of result desired. It should only be float or int,
+                    unless you know what you are doing.
   """
 
   # --- Get total number of data values and make an array big enough to hold
@@ -248,11 +251,17 @@ logically Cartesian mesh.
 
   ff = open(filename,'r')
 
+  # --- Skip the number of lines at the top of the file as specified
+  for i in range(nskip):
+    ff.readline()
+
   # --- Loop over the file, reading on one line at a time.
   # --- Each whole line is put into data at once.
+  # --- For the conversion of the strings into numbers, it is faster to use float or
+  # --- int rather than eval.
   i = 0
   while i < ntot:
-    dataline = map(eval,string.split(ff.readline()))
+    dataline = map(converter,string.split(ff.readline()))
     nd = len(dataline)
     data[i:i+nd] = dataline
     i = i + nd
