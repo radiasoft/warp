@@ -1,4 +1,5 @@
 #DEBUG = -g
+FCOMP =
 SO = so
 PUBLICHOME = $(HOME)/scripts
 
@@ -9,37 +10,37 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	#mv warpC.so /home/dave/scriptsnew
 
 toppy.$(SO): top.F dtop.F top.v
-	Forthon -a $(DEBUG) top dtop.F
+	Forthon -a $(FCOMP) $(DEBUG) top dtop.F
 
 envpy.$(SO): toppy.$(SO) env.F env.v
-	Forthon -a $(DEBUG) env
+	Forthon -a $(FCOMP) $(DEBUG) env
 
 w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_injection.F w3d_interp.F w3d_utilities.F w3d_load.F w3d_bfield.F w3d.v
-	Forthon -a $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_load.F w3d_bfield.F w3d_utilities.F 
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_load.F w3d_bfield.F w3d_utilities.F 
 
 f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_mgrid_be.F f3d_conductors.F util.F fft.F f3d.v
-	Forthon -a $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_mgrid_be.F f3d_conductors.F util.F fft.F
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_mgrid_be.F f3d_conductors.F util.F fft.F
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
-	Forthon -a $(DEBUG) wxy
+	Forthon -a $(FCOMP) $(DEBUG) wxy
 
 fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
-	Forthon -a $(DEBUG) fxy fxy_mgrid.F
+	Forthon -a $(FCOMP) $(DEBUG) fxy fxy_mgrid.F
 
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
-	Forthon -a $(DEBUG) --macros top.v wrz dwrz.F
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v wrz dwrz.F
 
 frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_mgrid_be.F frz.v
-	Forthon -a $(DEBUG) frz frz_mgrid.F90 frz_mgrid_be.F
+	Forthon -a $(FCOMP) $(DEBUG) frz frz_mgrid.F90 frz_mgrid_be.F
 
 herpy.$(SO): toppy.$(SO) her.F her.v
-	Forthon -a $(DEBUG) her
+	Forthon -a $(FCOMP) $(DEBUG) her
 
 cirpy.$(SO): toppy.$(SO) cir.F cir.v
-	Forthon -a $(DEBUG) cir
+	Forthon -a $(FCOMP) $(DEBUG) cir
 
 chopy.$(SO): toppy.$(SO) cho.F cho.v
-	Forthon -a $(DEBUG) cho
+	Forthon -a $(FCOMP) $(DEBUG) cho
 
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
