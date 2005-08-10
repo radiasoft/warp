@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.215 $, $Date: 2005/08/05 22:19:04 $
+c@(#) File W3D.F, version $Revision: 3.216 $, $Date: 2005/08/10 23:09:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6476,13 +6476,13 @@ c       --- If not in bend, call VP3D
           call copyarry (rho(0,0,izmin), phi(0,0,izmin), (nx+1)*(ny+1)*(tnz))
         endif
         call vp3d (iwhich)
-        call getphiforfields(nx,ny,nz,phi)
+        call getphiforfields()
         if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
 
       else
 c       --- Call perturbative bent beam field solver
         call bendfieldsol3d
-        call getphiforfields(nx,ny,nz,phi)
+        call getphiforfields()
         if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
 
       endif
