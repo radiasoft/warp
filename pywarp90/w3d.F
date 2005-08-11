@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.216 $, $Date: 2005/08/10 23:09:55 $
+c@(#) File W3D.F, version $Revision: 3.217 $, $Date: 2005/08/11 22:05:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3620,7 +3620,7 @@ c         endif
 
 c  Load tranverse stuff
 c  semi-gaussian distribution
-         if (distrbtn == "semigaus" .or. distrbtn == "SG" .or. 
+         if (distrbtn(:8) == "semigaus" .or. distrbtn == "SG" .or. 
      &       distrbtn == "SemiGaussian") then
 
 c          --- load normalized tranverse space variables
