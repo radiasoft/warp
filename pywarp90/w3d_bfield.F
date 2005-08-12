@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_SELFB.F, version $Revision: 1.1 $, $Date: 2005/08/05 22:17:36 $
+c@(#) File W3D_SELFB.F, version $Revision: 1.2 $, $Date: 2005/08/12 22:48:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -201,7 +201,7 @@ c     --- will not cover the full axial extent of the system, so
 c     --- periodicity can only be enforced on j which does cover the full
 c     --- system.
       if (lzero) then
-        call perj3d(bfield%j,bfield%nx,bfield%ny,bfield%nz,bound0,boundxy)
+        call perj3d(bfield,bound0,boundxy)
       endif
 
 !$OMP MASTER
@@ -216,9 +216,7 @@ c=============================================================================
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
 
-c  Sets the slices on the exterior of a for periodicity
-c  sets slice at -1 equal to the slice at nz-1
-c  sets slice at nz+1 equal to the slice at 1
+c  Sets the slices on the exterior of A, depending on the boundary conditions.
 
       real(kind=8),pointer,dimension(:,:,:,:):: a
       integer(ISZ):: ix,iy
@@ -266,13 +264,15 @@ c     end if
         endif
       endif
 
-#ifdef MPIPARALLEL
-      call setaboundaries3d_slave(bfield)
-#else
       if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
+#ifdef MPIPARALLEL
+        call getaforfields3d(bfield)
+        call pera3d_slave(bfield)
+#else
         a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
         a(:,:,:,bfield%nz)   = a(:,:,:,0)
         a(:,:,:,bfield%nz+1) = a(:,:,:,1)
+#endif
       else
         if (bfield%bounds(4) == neumann) then
           a(:,:,:,-1) = a(:,:,:,1)
@@ -286,42 +286,44 @@ c     end if
         endif
       endif
 
-#endif
-
 !$OMP MASTER
       if (lw3dtimesubs) timepera3d = timepera3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
 c=============================================================================
-      subroutine perj3d(j,nx,ny,nz,bound0,boundxy)
+      subroutine perj3d(bfield,bound0,boundxy)
+      use BFieldGridTypemodule
       use GlobalVars
       use Subtimers3d
       use InGen3d
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: j(0:2,0:nx,0:ny,0:nz)
+      type(BFieldGridType):: bfield
       integer(ISZ):: bound0,boundxy
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
 
 c  Sums the first and last slices of j for periodicity
 c  and puts the result into both slices.
 
+      real(kind=8),pointer:: j(:,:,:,:)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
       if (solvergeom==AMRgeom) return
+
+      j => bfield%j
 
 c  Enforce transverse periodicity if requested.
       if (solvergeom==XYZgeom) then
         if (boundxy==periodic) then
-          j(:,:,0,:) = j(:,:,0,:) + j(:,:,ny,:)
-          j(:,0,:,:) = j(:,0,:,:) + j(:,nx,:,:)
-          j(:,:,ny,:) = j(:,:,0,:)
-          j(:,nx,:,:) = j(:,0,:,:)
+          j(:,:,0,:) = j(:,:,0,:) + j(:,:,bfield%ny,:)
+          j(:,0,:,:) = j(:,0,:,:) + j(:,bfield%nx,:,:)
+          j(:,:,bfield%ny,:) = j(:,:,0,:)
+          j(:,bfield%nx,:,:) = j(:,0,:,:)
         endif
         if (boundxy==neumann) then
           if (.not. (l2symtry .or. l4symtry)) j(:,:,0,:) = 2.*j(:,:,0,:)
           if (.not. l4symtry) j(:,0,:,:) = 2.*j(:,0,:,:)
-          j(:,:,ny,:) = 2.*j(:,:,ny,:)
-          j(:,nx,:,:) = 2.*j(:,nx,:,:)
+          j(:,:,bfield%ny,:) = 2.*j(:,:,bfield%ny,:)
+          j(:,bfield%nx,:,:) = 2.*j(:,bfield%nx,:,:)
         endif
       endif
 
@@ -352,10 +354,10 @@ c     end if
 
       if (solvergeom==XYZgeom .and. bound0==periodic) then
 #ifdef MPIPARALLEL
-        call perj3d_slave(j,nx,ny,nz)
+        call perj3d_slave(bfield)
 #else
-        j(:,:,:,0)  = j(:,:,:,0) + j(:,:,:,nz)
-        j(:,:,:,nz) = j(:,:,:,0)
+        j(:,:,:,0)  = j(:,:,:,0) + j(:,:,:,bfield%nz)
+        j(:,:,:,bfield%nz) = j(:,:,:,0)
 #endif
       endif
 
@@ -1042,15 +1044,13 @@ c       --- If jp is not associated with j, then copy the data.
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        print*,"Error: Self magnetic field not supported with solvergeom=RZgeom or XZgeom"
+c       print*,"Error: Self magnetic field not supported with solvergeom=RZgeom or XZgeom"
 c       call getjforfieldsolverz(nx,nz,j)
-      else if(solvergeom==Zgeom) then
-        print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
+c     else if(solvergeom==Zgeom) then
+c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
 c       call getjforfieldsolvez(nz,j)
       elseif (solvergeom==XYZgeom) then
-        call getjforfieldsolve3d(bfield,bfieldp,
-     &                           my_index,nslaves,
-     &                           izfsslave,nzfsslave,izpslave,nzpslave)
+        call getjforfieldsolve3d(bfield,bfieldp)
       end if
 
 #endif
@@ -1058,22 +1058,14 @@ c       call getjforfieldsolvez(nz,j)
       return
       end
 c=============================================================================
-      subroutine getjforfieldsolve3d(bfield,bfieldp,
-     &                               my_index,nslaves,
-     &                               izfsslave,nzfsslave,izpslave,nzpslave)
+      subroutine getjforfieldsolve3d(bfield,bfieldp)
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield,bfieldp
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 #ifdef MPIPARALLEL
 
-      call sumjondomainboundaries(bfieldp%j,bfieldp%nx,bfieldp%ny,bfieldp%nz,
-     &                            my_index,nslaves,izpslave,nzpslave)
-      call getjforfieldsolve3d_parallel(bfield,bfieldp,
-     &                                  my_index,nslaves,
-     &                                  izfsslave,nzfsslave,izpslave,nzpslave)
+      call sumjondomainboundaries(bfieldp)
+      call getjforfieldsolve3d_parallel(bfield,bfieldp)
 
 #endif
 
@@ -1392,12 +1384,10 @@ c       --- axial boundary conditions
       else if (.not. linbend) then
 c       --- If not in bend, call VP3D
         call bvp3d(iwhich,bfstype)
-        if (bound0==periodic) call setaboundaries3d(bfield)
 
       else
 c       --- Call perturbative bent beam field solver
         call bendfieldsol3d
-        if (bound0==periodic) call setaboundaries3d(bfield)
 
       endif
 
@@ -1455,6 +1445,10 @@ c     --- that copies are being done.
 
 c     --- Rescale, replacing 1/eps0 with mu0
       bfield%a = bfield%a*mu0*eps0
+
+c     --- This is slightly inefficient in some cases, since for example, the
+c     --- MG solver already takes care of the longitudinal BC's.
+      call setaboundaries3d(bfield)
 
       deallocate(atemp)
       if (bfstype > 4) deallocate(jtemp)
