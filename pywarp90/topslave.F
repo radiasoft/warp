@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.33 $, $Date: 2005/07/14 18:48:39 $
+c TOPSLAVE.M, version $Revision: 1.34 $, $Date: 2005/08/12 22:46:06 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -42,14 +42,14 @@ c     --- passed into chckpart below.
       if (ltoptimesubs) substarttime = wtime()
 
 #ifdef VAMPIR
-      call VTSYMDEF(10, "ZBND", "SORT", IERR)
-      call VTSYMDEF(20, "ZBND", "CPY1", IERR)
-      call VTSYMDEF(30, "ZBND", "SNDN", IERR)
-      call VTSYMDEF(40, "ZBND", "CHCK", IERR)
-      call VTSYMDEF(50, "ZBND", "SNDP", IERR)
-      call VTSYMDEF(60, "ZBND", "CPY2", IERR)
-      call VTSYMDEF(70, "ZBND", "PLOR", IERR)
-      call VTBEGIN(10,IERR)
+c     call VTSYMDEF(10, "ZBND", "SORT", IERR)
+c     call VTSYMDEF(20, "ZBND", "CPY1", IERR)
+c     call VTSYMDEF(30, "ZBND", "SNDN", IERR)
+c     call VTSYMDEF(40, "ZBND", "CHCK", IERR)
+c     call VTSYMDEF(50, "ZBND", "SNDP", IERR)
+c     call VTSYMDEF(60, "ZBND", "CPY2", IERR)
+c     call VTSYMDEF(70, "ZBND", "PLOR", IERR)
+c     call VTBEGIN(10,IERR)
 #endif
 
 c     --- Set ldoagain flag to false. Later on, particles received are checked
@@ -189,8 +189,8 @@ c         --- reset to include them.
 c       --- End of loop over species
         enddo
 #ifdef VAMPIR
-      call VTEND(10,IERR)
-      call VTBEGIN(20,IERR)
+c     call VTEND(10,IERR)
+c     call VTBEGIN(20,IERR)
 #endif
 
 c Here is what happens...
@@ -276,8 +276,8 @@ c       --- Copy particles being sent to the right to buffer2.
         endif
 
 #ifdef VAMPIR
-      call VTEND(20,IERR)
-      call VTBEGIN(30,IERR)
+c     call VTEND(20,IERR)
+c     call VTBEGIN(30,IERR)
 #endif
 c       --- Now send the data.
 
@@ -290,8 +290,8 @@ c       --- First send the number of particles to be sent
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
 #ifdef VAMPIR
-      call VTEND(30,IERR)
-      call VTBEGIN(40,IERR)
+c     call VTEND(30,IERR)
+c     call VTBEGIN(40,IERR)
 #endif
 c       --- Make sure that there is space for the incoming data.
         do is=1,ns
@@ -300,8 +300,8 @@ c       --- Make sure that there is space for the incoming data.
      &                  .false._isz)
         enddo
 #ifdef VAMPIR
-      call VTEND(40,IERR)
-      call VTBEGIN(50,IERR)
+c     call VTEND(40,IERR)
+c     call VTBEGIN(50,IERR)
 #endif
 
         nrecvleftsum = sum(nrecvleft)
@@ -327,8 +327,8 @@ c       --- Make sure that there is space for the incoming data.
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
 #ifdef VAMPIR
-      call VTEND(50,IERR)
-      call VTBEGIN(60,IERR)
+c     call VTEND(50,IERR)
+c     call VTBEGIN(60,IERR)
 #endif
         if (nrecvleftsum > 0) then
           ii = 1
@@ -382,12 +382,12 @@ c       --- Make sure that there is space for the incoming data.
         endif
 
 #ifdef VAMPIR
-      call VTEND(60,IERR)
-      call VTBEGIN(70,IERR)
+c     call VTEND(60,IERR)
+c     call VTBEGIN(70,IERR)
 #endif
         call parallellor(ldoagain)
 #ifdef VAMPIR
-      call VTEND(70,IERR)
+c     call VTEND(70,IERR)
 #endif
 
       enddo
