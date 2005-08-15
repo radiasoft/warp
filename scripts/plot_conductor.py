@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.93 2005/06/22 17:26:53 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.94 2005/08/15 22:04:42 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1023,7 +1023,9 @@ Plots conductors and contours of electrostatic potential in Z-X plane
                conductors)
 
 # z-r plane
-pfzr = pfzx
+def pfzr(**kw):
+  if 'fullplane' not in kw: kw['fullplane'] = 0
+  pfzx(**kw)
 
 # z-y plane
 def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
