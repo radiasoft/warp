@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.40 2005/08/17 21:39:37 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.41 2005/08/17 21:46:38 dave Exp $"
 
 
 ##############################################################################
@@ -281,6 +281,15 @@ Performs steady-state iterations
     # --- turn off field solver
     top.fstype = -1
 
+    # --- Also, turn off the before and afterfs calls. This is done in case
+    # --- the user has defined these functions, so they are not called at every
+    # --- time step, but only around the field solve after the new charge
+    # --- is accumulated.
+    lbeforefssave = w3d.lbeforefs
+    lafterfssave = w3d.lafterfs
+    w3d.lbeforefs = false
+    w3d.lafterfs = false
+
     # --- Check if rhoparam is to be set automatically
     if averagerho is not None and averagerho <= gun_iter:
       n = gun_iter + 1 - averagerho
@@ -460,6 +469,10 @@ Performs steady-state iterations
             g = g.down
         g.rho = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
 #       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
+
+    # --- Restore the logicals for before and afterfs
+    w3d.lbeforefs = lbeforefssave
+    w3d.lafterfs = lafterfssave
 
     # --- Do field solve including newly accumulated charge density.
     top.fstype = _ofstype
