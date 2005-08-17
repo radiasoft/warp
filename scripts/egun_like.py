@@ -1,24 +1,35 @@
+"""EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
+
+Particles are injected on one time step only and the injection is
+turned off.  Those particles are then tracked through the system until
+there are no particles left.  On each time step, the charge density from
+the particles is accumulated in the array rho.  After all of the
+particles leave the system, the new field is calculated using the
+accumulated charge density.  Also, a selection of particles is saved
+each time step for plotting.
+
+At the end, the charge density is in the array rho, and the particle
+data is in the particle arrays and ins and nps are set properly.
+
+Available functions:
+gun: main function for carrying out the iterations
+gunmg: performs multiple iteration, starting from a coarse resolution and
+       then refining
+gunamr: performs gun iterations, applying mesh refinement as the solution
+        stablizes
+
+gunppzx: plots streamlines of particle trajectories - requires top.spid
+gunppzy: plots streamlines of particle trajectories - requires top.spid
+gunppzr: plots streamlines of particle trajectories - requires top.spid
+
+"""
 from warp import *
 import string
 import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.39 2005/08/02 22:31:41 dave Exp $"
-############################################################################
-# EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
-#
-# Particles are injected on one time step only and the injection is
-# turned off.  Those particles are then tracked through the system until
-# there are no particles left.  On each time step, the charge density from
-# the particles is accumulated in the array rho.  After all of the
-# particles leave the system, the new field is calculated using the
-# accumulated charge density.  Also, a selection of particles is saved
-# each time step for plotting.
-#
-# At the end, the charge density is in the array rho, and the particle
-# data is in the  particle arrays and ins and nps are set properly.
-############################################################################
+egun_like_version = "$Id: egun_like.py,v 1.40 2005/08/17 21:39:37 dave Exp $"
 
 
 ##############################################################################
@@ -73,20 +84,14 @@ _vzfuzz = 1.e-20
 import getzmom
 
 def plottraces():
+  withtitles = (top.inject != 100)
   if w3d.solvergeom == w3d.XZgeom:
-    warpplp(top.xp[top.ins[0]:top.ins[0]+top.nps[0]],
-            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+    ppzx(titles=withtitles)
   elif w3d.solvergeom == w3d.RZgeom:
-    warpplp(sqrt(top.xp[top.ins[0]:top.ins[0]+top.nps[0]]**2+
-                 top.yp[top.ins[0]:top.ins[0]+top.nps[0]]**2),
-            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+    ppzr(titles=withtitles)
   else:
-    plsys(9)
-    warpplp(top.xp[top.ins[0]:top.ins[0]+top.nps[0]],
-            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
-    plsys(10)
-    warpplp(top.yp[top.ins[0]:top.ins[0]+top.nps[0]],
-            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+    ppzx(view=9,titles=withtitles)
+    ppzy(view=10,titles=withtitles)
   pyg_pending()
   pyg_idler()
   
@@ -256,6 +261,9 @@ Performs steady-state iterations
 
     if ipstep is not None: _ipstep = ipstep
 
+    # --- Save current value of ins for reference below when saving particles.
+    ins_save = top.ins.copy()
+
     # --- set number of particles to zero.
     top.nps = 0
     top.ins[0:]=top.npmax_s[1:]
@@ -296,7 +304,7 @@ Performs steady-state iterations
            rhoprevious = rhoprevious+[g.rho.copy()]
 
     # --- Zero the charge density array
-    w3d.rho = 0.
+    w3d.rhop = 0.
     if w3d.solvergeom==w3d.RZgeom: reset_rzmgrid_rho()
     top.curr = 0.
 
@@ -328,27 +336,22 @@ Performs steady-state iterations
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
+    allblocks = []
     if (i == iter-1 and _ipstep > 0):
 
-      # --- Set ins and nps for saved particles
-      # --- This only creates the arrays - the actual values don't
-      # --- mean anything at this point. They are set later on.
-      ins_save = zeros(top.ns)
-      nps_save = zeros(top.ns)
+      # --- Shrink down the live particles just injected.
+      shrinkpart()
 
+      # --- Save initial number of particles
+      nps_save = top.nps.copy()
+
+      blocks = []
+      allblocks.append(blocks)
       for js in xrange(top.ns):
-
-        # --- Force particles to the beginning of their block.
-        # --- This only needs to be done if there are particles now.
-        if (top.nps[js] > 0):
-          copypart(top.npmax_s[js]+1,top.nps[js],0,top.ins[js])
-
-        # --- Reset particles counters.
-        # --- This always needs to be done since particles may be added
-        # --- later.
-        top.ins[js] = top.npmax_s[js]+1
-        ins_save[js] = top.ins[js] + top.nps[js]
-        nps_save[js] = 0
+        block = ParticleBlock()
+        block.ns = 1
+        block.gchange()
+        blocks.append(block)
 
         if (top.nps[js] > 0):
           # --- get indices of live particles.
@@ -365,12 +368,13 @@ Performs steady-state iterations
             ii = compress(less(ranf(ii),1./_ipstep),ii)
 
           # --- save data of just injected particles
+          block.npmax = len(ii)
+          block.npid = top.npidmax
+          block.ins = 1
+          block.nps = len(ii)
           if (len(ii) > 0):
-            npguess = int(1.5*gun_steps*top.npinje_s[js]/_ipstep)+len(ii)
-            nplost = ins_save[js] - top.ins[js] - top.nps[js]
-            chckpart(js+1,0,npguess + nplost,false)
-            copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
-            nps_save[js] = nps_save[js] + len(ii)
+            block.gchange()
+            copyparttoblock(len(ii),ii,-1,block,1)
 
     # --- Turn injection off for remaing time steps. inject is set to a value
     # --- greater than zero so that inject3d subroutine is called so it can
@@ -391,7 +395,13 @@ Performs steady-state iterations
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
       if (i == iter-1 and _ipstep > 0):
+        blocks = []
+        allblocks.append(blocks)
         for js in xrange(top.ns):
+          block = ParticleBlock()
+          block.ns = 1
+          block.gchange()
+          blocks.append(block)
           # --- Make sure that there are actually particles to save
           if (top.nps[js] > 0):
             if (_save_same_part):
@@ -407,16 +417,17 @@ Performs steady-state iterations
               ii = compress(less(ranf(ii),1./_ipstep),ii)
 
             # --- save data of just injected particles
+            block.npmax = len(ii)
+            block.npid = top.npidmax
+            block.ins = 1
+            block.nps = len(ii)
             if (len(ii) > 0):
               if w3d.l_inj_rec_inittime:
                 ip1 = top.ins[js]-1
                 ip2 = top.ins[js]+top.nps[js]-1
                 top.pid[ip1:ip2,top.tpid-1]=top.pid[ip1:ip2,top.tpid-1]-top.dt
-              npguess = nps_save[js] + len(ii)
-              nplost = ins_save[js] - top.ins[js] - top.nps[js]
-              chckpart(js+1,0,npguess + nplost,false)
-              copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
-              nps_save[js] = nps_save[js] + len(ii)
+              block.gchange()
+              copyparttoblock(len(ii),ii,-1,block,1)
 
       npssum = sum(parallelsum(top.nps))
       maxvz = parallelmax(top.vzmaxp)
@@ -452,7 +463,8 @@ Performs steady-state iterations
 
     # --- Do field solve including newly accumulated charge density.
     top.fstype = _ofstype
-    fieldsol(-1)
+    getrhoforfieldsolve()
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
     top.fstype = -1
 
     # --- Do final work for zmoments calculation
@@ -467,6 +479,23 @@ Performs steady-state iterations
       minidiag(gun_iter,gun_time,false)
       top.nhist = 0
       top.hzbeam[top.jhist] = gun_iter
+
+    # --- Copy saved data into the base particle arrays. Note that these
+    # --- are array references. The current base array memory will be freed.
+    if len(allblocks) > 0:
+      top.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allblocks])
+      top.np_s[:] = [sum([allblocks[i][j].nps[0] for i in range(len(allblocks))])
+                     for j in range(top.ns)]
+      alotpart()
+      top.ins[:] = [1] + list(cumsum(top.np_s)+1)[:-1]
+      top.nps[:] = top.np_s
+      for js in range(top.ns):
+        ii = top.ins[js]
+        for it in range(len(allblocks)):
+          block = allblocks[it][js]
+          if block.nps[0] > 0:
+            copyblocktopart(block.nps[0],0,1,block,ii)
+            ii = ii + block.nps[0]
 
     # --- Print out warning message if needed.
     if top.time-gun_time > maxtime:
@@ -528,11 +557,6 @@ Performs steady-state iterations
       window(0)
 
   # --- end of multiple iterations
-
-  # --- Set saved particles to be live particles (for diagnostics only).
-  if (_ipstep > 0):
-    top.ins[:] = ins_save
-    top.nps[:] = nps_save
 
   # --- Change what is plotted at the bottom of each frame
   stepid(gun_iter,gun_time,top.zbeam)
@@ -680,7 +704,7 @@ Performs steady-state iterations in a cascade using different resolutions.
         frz.basegrid.rho[:,:] = rhonext[:,:]
         rhoprevious = [rhonext]
       # update phi and inj_phi
-      fieldsol(-1)
+      fieldsol(-1,lbeforefs=1,lafterfs=1)
       getinj_phi()
       # Set inj_param=1 (or almost) when starting at a new level since
       # inj_prev has been redimensioned. Do interpolation of old inj_prev
@@ -787,7 +811,7 @@ Performs steady-state iterations in a cascade using different resolutions.
             egundata_nz,egundata_zmin,egundata_zmax,resetlostpart)
   if AMRlevels>0:
     w3d.AMRlevels = AMRlevels
-    fieldsol()
+    fieldsol(lbeforefs=1,lafterfs=1)
     tmp = w3d.AMRgenerate_periodicity 
     w3d.AMRgenerate_periodicity = 1
     AMRtree = __main__.__dict__['AMRtree']
@@ -795,7 +819,7 @@ Performs steady-state iterations in a cascade using different resolutions.
       AMRtree.conductors += conductors
     AMRtree.generate()
     w3d.AMRgenerate_periodicity = 1000000
-    fieldsol(-1)
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
     # --- Check if rhoparam is to be set automatically
     if averagerho is not None:
       n = gun_iter + 1 - averagerho
@@ -836,8 +860,76 @@ Prints a running line showing current status of the step.
     sys.stdout.write("%5d "%top.it)
     nplive = sum(parallelsum(top.nps))
     sys.stdout.write("nplive = %5d "%nplive)
-    zz = top.zp[top.ins[0]-1]
+    try: zz = top.zp[top.ins[0]-1]
+    except: zz = 0.
     if zz < w3d.zmminglobal: zz = w3d.zmmaxglobal
     sys.stdout.write("zz = %6.4f"%(zz))
     sys.stdout.write(CR)
+
+########################################################################
+########################################################################
+def ppstreamlines(y,x,color='fg',width=1.0):
+  pid = getpid(id=top.spid-1)
+  # --- Sort the particle data based on the ID number
+  ii = argsort(pid)
+  y = take(y,ii)
+  x = take(x,ii)
+  pid = take(pid,ii)
+  # --- Count how many if each ID there are
+  nn = compress((pid[1:]-pid[:-1]),iota(1,len(pid)-1))
+  nn[1:] = nn[1:] - nn[:-1]
+  nn = list(nn) + [len(pid)-sum(nn)]
+  # --- Now, loop over each ID and plot the data for it
+  i = 0
+  for n in nn:
+    plg(y[i:i+n],x[i:i+n],color=color,width=width)
+    i = i + n
+
+def gunppzx(**kw):
+  """
+Make particle stream-line plots of X versus Z from gun results. Note
+that if top.spid is not set, ppzx is called directly instead.
+  - color='fg',width=1.0: standard plg options
+  - titles=1: when true, plots appropriate titles
+  """
+  if top.spid == 0:
+    ppzx(**kw)
+    return
+  color=kw.get('color','fg')
+  width=kw.get('width',1.0)
+  ppstreamlines(getx(),getz(),color=color,width=width)
+  if kw.get('titles',1):
+    ptitles('X versus Z','Z (m)','X (m)','Gun stream lines, iter #%d'%gun_iter)
+
+def gunppzy(**kw):
+  """
+Make particle stream-line plots of Y versus Z from gun results. Note
+that if top.spid is not set, ppzx is called directly instead.
+  - color='fg',width=1.0: standard plg options
+  - titles=1: when true, plots appropriate titles
+  """
+  if top.spid == 0:
+    ppzy(**kw)
+    return
+  color=kw.get('color','fg')
+  width=kw.get('width',1.0)
+  ppstreamlines(gety(),getz(),color=color,width=width)
+  if kw.get('titles',1):
+    ptitles('Y versus Z','Z (m)','Y (m)','Gun stream lines, iter #%d'%gun_iter)
+
+def gunppzr(**kw):
+  """
+Make particle stream-line plots of R versus Z from gun results. Note
+that if top.spid is not set, ppzx is called directly instead.
+  - color='fg',width=1.0: standard plg options
+  - titles=1: when true, plots appropriate titles
+  """
+  if top.spid == 0:
+    ppzr(**kw)
+    return
+  color=kw.get('color','fg')
+  width=kw.get('width',1.0)
+  ppstreamlines(getr(),getz(),color=color,width=width)
+  if kw.get('titles',1):
+    ptitles('R versus Z','Z (m)','R (m)','Gun stream lines, iter #%d'%gun_iter)
 
