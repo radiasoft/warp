@@ -22,7 +22,7 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.11 2005/08/09 20:33:52 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.12 2005/08/18 23:49:39 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -129,6 +129,7 @@ main dictionary.
 
 # Returns the average of the input array
 def ave(x,index=0):
+  if len(shape(x)) == 0: return x
   if shape(x)[index] > 0:
     return sum(x,index)/shape(x)[index]
   else:
@@ -176,22 +177,22 @@ dimension.
 # --- Returns the max of the multiarray
 def maxnd(x):
   """Return the max element of an array of any dimension"""
-  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  xtemp = reshape(x,tuple([product(array(shape(x)))]))
   return max(xtemp)
 # --- Returns the min of the multiarray
 def minnd(x):
   """Return the min element of an array of any dimension"""
-  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  xtemp = reshape(x,tuple([product(array(shape(x)))]))
   return min(xtemp)
 # --- Returns the sum of the multiarray
 def sumnd(x):
   """Return the total sum of an array of any dimension"""
-  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  xtemp = reshape(x,tuple([product(array(shape(x)))]))
   return sum(xtemp)
 # --- Returns the sum of the multiarray
 def avend(x):
   """Return the average of an array of any dimension"""
-  xtemp = reshape(x,tuple([product(array(x.shape))]))
+  xtemp = reshape(x,tuple([product(array(shape(x)))]))
   return sum(xtemp)/len(xtemp)
 
 # Gets next available filename with the format 'root.nnn.suffix'.
