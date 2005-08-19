@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_SELFB.F, version $Revision: 1.3 $, $Date: 2005/08/19 16:28:23 $
+c@(#) File W3D_SELFB.F, version $Revision: 1.4 $, $Date: 2005/08/19 18:44:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -673,12 +673,12 @@ c     --- boundary for each boundary condition begins to get very complicated.
       do iz=0,bfield%nz
         do iy=0,bfield%ny
           do ix=0,bfield%nx
-            b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy-1,iz  ) - a(2,ix  ,iy+1,iz  ))
-     &                      - tdzi*(a(1,ix  ,iy  ,iz-1) - a(1,ix  ,iy  ,iz+1))
-            b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz-1) - a(0,ix  ,iy  ,iz+1))
-     &                      - tdxi*(a(2,ix-1,iy  ,iz  ) - a(2,ix+1,iy  ,iz  ))
-            b(2,ix,iy,iz) = + tdxi*(a(1,ix-1,iy  ,iz  ) - a(1,ix+1,iy  ,iz  ))
-     &                      - tdyi*(a(0,ix  ,iy-1,iz  ) - a(0,ix  ,iy+1,iz  ))
+            b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy+1,iz  ) - a(2,ix  ,iy-1,iz  ))
+     &                      - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
+            b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
+     &                      - tdxi*(a(2,ix+1,iy  ,iz  ) - a(2,ix-1,iy  ,iz  ))
+            b(2,ix,iy,iz) = + tdxi*(a(1,ix+1,iy  ,iz  ) - a(1,ix-1,iy  ,iz  ))
+     &                      - tdyi*(a(0,ix  ,iy+1,iz  ) - a(0,ix  ,iy-1,iz  ))
           enddo
         enddo
       enddo
