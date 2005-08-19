@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.217 $, $Date: 2005/08/11 22:05:09 $
+c@(#) File W3D.F, version $Revision: 3.218 $, $Date: 2005/08/19 16:30:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -323,7 +323,7 @@ c  Initialize base grid for RZ solver
 
 c  Initialize the B field solver if it is being used
 
-      if (bfstype >= 0) call init_bfieldsolver()
+      if (bfstype >= 0) call init_bfieldsolver(bfstype)
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
       call vp3d (1)
