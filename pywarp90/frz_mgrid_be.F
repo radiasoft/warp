@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.2 $, $Date: 2005/08/04 00:51:44 $
+c version $Revision: 1.3 $, $Date: 2005/08/19 16:31:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -20,6 +20,7 @@ c=============================================================================
 c     use ifcore
       type(GRIDtype):: grid
       real(kind=8):: accuracy
+      real(kind=8),allocatable:: iondensityarray(:,:)
 
 c     call for_set_fpe(FPE_M_TRAP_INV)
 
@@ -28,6 +29,16 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(1) = grid%ixrbnd
       bounds(4) = grid%izlbnd
       bounds(5) = grid%izrbnd
+
+c     --- Create array which holds the specified ion density data
+      allocate(iondensityarray(0:grid%nr,0: grid%nz))
+      iondensityarray = 0.
+      if (luseparticleldensity) then
+        iondensityarray(ixbemin:ixbemax,izbemin:izbemax) =
+     &      grid%rho(ixbemin:ixbemax,izbemin:izbemax)
+      else
+        iondensityarray(ixbemin:ixbemax,izbemin:izbemax) = iondensity
+      endif
 
 c     --- NOTICE: This solver only really works well in SOR mode, without
 c     --- any coarsening. The problem seems to the restriction and expansion
@@ -45,8 +56,10 @@ c     --- for the production version of the code.
      &                        lcndbndy,laddconductor,icndbndy,
      &                        gridmode,grid%bndfirst,
      &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        iondensity,electrontemperature,plasmapotential,
-     &                        electrondensitymaxscale)
+     &                        iondensityarray,electrontemperature,
+     &                        plasmapotential,electrondensitymaxscale)
+
+      deallocate(iondensityarray)
 
       return
       end
@@ -81,7 +94,8 @@ c=============================================================================
       type(BNDtype):: bnd
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
@@ -223,7 +237,8 @@ c=============================================================================
       integer(ISZ):: icndbndy
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
@@ -578,7 +593,8 @@ c=============================================================================
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c This routine does one pass of point SOR with even-odd (red-black)
@@ -656,12 +672,12 @@ c       --- grid refinement.
             ix1 = ixmin + mod(ixmin + iz + parity,2)
             do ix=ix1,ixmax,2
 
-              if (iondensity .ne. 0.) then
-                rhoe = iondensity*exp((phi(ix,iz)-plasmapotential)/
-     &                                electrontemperature)
-                rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-              else
+              if (iondensity(ix,iz) == 0) then
                 rhoe = 0.
+              else
+                rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
+     &                                       electrontemperature)
+                rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
               endif
               if (.true.) then
 c               --- ZR
@@ -783,7 +799,8 @@ c=============================================================================
       real(kind=8):: phi(-1:nx+1,-1:nz+1), rho(0:nx,0:nz)
       real(kind=8):: dxsqi,dzsqi,xminodx,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -909,12 +926,12 @@ c         --- calculate the new phi based on the boundary conditions
           if (dosubgrid) then
             delxsqi = dxsqi/delx
             delzsqi = dzsqi/delz
-            if (iondensity .ne. 0.) then
-              rhoe = iondensity*exp((pik-plasmapotential)/
-     &                              electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-            else
+            if (iondensity(ix,iz) == 0) then
               rhoe = 0.
+            else
+              rhoe = iondensity(ix,iz)*exp((pik-plasmapotential)/
+     &                                     electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
             endif
             denom = - Cx*delxsqi - Cz*delzsqi
      &              -rhoe/eps0/electrontemperature
@@ -945,7 +962,8 @@ c=============================================================================
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(BNDtype):: bnd
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Calculate the residual on the grid including the BE term.
@@ -972,12 +990,12 @@ c     --- Calculate the residual.
 
           do ix=ixmin,ixmax
 
-            if (iondensity .ne. 0.) then
-              rhoe = iondensity*exp((phi(ix,iz)-plasmapotential)/
-     &                              electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-            else
+            if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
+            else
+              rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
+     &                                     electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
             endif
 
 c           res(ix,iz) = (phi(ix-1,iz  ) + phi(ix+1,iz  ))*dxsqi
@@ -1043,7 +1061,8 @@ c=============================================================================
       real(kind=8):: phi(-1:nx+1,-1:nz+1), res(-1:nx+1,-1:nz+1)
       real(kind=8):: dxsqi,dzsqi,xminodx
       integer(ISZ):: bounds(0:5),icndbndy
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
+      real(kind=8):: iondensity(0:nx,0:nz)
+      real(kind=8):: electrontemperature,plasmapotential
       real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1155,12 +1174,12 @@ c         --- calculate the new phi based on the boundary conditions
           if (dosubgrid) then
             delxsqi = dxsqi/delx
             delzsqi = dzsqi/delz
-            if (iondensity .ne. 0.) then
-              rhoe = iondensity*exp((pik-plasmapotential)/
-     &                              electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
-            else
+            if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
+            else
+              rhoe = iondensity(ix,iz)*exp((pik-plasmapotential)/
+     &                                     electrontemperature)
+              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
             endif
             res(ix,iz) = (+ (pxm+pxp)*delxsqi
      &                    + (pzm+pzp)*delzsqi
