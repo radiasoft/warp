@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.3 $, $Date: 2005/08/19 16:31:56 $
+c version $Revision: 1.4 $, $Date: 2005/08/19 21:35:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -22,6 +22,7 @@ c     use ifcore
       real(kind=8):: accuracy
       real(kind=8),allocatable:: iondensityarray(:,:)
 
+      integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax
 c     call for_set_fpe(FPE_M_TRAP_INV)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
@@ -33,11 +34,17 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 c     --- Create array which holds the specified ion density data
       allocate(iondensityarray(0:grid%nr,0: grid%nz))
       iondensityarray = 0.
-      if (luseparticleldensity) then
-        iondensityarray(ixbemin:ixbemax,izbemin:izbemax) =
-     &      grid%rho(ixbemin:ixbemax,izbemin:izbemax)
-      else
-        iondensityarray(ixbemin:ixbemax,izbemin:izbemax) = iondensity
+      ixbemin = max(0 ,int((xbemin - grid%rmin)/grid%dr))
+      ixbemax = min(grid%nr,int((xbemax - grid%rmin)/grid%dr))
+      izbemin = max(0 ,int((zbemin - grid%zmin)/grid%dz))
+      izbemax = min(grid%nz,int((zbemax - grid%zmin)/grid%dz))
+      if (ixbemax >= ixbemin .and. izbemax >= izbemin) then
+        if (luseparticleldensity) then
+          iondensityarray(ixbemin:ixbemax,izbemin:izbemax) =
+     &        grid%rho(ixbemin:ixbemax,izbemin:izbemax)
+        else
+          iondensityarray(ixbemin:ixbemax,izbemin:izbemax) = iondensity
+        endif
       endif
 
 c     --- NOTICE: This solver only really works well in SOR mode, without
