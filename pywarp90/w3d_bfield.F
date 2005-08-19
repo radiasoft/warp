@@ -1,16 +1,18 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_SELFB.F, version $Revision: 1.2 $, $Date: 2005/08/12 22:48:15 $
+c@(#) File W3D_SELFB.F, version $Revision: 1.3 $, $Date: 2005/08/19 16:28:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
 c  density.
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
-      subroutine init_bfieldsolver()
+      subroutine init_bfieldsolver(bfstype)
       use BFieldGrid
       use InMesh3d
       use Fields3d, only: nzfull
+
+      integer(ISZ):: bfstype
 
       if (bfield%xmmin == 0) bfield%xmmin = xmmin
       if (bfield%xmmax == 0) bfield%xmmax = xmmax
@@ -28,6 +30,8 @@ c=============================================================================
       if (bfield%dy == 0) bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
       if (bfield%dz == 0) bfield%dz = (bfield%zmmax-bfield%zmmin)/bfield%nz
       call BFieldGridTypechange(bfield)
+
+      call bvp3d(1,bfstype)
 
       return
       end
@@ -131,8 +135,8 @@ c                 --- just add its saved jptmp into jp.
                 end if
              end if
              call setj3d(bfieldp,bfieldp%j,
-     &                   nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                   zgrid,uxp(ipmin),uyp(ipmin),uzp(ipmin),sq(is),
+     &                   nps_u,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                   uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),sq(is),
      &                   swtmp,depos,l2symtry,l4symtry)
              if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
 c               --- If this species is being advanced this step, then restore
@@ -685,8 +689,8 @@ c     --- boundary for each boundary condition begins to get very complicated.
       return
       end
 c=============================================================================
-      subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,q,wght,depos,
-     &                  l2symtry,l4symtry)
+      subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
+     &                  q,wght,depos,l2symtry,l4symtry)
       use GlobalVars
       use Subtimers3d
       use BFieldGridTypemodule
@@ -694,7 +698,8 @@ c=============================================================================
       integer(ISZ):: np
       real(kind=8):: zgrid,q,wght
       real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
-      real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       character(8):: depos
       logical(ISZ):: l2symtry,l4symtry
 
@@ -724,6 +729,7 @@ c     --- For both algorithms
       real(kind=8),pointer,dimension(:,:,:,:):: j
       integer(ISZ):: ipmin,nptmp,ip,ix,iy,iz,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: vx,vy,vz
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -880,9 +886,9 @@ c     --- there'd be a hazard if we interchanged the loops.
         if (uzp(ir+ipmin) /= 0.) then
           do m = 0, 7
              ind0 = 3.*indx(m,ir)
-             j1d(ind0  ) = j1d(ind0  ) + s(m,ir)*uxp(ir+ipmin)
-             j1d(ind0+1) = j1d(ind0+1) + s(m,ir)*uyp(ir+ipmin)
-             j1d(ind0+2) = j1d(ind0+2) + s(m,ir)*uzp(ir+ipmin)
+             j1d(ind0  ) = j1d(ind0  ) + s(m,ir)*uxp(ir+ipmin)*gaminv(ir+ipmin)
+             j1d(ind0+1) = j1d(ind0+1) + s(m,ir)*uyp(ir+ipmin)*gaminv(ir+ipmin)
+             j1d(ind0+2) = j1d(ind0+2) + s(m,ir)*uzp(ir+ipmin)*gaminv(ir+ipmin)
           enddo
         endif
       enddo
@@ -975,30 +981,33 @@ c     --- scalar loop does the actual deposition
          ix = ii(ir)
          iy = jj(ir)
          iz = kk(ir)
-         j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + s(0,ir)*uxp(ir+ipmin)
-         j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + s(1,ir)*uxp(ir+ipmin)
-         j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + s(2,ir)*uxp(ir+ipmin)
-         j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + s(3,ir)*uxp(ir+ipmin)
-         j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + s(4,ir)*uxp(ir+ipmin)
-         j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + s(5,ir)*uxp(ir+ipmin)
-         j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + s(6,ir)*uxp(ir+ipmin)
-         j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + s(7,ir)*uxp(ir+ipmin)
-         j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + s(0,ir)*uyp(ir+ipmin)
-         j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + s(1,ir)*uyp(ir+ipmin)
-         j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + s(2,ir)*uyp(ir+ipmin)
-         j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + s(3,ir)*uyp(ir+ipmin)
-         j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + s(4,ir)*uyp(ir+ipmin)
-         j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + s(5,ir)*uyp(ir+ipmin)
-         j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + s(6,ir)*uyp(ir+ipmin)
-         j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + s(7,ir)*uyp(ir+ipmin)
-         j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + s(0,ir)*uzp(ir+ipmin)
-         j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + s(1,ir)*uzp(ir+ipmin)
-         j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + s(2,ir)*uzp(ir+ipmin)
-         j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + s(3,ir)*uzp(ir+ipmin)
-         j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + s(4,ir)*uzp(ir+ipmin)
-         j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + s(5,ir)*uzp(ir+ipmin)
-         j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + s(6,ir)*uzp(ir+ipmin)
-         j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + s(7,ir)*uzp(ir+ipmin)
+         vx = uxp(ir+ipmin)*gaminv(ir+ipmin)
+         vy = uyp(ir+ipmin)*gaminv(ir+ipmin)
+         vz = uzp(ir+ipmin)*gaminv(ir+ipmin)
+         j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + s(0,ir)*vx
+         j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + s(1,ir)*vx
+         j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + s(2,ir)*vx
+         j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + s(3,ir)*vx
+         j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + s(4,ir)*vx
+         j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + s(5,ir)*vx
+         j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + s(6,ir)*vx
+         j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + s(7,ir)*vx
+         j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + s(0,ir)*vy
+         j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + s(1,ir)*vy
+         j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + s(2,ir)*vy
+         j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + s(3,ir)*vy
+         j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + s(4,ir)*vy
+         j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + s(5,ir)*vy
+         j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + s(6,ir)*vy
+         j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + s(7,ir)*vy
+         j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + s(0,ir)*vz
+         j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + s(1,ir)*vz
+         j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + s(2,ir)*vz
+         j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + s(3,ir)*vz
+         j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + s(4,ir)*vz
+         j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + s(5,ir)*vz
+         j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + s(6,ir)*vz
+         j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + s(7,ir)*vz
         endif
       enddo
 !$OMP END CRITICAL (CRITICAL_SETJ3D2)
@@ -1373,7 +1382,7 @@ c     --- If no field solve, return
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
       if (linbend) then
-        call setrstar(rstar(-1),bfield%nz,bfield%dz,bfield%zmmin,zgrid)
+        call setrstar(bfield%rstar(-1),bfield%nz,bfield%dz,bfield%zmmin,zgrid)
       endif
 
       if (bfstype == 7 .or. bfstype == 12) then
@@ -1410,7 +1419,7 @@ c=============================================================================
       use BFieldGrid
       integer(ISZ):: iwhich,bfstype
 
-      integer(ISZ):: id
+      integer(ISZ):: id,idmax
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
 
       allocate(atemp(0:bfield%nx,0:bfield%ny,-1:bfield%nz+1))
@@ -1426,20 +1435,26 @@ c       --- jtemp is pointed to atemp just to give it a non-null value.
 
 c     --- Note that the arrays being passed in are not contiguous, which means
 c     --- that copies are being done.
-      do id=0,2
+c     --- If only initialization is being done (iwhich==1) then the bvp3d_work
+c     --- routine only needs to be called once. Proper arrays are still passed
+c     --- though they should never be needed during initialization.
+      idmax = 2
+      if (iwhich == 1) idmax = 0
+      do id=0,idmax
         if (bfstype <= 4) then
           atemp(:,:,0:bfield%nz) = bfield%j(id,:,:,:)
         else
           atemp = bfield%a(id,0:bfield%nx,0:bfield%ny,:)
           jtemp = bfield%j(id,:,:,:)
         endif
-        call bvp3d_work(iwhich,
+        call bvp3d_work(iwhich,bfstype,
      &                  atemp,jtemp,
      &                  bfield%nx,bfield%ny,bfield%nz,bfield%nzfull,
      &                  bfield%dx,bfield%dy,bfield%dz,
      &                  bfield%xmmin,bfield%xmmax,bfield%ymmin,bfield%ymmax,
      &                  bfield%zmmin,bfield%zmmax,
-     &                  bfield%zmminglobal,bfield%zmmaxglobal)
+     &                  bfield%zmminglobal,bfield%zmmaxglobal,
+     &                  bfield)
          bfield%a(id,0:bfield%nx,0:bfield%ny,:) = atemp
       enddo
 
@@ -1456,24 +1471,26 @@ c     --- MG solver already takes care of the longitudinal BC's.
       return
       end
 c=============================================================================
-      subroutine bvp3d_work(iwhich,a,j,nx,ny,nz,nzfull,dx,dy,dz,
+      subroutine bvp3d_work(iwhich,bfstype,a,j,nx,ny,nz,nzfull,dx,dy,dz,
      &                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
-     &                      zmminglobal,zmmaxglobal)
+     &                      zmminglobal,zmmaxglobal,
+     &                      bfield)
       use Subtimers3d
-      use LatticeInternal
-      use InGen, only: bfstype
+      use BFieldGridTypemodule
+      use LatticeInternal, only: linbend
       use Picglb, only: zbeam,zgrid
-      use InGen3d
-      use Fields3d,only:attx,atty,attz,kxsq,kysq,kzsq,scrtch,xywork,zwork,rstar
-      use GridBoundary3d
-      use Parallel
-      integer(ISZ):: iwhich
+      use InGen3d, only: filt,solvergeom,XYZgeomMR,l2symtry,l4symtry
+      use GridBoundary3d, only: bound0,boundnz,boundxy
+      integer(ISZ):: iwhich,bfstype
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: a(0:nx,0:ny,-1:nz+1),j(0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
       real(kind=8):: zmminglobal,zmmaxglobal
+      type(BFieldGridType):: bfield
 
 c Interface to field solver for magnetic vector potential
+c Note that bfield is passed in to have access to the data and work arrays
+c kxsq, attx, scrtch etc.
 
       real(kind=8):: xlen,ylen,zlen
       real(kind=8):: substarttime,wtime
@@ -1494,39 +1511,44 @@ c fits and so was replaced with if statements.
       zlen = zmmaxglobal - zmminglobal
 
       if (bfstype == 0) then
-          call vpois3d(iwhich,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,
-     &                 attx,atty,attz,filt,xlen,ylen,zlen,
-     &                 nx,ny,nz,nzfull,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                 bound0,boundnz,boundxy)
+          call vpois3d(iwhich,a(0,0,0),a(0,0,0),
+     &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                 bfield%attx,bfield%atty,bfield%attz,
+     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                 bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (bfstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
-            call vpois3d(1,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,nz,nzfull,scrtch,
-     &                   xywork,zwork,0,l2symtry,l4symtry,
-     &                   bound0,boundnz,boundxy)
+            call vpois3d(1,a(0,0,0),a(0,0,0),
+     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                   bfield%attx,bfield%atty,bfield%attz,
+     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
-            call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,nz,nzfull,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                   bound0,boundnz,boundxy)
-            call vpois3d(14,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,nz,nzfull,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                   bound0,boundnz,boundxy)
-            call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,nz,nzfull,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                   bound0,boundnz,boundxy)
+            call vpois3d(12,a(0,0,0),a(0,0,0),
+     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                   bfield%attx,bfield%atty,bfield%attz,
+     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+            call vpois3d(14,a(0,0,0),a(0,0,0),
+     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                   bfield%attx,bfield%atty,bfield%attz,
+     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+            call vpois3d(13,a(0,0,0),a(0,0,0),
+     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                   bfield%attx,bfield%atty,bfield%attz,
+     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
           endif
 
       elseif (bfstype == 7) then
-          call multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,a,j,rstar,
+          call multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,a,j,bfield%rstar,
      &                      linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                      xmmin,ymmin,zmmin,zbeam,zgrid)
 
