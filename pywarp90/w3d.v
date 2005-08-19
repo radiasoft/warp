@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.196 $, $Date: 2005/08/12 22:46:43 $
+#@(#) File W3D.V, version $Revision: 3.197 $, $Date: 2005/08/19 16:29:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.196 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.197 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -361,6 +361,18 @@ b(0:2,0:nx,0:ny,0:nz) _real # B field, calculated from B = del cross A
 a(0:2,-1:nx+1,-1:ny+1,-1:nz+1) _real
   # Vector magnetic potential, calculated from del sq A = J
 
+attx(0:nx-1)     _real           # Attenuation factor as fcn. of kx
+atty(0:ny-1)     _real           # Attenuation factor as fcn. of ky
+attz(0:nzfull)   _real           # Attenuation factor as fcn. of kz
+kxsq(0:nx-1)     _real [1/m**2]  # Discrete analog to kx^2/4Pi
+kysq(0:ny-1)     _real [1/m**2]  # Discrete analog to ky^2/4Pi
+kzsq(0:nzfull)   _real [1/m**2]  # Discrete analog to kz^2/4Pi
+
+rstar(-1:nz+1)         _real [m] # Radius of curv of reference orbit
+scrtch(2*nx+2*ny)      _real     # Scratch for fieldsolve
+xywork(2,0:nx,0:ny)    _real     # Work space for transverse FFTs
+zwork(2,0:nx,0:nzfull) _real     # Work space used to optimize vsftz
+
 nsjtmp integer /0/
 jsjtmp(0:nsjtmp-1) _integer /-1/ #
 nsndtsj integer /0/
@@ -370,7 +382,7 @@ jtmp(3,0:nx,0:ny,0:nz,0:nsndtsj-1)  _real
 *********** BFieldGrid:
 bfield BFieldGridType
 bfieldp BFieldGridType
-init_bfieldsolver() subroutine # Initializes the B-field solver
+init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
 bfieldsol3d(iwhich) subroutine # Self B-field solver
 loadj3d(ins:integer,nps:integer,is:integer,lzero:logical) 
              subroutine # Provides a simple interface to the current density
@@ -443,6 +455,21 @@ electrondensitymaxscale real /2./ # Limit of electron density relative to
                                   # to not affect the solution, but small
                                   # enough to prevent divergences during
                                   # field solve.
+ixbemin integer /0/ # Minimum of the extent in x over which Boltzmann electrons
+                    # are included (in units of grid cells)
+ixbemax integer /0/ # Maximum of the extent in x over which Boltzmann electrons
+                    # are included (in units of grid cells)
+iybemin integer /0/ # Minimum of the extent in y over which Boltzmann electrons
+                    # are included (in units of grid cells)
+iybemax integer /0/ # Maximum of the extent in y over which Boltzmann electrons
+                    # are included (in units of grid cells)
+izbemin integer /0/ # Minimum of the extent in z over which Boltzmann electrons
+                    # are included (in units of grid cells)
+izbemax integer /0/ # Maximum of the extent in z over which Boltzmann electrons
+                    # are included (in units of grid cells)
+luseparticleldensity /.false./ # When true, use the density from the particles
+                               # rather than the specified constant iondensity.
+                               # Only applies now to the RZ solver.
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
