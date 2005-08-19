@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.41 2005/08/17 21:46:38 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.42 2005/08/19 23:38:56 dave Exp $"
 
 
 ##############################################################################
@@ -100,7 +100,7 @@ def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
         ipstep=None,egundata_window=-1,plottraces_window=-1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
-        resetlostpart=0):
+        resetlostpart=0,current=None,currentiz=None):
   """
 Performs steady-state iterations
   - iter=1: number of iterations to perform
@@ -131,6 +131,14 @@ Performs steady-state iterations
                          number to deactivate plotting.
   - resetlostpart=0: When true, before each iteration, clear out any lost
                      particles that were saved (set top.npslost = 0)
+  - current=None: When specified, the particle weights will be adjusted to try
+                  to match the specified value. The currentiz option must also
+                  be specified. Also, w3d.iondensity is adjusted for cases
+                  using Boltzmann electrons. This could be a list of currents
+                  for each species.
+  - currentiz=None: The iz grid location of top.curr that is used to get the
+                    current for scaling the weights. Note that this can be a
+                    slice instance - an average is taken over the given range.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
@@ -139,6 +147,13 @@ Performs steady-state iterations
   global rhoprevious
   global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
   global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
+
+  # --- If the current is specified, make sure that the data will be available
+  if current is not None and currentiz is not None:
+    assert (top.ns == 1 or top.lspeciesmoments),\
+      """If there are more than one species, then top.lspeciesmoments must be
+set when a current is specified"""
+    if type(current) in [IntType,FloatType]: current = [current]
 
   # --- Save general parameters which are modified in this routine
   _oinject = top.inject
@@ -484,6 +499,18 @@ Performs steady-state iterations
     if ((i == iter-1 or (gun_iter%nhist) == 0) and top.ifzmmnt > 0):
       top.laccumulate_zmoments = laccumulate_zmoments
       getzmom.zmmnt(3)
+
+    # --- If a current was specified, addjust the particle weights to match
+    # --- that current.
+    # --- Note that this code is intended to be used with plasma source, but
+    # --- could be useful elsewhere.
+    if current is not None and currentiz is not None:
+      swsum = sum(top.sw)
+      for js in range(top.ns):
+        avecurrent = ave(top.curr[currentiz,js])
+        f = (1. + (current[js]/avecurrent - 1.)*0.5)
+        top.sw[js] = top.sw[js]*f
+      w3d.iondensity = w3d.iondensity*sum(top.sw)/swsum
 
     # --- Save the history data
     if nhist>0:
@@ -881,8 +908,8 @@ Prints a running line showing current status of the step.
 
 ########################################################################
 ########################################################################
-def ppstreamlines(y,x,color='fg',width=1.0):
-  pid = getpid(id=top.spid-1)
+def ppstreamlines(y,x,js=0,color='fg',width=1.0):
+  pid = getpid(js=js,id=top.spid-1)
   # --- Sort the particle data based on the ID number
   ii = argsort(pid)
   y = take(y,ii)
@@ -908,9 +935,11 @@ that if top.spid is not set, ppzx is called directly instead.
   if top.spid == 0:
     ppzx(**kw)
     return
-  color=kw.get('color','fg')
-  width=kw.get('width',1.0)
-  ppstreamlines(getx(),getz(),color=color,width=width)
+  if ppmultispecies(gunppzx,(),kw): return
+  color = kw.get('color','fg')
+  width = kw.get('width',1.0)
+  js = kw.get('js',0)
+  ppstreamlines(getx(js=js),getz(js=js),js=js,color=color,width=width)
   if kw.get('titles',1):
     ptitles('X versus Z','Z (m)','X (m)','Gun stream lines, iter #%d'%gun_iter)
 
@@ -924,9 +953,11 @@ that if top.spid is not set, ppzx is called directly instead.
   if top.spid == 0:
     ppzy(**kw)
     return
-  color=kw.get('color','fg')
-  width=kw.get('width',1.0)
-  ppstreamlines(gety(),getz(),color=color,width=width)
+  if ppmultispecies(gunppzy,(),kw): return
+  color = kw.get('color','fg')
+  width = kw.get('width',1.0)
+  js = kw.get('js',0)
+  ppstreamlines(gety(js=js),getz(js=js),js=js,color=color,width=width)
   if kw.get('titles',1):
     ptitles('Y versus Z','Z (m)','Y (m)','Gun stream lines, iter #%d'%gun_iter)
 
@@ -940,9 +971,11 @@ that if top.spid is not set, ppzx is called directly instead.
   if top.spid == 0:
     ppzr(**kw)
     return
-  color=kw.get('color','fg')
-  width=kw.get('width',1.0)
-  ppstreamlines(getr(),getz(),color=color,width=width)
+  if ppmultispecies(gunppzr,(),kw): return
+  color = kw.get('color','fg')
+  width = kw.get('width',1.0)
+  js = kw.get('js',0)
+  ppstreamlines(getr(js=js),getz(js=js),js=js,color=color,width=width)
   if kw.get('titles',1):
     ptitles('R versus Z','Z (m)','R (m)','Gun stream lines, iter #%d'%gun_iter)
 
