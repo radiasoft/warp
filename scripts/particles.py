@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.28 2005/05/25 00:03:46 dave Exp $"
+particles_version = "$Id: particles.py,v 1.29 2005/08/20 00:21:22 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -145,7 +145,7 @@ def setup_subsetsold(js=0):
 
 ##########################################################################
 #-------------------------------------------------------------------------
-def getattrwithsuffix(object=None,name=None,suffix='',checkmain=1,
+def getattrwithsuffix(object=None,name=None,suffix='',checkmain=1,pkg='top',
                       default=None):
   """
 Helper function modeled on getattr. Like getattr, given an object and a name,
@@ -160,6 +160,8 @@ exception is raised.
   """
   assert name is not None,"A name must be supplied"
   if object is not None:
+    # --- This will work if object is a Warp package or a generic instance,
+    # --- including a pdb file.
     try:
       result = getattr(object,name+suffix)
       return result
@@ -170,6 +172,14 @@ exception is raised.
       result = object[name+suffix]
       return result
     except KeyError:
+      pass
+  if type(object) is InstanceType and object.__class__ is PR.PR:
+    # --- Try to get data from a pdb file that was written as part of the
+    # --- specified package.
+    try:
+      result = object.read(name+suffix+'@'+pkg)
+      return result
+    except:
       pass
   if object is None or checkmain:
     import __main__
@@ -270,8 +280,8 @@ from window 0, getting all of the live partilces (whose uzp != 0).
 
   if zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(top,'zp',suffix)
-    if zl is None: zl = -top.largepos
-    if zu is None: zu = +top.largepos
+    if zl is None: zl = -largepos
+    if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
