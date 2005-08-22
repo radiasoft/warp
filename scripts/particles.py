@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.29 2005/08/20 00:21:22 dave Exp $"
+particles_version = "$Id: particles.py,v 1.30 2005/08/22 08:22:56 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -145,18 +145,18 @@ def setup_subsetsold(js=0):
 
 ##########################################################################
 #-------------------------------------------------------------------------
-def getattrwithsuffix(object=None,name=None,suffix='',checkmain=1,pkg='top',
+def getattrwithsuffix(object=top,name=None,suffix='',checkmain=1,pkg='top',
                       default=None):
   """
 Helper function modeled on getattr. Like getattr, given an object and a name,
 it will return object.name. Optionally, a suffix can be given, in which case,
-it will return the equivalent of getattr(object,name+suffix). The object can
-be None, in which case the main dictionary will be searched,
-returning __main__.__dict__[name+suffix]. Also, object can be a dictionary
-itself. Finally, if the object is specified but name+suffix is not found and
-if checkmain is true, then the main dictionary will again be searched. If
-nothing is found and default is specified, it is returned, otherwise an
-exception is raised.
+it will return the equivalent of getattr(object,name+suffix).  The object can
+be None, in which case the main dictionary will be searched, returning
+__main__.__dict__[name+suffix]. The object can also be a dictionary or an
+opened PDB file. Finally, if the object is specified but name+suffix is not
+found and if checkmain is true, then the main dictionary will again be
+searched. If nothing is found and default is specified, it is returned,
+otherwise an exception is raised.
   """
   assert name is not None,"A name must be supplied"
   if object is not None:
@@ -165,7 +165,7 @@ exception is raised.
     try:
       result = getattr(object,name+suffix)
       return result
-    except AttributeError:
+    except (AttributeError,KeyError):
       pass
   if type(object) is DictionaryType:
     try:
@@ -221,12 +221,14 @@ from window 0, getting all of the live partilces (whose uzp != 0).
                 the live particles
   - suffix=None: When specified, variables with the specified suffix will be
                  used rather than the arrays from top.
+  - object=top: Object to get particle data from. Besides top, this can be an
+                open PDB file, or a dictionary.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,"ii":None,
-                "lost":false,"suffix":'',
+                "lost":false,"suffix":'',"object":top,"w3dobject":None,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -254,12 +256,16 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   # --- to do the take operation with a pre-defined ii.
   if ii is not None: return ii
 
+  ins = getattrwithsuffix(object,'ins',suffix)
+  nps = getattrwithsuffix(object,'nps',suffix)
+  ns = len(ins)
+
   # --- If jslist defined, call selectparticles repeatedly for each species
   # --- on the list
   del kwvalues['jslist']    # Remove list so selectparticles is subsequently
                             # called with one species at a time
   if jslist is not None:
-    if jslist == -1:    jslist = range(0,top.ns)
+    if jslist == -1:    jslist = range(0,ns)
     partlist = array([])
     for js in jslist:
         kwvalues['js'] = js
@@ -267,11 +273,15 @@ from window 0, getting all of the live partilces (whose uzp != 0).
         partlist = array(list(partlist)+list(newparts))
     return partlist
 
-  # --- If lost is true, append the suffix lost to the variable names
-  if lost: suffix = 'lost' + suffix
+  # --- If the w3dobject was not passed in, use w3d, or if the object was
+  # --- set to a PDB file, use it.
+  if w3dobject is None:
+    if object is not top: w3dobject = object
+    else:                 w3dobject = w3d
 
-  ins = getattrwithsuffix(top,'ins',suffix)
-  nps = getattrwithsuffix(top,'nps',suffix)
+  # --- If lost is true, append the suffix lost to the variable names
+  if lost: suffix1 = 'lost' + suffix
+  else:    suffix1 = suffix
 
   ir1 = ins[js] - 1
   ir2 = ins[js] + nps[js] - 1
@@ -279,46 +289,56 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   if ir2 <= ir1: return array([])
 
   if zl is not None or zu is not None:
-    if z is None: z = getattrwithsuffix(top,'zp',suffix)
+    if z is None: z = getattrwithsuffix(object,'zp',suffix1)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif ix is not None:
-    xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
-    xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
-    x = getattrwithsuffix(top,'xp',suffix)
+    xmmin = getattrwithsuffix(w3dobject,'xmmin',suffix,pkg='w3d')
+    dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
+    xl = xmmin + ix*dx - wx*dx
+    xu = xmmin + ix*dx + wx*dx
+    x = getattrwithsuffix(object,'xp',suffix1)
     ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
   elif iy is not None:
-    yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
-    yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
-    y = getattrwithsuffix(top,'yp',suffix)
+    ymmin = getattrwithsuffix(w3dobject,'ymmin',suffix,pkg='w3d')
+    dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
+    yl = ymmin + iy*dy - wy*dy
+    yu = ymmin + iy*dy + wy*dy
+    y = getattrwithsuffix(object,'yp',suffix1)
     ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
   elif iz is not None:
-    z = getattrwithsuffix(top,'zp',suffix)
-    zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
-    zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
+    z = getattrwithsuffix(object,'zp',suffix1)
+    zbeam = getattrwithsuffix(object,'zbeam',suffix)
+    zmminglobal = getattrwithsuffix(w3dobject,'zmminglobal',suffix,pkg='w3d')
+    dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
+    zl = zmminglobal + iz*dz - wz*dz + zbeam
+    zu = zmminglobal + iz*dz + wz*dz + zbeam
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif zc is not None:
-    z = getattrwithsuffix(top,'zp',suffix)
-    zl = zc - wz*w3d.dz
-    zu = zc + wz*w3d.dz
+    z = getattrwithsuffix(object,'zp',suffix1)
+    dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
+    zl = zc - wz*dz
+    zu = zc + wz*dz
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif xc is not None:
-    x = getattrwithsuffix(top,'xp',suffix)
-    xl = xc - wx*w3d.dx
-    xu = xc + wx*w3d.dx
+    x = getattrwithsuffix(object,'xp',suffix1)
+    dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
+    xl = xc - wx*dx
+    xu = xc + wx*dx
     ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
   elif yc is not None:
-    y = getattrwithsuffix(top,'yp',suffix)
-    yl = yc - wy*w3d.dy
-    yu = yc + wy*w3d.dy
+    y = getattrwithsuffix(object,'yp',suffix1)
+    dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
+    yl = yc - wy*dy
+    yu = yc + wy*dy
     ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
   elif iw < 0:
@@ -329,28 +349,31 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     # --- use the population sampling.
     try: selectparticles.npsprev
     except: selectparticles.npsprev = nps + 0
-    if len(selectparticles.npsprev) != top.ns:
-      selectparticles.npsprev = zeros(top.ns)
+    if len(selectparticles.npsprev) != ns:
+      selectparticles.npsprev = zeros(ns)
     if selectparticles.npsprev[js] >= nps[js]:
       if psubset==[]: setup_subsets()
       if -iw > len(psubset): raise "Bad window number"
       ii = ir1 + compress(less(psubset[-iw-1],nps[js]),psubset[-iw-1])
     else:
       # --- Once this method is used, always use it.
-      selectparticles.npsprev = zeros(top.ns)
-      if nps[js] <= top.npplot[-iw-1]:
+      selectparticles.npsprev = zeros(ns)
+      npplot = getattrwithsuffix(object,'npplot',suffix)
+      if nps[js] <= npplot[-iw-1]:
         ii = ir1 + arange(nps[js])
       else:
-        ii = ir1 + populationsample(xrange(nps[js]),top.npplot[-iw-1])
+        ii = ir1 + populationsample(xrange(nps[js]),npplot[-iw-1])
   elif iw == 0:
     ii = xrange(ir1,ir2)
   else:
-    if win is None: win = top.zwindows[:,iw] + top.zbeam
+    zbeam = getattrwithsuffix(object,'zbeam',suffix)
+    zwindows = getattrwithsuffix(object,'zwindows',suffix)
+    if win is None: win = zwindows[:,iw] + zbeam
     if len(shape(win)) == 2: win = win[:,iw]
-    if z is None: z = getattrwithsuffix(top,'zp',suffix)
+    if z is None: z = getattrwithsuffix(object,'zp',suffix1)
     ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
-  uz = getattrwithsuffix(top,'uzp',suffix)
+  uz = getattrwithsuffix(object,'uzp',suffix1)
   ii = compress(not_equal(take(uz,ii),0.),ii)
   return ii
 
@@ -370,8 +393,9 @@ def getx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
     result = take(x,ii)
   else:
     result = array([],'d')
@@ -382,8 +406,9 @@ def gety(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    y = getattrwithsuffix(top,'yp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
     result = take(y,ii)
   else:
     result = array([],'d')
@@ -394,8 +419,9 @@ def getz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    z = getattrwithsuffix(top,'zp',suffix)
+    z = getattrwithsuffix(object,'zp',suffix)
     result = take(z,ii)
   else:
     result = array([],'d')
@@ -406,9 +432,10 @@ def getr(iw=0,gather=1,bcast=0,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
     result = sqrt(take(x,ii)**2 + take(y,ii)**2)
   else:
     result = array([],'d')
@@ -419,9 +446,10 @@ def gettheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
     result = arctan2(take(y,ii),take(x,ii))
   else:
     result = array([],'d')
@@ -432,9 +460,10 @@ def getvx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     result = take(ux,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -445,9 +474,10 @@ def getvy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     result = take(uy,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -458,9 +488,10 @@ def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    uz = getattrwithsuffix(top,'uzp',suffix)
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     result = take(uz,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -471,12 +502,13 @@ def getvr(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
     result = (take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt))*take(gaminv,ii)
   else:
@@ -488,12 +520,13 @@ def getvtheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
     result = (-take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt))*take(gaminv,ii)
   else:
@@ -505,8 +538,9 @@ def getux(iw=0,gather=1,bcast=0,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    ux = getattrwithsuffix(top,'uxp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
     result = take(ux,ii)
   else:
     result = array([],'d')
@@ -517,8 +551,9 @@ def getuy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    uy = getattrwithsuffix(top,'uyp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
     result = take(uy,ii)
   else:
     result = array([],'d')
@@ -529,8 +564,9 @@ def getuz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    uz = getattrwithsuffix(top,'uzp',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
     result = take(uz,ii)
   else:
     result = array([],'d')
@@ -541,9 +577,10 @@ def getxp(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    uz = getattrwithsuffix(top,'uzp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
     result = take(ux,ii)/take(uz,ii)
   else:
     result = array([],'d')
@@ -554,9 +591,10 @@ def getyp(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    uz = getattrwithsuffix(top,'uzp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
     result = take(uy,ii)/take(uz,ii)
   else:
     result = array([],'d')
@@ -567,12 +605,13 @@ def getrp(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    uz = getattrwithsuffix(top,'uzp',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
     result = ((take(ux,ii)*cos(tt)+take(uy,ii)*sin(tt))/
               take(uz,ii))
@@ -585,12 +624,13 @@ def gettp(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    x = getattrwithsuffix(top,'xp',suffix)
-    y = getattrwithsuffix(top,'yp',suffix)
-    ux = getattrwithsuffix(top,'uxp',suffix)
-    uy = getattrwithsuffix(top,'uyp',suffix)
-    uz = getattrwithsuffix(top,'uzp',suffix)
+    x = getattrwithsuffix(object,'xp',suffix)
+    y = getattrwithsuffix(object,'yp',suffix)
+    ux = getattrwithsuffix(object,'uxp',suffix)
+    uy = getattrwithsuffix(object,'uyp',suffix)
+    uz = getattrwithsuffix(object,'uzp',suffix)
     tt = arctan2(take(y,ii),take(x,ii))
     result = ((-take(ux,ii)*sin(tt)+take(uy,ii)*cos(tt))/
               take(uz,ii))
@@ -603,8 +643,9 @@ def getgaminv(iw=0,gather=1,bcast=0,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
+  object = kw.get('object',top)
   if len(ii) > 0:
-    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    gaminv = getattrwithsuffix(object,'gaminv',suffix)
     result = take(gaminv,ii)
   else:
     result = array([],'d')
@@ -618,12 +659,17 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   """
   lost = kw.get('lost',0)
   suffix = ((kw.get('lost',0) and 'lost') or '') + kw.get('suffix','')
-  if lost: dopid = (top.npidlostmax > 0)
-  else:    dopid = (top.npmaxi == top.npmax)
+  object = kw.get('object',top)
+  if lost:
+    npidlostmax = getattrwithsuffix(object,'npidlostmax')
+    dopid = (npidlostmax > 0)
+  else:
+    npid = getattrwithsuffix(object,'npid',suffix)
+    dopid = (npid > 0)
   if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
     if len(ii) > 0:
-      pid = getattrwithsuffix(top,'pid',suffix)
+      pid = getattrwithsuffix(object,'pid',suffix)
       if id >= 0: result = take(pid[:,id],ii)
       else:       result = take(pid[:,:],ii)
     else:
@@ -688,31 +734,47 @@ The product slope*vz gives the slope for x-vx.
   zc = kwdict.get('zc')
   js = kwdict.get('js',-1)
   slopejs = kwdict.get('slopejs',js)
+  suffix = kwdict.get('suffix','')
+  object = kwdict.get('object',top)
+  zwindows = getattrwithsuffix(object,'zwindows',suffix)
   if zl is not None and zu is not None: zc = 0.5*(zl + zu)
-  if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
+  if iw > 0: zc = 0.5*(zwindows[0,iw]+zwindows[1,iw])
   if zc is not None:
-    iz = nint(floor((zc - w3d.zmmin)/w3d.dz))
-    wz = (zc - w3d.zmmin)/w3d.dz - iz
+    zmmntmin = getattrwithsuffix(object,'zmmntmin',suffix)
+    dzm = getattrwithsuffix(object,'dzm',suffix)
+    iz = nint(floor((zc - zmmntmin)/dzm))
+    wz =            (zc - zmmntmin)/dzm - iz
   else:
     wz = 0.
-  if 0 <= iz <= w3d.nz:
+  nzmmnt = getattrwithsuffix(object,'nzmmnt',suffix)
+  if 0 <= iz <= nzmmnt:
     izp1 = iz + 1
-    if iz == w3d.nz: izp1 = iz
-    xxpbar = top.xxpbarz[iz,slopejs]*(1.-wz) + top.xxpbarz[izp1,slopejs]*wz
-    xbar   = top.xbarz[iz,slopejs]*(1.-wz)   + top.xbarz[izp1,slopejs]*wz
-    xpbar  = top.xpbarz[iz,slopejs]*(1.-wz)  + top.xpbarz[izp1,slopejs]*wz
-    xrms   = top.xrmsz[iz,slopejs]*(1.-wz)   + top.xrmsz[izp1,slopejs]*wz
-    vzbar  = top.vzbarz[iz,slopejs]*(1.-wz)  + top.vzbarz[izp1,slopejs]*wz
+    if iz == nzmmnt: izp1 = iz
+    xxpbarz = getattrwithsuffix(object,'xxpbarz',suffix)
+    xbarz   = getattrwithsuffix(object,'xbarz',suffix)
+    xpbarz  = getattrwithsuffix(object,'xpbarz',suffix)
+    xrmsz   = getattrwithsuffix(object,'xrmsz',suffix)
+    vzbarz  = getattrwithsuffix(object,'vzbarz',suffix)
+    xxpbar = xxpbarz[iz,slopejs]*(1.-wz) + xxpbarz[izp1,slopejs]*wz
+    xbar   = xbarz[iz,slopejs]*(1.-wz)   + xbarz[izp1,slopejs]*wz
+    xpbar  = xpbarz[iz,slopejs]*(1.-wz)  + xpbarz[izp1,slopejs]*wz
+    xrms   = xrmsz[iz,slopejs]*(1.-wz)   + xrmsz[izp1,slopejs]*wz
+    vzbar  = vzbarz[iz,slopejs]*(1.-wz)  + vzbarz[izp1,slopejs]*wz
     slope = (xxpbar-xbar*xpbar)/xrms**2
     xoffset = xbar
     xpoffset = xpbar
     vz = vzbar
   elif iw <= 0:
-    slope = ((top.xxpbar[0,slopejs]-top.xbar[0,slopejs]*top.xpbar[0,slopejs])/
-             top.xrms[0,slopejs]**2)
-    xoffset = top.xbar[0,slopejs]
-    xpoffset = top.xpbar[0,slopejs]
-    vz = top.vzbar[0,slopejs]
+    xxpbar = getattrwithsuffix(object,'xxpbar',suffix)
+    xbar   = getattrwithsuffix(object,'xbar',suffix)
+    xpbar  = getattrwithsuffix(object,'xpbar',suffix)
+    xrms   = getattrwithsuffix(object,'xrms',suffix)
+    vzbar  = getattrwithsuffix(object,'vzbar',suffix)
+    slope = ((xxpbar[0,slopejs]-xbar[0,slopejs]*xpbar[0,slopejs])/
+             xrms[0,slopejs]**2)
+    xoffset = xbar[0,slopejs]
+    xpoffset = xpbar[0,slopejs]
+    vz = vzbar[0,slopejs]
   else:
     slope = 0.
     xoffset = 0.
@@ -744,31 +806,47 @@ The product slope*vz gives the slope for y-vy.
   zc = kwdict.get('zc')
   js = kwdict.get('js',-1)
   slopejs = kwdict.get('slopejs',js)
+  suffix = kwdict.get('suffix','')
+  object = kwdict.get('object',top)
+  zwindows = getattrwithsuffix(object,'zwindows',suffix)
   if zl is not None and zu is not None: zc = 0.5*(zl + zu)
-  if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
+  if iw > 0: zc = 0.5*(zwindows[0,iw]+zwindows[1,iw])
   if zc is not None:
-    iz = nint(floor((zc - w3d.zmmin)/w3d.dz))
-    wz = (zc - w3d.zmmin)/w3d.dz - iz
+    zmmntmin = getattrwithsuffix(object,'zmmntmin',suffix)
+    dzm = getattrwithsuffix(object,'dzm',suffix)
+    iz = nint(floor((zc - zmmntmin)/dzm))
+    wz =            (zc - zmmntmin)/dzm - iz
   else:
     wz = 0.
-  if 0 <= iz <= w3d.nz:
+  nzmmnt = getattrwithsuffix(object,'nzmmnt',suffix)
+  if 0 <= iz <= nzmmnt:
     izp1 = iz + 1
-    if iz == w3d.nz: izp1 = iz
-    yypbar = top.yypbarz[iz,slopejs]*(1.-wz) + top.yypbarz[izp1,slopejs]*wz
-    ybar   = top.ybarz[iz,slopejs]*(1.-wz)   + top.ybarz[izp1,slopejs]*wz
-    ypbar  = top.ypbarz[iz,slopejs]*(1.-wz)  + top.ypbarz[izp1,slopejs]*wz
-    yrms   = top.yrmsz[iz,slopejs]*(1.-wz)   + top.yrmsz[izp1,slopejs]*wz
-    vzbar  = top.vzbarz[iz,slopejs]*(1.-wz)  + top.vzbarz[izp1,slopejs]*wz
+    if iz == nzmmnt: izp1 = iz
+    yypbarz = getattrwithsuffix(object,'yypbarz',suffix)
+    ybarz   = getattrwithsuffix(object,'ybarz',suffix)
+    ypbarz  = getattrwithsuffix(object,'ypbarz',suffix)
+    yrmsz   = getattrwithsuffix(object,'yrmsz',suffix)
+    vzbarz  = getattrwithsuffix(object,'vzbarz',suffix)
+    yypbar = yypbarz[iz,slopejs]*(1.-wz) + yypbarz[izp1,slopejs]*wz
+    ybar   = ybarz[iz,slopejs]*(1.-wz)   + ybarz[izp1,slopejs]*wz
+    ypbar  = ypbarz[iz,slopejs]*(1.-wz)  + ypbarz[izp1,slopejs]*wz
+    yrms   = yrmsz[iz,slopejs]*(1.-wz)   + yrmsz[izp1,slopejs]*wz
+    vzbar  = vzbarz[iz,slopejs]*(1.-wz)  + vzbarz[izp1,slopejs]*wz
     slope = (yypbar-ybar*ypbar)/yrms**2
     yoffset = ybar
     ypoffset = ypbar
     vz = vzbar
   elif iw <= 0:
-    slope = ((top.yypbar[0,slopejs]-top.ybar[0,slopejs]*top.ypbar[0,slopejs])/
-             top.yrms[0,slopejs]**2)
-    yoffset = top.ybar[0,slopejs]
-    ypoffset = top.ypbar[0,slopejs]
-    vz = top.vzbar[0,slopejs]
+    yypbar = getattrwithsuffix(object,'yypbar',suffix)
+    ybar   = getattrwithsuffix(object,'ybar',suffix)
+    ypbar  = getattrwithsuffix(object,'ypbar',suffix)
+    yrms   = getattrwithsuffix(object,'yrms',suffix)
+    vzbar  = getattrwithsuffix(object,'vzbar',suffix)
+    slope = ((yypbar[0,slopejs]-ybar[0,slopejs]*ypbar[0,slopejs])/
+             yrms[0,slopejs]**2)
+    yoffset = ybar[0,slopejs]
+    ypoffset = ypbar[0,slopejs]
+    vz = vzbar[0,slopejs]
   else:
     slope = 0.
     yoffset = 0.
@@ -778,14 +856,22 @@ The product slope*vz gives the slope for y-vy.
 #-------------------------------------------------------------------------
 def getvzrange(kwdict={}):
   "Returns a tuple containg the Vz range for plots"
-  if (top.vzrng != 0.):
-    vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-    vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
+  suffix = kwdict.get('suffix','')
+  object = kwdict.get('object',top)
+  vzrng  = getattrwithsuffix(object,'vzrng',suffix)
+  if (vzrng != 0.):
+    vtilt  = getattrwithsuffix(object,'vtilt',suffix)
+    vbeam  = getattrwithsuffix(object,'vbeam',suffix)
+    vzshift  = getattrwithsuffix(object,'vzshift',suffix)
+    vzmax = (1. + vtilt)*vbeam*(1.+vzrng) - vzshift
+    vzmin = (1. - vtilt)*vbeam*(1.-vzrng) - vzshift
   else:
     js = kwdict.get('js',-1)
     slopejs = kwdict.get('slopejs',js)
-    vzmax = top.vzmaxp[slopejs] + 0.1*(top.vzmaxp[slopejs]-top.vzminp[slopejs])
-    vzmin = top.vzminp[slopejs] - 0.1*(top.vzmaxp[slopejs]-top.vzminp[slopejs])
+    vzminp  = getattrwithsuffix(object,'vzminp',suffix)
+    vzmaxp  = getattrwithsuffix(object,'vzmaxp',suffix)
+    vzmax = vzmaxp[slopejs] + 0.1*(vzmaxp[slopejs]-vzminp[slopejs])
+    vzmin = vzminp[slopejs] - 0.1*(vzmaxp[slopejs]-vzminp[slopejs])
   return (vzmin,vzmax)
 
 
