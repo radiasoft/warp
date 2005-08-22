@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.30 2005/08/22 08:22:56 dave Exp $"
+particles_version = "$Id: particles.py,v 1.31 2005/08/22 10:49:52 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -760,7 +760,7 @@ The product slope*vz gives the slope for x-vx.
     xpbar  = xpbarz[iz,slopejs]*(1.-wz)  + xpbarz[izp1,slopejs]*wz
     xrms   = xrmsz[iz,slopejs]*(1.-wz)   + xrmsz[izp1,slopejs]*wz
     vzbar  = vzbarz[iz,slopejs]*(1.-wz)  + vzbarz[izp1,slopejs]*wz
-    slope = (xxpbar-xbar*xpbar)/xrms**2
+    slope = (xxpbar-xbar*xpbar)/dvnz(xrms)**2
     xoffset = xbar
     xpoffset = xpbar
     vz = vzbar
@@ -771,7 +771,7 @@ The product slope*vz gives the slope for x-vx.
     xrms   = getattrwithsuffix(object,'xrms',suffix)
     vzbar  = getattrwithsuffix(object,'vzbar',suffix)
     slope = ((xxpbar[0,slopejs]-xbar[0,slopejs]*xpbar[0,slopejs])/
-             xrms[0,slopejs]**2)
+             dvnz(xrms[0,slopejs])**2)
     xoffset = xbar[0,slopejs]
     xpoffset = xpbar[0,slopejs]
     vz = vzbar[0,slopejs]
@@ -832,7 +832,7 @@ The product slope*vz gives the slope for y-vy.
     ypbar  = ypbarz[iz,slopejs]*(1.-wz)  + ypbarz[izp1,slopejs]*wz
     yrms   = yrmsz[iz,slopejs]*(1.-wz)   + yrmsz[izp1,slopejs]*wz
     vzbar  = vzbarz[iz,slopejs]*(1.-wz)  + vzbarz[izp1,slopejs]*wz
-    slope = (yypbar-ybar*ypbar)/yrms**2
+    slope = (yypbar-ybar*ypbar)/dvnz(yrms)**2
     yoffset = ybar
     ypoffset = ypbar
     vz = vzbar
@@ -843,7 +843,7 @@ The product slope*vz gives the slope for y-vy.
     yrms   = getattrwithsuffix(object,'yrms',suffix)
     vzbar  = getattrwithsuffix(object,'vzbar',suffix)
     slope = ((yypbar[0,slopejs]-ybar[0,slopejs]*ypbar[0,slopejs])/
-             yrms[0,slopejs]**2)
+             dvnz(yrms[0,slopejs])**2)
     yoffset = ybar[0,slopejs]
     ypoffset = ypbar[0,slopejs]
     vz = vzbar[0,slopejs]
@@ -972,68 +972,5 @@ Adds particles to the simulation
     if top.it%top.nhist == 0:
       top.jhist = top.jhist - 1
       savehist(top.time)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
