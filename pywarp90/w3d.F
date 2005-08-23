@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.218 $, $Date: 2005/08/19 16:30:04 $
+c@(#) File W3D.F, version $Revision: 3.219 $, $Date: 2005/08/23 07:29:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4947,7 +4947,9 @@ c=============================================================================
 
 #ifdef MPIPARALLEL
 
+      call parallelbarrier()
       call sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      call parallelbarrier()
       call getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
 
 #endif
