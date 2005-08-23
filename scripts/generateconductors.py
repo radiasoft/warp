@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.112 2005/07/28 21:34:31 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.113 2005/08/23 11:41:49 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -338,20 +338,24 @@ Should never be directly created by the user.
     # get extents
     mins = self.getextent().mins
     maxs = self.getextent().maxs
+    try:
+      g=self.grid
+    except:
+      g=w3d
     # compute mins and maxs
-    xmin = max(w3d.xmmin,mins[0])
-    ymin = max(w3d.ymmin,mins[1])
-    zmin = max(w3d.zmmin,mins[2])
-    xmax = min(w3d.xmmax,maxs[0])
-    ymax = min(w3d.ymmax,maxs[1])
-    zmax = min(w3d.zmmax,maxs[2])
+    xmin = max(g.xmmin,mins[0])
+    ymin = max(g.ymmin,mins[1])
+    zmin = max(g.zmmin,mins[2])
+    xmax = min(g.xmmax,maxs[0])
+    ymax = min(g.ymmax,maxs[1])
+    zmax = min(g.zmmax,maxs[2])
     # get box boundaries at nodes locations
-    ixmin = max(0,      int((xmin-w3d.xmmin)/w3d.dx))
-    iymin = max(0,      int((ymin-w3d.ymmin)/w3d.dy))
-    izmin = max(0,      int((zmin-w3d.zmmin)/w3d.dz))   
-    ixmax = min(w3d.nx, int((xmax-w3d.xmmin)/w3d.dx)+1)
-    iymax = min(w3d.ny, int((ymax-w3d.ymmin)/w3d.dy)+1)
-    izmax = min(w3d.nz, int((zmax-w3d.zmmin)/w3d.dz)+1)
+    ixmin = max(0,      int((xmin-g.xmmin)/g.dx))
+    iymin = max(0,      int((ymin-g.ymmin)/g.dy))
+    izmin = max(0,      int((zmin-g.zmmin)/g.dz))   
+    ixmax = min(g.nx, int((xmax-g.xmmin)/g.dx)+1)
+    iymax = min(g.ny, int((ymax-g.ymmin)/g.dy)+1)
+    izmax = min(g.nz, int((zmax-g.zmmin)/g.dz)+1)
 
     if me>0:izmin=max(izmin,2)
 
@@ -361,53 +365,53 @@ Should never be directly created by the user.
     # accumulate charge due to integral form of Gauss Law
     q = 0.
     if izmaxp>=izminp:
-     if 0<=izmax<w3d.nz:   
-       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
-                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*w3d.dx*w3d.dy/w3d.dz
-     if 0<izmin<=w3d.nz:    
-       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
-                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*w3d.dx*w3d.dy/w3d.dz
-     if 0<=ixmax<w3d.nx: 
-       q += sum(sum(w3d.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -w3d.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
-     if 0<ixmin<=w3d.nx:     
-       q += sum(sum(w3d.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -w3d.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
-     if 0<=iymax<w3d.ny:
-       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
-                   -w3d.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
-     if 0<iymin<=w3d.ny:     
-       q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
-                   -w3d.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
+     if 0<=izmax<g.nz:   
+       q += sum(sum(g.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
+                   -g.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*g.dx*g.dy/g.dz
+     if 0<izmin<=g.nz:    
+       q += sum(sum(g.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
+                   -g.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*g.dx*g.dy/g.dz
+     if 0<=ixmax<g.nx: 
+       q += sum(sum(g.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -g.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*g.dz*g.dy/g.dx
+     if 0<ixmin<=g.nx:     
+       q += sum(sum(g.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -g.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*g.dz*g.dy/g.dx
+     if 0<=iymax<g.ny:
+       q += sum(sum(g.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
+                   -g.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*g.dx*g.dz/g.dy
+     if 0<iymin<=g.ny:     
+       q += sum(sum(g.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
+                   -g.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*g.dx*g.dz/g.dy
 
      # compute total charge inside volume
-     qc = sum(sum(sum(w3d.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*w3d.dx*w3d.dy*w3d.dz
+     qc = sum(sum(sum(g.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*g.dx*g.dy*g.dz
 
      # correct for symmetries
-     if w3d.l4symtry:
+     if g.l4symtry:
       q=q*4.
       qc=qc*4.
-     elif w3d.l2symtry:
+     elif g.l2symtry:
       q=q*2.
       qc=qc*2.
-     if w3d.l2symtry or w3d.l4symtry:
+     if g.l2symtry or g.l4symtry:
       if iymin==0:
-        if 0<=izmax< w3d.nz: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmaxp+1] -w3d.phi[ixmin:ixmax+1,iymin,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
-        if 0< izmin<=w3d.nz: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izminp-1] -w3d.phi[ixmin:ixmax+1,iymin,izminp] )*w3d.dx*w3d.dy/w3d.dz
-        if 0<=ixmax< w3d.nx: q -= 2.*sum(w3d.phi[ixmax+1,iymin,izminp:izmaxp+1]-w3d.phi[ixmax,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
-        if 0< ixmin<=w3d.nx: q -= 2.*sum(w3d.phi[ixmin-1,iymin,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
-        qc -= 2.*sum(sum(w3d.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
-     if w3d.l4symtry:
+        if 0<=izmax< g.nz: q -= 2.*sum(g.phi[ixmin:ixmax+1,iymin,izmaxp+1] -g.phi[ixmin:ixmax+1,iymin,izmaxp] )*g.dx*g.dy/g.dz
+        if 0< izmin<=g.nz: q -= 2.*sum(g.phi[ixmin:ixmax+1,iymin,izminp-1] -g.phi[ixmin:ixmax+1,iymin,izminp] )*g.dx*g.dy/g.dz
+        if 0<=ixmax< g.nx: q -= 2.*sum(g.phi[ixmax+1,iymin,izminp:izmaxp+1]-g.phi[ixmax,iymin,izminp:izmaxp+1])*g.dz*g.dy/g.dx
+        if 0< ixmin<=g.nx: q -= 2.*sum(g.phi[ixmin-1,iymin,izminp:izmaxp+1]-g.phi[ixmin,iymin,izminp:izmaxp+1])*g.dz*g.dy/g.dx
+        qc -= 2.*sum(sum(g.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*g.dx*g.dy*g.dz
+     if g.l4symtry:
       if ixmin==0:
-        if 0<=izmax< w3d.nz: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmaxp+1] -w3d.phi[ixmin,iymin:iymax+1,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
-        if 0< izmin<=w3d.nz: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izminp-1] -w3d.phi[ixmin,iymin:iymax+1,izminp] )*w3d.dx*w3d.dy/w3d.dz
-        if 0<=iymax< w3d.ny: q -= 2.*sum(w3d.phi[ixmin,iymax+1,izminp:izmaxp+1]-w3d.phi[ixmin,iymax,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
-        if 0< iymin<=w3d.ny: q -= 2.*sum(w3d.phi[ixmin,iymin-1,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
-        qc -= 2.*sum(sum(w3d.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
+        if 0<=izmax< g.nz: q -= 2.*sum(g.phi[ixmin,iymin:iymax+1,izmaxp+1] -g.phi[ixmin,iymin:iymax+1,izmaxp] )*g.dx*g.dy/g.dz
+        if 0< izmin<=g.nz: q -= 2.*sum(g.phi[ixmin,iymin:iymax+1,izminp-1] -g.phi[ixmin,iymin:iymax+1,izminp] )*g.dx*g.dy/g.dz
+        if 0<=iymax< g.ny: q -= 2.*sum(g.phi[ixmin,iymax+1,izminp:izmaxp+1]-g.phi[ixmin,iymax,izminp:izmaxp+1])*g.dx*g.dz/g.dy
+        if 0< iymin<=g.ny: q -= 2.*sum(g.phi[ixmin,iymin-1,izminp:izmaxp+1]-g.phi[ixmin,iymin,izminp:izmaxp+1])*g.dx*g.dz/g.dy
+        qc -= 2.*sum(sum(g.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*g.dx*g.dy*g.dz
       if ixmin==0 and iymin==0:
-        if 0<=izmax< w3d.nz: q += (w3d.phi[ixmin,iymin,izmaxp+1]-w3d.phi[ixmin,iymin,izmaxp])*w3d.dx*w3d.dy/w3d.dz
-        if 0< izmin<=w3d.nz: q += (w3d.phi[ixmin,iymin,izminp-1]-w3d.phi[ixmin,iymin,izminp])*w3d.dx*w3d.dy/w3d.dz
-        qc += sum(w3d.rho[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dy*w3d.dz
+        if 0<=izmax< g.nz: q += (g.phi[ixmin,iymin,izmaxp+1]-g.phi[ixmin,iymin,izmaxp])*g.dx*g.dy/g.dz
+        if 0< izmin<=g.nz: q += (g.phi[ixmin,iymin,izminp-1]-g.phi[ixmin,iymin,izminp])*g.dx*g.dy/g.dz
+        qc += sum(g.rho[ixmin,iymin,izmin:izmax+1])*g.dx*g.dy*g.dz
     else:
       qc = 0.
       
@@ -421,12 +425,12 @@ Should never be directly created by the user.
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
       window(0)
-      zmin=w3d.zmmin+izmin*w3d.dz
-      zmax=w3d.zmmin+izmax*w3d.dz
-      xmin=w3d.xmmin+ixmin*w3d.dx
-      xmax=w3d.xmmin+ixmax*w3d.dx
-      ymin=w3d.ymmin+iymin*w3d.dy
-      ymax=w3d.ymmin+iymax*w3d.dy
+      zmin=g.zmmin+izmin*g.dz
+      zmax=g.zmmin+izmax*g.dz
+      xmin=g.xmmin+ixmin*g.dx
+      xmax=g.xmmin+ixmax*g.dx
+      ymin=g.ymmin+iymin*g.dy
+      ymax=g.ymmin+iymax*g.dy
       pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=blue,width=3)
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=blue,width=3)
