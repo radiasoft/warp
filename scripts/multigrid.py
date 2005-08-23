@@ -25,7 +25,7 @@ class MultiGrid(object):
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
-  __flaginputs__ = {'forcesymmetries':1}
+  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
   def __init__(self,**kw):
     self.solvergeom = w3d.XYZgeom
@@ -224,6 +224,8 @@ class MultiGrid(object):
                             self.nx,self.ny,self.nz,self.rho,
                             me,self.nslaves,
                           top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
+    if self.lzerorhointerior:
+      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
 
   def makerhoperiodic_parallel(self):
     tag = 70
