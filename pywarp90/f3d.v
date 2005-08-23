@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.129 $, $Date: 2005/06/22 18:14:38 $
+#@(#) File F3D.V, version $Revision: 3.130 $, $Date: 2005/08/23 11:34:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.129 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.130 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -274,7 +274,10 @@ cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
            phi:real,mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
-
+cond_zerorhointerior(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
+                     rho:real)
+    subroutine
+    # Sets rho to zero inside conductor points.
 
 *********** MultigridBE3d dump:
 multigridbe3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
