@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.94 $, $Date: 2005/07/19 23:21:09 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.95 $, $Date: 2005/08/23 11:36:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1769,6 +1769,28 @@ c Set conductor points to the desired potential.
         iy = interior%indx(1,ic)
         iz = interior%indx(2,ic)
         res(ix,iy,iz) = 0.
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine cond_zerorhointerior(interior,nx,ny,nz,rho)
+      use ConductorInteriorTypemodule
+      type(ConductorInteriorType):: interior
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+ 
+c Set rho to zero inside conductor points.
+
+      integer(ISZ):: ic,ix,iy,iz
+
+!$OMP DO
+      do ic = interior%istart(0),interior%istart(1)-1
+        ix = interior%indx(0,ic)
+        iy = interior%indx(1,ic)
+        iz = interior%indx(2,ic)
+        rho(ix,iy,iz) = 0.
       enddo
 !$OMP END DO
 
