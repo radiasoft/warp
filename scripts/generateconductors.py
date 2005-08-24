@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.113 2005/08/23 11:41:49 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.114 2005/08/24 08:35:02 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1925,11 +1925,16 @@ Cylinders class for a list of cylinders
     self.length = length
     self.theta  = theta
     self.phi    = phi
+    # --- Find the first input argument that has a length > 1. This is done
+    # --- since some of the inputs may be arrays of length 1, which is OK,
+    # --- but does not mean that there is only 1 cone. Some other input
+    # --- may be a longer array. getkwlist is used so that the xcent etc.
+    # --- are included.
     kwlist = self.getkwlist()
     for k in kwlist:
       try:
         self.ncylinders = len(k)
-        break
+        if self.ncylinders > 1: break
       except TypeError:
         pass
 
@@ -2493,11 +2498,16 @@ Cones
     self.length = length
     self.theta = theta
     self.phi = phi
+    # --- Find the first input argument that has a length > 1. This is done
+    # --- since some of the inputs may be arrays of length 1, which is OK,
+    # --- but does not mean that there is only 1 cone. Some other input
+    # --- may be a longer array. getkwlist is used so that the xcent etc.
+    # --- are included.
     kwlist = self.getkwlist()
     for k in kwlist:
       try:
         self.ncones = len(k)
-        break
+        if self.ncones > 1: break
       except TypeError:
         pass
 
