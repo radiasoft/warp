@@ -195,6 +195,8 @@ class MultiGrid(object):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
+    if self.lzerorhointerior:
+      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -224,8 +226,6 @@ class MultiGrid(object):
                             self.nx,self.ny,self.nz,self.rho,
                             me,self.nslaves,
                           top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
-    if self.lzerorhointerior:
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
 
   def makerhoperiodic_parallel(self):
     tag = 70
