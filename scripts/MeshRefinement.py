@@ -551,6 +551,7 @@ the top level grid.
           self.pointrhotorhocopy(lrootonly)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
+    self.zerorhointerior()
 
   def propagaterhobetweenpatches(self,depositallparticles):
       self.accumulaterhofromsiblings()
@@ -559,6 +560,11 @@ the top level grid.
         #self.gatherrhofromchildren_reversed()
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
+
+  def zerorhointerior(self):
+      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
+      for child in self.children:
+        child.zerorhointerior()
 
   def createrhospecies(self,lrootonly=0):
     self.rhospecies = {}
@@ -1203,7 +1209,7 @@ Sets phi on the boundaries, using the values from the parent grid
     """
 Fetches the E field. This should only be called at the root level grid.
     """
-    if w3d.api_xlf2 is true:
+    if w3d.api_xlf2:
       w3d.xfsapi=top.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
       w3d.yfsapi=top.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
       w3d.zfsapi=top.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
