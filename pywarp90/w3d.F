@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.219 $, $Date: 2005/08/23 07:29:09 $
+c@(#) File W3D.F, version $Revision: 3.220 $, $Date: 2005/09/01 09:39:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4391,7 +4391,8 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ),allocatable:: moff(:), indx(:,:)
+      integer(ISZ):: moff(0:7)
+      integer(ISZ),allocatable:: indx(:,:)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
       integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
