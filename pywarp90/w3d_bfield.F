@@ -1,11 +1,51 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_SELFB.F, version $Revision: 1.5 $, $Date: 2005/09/01 07:31:40 $
+c@(#) File W3D_BFIELD.F, version $Revision: 1.6 $, $Date: 2005/09/01 10:47:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
 c  density.
 c  David P. Grote, LLNL, (510)423-7194
+c=============================================================================
+      module w3d_bfield_interfaces
+      interface
+
+      subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
+     &                  q,wght,depos,l2symtry,l4symtry)
+      use BFieldGridTypemodule
+      type(BFieldGridType):: bfield
+      integer(ISZ):: np
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
+      character(8):: depos
+      logical(ISZ):: l2symtry,l4symtry
+      end subroutine setj3d
+
+      subroutine setb3d(bfield,np,xp,yp,zp,zgrid,bx,by,bz,l2symtry,l4symtry)
+      use BFieldGridTypemodule
+      type(BFieldGridType):: bfield
+      integer(ISZ):: np
+      real(kind=8):: zgrid
+      real(kind=8),target:: xp(np),yp(np),zp(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+      logical(ISZ):: l2symtry,l4symtry
+      end subroutine setb3d
+
+      subroutine fetchafrompositions3d(np,xp,yp,zp,zgrid,bfield,
+     &                                 l2symtry,l4symtry)
+      use BFieldGridTypemodule
+      integer(ISZ):: np
+      real(kind=8):: zgrid
+      real(kind=8),target:: xp(np),yp(np),zp(np)
+      real(kind=8):: a(0:2,np)
+      type(BFieldGridType):: bfield
+      logical(ISZ):: l2symtry,l4symtry
+      end subroutine fetchafrompositions3d
+
+      end interface
+      end module w3d_bfield_interfaces
 c=============================================================================
       subroutine init_bfieldsolver(bfstype)
       use GlobalVars
@@ -79,6 +119,7 @@ c=============================================================================
       use Particles
       use BFieldGrid
       use GridBoundary3d
+      use w3d_bfield_interfaces
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -1399,6 +1440,7 @@ c=============================================================================
       use InGen3d
       use BFieldGrid
       use FieldSolveAPI
+      use w3d_bfield_interfaces
       integer(ISZ):: is,n
       real(kind=8),target:: x(n),y(n),z(n),bx(n),by(n),bz(n)
 
@@ -1449,6 +1491,7 @@ c=============================================================================
       use InGen3d
       use Picglb
       use FieldSolveAPI
+      use w3d_bfield_interfaces
       integer(ISZ):: n
       real(kind=8),target:: x(n),y(n),z(n),a(0:2,n)
 
