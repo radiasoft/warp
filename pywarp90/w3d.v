@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.199 $, $Date: 2005/08/23 11:37:20 $
+#@(#) File W3D.V, version $Revision: 3.200 $, $Date: 2005/09/01 07:32:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.199 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.200 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -354,7 +354,10 @@ zmmin  real [m] /0./ # Z lower limit of mesh
 zmmax  real [m] /0./ # Z upper limit of mesh
 zmminglobal real [m] # Global value of zmmin
 zmmaxglobal real [m] # Global value of zmmax
-bounds(0:5) integer # Boundary conditions on grid surfaces
+bounds(0:5) integer  # Boundary conditions on grid surfaces
+lcylindrical logical /.false./ # When true, signifies that cylindrical
+                               # coordinates are being used, which means
+                               # that 0 is r, 1 is theta, and 2 is z.
 
 j(0:2,0:nx,0:ny,0:nz) _real # Current density
 b(0:2,0:nx,0:ny,0:nz) _real # B field, calculated from B = del cross A
@@ -400,8 +403,8 @@ fetchafrompositions3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,
 getbfroma3d(bfield:BFieldGridType)
              subroutine #
 setj3d(bfield:BFieldGridType,j1d:real,np:integer,xp:real,yp:real,zp:real,
-       zgrid:real,uxp:real,uyp:real,uzp:real,q:real,wght:real,depos:string,
-       l2symtry:logical,l4symtry:logical)
+       zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,wght:real,
+       depos:string,l2symtry:logical,l4symtry:logical)
              subroutine # Computes current density
 getjforfieldsolve()
              subroutine #
