@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.41 $, $Date: 2005/08/04 00:53:09 $
+#@(#) File FRZ.V, version $Revision: 3.42 $, $Date: 2005/09/01 07:33:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.41 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.42 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -126,6 +126,9 @@ nb_iters         integer      # actual number of iterations used for a solve
 *********** FRZmgrid_ptrs dump:
 basegrid _GRIDtype  # primary grid for RZ solver
 
+*********** BWorkRZ dump:
+bworkgrid _GRIDtype  # Working grid for the RZ B field solver
+
 *********** InjectVars_eq dump:
 # variables and functions needed for getting voltage risetime from assumption of 
 # constant injection (works with inj_d=2).
@@ -158,6 +161,9 @@ multigridrzf(iwhich:integer,phi:real,rho:real,nx:integer,nz:integer) subroutine
          # solution is calculatedd at each level using a multigrid procedure 
          # and used as an approximated solution to start the calculation at 
          # the next level)
+solve_mgridrz(grid:GRIDtype,accuracy:real,fromup:logical) subroutine
+         # Deeper interface to the RZ multigrid solver. This is called by
+         # multigridrzf.
 setmglevels_rz(grid:GRIDtype) subroutine
          # set mglevels in f3d arrays from RZ solver structure
 get_cond_rz(grid:integer) subroutine
@@ -383,6 +389,7 @@ transit_max_r integer
 transit_min_z integer
 transit_max_z integer
 mgparam real
+lmagnetostatic logical /.false./ # When true, includes extra terms in the Poisson equations for Ar and Atheta
 bndfirst _BNDtype
 bndlast  _BNDtype
 next _GRIDtype
