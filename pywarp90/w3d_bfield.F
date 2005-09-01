@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_SELFB.F, version $Revision: 1.4 $, $Date: 2005/08/19 18:44:21 $
+c@(#) File W3D_SELFB.F, version $Revision: 1.5 $, $Date: 2005/09/01 07:31:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -8,9 +8,12 @@ c  density.
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
       subroutine init_bfieldsolver(bfstype)
+      use GlobalVars
       use BFieldGrid
       use InMesh3d
+      use InGen3d, only: l2symtry,l4symtry,solvergeom,RZgeom
       use Fields3d, only: nzfull
+      use GridBoundary3d
 
       integer(ISZ):: bfstype
 
@@ -27,10 +30,39 @@ c=============================================================================
       if (bfield%nz == 0) bfield%nz = nz
       if (bfield%nzfull == 0) bfield%nzfull = nzfull
       if (bfield%dx == 0) bfield%dx = (bfield%xmmax-bfield%xmmin)/bfield%nx
-      if (bfield%dy == 0) bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
+      if (bfield%dy == 0 .and. bfield%ny > 0) bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
       if (bfield%dz == 0) bfield%dz = (bfield%zmmax-bfield%zmmin)/bfield%nz
       call BFieldGridTypechange(bfield)
 
+      bfield%bounds(0) = boundxy
+      bfield%bounds(1) = boundxy
+      bfield%bounds(2) = boundxy
+      bfield%bounds(3) = boundxy
+      bfield%bounds(4) = bound0
+      bfield%bounds(5) = boundnz
+      if (l2symtry) then
+        bfield%bounds(2) = neumann
+        if (boundxy == 2) bfield%bounds(3) = neumann
+      else if (l4symtry) then
+        bfield%bounds(0) = neumann
+        bfield%bounds(2) = neumann
+        if (boundxy == 2) bfield%bounds(1) = neumann
+        if (boundxy == 2) bfield%bounds(3) = neumann
+      endif
+
+      bfield%lcylindrical = (solvergeom == RZgeom)
+      if (bfield%lcylindrical) then
+        bfield%dy = bfield%dx
+        if (l4symtry .or. (bfield%lcylindrical .and. bfield%xmmin==0.)) then
+          bfield%bounds(0) = neumann
+        endif
+        bfield%bounds(2) = dirichlet
+        bfield%bounds(3) = dirichlet
+      endif
+
+      call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
+     &                    bfield%xmmin,bfield%zmmin,bfield%bounds,
+     &                    bfield%a,bfield%j)
       call bvp3d(1,bfstype)
 
       return
@@ -65,23 +97,17 @@ c --- all of the particles, otherwise the specified particles are loaded.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Ensure that the jp array is setup properly
-      if(solvergeom==XYZgeom) then
+      if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call setupbfieldsforparticles3d(ns,ndts,it,bfield,bfieldp)
       endif
 
 c     --- zero jp if requested
       if (lzero) then
-        if (solvergeom == XYZgeom) then
+        if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
           call zeroarry(bfieldp%j,
      &                  3*(bfieldp%nx+1)*(bfieldp%ny+1)*(bfieldp%nz+1))
         endif
-c       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
-c    &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_j()
       end if
-
-c     --- change AMR grid if necessary
-c     if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
-c    &   solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
 
 c     --- set limits on loop over species
       if (is_i == -1) then
@@ -102,90 +128,58 @@ c     --- (will be changed if necessary in the loop)
 c     --- loop over species
       do is=is1,is2
 
-c        --- For the AMR/Chombo version, all of the lost particles must be
-c        --- cleared out.
-c        if (solvergeom == AMRgeom) call clearpart(is,1)
+c       --- For the AMR/Chombo version, all of the lost particles must be
+c       --- cleared out.
+c       if (solvergeom == AMRgeom) call clearpart(is,1)
 
-c        --- get loop limits for particles if needed
-         if (ins_i == -1) ins_u = ins(is)
-         if (nps_i == -1) nps_u = nps(is)
+c       --- get loop limits for particles if needed
+        if (ins_i == -1) ins_u = ins(is)
+        if (nps_i == -1) nps_u = nps(is)
 
-c        --- Scale the weight, sw, by the time step scale size. This only
-c        --- makes sense for steady-state and slice modes. In time-dependent
-c        --- mode, it is assumed that dtscale has not been changed from 1.
-         swtmp = sw(is)*dtscale(is)
+c       --- Scale the weight, sw, by the time step scale size. This only
+c       --- makes sense for steady-state and slice modes. In time-dependent
+c       --- mode, it is assumed that dtscale has not been changed from 1.
+        swtmp = sw(is)*dtscale(is)
 
-         if(solvergeom==XYZgeom) then
-           ipmin = ins_u
-           if (nps_u > 0) then
-             if (ndts(is)>1) then
-c              --- This code would be better if it were in setj3d, but since
-c              --- jp is passed into it, this must be done here.
-               if (mod(it+1,ndts(is))==0) then
-c                 --- If this species is being advanced this step, then
-c                 --- deposit its j into jptmp.
-                  jpcopy => bfieldp%j
-                  bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                  bfieldp%j = 0.
-               else
-c                 --- If this species is not being advanced this step, then
-c                 --- just add its saved jptmp into jp.
-                  bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                  cycle
-                end if
-             end if
-             call setj3d(bfieldp,bfieldp%j,
-     &                   nps_u,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                   uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),sq(is),
-     &                   swtmp,depos,l2symtry,l4symtry)
-             if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
-c               --- If this species is being advanced this step, then restore
-c               --- jp and copy its j into jp.
-                bfieldp%j => jpcopy
-                bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-             end if
-           endif
-         elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-           print*,"Error: Self magnetic field not support with solvergeom=RZgeom or XZgeom"
-c          --- loop over particle blocks
-c          do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-c            ip = min(nparpgrp, ins_u+nps_u-ipmin)
-c            if(wpid==0) then
-c              call jweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
-c    &                          sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
-c            else
-c              call jweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,wpid),ip,
-c    &                          sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
-c            end if
-c          enddo
-         elseif(solvergeom==Zgeom) then
-           print*,"Error: Self magnetic field not support with solvergeom=Zgeom"
-c          --- loop over particle blocks
-c          do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-c             ip = min(nparpgrp, ins_u+nps_u-ipmin)
-c             call jweightz(zp(ipmin),ip,sq(is)*swtmp,nz,dz,zgrid)
-c          enddo
-         elseif(solvergeom==Rgeom) then
-           print*,"Error: Self magnetic field not support with solvergeom=Rgeom"
-c          --- loop over particle blocks
-c          do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-c             ip = min(nparpgrp, ins_u+nps_u-ipmin)
-c             if(wpid==0) then
-c               call jweightr(xp(ipmin),yp(ipmin),ip,sq(is)*swtmp,nx,dx,xmmin)
-c             else
-c               call jweightr_weights(xp(ipmin),yp(ipmin),pid(ipmin,wpid),ip,
-c    &                                  sq(is)*swtmp,nx,dx,xmmin)
-c             end if
-c          enddo
-         elseif(solvergeom==AMRgeom) then
-           print*,"Error: Self magnetic field not support with solvergeom=AMRgeom"
-c          --- loop over particle blocks
-c          do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-c             ip = min(nparpgrp, ins_u+nps_u-ipmin)
-c             call cho_setj3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-c    &                        sq(is),swtmp,is,(ipmin-ins(is))/nparpgrp)
-c          enddo
-         end if
+        if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+          ipmin = ins_u
+          if (nps_u > 0) then
+            if (ndts(is)>1) then
+c             --- This code would be better if it were in setj3d, but since
+c             --- jp is passed into it, this must be done here.
+              if (mod(it+1,ndts(is))==0) then
+c                --- If this species is being advanced this step, then
+c                --- deposit its j into jptmp.
+                 jpcopy => bfieldp%j
+                 bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                 bfieldp%j = 0.
+              else
+c                --- If this species is not being advanced this step, then
+c                --- just add its saved jptmp into jp.
+                 bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                 cycle
+               end if
+            end if
+            call setj3d(bfieldp,bfieldp%j,
+     &                  nps_u,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                  uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),sq(is),
+     &                  swtmp,depos,l2symtry,l4symtry)
+            if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
+c             --- If this species is being advanced this step, then restore
+c             --- jp and copy its j into jp.
+              bfieldp%j => jpcopy
+              bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+            end if
+          endif
+        elseif(solvergeom==XZgeom) then
+          print*,"Error: Self magnetic field not support with solvergeom=RZgeom or XZgeom"
+        elseif(solvergeom==Zgeom) then
+          print*,"Error: Self magnetic field not support with solvergeom=Zgeom"
+        elseif(solvergeom==Rgeom) then
+          print*,"Error: Self magnetic field not support with solvergeom=Rgeom"
+        elseif(solvergeom==AMRgeom) then
+          print*,"Error: Self magnetic field not support with solvergeom=AMRgeom"
+        end if
       enddo
 
       if (solvergeom == XYZgeomMR) then
@@ -234,59 +228,71 @@ c     end if
 
       a => bfield%a
 
-      if (bfield%bounds(0) == periodic .or. bfield%bounds(1) == periodic) then
-        a(:,-1,:,:)   = a(:,bfield%nx-1,:,:)
-        a(:,bfield%nx,:,:)   = a(:,0,:,:)
-        a(:,bfield%nx+1,:,:) = a(:,1,:,:)
-      else
-        if (bfield%bounds(0) == neumann) then
-          a(:,-1,:,:) = a(:,1,:,:)
-        elseif (bfield%bounds(0) == dirichlet) then
-          a(:,-1,:,:) = a(:,0,:,:)
-        endif
-        if (bfield%bounds(1) == neumann) then
-          a(:,bfield%nx+1,:,:) = a(:,bfield%nx-1,:,:)
-        elseif (bfield%bounds(1) == dirichlet) then
-          a(:,bfield%nx+1,:,:) = a(:,bfield%nx,:,:)
-        endif
-      endif
-
-      if (bfield%bounds(2) == periodic .or. bfield%bounds(3) == periodic) then
-        a(:,:,-1,:)   = a(:,:,bfield%ny-1,:)
-        a(:,:,bfield%ny,:)   = a(:,:,0,:)
-        a(:,:,bfield%ny+1,:) = a(:,:,1,:)
-      else
-        if (bfield%bounds(2) == neumann) then
-          a(:,:,-1,:) = a(:,:,1,:)
-        elseif (bfield%bounds(2) == dirichlet) then
-          a(:,:,-1,:) = a(:,:,0,:)
-        endif
-        if (bfield%bounds(3) == neumann) then
-          a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny-1,:)
-        elseif (bfield%bounds(3) == dirichlet) then
-          a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny,:)
+c     --- With the cylindrical solver, the guard cells are already set.
+      if (.not. bfield%lcylindrical) then
+        if (bfield%bounds(0) == periodic .or. bfield%bounds(1) == periodic) then
+          a(:,-1,:,:)   = a(:,bfield%nx-1,:,:)
+          a(:,bfield%nx,:,:)   = a(:,0,:,:)
+          a(:,bfield%nx+1,:,:) = a(:,1,:,:)
+        else
+          if (bfield%bounds(0) == neumann) then
+            a(:,-1,:,:) = a(:,1,:,:)
+          elseif (bfield%bounds(0) == dirichlet) then
+            a(:,-1,:,:) = 2.*a(:,0,:,:) - a(:,1,:,:)
+          endif
+          if (bfield%bounds(1) == neumann) then
+            a(:,bfield%nx+1,:,:) = a(:,bfield%nx-1,:,:)
+          elseif (bfield%bounds(1) == dirichlet) then
+            a(:,bfield%nx+1,:,:) = 2.*a(:,bfield%nx,:,:) - a(:,bfield%nx-1,:,:)
+          endif
         endif
       endif
 
-      if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
+      if (bfield%lcylindrical) then
+c       --- In this case, actually ny == 0. This ensures that d/dtheta is zero.
+        a(:,:,-1,:) = a(:,:,0,:)
+        a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny,:)
+      else
+        if (bfield%bounds(2) == periodic .or. bfield%bounds(3) == periodic) then
+          a(:,:,-1,:)   = a(:,:,bfield%ny-1,:)
+          a(:,:,bfield%ny,:)   = a(:,:,0,:)
+          a(:,:,bfield%ny+1,:) = a(:,:,1,:)
+        else
+          if (bfield%bounds(2) == neumann) then
+            a(:,:,-1,:) = a(:,:,1,:)
+          elseif (bfield%bounds(2) == dirichlet) then
+            a(:,:,-1,:) = 2.*a(:,:,0,:) - a(:,:,1,:)
+          endif
+          if (bfield%bounds(3) == neumann) then
+            a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny-1,:)
+          elseif (bfield%bounds(3) == dirichlet) then
+            a(:,:,bfield%ny+1,:) = 2.*a(:,:,bfield%ny,:) - a(:,:,bfield%ny-1,:)
+          endif
+        endif
+      endif
+
+c     --- With the cylindrical solver, the guard cells are already set.
+      if (.not. bfield%lcylindrical) then
+        if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
 #ifdef MPIPARALLEL
-        call getaforfields3d(bfield)
-        call pera3d_slave(bfield)
+          call getaforfields3d(bfield)
+          call pera3d_slave(bfield)
 #else
-        a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
-        a(:,:,:,bfield%nz)   = a(:,:,:,0)
-        a(:,:,:,bfield%nz+1) = a(:,:,:,1)
+          a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
+          a(:,:,:,bfield%nz)   = a(:,:,:,0)
+          a(:,:,:,bfield%nz+1) = a(:,:,:,1)
 #endif
-      else
-        if (bfield%bounds(4) == neumann) then
-          a(:,:,:,-1) = a(:,:,:,1)
-        elseif (bfield%bounds(4) == dirichlet) then
-          a(:,:,:,-1) = a(:,:,:,0)
-        endif
-        if (bfield%bounds(5) == neumann) then
-          a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz-1)
-        elseif (bfield%bounds(5) == dirichlet) then
-          a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz)
+        else
+          if (bfield%bounds(4) == neumann) then
+            a(:,:,:,-1) = a(:,:,:,1)
+          elseif (bfield%bounds(4) == dirichlet) then
+            a(:,:,:,-1) = 2.*a(:,:,:,0) - a(:,:,:,1)
+          endif
+          if (bfield%bounds(5) == neumann) then
+            a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz-1)
+          elseif (bfield%bounds(5) == dirichlet) then
+            a(:,:,:,bfield%nz+1) = 2.*a(:,:,:,bfield%nz) - a(:,:,:,bfield%nz-1)
+          endif
         endif
       endif
 
@@ -377,11 +383,16 @@ c=============================================================================
       type(BFieldGridType):: bfield
       integer(ISZ):: np
       real(kind=8):: zgrid
-      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8),target:: xp(np),yp(np),zp(np)
       real(kind=8):: bx(np),by(np),bz(np)
       logical(ISZ):: l2symtry,l4symtry
 
 c  Sets magnetic field for particles
+
+c     --- Temp arrays to hold particle data
+c     --- These are needed when lcylindrical is true, in which case x = r and
+c     --- y = 0.
+      real(kind=8),pointer:: x(:),y(:),z(:),bxtemp(:)
 
       integer(ISZ):: ip,i,j,k
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
@@ -389,6 +400,18 @@ c  Sets magnetic field for particles
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (bfield%lcylindrical) then
+c       --- Allocate and set the temporary particle arrays which will hold
+c       --- the radius.
+        allocate(x(np),y(np),bxtemp(np))
+        x = sqrt(xp**2 + yp**2)
+        y = 0.
+      else
+        x => xp
+        y => yp
+      endif
+      z => zp
 
 c  Evaluation of B, vectorized over particles
       tdxi = 1./(2.*bfield%dx)
@@ -401,13 +424,13 @@ c  Evaluation of B, vectorized over particles
       if (.not. (l2symtry .or. l4symtry)) then
         do ip = 1, np
 
-          i = (xp(ip) - bfield%xmmin) * dxi
-          j = (yp(ip) - bfield%ymmin) * dyi
-          k = (zp(ip) - zgrid - bfield%zmmin) * dzi
+          i = (x(ip) - bfield%xmmin) * dxi
+          j = (y(ip) - bfield%ymmin) * dyi
+          k = (z(ip) - zgrid - bfield%zmmin) * dzi
 
-          u1 = (xp(ip) - bfield%xmmin) * dxi - i
-          v1 = (yp(ip) - bfield%ymmin) * dyi - j
-          w1 = (zp(ip) - zgrid - bfield%zmmin) * dzi - k
+          u1 = (x(ip) - bfield%xmmin) * dxi - i
+          v1 = (y(ip) - bfield%ymmin) * dyi - j
+          w1 = (z(ip) - zgrid - bfield%zmmin) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -453,13 +476,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(xp(ip)) - bfield%xmmin)*dxi
-          j = (abs(yp(ip)) - bfield%ymmin)*dyi
-          k = (zp(ip) - zgrid - bfield%zmmin)*dzi
+          i = (abs(x(ip)) - bfield%xmmin)*dxi
+          j = (abs(y(ip)) - bfield%ymmin)*dyi
+          k = (z(ip) - zgrid - bfield%zmmin)*dzi
 
-          u1 = (abs(xp(ip)) - bfield%xmmin)*dxi - i
-          v1 = (abs(yp(ip)) - bfield%ymmin)*dyi - j
-          w1 = (zp(ip) - zgrid - bfield%zmmin)*dzi - k
+          u1 = (abs(x(ip)) - bfield%xmmin)*dxi - i
+          v1 = (abs(y(ip)) - bfield%ymmin)*dyi - j
+          w1 = (z(ip) - zgrid - bfield%zmmin)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -468,8 +491,8 @@ c       --- special loop symmetry is used
 c         --- Adjust sign of B field for appropriate quadrant.
           xsign = +1.
           ysign = +1.
-          if (xp(ip) < 0.) xsign = sx
-          if (yp(ip) < 0.) ysign = sy
+          if (x(ip) < 0.) xsign = sx
+          if (y(ip) < 0.) ysign = sy
 
           bx(ip) = xsign*(u0*v0*w0*bfield%b(0,i  ,j  ,k  )
      &                  + u1*v0*w0*bfield%b(0,i+1,j  ,k  )
@@ -502,6 +525,15 @@ c         --- Adjust sign of B field for appropriate quadrant.
 
       endif
 
+      if (bfield%lcylindrical) then
+c       --- Transform Br and Btheta into Bx and By
+        y = atan2(yp,xp)
+        bxtemp = bx
+        bx = bx*cos(y) + by*sin(y)
+        by = by*cos(y) - bxtemp*sin(y)
+        deallocate(x,y,bxtemp)
+      endif
+
 !$OMP MASTER
       if (lw3dtimesubs) timesetb3d = timesetb3d + wtime() - substarttime
 !$OMP END MASTER
@@ -514,12 +546,17 @@ c=============================================================================
       use BFieldGridTypemodule
       integer(ISZ):: np
       real(kind=8):: zgrid
-      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8),target:: xp(np),yp(np),zp(np)
       real(kind=8):: a(0:2,np)
       type(BFieldGridType):: bfield
       logical(ISZ):: l2symtry,l4symtry
 
 c  Gets the magnetic vector potential
+
+c     --- Temp arrays to hold particle data
+c     --- These are needed when lcylindrical is true, in which case x = r and
+c     --- y = 0.
+      real(kind=8),pointer:: x(:),y(:),z(:),axtemp(:)
 
       integer(ISZ):: ip,i,j,k
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
@@ -527,6 +564,18 @@ c  Gets the magnetic vector potential
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (bfield%lcylindrical) then
+c       --- Allocate and set the temporary particle arrays which will hold
+c       --- the radius.
+        allocate(x(np),y(np),axtemp(np))
+        x = sqrt(xp**2 + yp**2)
+        y = 0.
+      else
+        x => xp
+        y => yp
+      endif
+      z => zp
 
 c  Evaluation of A, vectorized over particles
       tdxi = 1./(2.*bfield%dx)
@@ -539,13 +588,13 @@ c  Evaluation of A, vectorized over particles
       if (.not. (l2symtry .or. l4symtry)) then
         do ip = 1, np
 
-          i = (xp(ip) - bfield%xmmin) * dxi
-          j = (yp(ip) - bfield%ymmin) * dyi
-          k = (zp(ip) - zgrid - bfield%zmmin) * dzi
+          i = (x(ip) - bfield%xmmin) * dxi
+          j = (y(ip) - bfield%ymmin) * dyi
+          k = (z(ip) - zgrid - bfield%zmmin) * dzi
 
-          u1 = (xp(ip) - bfield%xmmin) * dxi - i
-          v1 = (yp(ip) - bfield%ymmin) * dyi - j
-          w1 = (zp(ip) - zgrid - bfield%zmmin) * dzi - k
+          u1 = (x(ip) - bfield%xmmin) * dxi - i
+          v1 = (y(ip) - bfield%ymmin) * dyi - j
+          w1 = (z(ip) - zgrid - bfield%zmmin) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -591,13 +640,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(xp(ip)) - bfield%xmmin)*dxi
-          j = (abs(yp(ip)) - bfield%ymmin)*dyi
-          k = (zp(ip) - zgrid - bfield%zmmin)*dzi
+          i = (abs(x(ip)) - bfield%xmmin)*dxi
+          j = (abs(y(ip)) - bfield%ymmin)*dyi
+          k = (z(ip) - zgrid - bfield%zmmin)*dzi
 
-          u1 = (abs(xp(ip)) - bfield%xmmin)*dxi - i
-          v1 = (abs(yp(ip)) - bfield%ymmin)*dyi - j
-          w1 = (zp(ip) - zgrid - bfield%zmmin)*dzi - k
+          u1 = (abs(x(ip)) - bfield%xmmin)*dxi - i
+          v1 = (abs(y(ip)) - bfield%ymmin)*dyi - j
+          w1 = (z(ip) - zgrid - bfield%zmmin)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -606,8 +655,8 @@ c       --- special loop symmetry is used
 c         --- Adjust sign of B field for appropriate quadrant.
           xsign = +1.
           ysign = +1.
-          if (xp(ip) < 0.) xsign = sx
-          if (yp(ip) < 0.) ysign = sy
+          if (x(ip) < 0.) xsign = sx
+          if (y(ip) < 0.) ysign = sy
 
           a(0,ip) = xsign*(u0*v0*w0*bfield%a(0,i  ,j  ,k  )
      &                   + u1*v0*w0*bfield%a(0,i+1,j  ,k  )
@@ -640,6 +689,15 @@ c         --- Adjust sign of B field for appropriate quadrant.
 
       endif
 
+      if (bfield%lcylindrical) then
+c       --- Transform Br and Btheta into Bx and By
+        y = atan2(yp,xp)
+        axtemp = a(0,:)
+        a(0,:) = a(0,:)*cos(y) + a(1,:)*sin(y)
+        a(1,:) = a(1,:)*cos(y) - axtemp*sin(y)
+        deallocate(x,y,axtemp)
+      endif
+
 !$OMP MASTER
       if (lw3dtimesubs) timefetchafrompositions3d = timefetchafrompositions3d + wtime() - substarttime
 !$OMP END MASTER
@@ -655,7 +713,7 @@ c===========================================================================
 c Calculate the B via finite differences of A.
 
       integer(ISZ):: ix,iy,iz
-      real(kind=8):: tdxi,tdyi,tdzi
+      real(kind=8):: tdxi,tdyi,tdzi,r,ri
       real(kind=8),pointer,dimension(:,:,:,:):: a,b
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -683,6 +741,29 @@ c     --- boundary for each boundary condition begins to get very complicated.
         enddo
       enddo
 
+c     --- When lcylindrical is true, an extra term is needed for Bz
+c     ---      1 d               d Atheta   Atheta
+c     --- Bz = - -- (r Atheta) = -------- + ------
+c     ---      r dr                 dr        r
+c     --- The derivative is calculated above. Note that the d/dtheta terms
+c     --- which appear in Br and Bz are still ignored, assuming axisymmetry.
+c     --- Because of the way the guard cells are set for the y plane,
+c     --- the derivatives there calculated above are zero.
+      if (bfield%lcylindrical) then
+        do ix=0,bfield%nx
+          r = (bfield%xmmin + bfield%dx*ix)
+          if (r > 0.) then
+            ri = 1./r
+            b(2,ix,:,:) = b(2,ix,:,:) + a(1,ix,:,:)*ri
+          else
+c           --- This can be justified by writing out the del cross A in
+c           --- Cartesian coordinates, and using
+c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
+            b(2,ix,:,:) = 2.*b(2,ix,:,:)
+          endif
+        enddo
+      endif
+
 !$OMP MASTER
       if (lw3dtimesubs) timegetbfroma3d = timegetbfroma3d + wtime() - substarttime
 !$OMP END MASTER
@@ -692,14 +773,15 @@ c=============================================================================
       subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
      &                  q,wght,depos,l2symtry,l4symtry)
       use GlobalVars
+      use Constant
       use Subtimers3d
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
       integer(ISZ):: np
       real(kind=8):: zgrid,q,wght
       real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
-      real(kind=8):: xp(np), yp(np), zp(np)
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
       character(8):: depos
       logical(ISZ):: l2symtry,l4symtry
 
@@ -720,16 +802,24 @@ c  j is not zeroed here (to allow handling of blocks of particles
 c  at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,0:nparpgrp-1)
+      integer(ISZ):: moff(0:7), indx(0:7,nparpgrp)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
+      integer(ISZ):: ii(nparpgrp), jj(nparpgrp), kk(nparpgrp)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,0:nparpgrp-1)
+      real(kind=8):: s(0:7,nparpgrp),v(0:2,nparpgrp)
+c     --- Work array holding q*w/cell volume, the charge density per
+c     --- simulation particle. This is primarily needed for the RZ version
+c     --- since the cell volume there has radial dependence.
+      real(kind=8):: cdens(0:bfield%nx)
+c     --- Temp arrays to hold particle data
+c     --- These are needed when lcylindrical is true, in which case x=r, y=0,
+c     --- and vx = vr, and vy = vtheta.
+      real(kind=8),pointer:: x(:),y(:),z(:),ux(:),uy(:),uz(:),gi(:)
 
       real(kind=8),pointer,dimension(:,:,:,:):: j
-      integer(ISZ):: ipmin,nptmp,ip,ix,iy,iz,ind0,m,ir
+      integer(ISZ):: ipmin,nptmp,ix,iy,iz,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
-      real(kind=8):: vx,vy,vz
+      real(kind=8):: xsign,ysign
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -744,30 +834,78 @@ c  Set up offset array for vectorized deposition:
       moff(6) = (bfield%nx+1)*(bfield%ny+1)+bfield%nx+1
       moff(7) = (bfield%nx+1)*(bfield%ny+1)+bfield%nx+2
 
-      g = wght * q / (bfield%dx * bfield%dy * bfield%dz)
       dxi = 1./bfield%dx
       dyi = 1./bfield%dy
       dzi = 1./bfield%dz
-      if (l2symtry) then
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        g = g*0.5
-      elseif (l4symtry) then
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        g = g*0.25
+
+      if (bfield%lcylindrical) then
+        if (bfield%xmmin == 0.) then
+c         --- The factor 0.75 corrects for overdeposition due to linear
+c         --- weighting (for uniform distribution)
+c         --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c         --- and Verboncoeur, J. of Comp. Phys.,
+          cdens(0) = 0.75/(pi*(0.5*0.5*bfield%dx*bfield%dx*bfield%dz))
+        else
+          cdens(0) = 1./(2.*pi*(bfield%xmmin)*bfield%dx*bfield%dz)
+        endif
+        do ix = 1,bfield%nx
+          cdens(ix) = 1./(2.*pi*(ix*bfield%dx+bfield%xmmin)*bfield%dx*bfield%dz)
+        enddo
+        cdens = cdens*wght*q
+      else
+        g = wght * q / (bfield%dx * bfield%dy * bfield%dz)
+        if (l2symtry) then
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          g = g*0.5
+        elseif (l4symtry) then
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          g = g*0.25
+        endif
+        cdens = g
       endif
 
 ! np was made FIRSTPRIVATE to get around a bug when the expression
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
 ! I don't know why it works, but it does.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
-!$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
+!$OMP&                 gyfact,gxfact,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
 !$OMP&FIRSTPRIVATE(np)
+
+      if (bfield%lcylindrical) then
+c       --- Allocate temporary particle arrays which will hold
+c       --- the radius.
+c       --- This is done in the parallel block since each thread must allocate
+c       --- its own work arrays.
+        allocate(x(nparpgrp),y(nparpgrp))
+        allocate(ux(nparpgrp),uy(nparpgrp))
+      endif
 
 !$OMP DO
       do ipmin = 1,np,nparpgrp
         nptmp = min(nparpgrp, np+1-ipmin)
+
+c       --- Setup temporary particle arrays
+        if (bfield%lcylindrical) then
+          x(1:nptmp) = sqrt(xp(ipmin:ipmin+nptmp-1)**2 +
+     &                      yp(ipmin:ipmin+nptmp-1)**2)
+          y(1:nptmp) = atan2(yp(ipmin:ipmin+nptmp-1),
+     &                       xp(ipmin:ipmin+nptmp-1))
+          ux(1:nptmp) = uxp(ipmin:ipmin+nptmp-1)*cos(y(1:nptmp)) +
+     &                  uyp(ipmin:ipmin+nptmp-1)*sin(y(1:nptmp))
+          uy(1:nptmp) = -uxp(ipmin:ipmin+nptmp-1)*sin(y(1:nptmp)) +
+     &                   uyp(ipmin:ipmin+nptmp-1)*cos(y(1:nptmp))
+          y(1:nptmp) = 0.
+        else
+          x => xp(ipmin:ipmin+nptmp-1)
+          y => yp(ipmin:ipmin+nptmp-1)
+          ux => uxp(ipmin:ipmin+nptmp-1)
+          uy => uyp(ipmin:ipmin+nptmp-1)
+        endif
+        z => zp(ipmin:ipmin+nptmp-1)
+        uz => uzp(ipmin:ipmin+nptmp-1)
+        gi => gaminv(ipmin:ipmin+nptmp-1)
 
 c--------------------------------------
 c  Begin vectorized deposition loop
@@ -779,17 +917,16 @@ c     --- vectorized loop to compute indices, weights
 c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           ix  = int((xp(ip) - bfield%xmmin) * dxi)
-           u1 =      (xp(ip) - bfield%xmmin) * dxi - ix
+        do ir = 1,nptmp
+           ix  = int((x(ir) - bfield%xmmin) * dxi)
+           u1 =      (x(ir) - bfield%xmmin) * dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(yp(ip)) - bfield%ymmin)*dyi)
-           v1 =      (abs(yp(ip)) - bfield%ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - bfield%ymmin)*dyi)
+           v1 =      (abs(y(ir)) - bfield%ymmin)*dyi - iy
            v0 = 1. - v1
-           iz  = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (zp(ip) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
            w0 = 1. - w1
-           ir = ip - ipmin
            ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
@@ -801,6 +938,7 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+           g = cdens(ix)
            s(0,ir) = u0 * v0 * w0 * g*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g
@@ -809,22 +947,26 @@ c       --- transverse boundaries.
            s(5,ir) = u1 * v0 * w1 * g*gyfact
            s(6,ir) = u0 * v1 * w1 * g
            s(7,ir) = u1 * v1 * w1 * g
+           ysign = 1.
+           if (y(ir) < 0.) ysign = -1.
+           v(0,ir) = ux(ir)*gi(ir)*ysign
+           v(1,ir) = uy(ir)*gi(ir)
+           v(2,ir) = uz(ir)*gi(ir)
         enddo
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           ix  = int((abs(xp(ip)) - bfield%xmmin)*dxi)
-           u1 =      (abs(xp(ip)) - bfield%xmmin)*dxi - ix
+        do ir = 1,nptmp
+           ix  = int((abs(x(ir)) - bfield%xmmin)*dxi)
+           u1 =      (abs(x(ir)) - bfield%xmmin)*dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(yp(ip)) - bfield%ymmin)*dyi)
-           v1 =      (abs(yp(ip)) - bfield%ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - bfield%ymmin)*dyi)
+           v1 =      (abs(y(ir)) - bfield%ymmin)*dyi - iy
            v0 = 1. - v1
-           iz  = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (zp(ip) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
            w0 = 1. - w1
-           ir = ip - ipmin
            ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
@@ -838,6 +980,7 @@ c       --- transverse boundaries.
            gyfact = 1.
            if (ix == 0 .and. bfield%xmmin == 0.) gxfact = 2.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+           g = cdens(ix)
            s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -846,20 +989,26 @@ c       --- transverse boundaries.
            s(5,ir) = u1 * v0 * w1 * g*gyfact
            s(6,ir) = u0 * v1 * w1 * g*gxfact
            s(7,ir) = u1 * v1 * w1 * g
+           xsign = 1.
+           ysign = 1.
+           if (x(ir) < 0.) xsign = -1.
+           if (y(ir) < 0.) ysign = -1.
+           v(0,ir) = ux(ir)*gi(ir)*ysign
+           v(1,ir) = uy(ir)*gi(ir)*xsign
+           v(2,ir) = uz(ir)*gi(ir)
         enddo
       else
 c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-           ix  = int((xp(ip) - bfield%xmmin) * dxi)
-           u1 =      (xp(ip) - bfield%xmmin) * dxi - ix
+        do ir = 1,nptmp
+           ix  = int((x(ir) - bfield%xmmin) * dxi)
+           u1 =      (x(ir) - bfield%xmmin) * dxi - ix
            u0 = 1. - u1
-           iy  = int((yp(ip) - bfield%ymmin) * dyi)
-           v1 =      (yp(ip) - bfield%ymmin) * dyi - iy
+           iy  = int((y(ir) - bfield%ymmin) * dyi)
+           v1 =      (y(ir) - bfield%ymmin) * dyi - iy
            v0 = 1. - v1
-           iz  = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (zp(ip) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
            w0 = 1. - w1
-           ir = ip - ipmin
            ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
@@ -869,6 +1018,7 @@ c       --- normal loop
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
+           g = cdens(ix)
            s(0,ir) = u0 * v0 * w0 * g
            s(1,ir) = u1 * v0 * w0 * g
            s(2,ir) = u0 * v1 * w0 * g
@@ -877,18 +1027,21 @@ c       --- normal loop
            s(5,ir) = u1 * v0 * w1 * g
            s(6,ir) = u0 * v1 * w1 * g
            s(7,ir) = u1 * v1 * w1 * g
+           v(0,ir) = ux(ir)*gi(ir)
+           v(1,ir) = uy(ir)*gi(ir)
+           v(2,ir) = uz(ir)*gi(ir)
         enddo
       endif
 c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
 !$OMP CRITICAL (CRITICAL_SETJ3D1)
-      do ir = 0,nptmp-1
-        if (uzp(ir+ipmin) /= 0.) then
+      do ir = 1,nptmp
+        if (uz(ir) /= 0.) then
           do m = 0, 7
-             ind0 = 3.*indx(m,ir)
-             j1d(ind0  ) = j1d(ind0  ) + s(m,ir)*uxp(ir+ipmin)*gaminv(ir+ipmin)
-             j1d(ind0+1) = j1d(ind0+1) + s(m,ir)*uyp(ir+ipmin)*gaminv(ir+ipmin)
-             j1d(ind0+2) = j1d(ind0+2) + s(m,ir)*uzp(ir+ipmin)*gaminv(ir+ipmin)
+             ind0 = 3*indx(m,ir)
+             j1d(ind0  ) = j1d(ind0  ) + s(m,ir)*v(0,ir)
+             j1d(ind0+1) = j1d(ind0+1) + s(m,ir)*v(1,ir)
+             j1d(ind0+2) = j1d(ind0+2) + s(m,ir)*v(2,ir)
           enddo
         endif
       enddo
@@ -903,19 +1056,19 @@ c  Begin main loop over species
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - bfield%xmmin) * dxi)
-          u1     =     (xp(ip) - bfield%xmmin) * dxi - ii(ir)
+        do ir = 1,nptmp
+          ii(ir) = int((x(ir) - bfield%xmmin) * dxi)
+          u1     =     (x(ir) - bfield%xmmin) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - bfield%ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - bfield%ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - bfield%ymmin)*dyi)
+          v1     =     (abs(y(ir)) - bfield%ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gyfact = 1.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+          g = cdens(ii(ir))
           s(0,ir) = u0 * v0 * w0 * g*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g
@@ -924,23 +1077,28 @@ c     --- vectorized loop to compute indices, weights
           s(5,ir) = u1 * v0 * w1 * g*gyfact
           s(6,ir) = u0 * v1 * w1 * g
           s(7,ir) = u1 * v1 * w1 * g
+          ysign = 1.
+          if (y(ir) < 0.) ysign = -1.
+          v(0,ir) = ux(ir)*gi(ir)*ysign
+          v(1,ir) = uy(ir)*gi(ir)
+          v(2,ir) = uz(ir)*gi(ir)
         enddo
       elseif (l4symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((abs(xp(ip)) - bfield%xmmin)*dxi)
-          u1     =     (abs(xp(ip)) - bfield%xmmin)*dxi - ii(ir)
+        do ir = 1,nptmp
+          ii(ir) = int((abs(x(ir)) - bfield%xmmin)*dxi)
+          u1     =     (abs(x(ir)) - bfield%xmmin)*dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - bfield%ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - bfield%ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - bfield%ymmin)*dyi)
+          v1     =     (abs(y(ir)) - bfield%ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gxfact = 1.
           gyfact = 1.
           if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxfact = 2.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+          g = cdens(ii(ir))
           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -949,20 +1107,27 @@ c     --- vectorized loop to compute indices, weights
           s(5,ir) = u1 * v0 * w1 * g*gyfact
           s(6,ir) = u0 * v1 * w1 * g*gxfact
           s(7,ir) = u1 * v1 * w1 * g
+          xsign = 1.
+          ysign = 1.
+          if (x(ir) < 0.) xsign = -1.
+          if (y(ir) < 0.) ysign = -1.
+          v(0,ir) = ux(ir)*gi(ir)*ysign
+          v(1,ir) = uy(ir)*gi(ir)*xsign
+          v(2,ir) = uz(ir)*gi(ir)
         enddo
       else
 c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - bfield%xmmin) * dxi)
-          u1     =     (xp(ip) - bfield%xmmin) * dxi - ii(ir)
+        do ir = 1,nptmp
+          ii(ir) = int((x(ir) - bfield%xmmin) * dxi)
+          u1     =     (x(ir) - bfield%xmmin) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((yp(ip) - bfield%ymmin) * dyi)
-          v1     =     (yp(ip) - bfield%ymmin) * dyi - jj(ir)
+          jj(ir) = int((y(ir) - bfield%ymmin) * dyi)
+          v1     =     (y(ir) - bfield%ymmin) * dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
+          g = cdens(ii(ir))
           s(0,ir) = u0 * v0 * w0 * g
           s(1,ir) = u1 * v0 * w0 * g
           s(2,ir) = u0 * v1 * w0 * g
@@ -971,43 +1136,43 @@ c       --- normal loop
           s(5,ir) = u1 * v0 * w1 * g
           s(6,ir) = u0 * v1 * w1 * g
           s(7,ir) = u1 * v1 * w1 * g
+          v(0,ir) = ux(ir)*gi(ir)
+          v(1,ir) = uy(ir)*gi(ir)
+          v(2,ir) = uz(ir)*gi(ir)
         enddo
       endif
 c     --- scalar loop does the actual deposition
       j => bfield%j
 !$OMP CRITICAL (CRITICAL_SETJ3D2)
-      do ir = 0, nptmp-1
-         if (uzp(ir+ipmin) /= 0) then
+      do ir = 1, nptmp
+         if (uz(ir) /= 0) then
          ix = ii(ir)
          iy = jj(ir)
          iz = kk(ir)
-         vx = uxp(ir+ipmin)*gaminv(ir+ipmin)
-         vy = uyp(ir+ipmin)*gaminv(ir+ipmin)
-         vz = uzp(ir+ipmin)*gaminv(ir+ipmin)
-         j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + s(0,ir)*vx
-         j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + s(1,ir)*vx
-         j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + s(2,ir)*vx
-         j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + s(3,ir)*vx
-         j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + s(4,ir)*vx
-         j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + s(5,ir)*vx
-         j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + s(6,ir)*vx
-         j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + s(7,ir)*vx
-         j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + s(0,ir)*vy
-         j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + s(1,ir)*vy
-         j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + s(2,ir)*vy
-         j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + s(3,ir)*vy
-         j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + s(4,ir)*vy
-         j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + s(5,ir)*vy
-         j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + s(6,ir)*vy
-         j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + s(7,ir)*vy
-         j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + s(0,ir)*vz
-         j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + s(1,ir)*vz
-         j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + s(2,ir)*vz
-         j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + s(3,ir)*vz
-         j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + s(4,ir)*vz
-         j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + s(5,ir)*vz
-         j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + s(6,ir)*vz
-         j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + s(7,ir)*vz
+         j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + s(0,ir)*v(0,ir)
+         j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + s(1,ir)*v(0,ir)
+         j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + s(2,ir)*v(0,ir)
+         j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + s(3,ir)*v(0,ir)
+         j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + s(4,ir)*v(0,ir)
+         j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + s(5,ir)*v(0,ir)
+         j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + s(6,ir)*v(0,ir)
+         j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + s(7,ir)*v(0,ir)
+         j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + s(0,ir)*v(1,ir)
+         j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + s(1,ir)*v(1,ir)
+         j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + s(2,ir)*v(1,ir)
+         j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + s(3,ir)*v(1,ir)
+         j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + s(4,ir)*v(1,ir)
+         j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + s(5,ir)*v(1,ir)
+         j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + s(6,ir)*v(1,ir)
+         j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + s(7,ir)*v(1,ir)
+         j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + s(0,ir)*v(2,ir)
+         j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + s(1,ir)*v(2,ir)
+         j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + s(2,ir)*v(2,ir)
+         j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + s(3,ir)*v(2,ir)
+         j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + s(4,ir)*v(2,ir)
+         j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + s(5,ir)*v(2,ir)
+         j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + s(6,ir)*v(2,ir)
+         j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + s(7,ir)*v(2,ir)
         endif
       enddo
 !$OMP END CRITICAL (CRITICAL_SETJ3D2)
@@ -1016,6 +1181,11 @@ c     --- scalar loop does the actual deposition
 
       enddo
 !$OMP END DO
+
+      if (bfield%lcylindrical) then
+        deallocate(x,y)
+        deallocate(ux,uy)
+      endif
 
 !$OMP END PARALLEL
 
@@ -1052,13 +1222,13 @@ c       --- If jp is not associated with j, then copy the data.
 
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+      if(solvergeom==XZgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=RZgeom or XZgeom"
 c       call getjforfieldsolverz(nx,nz,j)
 c     else if(solvergeom==Zgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
 c       call getjforfieldsolvez(nz,j)
-      elseif (solvergeom==XYZgeom) then
+      elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call getjforfieldsolve3d(bfield,bfieldp)
       end if
 
@@ -1115,7 +1285,10 @@ c The setup of jptmp is skipped is ns == -1.
       bfieldp%ymmax = bfield%ymmax
       bfieldp%zmmin = bfield%zmmin
       bfieldp%zmmax = bfield%zmmax
+      bfieldp%zmminglobal = bfield%zmminglobal
+      bfieldp%zmmaxglobal = bfield%zmmaxglobal
       bfieldp%bounds = bfield%bounds
+      bfieldp%lcylindrical = bfield%lcylindrical
 
 c     --- If either jp of bp are not associated or either does not have
 c     --- the correct dimensions as given by nxj, etc, something 
@@ -1317,7 +1490,8 @@ c       --- setting up of jptmp.
 
 #ifndef MPIPARALLEL
 
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR .or.
+     &   solvergeom==RZgeom) then
 c       --- If Bp is not associated with B, then copy the data.
         if (.not. associated(bfield%b,bfieldp%b)) then
           if (bfieldp%nx == bfield%nx .and.
@@ -1337,11 +1511,11 @@ c       --- If Bp is not associated with B, then copy the data.
 
 c     --- Distribute B among the processes so each has B in its
 c     --- particle domain.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+      if(solvergeom==XZgeom .or. solvergeom==Zgeom) then
 c       call getbforparticlesrz()
 c      else if(solvergeom==Zgeom) then
 c        call getbforparticlesz()
-      elseif (solvergeom==XYZgeom) then
+      elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call getbforparticles3d(bfield,bfieldp)
       end if
 #endif
@@ -1433,6 +1607,8 @@ c       --- jtemp is pointed to atemp just to give it a non-null value.
         allocate(jtemp(0:bfield%nx,0:bfield%ny,0:bfield%nz))
       endif
 
+      bfield%j = bfield%j*mu0*eps0
+
 c     --- Note that the arrays being passed in are not contiguous, which means
 c     --- that copies are being done.
 c     --- If only initialization is being done (iwhich==1) then the bvp3d_work
@@ -1447,19 +1623,12 @@ c     --- though they should never be needed during initialization.
           atemp = bfield%a(id,0:bfield%nx,0:bfield%ny,:)
           jtemp = bfield%j(id,:,:,:)
         endif
-        call bvp3d_work(iwhich,bfstype,
-     &                  atemp,jtemp,
-     &                  bfield%nx,bfield%ny,bfield%nz,bfield%nzfull,
-     &                  bfield%dx,bfield%dy,bfield%dz,
-     &                  bfield%xmmin,bfield%xmmax,bfield%ymmin,bfield%ymmax,
-     &                  bfield%zmmin,bfield%zmmax,
-     &                  bfield%zmminglobal,bfield%zmmaxglobal,
-     &                  bfield)
-         bfield%a(id,0:bfield%nx,0:bfield%ny,:) = atemp
+        call bvp3d_work(iwhich,bfstype,atemp,jtemp,id,bfield)
+        if (bfstype .ne. 10) bfield%a(id,0:bfield%nx,0:bfield%ny,:) = atemp
       enddo
 
 c     --- Rescale, replacing 1/eps0 with mu0
-      bfield%a = bfield%a*mu0*eps0
+c     bfield%a = bfield%a*mu0*eps0
 
 c     --- This is slightly inefficient in some cases, since for example, the
 c     --- MG solver already takes care of the longitudinal BC's.
@@ -1468,90 +1637,100 @@ c     --- MG solver already takes care of the longitudinal BC's.
       deallocate(atemp)
       if (bfstype > 4) deallocate(jtemp)
 
+      bfield%j = bfield%j/(mu0*eps0)
+
       return
       end
 c=============================================================================
-      subroutine bvp3d_work(iwhich,bfstype,a,j,nx,ny,nz,nzfull,dx,dy,dz,
-     &                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
-     &                      zmminglobal,zmmaxglobal,
-     &                      bfield)
+      subroutine bvp3d_work(iwhich,bfstype,a,j,iaxis,bfield)
       use Subtimers3d
       use BFieldGridTypemodule
       use LatticeInternal, only: linbend
       use Picglb, only: zbeam,zgrid
-      use InGen3d, only: filt,solvergeom,XYZgeomMR,l2symtry,l4symtry
+      use InGen3d, only: filt,solvergeom,XYZgeomMR,RZgeom,l2symtry,l4symtry
       use GridBoundary3d, only: bound0,boundnz,boundxy
-      integer(ISZ):: iwhich,bfstype
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: a(0:nx,0:ny,-1:nz+1),j(0:nx,0:ny,0:nz)
-      real(kind=8):: dx,dy,dz,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax
-      real(kind=8):: zmminglobal,zmmaxglobal
+      integer(ISZ):: iwhich,bfstype,iaxis
       type(BFieldGridType):: bfield
+      real(kind=8):: a(0:bfield%nx,0:bfield%ny,-1:bfield%nz+1)
+      real(kind=8):: j(0:bfield%nx,0:bfield%ny,0:bfield%nz)
 
 c Interface to field solver for magnetic vector potential
 c Note that bfield is passed in to have access to the data and work arrays
 c kxsq, attx, scrtch etc.
 
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
       real(kind=8):: xlen,ylen,zlen
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-
-c LatticeInternal is included to have access to the variable linbend.
-
-      if (solvergeom == XYZgeomMR) bfstype = 12
+      if (bfstype >= 0) then
+        if (solvergeom == RZgeom) bfstype = 10
+        if (solvergeom == XYZgeomMR) bfstype = 12
+      endif
 
       if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
 
-      xlen = xmmax - xmmin
-      ylen = ymmax - ymmin
-      zlen = zmmaxglobal - zmminglobal
+      nx = bfield%nx
+      ny = bfield%ny
+      nz = bfield%nz
+      nzfull = bfield%nzfull
+      dx = bfield%dx
+      dy = bfield%dy
+      dz = bfield%dz
+      xlen = bfield%xmmax - bfield%xmmin
+      ylen = bfield%ymmax - bfield%ymmin
+      zlen = bfield%zmmaxglobal - bfield%zmminglobal
 
       if (bfstype == 0) then
-          call vpois3d(iwhich,a(0,0,0),a(0,0,0),
+        call vpois3d(iwhich,a(0,0,0),a(0,0,0),
+     &               bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &               bfield%attx,bfield%atty,bfield%attz,
+     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &               bfield%scrtch,bfield%xywork,bfield%zwork,
+     &               0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+      elseif (bfstype == 4) then
+        if (iwhich == 1 .or. iwhich == 0) then
+          call vpois3d(1,a(0,0,0),a(0,0,0),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
      &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-      elseif (bfstype == 4) then
-          if (iwhich == 1 .or. iwhich == 0) then
-            call vpois3d(1,a(0,0,0),a(0,0,0),
-     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
-     &                   bfield%attx,bfield%atty,bfield%attz,
-     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
-     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-          endif
-          if (iwhich == -1 .or. iwhich == 0) then
-            call vpois3d(12,a(0,0,0),a(0,0,0),
-     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
-     &                   bfield%attx,bfield%atty,bfield%attz,
-     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
-     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-            call vpois3d(14,a(0,0,0),a(0,0,0),
-     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
-     &                   bfield%attx,bfield%atty,bfield%attz,
-     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
-     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-            call vpois3d(13,a(0,0,0),a(0,0,0),
-     &                   bfield%kxsq,bfield%kysq,bfield%kzsq,
-     &                   bfield%attx,bfield%atty,bfield%attz,
-     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                   bfield%scrtch,bfield%xywork,bfield%zwork,
-     &                   0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-          endif
+        endif
+        if (iwhich == -1 .or. iwhich == 0) then
+          call vpois3d(12,a(0,0,0),a(0,0,0),
+     &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                 bfield%attx,bfield%atty,bfield%attz,
+     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                 bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+          call vpois3d(14,a(0,0,0),a(0,0,0),
+     &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                 bfield%attx,bfield%atty,bfield%attz,
+     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                 bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+          call vpois3d(13,a(0,0,0),a(0,0,0),
+     &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
+     &                 bfield%attx,bfield%atty,bfield%attz,
+     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                 bfield%scrtch,bfield%xywork,bfield%zwork,
+     &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+        endif
 
       elseif (bfstype == 7) then
-          call multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,a,j,bfield%rstar,
-     &                      linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                      xmmin,ymmin,zmmin,zbeam,zgrid)
+        call multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,a,j,bfield%rstar,
+     &                    linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                    bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                    zbeam,zgrid)
 
+      elseif (bfstype == 10) then
+        call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),bfield%j(iaxis,:,0,:),
+     &                    bfield%nx,bfield%nz)
       elseif (bfstype == 12) then
         if (iwhich <= 0) then
           call execuser('fieldsolMR')

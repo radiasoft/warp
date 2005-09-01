@@ -2275,7 +2275,7 @@ return
 END subroutine subrestrict
 
 subroutine restrictlist(unew, uold, rhs, bnd, nxnew, nznew, nxold, nzold, voltfact, dr, dz, &
-                        xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
+                        xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew,lmagnetostatic)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, nxold, nzold
@@ -2285,6 +2285,7 @@ REAL(8), DIMENSION(1:nxold,1:nzold), INTENT(IN) :: rhs
 REAL(8), DIMENSION(1:nxnew+1,1:nznew+1), INTENT(OUT) :: unew
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, voltfact, dr, dz
 REAL(8) :: rapp
+LOGICAL(ISZ):: lmagnetostatic
 
 INTEGER(ISZ) :: nlocs
 INTEGER(ISZ) :: i, ic, jold, kold, j, k, jp, kp
@@ -2323,7 +2324,7 @@ END do
 ALLOCATE(res(nlocs),jlocs(nlocs),klocs(nlocs))
 
 call residbndrzwguard_list(res(1),jlocs(1),klocs(1),nlocs,f=uold(0,0),rhs=rhs(1,1), &
-                           bnd=bnd,nr=nxold,nz=nzold,dr=dr,dz=dz,rmin=0._8,voltfact=voltfact)
+                           bnd=bnd,nr=nxold,nz=nzold,dr=dr,dz=dz,rmin=0._8,voltfact=voltfact,lmagnetostatic=lmagnetostatic)
 
 do kold = 1, nzold+1
   z = zminold + (kold-1)*dzold
@@ -2918,7 +2919,7 @@ jold = nxold+1
 return
 END subroutine interp_bndwguard
 
-subroutine relaxbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd)
+subroutine relaxbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd, lmagnetostatic)
 ! make a relaxation step. Grid is assumed to have guard cells.
 implicit none
 
@@ -2927,10 +2928,11 @@ REAL(8), INTENT(IN OUT) :: f(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN) :: rhs(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dr, dz, voltfact, mgparam, rmin
 TYPE(BNDtype), INTENT(IN OUT) :: bnd
+LOGICAL(ISZ):: lmagnetostatic
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, lswinit, redblack, iil, iiu, ic, nri, nrf, nzi, nzf
-REAL(8) :: dt, dt0
-REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, cfrhs, r
+REAL(8) :: dt(nr+1), dt0, dttemp
+REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz(nr+1), cfrhs(nr+1), r
 TYPE(CONDtype), POINTER :: c
 
 t_before = wtime()
@@ -2943,25 +2945,32 @@ END if
 ! define CFL
 dt = mgparam/(2._8/dr**2+2._8/dz**2)
 dt0 = mgparam/(4._8/dr**2+2._8/dz**2)
+
+! --- Modify dt to include extra term needed for magnetostatic solver for Ar and Atheta
+! --- Note that the cf variables are all arrays now, which may slightly slow down the code.
+if (lmagnetostatic) then
+  do j = 2, nr+1
+    r = rmin+REAL(j-1,8)*dr
+    dt(j) = mgparam/(2._8/dr**2+2._8/dz**2 + 1._8/r**2)
+  enddo
+endif
+
 ! define coefficients
 cfz = dt / dz**2
-cf0 = 1._8-2._8*dt/dr**2-2._8*cfz
+!cf0 = 1._8-2._8*dt/dr**2-2._8*cfz ! 1. - mgparam
+cf0 = 1._8 - mgparam
 cfrhs = dt*inveps0
 do j = 2, nr+1
   r = rmin+REAL(j-1,8)*dr
-  cfrp(j) = dt * (1._8+0.5_8*dr/r) / dr**2
-  cfrm(j) = dt * (1._8-0.5_8*dr/r) / dr**2
-!  cfrp(j) = dt * (1._8+0.5_8/REAL(j-1,8)) / dr**2
-!  cfrm(j) = dt * (1._8-0.5_8/REAL(j-1,8)) / dr**2
+  cfrp(j) = dt(j) * (1._8+0.5_8*dr/r) / dr**2
+  cfrm(j) = dt(j) * (1._8-0.5_8*dr/r) / dr**2
+!  cfrp(j) = dt(j) * (1._8+0.5_8/REAL(j-1,8)) / dr**2
+!  cfrm(j) = dt(j) * (1._8-0.5_8/REAL(j-1,8)) / dr**2
 end do
 
 lswinit = 2
-IF(ixlbnd==dirichlet .or. ixlbnd==patchbnd) then
-  nri=2
-else
-  nri=1
-  lswinit = 3-lswinit
-END if
+nri=1
+lswinit = 3-lswinit
 IF(ixrbnd==dirichlet .or. ixrbnd==patchbnd) then
   nrf=nr-1
 else
@@ -2998,29 +3007,48 @@ do redblack = 1, 2
       iil=c%nbbndred+1
       iiu=c%nbbnd
     ENDif
-    do ii = iil, iiu
-      j = c%jj(ii)
-      l = c%kk(ii)
-      IF(j==1) then
-        IF(c%docalc(ii).and.bnd%v(j,l)==v_bnd) &
-        f(j,l) = f(j,l) + mgparam*c%dt(ii)*( &
-                 c%cf0(ii)*f(j,l) &
-               + c%cfxp(ii)*f(j+1,l) &
-               + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
-               + voltfact*(c%phi0xp(ii) &
-               + c%phi0zm(ii)+c%phi0zp(ii)) &
-               + rhs(j,l)*inveps0)
-      else
-        IF(c%docalc(ii).and.bnd%v(j,l)==v_bnd) &
-        f(j,l) = f(j,l) + mgparam*c%dt(ii)*( &
-                 c%cf0(ii)*f(j,l) &
-               + c%cfxp(ii)*f(j+1,l)+c%cfxm(ii)*f(j-1,l) &
-               + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
-               + voltfact*(c%phi0xm(ii)+c%phi0xp(ii) &
-               + c%phi0zm(ii)+c%phi0zp(ii)) &
-               + rhs(j,l)*inveps0)
-      END if
-    ENDDO
+    if (lmagnetostatic) then
+      do ii = iil, iiu
+        j = c%jj(ii)
+        l = c%kk(ii)
+        if ((j-1) > 0 .and. c%docalc(ii) .and. bnd%v(j,l)==v_bnd) then
+          r = rmin+REAL(j-1,8)*dr
+          ! --- The dt is calculated this way so that the c%dt does not need to be modified. The c%dt are also
+          ! --- used in the calculation of Az which does not include the same extra term that appears in the
+          ! --- equations for Ar and Atheta
+          dttemp = mgparam/(1./c%dt(ii) + 1./r**2)
+          f(j,l) = cf0*f(j,l) + dttemp*( &
+                 + c%cfxp(ii)*f(j+1,l)+c%cfxm(ii)*f(j-1,l) &
+                 + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
+                 + voltfact*(c%phi0xm(ii)+c%phi0xp(ii) &
+                 + c%phi0zm(ii)+c%phi0zp(ii)) &
+                 + rhs(j,l)*inveps0)
+        endif
+      enddo
+    else
+      do ii = iil, iiu
+        j = c%jj(ii)
+        l = c%kk(ii)
+        IF(j==1) then
+          IF(c%docalc(ii).and.bnd%v(j,l)==v_bnd) &
+          f(j,l) = f(j,l) + mgparam*c%dt(ii)*( &
+                   c%cf0(ii)*f(j,l) &
+                 + c%cfxp(ii)*f(j+1,l) &
+                 + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
+                 + voltfact*(c%phi0xp(ii) &
+                 + c%phi0zm(ii)+c%phi0zp(ii)) &
+                 + rhs(j,l)*inveps0)
+        else
+          IF(c%docalc(ii).and.bnd%v(j,l)==v_bnd) &
+          f(j,l) = cf0*f(j,l) + mgparam*c%dt(ii)*( &
+                 + c%cfxp(ii)*f(j+1,l)+c%cfxm(ii)*f(j-1,l) &
+                 + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
+                 + voltfact*(c%phi0xm(ii)+c%phi0xp(ii) &
+                 + c%phi0zm(ii)+c%phi0zp(ii)) &
+                 + rhs(j,l)*inveps0)
+        END if
+      ENDDO
+    endif
   END do
   IF(vlocs) then
     IF(redblack==1) THEN !red
@@ -3041,14 +3069,14 @@ do redblack = 1, 2
       else
         f(j,l) = cf0 * f(j,l) &
                + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
-               + cfz*(f(j,l+1)+f(j,l-1)) &
-               + cfrhs*rhs(j,l)
+               + cfz(j)*(f(j,l+1)+f(j,l-1)) &
+               + cfrhs(j)*rhs(j,l)
 
       end if
     end do
   else
     do l = nzi, nzf+1
-      IF(nri==1 .and. jsw==2) then! origin
+      IF(nri==1 .and. jsw==2 .and. ixlbnd==neumann) then! origin
         j = 1
         IF(bnd%v(j,l)==v_vacuum) &
         f(j,l) = (1._8-4._8*dt0/dr**2-2._8*dt0/dz**2) * f(j,l) &
@@ -3060,8 +3088,8 @@ do redblack = 1, 2
         IF(bnd%v(j,l)==v_vacuum) &
           f(j,l) = cf0 * f(j,l) &
                                    + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
-                                   + cfz*(f(j,l+1)+f(j,l-1)) &
-                                   + cfrhs*rhs(j,l)
+                                   + cfz(j)*(f(j,l+1)+f(j,l-1)) &
+                                   + cfrhs(j)*rhs(j,l)
 
       end do
       jsw = 3-jsw
@@ -3093,6 +3121,7 @@ END subroutine relaxbndrzwguard
 
 subroutine relaxbndrzwguard_jump(f,rhs,maxjump,curjump,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd)
 ! make a relaxation step. Grid is assumed to have guard cells.
+! NOTICE - the changes for the magnetostatic solver have not been implemented here!
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: nr, nz, nc, ixlbnd, ixrbnd, izlbnd, izrbnd, curjump
@@ -3701,7 +3730,7 @@ END subroutine relaxbndxzwguard
   end subroutine merge_work
 #endif
 
-subroutine residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact,l_zerolastz, ixrbnd, izlbnd, izrbnd,res)
+subroutine residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact,l_zerolastz, ixrbnd, izlbnd, izrbnd,res,lmagnetostatic)
 ! evaluate residue. Grid is assumed to have guard cells, but residue does not.
 implicit none
 
@@ -3711,7 +3740,7 @@ REAL(8), INTENT(IN) :: rhs(nr+1,nz+1)
 TYPE(BNDtype) :: bnd
 REAL(8), INTENT(IN) :: dr, dz,voltfact, rmin
 REAL(8), DIMENSION(nr+1,nz+1) :: res
-LOGICAL(ISZ) :: l_zerolastz
+LOGICAL(ISZ) :: l_zerolastz,lmagnetostatic
 
 INTEGER(ISZ) :: i, j, l, ii, ic, nrf, nzi, nzf
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, r
@@ -3792,6 +3821,20 @@ else
  end do
 END if
 
+if (lmagnetostatic) then
+  ! --- Add in extra term from the equations for Ar and Atheta
+  ! --- Also, force residual on axis to zero.
+  do l = nzi,nzf+1
+    if (bnd%v(1,l)==v_vacuum) res(1,l) = 0.
+    do j = 2,nrf+1
+      if (bnd%v(j,l)==v_vacuum) then
+        r = rmin+REAL(j-1,8)*dr
+        res(j,l) = res(j,l) - f(j,l)/r**2
+      endif
+    enddo
+  enddo
+endif
+
 do ic = 1, bnd%nb_conductors
   IF(ic==1) then
     c => bnd%cndfirst
@@ -3819,6 +3862,24 @@ do ic = 1, bnd%nb_conductors
                         + rhs(j,l)*inveps0
     END if
   ENDDO
+
+  if (lmagnetostatic) then
+    ! --- Add in extra term from the equations for Ar and Atheta
+    ! --- Also, force residual on axis to zero.
+    do ii = 1, c%nbbnd
+      j = c%jj(ii)
+      l = c%kk(ii)
+      if (bnd%v(j,l)==v_bnd .and. c%docalc(ii)) then
+        if (j==1) then
+          res(j,l) = 0.
+        else
+          r = rmin+REAL(j-1,8)*dr
+          res(j,l) = res(j,l) - f(j,l)/r**2
+        endif
+      endif
+    enddo
+  endif
+
 END do
 
 IF(l_zerolastz) res(:,nz+1) = 0._8
@@ -3841,7 +3902,7 @@ END if
 return
 end subroutine residbndrzwguard
 
-subroutine residbndrzwguard_list(res,jlocs,klocs,nvlocs,f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact)
+subroutine residbndrzwguard_list(res,jlocs,klocs,nvlocs,f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact,lmagnetostatic)
 ! evaluate residue. Grid is assumed to have guard cells, but residue does not.
 implicit none
 
@@ -3852,6 +3913,7 @@ REAL(8), INTENT(IN OUT) :: res(nvlocs)
 INTEGER(ISZ), INTENT(IN OUT), dimension(nvlocs) :: jlocs, klocs
 TYPE(BNDtype) :: bnd
 REAL(8), INTENT(IN) :: dr, dz, voltfact, rmin
+LOGICAL(ISZ):: lmagnetostatic
 
 INTEGER(ISZ) :: i, j, l, ii, ic, nrf, nzi, nzf
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, r
@@ -3887,6 +3949,21 @@ end do
               + rhs(j,l)*inveps0
     END if
   enddo
+
+  if (lmagnetostatic) then
+    ! --- Add in extra term from the equations for Ar and Atheta
+    do ii = 1, bnd%nvlocs
+      j = bnd%vlocs_j(ii)
+      l = bnd%vlocs_k(ii)
+      if (j == 1) then
+        res(ii) = 0.
+      else
+        r = rmin+REAL(j-1,8)*dr
+        res(ii) = res(ii) - f(j,l)/r**2
+      endif
+    enddo
+  endif
+
   i = bnd%nvlocs
 
 do ic = 1, bnd%nb_conductors
@@ -3921,6 +3998,22 @@ do ic = 1, bnd%nb_conductors
       res(i) = 0.
     END if
   ENDDO
+  if (lmagnetostatic) then
+    do ii = 1, c%nbbnd
+      j = c%jj(ii)
+      l = c%kk(ii)
+      IF(c%docalc(ii)) then
+        if (j == 1) then
+          res(ii+i-c%nbbnd) = 0.
+        else
+          r = rmin+REAL(j-1,8)*dr
+          res(ii+i-c%nbbnd) = res(ii+i-c%nbbnd) - f(j,l)/r**2
+        END if
+      else
+        res(ii+i-c%nbbnd) = 0.
+      END if
+    ENDDO
+  END if
 END do
 
 IF(l_mgridrz_debug) then
@@ -4042,7 +4135,8 @@ return
 end function residbndxzwguard
 
 !pgi$r nobounds
-RECURSIVE subroutine mgbndrzwguard(j, u, rhs, bnd, nr, nz, dr, dz, rmin, npre, npost, ncycle, sub, relax_only, npmin, mgparam)
+RECURSIVE subroutine mgbndrzwguard(j, u, rhs, bnd, nr, nz, dr, dz, rmin, npre, npost, ncycle, sub, relax_only, npmin, mgparam,&
+                                   lmagnetostatic)
 ! performs a multigrid cycle. Grid is assumed to have guard cells.
 implicit none
 
@@ -4051,7 +4145,7 @@ REAL(8), DIMENSION(0:nr+2,0:nz+2), INTENT(IN OUT) :: u
 REAL(8), DIMENSION(1:nr+1,1:nz+1), INTENT(IN) :: rhs
 REAL(8) :: dr, dz, mgparam, rmin
 TYPE(BNDtype), pointer :: bnd
-LOGICAL(ISZ), INTENT(IN) :: sub, relax_only
+LOGICAL(ISZ), INTENT(IN) :: sub, relax_only, lmagnetostatic
 
 REAL(8), DIMENSION(:,:), allocatable :: res, v, ressub
 INTEGER(ISZ) :: i,jj,ll
@@ -4078,7 +4172,7 @@ IF(j<=npmin .or. relax_only) then
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -4095,7 +4189,7 @@ else
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -4127,12 +4221,13 @@ else
   res = 0.
   IF(solvergeom==RZgeom) then
     IF(vlocs) then
-      call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+      call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,&
+                        lmagnetostatic)
     else
       allocate(ressub(nr+1,nz+1))
       call residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
               dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
-              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub)
+              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub,lmagnetostatic=lmagnetostatic)
       call subrestrict(res(1,nzresmin), &
                              ressub, &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,bnd%izlbnd,bnd%izrbnd)
@@ -4155,7 +4250,7 @@ else
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
     call mgbndrzwguard(j=j-1, u=v(0,0), rhs=res(1,1), bnd=bnd%next,  &
                        nr=nrnext, nz=nznext, dr=drnext, dz=dznext, rmin=rmin, npre=npre, npost=npost, &
-                       ncycle=ncycle, sub=.TRUE., relax_only=.false., npmin=npmin, mgparam=mgparam)
+                       ncycle=ncycle, sub=.TRUE., relax_only=.false., npmin=npmin, mgparam=mgparam, lmagnetostatic=lmagnetostatic)
     level = j
   end do
   IF(.not.sub) inveps0 = 1./eps0
@@ -4173,7 +4268,7 @@ else
 #endif
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npost,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -4223,7 +4318,7 @@ voltf = 1._8
 inveps0 = 1./eps0
 call residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
                  dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
-                 ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=res)
+                 ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=res,lmagnetostatic=.false.)
 v = 0.
 voltf = 0._8
 inveps0 = 1.
@@ -4233,7 +4328,7 @@ do j = jmax, 1, -1
   IF(j==1) then
     call relaxbndrzwguard(f=v(0,0),rhs=res(1,1), &
                           bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=.false.)
 !    call relaxbndrzwguard_jump(f=v(0,0),rhs=res(1,1), maxjump=maxjump(1,1), curjump=j, &
 !                               bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
 !                               ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -4377,7 +4472,6 @@ subroutine solve_multigridrz(grid,accuracy,l_for_timing)
 use BoltzmannElectrons
 implicit none
 
-
 ! input/output variables
 TYPE(GRIDtype) :: grid
 REAL(8), INTENT(IN) :: accuracy  ! required average accuracy
@@ -4483,7 +4577,7 @@ has_diverged = .false.
       call mgbndrzwguard(j=nlevels,u=grid%phi,rhs=grid%rho,bnd=grid%bndfirst,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          rmin=grid%rmin, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
-                         mgparam=grid%mgparam)
+                         mgparam=grid%mgparam,lmagnetostatic=grid%lmagnetostatic)
       maxerr_old = maxerr
       IF(vlocs) then
         maxerr = 0.
@@ -9903,4 +9997,186 @@ INTEGER(ISZ) :: j,k
   end do
 
 end subroutine sum_neighbors
+
+
+!=============================================================================
+! --- Routines for the RZ B field solver
+subroutine multigridrzb(iwhich,iaxis,u0,rho0,nr0,nz0)
+use BWorkRZ
+USE FRZmgrid,only: mgridrz_accuracy
+use GlobalVars,only: dirichlet
+implicit none
+INTEGER(ISZ), INTENT(IN) :: iwhich, iaxis, nr0, nz0
+REAL(8), INTENT(IN OUT),TARGET :: u0(0:nr0+2,0:nz0+2)
+REAL(8), INTENT(IN OUT),TARGET :: rho0(nr0+1,nz0+1)
+
+integer(ISZ):: ixlbnd
+
+  bworkgrid%phi => u0
+  bworkgrid%rho => rho0
+  ixlbnd = bworkgrid%ixlbnd
+  if (iaxis == 0 .or. iaxis == 1) then
+    bworkgrid%lmagnetostatic = .true.
+    if (bworkgrid%rmin == 0.) then
+      bworkgrid%ixlbnd = dirichlet
+      bworkgrid%phi(1,:) = 0.
+    endif
+  else
+    bworkgrid%lmagnetostatic = .false.
+  endif
+
+  call solve_mgridrz(bworkgrid,mgridrz_accuracy,.true.)
+
+  bworkgrid%ixlbnd = ixlbnd
+
+end subroutine multigridrzb
+
+subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,bounds,u,rho)
+use Constant
+use BWorkRZ
+use multigridrz
+!USE Multigrid3d
+implicit none
+INTEGER(ISZ), INTENT(IN) :: nr, nz
+REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+INTEGER(ISZ):: bounds(0:5)
+REAL(8), INTENT(IN),TARGET :: u(0:nr+2,0:nz+2)
+REAL(8), INTENT(IN),TARGET :: rho(nr+1,nz+1)
+
+INTEGER(ISZ) :: i,j, nzp
+TYPE(GRIDtype), POINTER :: bg
+TYPE(BNDtype), POINTER :: b
+
+! if (lverbose>=1) then
+!   write(o_line,'("Init bworkgrid")')
+!   call remark(trim(o_line))
+! endif
+
+  IF(.not. associated(bworkgrid)) bworkgrid => NewGRIDType()
+  bg => bworkgrid
+
+  inveps0 = 1./eps0
+
+#ifdef MPIPARALLEL
+  workfact = mgridrz_workfact
+  bg%nzp   = nzpslave(my_index)
+  bg%nrpar = nr
+  bg%nzpar = bg%nzp
+#else
+  bg%nzp   = nz
+  bg%nrpar = 0
+  bg%nzpar = 0
+#endif
+! grids_nids=1
+  bg%nr=nr
+  bg%dr=dr
+  bg%rmin=rmin
+  bg%rmax=rmin+nr*dr
+  bg%xmin=rmin
+  bg%xmax=rmin+nr*dr
+  bg%nz=nz
+#ifdef MPIPARALLEL
+!  bg%zminp=zpslmin(my_index)
+  bg%zminp=zpslmin(0)+izpslave(my_index)*dz
+#else
+  bg%zminp=zmin
+#endif
+  bg%dz=dz
+  bg%zmin=zmin
+  bg%zmax=zmin+nz*dz
+  bg%jmin=1
+  bg%jmax=nr+1
+  bg%lmin=1
+  bg%lmax=nr+1
+  bg%nguardx = 1
+  bg%nguardz = 1
+
+  bg%phi => u
+  bg%rho => rho
+#ifdef MPIPARALLEL
+  bg%phip => u
+  bg%rhop => rho
+#endif
+  call GRIDtypeallot(bg)
+  bg%gid=1
+  bg%loc_part=1
+  bg%loc_part_fd=1
+  bg%mgparam = mgridrz_mgparam
+  bg%npre = mgridrz_npre
+  bg%npost = mgridrz_npost
+  bg%ncycles = mgridrz_ncycles
+  bg%ncmax = mgridrz_ncmax
+  bg%npmin = mgridrz_levels_min
+! bg%phi=0.
+! bg%rho=0.
+#ifdef MPIPARALLEL
+! bg%phip=0.
+! bg%rhop=0.
+#endif
+  bg%transit_min_r = 0
+  bg%transit_max_r = 0
+  bg%transit_min_z = 0
+  bg%transit_max_z = 0
+  bg%invdr = 1._8/dr
+  bg%invdz = 1._8/dz
+  IF(solvergeom==RZgeom .or. solvergeom==Rgeom) then
+    ! computes divider by cell volumes to get density
+    IF(bg%rmin==0.) then
+      j = 1
+      ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
+      ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+      ! and Verboncoeur, J. of Comp. Phys.,
+      bg%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr * dz))
+      do j = 2, nr+1
+        bg%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
+      end do
+    else
+      do j = 1, nr+1
+        bg%invvol(j) = 1._8 / (2._8 * pi * (bg%rmin+real(j-1,8)*dr) * dr * dz)
+      end do
+    END if
+    IF(solvergeom==Rgeom) bg%invvol = bg%invvol * dz
+  else ! solvergeom==XZgeom or solvergeom==XYgeom
+    bg%invvol(:) = 1._8 / (dr * dz)
+  END if
+
+  bg%ixlbnd = bounds(0)
+  bg%ixrbnd = bounds(1)
+  bg%izlbnd = bounds(4)
+  bg%izrbnd = bounds(5)
+
+  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+    bg%nlevels=1 ! nlevels XXX
+  else
+    call init_bnd(bg,nr,nz,dr,dz,bg%zmin,bg%zmax)
+    ! bg%nlevels=nlevels XXX
+  END if
+
+!  do i = 1,bg%nlevels, 1
+!    bg%bnd(i)%izlbnd=bg%izlbnd
+!    bg%bnd(i)%izrbnd=bg%izrbnd
+!  END do
+
+  do i = 1, bg%nlevels
+    IF(i==1) then
+      b => bg%bndfirst
+    else
+      b => b%next
+    END if
+    ! v_dirichlet = 3
+    IF(b%izlbnd==dirichlet)  b%v(:,1)      = 3
+    IF(b%izrbnd==dirichlet)  b%v(:,b%nz+1) = 3
+    IF(bg%ixlbnd==dirichlet) b%v(1,:)      = 3
+    IF(bg%ixrbnd==dirichlet) b%v(b%nr+1,:) = 3
+  END do
+  call setmglevels_rz(bg)
+! call mk_grids_ptr()
+
+! if (lverbose>=1) then
+!   write(o_line,'("Exit init_basegrid")')
+!   call remark(trim(o_line))
+! endif
+
+return
+end subroutine init_bworkgrid
 
