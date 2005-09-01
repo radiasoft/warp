@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_BFIELD.F, version $Revision: 1.6 $, $Date: 2005/09/01 10:47:08 $
+c@(#) File W3D_BFIELD.F, version $Revision: 1.7 $, $Date: 2005/09/01 11:42:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -201,10 +201,12 @@ c                --- just add its saved jptmp into jp.
                  cycle
                end if
             end if
-            call setj3d(bfieldp,bfieldp%j,
-     &                  nps_u,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                  uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),sq(is),
-     &                  swtmp,depos,l2symtry,l4symtry)
+            call setj3d(bfieldp,bfieldp%j,nps_u,
+     &                  xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
+     &                  zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                  uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
+     &                  uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
+     &                  sq(is),swtmp,depos,l2symtry,l4symtry)
             if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
 c             --- If this species is being advanced this step, then restore
 c             --- jp and copy its j into jp.
