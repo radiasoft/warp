@@ -15,11 +15,11 @@ toppy.$(SO): top.F dtop.F top.v
 envpy.$(SO): toppy.$(SO) env.F env.v
 	Forthon -a $(FCOMP) $(DEBUG) env
 
-w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_injection.F w3d_interp.F w3d_utilities.F w3d_load.F w3d_bfield.F w3d.v
-	Forthon -a $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_load.F w3d_bfield.F w3d_utilities.F 
+w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_injection.F w3d_interp.F w3d_utilities.F w3d_load.F w3d.v
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_injection.F w3d_interp.F w3d_load.F w3d_utilities.F 
 
-f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_mgrid_be.F f3d_conductors.F util.F fft.F f3d.v
-	Forthon -a $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_mgrid_be.F f3d_conductors.F util.F fft.F
+f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3d.v
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
 	Forthon -a $(FCOMP) $(DEBUG) wxy

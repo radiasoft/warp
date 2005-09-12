@@ -54,8 +54,9 @@ for pkg in warppkgs:
 
 warpobjects = warpobjects + ['dtop.o',
                              'dw3d.o','w3d_injection.o','w3d_interp.o',
-                             'w3d_utilities.o','w3d_load.o','w3d_bfield.o',
+                             'w3d_utilities.o','w3d_load.o',
                              'f3d_mgrid.o','f3d_mgrid_be.o','f3d_conductors.o',
+                             'f3d_bfield.o',
                              'fft.o','util.o',
                              'fxy_mgrid.o',
                              'dwrz.o',
