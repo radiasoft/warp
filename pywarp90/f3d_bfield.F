@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.2 $, $Date: 2005/09/12 07:22:53 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.3 $, $Date: 2005/09/12 18:57:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -55,6 +55,7 @@ c=============================================================================
       use Fields3d, only: nzfull
       use GridBoundary3d
       use Multigrid3d
+      use Conductor3d, only: icndbndy
 
       integer(ISZ):: bfstype
 
