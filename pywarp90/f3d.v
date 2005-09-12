@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.130 $, $Date: 2005/08/23 11:34:21 $
+#@(#) File F3D.V, version $Revision: 3.131 $, $Date: 2005/09/12 07:15:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.130 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.131 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -316,6 +316,117 @@ wnx integer
 wny integer
 wnz integer
 iii(0:wnx,0:wny,0:wnz) _integer
+
+
+%%%%%%%%%%% BFieldGridType:
+nx     integer  /0/  # Number of grid cells in x in B grid
+ny     integer  /0/  # Number of grid cells in y in B grid
+nz     integer  /0/  # Number of grid cells in z in B grid
+nzfull integer  /0/  # Number of grid cells in z in B grid
+dx     real [m] /0./ # x grid cell size in B grid
+dy     real [m] /0./ # y grid cell size in B grid
+dz     real [m] /0./ # z grid cell size in B grid
+xmmin  real [m] /0./ # X lower limit of mesh
+xmmax  real [m] /0./ # X upper limit of mesh
+ymmin  real [m] /0./ # Y lower limit of mesh
+ymmax  real [m] /0./ # Y upper limit of mesh
+zmmin  real [m] /0./ # Z lower limit of mesh
+zmmax  real [m] /0./ # Z upper limit of mesh
+zmminglobal real [m] # Global value of zmmin
+zmmaxglobal real [m] # Global value of zmmax
+
+lcndbndy logical /.true./ # Turns on sub-grid boundaries
+icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
+                          # 1 egun style
+                          # 2 EBC style (non-centered finite-difference)
+laddconductor logical /.false./ # When true, the python function
+                          # calladdconductor is called at the beginning of the
+                          # field solve.
+mgparam(0:2)     real    /1.2/ # Acceleration parameter for multigrid solver
+mgmaxiters(0:2)  integer /100/ # Maximum number of multigrid iterations
+mgmaxlevels(0:2) integer /101/ # Minimum grid size in x-y to coarsen to
+mgiters(0:2)     integer       # Actual number of multigrid iterations
+mgtol(0:2)       real  /1.e-6/ # Absolute tolerance in change in last iteration
+mgerror(0:2)     real          # Maximum error after convergence
+mgform(0:2)      integer /1/   # When 1, MG operates on phi (and rho),
+                          # when 2, MG operates on error (and residual)
+downpasses(0:2)  integer /1/   # Number of downpasses
+uppasses(0:2)    integer /1/   # Number of uppasses
+bounds(0:5) integer  # Boundary conditions on grid surfaces
+
+
+
+lcylindrical logical /.false./ # When true, signifies that cylindrical
+                               # coordinates are being used, which means
+                               # that 0 is r, 1 is theta, and 2 is z.
+
+j(0:2,0:nx,0:ny,0:nz) _real # Current density
+b(0:2,0:nx,0:ny,0:nz) _real # B field, calculated from B = del cross A
+a(0:2,-1:nx+1,-1:ny+1,-1:nz+1) _real
+  # Vector magnetic potential, calculated from del sq A = J
+
+attx(0:nx-1)     _real           # Attenuation factor as fcn. of kx
+atty(0:ny-1)     _real           # Attenuation factor as fcn. of ky
+attz(0:nzfull)   _real           # Attenuation factor as fcn. of kz
+kxsq(0:nx-1)     _real [1/m**2]  # Discrete analog to kx^2/4Pi
+kysq(0:ny-1)     _real [1/m**2]  # Discrete analog to ky^2/4Pi
+kzsq(0:nzfull)   _real [1/m**2]  # Discrete analog to kz^2/4Pi
+
+rstar(-1:nz+1)         _real [m] # Radius of curv of reference orbit
+scrtch(2*nx+2*ny)      _real     # Scratch for fieldsolve
+xywork(2,0:nx,0:ny)    _real     # Work space for transverse FFTs
+zwork(2,0:nx,0:nzfull) _real     # Work space used to optimize vsftz
+
+nsjtmp integer /0/
+jsjtmp(0:nsjtmp-1) _integer /-1/ #
+nsndtsj integer /0/
+jtmp(3,0:nx,0:ny,0:nz,0:nsndtsj-1)  _real
+             # Temporary copy of the current density from the particles.
+
+conductors ConductorType # Default data structure for conductor data
+
+*********** BFieldGrid:
+bfield BFieldGridType
+bfieldp BFieldGridType
+init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
+bfieldsol3d(iwhich) subroutine # Self B-field solver
+loadj3d(ins:integer,nps:integer,is:integer,lzero:logical) 
+             subroutine # Provides a simple interface to the current density
+                        # loading routine setj3d
+setaboundaries3d(bfield:BFieldGridType)
+             subroutine #
+perj3d(j:real,nx:integer,ny:integer,nz:integer,bound0:integer,boundxy:integer)
+             subroutine #
+setb3d(bfield:BFieldGridType,np:integer,xp:real,yp:real,zp:real,zgrid:real,
+       bx:real,by:real,bz:real,l2symtry:logical,l4symtry:logical)
+             subroutine #
+fetchafrompositions3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,
+                      bfield:BFieldGridType,l2symtry:logical,l4symtry:logical)
+             subroutine #
+getbfroma3d(bfield:BFieldGridType)
+             subroutine #
+setj3d(bfield:BFieldGridType,j1d:real,np:integer,xp:real,yp:real,zp:real,
+       zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,wght:real,
+       depos:string,l2symtry:logical,l4symtry:logical)
+             subroutine # Computes current density
+getjforfieldsolve()
+             subroutine #
+getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,
+                    my_index:integer,nslaves:integer,izfsslave:integer,
+                    nzfsslave:integer,izpslave:integer,nzpslave:integer)
+             subroutine #
+setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
+                           bfield:BFieldGridType,bfieldp:BFieldGridType)
+             subroutine #
+fetchb3dfrompositions(is:integer,n:integer,x:real,y:real,z:real,
+                      bx:real,by:real,bz:real)
+             subroutine #
+fetcha(n:integer,x:real,y:real,z:real,a:real)
+             subroutine #
+getbforparticles()
+             subroutine #
+bvp3d(iwhich:integer,bfstype:integer)
+             subroutine #
 
 *********** AMR3droutines:
 gatherrhofromchild(rho:real,nx:integer,ny:integer,nz:integer,
@@ -731,4 +842,21 @@ timemgexchange_phi         real /0./
 timemgexchange_phiperiodic real /0./
 timemgexchange_rho         real /0./
 timeprintarray3d           real /0./
+
+timepera3d                     real /0./
+timeperj3d                     real /0./
+timesetb3d                     real /0./
+timefetchafrompositions3d      real /0./
+timegetbfroma3d                real /0./
+timesetj3d                     real /0./
+timeloadj3d                    real /0./
+timefetchb3dfrompositions      real /0./
+timebfieldsol3d                real /0./
+timebvp3d                      real /0./
+timesumjondomainboundaries     real /0./
+timeperj3d_slave               real /0./
+timegetjforfieldsolve3d        real /0./
+timepera3d_slave               real /0./
+timegetbforparticles3d         real /0./
+timegetaforfields3d            real /0./
 

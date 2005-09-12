@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.200 $, $Date: 2005/09/01 07:32:53 $
+#@(#) File W3D.V, version $Revision: 3.201 $, $Date: 2005/09/12 07:15:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.200 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.201 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -337,93 +337,6 @@ ny_selfe integer /0/ +dump           # Same as ny
 nz_selfe integer /0/ +dump +parallel # Same as nz
 selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
  # calculated from phi via finite difference. Only used when top.efetch = 3
-
-%%%%%%%%%%% BFieldGridType:
-nx     integer  /0/  # Number of grid cells in x in B grid
-ny     integer  /0/  # Number of grid cells in y in B grid
-nz     integer  /0/  # Number of grid cells in z in B grid
-nzfull integer  /0/  # Number of grid cells in z in B grid
-dx     real [m] /0./ # x grid cell size in B grid
-dy     real [m] /0./ # y grid cell size in B grid
-dz     real [m] /0./ # z grid cell size in B grid
-xmmin  real [m] /0./ # X lower limit of mesh
-xmmax  real [m] /0./ # X upper limit of mesh
-ymmin  real [m] /0./ # Y lower limit of mesh
-ymmax  real [m] /0./ # Y upper limit of mesh
-zmmin  real [m] /0./ # Z lower limit of mesh
-zmmax  real [m] /0./ # Z upper limit of mesh
-zmminglobal real [m] # Global value of zmmin
-zmmaxglobal real [m] # Global value of zmmax
-bounds(0:5) integer  # Boundary conditions on grid surfaces
-lcylindrical logical /.false./ # When true, signifies that cylindrical
-                               # coordinates are being used, which means
-                               # that 0 is r, 1 is theta, and 2 is z.
-
-j(0:2,0:nx,0:ny,0:nz) _real # Current density
-b(0:2,0:nx,0:ny,0:nz) _real # B field, calculated from B = del cross A
-a(0:2,-1:nx+1,-1:ny+1,-1:nz+1) _real
-  # Vector magnetic potential, calculated from del sq A = J
-
-attx(0:nx-1)     _real           # Attenuation factor as fcn. of kx
-atty(0:ny-1)     _real           # Attenuation factor as fcn. of ky
-attz(0:nzfull)   _real           # Attenuation factor as fcn. of kz
-kxsq(0:nx-1)     _real [1/m**2]  # Discrete analog to kx^2/4Pi
-kysq(0:ny-1)     _real [1/m**2]  # Discrete analog to ky^2/4Pi
-kzsq(0:nzfull)   _real [1/m**2]  # Discrete analog to kz^2/4Pi
-
-rstar(-1:nz+1)         _real [m] # Radius of curv of reference orbit
-scrtch(2*nx+2*ny)      _real     # Scratch for fieldsolve
-xywork(2,0:nx,0:ny)    _real     # Work space for transverse FFTs
-zwork(2,0:nx,0:nzfull) _real     # Work space used to optimize vsftz
-
-nsjtmp integer /0/
-jsjtmp(0:nsjtmp-1) _integer /-1/ #
-nsndtsj integer /0/
-jtmp(3,0:nx,0:ny,0:nz,0:nsndtsj-1)  _real
-             # Temporary copy of the current density from the particles.
-
-*********** BFieldGrid:
-bfield BFieldGridType
-bfieldp BFieldGridType
-init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
-bfieldsol3d(iwhich) subroutine # Self B-field solver
-loadj3d(ins:integer,nps:integer,is:integer,lzero:logical) 
-             subroutine # Provides a simple interface to the current density
-                        # loading routine setj3d
-setaboundaries3d(bfield:BFieldGridType)
-             subroutine #
-perj3d(j:real,nx:integer,ny:integer,nz:integer,bound0:integer,boundxy:integer)
-             subroutine #
-setb3d(bfield:BFieldGridType,np:integer,xp:real,yp:real,zp:real,zgrid:real,
-       bx:real,by:real,bz:real,l2symtry:logical,l4symtry:logical)
-             subroutine #
-fetchafrompositions3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,
-                      bfield:BFieldGridType,l2symtry:logical,l4symtry:logical)
-             subroutine #
-getbfroma3d(bfield:BFieldGridType)
-             subroutine #
-setj3d(bfield:BFieldGridType,j1d:real,np:integer,xp:real,yp:real,zp:real,
-       zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,wght:real,
-       depos:string,l2symtry:logical,l4symtry:logical)
-             subroutine # Computes current density
-getjforfieldsolve()
-             subroutine #
-getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,
-                    my_index:integer,nslaves:integer,izfsslave:integer,
-                    nzfsslave:integer,izpslave:integer,nzpslave:integer)
-             subroutine #
-setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
-                           bfield:BFieldGridType,bfieldp:BFieldGridType)
-             subroutine #
-fetchb3dfrompositions(is:integer,n:integer,x:real,y:real,z:real,
-                      bx:real,by:real,bz:real)
-             subroutine #
-fetcha(n:integer,x:real,y:real,z:real,a:real)
-             subroutine #
-getbforparticles()
-             subroutine #
-bvp3d(iwhich:integer,bfstype:integer)
-             subroutine #
 
 *********** FieldSolveAPI:
 jsapi       integer
@@ -1035,21 +948,4 @@ timegetrhoforfieldsolve3d real /0./
 timeperphi3d_slave real /0./
 timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
-timesumjondomainboundaries real /0./
-timeperj3d_slave real /0./
-timegetjforfieldsolve3d real /0./
-timepera3d_slave real /0./
-timegetbforparticles3d real /0./
-timegetaforfields3d real /0./
-
-timepera3d                     real /0./
-timeperj3d                     real /0./
-timesetb3d                     real /0./
-timefetchafrompositions3d      real /0./
-timegetbfroma3d                real /0./
-timesetj3d                     real /0./
-timeloadj3d                    real /0./
-timefetchb3dfrompositions      real /0./
-timebfieldsol3d                real /0./
-timebvp3d                      real /0./
 
