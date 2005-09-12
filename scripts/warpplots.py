@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.157 2005/09/12 05:56:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.158 2005/09/12 19:02:29 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2855,30 +2855,32 @@ be from none to all three.
   assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver.bfield
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      j = solver.bfield.j[ic,:,:,:]
+      j = bfield.j[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
-      j = solver.bfield.j[ic,ix,:,:]
+      j = bfield.j[ic,ix,:,:]
     elif ix is None     and iy is not None and iz is None    :
-      j = solver.bfield.j[ic,:,iy,:]
+      j = bfield.j[ic,:,iy,:]
     elif ix is None     and iy is None     and iz is not None:
-      j = solver.bfield.j[ic,:,:,iz]
+      j = bfield.j[ic,:,:,iz]
     elif ix is not None and iy is not None and iz is None    :
-      j = solver.bfield.j[ic,ix,iy,:]
+      j = bfield.j[ic,ix,iy,:]
     elif ix is not None and iy is None     and iz is not None:
-      j = solver.bfield.j[ic,ix,:,iz]
+      j = bfield.j[ic,ix,:,iz]
     elif ix is None     and iy is not None and iz is not None:
-      j = solver.bfield.j[ic,:,iy,iz]
+      j = bfield.j[ic,:,iy,iz]
     elif ix is not None and iy is not None and iz is not None:
-      j = solver.bfield.j[ic,ix,iy,iz]
+      j = bfield.j[ic,ix,iy,iz]
   else:
     iz1 = top.izpslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izpslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
-    j = solver.bfield.j[ic,:,:,iz1:iz2]
+    j = bfield.j[ic,:,:,iz1:iz2]
     if ix is not None and iy is None:
       j = j[ix,:,:]
     elif ix is None and iy is not None:
@@ -2943,30 +2945,32 @@ be from none to all three.
   assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver.bfield
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      b = solver.bfield.b[ic,:,:,:]
+      b = bfield.b[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
-      b = solver.bfield.b[ic,ix,:,:]
+      b = bfield.b[ic,ix,:,:]
     elif ix is None     and iy is not None and iz is None    :
-      b = solver.bfield.b[ic,:,iy,:]
+      b = bfield.b[ic,:,iy,:]
     elif ix is None     and iy is None     and iz is not None:
-      b = solver.bfield.b[ic,:,:,iz]
+      b = bfield.b[ic,:,:,iz]
     elif ix is not None and iy is not None and iz is None    :
-      b = solver.bfield.b[ic,ix,iy,:]
+      b = bfield.b[ic,ix,iy,:]
     elif ix is not None and iy is None     and iz is not None:
-      b = solver.bfield.b[ic,ix,:,iz]
+      b = bfield.b[ic,ix,:,iz]
     elif ix is None     and iy is not None and iz is not None:
-      b = solver.bfield.b[ic,:,iy,iz]
+      b = bfield.b[ic,:,iy,iz]
     elif ix is not None and iy is not None and iz is not None:
-      b = solver.bfield.b[ic,ix,iy,iz]
+      b = bfield.b[ic,ix,iy,iz]
   else:
     iz1 = top.izpslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izpslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
-    b = solver.bfield.b[ic,:,:,iz1:iz2]
+    b = bfield.b[ic,:,:,iz1:iz2]
     if ix is not None and iy is None:
       b = b[ix,:,:]
     elif ix is None and iy is not None:
@@ -3030,30 +3034,32 @@ be from none to all three.
   assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
+  if solver == w3d: bfield = f3d.bfield
+  else:             bfield = solver.bfield
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      a = solver.bfield.a[ic,1:-1,1:-1,1:-1]
+      a = bfield.a[ic,1:-1,1:-1,1:-1]
     elif ix is not None and iy is None     and iz is None    :
-      a = solver.bfield.a[ic,ix+1,1:-1,1:-1]
+      a = bfield.a[ic,ix+1,1:-1,1:-1]
     elif ix is None     and iy is not None and iz is None    :
-      a = solver.bfield.a[ic,1:-1,iy+1,1:-1]
+      a = bfield.a[ic,1:-1,iy+1,1:-1]
     elif ix is None     and iy is None     and iz is not None:
-      a = solver.bfield.a[ic,1:-1,1:-1,iz+1]
+      a = bfield.a[ic,1:-1,1:-1,iz+1]
     elif ix is not None and iy is not None and iz is None    :
-      a = solver.bfield.a[ic,ix+1,iy+1,1:-1]
+      a = bfield.a[ic,ix+1,iy+1,1:-1]
     elif ix is not None and iy is None     and iz is not None:
-      a = solver.bfield.a[ic,ix+1,1:-1,iz+1]
+      a = bfield.a[ic,ix+1,1:-1,iz+1]
     elif ix is None     and iy is not None and iz is not None:
-      a = solver.bfield.a[ic,1:-1,iy+1,iz+1]
+      a = bfield.a[ic,1:-1,iy+1,iz+1]
     elif ix is not None and iy is not None and iz is not None:
-      a = solver.bfield.a[ic,ix+1,iy+1,iz+1]
+      a = bfield.a[ic,ix+1,iy+1,iz+1]
   else:
     iz1 = top.izpslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izpslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
-    a = solver.bfield.a[ic,1:-1,1:-1,iz1+1:iz2+1]
+    a = bfield.a[ic,1:-1,1:-1,iz1+1:iz2+1]
     if ix is not None and iy is None:
       a = a[ix,:,:]
     elif ix is None and iy is not None:
