@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.156 2005/07/16 00:22:39 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.157 2005/09/12 05:56:30 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -62,6 +62,9 @@ various planes.
 pcrhozy(), pcrhozx(), pcrhoxy()
 pcphizy(), pcphizx(), pcphixy()
 pcselfezy(), pcselfezx(), pcselfexy()
+pcjzy(), pcjzx(), pcjxy()
+pcbzy(), pcbzx(), pcbxy()
+pcazy(), pcazx(), pcaxy()
 
 Dynamically view any gist 3-D surface plot
 viewsurface
@@ -2835,6 +2838,268 @@ be from none to all three.
         ee1[:,nn::-1,...] = fsign*eee
       eee = ee1
     return eee
+# --------------------------------------------------------------------------
+def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+  """Returns slices of J, the current density array. The shape of
+the object returned depends on the number of arguments specified, which can
+be from none to all three.
+  - comp: field component to get, either 'x', 'y', or 'z'
+  - ix = None
+  - iy = None
+  - iz = None
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
+  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      j = solver.bfield.j[ic,:,:,:]
+    elif ix is not None and iy is None     and iz is None    :
+      j = solver.bfield.j[ic,ix,:,:]
+    elif ix is None     and iy is not None and iz is None    :
+      j = solver.bfield.j[ic,:,iy,:]
+    elif ix is None     and iy is None     and iz is not None:
+      j = solver.bfield.j[ic,:,:,iz]
+    elif ix is not None and iy is not None and iz is None    :
+      j = solver.bfield.j[ic,ix,iy,:]
+    elif ix is not None and iy is None     and iz is not None:
+      j = solver.bfield.j[ic,ix,:,iz]
+    elif ix is None     and iy is not None and iz is not None:
+      j = solver.bfield.j[ic,:,iy,iz]
+    elif ix is not None and iy is not None and iz is not None:
+      j = solver.bfield.j[ic,ix,iy,iz]
+  else:
+    iz1 = top.izpslave[me] - top.izslave[me]
+    if me < npes-1:
+      iz2 = top.izpslave[me+1] - top.izslave[me]
+    else:
+      iz2 = iz1 + top.nzpslave[me] + 1
+    j = solver.bfield.j[ic,:,:,iz1:iz2]
+    if ix is not None and iy is None:
+      j = j[ix,:,:]
+    elif ix is None and iy is not None:
+      j = j[:,iy,:]
+    elif ix is not None and iy is not None:
+      j = j[ix,iy,:]
+    if iz is None:
+      j = transpose(gatherarray(transpose(j)))
+    else:
+      pe = convertizptope(iz)
+      if pe is None: return None
+      if me == pe: j = j[...,iz-top.izpslave[me]]
+      else:        j = zeros(shape(j[...,0]),'d')
+      if (me == pe or me == 0) and (pe != 0): j = getarray(pe,j,0)
+    if bcast: j = broadcast(j)
+
+  if not fullplane:
+    return j
+  else:
+    ii = 0
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      ss = array(shape(j))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      j1 = zeros(tuple(ss),'d')
+      if comp == 'x': fsign = -1
+      else:           fsign = +1
+      j1[nn:,...] = j
+      j1[nn::-1,...] = fsign*j
+      j = j1
+    if ix is None: ii = ii + 1
+    if iy is None and (solver.l2symtry or solver.l4symtry):
+      ss = array(shape(j))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      j1 = zeros(tuple(ss),'d')
+      if comp == 'y': fsign = -1
+      else:           fsign = +1
+      if ii == 0:
+        j1[nn:,...] = j
+        j1[nn::-1,...] = fsign*j
+      else:
+        j1[:,nn:,...] = j
+        j1[:,nn::-1,...] = fsign*j
+      j = j1
+    return j
+
+# --------------------------------------------------------------------------
+def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+  """Returns slices of B, the magnetic field array. The shape of
+the object returned depends on the number of arguments specified, which can
+be from none to all three.
+  - comp: field component to get, either 'x', 'y', or 'z'
+  - ix = None
+  - iy = None
+  - iz = None
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
+  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      b = solver.bfield.b[ic,:,:,:]
+    elif ix is not None and iy is None     and iz is None    :
+      b = solver.bfield.b[ic,ix,:,:]
+    elif ix is None     and iy is not None and iz is None    :
+      b = solver.bfield.b[ic,:,iy,:]
+    elif ix is None     and iy is None     and iz is not None:
+      b = solver.bfield.b[ic,:,:,iz]
+    elif ix is not None and iy is not None and iz is None    :
+      b = solver.bfield.b[ic,ix,iy,:]
+    elif ix is not None and iy is None     and iz is not None:
+      b = solver.bfield.b[ic,ix,:,iz]
+    elif ix is None     and iy is not None and iz is not None:
+      b = solver.bfield.b[ic,:,iy,iz]
+    elif ix is not None and iy is not None and iz is not None:
+      b = solver.bfield.b[ic,ix,iy,iz]
+  else:
+    iz1 = top.izpslave[me] - top.izslave[me]
+    if me < npes-1:
+      iz2 = top.izpslave[me+1] - top.izslave[me]
+    else:
+      iz2 = iz1 + top.nzpslave[me] + 1
+    b = solver.bfield.b[ic,:,:,iz1:iz2]
+    if ix is not None and iy is None:
+      b = b[ix,:,:]
+    elif ix is None and iy is not None:
+      b = b[:,iy,:]
+    elif ix is not None and iy is not None:
+      b = b[ix,iy,:]
+    if iz is None:
+      b = transpose(gatherarray(transpose(b)))
+    else:
+      pe = convertizptope(iz)
+      if pe is None: return None
+      if me == pe: b = b[...,iz-top.izpslave[me]]
+      else:        b = zeros(shape(b[...,0]),'d')
+      if (me == pe or me == 0) and (pe != 0): b = getarray(pe,b,0)
+    if bcast: b = broadcast(b)
+
+  if not fullplane:
+    return b
+  else:
+    ii = 0
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      ss = array(shape(b))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      b1 = zeros(tuple(ss),'d')
+      if comp == 'x': fsign = -1
+      else:           fsign = +1
+      b1[nn:,...] = b
+      b1[nn::-1,...] = fsign*b
+      b = b1
+    if ix is None: ii = ii + 1
+    if iy is None and (solver.l2symtry or solver.l4symtry):
+      ss = array(shape(b))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      b1 = zeros(tuple(ss),'d')
+      if comp == 'y': fsign = -1
+      else:           fsign = +1
+      if ii == 0:
+        b1[nn:,...] = b
+        b1[nn::-1,...] = fsign*b
+      else:
+        b1[:,nn:,...] = b
+        b1[:,nn::-1,...] = fsign*b
+      b = b1
+    return b
+# --------------------------------------------------------------------------
+def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+  """Returns slices of B, the magnetic vector potential array. The shape of
+the object returned depends on the number of arguments specified, which can
+be from none to all three.
+  - comp: field component to get, either 'x', 'y', or 'z'
+  - ix = None
+  - iy = None
+  - iz = None
+  - bcast=0: When 1, the result is broadcast to all of the processors
+             (otherwise returns None to all but PE0
+  """
+  assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
+  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
+  if not lparallel:
+    if ix is None     and iy is None     and iz is None    :
+      a = solver.bfield.a[ic,1:-1,1:-1,1:-1]
+    elif ix is not None and iy is None     and iz is None    :
+      a = solver.bfield.a[ic,ix+1,1:-1,1:-1]
+    elif ix is None     and iy is not None and iz is None    :
+      a = solver.bfield.a[ic,1:-1,iy+1,1:-1]
+    elif ix is None     and iy is None     and iz is not None:
+      a = solver.bfield.a[ic,1:-1,1:-1,iz+1]
+    elif ix is not None and iy is not None and iz is None    :
+      a = solver.bfield.a[ic,ix+1,iy+1,1:-1]
+    elif ix is not None and iy is None     and iz is not None:
+      a = solver.bfield.a[ic,ix+1,1:-1,iz+1]
+    elif ix is None     and iy is not None and iz is not None:
+      a = solver.bfield.a[ic,1:-1,iy+1,iz+1]
+    elif ix is not None and iy is not None and iz is not None:
+      a = solver.bfield.a[ic,ix+1,iy+1,iz+1]
+  else:
+    iz1 = top.izpslave[me] - top.izslave[me]
+    if me < npes-1:
+      iz2 = top.izpslave[me+1] - top.izslave[me]
+    else:
+      iz2 = iz1 + top.nzpslave[me] + 1
+    a = solver.bfield.a[ic,1:-1,1:-1,iz1+1:iz2+1]
+    if ix is not None and iy is None:
+      a = a[ix,:,:]
+    elif ix is None and iy is not None:
+      a = a[:,iy,:]
+    elif ix is not None and iy is not None:
+      a = a[ix,iy,:]
+    if iz is None:
+      a = transpose(gatherarray(transpose(a)))
+    else:
+      pe = convertizptope(iz)
+      if pe is None: return None
+      if me == pe: a = a[...,iz-top.izpslave[me]]
+      else:        a = zeros(shape(a[...,0]),'d')
+      if (me == pe or me == 0) and (pe != 0): a = getarray(pe,a,0)
+    if bcast: a = broadcast(a)
+
+  if not fullplane:
+    return a
+  else:
+    ii = 0
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      ss = array(shape(a))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      a1 = zeros(tuple(ss),'d')
+      if comp == 'x': fsign = -1
+      else:           fsign = +1
+      a1[nn:,...] = a
+      a1[nn::-1,...] = fsign*a
+      a = a1
+    if ix is None: ii = ii + 1
+    if iy is None and (solver.l2symtry or solver.l4symtry):
+      ss = array(shape(a))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      a1 = zeros(tuple(ss),'d')
+      if comp == 'y': fsign = -1
+      else:           fsign = +1
+      if ii == 0:
+        a1[nn:,...] = a
+        a1[nn::-1,...] = fsign*a
+      else:
+        a1[:,nn:,...] = a
+        a1[:,nn::-1,...] = fsign*a
+      a = a1
+    return a
 
 ##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
@@ -3123,6 +3388,333 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
     ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
+##########################################################################
+def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
+          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+  """Plots contours of current density in the Z-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - ix=nint(-xmmin/dx): X index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sy=1: step size in grid for plotting fewer points
+  """
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+                    solver.ymmin,solver.ymmax)
+  settitles("Current Density J%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if fullplane and (solver.l2symtry or solver.l4symtry):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    j = getj(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(j),kwdict=kw)
+  else:
+    jy = getj(comp='y',ix=ix,fullplane=fullplane,solver=solver)
+    jz = getj(comp='z',ix=ix,fullplane=fullplane,solver=solver)
+    ppvector(transpose(jy[::sy,::sz]),transpose(jz[::sy,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcjzy.__doc__ = pcjzy.__doc__ + ppgeneric_doc("z","y")
+##########################################################################
+def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
+              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+  """Plots contours of current density in the Z-X plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iy=nint(-ymmin/dy): Y index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sx=1: step size in grid for plotting fewer points
+  """
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+                      solver.xmmin,solver.xmmax)
+  settitles("Current Density J%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    j = getj(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(j),kwdict=kw)
+  else:
+    jx = getj(comp='x',iy=iy,fullplane=fullplane,solver=solver)
+    jz = getj(comp='z',iy=iy,fullplane=fullplane,solver=solver)
+    ppvector(transpose(jx[::sx,::sz]),transpose(jz[::sx,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcjzx.__doc__ = pcjzx.__doc__ + ppgeneric_doc("z","x")
+##########################################################################
+def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+  """Plots contours of current density in the X-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iz=nint(-zmmin/dz): Z index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - vec=0: when true, plots E field vectors
+  - sx,sy=1: step size in grid for plotting fewer points
+  """
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
+  settitles("Current Density J%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if fullplane and solver.l4symtry:
+    kw['ymin'] = - kw['ymax']
+    kw['xmin'] = - kw['xmax']
+  elif fullplane and solver.l2symtry:
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    j = getj(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=j,kwdict=kw)
+  else:
+    jx = getj(comp='x',iz=iz,fullplane=fullplane,solver=solver)
+    jy = getj(comp='y',iz=iz,fullplane=fullplane,solver=solver)
+    ppvector(jy[::sx,::sy],jx[::sx,::sy],kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
+##########################################################################
+def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
+          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+  """Plots contours of the magnetic field in the Z-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - ix=nint(-xmmin/dx): X index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sy=1: step size in grid for plotting fewer points
+  """
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+                    solver.ymmin,solver.ymmax)
+  settitles("Magnetic Field B%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if fullplane and (solver.l2symtry or solver.l4symtry):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    b = getb(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(b),kwdict=kw)
+  else:
+    by = getb(comp='y',ix=ix,fullplane=fullplane,solver=solver)
+    bz = getb(comp='z',ix=ix,fullplane=fullplane,solver=solver)
+    ppvector(transpose(by[::sy,::sz]),transpose(bz[::sy,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcbzy.__doc__ = pcbzy.__doc__ + ppgeneric_doc("z","y")
+##########################################################################
+def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
+              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+  """Plots contours of the magnetic field in the Z-X plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iy=nint(-ymmin/dy): Y index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sx=1: step size in grid for plotting fewer points
+  """
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+                      solver.xmmin,solver.xmmax)
+  settitles("Magnetic Field B%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    b = getb(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(b),kwdict=kw)
+  else:
+    bx = getb(comp='x',iy=iy,fullplane=fullplane,solver=solver)
+    bz = getb(comp='z',iy=iy,fullplane=fullplane,solver=solver)
+    ppvector(transpose(bx[::sx,::sz]),transpose(bz[::sx,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcbzx.__doc__ = pcbzx.__doc__ + ppgeneric_doc("z","x")
+##########################################################################
+def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+  """Plots contours of the magnetic field in the X-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iz=nint(-zmmin/dz): Z index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - vec=0: when true, plots E field vectors
+  - sx,sy=1: step size in grid for plotting fewer points
+  """
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
+  settitles("Magnetic Field B%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if fullplane and solver.l4symtry:
+    kw['ymin'] = - kw['ymax']
+    kw['xmin'] = - kw['xmax']
+  elif fullplane and solver.l2symtry:
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    b = getb(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=b,kwdict=kw)
+  else:
+    bx = getb(comp='x',iz=iz,fullplane=fullplane,solver=solver)
+    by = getb(comp='y',iz=iz,fullplane=fullplane,solver=solver)
+    ppvector(by[::sx,::sy],bx[::sx,::sy],kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
+##########################################################################
+def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
+          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+  """Plots contours of the magnetic vector potential in the Z-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - ix=nint(-xmmin/dx): X index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sy=1: step size in grid for plotting fewer points
+  """
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+                    solver.ymmin,solver.ymmax)
+  settitles("Magnetic Vector Potential A%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
+  if fullplane and (solver.l2symtry or solver.l4symtry):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    a = geta(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(a),kwdict=kw)
+  else:
+    ay = geta(comp='y',ix=ix,fullplane=fullplane,solver=solver)
+    az = geta(comp='z',ix=ix,fullplane=fullplane,solver=solver)
+    ppvector(transpose(ay[::sy,::sz]),transpose(az[::sy,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcazy.__doc__ = pcazy.__doc__ + ppgeneric_doc("z","y")
+##########################################################################
+def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
+              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+  """Plots contours of the magnetic vector potential in the Z-X plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iy=nint(-ymmin/dy): Y index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sx=1: step size in grid for plotting fewer points
+  """
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+                      solver.xmmin,solver.xmmax)
+  settitles("Magnetic Vector Potential A%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    a = geta(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=transpose(a),kwdict=kw)
+  else:
+    ax = geta(comp='x',iy=iy,fullplane=fullplane,solver=solver)
+    az = geta(comp='z',iy=iy,fullplane=fullplane,solver=solver)
+    ppvector(transpose(ax[::sx,::sz]),transpose(az[::sx,::sz]),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcazx.__doc__ = pcazx.__doc__ + ppgeneric_doc("z","x")
+##########################################################################
+def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+  """Plots contours of the magnetic vector potential in the X-Y plane
+  - comp: field component to plot, either 'x', 'y', or 'z'
+  - iz=nint(-zmmin/dz): Z index of plane
+  - fullplane=1: when true, plots E in the symmetric quadrants
+  - vec=0: when true, plots E field vectors
+  - sx,sy=1: step size in grid for plotting fewer points
+  """
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
+  settitles("Magnetic Vector Potential A%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
+  if fullplane and solver.l4symtry:
+    kw['ymin'] = - kw['ymax']
+    kw['xmin'] = - kw['xmax']
+  elif fullplane and solver.l2symtry:
+    kw['ymin'] = - kw['ymax']
+  if not vec:
+    if kw.get('cellarray',1):
+      kw.setdefault('contours',20)
+    a = geta(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
+    ppgeneric(grid=a,kwdict=kw)
+  else:
+    ax = geta(comp='x',iz=iz,fullplane=fullplane,solver=solver)
+    ay = geta(comp='y',iz=iz,fullplane=fullplane,solver=solver)
+    ppvector(ay[::sx,::sy],ax[::sx,::sy],kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcaxy.__doc__ = pcaxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 ##########################################################################
 def ppdecomposition(scale=1.,minscale=0.,gap=0.2):
