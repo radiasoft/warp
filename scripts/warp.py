@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.88 2005/08/05 22:25:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.89 2005/09/12 05:55:07 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -401,6 +401,41 @@ package. Only w3d and wxy have field solves defined.
       except NameError:
         pass
 
+
+#=============================================================================
+def loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  """
+loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+This routine provides a simple call from the interpreter to load the
+current density.  All of the arguments are optional.
+If the species is not specified, all species are loaded, except
+when ins or nps are specified, then only species 1 is loaded.
+lzero is used to set whether or not rho is zeroed before the load.
+The default is to zero out rho.
+  """
+
+  # --- if particle location is specified but species is not, set so
+  # --- only species number 1 is included
+  if (ins_i != -1 and is_i == -1): is_i = 1
+
+  # --- set number of particles
+  if (ins_i != -1 and nps_i == -1):
+    # --- if particle number is omitted but particle location is specified,
+    # --- set nps to get rest of active particles of species
+    nps_i = top.nps[is_i] + top.ins[is_i] - ins_i
+
+  # --- if particle number is specified but species is not, set so
+  # --- only species number 1 is included
+  if (nps_i != -1 and is_i == -1): is_i = 1
+
+  # --- Now call the appropriate compiled interface routine based on the
+  # --- current package
+  currpkg = package()[0]
+  if (currpkg == "w3d"):
+    loadj3d(ins_i,nps_i,is_i,lzero)
+  elif (currpkg == "wxy"):
+    #loadrhoxy(ins_i,nps_i,is_i,lzero)
+    print "loadj  not support in wxy yet"
 
 #=============================================================================
 # --- Setup routines which give access to the fortran any field solver
