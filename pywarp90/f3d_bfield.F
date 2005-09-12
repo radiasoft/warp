@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.3 $, $Date: 2005/09/12 18:57:37 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.4 $, $Date: 2005/09/12 19:48:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1647,10 +1647,18 @@ c=============================================================================
       subroutine bvp3d(iwhich,bfstype)
       use Constant
       use BFieldGrid
+      use InGen3d, only: filt,solvergeom,XYZgeomMR,RZgeom
       integer(ISZ):: iwhich,bfstype
 
       integer(ISZ):: id,idmax
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
+
+      if (bfstype >= 0) then
+        if (solvergeom == RZgeom) bfstype = 10
+        if (solvergeom == XYZgeomMR) bfstype = 12
+      endif
+
+      if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
       allocate(atemp(0:bfield%nx,0:bfield%ny,-1:bfield%nz+1))
 
@@ -1703,7 +1711,7 @@ c=============================================================================
       use BFieldGridTypemodule
       use LatticeInternal, only: linbend
       use Picglb, only: zbeam,zgrid
-      use InGen3d, only: filt,solvergeom,XYZgeomMR,RZgeom,l2symtry,l4symtry
+      use InGen3d, only: filt,solvergeom,l2symtry,l4symtry
       use GridBoundary3d, only: bound0,boundnz,boundxy
       use PSOR3d, only: gridmode
       use Parallel, only: my_index,nslaves,izfsslave,nzfsslave
@@ -1721,13 +1729,6 @@ c kxsq, attx, scrtch etc.
       real(kind=8):: xlen,ylen,zlen
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
-      if (bfstype >= 0) then
-        if (solvergeom == RZgeom) bfstype = 10
-        if (solvergeom == XYZgeomMR) bfstype = 12
-      endif
-
-      if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
