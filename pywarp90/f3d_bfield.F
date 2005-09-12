@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.1 $, $Date: 2005/09/12 07:14:47 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.2 $, $Date: 2005/09/12 07:22:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -120,7 +120,7 @@ c=============================================================================
 c=============================================================================
       subroutine loadj3d(ins_i,nps_i,is_i,lzero)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersf3d
       use InGen
       use InGen3d
       use InPart
@@ -262,7 +262,7 @@ c     --- system.
       end
 c=============================================================================
       subroutine setaboundaries3d(bfield)
-      use Subtimers3d
+      use Subtimersf3d
       use GlobalVars
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
@@ -358,7 +358,7 @@ c=============================================================================
       subroutine perj3d(bfield,bound0,boundxy)
       use BFieldGridTypemodule
       use GlobalVars
-      use Subtimers3d
+      use Subtimersf3d
       use InGen3d
       type(BFieldGridType):: bfield
       integer(ISZ):: bound0,boundxy
@@ -431,7 +431,7 @@ c     end if
       end
 c=============================================================================
       subroutine setb3d(bfield,np,xp,yp,zp,zgrid,bx,by,bz,l2symtry,l4symtry)
-      use Subtimers3d
+      use Subtimersf3d
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
       integer(ISZ):: np
@@ -595,7 +595,7 @@ c       --- Transform Br and Btheta into Bx and By
 c=============================================================================
       subroutine fetchafrompositions3d(np,xp,yp,zp,zgrid,bfield,
      &                                 l2symtry,l4symtry)
-      use Subtimers3d
+      use Subtimersf3d
       use BFieldGridTypemodule
       integer(ISZ):: np
       real(kind=8):: zgrid
@@ -759,7 +759,7 @@ c       --- Transform Br and Btheta into Bx and By
 c=========================================================================== 
       subroutine getbfroma3d(bfield)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersf3d
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
 
@@ -827,7 +827,7 @@ c=============================================================================
      &                  q,wght,depos,l2symtry,l4symtry)
       use GlobalVars
       use Constant
-      use Subtimers3d
+      use Subtimersf3d
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
       integer(ISZ):: np
@@ -1445,7 +1445,7 @@ c     --- when nsndtsj==0 and oldnsndtsj>0.
 c=============================================================================
       subroutine fetchb3dfrompositions(is,n,x,y,z,bx,by,bz)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersf3d
       use Picglb
       use Picglb3d
       use InGen
@@ -1580,7 +1580,7 @@ c        call getbforparticlesz()
 c===========================================================================
       subroutine bfieldsol3d(iwhich)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersf3d
       use InGen
       use LatticeInternal
       use Fields3d
@@ -1698,7 +1698,7 @@ c     --- MG solver already takes care of the longitudinal BC's.
       end
 c=============================================================================
       subroutine bvp3d_work(iwhich,bfstype,a,j,iaxis,bfield)
-      use Subtimers3d
+      use Subtimersf3d
       use BFieldGridTypemodule
       use LatticeInternal, only: linbend
       use Picglb, only: zbeam,zgrid
