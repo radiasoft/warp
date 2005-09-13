@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.57 $, $Date: 2005/08/09 20:31:01 $
+c@(#) File WXY.M, version $Revision: 3.58 $, $Date: 2005/09/13 17:28:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -869,7 +869,7 @@ c     --- azimuthal magnetic field
 c=============================================================================
       subroutine fetchexy(ipmin,ip,is,ex,ey,ez)
       use GlobalVars
-      use Subtimers3d
+      use Subtimersxy
       use Picglb
       use Picglb3d
       use InGen
@@ -909,7 +909,6 @@ c         --- in setdtp is still used.
       end if
       return
       end
-
 c=============================================================================
       subroutine padvncxy(center)
       use Subtimersxy
