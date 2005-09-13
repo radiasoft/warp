@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.4 $, $Date: 2005/09/12 19:48:06 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.5 $, $Date: 2005/09/13 00:52:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -33,7 +33,7 @@ c=============================================================================
       logical(ISZ):: l2symtry,l4symtry
       end subroutine setb3d
 
-      subroutine fetchafrompositions3d(np,xp,yp,zp,zgrid,bfield,
+      subroutine fetchafrompositions3d(np,xp,yp,zp,a,zgrid,bfield,
      &                                 l2symtry,l4symtry)
       use BFieldGridTypemodule
       integer(ISZ):: np
@@ -226,7 +226,7 @@ c             --- jp and copy its j into jp.
             end if
           endif
         elseif(solvergeom==XZgeom) then
-          print*,"Error: Self magnetic field not support with solvergeom=RZgeom or XZgeom"
+          print*,"Error: Self magnetic field not support with solvergeom=XZgeom"
         elseif(solvergeom==Zgeom) then
           print*,"Error: Self magnetic field not support with solvergeom=Zgeom"
         elseif(solvergeom==Rgeom) then
@@ -274,11 +274,6 @@ c  Sets the slices on the exterior of A, depending on the boundary conditions.
       integer(ISZ):: ix,iy
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
-c     if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-c       call perarz()
-c       return
-c     end if
 
       a => bfield%a
 
@@ -391,31 +386,6 @@ c  Enforce transverse periodicity if requested.
         endif
       endif
 
-c  Distribute j for 2d solver
-c     if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
-c    &   solvergeom==XYgeom .or. solvergeom==Zgeom) then
-c       call distribute_j_rz()
-c     end if
-
-c  Enforce longitudinal periodicity.
-c     if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom) then
-c       call jbndrz()
-cifdef MPIPARALLEL
-c       if(bound0==periodic) call perjrz()
-cendif
-c     end if
-
-c  Copy charge density from frz.basegrid to f3d.j
-c     if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-c       call get_j_rz(j,nx,nz,1,0)
-c     else if(solvergeom==XYgeom) then
-c       call get_j_rz(j,nx,ny,1,0)
-c     else if(solvergeom==Zgeom) then
-c       call get_j_z(j,nz,1,0)
-c     else if(solvergeom==Rgeom) then
-c       call get_j_r(j,nx,1,0)
-c     end if
-
       if (solvergeom==XYZgeom .and. bound0==periodic) then
 #ifdef MPIPARALLEL
         call perj3d_slave(bfield)
@@ -475,7 +445,7 @@ c  Evaluation of B, vectorized over particles
       dyi = 1./bfield%dy
       dzi = 1./bfield%dz
 
-      if (.not. (l2symtry .or. l4symtry)) then
+      if ((.not. (l2symtry .or. l4symtry)) .or. bfield%lcylindrical) then
         do ip = 1, np
 
           i = (x(ip) - bfield%xmmin) * dxi
@@ -583,8 +553,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
 c       --- Transform Br and Btheta into Bx and By
         y = atan2(yp,xp)
         bxtemp = bx
-        bx = bx*cos(y) + by*sin(y)
-        by = by*cos(y) - bxtemp*sin(y)
+        bx = bxtemp*cos(y) - by*sin(y)
+        by = bxtemp*sin(y) + by*cos(y)
         deallocate(x,y,bxtemp)
       endif
 
@@ -594,7 +564,7 @@ c       --- Transform Br and Btheta into Bx and By
       return
       end
 c=============================================================================
-      subroutine fetchafrompositions3d(np,xp,yp,zp,zgrid,bfield,
+      subroutine fetchafrompositions3d(np,xp,yp,zp,a,zgrid,bfield,
      &                                 l2symtry,l4symtry)
       use Subtimersf3d
       use BFieldGridTypemodule
@@ -639,7 +609,7 @@ c  Evaluation of A, vectorized over particles
       dyi = 1./bfield%dy
       dzi = 1./bfield%dz
 
-      if (.not. (l2symtry .or. l4symtry)) then
+      if ((.not. (l2symtry .or. l4symtry)) .or. bfield%lcylindrical) then
         do ip = 1, np
 
           i = (x(ip) - bfield%xmmin) * dxi
@@ -747,8 +717,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
 c       --- Transform Br and Btheta into Bx and By
         y = atan2(yp,xp)
         axtemp = a(0,:)
-        a(0,:) = a(0,:)*cos(y) + a(1,:)*sin(y)
-        a(1,:) = a(1,:)*cos(y) - axtemp*sin(y)
+        a(0,:) = axtemp*cos(y) - a(1,:)*sin(y)
+        a(1,:) = axtemp*sin(y) + a(1,:)*cos(y)
         deallocate(x,y,axtemp)
       endif
 
@@ -967,7 +937,7 @@ c--------------------------------------
       if (depos == "vector") then
 
 c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
+      if (l2symtry .and. .not. bfield%lcylindrical) then
 c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
@@ -992,7 +962,6 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-           g = cdens(ix)
            s(0,ir) = u0 * v0 * w0 * g*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g
@@ -1007,7 +976,7 @@ c       --- transverse boundaries.
            v(1,ir) = uy(ir)*gi(ir)
            v(2,ir) = uz(ir)*gi(ir)
         enddo
-      elseif (l4symtry) then
+      elseif (l4symtry .and. .not. bfield%lcylindrical) then
 c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
@@ -1034,7 +1003,6 @@ c       --- transverse boundaries.
            gyfact = 1.
            if (ix == 0 .and. bfield%xmmin == 0.) gxfact = 2.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-           g = cdens(ix)
            s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
            s(1,ir) = u1 * v0 * w0 * g*gyfact
            s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -1072,15 +1040,14 @@ c       --- normal loop
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           g = cdens(ix)
-           s(0,ir) = u0 * v0 * w0 * g
-           s(1,ir) = u1 * v0 * w0 * g
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g
-           s(5,ir) = u1 * v0 * w1 * g
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
+           s(0,ir) = u0 * v0 * w0 * cdens(ix  )
+           s(1,ir) = u1 * v0 * w0 * cdens(ix+1)
+           s(2,ir) = u0 * v1 * w0 * cdens(ix  )
+           s(3,ir) = u1 * v1 * w0 * cdens(ix+1)
+           s(4,ir) = u0 * v0 * w1 * cdens(ix  )
+           s(5,ir) = u1 * v0 * w1 * cdens(ix+1)
+           s(6,ir) = u0 * v1 * w1 * cdens(ix  )
+           s(7,ir) = u1 * v1 * w1 * cdens(ix+1)
            v(0,ir) = ux(ir)*gi(ir)
            v(1,ir) = uy(ir)*gi(ir)
            v(2,ir) = uz(ir)*gi(ir)
@@ -1109,7 +1076,7 @@ c--------------------------------------
 c  Begin main loop over species
 
 c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
+      if (l2symtry .and. .not. bfield%lcylindrical) then
         do ir = 1,nptmp
           ii(ir) = int((x(ir) - bfield%xmmin) * dxi)
           u1     =     (x(ir) - bfield%xmmin) * dxi - ii(ir)
@@ -1122,7 +1089,6 @@ c     --- vectorized loop to compute indices, weights
           w0     = 1. - w1
           gyfact = 1.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-          g = cdens(ii(ir))
           s(0,ir) = u0 * v0 * w0 * g*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g
@@ -1137,7 +1103,7 @@ c     --- vectorized loop to compute indices, weights
           v(1,ir) = uy(ir)*gi(ir)
           v(2,ir) = uz(ir)*gi(ir)
         enddo
-      elseif (l4symtry) then
+      elseif (l4symtry .and. .not. bfield%lcylindrical) then
         do ir = 1,nptmp
           ii(ir) = int((abs(x(ir)) - bfield%xmmin)*dxi)
           u1     =     (abs(x(ir)) - bfield%xmmin)*dxi - ii(ir)
@@ -1152,7 +1118,6 @@ c     --- vectorized loop to compute indices, weights
           gyfact = 1.
           if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxfact = 2.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-          g = cdens(ii(ir))
           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
           s(1,ir) = u1 * v0 * w0 * g*gyfact
           s(2,ir) = u0 * v1 * w0 * g*gxfact
@@ -1181,15 +1146,14 @@ c       --- normal loop
           kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
           w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
-          g = cdens(ii(ir))
-          s(0,ir) = u0 * v0 * w0 * g
-          s(1,ir) = u1 * v0 * w0 * g
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g
-          s(5,ir) = u1 * v0 * w1 * g
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
+          s(0,ir) = u0 * v0 * w0 * cdens(ii(ir)  )
+          s(1,ir) = u1 * v0 * w0 * cdens(ii(ir)+1)
+          s(2,ir) = u0 * v1 * w0 * cdens(ii(ir)  )
+          s(3,ir) = u1 * v1 * w0 * cdens(ii(ir)+1)
+          s(4,ir) = u0 * v0 * w1 * cdens(ii(ir)  )
+          s(5,ir) = u1 * v0 * w1 * cdens(ii(ir)+1)
+          s(6,ir) = u0 * v1 * w1 * cdens(ii(ir)  )
+          s(7,ir) = u1 * v1 * w1 * cdens(ii(ir)+1)
           v(0,ir) = ux(ir)*gi(ir)
           v(1,ir) = uy(ir)*gi(ir)
           v(2,ir) = uz(ir)*gi(ir)
@@ -1277,7 +1241,7 @@ c       --- If jp is not associated with j, then copy the data.
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==XZgeom) then
-c       print*,"Error: Self magnetic field not supported with solvergeom=RZgeom or XZgeom"
+c       print*,"Error: Self magnetic field not supported with solvergeom=XZgeom"
 c       call getjforfieldsolverz(nx,nz,j)
 c     else if(solvergeom==Zgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
@@ -1469,8 +1433,10 @@ c     --- Obtain the magnetic field
         return
       endif
 
-      if(solvergeom==XYZgeom .and. bfstype >= 0) then
-        call setb3d(bfieldp,n,x,y,z,zgrid,bx,by,bz,l2symtry,l4symtry)
+      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+        if (bfstype >= 0) then
+          call setb3d(bfieldp,n,x,y,z,zgrid,bx,by,bz,l2symtry,l4symtry)
+        endif
       elseif(solvergeom==XYZgeomMR) then
         isfsapi = is
         xfsapi => x
@@ -1509,9 +1475,9 @@ c=============================================================================
       real(kind=8),target:: x(n),y(n),z(n),a(0:2,n)
 
 c     --- Call the appropriate routine to get the A
-      if(solvergeom==XYZgeom) then
-        call fetchafrompositions3d(n,x,y,z,zgrid,bfield,l2symtry,l4symtry)
-c     elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+        call fetchafrompositions3d(n,x,y,z,a,zgrid,bfield,l2symtry,l4symtry)
+c     elseif(solvergeom==XZgeom) then
 c       call setarz(n,x,y,z,p,zgrid)
 c     elseif(solvergeom==Zgeom) then
 c       call setaz(n,z,p,zgrid)
@@ -1654,7 +1620,12 @@ c=============================================================================
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
 
       if (bfstype >= 0) then
-        if (solvergeom == RZgeom) bfstype = 10
+        if (solvergeom == RZgeom) then
+          bfstype = 10
+          call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
+     &                        bfield%xmmin,bfield%zmmin,bfield%bounds,
+     &                        bfield%a,bfield%j)
+        endif
         if (solvergeom == XYZgeomMR) bfstype = 12
       endif
 
@@ -1798,8 +1769,8 @@ c fits and so was replaced with if statements.
 
 
       elseif (bfstype == 10) then
-        call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),bfield%j(iaxis,:,0,:),
-     &                    bfield%nx,bfield%nz)
+        call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),
+     &                    bfield%j(iaxis,:,0,:),bfield%nx,bfield%nz)
       elseif (bfstype == 12) then
         if (iwhich <= 0) then
           call execuser('fieldsolMR')
