@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.5 $, $Date: 2005/09/13 00:52:43 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.6 $, $Date: 2005/09/13 20:34:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -734,27 +734,53 @@ c===========================================================================
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
 
-c Calculate the B via finite differences of A.
-
-      integer(ISZ):: ix,iy,iz
-      real(kind=8):: tdxi,tdyi,tdzi,r,ri
-      real(kind=8),pointer,dimension(:,:,:,:):: a,b
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      tdxi = 0.5/bfield%dx
-      tdyi = 0.5/bfield%dy
-      tdzi = 0.5/bfield%dz
+      if (bfield%lusevectorpotential) then
 
-      a => bfield%a
-      b => bfield%b
+c       --- Calculate B via finite differences of A.
+        call curl3d(bfield%a,bfield%b,bfield%nx,bfield%ny,bfield%nz,
+     &              bfield%dx,bfield%dy,bfield%dz,
+     &              bfield%xmmin,bfield%lcylindrical,
+     &              1,1,0,0)
+
+      else
+
+c       --- The solver calculated B directly, so just do a copy.
+        bfield%b = bfield%a(:,0:bfield%nx,0:bfield%ny,0:bfield%nz)
+
+      endif
+
+!$OMP MASTER
+      if (lf3dtimesubs) timegetbfroma3d = timegetbfroma3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=========================================================================== 
+      subroutine curl3d(a,b,nx,ny,nz,dx,dy,dz,xmmin,lcylindrical,
+     &                  adelx,adelz,bdelx,bdelz)
+      integer(ISZ):: nx,ny,nz,adelx,adelz,bdelx,bdelz
+      real(kind=8):: a(0:2,-adelx:nx+adelx,-adelx:ny+adelx,-adelz:nz+adelz)
+      real(kind=8):: b(0:2,-bdelx:nx+bdelx,-bdelx:ny+bdelx,-bdelz:nz+bdelz)
+      real(kind=8):: dx,dy,dz,xmmin
+      logical(ISZ):: lcylindrical
+
+c Calculate the curl of A using finite differences.
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: tdxi,tdyi,tdzi,r,ri
+
+      tdxi = 0.5/dx
+      tdyi = 0.5/dy
+      tdzi = 0.5/dz
 
 c     --- Do the calculation. In this case, guard cells have been added to
 c     --- A since having special cases for each B component on each
 c     --- boundary for each boundary condition begins to get very complicated.
-      do iz=0,bfield%nz
-        do iy=0,bfield%ny
-          do ix=0,bfield%nx
+      do iz=-adelz+1,nz+adelz-1
+        do iy=-adelx+1,ny+adelx-1
+          do ix=-adelx+1,nx+adelx-1
             b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy+1,iz  ) - a(2,ix  ,iy-1,iz  ))
      &                      - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
             b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
@@ -773,9 +799,9 @@ c     --- The derivative is calculated above. Note that the d/dtheta terms
 c     --- which appear in Br and Bz are still ignored, assuming axisymmetry.
 c     --- Because of the way the guard cells are set for the y plane,
 c     --- the derivatives there calculated above are zero.
-      if (bfield%lcylindrical) then
-        do ix=0,bfield%nx
-          r = (bfield%xmmin + bfield%dx*ix)
+      if (lcylindrical) then
+        do ix=-adelx+1,nx+adelx-1
+          r = (xmmin + dx*ix)
           if (r > 0.) then
             ri = 1./r
             b(2,ix,:,:) = b(2,ix,:,:) + a(1,ix,:,:)*ri
@@ -788,9 +814,6 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
         enddo
       endif
 
-!$OMP MASTER
-      if (lf3dtimesubs) timegetbfroma3d = timegetbfroma3d + wtime() - substarttime
-!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1596,7 +1619,8 @@ c       --- Call perturbative bent beam field solver
 
       endif
 
-c     --- Take the finite differences of A to get B.
+c     --- Get B from A, either taking the finite difference curl of A to get B,
+c     --- or just copy it when B is solved for directly.
       call getbfroma3d(bfield)
 
 c     --- Distribute B among the processes so each has B in its
@@ -1618,6 +1642,7 @@ c=============================================================================
 
       integer(ISZ):: id,idmax
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
+      real(kind=8),pointer:: j(:,:,:,:),curlj(:,:,:,:)
 
       if (bfstype >= 0) then
         if (solvergeom == RZgeom) then
@@ -1631,6 +1656,17 @@ c=============================================================================
 
       if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
+      if (bfield%lusevectorpotential) then
+        j => bfield%j
+      else
+        allocate(curlj(0:2,0:bfield%nx,0:bfield%ny,0:bfield%nz))
+        call curl3d(bfield%j,curlj,bfield%nx,bfield%ny,bfield%nz,
+     &              bfield%dx,bfield%dy,bfield%dz,
+     &              bfield%xmmin,bfield%lcylindrical,
+     &              0,0,0,0)
+        j => curlj
+      endif
+
       allocate(atemp(0:bfield%nx,0:bfield%ny,-1:bfield%nz+1))
 
       if (bfstype <= 4) then
@@ -1642,7 +1678,7 @@ c       --- jtemp is pointed to atemp just to give it a non-null value.
         allocate(jtemp(0:bfield%nx,0:bfield%ny,0:bfield%nz))
       endif
 
-      bfield%j = bfield%j*mu0*eps0
+      j = j*mu0*eps0
 
 c     --- Note that the arrays being passed in are not contiguous, which means
 c     --- that copies are being done.
@@ -1653,10 +1689,10 @@ c     --- though they should never be needed during initialization.
       if (iwhich == 1) idmax = 0
       do id=0,idmax
         if (bfstype <= 4) then
-          atemp(:,:,0:bfield%nz) = bfield%j(id,:,:,:)
+          atemp(:,:,0:bfield%nz) = j(id,:,:,:)
         else
           atemp = bfield%a(id,0:bfield%nx,0:bfield%ny,:)
-          jtemp = bfield%j(id,:,:,:)
+          jtemp = j(id,:,:,:)
         endif
         call bvp3d_work(iwhich,bfstype,atemp,jtemp,id,bfield)
         if (bfstype .ne. 10) bfield%a(id,0:bfield%nx,0:bfield%ny,:) = atemp
@@ -1672,7 +1708,13 @@ c     --- MG solver already takes care of the longitudinal BC's.
       deallocate(atemp)
       if (bfstype > 4) deallocate(jtemp)
 
-      bfield%j = bfield%j/(mu0*eps0)
+      if (bfield%lusevectorpotential) then
+c       --- Unscale the current density
+        j = j/(mu0*eps0)
+      else
+c       --- The unscaling is not needed since the data is thrown away.
+        deallocate(curlj)
+      endif
 
       return
       end
