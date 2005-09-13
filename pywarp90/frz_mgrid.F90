@@ -928,8 +928,8 @@ TYPE(BNDtype), pointer :: b
       b => b%next
     END if
     b%l_merged=.false.
-    b%izlbnd=izlbndi
-    b%izrbnd=izrbndi
+    b%izlbnd=g%izlbnd
+    b%izrbnd=g%izrbnd
     IF(i/=1) then
 !      call evalnewgrid(nrc,nzc,drc,dzc)
 #ifdef MPIPARALLEL
@@ -10097,7 +10097,7 @@ TYPE(BNDtype), POINTER :: b
   bg%phip => u
   bg%rhop => rho
 #endif
-  call GRIDtypeallot(bg)
+  call GRIDtypechange(bg)
   bg%gid=1
   bg%loc_part=1
   bg%loc_part_fd=1
