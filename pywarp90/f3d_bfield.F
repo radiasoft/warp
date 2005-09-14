@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.7 $, $Date: 2005/09/14 00:14:33 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.8 $, $Date: 2005/09/14 01:08:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1674,6 +1674,7 @@ c=============================================================================
         j => bfield%j
       else
         allocate(curlj(0:2,0:bfield%nx,0:bfield%ny,0:bfield%nz))
+        curlj = 0.
         call curl3d(bfield%j,curlj,bfield%nx,bfield%ny,bfield%nz,
      &              bfield%dx,bfield%dy,bfield%dz,
      &              bfield%xmmin,bfield%lcylindrical,
