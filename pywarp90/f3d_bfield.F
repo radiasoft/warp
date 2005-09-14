@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.6 $, $Date: 2005/09/13 20:34:59 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.7 $, $Date: 2005/09/14 00:14:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -778,18 +778,32 @@ c Calculate the curl of A using finite differences.
 c     --- Do the calculation. In this case, guard cells have been added to
 c     --- A since having special cases for each B component on each
 c     --- boundary for each boundary condition begins to get very complicated.
-      do iz=-adelz+1,nz+adelz-1
-        do iy=-adelx+1,ny+adelx-1
+      if (ny > 0) then
+        do iz=-adelz+1,nz+adelz-1
+          do iy=-adelx+1,ny+adelx-1
+            do ix=-adelx+1,nx+adelx-1
+              b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy+1,iz  ) - a(2,ix  ,iy-1,iz  ))
+     &                        - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
+              b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
+     &                        - tdxi*(a(2,ix+1,iy  ,iz  ) - a(2,ix-1,iy  ,iz  ))
+              b(2,ix,iy,iz) = + tdxi*(a(1,ix+1,iy  ,iz  ) - a(1,ix-1,iy  ,iz  ))
+     &                        - tdyi*(a(0,ix  ,iy+1,iz  ) - a(0,ix  ,iy-1,iz  ))
+            enddo
+          enddo
+        enddo
+      else
+        iy = 0
+        do iz=-adelz+1,nz+adelz-1
           do ix=-adelx+1,nx+adelx-1
-            b(0,ix,iy,iz) = + tdyi*(a(2,ix  ,iy+1,iz  ) - a(2,ix  ,iy-1,iz  ))
+            b(0,ix,iy,iz) = + 0.
      &                      - tdzi*(a(1,ix  ,iy  ,iz+1) - a(1,ix  ,iy  ,iz-1))
             b(1,ix,iy,iz) = + tdzi*(a(0,ix  ,iy  ,iz+1) - a(0,ix  ,iy  ,iz-1))
      &                      - tdxi*(a(2,ix+1,iy  ,iz  ) - a(2,ix-1,iy  ,iz  ))
             b(2,ix,iy,iz) = + tdxi*(a(1,ix+1,iy  ,iz  ) - a(1,ix-1,iy  ,iz  ))
-     &                      - tdyi*(a(0,ix  ,iy+1,iz  ) - a(0,ix  ,iy-1,iz  ))
+     &                      - 0.
           enddo
         enddo
-      enddo
+      endif
 
 c     --- When lcylindrical is true, an extra term is needed for Bz
 c     ---      1 d               d Atheta   Atheta
@@ -804,7 +818,7 @@ c     --- the derivatives there calculated above are zero.
           r = (xmmin + dx*ix)
           if (r > 0.) then
             ri = 1./r
-            b(2,ix,:,:) = b(2,ix,:,:) + a(1,ix,:,:)*ri
+            b(2,ix,:,:)=b(2,ix,:,:)+a(1,ix,-bdelx:ny+bdelx,-bdelz:nz+bdelz)*ri
           else
 c           --- This can be justified by writing out the del cross A in
 c           --- Cartesian coordinates, and using
@@ -1812,7 +1826,7 @@ c fits and so was replaced with if statements.
 
       elseif (bfstype == 10) then
         call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),
-     &                    bfield%j(iaxis,:,0,:),bfield%nx,bfield%nz)
+     &                    j(:,0,:),bfield%nx,bfield%nz)
       elseif (bfstype == 12) then
         if (iwhich <= 0) then
           call execuser('fieldsolMR')
