@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.30 $, $Date: 2005/09/12 07:22:24 $
+c W3DSLAVE.M, version $Revision: 1.31 $, $Date: 2005/09/16 01:21:09 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -684,7 +684,7 @@ c     print*,"sumrho all done ",my_index,maxval(rhop)
       return
       end
 c=============================================================================
-      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      subroutine sumrhoondomainboundariestry2(rhop,nxp,nyp,nzp)
       use Subtimers3d
       use Parallel
       integer(ISZ):: nxp,nyp,nzp
@@ -722,6 +722,100 @@ c     --- two planes of rhop.
         sendbuffer(:,:,3) = rhop(:,:,nzp)
       else if (nzbuff >= 4) then
         sendbuffer(:,:,3:4) = rhop(:,:,nzp-1:nzp)
+      endif
+
+c     --- Send the data out to processors that need it.
+c     --- Copy any data locally as well.
+      w = 0
+      do i=0,nslaves-1
+        if (i == my_index) cycle
+        if (nzsend(i) > 0) then
+          w = w + 1
+          if (i < my_index) iz = izsend(i) + 1
+          if (i > my_index) iz = nzbuff - (nzp - izsend(i))
+          nn = nzsend(i)*(nxp+1)*(nyp+1)
+          call MPI_ISEND(sendbuffer(:,:,iz),nn,MPI_DOUBLE_PRECISION,
+     &                    i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
+        endif
+      enddo
+
+c     --- Data to be received. Do this calculation after the send so that
+c     --- they get posted as soon as possible.
+      do i=0,nslaves-1
+        izrecv(i) = max(izpslave(my_index),izpslave(i)) - izpslave(my_index)
+        nzrecv(i) = min(izpslave(my_index)+nzpslave(my_index),
+     &                  izpslave(i)+nzpslave(i))
+     &             - max(izpslave(my_index),izpslave(i)) + 1
+        nzrecv(i) = max(0_4,nzrecv(i))
+      enddo
+      nzrecv(my_index) = 0
+
+c     --- Then, gather up the data sent to this processor.
+      allocate(recvbuffer(0:nxp,0:nyp,maxval(nzrecv)),stat=allocerror)
+      do i=0,nslaves-1
+        if (i == my_index) cycle
+        if (nzrecv(i) > 0) then
+          nn = nzrecv(i)*(nxp+1)*(nyp+1)
+          call MPI_RECV(recvbuffer,nn,MPI_DOUBLE_PRECISION,
+     &                  i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+          i1 = izrecv(i)
+          i2 = izrecv(i) + nzrecv(i) - 1
+          rhop(:,:,i1:i2) = rhop(:,:,i1:i2) + recvbuffer(:,:,1:nzrecv(i))
+        endif
+      enddo
+      deallocate(recvbuffer)
+
+c     --- Wait for all sends to complete before deleting the sendbuffer.
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+      deallocate(sendbuffer)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesumrhoondomainboundaries = timesumrhoondomainboundaries + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard)
+      use Subtimers3d
+      use Parallel
+      integer(ISZ):: nxp,nyp,nzp,nzpguard
+      real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+
+      integer(ISZ):: allocerror
+      integer(4  ):: i,nn,i1,i2,iz,nzbuff
+      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      real(kind=8),allocatable:: sendbuffer(:,:,:),recvbuffer(:,:,:)
+      include "mpif.h"
+      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(4  ):: mpirequest(nslaves)
+      integer(4  ):: w
+      integer(4  ):: messid = 50
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- First, calculate what data needs to be sent.
+      do i=0,nslaves-1
+        izsend(i) = max(izpslave(my_index),izpslave(i)) - izpslave(my_index)
+        nzsend(i) = min(izpslave(my_index)+nzpslave(my_index),
+     &                  izpslave(i)+nzpslave(i))
+     &             - max(izpslave(my_index),izpslave(i)) + 1
+        nzsend(i) = max(0_4,nzsend(i))
+      enddo
+      nzsend(my_index) = 0
+
+c     --- Create buffer for MPI work, copying only the first two and last
+c     --- two planes of rhop.
+      nzbuff = min(nzp+1,4+4*nzpguard)
+      allocate(sendbuffer(0:nxp,0:nyp,nzbuff))
+      if (nzbuff == nzp+1) then
+        sendbuffer = rhop
+      else
+        nn = min(1+2*nzpguard,nzp)
+        sendbuffer(:,:,1:nn+1) = rhop(:,:,0:nn)
+        nn = max(nzp-1-2*nzpguard,nn+1)
+        sendbuffer(:,:,nzbuff-nzp+nn:nzbuff) = rhop(:,:,nn:nzp)
       endif
 
 c     --- Send the data out to processors that need it.
