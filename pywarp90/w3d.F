@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.220 $, $Date: 2005/09/01 09:39:37 $
+c@(#) File W3D.F, version $Revision: 3.221 $, $Date: 2005/09/16 21:25:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4901,6 +4901,7 @@ c=============================================================================
       use InGen
       use InGen3d
       use InMesh3d
+      use Picglb3d, only: dz
       use Fields3d
       use Fields3dParticles
 
@@ -4932,7 +4933,7 @@ c  whose field solve region overlap its particle region.
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho(0,0,0))
       elseif (solvergeom==XYZgeom) then
-        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,nzpguard)
       end if
 
 #endif
@@ -4940,16 +4941,15 @@ c  whose field solve region overlap its particle region.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
-      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp
+      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,nzpguard)
+      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp,nzpguard
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
-      real(kind=8):: zmminglobal,dz
 
 #ifdef MPIPARALLEL
 
       call parallelbarrier()
-      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard)
       call parallelbarrier()
       call getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
 
