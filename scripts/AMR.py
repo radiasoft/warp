@@ -27,6 +27,7 @@ class AMRTree(object,Visualizable):
         self.solvergeom = w3d.solvergeom
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
+      self.conductorsdfill   = []
       self.conds_installed_onbasegrid = []
       self.beforefs = ControllerFunction()
       self.dfill = 2
@@ -78,7 +79,7 @@ class AMRTree(object,Visualizable):
         raise "Only 3d supported as registered solver."
 
     def installconductor(self,conductor,dfill=2):
-      self.addconductor(conductor)
+      self.addconductor(conductor,dfill)
 
     def hasconductors(self):
       if self.solvergeom == w3d.XYZgeomMR:
@@ -105,8 +106,9 @@ class AMRTree(object,Visualizable):
     # --------------------------------------------------------------------
 
 
-    def addconductor(self,conductor):
+    def addconductor(self,conductor,dfill=2):
       self.conductors.append(conductor)
+      self.conductorsdfill.append(dfill)
 
     def getabsgrad(self,f,dx,dy,dz):
       """
@@ -626,8 +628,8 @@ class AMRTree(object,Visualizable):
       
       # set conductor data
       if self.solvergeom==w3d.XYZgeomMR:
-        for cond in self.conductors:
-          self.blocks.installconductor(cond,dfill=self.dfill)
+        for cond,dfill in zip(self.conductors,self.conductorsdfill):
+          self.blocks.installconductor(cond,dfill=dfill)
       else:
         # this loop is needed so that the grid are correctly registered when installing conductors
         if self.nblocks>0:
@@ -641,15 +643,18 @@ class AMRTree(object,Visualizable):
                     g=g.down
                 except:
                     pass
-        for cond in self.conductors:
+        for cond,dfill in zip(self.conductors,self.conductorsdfill):
           g = frz.basegrid
-          for condbase in self.conds_installed_onbasegrid:
-            if cond == condbase:
-              try:
-                g = g.down
-              except:
-                g = None
-              break  
+         #for condbase in self.conds_installed_onbasegrid:
+         #  if cond == condbase:
+         #    try:
+         #      g = g.down
+         #    except:
+         #      g = None
+         #    break  
+          if cond in self.conds_installed_onbasegrid:
+            try:    g = g.down
+            except: g = None
           if g is not None: 
             #cond.install(g)
             try:
@@ -658,7 +663,7 @@ class AMRTree(object,Visualizable):
               cc = cond
             installconductors(cc,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
                               xmmin=g.xmin,xmmax=g.xmax,
-                              zmmin=g.zmin,zmmax=g.zmax,
+                              zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                               gridrz=g)
           if g==frz.basegrid:self.conds_installed_onbasegrid += [cond] 
         get_cond_rz(1)
