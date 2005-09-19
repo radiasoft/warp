@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.61 2005/09/14 00:59:40 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.62 2005/09/19 18:02:41 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -966,7 +966,10 @@ in the celemid array. It returns each element only once.
       self.lastsolverparams = None
     solver = getregisteredsolver()
     if solver is None: solver = w3d
-    if solver.__class__ is AMR.AMRTree: solver = solver.blocks
+    try:
+      if solver.__class__ is AMR.AMRTree: solver = solver.blocks
+    except AttributeError:
+      pass
     solverparams = [solver.nx,solver.ny,solver.nz,
                     solver.dx,solver.dy,solver.dz,
                     solver.xmmin,solver.ymmin,solver.zmmin,
