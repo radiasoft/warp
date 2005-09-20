@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.95 $, $Date: 2005/08/23 11:36:03 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.96 $, $Date: 2005/09/20 19:06:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3505,6 +3505,106 @@ c                   --- Adjust for symmetries
 
       if (lf3dtimesubs) timegatherrhofromchild = timegatherrhofromchild +
      &                                           wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine setupsiblingdomain(nn,sd,od)
+      integer(ISZ):: nn(0:2)
+      integer(ISZ):: sd(0:nn(2),0:nn(1),0:nn(0))
+      integer(ISZ):: od(0:nn(2),0:nn(1),0:nn(0))
+
+c Note that the input array sd is in C ordering.
+      integer(ISZ):: ix,iy,iz
+
+      do ix=0,nn(0)
+        do iy=0,nn(1)
+          do iz=0,nn(2)
+
+c           --- This instance claims any cells that are unclaimed both here
+c           --- and in the sibling
+            if ((od(iz,iy,ix) == -1) .and. (sd(iz,iy,ix) == -1)) then
+              sd(iz,iy,ix) = 1
+            endif
+
+c           --- Any cells that are marked as claimed here or in the sibling but
+c           --- are not set in the other are marked as claimed by others.
+            if (sd(iz,iy,ix) == -1) sd(iz,iy,ix) = 0
+            if (od(iz,iy,ix) == -1) od(iz,iy,ix) = 0
+
+c           --- It is possible that some areas will be claimed by multiple
+c           --- siblings. Remove claim to those areas from the sibling.
+            if ((od(iz,iy,ix) == 1) .and. (sd(iz,iy,ix) == 1)) then
+              od(iz,iy,ix) = 0
+            endif
+
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine expandsiblingdomain(nn,d,r)
+      integer(ISZ):: nn(0:2),r(0:2)
+      integer(ISZ):: d(0:nn(2),0:nn(1),0:nn(0))
+
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixc,iyc,izc,wx,wy,wz,ww
+      integer(ISZ):: ixcpr,iycpr,izcpr
+
+c Note that the input array d is in C ordering.
+
+c     --- Claim any unclaimed areas, though there shouldn't be any assuming
+c     --- that all of the childs area is covered by a parent.
+      do ixc=0,nn(0),r(0)
+        do iyc=0,nn(1),r(1)
+          do izc=0,nn(2),r(2)
+            if (d(izc,iyc,ixc) == -1) d(izc,iyc,ixc) = 1
+          enddo
+        enddo
+      enddo
+
+      do ix=0,nn(0)
+        do iy=0,nn(1)
+          do iz=0,nn(2)
+            wz = mod(iz,r(2))
+            wy = mod(iy,r(1))
+            wx = mod(ix,r(0))
+            izc = iz - wz
+            iyc = iy - wy
+            ixc = ix - wx
+            if (izc < nn(2)) then
+              izcpr = izc + r(2)
+            else
+              izcpr = izc
+              wx = 0
+            endif
+            if (iyc < nn(1)) then
+              iycpr = iyc + r(1)
+            else
+              iycpr = iyc
+              wy = 0
+            endif
+            if (ixc < nn(0)) then
+              ixcpr = ixc + r(0)
+            else
+              ixcpr = ixc
+              wz = 0
+            endif
+            ww = (r(2) - wz)*(r(1) - wy)*(r(0) - wx)*d(izc  ,iyc  ,ixc  ) +
+     &                   wz *(r(1) - wy)*(r(0) - wx)*d(izcpr,iyc  ,ixc  ) +
+     &           (r(2) - wz)*        wy *(r(0) - wx)*d(izc  ,iycpr,ixc  ) +
+     &                   wz *        wy *(r(0) - wx)*d(izcpr,iycpr,ixc  ) +
+     &           (r(2) - wz)*(r(1) - wy)*        wx *d(izc  ,iyc  ,ixcpr) +
+     &                   wz *(r(1) - wy)*        wx *d(izcpr,iyc  ,ixcpr) +
+     &           (r(2) - wz)*        wy *        wx *d(izc  ,iycpr,ixcpr) +
+     &                   wz *        wy *        wx *d(izcpr,iycpr,ixcpr)
+            if (ww > 0) d(iz,iy,ix) = 1
+
+          enddo
+        enddo
+      enddo
 
       return
       end
