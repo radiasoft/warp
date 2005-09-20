@@ -4,6 +4,7 @@ from MeshRefinement import *
 from generateconductors import installconductors
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
+import timing as t
 import MLab
 
 try:
@@ -25,10 +26,11 @@ class AMRTree(object,Visualizable):
         self.blocks=MRBlock()     
       else:
         self.solvergeom = w3d.solvergeom
+	self.blocks={}
+	self.blocks[frz.basegrid.gid[0]]={'grid':frz.basegrid,'installed_conductors':[]}
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conductorsdfill   = []
-      self.conds_installed_onbasegrid = []
       self.beforefs = ControllerFunction()
       self.dfill = 2
       self.enable()
@@ -52,7 +54,10 @@ class AMRTree(object,Visualizable):
       # --- If the mesh refinement is going to be recalculated this step,
       # --- then rho is only needed on the root block. Skip loading rho
       # --- on the mesh refined blocks to save time.
-      if (top.it%w3d.AMRgenerate_periodicity<>0 or not lzero): lrootonly = 0
+      ifcond = w3d.AMRgenerate_periodicity==0
+      if not ifcond:
+        ifcond = top.it%w3d.AMRgenerate_periodicity<>0
+      if (ifcond or not lzero): lrootonly = 0
       else:                                       lrootonly = 1
       if self.solvergeom == w3d.XYZgeomMR:
         self.blocks.loadrho(lzero=lzero,lrootonly=lrootonly)
@@ -80,6 +85,22 @@ class AMRTree(object,Visualizable):
 
     def installconductor(self,conductor,dfill=2):
       self.addconductor(conductor,dfill)
+      if self.solvergeom==w3d.XYZgeomMR:
+        self.blocks.installconductor(conductor,dfill=self.dfill)
+      else:
+        for block in self.blocks.values():
+          g = block['grid']
+          if conductor not in block['installed_conductors']:
+            try:
+              cond = conductor.cond
+            except AttributeError:
+              cond = conductor
+            installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
+                                xmmin=g.xmin,xmmax=g.xmax,
+                                zmmin=g.zmin,zmmax=g.zmax,
+                                gridrz=g)
+            block['installed_conductors'].append(cond) 
+        get_cond_rz(1)
 
     def hasconductors(self):
       if self.solvergeom == w3d.XYZgeomMR:
@@ -464,16 +485,13 @@ class AMRTree(object,Visualizable):
           iz = patch[5]
           f[j:j+ix,k:k+iy,l:l+iz] += 1
       return f
-
-
     def setblocks(self):
       self.nblocks=0
       if self.solvergeom == w3d.XYZgeomMR:
         self.blocks.resetroot()
         mothergrid = self.blocks
       else:
-        self.blocks = [frz.basegrid]
-        mothergrid = self.blocks[0]
+        mothergrid = frz.basegrid
         self.del_blocks2d()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
       if self.solvergeom == w3d.XYZgeomMR:
@@ -517,16 +535,13 @@ class AMRTree(object,Visualizable):
       if self.solvergeom == w3d.XYZgeomMR:
         self.blocks.finalize()
       else:
-        for i in range(frz.ngrids-1):
-          self.blocks += [frz.basegrid]
         g = frz.basegrid
-        self.blocks[0]=g
         for i in range(1,frz.ngrids):
           try:
             g = g.next
           except:
             g=g.down
-          self.blocks[g.gid[0]-1] = g
+          self.blocks[g.gid[0]] = {'grid':g,'installed_conductors':[]}
 
     def add_transit(self, nx, xmin, xmax, dxmother, xmin0, xmax0):
       nt = self.ntransit
@@ -554,20 +569,25 @@ class AMRTree(object,Visualizable):
       if g is not frz.basegrid:
         id = g.gid[0]
         del_subgrid(id)
+	self.blocks.__delitem__(id)
       else:
         frz.ngrids=1
         self.nblocks=0
         g.loc_part=g.gid[0]
         g.loc_part_fd=g.gid[0]
 
-    def generate(self):
+    def generate(self,l_timing=0):
       """
     Generate AMR blocks based on values and gradients of self.f. If self.f is None, its default is 
     the charge density. If self.f is null, an error message is raised.
       """
       # return if not time to generate a new set of blocks
       # Note that beforefs is still called.
-      if(top.it%w3d.AMRgenerate_periodicity<>0):
+      
+      ifcond = w3d.AMRgenerate_periodicity==0
+      if not ifcond:
+        ifcond = top.it%w3d.AMRgenerate_periodicity<>0
+      if ifcond:
         self.beforefs()
         return
       print 'generate grids at it = ',top.it
@@ -579,6 +599,7 @@ class AMRTree(object,Visualizable):
       
       # generate nbcells from self.f or use self.nbcells_user if provided
       if self.nbcells_user==None:
+        if l_timing:t.start()
         l_nbcellsnone=1
         # set self.f to the charge density array by default
         if self.f is None:
@@ -609,29 +630,45 @@ class AMRTree(object,Visualizable):
                                      MRfact=self.MRfact,lmax=self.maxcells_isolated_blocks)
         nbcells=self.nbcells
         self.f = None
+        if l_timing:
+            t.finish()
+            print 'created nbcells in ',t.seconds(),' seconds.'
       else:
         nbcells=self.nbcells_user
                                    
       if nbcells is not None:
         # generate list of blocks from array nbcells
+        if l_timing:t.start()
         self.setlist(nbcells[:-1,:-1],w3d.AMRcoalescing,self.MRfact,true)
+        if l_timing:
+            t.finish()
+            print 'generated list in ',t.seconds(),' seconds.'
  
         # allocate blocks from list self.listblocks
+        if l_timing:t.start()
         self.setblocks()
+        if l_timing:
+            t.finish()
+            print 'generated blocks in ',t.seconds(),' seconds.'
       
         # clear inactive regions in each blocks
+        if l_timing:t.start()
         if self.solvergeom==w3d.XYZgeomMR:
           self.blocks.clearinactiveregions(self.nbcells)
         else:
           g = frz.basegrid
           adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
+        if l_timing:
+            t.finish()
+            print 'Cleared inactive regions in ',t.seconds(),' seconds.'
       
       # set conductor data
+      if l_timing:t.start()
       if self.solvergeom==w3d.XYZgeomMR:
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
           self.blocks.installconductor(cond,dfill=dfill)
       else:
-        # this loop is needed so that the grid are correctly registered when installing conductors
+        # this loop is needed so that the grids are correctly registered when installing conductors
         if self.nblocks>0:
           g = frz.basegrid
           for idummy in range(frz.ngrids-1):
@@ -643,31 +680,21 @@ class AMRTree(object,Visualizable):
                     g=g.down
                 except:
                     pass
+        # install conductors
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
-          g = frz.basegrid
-         #for condbase in self.conds_installed_onbasegrid:
-         #  if cond == condbase:
-         #    try:
-         #      g = g.down
-         #    except:
-         #      g = None
-         #    break  
-          if cond in self.conds_installed_onbasegrid:
-            try:    g = g.down
-            except: g = None
-          if g is not None: 
-            #cond.install(g)
-            try:
-              cc = cond.cond
-            except AttributeError:
-              cc = cond
-            installconductors(cc,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
-                              xmmin=g.xmin,xmmax=g.xmax,
-                              zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
-                              gridrz=g)
-          if g==frz.basegrid:self.conds_installed_onbasegrid += [cond] 
+          for block in self.blocks.values():
+            if cond not in block['installed_conductors']:
+              installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
+                                xmmin=g.xmin,xmmax=g.xmax,
+                                zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
+                                gridrz=g)
+              block['installed_conductors'].append(cond)  
         get_cond_rz(1)
+      if l_timing:
+            t.finish()
+            print 'generated conductors in ',t.seconds(),' seconds.'
       
+      if l_timing:t.start()
       # load charge density on new set of blocks
       if self.solvergeom == w3d.XYZgeomMR:
         # --- Call the solvers loadrho routine directly since AMR instance
@@ -675,8 +702,12 @@ class AMRTree(object,Visualizable):
         self.blocks.loadrho(lzero=true,lrootonly=0)
       else:
         loadrho()
+      if l_timing:
+            t.finish()
+            print 'loaded rho in ',t.seconds(),' seconds.'
 
       self.beforefs()
+      print 'Generated ',self.nblocks,' blocks.'
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
       for i,blocks in enumerate(self.listblocks[1:]):
@@ -797,7 +828,8 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
       else:
         cmin=0
         cmax=frz.ngrids
-#    pli(f[g.nguardx:-g.nguardx,g.nguardz:-g.nguardz],
+    if not transit:
+      f = f[g.transit_min_r:g.nr+1-g.transit_max_r,g.transit_min_z:g.nz+1-g.transit_max_z]
     pli(f,zmin,rmin,zmax,rmax,cmin=cmin,cmax=cmax)
     if(mesh):
         nr = nint(float(g.nr)/meshr)
@@ -813,14 +845,14 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
     if(siblings):
       try:
          plphirz(g.next,which,cmin,cmax,border,bordercolor,borderwidth,mesh,meshcolor,meshwidth,meshr,
-                    siblings,children=0,firstcall=0,level=level,maxlevel=maxlevel,delay=delay)
+                    siblings,children=0,firstcall=0,level=level,maxlevel=maxlevel,delay=delay,transit=transit)
       except:
          pass
     if(children):
       if maxlevel==0 or level<maxlevel:
         try:
           plphirz(g.down,which,cmin,cmax,border,bordercolor,borderwidth,mesh,meshcolor,meshwidth,meshr,
-                     siblings,children,firstcall=0,level=level+1,maxlevel=maxlevel,delay=delay)
+                     siblings,children,firstcall=0,level=level+1,maxlevel=maxlevel,delay=delay,transit=transit)
         except:
           pass
     if(firstcall):
