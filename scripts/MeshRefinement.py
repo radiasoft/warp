@@ -15,11 +15,11 @@ except ImportError:
 # Note that MRBlock is psyco.bind at the end of the file
 class MRBlock(MultiGrid,Visualizable):
   """
+Implements adaptive mesh refinement in 3d
  - parent:
  - refinement=None: amount of refinement along each axis
  - lower,upper: extent of domain in relative to parent, in its own grid
                 cell size, and not including any guard cells
- - ichild: the index number of this child in the given parent
  - dims: dimensions of the grid, only used for root block, the one with
          no parents
  - mins,maxs: locations of the grid lower and upper bounds in the beam frame
@@ -30,7 +30,6 @@ class MRBlock(MultiGrid,Visualizable):
   """
   def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
-                    ichild=None,
                     dims=None,mins=None,maxs=None,
                     nguard=1,
                     root=None,
@@ -39,7 +38,6 @@ class MRBlock(MultiGrid,Visualizable):
     if parent is None:
       # --- No parents, so just create empty lists
       self.parents = []
-      self.ichild = []
       self.root = self
       # --- It is assumed that the root block will be the first one created.
       # --- So clear out the global block list and count.
@@ -49,7 +47,6 @@ class MRBlock(MultiGrid,Visualizable):
       # --- Save the parent and the index number. These are saved in lists
       # --- since a block can have multiple parents.
       self.parents = [parent]
-      self.ichild = [ichild]
       self.root = root
 
     # --- Get the current global block number and increment the counter.
@@ -58,7 +55,9 @@ class MRBlock(MultiGrid,Visualizable):
     self.root.totalnumberofblocks += 1
     self.root.listofblocks.append(self)
 
-    self.overlaps = []
+    # --- Note that a dictionary is used for the overlaps so that lookups
+    # --- are faster.
+    self.overlaps = {}
     self.nguard = nguard
     self.conductorlist = []
 
@@ -214,6 +213,10 @@ class MRBlock(MultiGrid,Visualizable):
     # --- same level. If there are no siblings, then it is not needed.
     self.siblingdomains = None
 
+    # --- This is a temporary array, similar to childdomains but setup in
+    # --- the order of the listofblocks. It is used only for setting up
+    # --- the siblingdomains array.
+    self.orderedchilddomains = None
     # --- Now add any specified children
     self.children = []
     if children is not None:
@@ -234,16 +237,28 @@ it knows whether to re-register itself.
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
+   #self.makefortranordered('phi')
+   #self.makefortranordered('rho')
+   #self.makefortranordered('selfe')
     if self.iamtheregisteredsolver:
+      del self.iamtheregisteredsolver
       registersolver(self)
       if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+        # --- The arrays are assigned in such a way that ensures that
+        # --- mr.phi is in the same fortran ordering of w3d.phi.
         w3d.rho = self.rho
         w3d.phi = self.phi
         w3d.nxp = self.nx
         w3d.nyp = self.ny
         w3d.nzp = self.nz
-        w3d.rhop = self.rho
-        w3d.phip = self.phi
+        w3d.rhop = w3d.rho
+        w3d.phip = w3d.phi
+
+  def makefortranordered(self,vname):
+    a = getattr(self,vname)
+    if type(a) is ArrayType:
+      setattr(self,vname,fzeros(shape(a),a.typecode()))
+      getattr(self,vname)[...] = a
 
   def addchild(self,lower=None,upper=None,mins=None,maxs=None,
                     refinement=[2,2,2]):
@@ -253,7 +268,7 @@ Add a mesh refined block to this block.
                                      constructor.
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
-                    refinement=refinement,ichild=len(self.children)+1,
+                    refinement=refinement,
                     nguard=self.nguard,root=self.root)
     self.addblockaschild(child)
 
@@ -266,12 +281,12 @@ Given a block instance, installs it as a child.
   def resetroot(self):
     # --- No parents, so just create empty lists
     self.parents = []
-    self.ichild = []
     self.root = self
     self.totalnumberofblocks = 1
     self.listofblocks = [self]
     self.siblingdomains = None
     self.childdomains = None
+    self.orderedchilddomains = None
     self.children = []
 
   #--------------------------------------------------------------------------
@@ -340,12 +355,12 @@ Given a block instance, installs it as a child.
   def findallchildren(self,blocklists):
     for block in blocklists[1]:
       # --- Get extent of possible overlapping domain
-      l = maximum(block.fulllower/block.refinement,self.fulllower)
-      u = minimum(block.fullupper/block.refinement,self.fullupper)
+      l = maximum(block.fulllower,self.fulllower*block.refinement)
+      u = minimum(block.fullupper,self.fullupper*block.refinement)
       if alltrue(u >= l):
-        self.addblockaschild(block)
+        self.children.append(block)
         block.parents.append(self)
-        block.ichild.append(len(self.children))
+
     # --- Only the first block in the list makes the call for the next level.
     # --- This guarantees that this method is called only once for each block.
     if blocklists[0][0] == self:
@@ -359,7 +374,7 @@ Sets the regions that are covered by the children.
     if not self.isfirstcall(): return
     # --- Loop over the children, first calling each, then setting
     # --- childdomain appropriately.
-    for child,ichild in zip(self.children,range(1,1+len(self.children))):
+    for child in self.children:
       child.initializechilddomains()
 
       # --- Set full domain to negative of child number first.
@@ -370,7 +385,6 @@ Sets the regions that are covered by the children.
       u = u + where(u == self.fullupper,1,0)
       # --- The child claims all unclaimed areas.
       ii = self.getchilddomains(l,u)
-      #ii[...] = where(ii==0,-ichild,ii)
       ii[...] = where(ii==self.blocknumber,-child.blocknumber,ii)
 
       # --- Set interior to positive child number.
@@ -381,10 +395,59 @@ Sets the regions that are covered by the children.
       u = u + where(u == self.fullupper,1,0)
       # --- The child claims its full interior area
       ii = self.getchilddomains(l,u)
-      #ii[...] = +ichild
       ii[...] = +child.blocknumber
 
   def findoverlappingsiblings(self,parent=None):
+    # --- This is somewhat faster since each block only loops through its
+    # --- list of parents, which should be shorted than a list of siblings.
+    # --- This will also decrease the number of overlaps, since overlaps
+    # --- only with blocks lower in the list are needed to be known.
+
+    # --- Loop over blocks in a fixed order. This is so that each child gets
+    # --- to claim space from all of its parents at the same time, so there is
+    # --- no conflict about some other sibling claim space from one parent
+    # --- first but not another. Here, claimed space means that the other
+    # --- siblings will be putting their rho into the sibling who owns the
+    # --- space.
+    for block in self.listofblocks:
+      for parent in block.parents:
+        lc = maximum(parent.fulllower,block.fulllower/block.refinement)
+        uc = minimum(parent.fullupper,block.fullupper/block.refinement)
+        pd = parent.getorderedchilddomains(lc,uc)
+        # --- Only set areas that are still unclaimed
+        pd[...] = where(pd == -1,block.blocknumber,pd)
+
+        # --- Since no other siblings can claim this area, copy the data
+        # --- to the current blocks sibling array. Note that the data copied
+        # --- is at the parents level of refinement.
+        l = maximum(parent.fulllower*block.refinement,block.fulllower)
+        u = minimum(parent.fullupper*block.refinement,block.fullupper)
+        sd = block.getsiblingdomains(l,u)
+        r = block.refinement
+        sd[::r[0],::r[1],::r[2]] = (pd == block.blocknumber)
+
+        # --- Get the ids of the overlapping siblings from the pd array.
+        # --- Note that this will only get siblings lower down in the list.
+        oo = zeros(block.root.totalnumberofblocks) - 1
+        put(oo,pd,pd)
+        oo = compress(oo > -1,oo)
+        for o in oo:
+          if o == block.blocknumber: continue
+          block.overlaps[block.root.listofblocks[o]] = o
+
+    # --- Since only data at the parents level of refinment was setup, go
+    # --- back over the array and fill in the rest.
+    # --- This was just by far easier in fortran.
+    for block in self.listofblocks:
+      if block == block.root: continue
+      sd = block.getsiblingdomains(block.fulllower,block.fullupper)
+      nn = block.fullupper - block.fulllower
+      expandsiblingdomain(nn,sd,block.refinement)
+
+  def findoverlappingsiblingsold(self,parent=None):
+    # --- This is an old version of the routine which did a pair wise search
+    # --- through all of the siblings. This was more expensive than the new
+    # --- version.
     # --- Recursively call the children.
     for child in self.children:
       child.findoverlappingsiblings(self)
@@ -412,6 +475,8 @@ Sets the regions that are covered by the children.
       sd = self.getsiblingdomains(sl,su)
       od = sibling.getsiblingdomains(sl,su)
 
+      setupsiblingdomain(su-sl,sd,od)
+      """
       # --- This instance claims any cells that are unclaimed both here and in
       # --- the sibling
       unclaimed = (od == -1) & (sd == -1)
@@ -426,10 +491,14 @@ Sets the regions that are covered by the children.
       # --- siblings. Remove claim to those areas from the sibling.
       overclaimed = (od == 1) & (sd == 1)
       od[...] = where(overclaimed,0,od)
+      """
 
       # --- Keep a list of overlapping siblings
-      if sibling not in self.overlaps:
-        self.overlaps.append(sibling)
+      #if sibling not in self.overlaps:
+        #self.overlaps.append(sibling)
+      # --- Using a dictionary, this operation is faster and doesn't
+      # --- require a separate check is the sibling is already a key.
+      self.overlaps[sibling] = 1
 
     # --- Now, claim any parts of the domain within this parent that have
     # --- not already been set. i.e. those parts not covered by other blocks.
@@ -668,7 +737,7 @@ the top level grid.
       # --- full-size arrays.  
       ic1 = ichildsorted[1:] - ichildsorted[:-1]
       nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
-      nperchild = zeros(len(self.root.listofblocks))
+      nperchild = zeros(self.root.totalnumberofblocks)
       ss = 0
       for n in nn:
         nperchild[nint(ichildsorted[n-1])] = n - ss
@@ -903,7 +972,7 @@ Python version.
 
             prho = self.getrho(l+pm,u-pp)
             crho = child.getrho(ls+r*pm,us-r*pp,r)
-            cowns = child.getsiblingdomains(ls+r*pm,us-r*pp,r)
+            cowns = child.getsiblingdomains(ls+r*pm,us-r*pp)[::r,::r,::r]
 
             # --- Get the rho that will be contributed.
             rh = where(cowns,crho,0.)
@@ -1046,14 +1115,19 @@ are owned by this instance.
     if not self.isfirstcall(): return
     for child in self.children:
       child.accumulaterhofromsiblings()
-    for other in self.overlaps:
+    for other in self.overlaps.keys():
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
       srho = self.getrho(l,u)
       orho = other.getrho(l,u)
-      sown = self.getsiblingdomains(l,u)
-      #srho[...] = srho + where(sown,orho,0.)
-      add(srho,where(sown,orho,0.),srho)
+      # --- Pull the data
+      #sown = self.getsiblingdomains(l,u)
+      ##srho[...] = srho + where(sown,orho,0.)
+      #add(srho,where(sown,orho,0.),srho)
+      # --- Push the data - needed with partial list of overlaps
+      oown = other.getsiblingdomains(l,u)
+      #orho[...] = orho + where(oown,srho,0.)
+      add(orho,where(oown,srho,0.),orho)
       # --- Doesn't seem to work and I didn't take the time to debug it
       #nx,ny,nz = array(shape(srho)) - 1
       #addrhotoowner(nx,ny,nz,srho,sown,orho)
@@ -1065,7 +1139,7 @@ Get rho from overlapping siblings where they own the region.
     if not self.isfirstcall(): return
     for child in self.children:
       child.getrhofromsiblings()
-    for other in self.overlaps:
+    for other in self.overlaps.keys():
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
       srho = self.getrho(l,u)
@@ -1505,14 +1579,22 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
     return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-  def getsiblingdomains(self,lower,upper,r=[1,1,1]):
+  def getorderedchilddomains(self,lower,upper):
+    if self.orderedchilddomains is None:
+      #self.orderedchilddomains = zeros(1+self.dims) - 1
+      self.orderedchilddomains = zeros(1+self.dims)
+      subtract(self.orderedchilddomains,1,self.orderedchilddomains)
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1
+    return self.orderedchilddomains[ix1:ix2,iy1:iy2,iz1:iz2]
+  def getsiblingdomains(self,lower,upper):
     if self.siblingdomains is None:
       #self.siblingdomains = zeros(1+self.dims) - 1
       self.siblingdomains = zeros(1+self.dims)
       subtract(self.siblingdomains,1,self.siblingdomains)
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    return self.siblingdomains[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
+    return self.siblingdomains[ix1:ix2,iy1:iy2,iz1:iz2]
   def getlocalarray(self,array,lower,upper,r=[1,1,1],fulllower=None,
                     upperedge=1):
     if fulllower is None: fulllower = self.fulllower
