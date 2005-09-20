@@ -442,7 +442,7 @@ Sets the regions that are covered by the children.
       if block == block.root: continue
       sd = block.getsiblingdomains(block.fulllower,block.fullupper)
       nn = block.fullupper - block.fulllower
-      expandsiblingdomain(nn,sd,block.refinement)
+      expandsiblingdomain(nn,transpose(sd),block.refinement)
 
   def findoverlappingsiblingsold(self,parent=None):
     # --- This is an old version of the routine which did a pair wise search
@@ -475,7 +475,7 @@ Sets the regions that are covered by the children.
       sd = self.getsiblingdomains(sl,su)
       od = sibling.getsiblingdomains(sl,su)
 
-      setupsiblingdomain(su-sl,sd,od)
+      setupsiblingdomain(su-sl,transpose(sd),transpose(od))
       """
       # --- This instance claims any cells that are unclaimed both here and in
       # --- the sibling
