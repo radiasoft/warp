@@ -26,8 +26,8 @@ class AMRTree(object,Visualizable):
         self.blocks=MRBlock()     
       else:
         self.solvergeom = w3d.solvergeom
-      self.blocks={}
-      self.blocks[frz.basegrid.gid[0]]={'grid':frz.basegrid,'installed_conductors':[]}
+        self.blocks={}
+        self.blocks[frz.basegrid.gid[0]]={'grid':frz.basegrid,'installed_conductors':[]}
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conductorsdfill   = []
