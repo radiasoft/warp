@@ -26,8 +26,8 @@ class AMRTree(object,Visualizable):
         self.blocks=MRBlock()     
       else:
         self.solvergeom = w3d.solvergeom
-	self.blocks={}
-	self.blocks[frz.basegrid.gid[0]]={'grid':frz.basegrid,'installed_conductors':[]}
+      self.blocks={}
+      self.blocks[frz.basegrid.gid[0]]={'grid':frz.basegrid,'installed_conductors':[]}
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conductorsdfill   = []
@@ -97,7 +97,7 @@ class AMRTree(object,Visualizable):
               cond = conductor
             installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
                                 xmmin=g.xmin,xmmax=g.xmax,
-                                zmmin=g.zmin,zmmax=g.zmax,
+                                zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                                 gridrz=g)
             block['installed_conductors'].append(cond) 
         get_cond_rz(1)
@@ -569,7 +569,7 @@ class AMRTree(object,Visualizable):
       if g is not frz.basegrid:
         id = g.gid[0]
         del_subgrid(id)
-	self.blocks.__delitem__(id)
+        self.blocks.__delitem__(id)
       else:
         frz.ngrids=1
         self.nblocks=0
