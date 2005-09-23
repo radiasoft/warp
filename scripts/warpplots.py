@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.158 2005/09/12 19:02:29 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.159 2005/09/23 17:57:25 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2852,7 +2852,7 @@ be from none to all three.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  assert (top.bfstype >= 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
@@ -2942,7 +2942,7 @@ be from none to all three.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  assert (top.bfstype >= 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
@@ -3031,7 +3031,7 @@ be from none to all three.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  assert (top.bfstype > 0),"Magnetostatic field solver not turned on"
+  assert (top.bfstype >= 0),"Magnetostatic field solver not turned on"
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
