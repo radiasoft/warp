@@ -1022,10 +1022,10 @@ Fortran version
                    sometrue(u == self.rootdims)))
 
       w = self.getwarrayforrho(child.refinement)
-      gatherrhofromchild(self.rho,self.dims[0],self.dims[1],self.dims[2],
-                         child.rho,child.dims[0],child.dims[1],child.dims[2],
+      gatherrhofromchild(self.rho,self.dims,
+                         child.rho,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
-                         child.refinement,w,child.siblingdomains,
+                         child.refinement,w,transpose(child.siblingdomains),
                          dopbounds,child.pbounds,self.rootdims)
 
   def gatherrhofromchildren_reversed(self):
