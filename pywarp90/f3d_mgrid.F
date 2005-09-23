@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.96 $, $Date: 2005/09/20 19:06:43 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.97 $, $Date: 2005/09/23 21:53:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3426,20 +3426,22 @@ c       --- than the other point. If so, reset data for the other point.
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine gatherrhofromchild(rho,nx,ny,nz,childrho,cnx,cny,cnz,
+      subroutine gatherrhofromchild(rho,nn,childrho,cnn,
      &                              l,u,fulllower,childlower,childupper,
      &                              r,weights,owndomain,
      &                              dopbounds,pbounds,rootdims)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nz,cnx,cny,cnz
+      integer(ISZ):: nn(0:2),cnn(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
       integer(ISZ):: r(0:2)
       integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: childrho(0:cnx,0:cny,0:cnz)
+      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: childrho(0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
-      integer(ISZ):: owndomain(0:cnx,0:cny,0:cnz)
+c     --- Note that owndomains is passed in with C ordering so that a
+c     --- transpose/copy of it is not done.
+      integer(ISZ):: owndomain(0:cnn(2),0:cnn(1),0:cnn(0))
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
@@ -3473,7 +3475,7 @@ c=============================================================================
             do iwz=iwz1,iwz2
               do iwy=iwy1,iwy2
                 do iwx=iwx1,iwx2
-                  if (owndomain(icx+iwx,icy+iwy,icz+iwz) == 1) then
+                  if (owndomain(icz+iwz,icy+iwy,icx+iwx) == 1) then
                     wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
 
 c                   --- Adjust for symmetries
