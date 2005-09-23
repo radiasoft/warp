@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.8 $, $Date: 2005/09/14 01:08:35 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.9 $, $Date: 2005/09/23 21:52:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -11,11 +11,12 @@ c=============================================================================
       interface
 
       subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,wght,depos,l2symtry,l4symtry)
+     &                  q,nw,wghtp,depos,l2symtry,l4symtry)
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
-      integer(ISZ):: np
-      real(kind=8):: zgrid,q,wght
+      integer(ISZ):: np,nw
+      real(kind=8):: zgrid,q
+      real(kind=8),target:: wghtp(nw)
       real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -141,9 +142,10 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
-      real(kind=8):: swtmp
+      real(kind=8):: swtmp(1)
       real(kind=8):: substarttime,wtime
       real(kind=8),dimension(:,:,:,:),pointer::jpcopy
+      real(kind=8),pointer:: pidtmp(:)
       integer(ISZ):: allocerror
 
       if (lf3dtimesubs) substarttime = wtime()
@@ -212,12 +214,27 @@ c                --- just add its saved jptmp into jp.
                  cycle
                end if
             end if
-            call setj3d(bfieldp,bfieldp%j,nps_u,
-     &                  xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
-     &                  zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                  uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
-     &                  uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
-     &                  sq(is),swtmp,depos,l2symtry,l4symtry)
+            if(wpid==0) then
+              call setj3d(bfieldp,bfieldp%j,nps_u,
+     &                    xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
+     &                    zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
+     &                    uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
+     &                    sq(is)*swtmp(1),0,swtmp,depos,l2symtry,l4symtry)
+            else
+c             --- Due to compiler bug, the pid array needs to be temporarily
+c             --- pointed to in order to be properly passed into setj3d.
+c             --- When pid is passed directly into setj3d, it is just all
+c             --- zeros.
+              pidtmp => pid(ipmin:ipmin+nps_u-1,wpid)
+              call setj3d(bfieldp,bfieldp%j,nps_u,
+     &                    xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
+     &                    zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
+     &                    uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
+     &                    sq(is)*swtmp(1),nps_u,pidtmp,
+     &                    depos,l2symtry,l4symtry)
+            endif
             if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
 c             --- If this species is being advanced this step, then restore
 c             --- jp and copy its j into jp.
@@ -832,14 +849,15 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
       end
 c=============================================================================
       subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,wght,depos,l2symtry,l4symtry)
+     &                  q,nw,wghtp,depos,l2symtry,l4symtry)
       use GlobalVars
       use Constant
       use Subtimersf3d
       use BFieldGridTypemodule
       type(BFieldGridType):: bfield
-      integer(ISZ):: np
-      real(kind=8):: zgrid,q,wght
+      integer(ISZ):: np,nw
+      real(kind=8):: zgrid,q
+      real(kind=8),target:: wghtp(nw)
       real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -868,18 +886,21 @@ c     --- For "scalar" (actually partly vectorized) algorithm
       integer(ISZ):: ii(nparpgrp), jj(nparpgrp), kk(nparpgrp)
 c     --- For both algorithms
       real(kind=8):: s(0:7,nparpgrp),v(0:2,nparpgrp)
-c     --- Work array holding q*w/cell volume, the charge density per
-c     --- simulation particle. This is primarily needed for the RZ version
+c     --- Work array holding q/cell volume, the charge density per
+c     --- real particle. This is primarily needed for the RZ version
 c     --- since the cell volume there has radial dependence.
       real(kind=8):: cdens(0:bfield%nx)
+c     --- Work array holding q*w/cell volume, the charge density per
+c     --- simulation particle.
+      real(kind=8):: cdensw(0:bfield%nx)
 c     --- Temp arrays to hold particle data
 c     --- These are needed when lcylindrical is true, in which case x=r, y=0,
 c     --- and vx = vr, and vy = vtheta.
-      real(kind=8),pointer:: x(:),y(:),z(:),ux(:),uy(:),uz(:),gi(:)
+      real(kind=8),pointer:: x(:),y(:),z(:),ux(:),uy(:),uz(:),gi(:),wght(:)
 
       real(kind=8),pointer,dimension(:,:,:,:):: j
       integer(ISZ):: ipmin,nptmp,ix,iy,iz,ind0,m,ir
-      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: g,gw,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
       real(kind=8):: xsign,ysign
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -912,9 +933,9 @@ c         --- and Verboncoeur, J. of Comp. Phys.,
         do ix = 1,bfield%nx
           cdens(ix) = 1./(2.*pi*(ix*bfield%dx+bfield%xmmin)*bfield%dx*bfield%dz)
         enddo
-        cdens = cdens*wght*q
+        cdens = cdens*q
       else
-        g = wght * q / (bfield%dx * bfield%dy * bfield%dz)
+        g = q / (bfield%dx * bfield%dy * bfield%dz)
         if (l2symtry) then
 c         --- The particle weight is reduced by a factor of 2 except near the
 c         --- transverse boundaries.
@@ -925,6 +946,11 @@ c         --- transverse boundaries.
           g = g*0.25
         endif
         cdens = g
+      endif
+
+      if (nw == 0) then
+        gw = g
+        cdensw = cdens
       endif
 
 ! np was made FIRSTPRIVATE to get around a bug when the expression
@@ -967,6 +993,7 @@ c       --- Setup temporary particle arrays
         z => zp(ipmin:ipmin+nptmp-1)
         uz => uzp(ipmin:ipmin+nptmp-1)
         gi => gaminv(ipmin:ipmin+nptmp-1)
+        if (nw == np) wght => wghtp(ipmin:ipmin+nptmp-1)
 
 c--------------------------------------
 c  Begin vectorized deposition loop
@@ -999,14 +1026,15 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
+           if (nw == np) gw = g*wght(ir)
+           s(0,ir) = u0 * v0 * w0 * gw*gyfact
+           s(1,ir) = u1 * v0 * w0 * gw*gyfact
+           s(2,ir) = u0 * v1 * w0 * gw
+           s(3,ir) = u1 * v1 * w0 * gw
+           s(4,ir) = u0 * v0 * w1 * gw*gyfact
+           s(5,ir) = u1 * v0 * w1 * gw*gyfact
+           s(6,ir) = u0 * v1 * w1 * gw
+           s(7,ir) = u1 * v1 * w1 * gw
            ysign = 1.
            if (y(ir) < 0.) ysign = -1.
            v(0,ir) = ux(ir)*gi(ir)*ysign
@@ -1040,14 +1068,15 @@ c       --- transverse boundaries.
            gyfact = 1.
            if (ix == 0 .and. bfield%xmmin == 0.) gxfact = 2.
            if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g*gxfact
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g*gxfact
-           s(7,ir) = u1 * v1 * w1 * g
+           if (nw == np) gw = g*wght(ir)
+           s(0,ir) = u0 * v0 * w0 * gw*gxfact*gyfact
+           s(1,ir) = u1 * v0 * w0 * gw*gyfact
+           s(2,ir) = u0 * v1 * w0 * gw*gxfact
+           s(3,ir) = u1 * v1 * w0 * gw
+           s(4,ir) = u0 * v0 * w1 * gw*gxfact*gyfact
+           s(5,ir) = u1 * v0 * w1 * gw*gyfact
+           s(6,ir) = u0 * v1 * w1 * gw*gxfact
+           s(7,ir) = u1 * v1 * w1 * gw
            xsign = 1.
            ysign = 1.
            if (x(ir) < 0.) xsign = -1.
@@ -1077,14 +1106,15 @@ c       --- normal loop
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0 * v0 * w0 * cdens(ix  )
-           s(1,ir) = u1 * v0 * w0 * cdens(ix+1)
-           s(2,ir) = u0 * v1 * w0 * cdens(ix  )
-           s(3,ir) = u1 * v1 * w0 * cdens(ix+1)
-           s(4,ir) = u0 * v0 * w1 * cdens(ix  )
-           s(5,ir) = u1 * v0 * w1 * cdens(ix+1)
-           s(6,ir) = u0 * v1 * w1 * cdens(ix  )
-           s(7,ir) = u1 * v1 * w1 * cdens(ix+1)
+           if (nw == np) cdensw(ix:ix+1) = cdens(ix:ix+1)*wght(ir)
+           s(0,ir) = u0 * v0 * w0 * cdensw(ix  )
+           s(1,ir) = u1 * v0 * w0 * cdensw(ix+1)
+           s(2,ir) = u0 * v1 * w0 * cdensw(ix  )
+           s(3,ir) = u1 * v1 * w0 * cdensw(ix+1)
+           s(4,ir) = u0 * v0 * w1 * cdensw(ix  )
+           s(5,ir) = u1 * v0 * w1 * cdensw(ix+1)
+           s(6,ir) = u0 * v1 * w1 * cdensw(ix  )
+           s(7,ir) = u1 * v1 * w1 * cdensw(ix+1)
            v(0,ir) = ux(ir)*gi(ir)
            v(1,ir) = uy(ir)*gi(ir)
            v(2,ir) = uz(ir)*gi(ir)
@@ -1126,14 +1156,15 @@ c     --- vectorized loop to compute indices, weights
           w0     = 1. - w1
           gyfact = 1.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
+          if (nw == np) gw = g*wght(ir)
+          s(0,ir) = u0 * v0 * w0 * gw*gyfact
+          s(1,ir) = u1 * v0 * w0 * gw*gyfact
+          s(2,ir) = u0 * v1 * w0 * gw
+          s(3,ir) = u1 * v1 * w0 * gw
+          s(4,ir) = u0 * v0 * w1 * gw*gyfact
+          s(5,ir) = u1 * v0 * w1 * gw*gyfact
+          s(6,ir) = u0 * v1 * w1 * gw
+          s(7,ir) = u1 * v1 * w1 * gw
           ysign = 1.
           if (y(ir) < 0.) ysign = -1.
           v(0,ir) = ux(ir)*gi(ir)*ysign
@@ -1155,14 +1186,15 @@ c     --- vectorized loop to compute indices, weights
           gyfact = 1.
           if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxfact = 2.
           if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g*gxfact
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g*gxfact
-          s(7,ir) = u1 * v1 * w1 * g
+          if (nw == np) gw = g*wght(ir)
+          s(0,ir) = u0 * v0 * w0 * gw*gxfact*gyfact
+          s(1,ir) = u1 * v0 * w0 * gw*gyfact
+          s(2,ir) = u0 * v1 * w0 * gw*gxfact
+          s(3,ir) = u1 * v1 * w0 * gw
+          s(4,ir) = u0 * v0 * w1 * gw*gxfact*gyfact
+          s(5,ir) = u1 * v0 * w1 * gw*gyfact
+          s(6,ir) = u0 * v1 * w1 * gw*gxfact
+          s(7,ir) = u1 * v1 * w1 * gw
           xsign = 1.
           ysign = 1.
           if (x(ir) < 0.) xsign = -1.
@@ -1183,14 +1215,15 @@ c       --- normal loop
           kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
           w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
-          s(0,ir) = u0 * v0 * w0 * cdens(ii(ir)  )
-          s(1,ir) = u1 * v0 * w0 * cdens(ii(ir)+1)
-          s(2,ir) = u0 * v1 * w0 * cdens(ii(ir)  )
-          s(3,ir) = u1 * v1 * w0 * cdens(ii(ir)+1)
-          s(4,ir) = u0 * v0 * w1 * cdens(ii(ir)  )
-          s(5,ir) = u1 * v0 * w1 * cdens(ii(ir)+1)
-          s(6,ir) = u0 * v1 * w1 * cdens(ii(ir)  )
-          s(7,ir) = u1 * v1 * w1 * cdens(ii(ir)+1)
+          if (nw == np) cdensw(ii(ir):ii(ir)+1)=cdens(ii(ir):ii(ir)+1)*wght(ir)
+          s(0,ir) = u0 * v0 * w0 * cdensw(ii(ir)  )
+          s(1,ir) = u1 * v0 * w0 * cdensw(ii(ir)+1)
+          s(2,ir) = u0 * v1 * w0 * cdensw(ii(ir)  )
+          s(3,ir) = u1 * v1 * w0 * cdensw(ii(ir)+1)
+          s(4,ir) = u0 * v0 * w1 * cdensw(ii(ir)  )
+          s(5,ir) = u1 * v0 * w1 * cdensw(ii(ir)+1)
+          s(6,ir) = u0 * v1 * w1 * cdensw(ii(ir)  )
+          s(7,ir) = u1 * v1 * w1 * cdensw(ii(ir)+1)
           v(0,ir) = ux(ir)*gi(ir)
           v(1,ir) = uy(ir)*gi(ir)
           v(2,ir) = uz(ir)*gi(ir)
