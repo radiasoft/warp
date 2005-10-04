@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.97 $, $Date: 2005/09/23 21:53:03 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.98 $, $Date: 2005/10/04 00:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3552,7 +3552,7 @@ c=============================================================================
       integer(ISZ):: d(0:nn(2),0:nn(1),0:nn(0))
 
       integer(ISZ):: ix,iy,iz
-      integer(ISZ):: ixc,iyc,izc,wx,wy,wz,ww
+      integer(ISZ):: ixc,iyc,izc,wx,wy,wz,ww,ws
       integer(ISZ):: ixcpr,iycpr,izcpr
 
 c Note that the input array d is in C ordering.
@@ -3573,36 +3573,49 @@ c     --- that all of the childs area is covered by a parent.
             wz = mod(iz,r(2))
             wy = mod(iy,r(1))
             wx = mod(ix,r(0))
+            if (wz == 0 .and. wy == 0 .and. wx == 0) cycle
             izc = iz - wz
             iyc = iy - wy
             ixc = ix - wx
-            if (izc < nn(2)) then
-              izcpr = izc + r(2)
+c           if (izc < nn(2)) then
+c             izcpr = izc + r(2)
+c           else
+c             izcpr = izc
+c             wx = 0
+c           endif
+c           if (iyc < nn(1)) then
+c             iycpr = iyc + r(1)
+c           else
+c             iycpr = iyc
+c             wy = 0
+c           endif
+c           if (ixc < nn(0)) then
+c             ixcpr = ixc + r(0)
+c           else
+c             ixcpr = ixc
+c             wz = 0
+c           endif
+c           ws = (r(2) - wz)*(r(1) - wy)*(r(0) - wx) +
+c    &                   wz *(r(1) - wy)*(r(0) - wx) +
+c    &           (r(2) - wz)*        wy *(r(0) - wx) +
+c    &                   wz *        wy *(r(0) - wx) +
+c    &           (r(2) - wz)*(r(1) - wy)*        wx  +
+c    &                   wz *(r(1) - wy)*        wx  +
+c    &           (r(2) - wz)*        wy *        wx  +
+c    &                   wz *        wy *        wx
+c           ww = (r(2) - wz)*(r(1) - wy)*(r(0) - wx)*d(izc  ,iyc  ,ixc  ) +
+c    &                   wz *(r(1) - wy)*(r(0) - wx)*d(izcpr,iyc  ,ixc  ) +
+c    &           (r(2) - wz)*        wy *(r(0) - wx)*d(izc  ,iycpr,ixc  ) +
+c    &                   wz *        wy *(r(0) - wx)*d(izcpr,iycpr,ixc  ) +
+c    &           (r(2) - wz)*(r(1) - wy)*        wx *d(izc  ,iyc  ,ixcpr) +
+c    &                   wz *(r(1) - wy)*        wx *d(izcpr,iyc  ,ixcpr) +
+c    &           (r(2) - wz)*        wy *        wx *d(izc  ,iycpr,ixcpr) +
+c    &                   wz *        wy *        wx *d(izcpr,iycpr,ixcpr)
+            if (d(izc  ,iyc  ,ixc  ) == 1) then
+              d(iz,iy,ix) = 1
             else
-              izcpr = izc
-              wx = 0
+              d(iz,iy,ix) = 0
             endif
-            if (iyc < nn(1)) then
-              iycpr = iyc + r(1)
-            else
-              iycpr = iyc
-              wy = 0
-            endif
-            if (ixc < nn(0)) then
-              ixcpr = ixc + r(0)
-            else
-              ixcpr = ixc
-              wz = 0
-            endif
-            ww = (r(2) - wz)*(r(1) - wy)*(r(0) - wx)*d(izc  ,iyc  ,ixc  ) +
-     &                   wz *(r(1) - wy)*(r(0) - wx)*d(izcpr,iyc  ,ixc  ) +
-     &           (r(2) - wz)*        wy *(r(0) - wx)*d(izc  ,iycpr,ixc  ) +
-     &                   wz *        wy *(r(0) - wx)*d(izcpr,iycpr,ixc  ) +
-     &           (r(2) - wz)*(r(1) - wy)*        wx *d(izc  ,iyc  ,ixcpr) +
-     &                   wz *(r(1) - wy)*        wx *d(izcpr,iyc  ,ixcpr) +
-     &           (r(2) - wz)*        wy *        wx *d(izc  ,iycpr,ixcpr) +
-     &                   wz *        wy *        wx *d(izcpr,iycpr,ixcpr)
-            if (ww > 0) d(iz,iy,ix) = 1
 
           enddo
         enddo
