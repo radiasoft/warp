@@ -333,7 +333,7 @@ Given a block instance, installs it as a child.
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
     self.initializechilddomains()
-    self.findoverlappingsiblings()
+    self.findoverlappingsiblings(blocklists[1:])
 
   def generateblocklevellists(self,blocklists=None):
     if blocklists is None:
@@ -362,7 +362,8 @@ Given a block instance, installs it as a child.
       # --- Get extent of possible overlapping domain
       l = maximum(block.fullloweroverrefinement,self.fulllower)
       u = minimum(block.fullupperoverrefinement,self.fullupper)
-      if alltrue(u >= l):
+      #if alltrue(u >= l):
+      if (u[0] >= l[0] and u[1] >= l[1] and u[2] >= l[2]):
         self.children.append(block)
         block.parents.append(self)
 
@@ -402,61 +403,55 @@ Sets the regions that are covered by the children.
       ii = self.getchilddomains(l,u)
       ii[...] = +child.blocknumber
 
-  def findoverlappingsiblingstrial(self,parent=None):
-    # --- This is somewhat faster since each block only loops through its
-    # --- list of parents, which should be shorted than a list of siblings.
-    # --- This will also decrease the number of overlaps, since overlaps
-    # --- only with blocks lower in the list are needed to be known.
+  def findoverlappingsiblings(self,blocklists):
+    """
+Recursive routine to find, at each level of refinement, all overlapping
+siblings.
+This is faster than the original routine since each pair of blocks is checked
+only once, rather than twice for each parent as in the original.
+    """
+    # --- When the list is empty, there are no blocks, so just return.
+    if len(blocklists[0]) == 0: return
+    # --- Make the call for the next level.
+    self.findoverlappingsiblings(blocklists[1:])
 
-    # --- Loop over blocks in a fixed order. This is so that each child gets
-    # --- to claim space from all of its parents at the same time, so there is
-    # --- no conflict about some other sibling claim space from one parent
-    # --- first but not another. Here, claimed space means that the other
-    # --- siblings will be putting their rho into the sibling who owns the
-    # --- space.
-    for block in self.listofblocks:
-      for parent in block.parents:
-        lc = maximum(parent.fulllower,block.fullloweroverrefinement)
-        uc = minimum(parent.fullupper,block.fullupperoverrefinement-1)
-        pd = parent.getorderedchilddomains(lc,uc)
-        # --- Only set areas that are still unclaimed
-        pd[...] = where(pd == -1,block.blocknumber,pd)
+    # --- Get a copy of the list (which will be mangled below).
+    blocklistscopy = copy.copy(blocklists[0])
 
-    for block in self.listofblocks:
-      for parent in block.parents:
-        lc = maximum(parent.fulllower,block.fullloweroverrefinement)
-        uc = minimum(parent.fullupper,block.fullupperoverrefinement)
-        pd = parent.getorderedchilddomains(lc,uc)
-        # --- Only set areas that are still unclaimed
-        pd[...] = where(pd == -1,block.blocknumber,pd)
-        # --- Since no other siblings can claim this area, copy the data
-        # --- to the current blocks sibling array. Note that the data copied
-        # --- is at the parents level of refinement.
-        r = block.refinement
-        l = maximum(parent.fulllower*block.refinement,block.fulllower)
-        u = minimum(parent.fullupper*block.refinement,block.fullupper)
-        sd = block.getsiblingdomains(l,u)
-        sd[::r[0],::r[1],::r[2]] = (pd == block.blocknumber)
+    # --- Loop over all blocks.
+    for block in blocklists[0]:
 
-        # --- Get the ids of the overlapping siblings from the pd array.
-        # --- Note that this will only get siblings lower down in the list.
-        oo = zeros(block.root.totalnumberofblocks) - 1
-        put(oo,pd,pd)
-        oo = compress(oo > -1,oo)
-        for o in oo:
-          if o == block.blocknumber: continue
-          block.overlaps[block.root.listofblocks[o]] = o
+      # --- Loop only over blocks that havn't been checked yet.
+      del blocklistscopy[0]
+      for sibling in blocklistscopy:
 
-    # --- Since only data at the parents level of refinment was setup, go
-    # --- back over the array and fill in the rest.
-    # --- This was just by far easier in fortran.
-    for block in self.listofblocks:
-      if block == block.root: continue
+        # --- Get the area common to the block and its sibling.
+        # --- Don't do anything if there is no overlap.
+        sl = maximum(sibling.fulllower,block.fulllower)
+        su = minimum(sibling.fullupper,block.fullupper)
+        #if sometrue(sl > su): continue
+        if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
+
+        # --- Add block to the siblings list of overlaps. Note that there's
+        # --- no reason to add the sibling to the block's list of overlaps
+        # --- since the block will own all of the overlap area and not need
+        # --- to give any rho info to the sibling.
+        sibling.overlaps[block] = block.blocknumber
+
+        # --- This instance claims any cells that are unclaimed both here and
+        # --- in the sibling
+        sd = block.getsiblingdomains(sl,su)
+        od = sibling.getsiblingdomains(sl,su)
+        unclaimed = (od == -1) & (sd == -1)
+        sd[...] = where(unclaimed,1,sd)
+        od[...] = where(unclaimed,0,sd)
+
+      # --- Now, claim any parts of the domain that have
+      # --- not already been set. i.e. those parts not covered by other blocks.
       sd = block.getsiblingdomains(block.fulllower,block.fullupper)
-      nn = block.fullupper - block.fulllower
-      expandsiblingdomain(nn,transpose(sd),block.refinement)
+      sd[...] = where(sd == -1,1,sd)
 
-  def findoverlappingsiblings(self,parent=None):
+  def findoverlappingsiblingsold(self,parent=None):
     # --- This is an old version of the routine which did a pair wise search
     # --- through all of the siblings. This was more expensive than the new
     # --- version.
@@ -483,7 +478,8 @@ Sets the regions that are covered by the children.
       # --- domain is zero size.
       sl = maximum(l,sibling.fulllower)
       su = minimum(u,sibling.fullupper)
-      if sometrue(sl > su): continue
+      #if sometrue(sl > su): continue
+      if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
       sd = self.getsiblingdomains(sl,su)
       od = sibling.getsiblingdomains(sl,su)
 
@@ -541,7 +537,8 @@ not be fetched from there (it is set negative).
       # --- Find intersection of parent, self, and child
       cl = maximum(child.fullloweroverrefinement,l)
       cu = minimum(child.fullupperoverrefinement,u)
-      if sometrue(cl > cu): continue
+      #if sometrue(cl > cu): continue
+      if cl[0] > cu[0] or cl[1] > cu[1] or cl[2] > cu[2]: continue
 
       # --- Get childdomains in the intersection region, Wherever the
       # --- the refinement level is lower than the childs, force childdomains
@@ -632,7 +629,7 @@ the top level grid.
           self.pointrhotorhocopy(lrootonly)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
-    self.zerorhointerior()
+    self.zerorhointerior(lrootonly)
 
   def propagaterhobetweenpatches(self,depositallparticles):
       self.accumulaterhofromsiblings()
@@ -642,8 +639,11 @@ the top level grid.
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
 
-  def zerorhointerior(self):
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
+  def zerorhointerior(self,lrootonly=0):
+    if not self.isfirstcall(): return
+    cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,
+                         self.rho)
+    if not lrootonly:
       for child in self.children:
         child.zerorhointerior()
 
@@ -966,9 +966,17 @@ Python version.
       u = minimum(child.fullupperoverrefinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dopbounds = (sometrue(child.pbounds == 1) and
-                  sometrue(l == 0) and
-                  sometrue(u == self.rootdims))
+     #dopbounds = (sometrue(child.pbounds == 1) and
+     #            sometrue(l == 0) and
+     #            sometrue(u == self.rootdims))
+
+      dopbounds = ((child.pbounds[0] == 1 or
+                    child.pbounds[1] == 1 or
+                    child.pbounds[2] == 1) and
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
+                  (u[0] == self.rootdims[0] or
+                   u[1] == self.rootdims[1] or
+                   u[2] == self.rootdims[2]))
 
       # --- Loop over the three dimensions. The loops loop over all child grid
       # --- cells that contribute to a parent grid cell.
@@ -1029,9 +1037,16 @@ Fortran version
       u = minimum(child.fullupperoverrefinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dopbounds = (sometrue(child.pbounds == 1) and
-                  (sometrue(l == 0) or
-                   sometrue(u == self.rootdims)))
+     #dopbounds = (sometrue(child.pbounds == 1) and
+     #            (sometrue(l == 0) or
+     #             sometrue(u == self.rootdims)))
+      dopbounds = ((child.pbounds[0] == 1 or
+                    child.pbounds[1] == 1 or
+                    child.pbounds[2] == 1) and
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
+                  (u[0] == self.rootdims[0] or
+                   u[1] == self.rootdims[1] or
+                   u[2] == self.rootdims[2]))
 
       # --- Note that child.siblingdomains is passed in with C ordering
       # --- to avoid the transpose/copy.
@@ -1067,9 +1082,17 @@ Python version with the loop over the child nodes as the inner loop
       u = minimum(child.fullupper/r,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dopbounds = (sometrue(child.pbounds == 1) and
-                  sometrue(l == 0) and
-                  sometrue(u == self.rootdims))
+      #dopbounds = (sometrue(child.pbounds == 1) and
+      #            sometrue(l == 0) and
+      #            sometrue(u == self.rootdims))
+      dopbounds = ((child.pbounds[0] == 1 or
+                    child.pbounds[1] == 1 or
+                    child.pbounds[2] == 1) and
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
+                  (u[0] == self.rootdims[0] or
+                   u[1] == self.rootdims[1] or
+                   u[2] == self.rootdims[2]))
+
 
       w = self.getwarrayforrho(r)
       for iz in range(l[2],u[2]+1):
