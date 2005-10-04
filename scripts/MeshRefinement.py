@@ -163,6 +163,10 @@ Implements adaptive mesh refinement in 3d
       # --- Set so the solve is not parallelized
       self.nslaves = 1
 
+      # --- Create some temporaries for optimization
+      self.fullloweroverrefinement = self.fulllower/self.refinement
+      self.fullupperoverrefinement = self.fullupper/self.refinement
+
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
     if self.dims is not None:
@@ -270,7 +274,8 @@ Add a mesh refined block to this block.
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,
                     nguard=self.nguard,root=self.root)
-    self.addblockaschild(child)
+    #self.addblockaschild(child)
+    self.children.append(child)
 
   def addblockaschild(self,block):
     """
@@ -355,8 +360,8 @@ Given a block instance, installs it as a child.
   def findallchildren(self,blocklists):
     for block in blocklists[1]:
       # --- Get extent of possible overlapping domain
-      l = maximum(block.fulllower,self.fulllower*block.refinement)
-      u = minimum(block.fullupper,self.fullupper*block.refinement)
+      l = maximum(block.fullloweroverrefinement,self.fulllower)
+      u = minimum(block.fullupperoverrefinement,self.fullupper)
       if alltrue(u >= l):
         self.children.append(block)
         block.parents.append(self)
@@ -378,8 +383,8 @@ Sets the regions that are covered by the children.
       child.initializechilddomains()
 
       # --- Set full domain to negative of child number first.
-      l = maximum(self.fulllower,child.fulllower/child.refinement)
-      u = child.fullupper/child.refinement
+      l = maximum(self.fulllower,child.fullloweroverrefinement)
+      u = child.fullupperoverrefinement
       # --- If the child extends to the edge of the parent mesh, it claims the
       # --- grid points on the upper edges.
       u = u + where(u == self.fullupper,1,0)
@@ -397,7 +402,7 @@ Sets the regions that are covered by the children.
       ii = self.getchilddomains(l,u)
       ii[...] = +child.blocknumber
 
-  def findoverlappingsiblings(self,parent=None):
+  def findoverlappingsiblingstrial(self,parent=None):
     # --- This is somewhat faster since each block only loops through its
     # --- list of parents, which should be shorted than a list of siblings.
     # --- This will also decrease the number of overlaps, since overlaps
@@ -411,19 +416,26 @@ Sets the regions that are covered by the children.
     # --- space.
     for block in self.listofblocks:
       for parent in block.parents:
-        lc = maximum(parent.fulllower,block.fulllower/block.refinement)
-        uc = minimum(parent.fullupper,block.fullupper/block.refinement)
+        lc = maximum(parent.fulllower,block.fullloweroverrefinement)
+        uc = minimum(parent.fullupper,block.fullupperoverrefinement-1)
         pd = parent.getorderedchilddomains(lc,uc)
         # --- Only set areas that are still unclaimed
         pd[...] = where(pd == -1,block.blocknumber,pd)
 
+    for block in self.listofblocks:
+      for parent in block.parents:
+        lc = maximum(parent.fulllower,block.fullloweroverrefinement)
+        uc = minimum(parent.fullupper,block.fullupperoverrefinement)
+        pd = parent.getorderedchilddomains(lc,uc)
+        # --- Only set areas that are still unclaimed
+        pd[...] = where(pd == -1,block.blocknumber,pd)
         # --- Since no other siblings can claim this area, copy the data
         # --- to the current blocks sibling array. Note that the data copied
         # --- is at the parents level of refinement.
+        r = block.refinement
         l = maximum(parent.fulllower*block.refinement,block.fulllower)
         u = minimum(parent.fullupper*block.refinement,block.fullupper)
         sd = block.getsiblingdomains(l,u)
-        r = block.refinement
         sd[::r[0],::r[1],::r[2]] = (pd == block.blocknumber)
 
         # --- Get the ids of the overlapping siblings from the pd array.
@@ -444,7 +456,7 @@ Sets the regions that are covered by the children.
       nn = block.fullupper - block.fulllower
       expandsiblingdomain(nn,transpose(sd),block.refinement)
 
-  def findoverlappingsiblingsold(self,parent=None):
+  def findoverlappingsiblings(self,parent=None):
     # --- This is an old version of the routine which did a pair wise search
     # --- through all of the siblings. This was more expensive than the new
     # --- version.
@@ -475,6 +487,7 @@ Sets the regions that are covered by the children.
       sd = self.getsiblingdomains(sl,su)
       od = sibling.getsiblingdomains(sl,su)
 
+      """
       setupsiblingdomain(su-sl,transpose(sd),transpose(od))
       """
       # --- This instance claims any cells that are unclaimed both here and in
@@ -491,7 +504,6 @@ Sets the regions that are covered by the children.
       # --- siblings. Remove claim to those areas from the sibling.
       overclaimed = (od == 1) & (sd == 1)
       od[...] = where(overclaimed,0,od)
-      """
 
       # --- Keep a list of overlapping siblings
       #if sibling not in self.overlaps:
@@ -527,8 +539,8 @@ not be fetched from there (it is set negative).
 
     for child in self.children:
       # --- Find intersection of parent, self, and child
-      cl = maximum(child.fulllower/child.refinement,l)
-      cu = minimum(child.fullupper/child.refinement,u)
+      cl = maximum(child.fullloweroverrefinement,l)
+      cu = minimum(child.fullupperoverrefinement,u)
       if sometrue(cl > cu): continue
 
       # --- Get childdomains in the intersection region, Wherever the
@@ -950,8 +962,8 @@ Python version.
       child.gatherrhofromchildren_python()
 
       # --- Get coordinates of child relative to this domain
-      l = maximum(child.fulllower/child.refinement,self.fulllower)
-      u = minimum(child.fullupper/child.refinement,self.fullupper)
+      l = maximum(child.fullloweroverrefinement,self.fulllower)
+      u = minimum(child.fullupperoverrefinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
       dopbounds = (sometrue(child.pbounds == 1) and
@@ -1013,17 +1025,18 @@ Fortran version
       child.gatherrhofromchildren_fortran()
 
       # --- Get coordinates of child relative to this domain
-      l = maximum(child.fulllower/child.refinement,self.fulllower)
-      u = minimum(child.fullupper/child.refinement,self.fullupper)
+      l = maximum(child.fullloweroverrefinement,self.fulllower)
+      u = minimum(child.fullupperoverrefinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
       dopbounds = (sometrue(child.pbounds == 1) and
                   (sometrue(l == 0) or
                    sometrue(u == self.rootdims)))
 
+      # --- Note that child.siblingdomains is passed in with C ordering
+      # --- to avoid the transpose/copy.
       w = self.getwarrayforrho(child.refinement)
-      gatherrhofromchild(self.rho,self.dims,
-                         child.rho,child.dims,
+      gatherrhofromchild(self.rho,self.dims,child.rho,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
                          child.refinement,w,transpose(child.siblingdomains),
                          dopbounds,child.pbounds,self.rootdims)
@@ -1216,10 +1229,10 @@ Sets phi on the boundaries, using the values from the parent grid
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
-      l = maximum(parent.fulllower*self.refinement,self.fulllower)
-      u = minimum(parent.fullupper*self.refinement,self.fullupper)
-      pl = l/self.refinement
-      pu = u/self.refinement
+      pl = maximum(parent.fulllower,self.fullloweroverrefinement)
+      pu = minimum(parent.fullupper,self.fullupperoverrefinement)
+      l = pl*self.refinement
+      u = pu*self.refinement
       sphi = self.getphi(l,u)
       pphi = parent.getphi(pl,pu)
       r = self.refinement
@@ -1549,7 +1562,9 @@ Fetches the potential, given a list of positions
     # --- Expand into 3 dimensions
     w = outerproduct(wi[0],outerproduct(wi[1],wi[2]))
     w.shape = (2*r[0]-1,2*r[1]-1,2*r[2]-1)
-    return w
+    result = fzeros(2*r-1,'d')
+    result[...] = w
+    return result
 
   def getphi(self,lower,upper):
     # --- Note that this takes into account the guard cells in z.
