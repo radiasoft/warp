@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.31 $, $Date: 2005/08/03 01:05:53 $
+c@(#) File w3d_injection.F, version $Revision: 1.32 $, $Date: 2005/10/04 22:31:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -139,10 +139,10 @@ c         --- loop over injection sources
             bpinj = bpinject(ij)
             xpinj = xpinject(ij)
             ypinj = ypinject(ij)
-            vzinj = vzinject(ij)
 
 c         --- Loop over species.
           do is=1,ns
+            vzinj = vzinject(ij,is)
             if (mod(it,ndts(is))/=0) cycle
             fulldt_s    = dt*ndts(is)*dtscale(is)
 
@@ -601,7 +601,6 @@ c           --- Set some temporaries.
             bpinj = bpinject(ij)
             xpinj = xpinject(ij)
             ypinj = ypinject(ij)
-            vzinj = vzinject(ij)
             rinji = 1./rinject(ij)
 
 c           --- The potential drop in front of the surface is now
@@ -630,6 +629,7 @@ c           --- need to be loaded in each of the four quadrants.
             endif
 
             do is=1,ns
+              vzinj = vzinject(ij,is)
 
 c             --- Don't bother doing anything if finject is 0.
               if (mod(it,ndts(is))/=0 .or. finject(ij,is) == 0.) cycle
@@ -1634,8 +1634,8 @@ c Set value of vzinject for inject==1 if not already set. For other
 c types of injection, vzinject is assumed to be zero, since the starting
 c velocity is calculated from the local fields.
       do ij=1,ninject
-        if (inject == 1 .and. vzinject(ij) == 0.) then
-          vzinject(ij) = vbeam
+        if (inject == 1 .and. vzinject(ij,is) == 0.) then
+          vzinject(ij,is) = vbeam_s(is)
         endif
       enddo
 
@@ -2164,7 +2164,7 @@ c     --- If transforming to coordinates of source, subtract source center
       if (tsign < 0 .and. ishift > 0) then
         if (ishift == 1) then
           do i=1,np
-              ij = ijp(min(i,ni))
+            ij = ijp(min(i,ni))
             if (ij > 0) then
               x(i) = x(i) - xinject(ij)
               y(i) = y(i) - yinject(ij)
@@ -2172,14 +2172,19 @@ c     --- If transforming to coordinates of source, subtract source center
             endif
           enddo
         else if (ishift == 2) then
-          do i=1,np
-              ij = ijp(min(i,ni))
-            if (ij > 0) then
-              x(i) = x(i) - xpinject(ij)*vzinject(ij)
-              y(i) = y(i) - ypinject(ij)*vzinject(ij)
-              z(i) = z(i) - vzinject(ij)
-            endif
-          enddo
+          print*,"Error: invalid ishift value - if you get this error,"
+          print*,"       report it to DPGrote@lbl.gov"
+          stop
+c         --- This code is never used and so is commented out. Note also that
+c         --- vzinject now has a second dimension, ns.
+c         do i=1,np
+c           ij = ijp(min(i,ni))
+c           if (ij > 0) then
+c             x(i) = x(i) - xpinject(ij)*vzinject(ij)
+c             y(i) = y(i) - ypinject(ij)*vzinject(ij)
+c             z(i) = z(i) - vzinject(ij)
+c           endif
+c         enddo
         endif
       endif
 
@@ -2251,14 +2256,19 @@ c     --- If transforming from coordinates of source, add source center
             endif
           enddo
         else if (ishift == 2) then
-          do i=1,np
-            ij = ijp(min(i,ni))
-            if (ij > 0) then
-              x(i) = x(i) + xpinject(ij)*vzinject(ij)
-              y(i) = y(i) + ypinject(ij)*vzinject(ij)
-              z(i) = z(i) + vzinject(ij)
-            endif
-          enddo
+          print*,"Error: invalid ishift value - if you get this error,"
+          print*,"       report it to DPGrote@lbl.gov"
+          stop
+c         --- This code is never used and so is commented out. Note also that
+c         --- vzinject now has a second dimension, ns.
+c         do i=1,np
+c           ij = ijp(min(i,ni))
+c           if (ij > 0) then
+c             x(i) = x(i) + xpinject(ij)*vzinject(ij)
+c             y(i) = y(i) + ypinject(ij)*vzinject(ij)
+c             z(i) = z(i) + vzinject(ij)
+c           endif
+c         enddo
         endif
       endif
 
