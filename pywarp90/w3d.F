@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.221 $, $Date: 2005/09/16 21:25:24 $
+c@(#) File W3D.F, version $Revision: 3.222 $, $Date: 2005/10/04 22:35:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1354,6 +1354,7 @@ c RHC: moved ex, ey, ez, bx, by, bz to DKInterptmp in w3d.v  3/11/04
 c      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
 c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
+      real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
 #ifdef _OPENMP
       real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
@@ -1660,11 +1661,14 @@ c           but the vpush is only done for interpdk=1 if allspecl=1.
      &        .or. center == "hbor1") then
 c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
 c            --- This is needed for the call to getzmmnt below.
+c            --- gaminvo is saved so it can be restored below
+c            --- during a gen step.
              if (center == "gen" .or. center == "synchv") then
                do i=1,ip
                  uxpo(i) = uxp(ipmin+i-1)
                  uypo(i) = uyp(ipmin+i-1)
                  uzpo(i) = uzp(ipmin+i-1)
+                 gaminvo(i) = gaminv(ipmin+i-1)
                enddo
              endif
              if ((center == "synchv" .and. (interpdk(is) == 0
@@ -1729,6 +1733,7 @@ c                --- Don't do this if we're doing drift-kinetic interp
                    uzpadv = uzp(ipmin+i-1)
                    uzp(ipmin+i-1) = uzpo(i)
                    uzpo(i) = uzp(ipmin+i-1) - (uzpadv - uzp(ipmin+i-1))
+                   gaminv(ipmin+i-1) = gaminvo(i)
                  enddo
                endif
               endif
@@ -6619,10 +6624,19 @@ c         --- General capacity matrix solver
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
+        if (electrontemperature == 0) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
      &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &            xmmin,ymmin,zmmin,zbeam,zgrid)
+        else
+          call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+     &                        rstar,linbend,
+     &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                        xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                        iondensity,electrontemperature,plasmapotential,
+     &                        electrondensitymaxscale)
+        endif
 
 #ifdef MPIPARALLEL
       elseif (fstype == 8) then
