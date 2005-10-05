@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.32 $, $Date: 2005/10/04 22:31:50 $
+c@(#) File w3d_injection.F, version $Revision: 1.33 $, $Date: 2005/10/05 18:21:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1634,9 +1634,11 @@ c Set value of vzinject for inject==1 if not already set. For other
 c types of injection, vzinject is assumed to be zero, since the starting
 c velocity is calculated from the local fields.
       do ij=1,ninject
-        if (inject == 1 .and. vzinject(ij,is) == 0.) then
-          vzinject(ij,is) = vbeam_s(is)
-        endif
+        do is=1,ns
+          if (inject == 1 .and. vzinject(ij,is) == 0.) then
+            vzinject(ij,is) = vbeam_s(is)
+          endif
+        enddo
       enddo
 
 c Set the injection length and start, normally the length of one time step
