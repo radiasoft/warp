@@ -58,6 +58,13 @@ TYPE(BNDtype), POINTER :: b
     call remark(trim(o_line))
   endif
 
+#ifdef MPIPARALLEL
+  if(any(nzpslave/=nz)) then
+    write(0,*) 'Error: w3d.nz must be a multiple of the number of processes npes.'
+    stop
+  end if
+#endif
+
   IF(.not. associated(basegrid)) call set_basegrid()
   bg => basegrid
 
@@ -188,12 +195,10 @@ TYPE(BNDtype), POINTER :: b
   bg%izlbnd = izlbndi
   bg%izrbnd = izrbndi
 
-  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
-    bg%nlevels=nlevels
-  else
+  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom)) then
     call init_bnd(bg,nr,nz,dr,dz,bg%zmin,bg%zmax)
-    bg%nlevels=nlevels
   END if
+  bg%nlevels=nlevels
 
 !  do i = 1,bg%nlevels, 1
 !    bg%bnd(i)%izlbnd=bg%izlbnd
@@ -892,6 +897,7 @@ TYPE(BNDtype), pointer :: b
   end do
 
   nlevels=MIN(nlevels,mgridrz_nlevels_max)
+!  nlevels=nint(mpi_global_compute_real(real(nlevels),MPI_MIN)) ! might be needed when nz is not the same for every slave.
 
   g%nlevels = nlevels
 
@@ -8757,7 +8763,7 @@ REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
 REAL(8), INTENT(IN) :: zgrid
 
 REAL(8) :: r, rpos, zpos, ddr, ddz, oddr, oddz
-INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid, igridold
 LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 
@@ -8772,20 +8778,25 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     IF(r<g%rmin.or.r>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) cycle
     ingrid=.false.
     rpos = (r-g%rmin)*g%invdr
-    zpos = (zp(i)-g%zmin-zgrid)*g%invdz
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
       IF(g%loc_part(jn,ln)==igrid) then
         ingrid=.true.
       else
+        igridold=igrid
         igrid = g%loc_part(jn,ln)
         g=>grids_ptr(igrid)%grid
-        IF(r<g%rmin.or.r>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) cycle
-        rpos = (r-g%rmin)*g%invdr
-        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
-        jn = 1+INT(rpos)
-        ln = 1+INT(zpos)
+        IF(r<g%rmin.or.r>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) then
+          ingrid=.true.
+          igrid=igridold
+        else
+          rpos = (r-g%rmin)*g%invdr
+          zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+          jn = 1+INT(rpos)
+          ln = 1+INT(zpos)
+        end if
       END if
     end do
     ddr = rpos-REAL(jn-1)
