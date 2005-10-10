@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.9 $, $Date: 2005/09/23 21:52:22 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.10 $, $Date: 2005/10/10 16:31:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -848,6 +848,33 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
       return
       end
 c=============================================================================
+      subroutine getanalyticbtheta(bfield)
+      use Constant
+      use BFieldGridTypemodule
+      type(BFieldGridType):: bfield
+
+      integer(ISZ):: ir
+      real(kind=8):: r
+      real(kind=8):: izi(0:bfield%nz)
+
+c     --- If xmmin > 0, this assumes that there is no current below xmmin.
+c     --- Note that a future version could extract a current below xmmin
+c     --- by inspecting a nonzero Btheta at xmmin.
+      izi = 0.
+      bfield%b(1,0,0,:) = 0.
+
+      do ir=0,bfield%nx-1
+c       --- The total current is calculated assuming linear interpolation
+c       --- between grid points, i.e. the trapezoidal rule.
+        izi = izi + bfield%dx**2*(bfield%j(2,ir  ,0,:)*(ir/2.+1./6.) +
+     &                            bfield%j(2,ir+1,0,:)*(ir/2.+1./3.))
+        r = bfield%xmmin + (ir+1)*bfield%dx
+        bfield%b(1,ir+1,0,:) = mu0*izi/r
+      enddo
+
+      return
+      end
+c=============================================================================
       subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
      &                  q,nw,wghtp,depos,l2symtry,l4symtry)
       use GlobalVars
@@ -1670,6 +1697,9 @@ c     --- Get B from A, either taking the finite difference curl of A to get B,
 c     --- or just copy it when B is solved for directly.
       call getbfroma3d(bfield)
 
+c     --- If using the analytic form of Btheta, calculate it here.
+      if (bfield%lanalyticbtheta) call getanalyticbtheta(bfield)
+
 c     --- Distribute B among the processes so each has B in its
 c     --- particle domain.
       call getbforparticles()
@@ -1736,6 +1766,9 @@ c     --- though they should never be needed during initialization.
       idmax = 2
       if (iwhich == 1) idmax = 0
       do id=0,idmax
+        if (bfield%lanalyticbtheta .and.
+     &      ((bfield%lusevectorpotential .and. (id == 0 .or. id == 2)) .or.
+     &      (.not. bfield%lusevectorpotential .and. id == 1))) cycle
         if (bfstype <= 4) then
           atemp(:,:,0:bfield%nz) = j(id,:,:,:)
         else
