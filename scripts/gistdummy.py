@@ -1,6 +1,6 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.14 2005/07/20 00:17:09 dave Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.15 2005/10/10 17:33:46 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
@@ -75,4 +75,6 @@ def logxy(*x,**xx):
 def pyg_pending():
   pass
 def pyg_idler():
+  pass
+def gridxy(*x,**xx):
   pass
