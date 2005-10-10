@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.138 $, $Date: 2005/10/10 16:31:21 $
+#@(#) File F3D.V, version $Revision: 3.139 $, $Date: 2005/10/10 17:01:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.138 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.139 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -479,6 +479,9 @@ r_srmax(npnts_srmax)     _real # R of points in piecewise-linear curve
 rad_srmax(npnts_srmax-1) _real /LARGEPOS/ # Radius of curvature of curve arc
 zc_srmax(npnts_srmax-1)  _real # Z center of circle
 rc_srmax(npnts_srmax-1)  _real # R center of circle
+lsrfindrextremum         logical /.false./ # When true, an extra search is
+  # done to find an r extremum that lies between grid points. Set this to true
+  # if there are structures taller than dr but shorter than dz.
 
 *********** LantzSolverTemp:
 nxlan integer

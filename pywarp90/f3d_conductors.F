@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.51 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3615,6 +3615,16 @@ c       --- conductor or within the max radius.
           rsrf = srfrv_f(zzz,rofzfunc,0,0)
           rlower = srfrv_f(zlower,rofzfunc,0,0)
           rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c         --- The commented code has not been tested.
+c         if (lsrlinr .and. lsrfindrextremum) then
+c           rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
+c    &                              z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
+c           rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
+c    &                               z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
+c         else
+            rlower = srfrv_f(zlower,rofzfunc,0,0)
+            rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c         endif
           rfuzz = max(rsrf,rlower,rhigher)*1.e-12
 
           if (zz >= zmax .and. rr >= rsrf) then
@@ -4190,8 +4200,16 @@ c       --- conductor or within the max radius.
           zhigher = min(zz+griddz,zmax)
 
           rsrf = srfrv_f(zzz,rofzfunc,0,0)
-          rlower = srfrv_f(zlower,rofzfunc,0,0)
-          rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c         --- The commented code has not been tested.
+c         if (lsrlinr .and. lsrfindrextremum) then
+c           rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
+c    &                              z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
+c           rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
+c    &                               z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
+c         else
+            rlower = srfrv_f(zlower,rofzfunc,0,0)
+            rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c         endif
           rfuzz = max(rsrf,rlower,rhigher)*1.e-12
 
           if (zz >= zmax .and. rr <= rsrf) then
@@ -4489,6 +4507,116 @@ c       --- Check if it hits the inner cylinder.
       return
       end
 c=======================================================================
+      real(kind=8) function linrzrextremum(z1,z2,rr,npnts_sr,z_sr,r_sr,
+     &                                     rad_sr,zc_sr,rc_sr,rsign)
+      real(kind=8):: z1,z2,rr
+      integer(ISZ):: npnts_sr
+      real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
+      real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
+      integer(ISZ):: rsign
+
+c This searches through the line segments to find the maximum radius
+c within the range between z1 and z2. When rsign is positive, it finds
+c the max, when negative the min.
+
+      integer(ISZ):: ii
+      real(kind=8):: rextremum,r1
+
+c     --- Return the input value if the data is completely outside the range.
+      if (z2 < z_sr(1) .or. z1 > z_sr(npnts_sr) .or. npnts_sr == 1 .or.
+     &    z1 == z2) then
+        linrzrextremum = rr
+        return
+      endif
+
+c     --- Find the line segment which covers the range of z where the point is.
+c     --- Find the line segment end just to the left of the data point.
+c     --- If z1 if less that z_sr(1), then ii will be 1. If z1 greater than
+c     --- the end of the last line segment, then ii will be npnts_sr-1.
+      do ii=1,npnts_sr-2
+        if (z1 < z_sr(ii+1)) exit
+      enddo
+
+c     --- Set a sensible starting value
+      rextremum = rr
+
+c     --- Search segment by segment until they go beyond the end of the region
+c     --- or there are no more segments.
+      do while (z_sr(ii) <= z2 .and. ii < npnts_sr)
+
+c       --- Get the radius at the left end point of the segment and compare
+c       --- it to the rextremum.
+        if (z_sr(ii) < z1) then
+c         --- The segment starts below z1, so find the radius at z1.
+          if (rad_sr(ii) == LARGEPOS) then
+c           --- straight line
+            r1 = r_sr(ii) + (r_sr(ii+1) - r_sr(ii))*(z1 - z_sr(ii))/
+     &                                              (z_sr(ii+1) - z_sr(ii))
+          else
+c           --- arc
+            if (rad_sr(ii) > 0) then
+              r1 = rc_sr(ii)
+     &             + sqrt(max(0.,rad_sr(ii)**2 - (z1 - zc_sr(ii))**2))
+            else
+              r1 = rc_sr(ii)
+     &             - sqrt(max(0.,rad_sr(ii)**2 - (z1 - zc_sr(ii))**2))
+            endif
+          endif
+        else
+c         --- The segment starts within the range so just use the radius
+c         --- of the left end.
+          r1 = r_sr(ii)
+        endif
+c       --- Compare the radius at the left end to rextremum.
+        if (rsign > 0) rextremum = max(rextremum,r1)
+        if (rsign < 0) rextremum = min(rextremum,r1)
+
+c       --- If there is an arc, check if there is an extremum within the
+c       --- part of the segment within the z range. This is only done if
+c       --- the center of the circle is within the range and if the sign
+c       --- of the radius is the same as the rsign flag.
+        if (rad_sr(ii) < LARGEPOS .and.
+     &      max(z1,z_sr(ii)) <= zc_sr(ii) .and.
+     &      zc_sr(ii) <= min(z2,z_sr(ii+1)) .and.
+     &      rsign*rad_sr(ii) > 0.) then
+          r1 = rc_sr(ii) + rad_sr(ii)
+          if (rsign > 0) rextremum = max(rextremum,r1)
+          if (rsign < 0) rextremum = min(rextremum,r1)
+        endif
+
+c       --- Advance to the next segment
+        ii = ii + 1
+
+      enddo
+
+c     --- Now, check the end point of the last segment
+      if (z_sr(ii) >= z2) then
+c       --- It extends beyond the range, so get the radius at the end of
+c       --- the range.
+        if (rad_sr(ii) == LARGEPOS) then
+          r1 = r_sr(ii) + (r_sr(ii) - r_sr(ii-1))*(z_sr(ii) - z2)/
+     &                                            (z_sr(ii) - z_sr(ii-1))
+        else
+          if (rad_sr(ii-1) > 0) then
+            r1 = rc_sr(ii-1)
+     &           + sqrt(max(0.,rad_sr(ii-1)**2 - (z2 - zc_sr(ii-1))**2))
+          else
+            r1 = rc_sr(ii-1)
+     &           - sqrt(max(0.,rad_sr(ii-1)**2 - (z2 - zc_sr(ii-1))**2))
+          endif
+        endif
+      else
+c       --- Otherwise, use the radius at the end of the segment.
+        r1 = r_sr(ii)
+      endif
+c     --- Compare the radius at the right end to rextremum.
+      if (rsign > 0) rextremum = max(rextremum,r1)
+      if (rsign < 0) rextremum = min(rextremum,r1)
+
+      linrzrextremum = rextremum
+
+      return
+      end
 c=======================================================================
       real(kind=8) function linrzintersection(zz,rr,npnts_sr,z_sr,r_sr,
      &                                        rad_sr,zc_sr,rc_sr,zend,istep)
@@ -4617,7 +4745,7 @@ c=======================================================================
       real(kind=8):: rminlower,rminhigher,rmaxlower,rmaxhigher
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2),r1,r2
       real(kind=8):: delmz1,delpz1
-      real(kind=8):: linrzintersection
+      real(kind=8):: linrzintersection,linrzrextremum
 
       do i=1,n
         delmx(i) = LARGEPOS
@@ -4697,10 +4825,31 @@ c       --- conductor or within the max radius.
 
           rmin = srfrv_f(zzz,rminofz,1,0)
           rmax = srfrv_f(zzz,rmaxofz,2,0)
-          rminlower = srfrv_f(zlower,rminofz,1,-1)
-          rminhigher = srfrv_f(zhigher,rminofz,1,+1)
-          rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
-          rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
+          if (lsrminlinr .and. lsrfindrextremum) then
+c           --- XXX This code needs further debuggins. In the second call,
+c           --- zzz+griddz should be zhigher, but when that change is made,
+c           --- the code breaks and the conductors come out incorrectly - a
+c           --- spike forms at the zhigher location. The code works as is for
+c           --- the case of interest however and so is left as is. Also, note
+c           --- that lsrfindrextremum defaults to false so this code isn't
+c           --- used in general, since it will be slower.
+            rminlower = linrzrextremum(zlower,zzz,rmin,npnts_srmin,
+     &                         z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
+            rminhigher = linrzrextremum(zzz,zzz+griddz,rmin,npnts_srmin,
+     &                         z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
+          else
+            rminlower = srfrv_f(zlower,rminofz,1,-1)
+            rminhigher = srfrv_f(zhigher,rminofz,1,+1)
+          endif
+          if (lsrmaxlinr .and. lsrfindrextremum) then
+            rmaxlower = linrzrextremum(zlower,zzz,rmax,npnts_srmax,
+     &                         z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
+            rmaxhigher = linrzrextremum(zzz,zzz+griddz,rmax,npnts_srmax,
+     &                         z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
+          else
+            rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
+            rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
+          endif
           rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
 
           if (zz < zmin .or. rr < min(rminlower,rmin) .or.
