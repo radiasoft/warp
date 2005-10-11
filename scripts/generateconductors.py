@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.114 2005/08/24 08:35:02 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.115 2005/10/11 23:52:03 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -163,7 +163,8 @@ Class to hold assemblies of conductors.  Base class of all conductors.
 Should never be directly created by the user.
  - v=0.: voltage on conductor
  - x,y,z=0.,0.,0: center of conductor
- - condid=1: conductor identification number
+ - condid=1: conductor identification number, can be 'next' in which case
+             a unique ID is chosen
  - kwlist=[]: list of string names of variable describing conductor
  - generatorf=None: function which generates the distances between the points
                     and the conductors along the axis.
@@ -176,6 +177,7 @@ Should never be directly created by the user.
   xcent = 0.
   ycent = 0.
   zcent = 0.
+  nextcondid = 1
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
                     generatorf=None,generatord=None,generatori=None,name=None):
@@ -183,7 +185,11 @@ Should never be directly created by the user.
     self.xcent = x
     self.ycent = y
     self.zcent = z
-    self.condid = condid
+    if condid == 'next':
+      self.condid = Assembly.nextcondid
+      Assembly.nextcondid += 1
+    else:
+      self.condid = condid
     self.kwlist = kwlist
     self.generatorf = generatorf
     self.generatord = generatord
@@ -1020,7 +1026,7 @@ has already been called.
       parity = self.parity[:n1]
       mglevel = self.mglevel[:n1]
 
-      newn = max(int(2*len(self.ix)),n1+n2)
+      newn = max(int(1*len(self.ix)),n1+n2)
       self.ix = zeros(newn)
       self.iy = zeros(newn)
       self.iz = zeros(newn)
@@ -1839,7 +1845,8 @@ Plane class
     phi is angle in z-y plane
   - voltage=0: box voltage
   - xcent=0.,ycent=0.,zcent=0.: center of box
-  - condid=1: conductor id of box, must be integer
+  - condid=1: conductor id of box, must be integer, or can be 'next' in which
+              case a unique ID is chosen
   """
   def __init__(self,z0=0.,zsign=1.,theta=0.,phi=0.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -1862,7 +1869,8 @@ Box class
   - xsize,ysize,zsize: box size
   - voltage=0: box voltage
   - xcent=0.,ycent=0.,zcent=0.: center of box
-  - condid=1: conductor id of box, must be integer
+  - condid=1: conductor id of box, must be integer, or can be 'next' in which
+              case a unique ID is chosen
   """
   def __init__(self,xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -1885,7 +1893,8 @@ Cylinder class
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -1912,7 +1921,8 @@ Cylinders class for a list of cylinders
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -1963,7 +1973,8 @@ Cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2009,7 +2020,8 @@ Cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2053,7 +2065,8 @@ Outside of a cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2101,7 +2114,8 @@ Outside of a cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2151,7 +2165,8 @@ Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2167,7 +2182,8 @@ Cylinder aligned with X-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2183,7 +2199,8 @@ Cylinder aligned with Y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2199,7 +2216,8 @@ Cylinder aligned with Y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2216,7 +2234,8 @@ Elliptical cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage,xcent,ycent,zcent,condid=1):
@@ -2248,7 +2267,8 @@ Outside an elliptical cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2280,7 +2300,8 @@ Elliptical cylinder aligned with x-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2301,7 +2322,8 @@ Outside of an elliptical cylinder aligned with x-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2322,7 +2344,8 @@ Elliptical cylinder aligned with y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2343,7 +2366,8 @@ Outside of an elliptical cylinder aligned with y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=1: conductor id of cylinder, must be integer
+  - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2363,7 +2387,8 @@ Sphere
   - radius: radius
   - voltage=0: sphere voltage
   - xcent=0.,ycent=0.,zcent=0.: center of sphere
-  - condid=1: conductor id of sphere, must be integer
+  - condid=1: conductor id of sphere, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
@@ -2394,7 +2419,8 @@ Elliptoidal sphere
   - radius: radius
   - voltage=0: sphere voltage
   - xcent=0.,ycent=0.,zcent=0.: center of sphere
-  - condid=1: conductor id of sphere, must be integer
+  - condid=1: conductor id of sphere, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2416,7 +2442,8 @@ Cone
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2448,7 +2475,8 @@ Cone
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,slope,length,theta,phi,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2485,7 +2513,8 @@ Cones
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2539,7 +2568,8 @@ Torus
   - r2: poloidal radius
   - voltage=0: torus voltage
   - xcent=0.,ycent=0.,zcent=0.: center of torus
-  - condid=1: conductor id of torus, must be integer
+  - condid=1: conductor id of torus, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r1','r2']
@@ -2575,7 +2605,8 @@ Plate from beamlet pre-accelerator
   - thickness: thickness of the plate
   - voltage=0: beamlet plate voltage
   - xcent=0.,ycent=0.,zcent=0.: center of beamlet plate
-  - condid=1: conductor id of beamlet plate, must be integer
+  - condid=1: conductor id of beamlet plate, must be integer, or can be 'next'
+              in which case a unique ID is chosen
   """
   def __init__(self,za,zb,z0,thickness,voltage=0.,
                xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -2774,12 +2805,14 @@ data and make sure it is consistent.
 class ZSrfrvOut(Srfrv,Assembly):
   """
 Outside of a surface of revolution
-  - rofzfunc: name of python function describing surface
-  - zmin,zmax: z-extent of the surface
+  - rofzfunc=' ': name of python function describing surface
+  - zmin=None,zmax=None: z-extent of the surface, will be obtained from
+                         any tablized data if not given
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
       raddata[i] is radius for segment from zdata[i] to zdata[i+1]
@@ -2801,7 +2834,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
+  def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None):
@@ -2810,8 +2843,6 @@ Methods:
                       zsrfrvoutconductorf,zsrfrvoutconductord,
                       zsrfrvoutintercept)
     self.rofzfunc = rofzfunc
-    self.zmin = zmin
-    self.zmax = zmax
     self.rmax = rmax
 
     # --- Deal with tablized data.
@@ -2826,6 +2857,8 @@ Methods:
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
+      if zmin is None: zmin = self.rofzdata[0]
+      if zmax is None: zmax = self.rofzdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
@@ -2839,6 +2872,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rofzfunc = self.rofzfunc.__name__
+
+    assert zmin is not None,'zmin must be specified'
+    assert zmax is not None,'zmin must be specified'
+    self.zmin = zmin
+    self.zmax = zmax
 
     self.createextent([-self.rmax,-self.rmax,self.zmin],
                       [+self.rmax,+self.rmax,self.zmax])
@@ -2901,12 +2939,14 @@ For other options, see documentation of VPythonobjects.VisualRevolution.
 class ZSrfrvIn(Srfrv,Assembly):
   """
 Inside of a surface of revolution
-  - rofzfunc: name of python function describing surface
-  - zmin,zmax: z-extent of the surface
+  - rofzfunc=' ': name of python function describing surface
+  - zmin=None,zmax=None: z-extent of the surface, will be obtained from
+                         any tablized data if not given
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -2928,7 +2968,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rofzfunc,zmin,zmax,rmin=0,
+  def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None):
@@ -2937,8 +2977,6 @@ Methods:
                       zsrfrvinconductorf,zsrfrvinconductord,
                       zsrfrvinintercept)
     self.rofzfunc = rofzfunc
-    self.zmin = zmin
-    self.zmax = zmax
     self.rmin = rmin
 
     # --- Deal with tablized data.
@@ -2953,6 +2991,8 @@ Methods:
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
+      if zmin is None: zmin = self.rofzdata[0]
+      if zmax is None: zmax = self.rofzdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
@@ -2966,6 +3006,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rofzfunc = self.rofzfunc.__name__
+
+    assert zmin is not None,'zmin must be specified'
+    assert zmax is not None,'zmin must be specified'
+    self.zmin = zmin
+    self.zmax = zmax
 
     if self.usedata: rmax = max(self.rofzdata)
     else:            rmax = largepos
@@ -3026,11 +3071,13 @@ For options, see documentation of VPythonobjects.VisualRevolution.
 class ZSrfrvInOut(Srfrv,Assembly):
   """
 Between surfaces of revolution
-  - rminofz,rmaxofz: names of python functions describing surfaces
-  - zmin,zmax: z-extent of the surface
+  - rminofz=' ',rmaxofz=' ': names of python functions describing surfaces
+  - zmin=None,zmax=None: z-extent of the surface, will be obtained from
+                         any tablized if not given
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -3052,7 +3099,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rminofz,rmaxofz,zmin,zmax,
+  def __init__(self,rminofz=' ',rmaxofz=' ',zmin=None,zmax=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
@@ -3064,8 +3111,6 @@ Methods:
                       zsrfrvinoutintercept)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
-    self.zmin = zmin
-    self.zmax = zmax
 
     # --- Deal with tablized data.
     # --- Making sure the input is consistent
@@ -3079,10 +3124,14 @@ Methods:
       self.checkarcs(self.zmindata,self.rminofzdata,self.radmindata,
                      self.zcmindata,self.rcmindata)
       self.rminofz = ' '
+      zminmin = self.zmindata[0]
+      zmaxmin = self.zmindata[-1]
     else:
       assert type(self.rminofz) in [FunctionType,StringType],\
              'The rminofz is not properly specified'
       self.usemindata = false
+      zminmin = zmin
+      zmaxmin = zmax
       if type(self.rminofz) == FunctionType:
         # --- Make sure rminofz is in main.
         # --- Note that this can only really work if a reference to the function
@@ -3104,10 +3153,14 @@ Methods:
       self.checkarcs(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
                      self.zcmaxdata,self.rcmaxdata)
       self.rmaxofz = ' '
+      zminmax = self.zmaxdata[0]
+      zmaxmax = self.zmaxdata[-1]
     else:
       assert type(self.rminofz) in [FunctionType,StringType],\
              'The rminofz is not properly specified'
       self.usemaxdata = false
+      zminmax = zmin
+      zmaxmax = zmax
       if type(self.rmaxofz) == FunctionType:
         # --- Make sure rminofz is in main.
         # --- Note that this can only really work if a reference to the function
@@ -3117,6 +3170,21 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rmaxofz = self.rmaxofz.__name__
+
+    # --- If zmin or zmax were not specified, get the extremum from any tablized
+    # --- data.
+    if zmin is None:
+      if zminmin is not None and zminmax is not None: zmin = min(zminmin,zminmax)
+      elif zminmin is not None: zmin = zminmin
+      elif zminmax is not None: zmin = zminmax
+      else: raise 'zmin must be specified'
+    if zmax is None:
+      if zmaxmin is not None and zmaxmax is not None: zmax = min(zmaxmin,zmaxmax)
+      elif zmaxmin is not None: zmax = zmaxmin
+      elif zmaxmax is not None: zmax = zmaxmax
+      else: raise 'zmax must be specified'
+    self.zmin = zmin
+    self.zmax = zmax
 
     if self.usemaxdata: rmax = max(self.rmaxofzdata)
     else:               rmax = largepos
@@ -3172,6 +3240,8 @@ Plots the r versus z
     ro.reverse()
     zo.reverse()
     r,z = ri+ro,zi+zo
+    r = r + [r[0]]
+    z = z + [z[0]]
     if len(r) > 0:
       self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
@@ -3253,7 +3323,8 @@ Outside of an elliptical surface of revolution
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
       raddata[i] is radius for segment from zdata[i] to zdata[i+1]
@@ -3289,7 +3360,8 @@ Inside of an elliptical surface of revolution
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -3324,7 +3396,8 @@ Between elliptical surfaces of revolution
   - zmin,zmax: z-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -3363,7 +3436,8 @@ Outside of an surface of revolution aligned along to X axis
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofxdata=None: optional tablized data of radius of surface
   - xdata=None: optional tablized data of x locations of rofxdata
       raddata[i] is radius for segment from xdata[i] to xdata[i+1]
@@ -3398,7 +3472,8 @@ Inside of a surface of revolution aligned along the X axis
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofxdata=None: optional tablized data of radius of surface
   - xdata=None: optional tablized data of x locations of rofxdata
   - raddata=None: optional radius of curvature of segments
@@ -3431,7 +3506,8 @@ Between surfaces of revolution aligned along the X axis
   - xmin,xmax: x-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rminofxdata,rmaxofxdata=None: optional tablized data of radii of surface
   - xmindata,xmaxdata=None: optional tablized data of x locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -3470,7 +3546,8 @@ Outside of an surface of revolution aligned along to Y axis
   - rmax=largepos: max radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofydata=None: optional tablized data of radius of surface
   - ydata=None: optional tablized data of y locations of rofydata
       raddata[i] is radius for segment from ydata[i] to ydata[i+1]
@@ -3505,7 +3582,8 @@ Inside of a surface of revolution aligned along the Y axis
   - rmin=0: min radius of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rofydata=None: optional tablized data of radius of surface
   - ydata=None: optional tablized data of y locations of rofydata
   - raddata=None: optional radius of curvature of segments
@@ -3538,7 +3616,8 @@ Between surfaces of revolution aligned along the Y axis
   - ymin,ymax: y-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   - rminofydata,rmaxofydata=None: optional tablized data of radii of surface
   - ymindata,ymaxdata=None: optional tablized data of y locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -3576,7 +3655,8 @@ Creates an Annulus as a surface of revolution.
   - zmin,zmax: z-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,rmin,rmax,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -3607,7 +3687,8 @@ Creates an Annulus as a surface of revolution.
   - zmin,zmax: z-extent of the surface
   - voltage=0: conductor voltage
   - xcent=0.,ycent=0.,zcent=0.: center of conductor
-  - condid=1: conductor id of conductor, must be integer
+  - condid=1: conductor id of conductor, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,ellipticity,rmin,rmax,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -3639,7 +3720,8 @@ Cone
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -3668,7 +3750,8 @@ Cone
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -3698,7 +3781,8 @@ Cone outside
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -3727,7 +3811,8 @@ Cone outside
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - condid=1: conductor id of cone, must be integer, or can be 'next' in
+              which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
