@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.62 2005/09/19 18:02:41 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.63 2005/10/11 23:55:54 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -567,11 +567,15 @@ Constructor arguments:
                             completely surrounds the beam, then it doesn't
                             need much thickness. Setting this can greatly
                             reduce the amount of data generated.
+  - conductors=[]: List of additional conductors to include. This list can be
+                   further modified using the addconductor and removeconductor
+                   methods.
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
                     scrapemethod=2,
-                    dfill=2,lclearconductors=1,pipethickness=largepos):
+                    dfill=2,lclearconductors=1,pipethickness=largepos,
+                    conductors=[]):
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
@@ -587,6 +591,7 @@ Constructor arguments:
     self.dfill = dfill
     self.lclearconductors = lclearconductors
     self.pipethickness = pipethickness
+    self.conductors = conductors
 
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
@@ -619,6 +624,14 @@ Constructor arguments:
 
     # --- Setup so the initialization routine will be called.
     installbeforefs(self.initialsetboundary)
+
+  #----------------------------------------------------------------------------
+  def addconductor(self,conductor):
+    "Add a conductor to the list of conductors included"
+    self.conductors.append(conductor)
+  def removeconductor(self,conductor):
+    "Remove a conductor from the list of conductors included"
+    self.conductors.remove(conductor)
 
   #----------------------------------------------------------------------------
   def initialsetboundary(self):
@@ -791,7 +804,7 @@ Constructor arguments:
                               ox[id],oy[id],0.5*(zs+ze))
     else:
       pipe = ZCylinderEllipticOut(ay/ax,ax,ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
-    self.conductors += pipe
+    self.newconductors.append(pipe)
     self.setscraper(zs,ze,ap,ax,ay,ox[id],oy[id])
     return 0
   #----------------------------------------------------------------------------
@@ -841,7 +854,7 @@ Constructor arguments:
       oy = getattr(top,elem+'oy')[elemid]
     self.setscraper(zl,zr,ap,ax,ay,ox,oy)
     if quad is not None:
-      self.conductors += quad
+      self.newconductors.append(quad)
     return 0
   #----------------------------------------------------------------------------
   def quadrodsxy(self,elem,elemid,zs,ze,cm):
@@ -982,8 +995,8 @@ in the celemid array. It returns each element only once.
     self.lastsolverid = id(solver)
     self.lastsolverparams = solverparams
 
-    # --- Empty the list of conductors
-    self.conductors = None
+    # --- Reset the list of conductors
+    self.newconductors = copy.copy(self.conductors)
 
     if w3d.solvergeom==w3d.XYgeom: del_conductors()
 
@@ -1103,18 +1116,18 @@ in the celemid array. It returns each element only once.
         f3d.conductors.oddsubgrid.n = 0
       else:
         solver.clearconductors()
-    if self.conductors is not None:
+    if self.newconductors:
       if solver is w3d:
-        installconductors(self.conductors,dfill=self.dfill,gridmode=1)
+        installconductors(self.newconductors,dfill=self.dfill,gridmode=1)
       else:
         print "installing conductor"
-        solver.installconductor(self.conductors,dfill=self.dfill)
+        solver.installconductor(self.newconductors,dfill=self.dfill)
       if self.scrapemethod == 2 and self.lscrapeparticles:
         try:
           self.scraper.disable()
         except:
           pass
-        self.scraper = ParticleScraper(self.conductors,
+        self.scraper = ParticleScraper(self.newconductors,
                                        mglevel=self.scrapermglevel)
 
   #----------------------------------------------------------------------------
