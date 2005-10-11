@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.159 2005/09/23 17:57:25 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.160 2005/10/11 23:53:31 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -172,7 +172,7 @@ Does the work needed to start writing plots to a file automatically
 # --- setup has been called, this just creates a window which is attached to
 # --- the already created device. Otherwise, open a window attached to a
 # --- new device.
-def winon(winnum=0,dpi=100,prefix=None,suffix=None):
+def winon(winnum=0,dpi=100,prefix=None,suffix=None,xon=1):
   """
 Opens up an X window
   - winnum=0 is the window number
@@ -186,9 +186,10 @@ Opens up an X window
                  the one for window 0. Winnum cannot be 0 and setup must have
                  already been called. Warning - this will overwrite a file
                  with the same name.
+  - xon=1: When true, an X window will be opened.
   """
   if suffix is None and prefix is None:
-    if winnum==0 and sys.platform != 'win32':
+    if xon and winnum==0 and sys.platform != 'win32':
       # --- If display isn't set, no X plot window will appear since window0
       # --- is already attached to a device (the plot file).
       window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
@@ -208,7 +209,10 @@ Opens up an X window
     if suffix is not None: pname = pname + '_' + suffix
     pname = pname + numb
     # --- Open window
-    window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
+    if xon:
+      window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
+    else:
+      window(winnum,dpi=dpi,dump=1,hcp=pname)
 
 ##########################################################################
 # Plot run info to the current plot and plot info to the log file.
