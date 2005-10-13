@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.52 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3531,11 +3531,13 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
+      real(kind=8):: zzprev
       real(kind=8):: xx,yy,zz,rr,rsrf
-      real(kind=8):: xisrf,yisrf,ximax,yimax
+      real(kind=8):: risrf,xisrf,yisrf,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
+      zzprev = -LARGEPOS
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -3552,18 +3554,18 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          rsrf = srfrv_f(zz,rofzfunc,0,0)
-          xisrf = sqrt(max(0.,rsrf**2 - yy**2))
-          yisrf = sqrt(max(0.,rsrf**2 - xx**2))
+          if (zz .ne. zzprev) risrf = srfrv_f(zz,rofzfunc,0,0)
+          xisrf = sqrt(max(0.,risrf**2 - yy**2))
+          yisrf = sqrt(max(0.,risrf**2 - xx**2))
           ximax = sqrt(max(0.,rmax**2 - yy**2))
           yimax = sqrt(max(0.,rmax**2 - xx**2))
-          if (rr <= rsrf) then
+          if (rr <= risrf) then
             delmx(i) = xisrf + xx
             delpx(i) = xisrf - xx
             delmy(i) = yisrf + yy
             delpy(i) = yisrf - yy
           else if (rr < rmax) then
-            if (yy > rsrf .or. -rsrf > yy .or. rsrf == 0.) then
+            if (yy > risrf .or. -risrf > yy .or. risrf == 0.) then
               delmx(i) = - ximax - xx
               delpx(i) = + xx - ximax
             else
@@ -3575,7 +3577,7 @@ c         --- Point inside the z-extent
                 delpx(i) = + xx + xisrf
               endif
             endif
-            if (xx > rsrf .or. -rsrf > xx .or. rsrf == 0.) then
+            if (xx > risrf .or. -risrf > xx .or. risrf == 0.) then
               delmy(i) = - yimax - yy
               delpy(i) = + yy - yimax
             else
@@ -3608,24 +3610,26 @@ c       --- conductor or within the max radius.
      &      zz <= zmax + griddz .and.
      &      rr <= rmax) then
 
-          zzz = min(max(zz,zmin),zmax)
-          zlower = max(zz-griddz,zmin)
-          zhigher = min(zz+griddz,zmax)
+          if (zz .ne. zzprev) then
+            zzz = min(max(zz,zmin),zmax)
+            zlower = max(zz-griddz,zmin)
+            zhigher = min(zz+griddz,zmax)
 
-          rsrf = srfrv_f(zzz,rofzfunc,0,0)
-          rlower = srfrv_f(zlower,rofzfunc,0,0)
-          rhigher = srfrv_f(zhigher,rofzfunc,0,0)
-c         --- The commented code has not been tested.
-c         if (lsrlinr .and. lsrfindrextremum) then
-c           rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
-c    &                              z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
-c           rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
-c    &                               z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
-c         else
+            rsrf = srfrv_f(zzz,rofzfunc,0,0)
             rlower = srfrv_f(zlower,rofzfunc,0,0)
             rhigher = srfrv_f(zhigher,rofzfunc,0,0)
-c         endif
-          rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+c           --- The commented code has not been tested.
+c           if (lsrlinr .and. lsrfindrextremum) then
+c             rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
+c    &                                z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
+c             rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
+c    &                                 z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
+c           else
+              rlower = srfrv_f(zlower,rofzfunc,0,0)
+              rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c           endif
+            rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+          endif
 
           if (zz >= zmax .and. rr >= rsrf) then
             delmz(i) = zz - zmax
@@ -3744,6 +3748,7 @@ c             --- 10% in the delta and slowing down the code.
 
         endif
 
+        zzprev = zz
       enddo
 
       return
@@ -3769,9 +3774,10 @@ c would be an approximation, care would be needed to ensure that for particles
 c near the surface, the distance has the correct sign.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
+      real(kind=8):: zzprev,xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
+      zzprev = -LARGEPOS
       do i=1,n
 
         xx = x(i) - xcent
@@ -3780,7 +3786,7 @@ c near the surface, the distance has the correct sign.
         zz = z(i) - zcent
 
         if (zmin <= zz .and. zz <= zmax) then
-          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zz,rofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = rsrf - rr
           elseif (rr < rmax) then
@@ -3792,7 +3798,7 @@ c near the surface, the distance has the correct sign.
           endif
 
         elseif (zz < zmin) then
-          rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,rofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = zmin - zz
           else
@@ -3800,7 +3806,7 @@ c near the surface, the distance has the correct sign.
           endif
 
         else
-          rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,rofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = zz - zmax
           else
@@ -3809,6 +3815,7 @@ c near the surface, the distance has the correct sign.
 
         endif
 
+        zzprev = zz
       enddo
 
       return
@@ -4118,11 +4125,13 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
+      real(kind=8):: zzprev
       real(kind=8):: xx,yy,zz,rr,rsrf
-      real(kind=8):: xisrf,yisrf,ximin,yimin
+      real(kind=8):: risrf,xisrf,yisrf,ximin,yimin
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
+      zzprev = -LARGEPOS
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -4139,9 +4148,9 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          rsrf = srfrv_f(zz,rofzfunc,0,0)
-          xisrf = sqrt(max(0.,rsrf**2 - yy**2))
-          yisrf = sqrt(max(0.,rsrf**2 - xx**2))
+          if (zz .ne. zzprev) risrf = srfrv_f(zz,rofzfunc,0,0)
+          xisrf = sqrt(max(0.,risrf**2 - yy**2))
+          yisrf = sqrt(max(0.,risrf**2 - xx**2))
           ximin = sqrt(max(0.,rmin**2 - yy**2))
           yimin = sqrt(max(0.,rmin**2 - xx**2))
           if (rr <= rmin) then
@@ -4149,7 +4158,7 @@ c         --- Point inside the z-extent
             delpx(i) = ximin - xx
             delmy(i) = yimin + yy
             delpy(i) = yimin - yy
-          else if (rr < rsrf) then
+          else if (rr < risrf) then
             if (yy > rmin .or. -rmin > yy .or. rmin == 0.) then
               delmx(i) = - xisrf - xx
               delpx(i) = + xx - xisrf
@@ -4175,11 +4184,11 @@ c         --- Point inside the z-extent
               endif
             endif
           else
-            if (abs(yy) <= rsrf) then
+            if (abs(yy) <= risrf) then
               if (xx >= 0.) delmx(i) = + xx - xisrf
               if (xx <= 0.) delpx(i) = - xisrf - xx
             endif
-            if (abs(xx) <= rsrf) then
+            if (abs(xx) <= risrf) then
               if (yy >= 0.) delmy(i) = + yy - yisrf
               if (yy <= 0.) delpy(i) = - yisrf - yy
             endif
@@ -4195,22 +4204,24 @@ c       --- conductor or within the max radius.
      &      zz <= zmax + griddz .and.
      &      rr >= rmin) then
 
-          zzz = min(max(zz,zmin),zmax)
-          zlower = max(zz-griddz,zmin)
-          zhigher = min(zz+griddz,zmax)
+          if (zz .ne. zzprev) then
+            zzz = min(max(zz,zmin),zmax)
+            zlower = max(zz-griddz,zmin)
+            zhigher = min(zz+griddz,zmax)
 
-          rsrf = srfrv_f(zzz,rofzfunc,0,0)
-c         --- The commented code has not been tested.
-c         if (lsrlinr .and. lsrfindrextremum) then
-c           rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
-c    &                              z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
-c           rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
-c    &                               z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
-c         else
-            rlower = srfrv_f(zlower,rofzfunc,0,0)
-            rhigher = srfrv_f(zhigher,rofzfunc,0,0)
-c         endif
-          rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+            rsrf = srfrv_f(zzz,rofzfunc,0,0)
+c           --- The commented code has not been tested.
+c           if (lsrlinr .and. lsrfindrextremum) then
+c             rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
+c    &                                z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
+c             rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
+c    &                                 z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
+c           else
+              rlower = srfrv_f(zlower,rofzfunc,0,0)
+              rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+c           endif
+            rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+          endif
 
           if (zz >= zmax .and. rr <= rsrf) then
             delmz(i) = zz - zmax
@@ -4329,6 +4340,7 @@ c             --- 10% in the delta and slowing down the code.
 
         endif
 
+        zzprev = zz
       enddo
 
       return
@@ -4354,9 +4366,10 @@ c would be an approximation, care would be needed to ensure that for particles
 c near the surface, the distance has the correct sign.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
+      real(kind=8):: zzprev,xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
+      zzprev = -LARGEPOS
       do i=1,n
 
         xx = x(i) - xcent
@@ -4365,7 +4378,7 @@ c near the surface, the distance has the correct sign.
         rr = sqrt(xx**2 + yy**2)
 
         if (zmin <= zz .and. zz <= zmax) then
-          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zz,rofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = rr - rsrf
           elseif (rr > rmin) then
@@ -4377,7 +4390,7 @@ c near the surface, the distance has the correct sign.
           endif
 
         elseif (zz < zmin) then
-          rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,rofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = zmin - zz
           else
@@ -4385,7 +4398,7 @@ c near the surface, the distance has the correct sign.
           endif
 
         else
-          rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,rofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = zz - zmax
           else
@@ -4394,6 +4407,7 @@ c near the surface, the distance has the correct sign.
 
         endif
 
+        zzprev = zz
       enddo
 
       return
@@ -4739,7 +4753,8 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
-      real(kind=8):: xx,yy,zz,rr,rmin,rmax
+      real(kind=8):: zzprev
+      real(kind=8):: xx,yy,zz,rr,rimin,rimax,rmin,rmax
       real(kind=8):: ximin,yimin,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rfuzz
       real(kind=8):: rminlower,rminhigher,rmaxlower,rmaxhigher
@@ -4747,6 +4762,7 @@ c=======================================================================
       real(kind=8):: delmz1,delpz1
       real(kind=8):: linrzintersection,linrzrextremum
 
+      zzprev = -LARGEPOS
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -4763,19 +4779,21 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          rmin = min(srfrv_f(zz,rminofz,1,-1),srfrv_f(zz,rminofz,1,+1))
-          rmax = max(srfrv_f(zz,rmaxofz,2,-1),srfrv_f(zz,rmaxofz,2,+1))
-          ximin = sqrt(max(0.,rmin**2 - yy**2))
-          yimin = sqrt(max(0.,rmin**2 - xx**2))
-          ximax = sqrt(max(0.,rmax**2 - yy**2))
-          yimax = sqrt(max(0.,rmax**2 - xx**2))
-          if (rr < rmin) then
+          if (zz .ne. zzprev) then
+            rimin = min(srfrv_f(zz,rminofz,1,-1),srfrv_f(zz,rminofz,1,+1))
+            rimax = max(srfrv_f(zz,rmaxofz,2,-1),srfrv_f(zz,rmaxofz,2,+1))
+          endif
+          ximin = sqrt(max(0.,rimin**2 - yy**2))
+          yimin = sqrt(max(0.,rimin**2 - xx**2))
+          ximax = sqrt(max(0.,rimax**2 - yy**2))
+          yimax = sqrt(max(0.,rimax**2 - xx**2))
+          if (rr < rimin) then
             delmx(i) = ximin + xx
             delpx(i) = ximin - xx
             delmy(i) = yimin + yy
             delpy(i) = yimin - yy
-          else if (rr < rmax) then
-            if (yy > rmin .or. -rmin > yy .or. rmin == 0.) then
+          else if (rr < rimax) then
+            if (yy > rimin .or. -rimin > yy .or. rimin == 0.) then
               delmx(i) = - ximax - xx
               delpx(i) = + xx - ximax
             else
@@ -4787,7 +4805,7 @@ c         --- Point inside the z-extent
                 delpx(i) = + xx + ximin
               endif
             endif
-            if (xx > rmin .or. -rmin > xx .or. rmin == 0.) then
+            if (xx > rimin .or. -rimin > xx .or. rimin == 0.) then
               delmy(i) = - yimax - yy
               delpy(i) = + yy - yimax
             else
@@ -4800,11 +4818,11 @@ c         --- Point inside the z-extent
               endif
             endif
           else
-            if (abs(yy) <= rmax) then
+            if (abs(yy) <= rimax) then
               if (xx >= 0.) delmx(i) = + xx - ximax
               if (xx <= 0.) delpx(i) = - ximax - xx
             endif
-            if (abs(xx) <= rmax) then
+            if (abs(xx) <= rimax) then
               if (yy >= 0.) delmy(i) = + yy - yimax
               if (yy <= 0.) delpy(i) = - yimax - yy
             endif
@@ -4819,38 +4837,40 @@ c       --- conductor or within the max radius.
         if (zz >= zmin - griddz .and.
      &      zz <= zmax + griddz) then
 
-          zzz = min(max(zz,zmin),zmax)
-          zlower = max(zz-griddz,zmin)
-          zhigher = min(zz+griddz,zmax)
+          if (zz .ne. zzprev) then
+            zzz = min(max(zz,zmin),zmax)
+            zlower = max(zz-griddz,zmin)
+            zhigher = min(zz+griddz,zmax)
 
-          rmin = srfrv_f(zzz,rminofz,1,0)
-          rmax = srfrv_f(zzz,rmaxofz,2,0)
-          if (lsrminlinr .and. lsrfindrextremum) then
-c           --- XXX This code needs further debuggins. In the second call,
-c           --- zzz+griddz should be zhigher, but when that change is made,
-c           --- the code breaks and the conductors come out incorrectly - a
-c           --- spike forms at the zhigher location. The code works as is for
-c           --- the case of interest however and so is left as is. Also, note
-c           --- that lsrfindrextremum defaults to false so this code isn't
-c           --- used in general, since it will be slower.
-            rminlower = linrzrextremum(zlower,zzz,rmin,npnts_srmin,
-     &                         z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
-            rminhigher = linrzrextremum(zzz,zzz+griddz,rmin,npnts_srmin,
-     &                         z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
-          else
-            rminlower = srfrv_f(zlower,rminofz,1,-1)
-            rminhigher = srfrv_f(zhigher,rminofz,1,+1)
+            rmin = srfrv_f(zzz,rminofz,1,0)
+            rmax = srfrv_f(zzz,rmaxofz,2,0)
+            if (lsrminlinr .and. lsrfindrextremum) then
+c             --- XXX This code needs further debuggins. In the second call,
+c             --- zzz+griddz should be zhigher, but when that change is made,
+c             --- the code breaks and the conductors come out incorrectly - a
+c             --- spike forms at the zhigher location. The code works as is for
+c             --- the case of interest however and so is left as is. Also, note
+c             --- that lsrfindrextremum defaults to false so this code isn't
+c             --- used in general, since it will be slower.
+              rminlower = linrzrextremum(zlower,zzz,rmin,npnts_srmin,
+     &                           z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
+              rminhigher = linrzrextremum(zzz,zzz+griddz,rmin,npnts_srmin,
+     &                           z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
+            else
+              rminlower = srfrv_f(zlower,rminofz,1,-1)
+              rminhigher = srfrv_f(zhigher,rminofz,1,+1)
+            endif
+            if (lsrmaxlinr .and. lsrfindrextremum) then
+              rmaxlower = linrzrextremum(zlower,zzz,rmax,npnts_srmax,
+     &                           z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
+              rmaxhigher = linrzrextremum(zzz,zzz+griddz,rmax,npnts_srmax,
+     &                           z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
+            else
+              rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
+              rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
+            endif
+            rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
           endif
-          if (lsrmaxlinr .and. lsrfindrextremum) then
-            rmaxlower = linrzrextremum(zlower,zzz,rmax,npnts_srmax,
-     &                         z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
-            rmaxhigher = linrzrextremum(zzz,zzz+griddz,rmax,npnts_srmax,
-     &                         z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
-          else
-            rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
-            rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
-          endif
-          rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
 
           if (zz < zmin .or. rr < min(rminlower,rmin) .or.
      &                       max(rmaxlower,rmax) < rr) then
@@ -5113,6 +5133,7 @@ c                 --- 10% in the delta and slowing down the code.
 
         endif
 
+        zzprev = zz
       enddo
       return
       end
@@ -5137,9 +5158,10 @@ c would be an approximation, care would be needed to ensure that for particles
 c near the surface, the distance has the correct sign.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,rr,rmin,rmax,zd,rd
+      real(kind=8):: zzprev,xx,yy,zz,rr,rmin,rmax,zd,rd
       real(kind=8):: srfrv_f
 
+      zzprev = -LARGEPOS
       do i=1,n
 
         xx = x(i) - xcent
@@ -5148,8 +5170,10 @@ c near the surface, the distance has the correct sign.
         rr = sqrt(xx**2 + yy**2)
 
         if (zmin <= zz .and. zz <= zmax) then
-          rmin = srfrv_f(zz,rminofz,1,0)
-          rmax = srfrv_f(zz,rmaxofz,2,0)
+          if (zz .ne. zzprev) then
+            rmin = srfrv_f(zz,rminofz,1,0)
+            rmax = srfrv_f(zz,rmaxofz,2,0)
+          endif
           if (rr >= rmax) then
             distance(i) = rr - rmax
           elseif (rr > rmin) then
@@ -5161,8 +5185,10 @@ c near the surface, the distance has the correct sign.
           endif
 
         elseif (zz < zmin) then
-          rmin = srfrv_f(zmin,rminofz,1,0)
-          rmax = srfrv_f(zmin,rmaxofz,2,0)
+          if (zz .ne. zzprev) then
+            rmin = srfrv_f(zmin,rminofz,1,0)
+            rmax = srfrv_f(zmin,rmaxofz,2,0)
+          endif
           if (rr < rmin) then
             distance(i) = sqrt((zmin-zz)**2 + (rr-rmin)**2)
           else if (rr <= rmax) then
@@ -5172,8 +5198,10 @@ c near the surface, the distance has the correct sign.
           endif
 
         else
-          rmin = srfrv_f(zmax,rminofz,1,0)
-          rmax = srfrv_f(zmax,rmaxofz,2,0)
+          if (zz .ne. zzprev) then
+            rmin = srfrv_f(zmax,rminofz,1,0)
+            rmax = srfrv_f(zmax,rmaxofz,2,0)
+          endif
           if (rr < rmin) then
             distance(i) = sqrt((zz-zmax)**2 + (rr-rmin)**2)
           else if (rr <= rmax) then
@@ -5183,6 +5211,7 @@ c near the surface, the distance has the correct sign.
           endif
 
         endif
+        zzprev = zz
       enddo
 
       return
