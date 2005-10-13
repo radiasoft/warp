@@ -20,7 +20,9 @@ class MultiGrid(object):
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
                    'zmminglobal','zmmaxglobal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
-                   'solvergeom']
+                   'solvergeom',
+                   'iondensity','electrontemperature','plasmapotential',
+                   'electrondensitymaxscale']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
@@ -305,18 +307,33 @@ class MultiGrid(object):
       setrstar(self.rstar,self.nz,self.dz,self.zmmin,top.zgrid)
       self.linbend = min(self.rstar) < largepos
 
-    multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
-                     self.dx,self.dy,self.dz,self.phi,self.rho,
-                     self.rstar,self.linbend,self.bounds,
-                     self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
-                     self.mgparam,self.mgform,self.mgiters,self.mgmaxiters,
-                     self.mgmaxlevels,self.mgerror,self.mgtol,
-                     self.downpasses,self.uppasses,
-                     self.lcndbndy,self.laddconductor,self.icndbndy,
-                     self.lbuildquads,
-                     self.gridmode,
-                     self.conductors,
-                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+    if self.electrontemperature == 0:
+      multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
+                       self.dx,self.dy,self.dz,self.phi,self.rho,
+                       self.rstar,self.linbend,self.bounds,
+                       self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
+                       self.mgparam,self.mgform,self.mgiters,self.mgmaxiters,
+                       self.mgmaxlevels,self.mgerror,self.mgtol,
+                       self.downpasses,self.uppasses,
+                       self.lcndbndy,self.laddconductor,self.icndbndy,
+                       self.lbuildquads,
+                       self.gridmode,
+                       self.conductors,
+                       top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+    else:
+      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
+                         self.dx,self.dy,self.dz,self.phi,self.rho,
+                         star,self.linbend,self.bounds,
+                         self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
+                         self.mgparam,self.mgiters,self.mgmaxiters,
+                         self.mgmaxlevels,self.mgerror,self.mgtol,
+                         self.downpasses,self.uppasses,
+                         self.lcndbndy,self.laddconductor,self.icndbndy,
+                         self.lbuildquads,self.gridmode,self.conductors,
+                         top.my_index,top.nslaves,top.izfsslave,top.nzfsslave,
+                         self.iondensity,self.electrontemperature,
+                         self.plasmapotential,self.electrondensitymaxscale)
+
     if self.efetch == 3:
       MultiGrid.getselfe(self,recalculate=1)
 
