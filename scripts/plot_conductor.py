@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.94 2005/08/15 22:04:42 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.95 2005/10/13 20:16:34 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -830,7 +830,9 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
       kw = copy.copy(locals())
+      kw.update(kwdict)
       del kw['kw']
+      del kw['kwdict']
       solver.pfxy(**kw)
       return
     else:
@@ -962,7 +964,9 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
       kw = copy.copy(locals())
+      kw.update(kwdict)
       del kw['kw']
+      del kw['kwdict']
       solver.pfzx(**kw)
       return
     else:
@@ -1075,7 +1079,9 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
       kw = copy.copy(locals())
+      kw.update(kwdict)
       del kw['kw']
+      del kw['kwdict']
       solver.pfzy(**kw)
       return
     else:
