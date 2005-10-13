@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.11 $, $Date: 2005/08/02 21:27:29 $
+c version $Revision: 1.12 $, $Date: 2005/10/13 20:44:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -296,10 +296,18 @@ c     --- Do initial relaxation iterations
      &                 electrondensitymaxscale)
       enddo
 
+c     --- NOTICE: This solver only really works well in SOR mode, without
+c     --- any coarsening. The problem seems to be the restriction and expansion
+c     --- of phi near the conducting boundaries. Attempts so far to fix the
+c     --- problem have not yet worked completely.
+c     --- So, for now, the mgmaxlevels is fixed to 0
+c     --- for the production version of the code.
+
 c     --- Check if this is the finest level. If so, then don't do any further
 c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nzfull >= 4 .and.
-     &    mglevel < mgmaxlevels) then
+     &    mglevel < 0) then
+c    &    mglevel < mgmaxlevels) then
 
 c       --- Calculate the size of the next coarsest grid. If the current
 c       --- size is twice an odd integer, the next coarsest size will be
