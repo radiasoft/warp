@@ -683,7 +683,9 @@ class AMRTree(object,Visualizable):
         # install conductors
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
           for block in self.blocks.values():
-            if cond not in block['installed_conductors']:
+            g=block['grid']
+            if g is not frz.basegrid:
+             if cond not in block['installed_conductors']:
               installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
                                 xmmin=g.xmin,xmmax=g.xmax,
                                 zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
