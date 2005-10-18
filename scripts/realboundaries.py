@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.63 2005/10/11 23:55:54 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.64 2005/10/18 16:28:43 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -557,6 +557,8 @@ Constructor arguments:
   - scrapermglevel=1: Coarsening level for index grid used to locate which
                       conductors particles are near. See doc(ParticleScraper)
                       for more info.
+  - scraperargs={}: Dictionary of arguments to pass to the scraper creator
+                    when scrapemethod==2.
   - dfill=2: parameter passed to installconductors in 3d. sets how much the
              interior of conductors are filled.
   - lclearconductors=1: When true, in the 3d case, all conductor data is cleared
@@ -573,7 +575,7 @@ Constructor arguments:
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
-                    scrapemethod=2,
+                    scrapemethod=2,scraperargs={},
                     dfill=2,lclearconductors=1,pipethickness=largepos,
                     conductors=[]):
     global _realboundarycount
@@ -587,7 +589,8 @@ Constructor arguments:
     self.rodfract = rodfract
     self.scrapemethod = scrapemethod
     self.lscrapeparticles = lscrapeparticles
-    self.scrapermglevel = scrapermglevel
+    self.scraperargs = scraperargs
+    if 'mglevel' not in self.scraperargs: self.scraperargs['mglevel'] = scrapermglevel
     self.dfill = dfill
     self.lclearconductors = lclearconductors
     self.pipethickness = pipethickness
@@ -1127,8 +1130,7 @@ in the celemid array. It returns each element only once.
           self.scraper.disable()
         except:
           pass
-        self.scraper = ParticleScraper(self.newconductors,
-                                       mglevel=self.scrapermglevel)
+        self.scraper = ParticleScraper(self.newconductors,**self.scraperargs)
 
   #----------------------------------------------------------------------------
   def plotcond(self,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,\
