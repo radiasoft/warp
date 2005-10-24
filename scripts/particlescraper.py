@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.28 2005/07/05 19:40:42 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.29 2005/10/24 23:12:25 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -50,8 +50,9 @@ the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
   def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,lcollectlpdata=0,
-                    mglevel=0,install=1,grid=None): 
+                    mglevel=0,aura=0.,install=1,grid=None): 
     self.mglevel = mglevel
+    self.aura = aura
     # --- Don't create the grid until it is needed.
     self.grid = grid
     # --- register any initial conductors
@@ -94,7 +95,7 @@ conductors are an argument.
     for c in newconductors:
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
       self.conductors.append(c)
-      self.grid.getisinside(c,mglevel=self.mglevel)
+      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
 
   def unregisterconductors(self,conductor,nooverlap=0):
     self.conductors.remove(conductor)
@@ -102,7 +103,7 @@ conductors are an argument.
       # --- This is horribly inefficient!!!
       self.grid.resetgrid()
       for c in self.conductors:
-        self.grid.getisinside(c,mglevel=self.mglevel)
+        self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
     else:
       self.grid.removeisinside(conductor)
 

@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.115 2005/10/11 23:52:03 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.116 2005/10/24 23:12:24 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -226,9 +226,9 @@ Should never be directly created by the user.
                       kwlist=self.getkwlist())
     return result
 
-  def isinside(self,xx,yy,zz):
+  def isinside(self,xx,yy,zz,aura=0.):
     result = IsInside(xx,yy,zz,generator=self.generatord,
-                      condid=self.condid,kwlist=self.getkwlist())
+                      condid=self.condid,aura=aura,kwlist=self.getkwlist())
     return result
 
   def intercept(self,xx,yy,zz,vx,vy,vz):
@@ -478,8 +478,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
     return (-(self.left.griddistance(ix,iy,iz,xx,yy,zz)))
   def distance(self,xx,yy,zz):
     return (-(self.left.distance(xx,yy,zz)))
-  def isinside(self,xx,yy,zz):
-    return (-(self.left.isinside(xx,yy,zz)))
+  def isinside(self,xx,yy,zz,aura=0.):
+    return (-(self.left.isinside(xx,yy,zz,aura)))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (-(self.left.intercept(xx,yy,zz,vx,vy,vz)))
   def createdxobject(self,kwdict={},**kw):
@@ -503,9 +503,9 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) *
             self.right.distance(xx,yy,zz))
-  def isinside(self,xx,yy,zz):
-    return (self.left.isinside(xx,yy,zz) *
-            self.right.isinside(xx,yy,zz))
+  def isinside(self,xx,yy,zz,aura=0.):
+    return (self.left.isinside(xx,yy,zz,aura) *
+            self.right.isinside(xx,yy,zz,aura))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) *
             self.right.intercept(xx,yy,zz,vx,vy,vz))
@@ -532,9 +532,9 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) +
             self.right.distance(xx,yy,zz))
-  def isinside(self,xx,yy,zz):
-    return (self.left.isinside(xx,yy,zz) +
-            self.right.isinside(xx,yy,zz))
+  def isinside(self,xx,yy,zz,aura=0.):
+    return (self.left.isinside(xx,yy,zz,aura) +
+            self.right.isinside(xx,yy,zz,aura))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) +
             self.right.intercept(xx,yy,zz,vx,vy,vz))
@@ -561,9 +561,9 @@ AssemblyMinus class.
   def distance(self,xx,yy,zz):
     return (self.left.distance(xx,yy,zz) -
             self.right.distance(xx,yy,zz))
-  def isinside(self,xx,yy,zz):
-    return (self.left.isinside(xx,yy,zz) -
-            self.right.isinside(xx,yy,zz))
+  def isinside(self,xx,yy,zz,aura=0.):
+    return (self.left.isinside(xx,yy,zz,aura) -
+            self.right.isinside(xx,yy,zz,aura))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) -
             self.right.intercept(xx,yy,zz,vx,vy,vz))
@@ -1290,47 +1290,51 @@ The attribute 'isinside' holds the flag specifying whether a point is in or out
   """
 
   def __init__(self,xx=None,yy=None,zz=None,
-                    isinside=None,generator=None,condid=1,kwlist=[]):
+                    isinside=None,generator=None,condid=1,aura=0.,kwlist=[]):
     self.condid = condid
     if generator is not None:
       self.ndata = len(xx)
       self.xx = xx
       self.yy = yy
       self.zz = zz
+      self.condid = condid
+      self.aura = aura
       distance = zeros(self.ndata,'d')
       fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 distance[:]])
-      self.isinside = where(distance <= 0.,condid,0.)
+      self.isinside = where(distance <= aura,condid,0.)
     else:
       self.ndata = len(xx)
       self.xx = xx
       self.yy = yy
       self.zz = zz
+      self.aura = aura
       self.isinside = isinside*self.condid
    
   def __neg__(self):
     "Delta not operator."
     return IsInside(self.xx,self.yy,self.zz,
-                    logical_not(self.isinside),condid=self.condid)
+                    logical_not(self.isinside),
+                    condid=self.condid,aura=self.aura)
 
   def __mul__(self,right):
     "'and' operator, returns logical and of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
                     logical_and(self.isinside,right.isinside),
-                    condid=self.condid)
+                    condid=self.condid,aura=self.aura)
 
   def __add__(self,right):
     "'or' operator, returns logical or of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
                     logical_or(self.isinside,right.isinside),
-                    condid=self.condid)
+                    condid=self.condid,aura=self.aura)
 
   def __sub__(self,right):
     "'or' operator, returns logical or of isinsides."
     return IsInside(self.xx,self.yy,self.zz,
                     logical_and(self.isinside,logical_not(right.isinside)),
-                    condid=self.condid)
+                    condid=self.condid,aura=self.aura)
 
   def __str__(self):
     "Prints out delta"
@@ -1791,7 +1795,7 @@ does not overlap any others. The flag nooverlap must be set as a reminder.
       print 'Set the nooverlap flag to true is this is the case.'
       raise ''
 
-  def getisinside(self,a,mglevel=0):
+  def getisinside(self,a,mglevel=0,aura=0.):
     """
 Given an Assembly, set flag for each grid point whether it is inside the
 assembly.
@@ -1818,7 +1822,7 @@ assembly.
       iz[:] = nint((zz - zmmin - zbeam)/dz)  #####
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
-      d = a.isinside(x,y,z)  #####
+      d = a.isinside(x,y,z,aura)  #####
       tt2[2] = tt2[2] + wtime() - tt1
       tt1 = wtime()
       dd = d.isinside
@@ -3665,7 +3669,7 @@ Creates an Annulus as a surface of revolution.
     self.rmax = rmax
     self.length = length
 
-    # --- Setup dat for surface of revolution
+    # --- Setup data for surface of revolution
     zmin = -length/2.
     zmax = +length/2.
 
