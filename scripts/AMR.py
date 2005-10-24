@@ -1,3 +1,4 @@
+from __future__ import generators
 from warp import *
 from copy import *
 from MeshRefinement import *
@@ -41,11 +42,43 @@ class AMRTree(object,Visualizable):
       else:
         installbeforefs(self.generate)
         
+    def __getstate__(self):
+      if type(self.blocks) != DictType:
+        # --- In this case, there is no trouble with pickle
+        return self.__dict__
+      else:
+        # --- In this case, the complexly nested frz.basegrid structure
+        # --- causes pickle to have fits and it often reachs the 
+        # --- recursion depth limit. So, remove all references to grid here,
+        # --- replacing them with the gids so they can be restored later.
+        # --- This also removes the problem of having extra instances of
+        # --- the grids saved in the dump file.
+        dict = self.__dict__.copy()
+        cleanblocks = self.blocks.copy()
+        del dict['blocks']
+        dict['cleanblocks'] = cleanblocks
+        for gid in cleanblocks.keys():
+          cleanblocks[gid]['grid'] = gid
+        return dict
+
     def __setstate__(self,dict):
       # --- This is called when the instance is unpickled.
+      # --- Note that the restorefrzgrid method below is not called now since
+      # --- this instance may be restored before frz.basegrid is restored.
       self.__dict__.update(dict)
       self.enable()
 
+    def restorefrzgrid(self):
+      # --- This should be called whenever 'grid' is used to ensure that it
+      # --- has been properly restored after being unpickled.
+      try:
+        cleanblocks = self.__dict__['cleanblocks']
+        for g in walkfrzgrid():
+          cleanblocks[g.gid[0]]['grid'] = g
+        self.__dict__['blocks'] = cleanblocks
+        del self.__dict__['cleanblocks']
+      except KeyError:
+        pass
 
     # --------------------------------------------------------------------
     # --- Field solver API routines.
@@ -88,6 +121,7 @@ class AMRTree(object,Visualizable):
       if self.solvergeom==w3d.XYZgeomMR:
         self.blocks.installconductor(conductor,dfill=self.dfill)
       else:
+        self.restorefrzgrid()
         for block in self.blocks.values():
           g = block['grid']
           if conductor not in block['installed_conductors']:
@@ -491,6 +525,7 @@ class AMRTree(object,Visualizable):
         self.blocks.resetroot()
         mothergrid = self.blocks
       else:
+        self.restorefrzgrid()
         mothergrid = frz.basegrid
         self.del_blocks2d()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
@@ -920,6 +955,70 @@ def draw_box(rmin, rmax, zmin, zmax, color='blue',width=1):
              [rmin,rmax,rmin,rmin],
              [zmax,zmax,zmin,zmax],
              [rmin,rmax,rmax,rmax],color=color,width=width)
+
+
+
+def walkfrzgrid(bnd=0,cnd=0,base=None):
+  """Walk through the frz grid structure, returning each element once.
+ - bnd=0: when true, the objects returned will be the BNDtypes
+ - cnd=0: when true, the objects returned will be the CONDtypes
+Note that the base argument should never be specified.
+  """
+  # --- Create list which hold the objects already returned. This is used
+  # --- to make sure that an object is not returned multiple times.
+  try: walkfrzgrid.glist
+  except AttributeError: walkfrzgrid.glist = []
+
+  # --- If this is the top call, set the base.
+  # --- Also make sure that bnd is set if cnd is set.
+  if base is None:
+    base = frz.basegrid
+    if cnd: bnd = 1
+
+  if not bnd and not cnd:
+    # --- If not return a BND or CONDtype, return the base
+    # --- Note that base may still be a BND or COND type
+    # --- passed in from above.
+    if base not in walkfrzgrid.glist:
+      # --- Only return it if it has not been returned already.
+      walkfrzgrid.glist.append(base)
+      yield base
+  elif bnd:
+    # --- If BND, walk through the BND types, returning each one.
+    # --- cnd is passed in since the BND must be walked through
+    # --- to return the CONDs.
+    for b in walkfrzgrid(bnd=0,cnd=cnd,base=base.bndfirst):
+      if b is not None: yield b
+      else: break
+  else:
+    # --- Walk through the CONDs
+    if base.nb_conductors > 0:
+      for c in walkfrzgrid(bnd=0,cnd=0,base=base.cndfirst):
+        if c is not None: yield c
+        else: break
+
+  try:
+    # --- Check for a level down. Note that only grids have a down
+    # --- attribute, hence the try/except.
+    # --- If down is unallocated, getpyobject returns None.
+    if base.getpyobject('down') is not None:
+      for g in walkfrzgrid(bnd=bnd,cnd=cnd,base=base.down):
+        if g is not None: yield g
+        else: break
+  except AttributeError:
+    pass
+
+  # --- Check for a next object. This applies to grids, BNDs, and CONDs.
+  if base.getpyobject('next') is not None:
+    for g in walkfrzgrid(bnd=bnd,cnd=cnd,base=base.next):
+      if g is not None: yield g
+      else: break
+
+  # --- If this is the end of the top call, then reset glist.
+  # --- This is way this routine will only work (multiple times)
+  # --- if the starting point is frz.basegrid.
+  if base == frz.basegrid: walkfrzgrid.glist = []
+
 
 
 
