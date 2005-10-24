@@ -125,7 +125,8 @@ Input for constructor:
       if 'AMRtree' in __main__.__dict__:
         __main__.__dict__['AMRtree'].installbeforefs(self.applyvoltage)
         uninstallbeforefs(self.applyvoltage)
-        return
+        # --- Continue with the routine so, in case the AMRtree had already
+        # --- been generated, the voltages will still be set.
     if time is None: time = top.time
     volt = self.getvolt(time)
     # --- Get the appropriate conductors object to install into.
