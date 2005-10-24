@@ -47,12 +47,13 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.8 2005/07/01 17:18:07 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.9 2005/10/24 23:02:57 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
 
-from warp import *
+#from warp import *
+import warp
 from types import *
 import weakref
 import copy
@@ -87,43 +88,21 @@ class ControllerFunction:
   def __getstate__(self):
     """
     The instance is picklable. Only functions in the list are preserved, and
-    only by their names.
+    only by their names. The list of functions names replaces the funcs
+    attribute in the dictionary returned. Note that nothing special is
+    needed on a restore since the function names will automatically be
+    converted back into functions the first time they are called
+    (so there is no __setstate__).
+    The ControllerFunctionContainer class below ensures that top level
+    controllers are restored properly.
     """
     dict = self.__dict__.copy()
     del dict['funcs']
     funcnamelist = []
     for f in self.controllerfuncnames():
       funcnamelist.append(f)
-    dict['funcnamelist'] = funcnamelist
+    dict['funcs'] = funcnamelist
     return dict
-
-  def __setstate__(self,dict):
-    """
-    The instance is picklable. Only functions in the list are preserved, and
-    only by their names.
-    """
-    self.__dict__.update(dict)
-    import __main__
-    self.funcs = []
-    for fname in dict['funcnamelist']:
-      if fname in __main__.__dict__:
-        func = __main__.__dict__[fname]
-        self.installfuncinlist(func)
-      else:
-        # --- If the function is not saved in main, then keep the name in case
-        # --- it will be added later.
-        self.installfuncinlist(fname)
-    # --- When in instance is unpickled, make sure it replaces whatever
-    # --- copy was in the controllers dict. This must be done since the
-    # --- places in the code which refer to these instances, refer to the
-    # --- ones in the controllers dictionary.
-    # --- Also put is into main, since some instances are called from
-    # --- fortran which can only access main.
-    if self.name is not None:
-      import controllers
-      controllers.__dict__[self.name] = self
-      import __main__
-      __main__.__dict__[self.name] = self
 
   def hasfuncsinstalled(self):
     "Checks if there are any functions installed"
@@ -218,14 +197,6 @@ class ControllerFunction:
 
 #=============================================================================
 
-# --- This is primarily needed by warp.py so that these objects can be removed
-# --- from the list of python objects which are not written out.
-controllerfunctionlist = ['beforefs','afterfs',
-                          'callscraper','calladdconductor',
-                          'callbeforestepfuncs','callafterstepfuncs',
-                          'callbeforeplotfuncs','callafterplotfuncs',
-                          'callplseldomfuncs','callplalwaysfuncs']
-
 # --- Now create the actual instances.
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
@@ -238,15 +209,66 @@ callafterplotfuncs = ControllerFunction('callafterplotfuncs')
 callplseldomfuncs = ControllerFunction('callplseldomfuncs')
 callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
 
+#=============================================================================
+class ControllerFunctionContainer:
+  """
+This is a somewhat kludgy fix to how to get any saved functions restored.
+A single instance of this class is created and this instance is what is save
+in a dump. This instance will have a list of the controllers, so the
+controllers will be saved, but not as top level python variables.
+Upon restoration, this container will go through each of the saved controllers
+and reinstall the functions saved therein. This installs the functions in the
+original set of controllers created when this module was first imported.
+Anything that may have already been installed will therefore be unaffected.
+  """
+  def __init__(self,clist):
+    self.clist = clist
+  def __setstate__(self,dict):
+    import controllers
+    import __main__
+    self.__dict__.update(dict)
+    for c in self.clist:
+      for f in c.funcs:
+        # --- Check if f is already in the original list of functions,
+        # --- and skip it if it is. Both the function name (f) and the
+        # --- actual function in main are checked.
+        # --- This will be the case if, for example, the user execs the
+        # --- original input file, which sets up some functions, before
+        # --- doing the restart.
+        origfuncs = controllers.__dict__[c.name].funcs
+        try:
+          ffunc = __main__.__dict__[f]
+        except KeyError:
+          ffunc = None
+        if (f not in origfuncs and ffunc not in origfuncs):
+          controllers.__dict__[c.name].installfuncinlist(f)
+    # --- The clist is obtained from the original instance in the controllers
+    # --- module so that the list contains references to the original
+    # --- controller instances. This is needed, since in the next dump,
+    # --- this instance will be written out and must contain an updated
+    # --- list of controllers.
+    self.clist = controllers.__dict__['controllerfunctioncontainer'].clist
+
+# --- This is primarily needed by warp.py so that these objects can be removed
+# --- from the list of python objects which are not written out.
+controllerfunctioncontainer = ControllerFunctionContainer(
+                               [beforefs,afterfs,
+                                callscraper,calladdconductor,
+                                callbeforestepfuncs,callafterstepfuncs,
+                                callbeforeplotfuncs,callafterplotfuncs,
+                                callplseldomfuncs,callplalwaysfuncs])
+
+
+#=============================================================================
 # ----------------------------------------------------------------------------
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
   beforefs.installfuncinlist(f)
-  w3d.lbeforefs = true
+  warp.w3d.lbeforefs = warp.true
 def uninstallbeforefs(f):
   "Removes the function from the list of functions called before a field-solve"
   beforefs.uninstallfuncinlist(f)
-  if not beforefs.hasfuncsinstalled(): w3d.lbeforefs = false
+  if not beforefs.hasfuncsinstalled(): warp.w3d.lbeforefs = warp.false
 def isinstalledbeforefs(f):
   return beforefs.isinstalledfuncinlist(f)
 
@@ -254,11 +276,11 @@ def isinstalledbeforefs(f):
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
   afterfs.installfuncinlist(f)
-  w3d.lafterfs = true
+  warp.w3d.lafterfs = warp.true
 def uninstallafterfs(f):
   "Removes the function from the list of functions called after a field-solve"
   afterfs.uninstallfuncinlist(f)
-  if not afterfs.hasfuncsinstalled(): w3d.lafterfs = false
+  if not afterfs.hasfuncsinstalled(): warp.w3d.lafterfs = warp.false
 def isinstalledafterfs(f):
   return afterfs.isinstalledfuncinlist(f)
 
@@ -266,11 +288,11 @@ def isinstalledafterfs(f):
 def installparticlescraper(f):
   "Adds a function to the list of functions called to scrape particles"
   callscraper.installfuncinlist(f)
-  w3d.lcallscraper = true
+  warp.w3d.lcallscraper = warp.true
 def uninstallparticlescraper(f):
   "Removes the function from the list of functions called to scrape particles"
   callscraper.uninstallfuncinlist(f)
-  if not callscraper.hasfuncsinstalled(): w3d.lcallscraper = false
+  if not callscraper.hasfuncsinstalled(): warp.w3d.lcallscraper = warp.false
 def isinstalledparticlescraper(f):
   return callscraper.isinstalledfuncinlist(f)
 
@@ -278,11 +300,11 @@ def isinstalledparticlescraper(f):
 def installaddconductor(f):
   "Adds a function to the list of functions called to add conductors"
   calladdconductor.installfuncinlist(f)
-  f3d.laddconductor = true
+  warp.f3d.laddconductor = warp.true
 def uninstalladdconductor(f):
   "Removes the function from the list of functions called to add conductors"
   calladdconductor.uninstallfuncinlist(f)
-  if not calladdconductor.hasfuncsinstalled(): f3d.laddconductor = false
+  if not calladdconductor.hasfuncsinstalled(): warp.f3d.laddconductor = warp.false
 def isinstalledaddconductor(f):
   return calladdconductor.isinstalledfuncinlist(f)
 

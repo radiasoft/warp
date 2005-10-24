@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.89 2005/09/12 05:55:07 dave Exp $"
+warp_version = "$Id: warp.py,v 1.90 2005/10/24 23:02:56 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -1030,10 +1030,12 @@ except:
 initial_global_dict_keys = []
 initial_global_dict_keys = globals().keys()
 
-# --- The controller functions need to be written out since they'll be changed
-# --- by the user.
-for n in controllerfunctionlist:
-  initial_global_dict_keys.remove(n)
+# --- The controller function container needs to be written out since the
+# --- controllers functions may be changed by the user. The container
+# --- properly reinstalls any saved controller functions.
+# --- The name 'controllerfunctioncontainer' must be the same as what appears
+# --- in the controllers module.
+initial_global_dict_keys.remove('controllerfunctioncontainer')
 
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
