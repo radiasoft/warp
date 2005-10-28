@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.137 $, $Date: 2005/05/10 16:35:06 $
+c@(#) File DTOP.F, version $Revision: 3.138 $, $Date: 2005/10/28 23:50:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -673,7 +673,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.137 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.138 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1837,6 +1837,152 @@ c       --- if within grid, gather
 
       return
       end
+c=============================================================================
+      subroutine gridtogrid3d(nxin,nyin,nzin,
+     &                        xminin,xmaxin,yminin,ymaxin,zminin,zmaxin,gridin,
+     &                        nxout,nyout,nzout,
+     &                        xminout,xmaxout,yminout,ymaxout,zminout,zmaxout,
+     &                        gridout)
+      integer(ISZ):: nxin,nyin,nzin
+      real(kind=8):: xminin,xmaxin,yminin,ymaxin,zminin,zmaxin
+      real(kind=8):: gridin(0:nxin,0:nyin,0:nzin)
+      integer(ISZ):: nxout,nyout,nzout
+      real(kind=8):: xminout,xmaxout,yminout,ymaxout,zminout,zmaxout
+      real(kind=8):: gridout(0:nxout,0:nyout,0:nzout)
+
+c Does linear interpolation from one grid to another. Note that 1d and 2d grids
+c can be passed in with two or one of the n's zero.
+
+      real(kind=8):: xin,yin,zin
+      integer(ISZ):: ixin,iyin,izin
+      integer(ISZ):: ixout,iyout,izout
+      real(kind=8):: dxiin,dyiin,dziin
+      real(kind=8):: dxout,dyout,dzout
+      real(kind=8):: wx1,wy1,wz1
+      real(kind=8):: wx0,wy0,wz0
+      integer(ISZ):: ixinp1,iyinp1,izinp1
+
+c     --- If the min and max of the input grid are the same, then set the
+c     --- inverse grid cell size to zero so that the index will always
+c     --- be zero (independent of nin)
+      if (xmaxin == xminin) then
+        dxiin = 0.
+      else
+        dxiin = nxin/(xmaxin - xminin)
+      endif
+      if (ymaxin == yminin) then
+        dyiin = 0.
+      else
+        dyiin = nyin/(ymaxin - yminin)
+      endif
+      if (zmaxin == zminin) then
+        dziin = 0.
+      else
+        dziin = nzin/(zmaxin - zminin)
+      endif
+
+c     --- If nout is zero, then the output grid cell size doesn't
+c     --- matter since it will only be multiplied by zero.
+      if (nxout > 0) then
+        dxout = (xmaxout - xminout)/nxout
+      else
+        dxout = 0.
+      endif
+      if (nyout > 0) then
+        dyout = (ymaxout - yminout)/nyout
+      else
+        dyout = 0.
+      endif
+      if (nzout > 0) then
+        dzout = (zmaxout - zminout)/nzout
+      else
+        dzout = 0.
+      endif
+
+!$OMP DO
+      do izout=0,nzout
+
+c       --- Get z position of output grid cell relative to the input mesh.
+        zin = ((zminout + izout*dzout) - zminin)*dziin
+
+c       --- If it is outside of the input mesh, then force this plane to
+c       --- zero and go to the next plane.
+        if (zin < 0. .or. zin > nzin) then
+          gridout(:,:,izout) = 0.
+          cycle
+        endif
+
+c       --- Get the grid cell number and weights
+        izin = int(zin)
+        izinp1 = izin + 1
+        wz1 =  zin - izin
+        wz0 =  1. - wz1
+
+c       --- If the grid cell is at the upper boundary of the input mesh,
+c       --- then set izinp1 to be within the mesh, but force the weight to
+c       --- zero (it should actually already be zero anyway though).
+        if (izin == nzin) then
+          izinp1 = izin
+          wz1 = 0.
+        endif
+
+        do iyout=0,nyout
+
+c         --- See comments above for z.
+          yin = ((yminout + iyout*dyout) - yminin)*dyiin
+
+          if (yin < 0. .or. yin > nyin) then
+            gridout(:,iyout,izout) = 0.
+            cycle
+          endif
+
+          iyin = int(yin)
+          iyinp1 = iyin + 1
+          wy1 =  yin - iyin
+          wy0 =  1. - wy1
+
+          if (iyin == nyin) then
+            iyinp1 = iyin
+            wy1 = 0.
+          endif
+
+          do ixout=0,nxout
+
+c           --- See comments above for z.
+            xin = ((xminout + ixout*dxout) - xminin)*dxiin
+
+            if (xin < 0. .or. xin > nxin) then
+              gridout(ixout,iyout,izout) = 0.
+              cycle
+            endif
+
+            ixin = int(xin)
+            ixinp1 = ixin + 1
+            wx1 =  xin - ixin
+            wx0 =  1. - wx1
+
+            if (ixin == nxin) then
+              ixinp1 = ixin
+              wx1 = 0.
+            endif
+
+            gridout(ixout,iyout,izout) = 
+     &             wx0*wy0*wz0*gridin(ixin  ,iyin  ,izin  ) +
+     &             wx1*wy0*wz0*gridin(ixinp1,iyin  ,izin  ) +
+     &             wx0*wy1*wz0*gridin(ixin  ,iyinp1,izin  ) +
+     &             wx1*wy1*wz0*gridin(ixinp1,iyinp1,izin  ) +
+     &             wx0*wy0*wz1*gridin(ixin  ,iyin  ,izinp1) +
+     &             wx1*wy0*wz1*gridin(ixinp1,iyin  ,izinp1) +
+     &             wx0*wy1*wz1*gridin(ixin  ,iyinp1,izinp1) +
+     &             wx1*wy1*wz1*gridin(ixinp1,iyinp1,izinp1)
+
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
 c=============================================================================
       subroutine take2dint(a,n1,n2,i,j,n,b)
       integer(ISZ):: n1,n2,n

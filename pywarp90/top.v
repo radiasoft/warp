@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.150 $, $Date: 2005/10/04 22:31:56 $
+#@(#) File TOP.V, version $Revision: 3.151 $, $Date: 2005/10/28 23:50:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.150 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.151 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2198,6 +2198,14 @@ grid2grid(unew:real,nxnew:integer,nynew:integer,
           uold:real,nxold:integer,nyold:integer,
           xminold:real,xmaxold:real,yminold:real,ymaxold:real) subroutine
         # project field from one grid to another
+gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
+             xminin:real,xmaxin:real,yminin:real,ymaxin:real,zminin:real,zmaxin:real,
+             gridin:real,
+             nxout:integer,nyout:integer,nzout:integer,
+             xminout:real,xmaxout:real,yminout:real,ymaxout:real,zminout:real,zmaxout:real,
+             gridout:real) subroutine
+        # Linearly interpolates from one grid to another. This will also work
+        # for 2d and 1d arrays if the n's are set to zero.
 take2dint(a:integer,n1:integer,n2:integer,i:integer,j:integer,n:integer,
           b:integer) subroutine
 getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
