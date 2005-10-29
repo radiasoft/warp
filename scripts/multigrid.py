@@ -424,7 +424,7 @@ class MultiGrid(object):
       # --- correction form since it is operating on the error.
       if self.mgform == 2:
         cond_potmg(self.conductors.interior,
-                   self.nx,self.ny,self.nz,phisave,0,false,self.mgform,true)
+                   self.nx,self.ny,self.nz,phisave,0,self.mgform,true)
         residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
                  phisave,rhosave,res,0,localbounds,
                  self.mgparam,self.mgform,true,
@@ -659,7 +659,7 @@ class MultiGrid(object):
                      lcndbndy,icndbndy,conductors):
 
     # --- Put desired potential onto conductors in phi array.
-    cond_potmg(conductors.interior,nx,ny,nz,phi,mglevel,false,mgform,false)
+    cond_potmg(conductors.interior,nx,ny,nz,phi,mglevel,mgform,false)
 
     # --- Set starting and ending parity.
     #ifdef MPIPARALLEL
