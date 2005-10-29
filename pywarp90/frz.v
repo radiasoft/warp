@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.42 $, $Date: 2005/09/01 07:33:37 $
+#@(#) File FRZ.V, version $Revision: 3.43 $, $Date: 2005/10/29 00:05:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.42 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.43 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -243,11 +243,15 @@ adjust_lpfd(f:real,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:real
 setphirz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
          # get phi in p from RZ grid at locations [x,y,z]
 
-residualberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
-             phi:real,res:real,mglevel:integer,bounds:integer,mgparam:integer,
-             lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
-             iondensity:real,electrontemperature:real,plasmapotential:real,
-             electrondensitymaxscale:real) subroutine
+lphiberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
+         phi:real,res:real,mglevel:integer,bounds:integer,mgparam:integer,
+         lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+         iondensity:real,electrontemperature:real,plasmapotential:real,
+         electrondensitymaxscale:real) subroutine
+restrictberz(nx:integer,nz:integer,nzfull:integer,u:real,delx:integer,delz:integer,
+             nxcoarse:integer,nzcoarse:integer,nzfullcoarse:integer,ucoarse:real,
+             delcx:integer,delcz:integer,
+             bounds:integer,boundscoarse:integer,lzoffset:integer) subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
