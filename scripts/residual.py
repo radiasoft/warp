@@ -1,7 +1,7 @@
 # Calculate the residual of Poisson's equation.  The residual has the units
 # of volts, same as phi.
 from warp import *
-residual_version = "$Id: residual.py,v 1.4 2005/06/13 23:43:56 dave Exp $"
+residual_version = "$Id: residual.py,v 1.5 2005/10/29 00:10:16 dave Exp $"
 
 #print "Maximum residual = %e" % max(abs(ravel(residual)))
 
@@ -64,6 +64,53 @@ def getresidual(phi=None,rho=None,dx=None,dy=None,dz=None,
     eee[:,:,0] = 0.
   if w3d.boundnz == top.dirichlet:
     eee[:,:,-1] = 0.
+
+  return eee
+
+def getresidualXZ(phi=None,rho=None,dx=None,dz=None,
+                  iondensity=None,electrontemperature=None,plasmapotential=None):
+  if phi is None: phi = frz.basegrid.phi
+  if rho is None: rho = frz.basegrid.rho
+  if dx is None: dx = frz.basegrid.dr
+  if dz is None: dz = frz.basegrid.dz
+  if iondensity is None: iondensity = w3d.iondensity
+  if electrontemperature is None: electrontemperature = w3d.electrontemperature
+  if plasmapotential is None: plasmapotential = w3d.plasmapotential
+
+  # --- First calculate del squared phi plus rho/eps0
+  eee = (
+   (phi[0:-2,1:-1] + phi[2:,1:-1] - 2.*phi[1:-1,1:-1])/dx**2
+  +(phi[1:-1,0:-2] + phi[1:-1,2:] - 2.*phi[1:-1,1:-1])/dz**2
+  +rho/eps0)
+
+  # --- If Boltzmann electron terms are given, then include the electrons
+  # --- charge density.
+  if iondensity != 0. and electrontemperature != 0.:
+    eee = eee - (iondensity*exp(
+                 (ppp[1:-1,1:-1]-plasmapotential)/electrontemperature)
+                 /eps0)
+
+
+  # --- Rescale the error by the coefficient of phi[1:-1,1:-1].
+  eee = eee/(2./dx**2+2./dz**2)
+
+  # --- Clear out the boundaries which are Dirichlet.
+  if w3d.boundxy == top.dirichlet:
+    eee[0,:] = 0.
+    eee[-1,:] = 0.
+  if w3d.bound0 == top.dirichlet:
+    eee[:,0] = 0.
+  if w3d.boundnz == top.dirichlet:
+    eee[:,-1] = 0.
+
+  # --- Clear out the residual inside of conductors
+  bnd = frz.basegrid.bndfirst
+  if bnd.nb_conductors > 0:
+    cnd = bnd.cndfirst
+    while cnd is not None:
+      for j,k in zip(cnd.jcond-1,cnd.kcond-1):
+        eee[j,k] = 0.
+      cnd = cnd.getpyobject('next')
 
   return eee
 
