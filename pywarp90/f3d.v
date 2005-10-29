@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.140 $, $Date: 2005/10/13 00:23:07 $
+#@(#) File F3D.V, version $Revision: 3.141 $, $Date: 2005/10/29 00:07:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.140 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.141 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -309,6 +309,45 @@ multigridbe3dsolve(iwhich:integer,
    subroutine
    # Solves Poisson's equation using the multigrid method, including the
    # Boltzmann electron term. All input is through the argument list.
+lphibe(nx:integer,ny:integer,nz:integer,nzfull:integer,dxsqi:real,dysqi:real,dzsqi:real,phi:real,res:real,
+       mglevel:integer,bounds:integer,mgparam:real,
+       lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+       iondensity:real,electrontemperature:real,plasmapotential:real,
+       electrondensitymaxscale:real) subroutine
+restrictbe3d(nx:integer,ny:integer,nz:integer,nzfull:integer,u:real,delz:integer,
+             nxcoarse:integer,nycoarse:integer,nzcoarse:integer,nzfullcoarse:integer,ucoarse:real,
+             bounds:integer,boundscoarse:integer,lzoffset:integer) subroutine
+expandbe3d(nx:integer,ny:integer,nz:integer,nzfull:integer,phi:real,
+           nxcoarse:integer,nycoarse:integer,nzcoarse:integer,nzfullcoarse:integer,phicoarse:real,
+           bounds:integer,lzoffset:integer) subroutine
+relaxbe3d(mglevel:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,phi:real,rho:real,rstar:real,
+          dxsqi:real,dysqi:real,dzsqi:real,linbend:logical,bendx:real,bounds:integer,
+          mgparam:real,lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+          my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer,
+          whosendingleft:integer,izsendingleft:integer,
+          whosendingright:integer,izsendingright:integer,
+          iondensity:real,electrontemperature:real,plasmapotential:real,
+          electrondensitymaxscale:real) subroutine
+cond_potmgbe(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,phi:real,mglevel:integer)
+          subroutine
+cond_potmgbezero(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,u:real,mglevel:integer,
+                 delt:integer,delz:integer) subroutine
+condbndymgbe(subgrid:ConductorSubGridType,nx:integer,ny:integer,nz:integer,phi:real,rho:real,dxsqi:real,dysqi:real,dzsqi:real,
+             mgparam:real,bounds:integer,mglevel:integer,icndbndy:integer,
+             iondensity:real,electrontemperature:real,plasmapotential:real,
+             electrondensitymaxscale:real) subroutine
+copyphiwithguardcells(nx:integer,ny:integer,nz:integer,nzfull:integer,phiin:real,phiout:real,bounds:integer)
+subroutine
+copyrhowithguardcells(nx:integer,ny:integer,nz:integer,nzfull:integer,rhoin:real,rhoout:real,bounds:integer)
+subroutine
+vcyclebe(mglevel:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,dx:real,dy:real,dz:real,
+         phi:real,rho:real,rstar:real,linbend:logical,bendx:real,bounds:integer,
+         mgparam:real,
+         mgmaxlevels:integer,downpasses:integer,uppasses:integer,
+         lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
+         my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer,
+         iondensity:real,electrontemperature:real,plasmapotential:real,
+         electrondensitymaxscale:real) subroutine
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
