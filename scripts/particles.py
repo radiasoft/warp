@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.31 2005/08/22 10:49:52 dave Exp $"
+particles_version = "$Id: particles.py,v 1.32 2005/10/31 21:49:01 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -938,6 +938,12 @@ Adds particles to the simulation
   gi = array(gi)*ones(maxlen,'d')
   pid = array(pid)*ones([maxlen,top.npid],'d')
 
+  # --- Set time of creation and ssn
+  if top.tpid>0: pid[:,top.tpid-1]=top.time
+  if top.spid>0: 
+    pid[:,top.spid-1]=top.ssn+arange(maxlen)
+    top.ssn += maxlen
+
   # --- Set extent of domain
   if not lparallel:
     if zmmin is None: zmmin = w3d.zmmin + top.zbeam
@@ -973,4 +979,4 @@ Adds particles to the simulation
       top.jhist = top.jhist - 1
       savehist(top.time)
 
-
+    
