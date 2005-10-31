@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.33 $, $Date: 2005/10/05 18:21:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.34 $, $Date: 2005/10/31 21:33:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -322,6 +322,8 @@ c               --- Save SSN
                   pid(ii,spid) = ssn
                   ssn = ssn+1
                 end if
+c               --- save time of creation if tpid > 0
+                if(tpid>0) pid(ii,tpid) = time + fulldt_s
 c               --- increment particle counter
                 npinjtmp(is,ij) = npinjtmp(is,ij) + 1
               endif
