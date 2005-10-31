@@ -39,9 +39,9 @@ class ConsoleClass(wxPanel):
         self.CursorMin = 0
         self.inter = inter
         self.NoEntry = 1
-        self.inter.push('import sys')
-        self.inter.push("sys.path.append('')")
-        self.inter.push('from warp import *')
+        self.inter.push('import sys\n')
+        self.inter.push("sys.path.append('')\n")
+        self.inter.push('from warp import *\n')
         self.Console.WriteText('>>> ')
         self.ins_point = self.Console.GetInsertionPoint()
 
