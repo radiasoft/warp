@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.90 2005/10/24 23:02:56 dave Exp $"
+warp_version = "$Id: warp.py,v 1.91 2005/10/31 19:03:18 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -994,6 +994,7 @@ from warpplots import *
 from histplots import *
 from pzplots import *
 from plot_conductor import *
+from lattice import *
 from drawlattice import *
 from MeshRefinement import *
 
