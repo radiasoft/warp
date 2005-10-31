@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.116 2005/10/24 23:12:24 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.117 2005/10/31 21:47:39 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -195,9 +195,17 @@ Should never be directly created by the user.
     self.generatord = generatord
     self.generatori = generatori
     self.name = name
-    self.lostparticles_data = []
-    self.emitparticles_data = []
+    self.lostparticles_data  = []
+    self.emitparticles_data  = []
     self.imageparticles_data = []
+    self.lostparticles_angles    = {}
+    self.lostparticles_energies  = {}
+    self.lostparticles_minenergy = {}
+    self.lostparticles_maxenergy = {}
+    self.emitparticles_angles    = {}
+    self.emitparticles_energies  = {}
+    self.emitparticles_minenergy = {}
+    self.emitparticles_maxenergy = {}
     
   def getkwlist(self):
     kwlist = []
