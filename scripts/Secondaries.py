@@ -3,6 +3,8 @@ Secondaries: class for generating secondaries
 """
 from warp import *
 from secondaries import *
+from species import *
+import txphysics
 try:
   import desorb
 except:
@@ -11,7 +13,7 @@ import timing as t
 import time
 import __main__
 
-secondaries_version = "$Id: Secondaries.py,v 1.2 2005/07/28 21:48:57 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.3 2005/10/31 23:14:08 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -35,8 +37,10 @@ Class for generating secondaries
                     Default is None: CMEE set_params routine is used.
  - l_verbose: sets verbosity (default=0). 
   """
-  def __init__(self,isinc=None,conductors=None,issec=None,type=None,set_params_user=None,
+  def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material='SS',
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,l_verbose=0):
+    if top.wpid>0:
+      raise('Error in Secondaries: variable weights is not yet implemented.')
     self.inter={}
     __main__.outparts=[]
 #    self.isinc = isinc
@@ -63,30 +67,129 @@ Class for generating secondaries
       self.zoldpid=top.npid-1
     else:
       self.zoldpid=zoldpid
+    self.emitted_e=txphysics.doubleArray(1000)
+    self.emitted_bn=txphysics.doubleArray(1000)
+    self.emitted_bt=txphysics.doubleArray(1000)
+    self.emitted_bz=txphysics.doubleArray(1000)
+    self.npmax=4096
+    self.nps={}
+    self.x={}
+    self.y={}
+    self.z={}
+    self.vx={}
+    self.vy={}
+    self.vz={}
+
     if isinc is None:return
     for iis,js in enumerate(isinc):
-#      self.condids[js]=[]
-#      self.emitted[js]=[]
       for ics,cond in enumerate(conductors[iis]):
-        self.add(js,cond,issec[iis][ics],type[iis][ics])
-#        self.condids[js]+=[cond.condid]
-#        self.emitted[js]+=[0.]
+        self.add(js,cond,issec[iis][ics],material[iis][ics])
     
-  def add(self,isinc,cond,issec,type,isneut=-1):
+  def add(self,incident_species=None,conductor=None,emitted_species=None,material='SS'):
+    interaction_type = 0
+    if material=='Cu' and incident_species.type is Electron: interaction_type=1
+    if material=='SS' and incident_species.type is Electron: interaction_type=2
+    if material=='Au' and incident_species.type is Hydrogen: interaction_type=3
+    if material=='Au' and incident_species.type is Helium:   interaction_type=4
+    if material=='SS' and incident_species.type is Potassium:interaction_type=5
+    if interaction_type==0:raise('Error in Secondaries: invalid material or incident species')
+    isinc=incident_species.jslist[0]
+    if type(emitted_species)<>type([]):emitted_species=[emitted_species]
+    issec=[]
+    for e in emitted_species:
+      issec.append(e.jslist[0])
     if not self.inter.has_key(isinc):
         self.inter[isinc]={}
-        for key in ['emitted','condids','issec','conductors','type','isneut']:
+        for key in ['emitted','condids','issec','conductors','type','isneut','incident_species','emitted_species','material']:
           self.inter[isinc][key]=[]
-    self.inter[isinc]['condids']   +=[cond.condid]
-    self.inter[isinc]['conductors']+=[cond]
-    self.inter[isinc]['emitted']   +=[0.]
-    self.inter[isinc]['issec']     +=[issec]
-    self.inter[isinc]['isneut']    +=[isneut]
-    self.inter[isinc]['type']      +=[type]
+        self.inter[isinc]['incident_species']=incident_species
+    self.inter[isinc]['condids']         += [conductor.condid]
+    self.inter[isinc]['conductors']      += [conductor]
+    self.inter[isinc]['emitted']         += [[]]
+    for i in range(len(emitted_species)):
+      self.inter[isinc]['emitted'][-1]   += [0.]
+    self.inter[isinc]['issec']           += [issec]
+    self.inter[isinc]['emitted_species'] += [emitted_species]
+    self.inter[isinc]['material']        += [material]
+    self.inter[isinc]['type']            += [interaction_type]
+    for e in emitted_species:
+      js=e.jslist[0]
+      if not self.x.has_key(js):
+        self.nps[js]=0
+        self.x[js]=fzeros(self.npmax,'d')
+        self.y[js]=fzeros(self.npmax,'d')
+        self.z[js]=fzeros(self.npmax,'d')
+        self.vx[js]=fzeros(self.npmax,'d')
+        self.vy[js]=fzeros(self.npmax,'d')
+        self.vz[js]=fzeros(self.npmax,'d')
 
   def install(self):
     if not isinstalledafterfs(self.generate):
       installafterfs(self.generate)
+
+  def addpart(self,nn,x,y,z,vx,vy,vz,js):
+    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    il=self.nps[js]
+    iu=il+nn
+    xx=fones(nn,'d')
+    self.x[js][il:iu]=x*xx
+    self.y[js][il:iu]=y*xx
+    self.z[js][il:iu]=z*xx
+    self.vx[js][il:iu]=vx
+    self.vy[js][il:iu]=vy
+    self.vz[js][il:iu]=vz
+    self.nps[js]+=nn
+      
+  def flushpart(self,js):
+      if self.nps[js]>0:
+         nn=self.nps[js]
+         addparticles(x=self.x[js][:nn],
+                      y=self.y[js][:nn],
+                      z=self.z[js][:nn],
+                      vx=self.vx[js][:nn],
+                      vy=self.vy[js][:nn],
+                      vz=self.vz[js][:nn],
+                      js=js)
+         self.nps[js]=0
+         
+  def printall(self,l_cgm=0):
+    title='        *** Particle/wall interactions ***\n'
+    textblock=''
+    swidth=0
+    cwidth=0
+    ewidth={}
+    for js in self.inter.keys():
+      swidth=max(swidth,len(self.inter[js]['incident_species'].name))
+      for ics,cond in enumerate(self.inter[js]['conductors']):
+        cwidth=max(cwidth,len(cond.name))
+        for ie,emitted_species in enumerate(self.inter[js]['emitted_species'][ics]):
+          if not ewidth.has_key(ie):
+            ewidth[ie]=len(emitted_species.name)
+          else:
+            ewidth[ie]=max(ewidth[ie],len(emitted_species.name))
+    fs='%%-%gs'%swidth
+    fc='%%-%gs'%cwidth
+    fe={}
+    for ie in ewidth.keys():
+      fe[ie]='%%-%gs'%ewidth[ie]
+    for js in self.inter.keys():
+      sname=fs%self.inter[js]['incident_species'].name
+      textblock+='\n'
+      for ics,cond in enumerate(self.inter[js]['conductors']):
+        cname=fc%cond.name
+        for ie,emitted_species in enumerate(self.inter[js]['emitted_species'][ics]):
+          if ie==0:
+            ename=fe[ie]%emitted_species.name
+          else:
+            ename+=' + '+fe[ie]%emitted_species.name
+        textblock += sname+' + '+cname+' => '+ename+'\n'
+    if l_cgm:
+      plt(title,0.22,0.905,justify="LT",height=14)
+      plt(textblock,0.14,0.88,justify="LT",height=9,font='courier')
+      fma()  
+    else:
+      print title
+      print textblock
 
   def generate(self):
     # theta, phi are angles from normal to surface with regard to z and x axis rescpectively
@@ -99,7 +202,8 @@ Class for generating secondaries
     if self.l_verbose>1:print 'call secondaries'
     for js in self.inter.keys():
      for i in range(len(self.inter[js]['emitted'])):
-      self.inter[js]['emitted'][i] = 0.
+      for j in range(len(self.inter[js]['emitted'][i])):  
+       self.inter[js]['emitted'][i][j] = 0.
 
     # set computing box mins and maxs
     if w3d.l4symtry:
@@ -118,14 +222,19 @@ Class for generating secondaries
     t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
     # compute number of secondaries and create them
-    for js in self.inter.keys():
-#      print 'js',js
-      if top.npslost[js]==0 or top.it%top.ndts[js]<>0:continue
-      i1 = top.inslost[js] - 1
+    for ints in self.inter.keys():
+     incident_species=self.inter[ints]['incident_species']
+     for js in incident_species.jslist:
+      if self.l_verbose:print 'js',js
+      if top.npslost[js]==0:continue
+#      if top.npslost[js]==0 or top.it%top.ndts[js]<>0:continue
+      stride=top.ndts[js]
+      i1 = top.inslost[js] - 1 
       i2 = top.inslost[js] + top.npslost[js] - 1
-      for ics,icond in enumerate(self.inter[js]['condids']):
-#        print 'ics',ics
-        iit = compress(top.pidlost[i1:i2,-1]==icond,arange(top.npslost[js]))
+      for ics,cond in enumerate(self.inter[js]['conductors']):
+        icond = cond.condid
+        if self.l_verbose:print 'ics',ics
+        iit = compress(top.pidlost[i1+top.it%stride:i2:stride,-1]==icond,arange(top.it%stride,top.npslost[js],stride))
         n = len(iit)
 #        print '*1',n
         if n==0:continue
@@ -143,10 +252,10 @@ Class for generating secondaries
         # exclude particles recently created
         if self.min_age is not None:
           inittime = take(top.pidlost[i1:i2,top.tpid-1],iit)
-          condition = condition & ((top.time-inittime)>2.*top.dt)      
+          condition = condition & ((top.time-inittime)>self.min_age*top.dt)      
         iit2 = compress(condition,arange(n))
         n = len(iit2)
-#        print '*2',n
+        if self.l_verbose:print 'nlost=',n
         if n==0:continue
         xplost = take(xplost,iit2)
         yplost = take(yplost,iit2)
@@ -179,6 +288,42 @@ Class for generating secondaries
         n_unit0 = array([sintheta*cosphi,sintheta*sinphi,costheta])
         coseta = -sum(v*n_unit0)/sqrt(sum(v*v))
 #        coseta = 0.*cosphi
+        if 1:#cond.lcollectlpdata:
+          if not cond.lostparticles_angles.has_key(js):
+            cond.lostparticles_angles[js]=zeros(181,'d')
+          if not cond.lostparticles_energies.has_key(js):
+            cond.lostparticles_energies[js]=zeros(1001,'d')
+          e0min = min(e0)
+          e0max = max(e0)
+          if not cond.lostparticles_minenergy.has_key(js):
+            cond.lostparticles_minenergy[js]=e0min
+          if not cond.lostparticles_maxenergy.has_key(js):
+            cond.lostparticles_maxenergy[js]=e0max
+          l_rescale_energy_array=0
+          e0minnew=e0min
+          e0maxnew=e0max
+          if e0min<cond.lostparticles_minenergy[js]:
+            e0minnew=0.9*e0min
+            l_rescale_energy_array=1
+          if e0max>cond.lostparticles_maxenergy[js]:
+            e0maxnew=1.1*e0max
+            l_rescale_energy_array=1
+          if l_rescale_energy_array:
+            newlostparticles_energies=zeros(1001,'d')
+            tmpcount=zeros(1001,'d')
+            e0minold = cond.lostparticles_minenergy[js]
+            e0maxold = cond.lostparticles_minenergy[js]
+            e0old = e0minold+arange(1001)*(e0maxold-e0minold)/1000
+            deposgrid1d(1,1001,e0old,cond.lostparticles_energies[js],1000,newlostparticles_energies,tmpcount,e0minnew,e0maxnew)
+            cond.lostparticles_minenergy[js]=e0minnew
+            cond.lostparticles_maxenergy[js]=e0maxnew
+            cond.lostparticles_energies[js]=newlostparticles_energies
+          if top.wpid >0:
+            pass
+#            deposgrid1d(1,i2-i1,tl, ql,nt,qt,qtmp,tmin,tmax)
+          else:
+            setgrid1d(shape(coseta)[0],arccos(coseta),180,cond.lostparticles_angles[js],0.,pi)
+            setgrid1d(shape(e0)[0],e0,1000,cond.lostparticles_energies[js],cond.lostparticles_minenergy[js],cond.lostparticles_maxenergy[js])
         for i in range(n):  
 #          print 'v',v[0][i],v[1][i],v[2][i],i,iit[i],js
 #          print 'x',[xplost[i],yplost[i],zplost[i]]
@@ -214,23 +359,53 @@ Class for generating secondaries
           t.finish()
           tinit+=t.micro()
           t.start()
-          js_new=self.inter[js]['issec'][ics]
-          if js_new>-1:
-           try:
-            ns,bn,bt,bz,ekstot,dele,delr,delts = generate_secondaries(e0[i],
-                                                                      coseta[i],
-                                                                      self.inter[js]['type'][ics],
-                                                                      set_params_user=self.set_params_user)
-            if self.l_verbose:
-              print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost,dele,delr,delts            
-           except:
-             ns=0
-           t.finish()
-           tgen+=t.micro()
-           t.start()
-           if ns>0:
-            self.inter[js]['emitted'][ics] += ns*top.sq[js_new]*top.sw[js_new]
-            if costheta[i]<1.-1.e-10:
+          if self.l_verbose:print 'e0, coseta',e0[i],coseta[i]
+          for ie,emitted_species in enumerate(self.inter[js]['emitted_species'][ics]):
+           js_new=emitted_species.jslist[0]
+           if emitted_species.type is Electron:
+            if incident_species.type is Electron:
+             try: # need try since will generate error if no secondaries are created
+               ns,bn,bt,bz,ekstot,dele,delr,delts = generate_secondaries(e0[i],
+                                                                         coseta[i],
+                                                                         self.inter[js]['type'][ics],
+                                                                         set_params_user=self.set_params_user)
+               if self.l_verbose:
+                 print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost,dele,delr,delts            
+             except:
+               ns=0
+            else: # incidents are atoms or ions
+             if incident_species.type.__class__ is Atom:
+              try:
+               if self.inter[js]['material'][ics]=='SS':target_num=10025
+               ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
+                                          max(0.04,coseta[i]),
+                                          incident_species.type.Z,
+                                          incident_species.type.A,
+                                          target_num,
+                                          self.emitted_e,
+                                          self.emitted_bn,
+                                          self.emitted_bt,
+                                          self.emitted_bz)
+               ns = min(ns,self.npmax)
+               ekstot=zeros(ns,'d')
+               bn=zeros(ns,'d')
+               bt=zeros(ns,'d')
+               bz=zeros(ns,'d')
+               for iemit in range(ns):
+                 ekstot=self.emitted_e 
+                 bn[iemit]=self.emitted_bn[iemit] 
+                 bt[iemit]=self.emitted_bt[iemit] 
+                 bz[iemit]=self.emitted_bz[iemit] 
+               if self.l_verbose:
+                 print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
+              except:
+               ns=0
+            t.finish()
+            tgen+=t.micro()
+            t.start()
+            if ns>0:
+             self.inter[js]['emitted'][ics][ie] += ns*top.sq[js_new]*top.sw[js_new]
+             if costheta[i]<1.-1.e-10:
               z_unit0 = array([-sinphi[i],cosphi[i],0.])
 #              z       = -array([uzplost[i]*n_unit0[1][i]-uyplost[i]*n_unit0[2][i],
 #                                uxplost[i]*n_unit0[2][i]-uzplost[i]*n_unit0[0][i],
@@ -246,58 +421,45 @@ Class for generating secondaries
               bt0 = -(cospsi*bt - sinpsi*bz)
               bz0 = -(sinpsi*bt + cospsi*bz)
               bn0 = bn
-            else:
+             else:
               bt0 = bt
               bz0 = bz
               bn0 = bn
-            bxsec = cosphi[i]*costheta[i]*bt0 - sinphi[i]*bz0 + cosphi[i]*sintheta[i]*bn0
-            bysec = sinphi[i]*costheta[i]*bt0 + cosphi[i]*bz0 + sinphi[i]*sintheta[i]*bn0
-            bzsec =          -sintheta[i]*bt0                 +           costheta[i]*bn0
-            t.finish()
-            tprepadd+=t.micro()
-            t.start()
+             bxsec = cosphi[i]*costheta[i]*bt0 - sinphi[i]*bz0 + cosphi[i]*sintheta[i]*bn0
+             bysec = sinphi[i]*costheta[i]*bt0 + cosphi[i]*bz0 + sinphi[i]*sintheta[i]*bn0
+             bzsec =          -sintheta[i]*bt0                 +           costheta[i]*bn0
+             t.finish()
+             tprepadd+=t.micro()
+             t.start()
 #            print 'b', bn,bt,bz
 #            print 'b0',bt0,bz0,bn0
 #            print 'bsec',bxsec,bysec,bzsec
 #            print 'x,y,z',xplost[i],yplost[i],zplost[i],sqrt(xplost[i]**2+yplost[i]**2)
-            vx=bxsec*clight
-            vy=bysec*clight
-            vz=bzsec*clight
-            xnew = repeat(array([xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx]),ns)
-            ynew = repeat(array([yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy]),ns)
-            znew = repeat(array([zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz]),ns)
-            pid= zeros([ns,top.npidmax],Float)
-            if w3d.l_inj_rec_inittime:
-              pid[:,top.tpid-1]=top.time
+             vx=bxsec*clight
+             vy=bysec*clight
+             vz=bzsec*clight
+             xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
+             ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy 
+             znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
 #            pid[:,self.xoldpid]=xnew-vx*top.dt
 #            pid[:,self.yoldpid]=ynew-vy*top.dt
 #            pid[:,self.zoldpid]=znew-vz*top.dt
-            if w3d.solvergeom==w3d.RZgeom:
-               condition = (sqrt(xnew[0]**2+ynew[0]**2)>xmax) or \
-                           (znew[0]<zmin) or (znew[0]>zmax)
-            else:
-               condition = (xnew[0]<xmin) & (xnew[0]>xmax) & \
-                           (ynew[0]<ymin) & (ynew[0]>ymax) & \
-                           (znew[0]<zmin) & (znew[0]>zmax)
-            if condition:
-              print 'WARNING: new particle outside boundaries',xnew[0],ynew[0],znew[0]
-              __main__.outparts+=[[xnew[0],ynew[0],znew[0],xplost[i],yplost[i],zplost[i], \
+             if w3d.solvergeom==w3d.RZgeom:
+               condition = (sqrt(xnew**2+ynew**2)>xmax) or \
+                           (znew<zmin) or (znew>zmax)
+             else:
+               condition = (xnew<xmin) & (xnew>xmax) & \
+                           (ynew<ymin) & (ynew>ymax) & \
+                           (znew<zmin) & (znew>zmax)
+             if condition:
+              print 'WARNING: new particle outside boundaries',xnew,ynew,znew
+              __main__.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
-            else:
-              addpart(ns,top.npid,
-                    xnew,ynew,znew,
-                    vx,vy,vz,
-                    ones(ns,Float),
-                    pid,
-                    js_new+1,
-                    false,
-                    w3d.zmmin,
-                    w3d.zmmax,
-                    false)
-          # emit neutrals
-          if self.inter[js]['type'][ics]==5:
-           js_new = self.inter[js]['isneut'][ics]
-           if js_new>-1:
+             else:
+              self.addpart(ns,xnew,ynew,znew,vx,vy,vz,js_new)
+              
+           # emit neutrals
+           if emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
             ns = int(my_yield)
             vx = desorb.floatArray(ns)
@@ -313,45 +475,38 @@ Class for generating secondaries
               vxnew[ivnew]=vx[ivnew]
               vynew[ivnew]=vy[ivnew]
               vznew[ivnew]=vz[ivnew]
-            xnew = repeat(array([xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx]),ns)
-            ynew = repeat(array([yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy]),ns)
-            znew = repeat(array([zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz]),ns)
-            pid= zeros([ns,top.npidmax],Float)
-            if w3d.l_inj_rec_inittime:
-              pid[:,top.tpid-1]=top.time
+            xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
+            ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy
+            znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
 #            pid[:,self.xoldpid]=xnew-vxnew*top.dt
 #            pid[:,self.yoldpid]=ynew-vynew*top.dt
 #            pid[:,self.zoldpid]=znew-vznew*top.dt
-            if xnew[0]<=xmin or xnew[0]>=xmax or ynew[0]<=ymin or ynew[0]>=ymax or znew[0]<=zmin or znew[0]>=zmax:
-              print 'WARNING: new particle outside boundaries',xnew[0],ynew[0],znew[0]
-              __main__.outparts+=[[xnew[0],ynew[0],znew[0],xplost[i],yplost[i],zplost[i], \
+            if xnew<=xmin or xnew>=xmax or ynew<=ymin or ynew>=ymax or znew<=zmin or znew>=zmax:
+              print 'WARNING: new particle outside boundaries',xnew,ynew,znew
+              __main__.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
-              addpart(ns,top.npid,
-                    xnew,ynew,znew,
-                    vxnew,vynew,vznew,
-                    ones(ns,Float),
-                    pid,
-                    js_new+1,
-                    false,
-                    w3d.zmmin,
-                    w3d.zmmax,
-                    false)
+              addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new)
             
           t.finish()
           tadd+=t.micro()
 
+    # make sure that all particles are added
+    for js in self.x.keys():
+      self.flushpart(js)
+      
     t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
     # --- append total emitted charge in conductors emitparticles_data arrays
     for js in self.inter.keys():
       for ics,c in enumerate(self.inter[js]['conductors']):
-        totemit = parallelsum(self.inter[js]['emitted'][ics])
-        if me==0 and abs(totemit)>0.:
-          c.emitparticles_data += [[top.time, 
-                                    totemit,
-                                    top.dt,
-                                    self.inter[js]['issec'][ics]]]
+        for ie in range(len(self.inter[js]['emitted'][ics])):
+          totemit = parallelsum(self.inter[js]['emitted'][ics][ie])
+          if me==0 and abs(totemit)>0.:
+            c.emitparticles_data += [[top.time, 
+                                      totemit,
+                                      top.dt,
+                                      self.inter[js]['emitted_species'][ics][ie]]]
 
 #    w3d.lcallscraper=0
 #    particleboundaries3d()
