@@ -3,8 +3,9 @@ ParticleScraper: class for creating particle scraping
 """
 from warp import *
 from generateconductors import *
+import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.29 2005/10/24 23:12:25 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.30 2005/10/31 22:06:25 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -69,6 +70,17 @@ conductors are an argument.
     self.lcollectlpdata = lcollectlpdata
     if self.lsavecondid:
       top.lsavelostpart = true
+    if self.lsaveintercept:
+      self.xoldpid=top.npid
+      self.yoldpid=top.npid+1
+      self.zoldpid=top.npid+2
+      top.npid+=3
+      top.npidmax+=3
+      top.npmaxi=top.npmax
+      gchange('Particles')
+      installbeforestep(self.saveoldpos)
+    self.scrape=self.scrape2
+    self.l_print_timing=0
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
 
@@ -106,18 +118,38 @@ conductors are an argument.
         self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
     else:
       self.grid.removeisinside(conductor)
-
+      
+  def saveoldpos(self):
+    for js in xrange(top.ns):
+      if top.nps[js]>0:
+        i1 = top.ins[js] - 1
+        i2 = top.ins[js] + top.nps[js] - 1
+        top.pid[i1:i2,self.xoldpid]=top.xp[i1:i2].copy()
+        top.pid[i1:i2,self.yoldpid]=top.yp[i1:i2].copy()
+        top.pid[i1:i2,self.zoldpid]=top.zp[i1:i2].copy()
+      
   def scrapeall(self,clear=0):
-    if len(self.conductors)==0 or sum(top.nps)==0: return
+    if len(self.conductors)==0 or parallelsum(sum(top.nps))==0: return
     for js in xrange(top.ns):
       if top.it%top.ndts[js]==0:
+        if self.l_print_timing:tt=0.
+        if self.l_print_timing:t.start()
         self.scrape(js)
+        if self.l_print_timing:t.finish()
+        if self.l_print_timing:print js,'scrape',t.milli()
+        if self.l_print_timing:t.start()
         if clear or self.lsavecondid:
           processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
+        if self.l_print_timing:t.finish()
+        if self.l_print_timing:print js,'processlosspart',t.milli()
+        if self.l_print_timing:t.start()
         if self.lsavecondid:
           self.savecondid(js)
+        if self.l_print_timing:t.finish()
+        if self.l_print_timing:print js,'savecondid',t.milli()
 
-  def scrape(self,js):
+  def scrape2(self,js):
+    t.start()
     if top.nps[js] == 0: return
     dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
@@ -133,7 +165,8 @@ conductors are an argument.
     i2 = top.ins[js] + top.nps[js] - 1
     xx = top.xp[i1:i2]
     yy = top.yp[i1:i2]
-    zz = top.zp[i1:i2]
+#    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
+    zz = top.zp[i1:i2]-top.zbeam
     pp = zeros(top.nps[js],'d')
     if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgrid3d(top.nps[js],xx,yy,zz,pp,
@@ -143,12 +176,132 @@ conductors are an argument.
       xx = sqrt(xx**2 + yy**2)
       yy = zeros(len(xx),'d')
       getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XZgeom:
+      getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XYgeom:
+      getgrid2d(top.nps[js],xx,yy,pp,nx,ny,isinside,xmin,xmax,ymin,ymax)
+    else:
+      raise "The particle scraping only works for XYZ, XY and RZ geometry"
+
+    iscrape = compress(pp>0.,arange(i1,i2))
+    if len(iscrape) == 0: return
+ 
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+      nd=3
+      gdx = [0.,dx,0.,dx,0.,dx,0.,dx]
+      gdy = [0.,0.,dy,dy,0.,0.,dy,dy]
+      gdz = [0.,0.,0.,0.,dz,dz,dz,dz]
+      xx = take(xx,iscrape-i1)
+      yy = take(yy,iscrape-i1)
+      zz = take(zz,iscrape-i1)
+      xg = xmin+int(abs(xx-xmin)/dx)*dx 
+      yg = ymin+int(abs(yy-ymin)/dy)*dy 
+      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+    elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+      nd=2
+      gdx = [0.,dx,0.,dx]
+      gdz = [0.,0.,dz,dz]
+      xx = take(xx,iscrape-i1)
+      zz = take(zz,iscrape-i1)
+      xg = xmin+int(abs(xx-xmin)/dx)*dx 
+      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+    elif w3d.solvergeom == w3d.XYgeom:
+      nd=2
+      gdx = [0.,dx,0.,dx]
+      gdy = [0.,0.,dy,dy]
+      xx = take(xx,iscrape-i1)
+      yy = take(yy,iscrape-i1)
+      xg = xmin+int(abs(xx-xmin)/dx)*dx 
+      yg = ymin+int(abs(yy-ymin)/dy)*dy 
+    
+    nn = len(iscrape)
+    pp = zeros(nn,'d')
+
+    for i in range(2**nd):
+
+      # --- Get conductor id that particles are near
+      if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+        getgridngp3d(nn,xg+gdx[i],yg+gdy[i],zg+gdz[i],pp,
+                     nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
+                     w3d.l2symtry,w3d.l4symtry)
+      elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
+        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+      elif w3d.solvergeom == w3d.XYgeom:
+        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,isinside,xmin,xmax,ymin,ymax)
+
+      # --- Loop over the conductors, removing particles inside of each.
+      for c in self.conductors:
+        ixyz=arange(nn)
+        # get indices of particles that scraped in conductor c
+        ii = compress(pp == c.condid,ixyz) 
+        # if no particle scraped in conductor c, then check next conductor
+        if len(ii) == 0: continue          
+        # get positions of scraped particles
+        xc = take(xx,ii)
+        yc = take(yy,ii)
+        zc = take(zz,ii)
+        # down-select indices of particles that are inside conductor c
+        iic = compress(c.isinside(xc,yc,zc).isinside,ii)
+        # if no particle are inside conductor c, then check next conductor
+        if len(iic) == 0: continue
+        # get indices (in lost particles arrays) of particles inside c
+        ic = take(iscrape,iic)
+        # --- For particles which are inside, set gaminv to 0, the lost particle
+        # --- flag
+        put(top.gaminv,ic,0.)
+        # remove scraped particles from list of lost particles
+        put(iscrape,iic,-1)
+        iscrape = compress(iscrape>=0,iscrape)        
+        nn = len(iscrape)
+        if nn == 0: return
+        put(ixyz,iic,-1)
+        ixyz = compress(ixyz>=0,ixyz)        
+        xx = take(xx,ixyz)
+        xg = take(xg,ixyz)
+        pp = take(pp,ixyz)
+        if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR,w3d.XYgeom]:
+          yy = take(yy,ixyz)
+          yg = take(yg,ixyz)
+        if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR,w3d.XZgeom,w3d.RZgeom]:
+          zz = take(zz,ixyz)
+          zg = take(zg,ixyz)
+
+  def scrape1(self,js):
+    t.start()
+    if top.nps[js] == 0: return
+    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
+    xmin = self.grid.xmin
+    xmax = self.grid.xmax
+    ymin = self.grid.ymin
+    ymax = self.grid.ymax
+    zmin = self.grid.zmin
+    zmax = self.grid.zmax
+    isinside = self.grid.isinside
+
+    # --- First, find any particles near a conductor
+    i1 = top.ins[js] - 1
+    i2 = top.ins[js] + top.nps[js] - 1
+    xx = top.xp[i1:i2]
+    yy = top.yp[i1:i2]
+#    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
+    zz = top.zp[i1:i2]-top.zbeam
+    pp = zeros(top.nps[js],'d')
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+      getgrid3d(top.nps[js],xx,yy,zz,pp,
+                nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
+                w3d.l2symtry,w3d.l4symtry)
+    elif w3d.solvergeom == w3d.RZgeom:
+      xx = sqrt(xx**2 + yy**2)
+      yy = zeros(len(xx),'d')
+      getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XYgeom:
+      getgrid2d(top.nps[js],xx,yy,pp,nx,ny,isinside,xmin,xmax,ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ and RZ geometry"
 
     iscrape = compress(pp>0.,arange(i1,i2))
     if len(iscrape) == 0: return
-
+ 
     # --- Duplicate the particle list eight times, once for each corner.
     iscrape = repeat(iscrape,8)
     nn = len(iscrape)
@@ -167,6 +320,8 @@ conductors are an argument.
                    w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XYgeom:
+      getgridngp2d(nn,xg,yg,pp,nx,ny,isinside,xmin,xmax,ymin,ymax)
 
     # --- Loop over the conductors, removing particles inside of each.
     for c in self.conductors:
@@ -181,11 +336,19 @@ conductors are an argument.
       # --- flag
       put(top.gaminv,ic,0.)
 
-
   def savecondid(self,js):
 
     # --- Just return if there are no lost particles.
-    if top.npslost[js] == 0: return
+    if top.npslost[js] == 0: 
+      if self.lcollectlpdata:
+        for c in self.conductors:
+          w=parallelsum(0.)
+          if me==0 and w<>0.:
+            c.lostparticles_data += [[top.time, 
+                                      w*top.sq[js]*top.sw[js],
+                                      top.dt,
+                                      js]]
+      return
 
     # --- First make sure there is extra space in the pidlost array.
     pidspace = 1
@@ -238,13 +401,24 @@ conductors are an argument.
                    w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    elif w3d.solvergeom == w3d.XYgeom:
+      getgridngp2d(nn,xg,yg,pp,nx,ny,isinside,xmin,xmax,ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ and RZ geometry"
+
+
+    if w3d.solvergeom == w3d.RZgeom:
+      xx = top.xplost[i1:i2]
+      yy = top.yplost[i1:i2]
+      x8 = take(xx,iscrape-i1)
+      y8 = take(yy,iscrape-i1)
 
     # --- Loop over the conductors, removing particles inside of each.
     for c in self.conductors:
       ii = compress(pp == c.condid,arange(nn))
-      if len(ii) == 0: continue
+      if len(ii) == 0: 
+        w=parallelsum(0.)
+        continue
       xc = take(x8,ii)
       yc = take(y8,ii)
       zc = take(z8,ii)
@@ -259,14 +433,20 @@ conductors are an argument.
         xc = take(xx,ic-i1)
         yc = take(yy,ic-i1)
         zc = take(zz,ic-i1)
-        if top.lrelativ:
-          vx = take(top.uxplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-          vy = take(top.uyplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-          vz = take(top.uzplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-        else:
-          vx = take(top.uxplost[i1:i2],ic-i1)
-          vy = take(top.uyplost[i1:i2],ic-i1)
-          vz = take(top.uzplost[i1:i2],ic-i1)
+#        if top.lrelativ:
+#          vx = take(top.uxplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+#          vy = take(top.uyplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+#          vz = take(top.uzplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+#        else:
+#          vx = take(top.uxplost[i1:i2],ic-i1)
+#          vy = take(top.uyplost[i1:i2],ic-i1)
+#          vz = take(top.uzplost[i1:i2],ic-i1)
+        xo = take(top.pidlost[i1:i2,self.xoldpid],ic-i1)
+        yo = take(top.pidlost[i1:i2,self.yoldpid],ic-i1)
+        zo = take(top.pidlost[i1:i2,self.zoldpid],ic-i1)
+        vx = (xc-xo)/top.dt
+        vy = (yc-yo)/top.dt
+        vz = (zc-zo)/top.dt
         intercept = c.intercept(xc,yc,zc,vx,vy,vz)
         put(top.xplost,ic,intercept.xi)
         put(top.yplost,ic,intercept.yi)
@@ -285,7 +465,10 @@ conductors are an argument.
           w = len(pidtoconsider)
         else:
           w = sum(take(top.pidlost[:,wpid],pidtoconsider))
-        c.lostparticles_data += [[top.time, 
-                                  w*top.sq[js]*top.sw[js],
-                                  top.dt,
-                                  js]]
+        w=parallelsum(w)
+        if me==0:
+          c.lostparticles_data += [[top.time, 
+                                    w*top.sq[js]*top.sw[js],
+                                    top.dt,
+                                    js]]
+        
