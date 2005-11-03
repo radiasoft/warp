@@ -438,13 +438,13 @@ Creates helix with constant Ez in the pulse.
     tfacw = self.dzwave/sqrt(self.inductance*self.capacitance)/self.vz
     Lw = self.inductance*tfacw
     Cw = self.capacitance*tfacw
-    Rw = self.resistance*tfacw
+    Rw = self.resistance #*tfacw
 
     tfact = self.dzterm/sqrt(self.inductance*self.capacitance)/self.vz
     Lt = self.inductance*tfact
     Ct = self.capacitance*tfact
     #Rt = self.termresistance*(arange(self.nzterm)/(self.nzterm-1.))**1
-    Rt = self.termresistance*tfact
+    Rt = self.termresistance #*tfact
 
     # --- Advance of the voltage and current one time step
 
@@ -581,8 +581,8 @@ Creates helix with constant Ez in the pulse.
 
     # --- Get current on field solve grid
     igrid = self.interptogrid(self.iwave,self.iterm,ngp=1)
-    jzgrid = igrid/(2.*pi*self.ap*w3d.dx*w3d.dz)
-    jthetagrid = igrid/(self.pitch*w3d.dx*w3d.dz)
+    jzgrid = igrid/(2.*pi*self.ap*w3d.dx)
+    jthetagrid = igrid/(w3d.dx*w3d.dz)
 
     # --- Put current on the grid
     # --- Put it in both bfield and bfieldp just to make sure...
