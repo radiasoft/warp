@@ -10012,14 +10012,14 @@ end subroutine sum_neighbors
 
 !=============================================================================
 ! --- Routines for the RZ B field solver
-subroutine multigridrzb(iwhich,iaxis,u0,rho0,nr0,nz0)
+subroutine multigridrzb(iwhich,iaxis,u0,rho0,nr0,nz0,accuracy)
 use BWorkRZ
-USE FRZmgrid,only: mgridrz_accuracy
 use GlobalVars,only: dirichlet
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, iaxis, nr0, nz0
 REAL(8), INTENT(IN OUT),TARGET :: u0(0:nr0+2,0:nz0+2)
 REAL(8), INTENT(IN OUT),TARGET :: rho0(nr0+1,nz0+1)
+INTEGER(ISZ):: accuracy
 
 integer(ISZ):: ixlbnd
 
@@ -10036,7 +10036,7 @@ integer(ISZ):: ixlbnd
     bworkgrid%lmagnetostatic = .false.
   endif
 
-  call solve_mgridrz(bworkgrid,mgridrz_accuracy,.true.)
+  call solve_mgridrz(bworkgrid,accuracy,.true.)
 
   bworkgrid%ixlbnd = ixlbnd
 

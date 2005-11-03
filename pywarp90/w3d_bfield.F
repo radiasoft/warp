@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D_BFIELD.F, version $Revision: 1.7 $, $Date: 2005/09/01 11:42:02 $
+c@(#) File W3D_BFIELD.F, version $Revision: 1.8 $, $Date: 2005/11/03 17:33:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1775,7 +1775,7 @@ c fits and so was replaced with if statements.
 
       elseif (bfstype == 10) then
         call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),bfield%j(iaxis,:,0,:),
-     &                    bfield%nx,bfield%nz)
+     &                    bfield%nx,bfield%nz,bfield%mgtol(iaxis))
       elseif (bfstype == 12) then
         if (iwhich <= 0) then
           call execuser('fieldsolMR')
