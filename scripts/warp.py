@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.91 2005/10/31 19:03:18 dave Exp $"
+warp_version = "$Id: warp.py,v 1.92 2005/11/10 01:48:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -40,7 +40,7 @@ try:
 except ImportError:
   pass
 
-# Import the warpC shared object which contains all of WARP and pybasisC
+# Import the warpC shared object which contains all of WARP
 from warpC import *
 
 from Forthon import *

@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.51 2005/07/13 01:27:10 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.52 2005/11/10 01:48:43 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -564,8 +564,9 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- (e.g. it has been deleted) then don't try to restore it.
       try:
         a = pkg.getvarattr(vname)
-      except pybasisC.error:
+      except:
         print "Warning: There was a problem %s - it can't be found."%(pname)
+        continue
 #     parallelvar = re.search('parallel',a)
 #     if not parallelvar: continue
       if verbose: print "reading "+p+"."+vname
@@ -609,8 +610,9 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- (e.g. it has been deleted) then don't try to restore it.
       try:
         a = pkg.getvarattr(vname)
-      except pybasisC.error:
+      except:
         print "Warning: There was a problem %s - it can't be found."%(pname)
+        continue
       parallelvar = re.search('parallel',a)
       if not parallelvar: continue
       # --- Many arrays need special handling. These are dealt with first.
