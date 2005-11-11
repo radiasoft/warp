@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.117 2005/10/31 21:47:39 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.118 2005/11/11 19:33:14 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1472,7 +1472,7 @@ Constructor arguments:
   - xmin,xmax,ymin,ymax,zmin,zmax: extent of conductors. Defaults to the
     mesh size. These only need to be set for optimization, to avoid looking
     for conductors where there are none. They can also be used to crop a
-    conductor.
+    conductor. Note that these are relative to the lab frame.
   - zbeam=top.zbeam: location of grid frame relative to lab frame
   - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
   - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
