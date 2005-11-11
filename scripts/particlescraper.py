@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.30 2005/10/31 22:06:25 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.31 2005/11/11 19:34:18 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -166,7 +166,7 @@ conductors are an argument.
     xx = top.xp[i1:i2]
     yy = top.yp[i1:i2]
 #    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
-    zz = top.zp[i1:i2]-top.zbeam
+    zz = top.zp[i1:i2]
     pp = zeros(top.nps[js],'d')
     if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgrid3d(top.nps[js],xx,yy,zz,pp,
@@ -284,7 +284,7 @@ conductors are an argument.
     xx = top.xp[i1:i2]
     yy = top.yp[i1:i2]
 #    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
-    zz = top.zp[i1:i2]-top.zbeam
+    zz = top.zp[i1:i2]
     pp = zeros(top.nps[js],'d')
     if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgrid3d(top.nps[js],xx,yy,zz,pp,
@@ -471,4 +471,4 @@ conductors are an argument.
                                     w*top.sq[js]*top.sw[js],
                                     top.dt,
                                     js]]
-        
+
