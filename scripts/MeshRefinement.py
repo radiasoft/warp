@@ -321,6 +321,15 @@ Given a block instance, installs it as a child.
         child.getconductors(alllevels,result)
     return result
 
+  def setconductorvoltage(self,voltage,condid=0,discrete=false,
+                          setvinject=false):
+    'Recursively calls setconductorvoltage for base and all children'
+    if not self.isfirstcall(): return
+    setconductorvoltage(voltage,condid,discrete,setvinject,
+                        conductors=self.conductors)
+    for child in self.children:
+      child.setconductorvoltage(voltage,condid,discrete)
+
   #--------------------------------------------------------------------------
   # --- The next several methods handle initialization that is done after
   # --- all blocks have been added.

@@ -131,15 +131,13 @@ Input for constructor:
     volt = self.getvolt(time)
     # --- Get the appropriate conductors object to install into.
     solver = getregisteredsolver()
-    if solver is None:
-      conds = [f3d.conductors]
-    else:
-      conds = solver.getconductors()
     for c in self.condid:
-      for cond in conds:
+      if solver is None:
         setconductorvoltage(volt,c,discrete=self.discrete,
-                            setvinject=self.setvinject,
-                            conductors=cond)
+                            setvinject=self.setvinject)
+      else:
+        solver.setconductorvoltage(volt,c,discrete=self.discrete,
+                                   setvinject=self.setvinject)
     self.hvolt.append(volt)
     self.htime.append(time)
     if self.aftervoltset is not None:

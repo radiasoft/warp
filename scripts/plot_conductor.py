@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.96 2005/10/31 21:49:53 jlvay Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.97 2005/11/11 19:32:29 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2715,7 +2715,7 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false,
-                        conductors=f3d.conductors):
+                        conductors=None):
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor. Can be one of the following...
@@ -2731,7 +2731,17 @@ Sets the voltage on a conductor, given an id.
  - conductors=f3d.conductors: allows alternate conductor to be set other
                               than the default ones
   """
-  if conductors is None: return
+  if conductors is None:
+    solver = getregisteredsolver()
+    if solver is not None:
+      try:
+        solver.setconductorvoltage(voltage,condid,discrete,setvinject)
+      except AttributeError:
+        print "Warning: setconductorvoltage not implemented for the resgisterd solver"
+      return
+    else:
+      conductors = f3d.conductors
+
   interior = conductors.interior
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
