@@ -7,6 +7,7 @@ from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
 import timing as t
 import MLab
+import gc # Garbage collection
 
 try:
   import psyco
@@ -528,6 +529,9 @@ class AMRTree(object,Visualizable):
         self.restorefrzgrid()
         mothergrid = frz.basegrid
         self.del_blocks2d()
+      # --- Enforce garbage collection since the MR structures
+      # --- have complex linkages and may not be immediately removed.
+      gc.collect()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
       if self.solvergeom == w3d.XYZgeomMR:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
