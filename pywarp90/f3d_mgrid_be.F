@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.13 $, $Date: 2005/10/29 00:07:11 $
+c version $Revision: 1.14 $, $Date: 2005/11/12 01:18:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -741,7 +741,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
       integer(ISZ):: ix1
       integer(ISZ):: i1,i2,ic
-      real(kind=8):: rhoe,denom,Lphi
+      real(kind=8):: rhoe,denom,Lphi,expo
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
@@ -820,9 +820,9 @@ c       --- grid refinement.
               if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
               if (iondensity .ne. 0.) then
-                rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
-     &                                electrontemperature)
-                rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+                expo = (phi(ix,iy,iz) - plasmapotential)/electrontemperature
+                expo = min(expo,log(electrondensitymaxscale))
+                rhoe = iondensity*exp(expo)
               else
                 rhoe = 0.
               endif
@@ -953,7 +953,7 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi
+      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi,expo
       real(kind=8):: delx,dely,delz,Cx,Cy,Cz,ppp
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
@@ -1059,9 +1059,9 @@ c       --- calculate the new phi based on the boundary conditions
         delysqi = dysqi/dely
         delzsqi = dzsqi/delz
         if (iondensity .ne. 0.) then
-          rhoe = iondensity*exp((pijk-plasmapotential)/
-     &                          electrontemperature)
-          rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+          expo = (pijk - plasmapotential)/electrontemperature
+          expo = min(expo,log(electrondensitymaxscale))
+          rhoe = iondensity*exp(expo)
         else
           rhoe = 0.
         endif
@@ -1100,7 +1100,7 @@ c Note that what is calculated here is not the residual since it does not
 c include the source term. This will not go to zero when convergence
 c is reached.
 
-      real(kind=8):: rhoe
+      real(kind=8):: rhoe,expo
       integer(ISZ):: ix,iy,iz,ic
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
@@ -1143,9 +1143,9 @@ c     --- Calculate the Lphi.
             if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
             if (iondensity .ne. 0.) then
-              rhoe = iondensity*exp((phi(ix,iy,iz)-plasmapotential)/
-     &                              electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+              expo = (phi(ix,iy,iz) - plasmapotential)/electrontemperature
+              expo = min(expo,log(electrondensitymaxscale))
+              rhoe = iondensity*exp(expo)
             else
               rhoe = 0.
             endif
@@ -1236,7 +1236,7 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,ppp
+      real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,ppp,expo
       real(kind=8):: delx,dely,delz
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
@@ -1331,9 +1331,9 @@ c       --- calculate the new phi based on the boundary conditions
         delysqi = dysqi/dely
         delzsqi = dzsqi/delz
         if (iondensity .ne. 0.) then
-          rhoe = iondensity*exp((pijk-plasmapotential)/
-     &                          electrontemperature)
-          rhoe = min(rhoe,electrondensitymaxscale*iondensity)
+          expo = (pijk - plasmapotential)/electrontemperature
+          expo = min(expo,log(electrondensitymaxscale))
+          rhoe = iondensity*exp(expo)
         else
           rhoe = 0.
         endif
