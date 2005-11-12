@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.6 $, $Date: 2005/10/29 00:05:02 $
+c version $Revision: 1.7 $, $Date: 2005/11/12 00:31:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -619,7 +619,7 @@ c boundaries are periodic.
       integer(ISZ):: ix1
       integer(ISZ):: ic,ii
       real(kind=8):: rr
-      real(kind=8):: rhoe,denom,Lphi
+      real(kind=8):: rhoe,denom,Lphi,expo
       type(CONDtype):: cnd
 
 c     --- Put desired potential onto conductors in phi array.
@@ -672,9 +672,9 @@ c       --- grid refinement.
               if (iondensity(ix,iz) == 0) then
                 rhoe = 0.
               else
-                rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
-     &                                       electrontemperature)
-                rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+                expo = (phi(ix,iz) - plasmapotential)/electrontemperature
+                expo = min(expo,log(electrondensitymaxscale))
+                rhoe = iondensity(ix,iz)*exp(expo)
               endif
               rr = ix + xminodx
               if (rr == 0.) then
@@ -703,9 +703,9 @@ c       --- grid refinement.
               if (iondensity(ix,iz) == 0) then
                 rhoe = 0.
               else
-                rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
-     &                                       electrontemperature)
-                rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+                expo = (phi(ix,iz) - plasmapotential)/electrontemperature
+                expo = min(expo,log(electrondensitymaxscale))
+                rhoe = iondensity(ix,iz)*exp(expo)
               endif
               denom = -2.*(dxsqi+dzsqi) - rhoe/eps0/electrontemperature
               Lphi =  (phi(ix-1,iz  )+phi(ix+1,iz  ))*dxsqi
@@ -844,7 +844,7 @@ c here, ppp=1 for the base level since its rho is the raw rho and does
 c not include Lphi.
 
       type(CONDtype):: cnd
-      real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,Lphi,ppp
+      real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,Lphi,ppp,expo
       real(kind=8):: delx,delz,Cx,Cz,rr
       real(kind=8):: delxsqi,delzsqi
       integer(ISZ):: ic,ii,i1,i2
@@ -973,9 +973,9 @@ c         --- calculate the new phi based on the boundary conditions
             if (iondensity(ix,iz) == 0) then
               rhoe = 0.
             else
-              rhoe = iondensity(ix,iz)*exp((pik-plasmapotential)/
-     &                                     electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+              expo = (pik - plasmapotential)/electrontemperature
+              expo = min(expo,log(electrondensitymaxscale))
+              rhoe = iondensity(ix,iz)*exp(expo)
             endif
             denom = - Cx*delxsqi - Cz*delzsqi - rhoe/eps0/electrontemperature
             Lphi = (pxm+pxp)*delxsqi + (pzm+pzp)*delzsqi - rhoe/eps0
@@ -1012,7 +1012,7 @@ c Calculate the Lphi on the grid including the BE term.
 c Note that this is note quite the residual since it does not have the
 c source term included, and so will no go to zero at convergence.
 
-      real(kind=8):: rhoe
+      real(kind=8):: rhoe,expo
       real(kind=8):: rr
       integer(ISZ):: ix,iz,ic
       integer(ISZ):: ixmin,ixmax,izmin,izmax
@@ -1039,9 +1039,9 @@ c       --- RZ
             if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
             else
-              rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
-     &                                     electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+              expo = (phi(ix,iz) - plasmapotential)/electrontemperature
+              expo = min(expo,log(electrondensitymaxscale))
+              rhoe = iondensity(ix,iz)*exp(expo)
             endif
 
             rr = ix + xminodx
@@ -1069,9 +1069,9 @@ c       --- XZ
             if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
             else
-              rhoe = iondensity(ix,iz)*exp((phi(ix,iz)-plasmapotential)/
-     &                                     electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+              expo = (phi(ix,iz) - plasmapotential)/electrontemperature
+              expo = min(expo,log(electrondensitymaxscale))
+              rhoe = iondensity(ix,iz)*exp(expo)
             endif
 
             lphi(ix,iz) = (phi(ix-1,iz) - 2.*phi(ix,iz) + phi(ix+1,iz))*dxsqi
@@ -1148,7 +1148,7 @@ c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
       type(CONDtype):: cnd
-      real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,ppp
+      real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,ppp,expo
       real(kind=8):: delx,delz
       real(kind=8):: delxsqi,delzsqi
       real(kind=8):: rr
@@ -1257,9 +1257,9 @@ c         --- calculate the new phi based on the boundary conditions
             if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
             else
-              rhoe = iondensity(ix,iz)*exp((pik-plasmapotential)/
-     &                                     electrontemperature)
-              rhoe = min(rhoe,electrondensitymaxscale*iondensity(ix,iz))
+              expo = (pik - plasmapotential)/electrontemperature
+              expo = min(expo,log(electrondensitymaxscale))
+              rhoe = iondensity(ix,iz)*exp(expo)
             endif
             lphi(ix,iz) = (+ (pxm+pxp)*delxsqi
      &                     + (pzm+pzp)*delzsqi
