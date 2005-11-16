@@ -149,6 +149,12 @@ class AMRTree(object,Visualizable):
       else:
         return f3d.conductors
 
+    def setconductorvoltage(self,voltage,condid=0,discrete=false,setvinject=false):
+      if self.solvergeom == w3d.XYZgeomMR:
+        self.blocks.setconductorvoltage(voltage,condid,discrete,setvinject)
+      else:
+        setconductorvoltage(voltage,condid,discrete,setvinject)
+
     def installbeforefs(self,f):
       self.beforefs.installfuncinlist(f)
 
