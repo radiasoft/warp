@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.97 2005/11/11 19:32:29 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.98 2005/11/18 17:50:19 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2770,129 +2770,133 @@ Sets the voltage on a conductor, given an id.
       setconductorvoltagerz_id(condid,voltage)
     return
 
-  if n == 0: return
-
   if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
 
-    # --- Get z location of the conductor points (taking into account
-    # --- the differing grid cell sizes for coarse levels). Use that to
-    # --- gather the value of voltage at those locations.
-    lz = take(conductors.levellz,interior.ilevel)
-    iz = take(conductors.leveliz,interior.ilevel)
-    icz = nint(interior.indx[2,:]*lz + iz)
-    icz = minimum(icz,len(voltage)-2,icz)
-    cv = take(voltage,icz)
+    if interior.n > 0:
+      # --- Get z location of the conductor points (taking into account
+      # --- the differing grid cell sizes for coarse levels). Use that to
+      # --- gather the value of voltage at those locations.
+      lz = take(conductors.levellz,interior.ilevel)
+      iz = take(conductors.leveliz,interior.ilevel)
+      icz = nint(interior.indx[2,:]*lz + iz)
+      icz = minimum(icz,len(voltage)-2,icz)
+      cv = take(voltage,icz)
 
-    # --- Get z location of even points. For conductors in the transverse
-    # --- plane, use the voltage at the grid cell locations.
-    iecl = take(conductors.levellz,evensubgrid.ilevel)
-    iecliz = take(conductors.leveliz,evensubgrid.ilevel)
-    iecz = nint(evensubgrid.indx[2,:]*iecl + iecliz)
-    iecz = minimum(iecz,len(voltage)-2,iecz)
-    ecv = take(voltage,iecz)
-    ecvmx = ecv
-    ecvpx = ecv
-    ecvmy = ecv
-    ecvpy = ecv
+    if evensubgrid.n > 0:
+      # --- Get z location of even points. For conductors in the transverse
+      # --- plane, use the voltage at the grid cell locations.
+      iecl = take(conductors.levellz,evensubgrid.ilevel)
+      iecliz = take(conductors.leveliz,evensubgrid.ilevel)
+      iecz = nint(evensubgrid.indx[2,:]*iecl + iecliz)
+      iecz = minimum(iecz,len(voltage)-2,iecz)
+      ecv = take(voltage,iecz)
+      ecvmx = ecv
+      ecvpx = ecv
+      ecvmy = ecv
+      ecvpy = ecv
 
-    # --- For conductors to the left, find the location of the conductor
-    # --- and linear interpolate from the voltage data. If the discrete flag
-    # --- is set, then round down to the nearest grid point.
-    ecmz = iecz + where(evensubgrid.dels[4,:] < 1.,-evensubgrid.dels[4,:],0)*iecl
-    iecmz = ecmz.astype(Int)
-    if discrete: wecmz = 0.
-    else:        wecmz = ecmz - iecmz
-    ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
+      # --- For conductors to the left, find the location of the conductor
+      # --- and linear interpolate from the voltage data. If the discrete flag
+      # --- is set, then round down to the nearest grid point.
+      ecmz = iecz + where(evensubgrid.dels[4,:] < 1.,-evensubgrid.dels[4,:],0)*iecl
+      iecmz = ecmz.astype(Int)
+      if discrete: wecmz = 0.
+      else:        wecmz = ecmz - iecmz
+      ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
 
-    # --- Same for conductors to the right. If discrete is set, round up.
-    ecpz = iecz + where(evensubgrid.dels[5,:] < 1.,-evensubgrid.dels[5,:],0)*iecl
-    iecpz = ecpz.astype(Int)
-    if discrete: wecpz = 1.
-    else:        wecpz = ecpz - iecpz
-    ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
+      # --- Same for conductors to the right. If discrete is set, round up.
+      ecpz = iecz + where(evensubgrid.dels[5,:] < 1.,-evensubgrid.dels[5,:],0)*iecl
+      iecpz = ecpz.astype(Int)
+      if discrete: wecpz = 1.
+      else:        wecpz = ecpz - iecpz
+      ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
 
-    # --- Repeat for odd conductor points.
-    iocl = take(conductors.levellz,oddsubgrid.ilevel)
-    iocliz = take(conductors.leveliz,oddsubgrid.ilevel)
-    iocz = nint(oddsubgrid.indx[2,:]*iocl + iocliz)
-    iocz = minimum(iocz,len(voltage)-2,iocz)
-    ocv = take(voltage,iocz)
-    ocvmx = ocv
-    ocvpx = ocv
-    ocvmy = ocv
-    ocvpy = ocv
+    if oddsubgrid.n > 0:
+      # --- Repeat for odd conductor points.
+      iocl = take(conductors.levellz,oddsubgrid.ilevel)
+      iocliz = take(conductors.leveliz,oddsubgrid.ilevel)
+      iocz = nint(oddsubgrid.indx[2,:]*iocl + iocliz)
+      iocz = minimum(iocz,len(voltage)-2,iocz)
+      ocv = take(voltage,iocz)
+      ocvmx = ocv
+      ocvpx = ocv
+      ocvmy = ocv
+      ocvpy = ocv
 
-    ocmz = iocz + where(oddsubgrid.dels[4,:] < 1.,-oddsubgrid.dels[4,:],0)*iocl
-    iocmz = ocmz.astype(Int)
-    if discrete: wocmz = 0.
-    else:        wocmz = ocmz - iocmz
-    ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
+      ocmz = iocz + where(oddsubgrid.dels[4,:] < 1.,-oddsubgrid.dels[4,:],0)*iocl
+      iocmz = ocmz.astype(Int)
+      if discrete: wocmz = 0.
+      else:        wocmz = ocmz - iocmz
+      ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
-    ocpz = iocz + where(oddsubgrid.dels[5,:] < 1.,-oddsubgrid.dels[5,:],0)*iocl
-    iocpz = ocpz.astype(Int)
-    if discrete: wocpz = 1.
-    else:        wocpz = ocpz - iocpz
-    ocvpz = take(voltage,iocpz)*(1.-wocpz) + take(voltage,iocpz+1)*wocpz
+      ocpz = iocz + where(oddsubgrid.dels[5,:] < 1.,-oddsubgrid.dels[5,:],0)*iocl
+      iocpz = ocpz.astype(Int)
+      if discrete: wocpz = 1.
+      else:        wocpz = ocpz - iocpz
+      ocvpz = take(voltage,iocpz)*(1.-wocpz) + take(voltage,iocpz+1)*wocpz
 
   elif type(voltage) == FunctionType:
     # --- Assumes that voltage is a function which takes 3 arguments, the
     # --- coordinates x, y, z, in meters relative to the beam frame.
 
-    zmmin = w3d.zmminglobal
-    icx = interior.indx[0,:]*take(nint(conductors.levellx),interior.ilevel)
-    icy = interior.indx[1,:]*take(nint(conductors.levelly),interior.ilevel)
-    icz = interior.indx[2,:]*take(nint(conductors.levellz),interior.ilevel) + \
-                     take(conductors.leveliz,interior.ilevel)
-    cx = w3d.xmmin + icx*w3d.dx
-    cy = w3d.ymmin + icy*w3d.dy
-    cz =     zmmin + icz*w3d.dz
-    cv = voltage(cx,cy,cz)
+    if interior.n > 0:
+      zmmin = w3d.zmminglobal
+      icx = interior.indx[0,:]*take(nint(conductors.levellx),interior.ilevel)
+      icy = interior.indx[1,:]*take(nint(conductors.levelly),interior.ilevel)
+      icz = interior.indx[2,:]*take(nint(conductors.levellz),interior.ilevel)+\
+                       take(conductors.leveliz,interior.ilevel)
+      cx = w3d.xmmin + icx*w3d.dx
+      cy = w3d.ymmin + icy*w3d.dy
+      cz =     zmmin + icz*w3d.dz
+      cv = voltage(cx,cy,cz)
 
-    ieclx = take(nint(conductors.levellx),evensubgrid.ilevel)
-    iecly = take(nint(conductors.levelly),evensubgrid.ilevel)
-    ieclz = take(nint(conductors.levellz),evensubgrid.ilevel)
-    ecx = w3d.xmmin + w3d.dx*evensubgrid.indx[0,:]*ieclx
-    ecy = w3d.ymmin + w3d.dy*evensubgrid.indx[1,:]*iecly
-    ecz =     zmmin + w3d.dz*(evensubgrid.indx[2,:]*ieclz + \
-                              take(conductors.leveliz,evensubgrid.ilevel))
+    if evensubgrid.n > 0:
+      ieclx = take(nint(conductors.levellx),evensubgrid.ilevel)
+      iecly = take(nint(conductors.levelly),evensubgrid.ilevel)
+      ieclz = take(nint(conductors.levellz),evensubgrid.ilevel)
+      ecx = w3d.xmmin + w3d.dx*evensubgrid.indx[0,:]*ieclx
+      ecy = w3d.ymmin + w3d.dy*evensubgrid.indx[1,:]*iecly
+      ecz =     zmmin + w3d.dz*(evensubgrid.indx[2,:]*ieclz + \
+                                take(conductors.leveliz,evensubgrid.ilevel))
 
-    edels = evensubgrid.dels
-    ecxmx = ecx - where(edels[0,:] < 1.,edels[0,:],0)*ieclx*w3d.dx
-    ecxpx = ecx + where(edels[1,:] < 1.,edels[1,:],0)*ieclx*w3d.dx
-    ecymy = ecy - where(edels[2,:] < 1.,edels[2,:],0)*iecly*w3d.dy
-    ecypy = ecy + where(edels[3,:] < 1.,edels[3,:],0)*iecly*w3d.dy
-    eczmz = ecz - where(edels[4,:] < 1.,edels[4,:],0)*ieclz*w3d.dz
-    eczpz = ecz + where(edels[5,:] < 1.,edels[5,:],0)*ieclz*w3d.dz
-    ecvmx = voltage(ecxmx,ecy  ,ecz  )
-    ecvpx = voltage(ecxpx,ecy  ,ecz  )
-    ecvmy = voltage(ecx  ,ecymy,ecz  )
-    ecvpy = voltage(ecx  ,ecypy,ecz  )
-    ecvmz = voltage(ecx  ,ecy  ,eczmz)
-    ecvpz = voltage(ecx  ,ecy  ,eczpz)
+      edels = evensubgrid.dels
+      ecxmx = ecx - where(edels[0,:] < 1.,edels[0,:],0)*ieclx*w3d.dx
+      ecxpx = ecx + where(edels[1,:] < 1.,edels[1,:],0)*ieclx*w3d.dx
+      ecymy = ecy - where(edels[2,:] < 1.,edels[2,:],0)*iecly*w3d.dy
+      ecypy = ecy + where(edels[3,:] < 1.,edels[3,:],0)*iecly*w3d.dy
+      eczmz = ecz - where(edels[4,:] < 1.,edels[4,:],0)*ieclz*w3d.dz
+      eczpz = ecz + where(edels[5,:] < 1.,edels[5,:],0)*ieclz*w3d.dz
+      ecvmx = voltage(ecxmx,ecy  ,ecz  )
+      ecvpx = voltage(ecxpx,ecy  ,ecz  )
+      ecvmy = voltage(ecx  ,ecymy,ecz  )
+      ecvpy = voltage(ecx  ,ecypy,ecz  )
+      ecvmz = voltage(ecx  ,ecy  ,eczmz)
+      ecvpz = voltage(ecx  ,ecy  ,eczpz)
 
-    ioclx = take(nint(conductors.levellx),oddsubgrid.ilevel)
-    iocly = take(nint(conductors.levelly),oddsubgrid.ilevel)
-    ioclz = take(nint(conductors.levellz),oddsubgrid.ilevel)
-    ocx = w3d.xmmin + w3d.dx*oddsubgrid.indx[0,:]*ioclx
-    ocy = w3d.ymmin + w3d.dy*oddsubgrid.indx[1,:]*iocly
-    ocz =     zmmin + w3d.dz*(oddsubgrid.indx[2,:]*ioclz + \
-                              take(conductors.leveliz,oddsubgrid.ilevel))
+    if oddsubgrid.n > 0:
+      ioclx = take(nint(conductors.levellx),oddsubgrid.ilevel)
+      iocly = take(nint(conductors.levelly),oddsubgrid.ilevel)
+      ioclz = take(nint(conductors.levellz),oddsubgrid.ilevel)
+      ocx = w3d.xmmin + w3d.dx*oddsubgrid.indx[0,:]*ioclx
+      ocy = w3d.ymmin + w3d.dy*oddsubgrid.indx[1,:]*iocly
+      ocz =     zmmin + w3d.dz*(oddsubgrid.indx[2,:]*ioclz + \
+                                take(conductors.leveliz,oddsubgrid.ilevel))
 
-    odels = oddsubgrid.dels
-    ocxmx = ocx - where(odels[0,:] < 1.,odels[0,:],0)*ioclx*w3d.dx
-    ocxpx = ocx + where(odels[1,:] < 1.,odels[1,:],0)*ioclx*w3d.dx
-    ocymy = ocy - where(odels[2,:] < 1.,odels[2,:],0)*iocly*w3d.dy
-    ocypy = ocy + where(odels[3,:] < 1.,odels[3,:],0)*iocly*w3d.dy
-    oczmz = ocz - where(odels[4,:] < 1.,odels[4,:],0)*ioclz*w3d.dz
-    oczpz = ocz + where(odels[5,:] < 1.,odels[5,:],0)*ioclz*w3d.dz
-    ocvmx = voltage(ocxmx,ocy  ,ocz  )
-    ocvpx = voltage(ocxpx,ocy  ,ocz  )
-    ocvmy = voltage(ocx  ,ocymy,ocz  )
-    ocvpy = voltage(ocx  ,ocypy,ocz  )
-    ocvmz = voltage(ocx  ,ocy  ,oczmz)
-    ocvpz = voltage(ocx  ,ocy  ,oczpz)
+      odels = oddsubgrid.dels
+      ocxmx = ocx - where(odels[0,:] < 1.,odels[0,:],0)*ioclx*w3d.dx
+      ocxpx = ocx + where(odels[1,:] < 1.,odels[1,:],0)*ioclx*w3d.dx
+      ocymy = ocy - where(odels[2,:] < 1.,odels[2,:],0)*iocly*w3d.dy
+      ocypy = ocy + where(odels[3,:] < 1.,odels[3,:],0)*iocly*w3d.dy
+      oczmz = ocz - where(odels[4,:] < 1.,odels[4,:],0)*ioclz*w3d.dz
+      oczpz = ocz + where(odels[5,:] < 1.,odels[5,:],0)*ioclz*w3d.dz
+      ocvmx = voltage(ocxmx,ocy  ,ocz  )
+      ocvpx = voltage(ocxpx,ocy  ,ocz  )
+      ocvmy = voltage(ocx  ,ocymy,ocz  )
+      ocvpy = voltage(ocx  ,ocypy,ocz  )
+      ocvmz = voltage(ocx  ,ocy  ,oczmz)
+      ocvpz = voltage(ocx  ,ocy  ,oczpz)
 
   else:
     cv = voltage
