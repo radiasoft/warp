@@ -19,13 +19,22 @@ Creates helix with constant Ez in the pulse.
  - startgaplen=0.2: length of gap at start of helix
  - finalgaplen=0.2: length of gap at end of helix
  - ezoft,ezduration=None: lists of ez and the durations of each time block
- - vvdata=None: Specifies voltage as a function of time. vvdata is a list of
-                parameters for a time slice. The parameters for each time
-                slice are Vt, dt, v1, v2, ..., where
-                Vt is the total change in voltage during the time slice
+ - vvdata=None: Specifies voltage as a function of time.
+                The change of voltage in each time slice is given by
+                V(t) = Vt*(v1*t/dt + v2*(t/dt)**2 + v3*(t/dt)**3 + ... )
+                where Vt and dt are either directly from vvdata
+                (vvdatatype='delta')
+                or Vt=(V(t+dt)-V(t)) and dt=(T(i+1)-T(i)
+                (vvdatatype='absolute').
+                vvdata is a list of parameters for the time slices. Each set
+                of data is V, dt, v1, v2, ..., where
+                V is either the Vt, or V(t), and dt is either dt or T
+                according to the above.
                 dt is the length of the time slice
                 v1, v2, ... are the fractions assigned to each polynomial term
-                V(t) = Vt*(v1*t/dt + v2*(t/dt)**2 + v3*(t/dt)**3 + ... )
+ - vvdatatype='delta': When 'delta', vvdata is assumed to be the changes in
+                       voltage during each time slice, or when 'absolute',
+                       the voltage at the start at each time slice.
  - vvfunc=None: A function which returns the voltage and electric field given
                 a single argument, the time.
  - startgaptype=0: specified what to do about starting gap
@@ -63,7 +72,8 @@ Creates helix with constant Ez in the pulse.
   def __init__(self,zs,ze,ap=None,length=None,V0=None,vz=None,ts=None,nz=10000,
                     lengthfinal=None,
                     zoffset=0.,startgaplen=0.2,finalgaplen=0.2,
-                    ezoft=None,ezduration=None,vvdata=None,vvfunc=None,
+                    ezoft=None,ezduration=None,vvdata=None,vvdatatype='delta',
+                    vvfunc=None,
                     startgaptype=0,model=0,condid=None,
                     inductance=None,capacitance=None,resistance=None,
                     termresistance=None,pitch=None,
@@ -85,7 +95,7 @@ Creates helix with constant Ez in the pulse.
     if lengthfinal is None: self.lengthfinal = length
     else:                   self.lengthfinal = lengthfinal
     self.vz = vz
-    self.ts = ts
+    #self.ts = ts # --- Now set below
     self.zoffset = zoffset
     self.startgaplen = startgaplen
     self.finalgaplen = finalgaplen
@@ -115,19 +125,23 @@ Creates helix with constant Ez in the pulse.
       vvdata = zip(voft,ezduration)
 
     self.vvdata = vvdata
+    self.vvdatatype = vvdatatype
     self.vvfunc = vvfunc
 
     if self.vvdata is not None:
-      self.tslice = []
-      for v in self.vvdata:
-        self.tslice.append(v[1])
-
       self.ioft = 0
-      self.toft = cumsum(self.tslice) + self.ts
-      self.tlist = array([self.ts] + list(self.toft))
       self.vslice = [self.vvdata[i][0] for i in range(len(self.vvdata))]
-      self.voft = cumsum(self.vslice)
-      self.vlist = array([0.] + list(self.voft))
+      self.tslice = [self.vvdata[i][1] for i in range(len(self.vvdata))]
+      if self.vvdatatype == 'delta':
+        self.ts = ts
+        toft = cumsum(self.tslice) + self.ts
+        self.tlist = array([self.ts] + list(toft))
+        voft = cumsum(self.vslice)
+        self.vlist = array([0.] + list(voft))
+      else:
+        self.tlist = self.tslice
+        self.vlist = self.vslice
+        self.ts = self.tlist[0]
 
     self.vstart = 0.
     self.vend = 0.
@@ -267,11 +281,13 @@ Creates helix with constant Ez in the pulse.
   def getvoltagefromvvdata(self,time):
 
     # --- Check if the next time slice is starting
-    if self.ioft < len(self.vvdata):
-      if time > self.toft[self.ioft]: self.ioft += 1
+    if time < self.tlist[self.ioft]: self.ioft = 0
+    while (self.ioft < len(self.vlist)-1 and
+           time > self.tlist[self.ioft+1]):
+      self.ioft += 1
 
     # --- Get current value of voltage at helix start.
-    if self.ioft < len(self.vvdata):
+    if self.ioft < len(self.vlist)-1:
       # --- Voltage at the start of the current time slice.
       vbase = self.vlist[self.ioft]
       # --- Time relative to start of time slice
@@ -282,17 +298,20 @@ Creates helix with constant Ez in the pulse.
       else:
         vp = self.vvdata[self.ioft][2:]
 
+      dv = self.vlist[self.ioft+1] - self.vlist[self.ioft]
+      dt = self.tlist[self.ioft+1] - self.tlist[self.ioft]
+
       # --- Now the voltage can be calculated
       vv = 0.
       for i in range(len(vp)):
-        vv = vv + vp[i]*(tt/self.vvdata[self.ioft][1])**(i+1)
-      vv = vbase + vv*self.vvdata[self.ioft][0]
+        vv = vv + vp[i]*(tt/dt)**(i+1)
+      vv = vbase + vv*dv
 
       # --- Calculate dV/dt, to get Ez = dV/dt / vc
       vdot = 0.
       for i in range(len(vp)):
-        vdot = vdot + (i+1)*vp[i]*tt**i/self.vvdata[self.ioft][1]**(i+1)
-      ez = vdot*self.vvdata[self.ioft][0]/self.vz
+        vdot = vdot + (i+1)*vp[i]*tt**i/dt**(i+1)
+      ez = vdot*dv/self.vz
 
       self.vvprevious = vv
 
@@ -651,7 +670,7 @@ Creates helix with constant Ez in the pulse.
     plg(ez*scale,zz,color=color)
 
   def plotvoft(self,ts=0.,te=None,dt=None,color='fg'):
-    if te is None: te = self.toft[-1]
+    if te is None: te = self.tlist[-1]
     if dt is None: dt = top.dt
     if self.vvdata is not None: ioftsave = self.ioft
     vvprevioussave = self.vvprevious
@@ -674,7 +693,7 @@ Creates helix with constant Ez in the pulse.
     self.vvprevious = vvprevioussave
 
   def plotezoft(self,ts=0.,te=None,dt=None,color='fg'):
-    if te is None: te = self.toft[-1]
+    if te is None: te = self.tlist[-1]
     if dt is None: dt = top.dt
     ioftsave = self.ioft
     vvprevioussave = self.vvprevious
@@ -759,13 +778,14 @@ Creates helix with constant Ez in the pulse.
     fma()
 
     text = ''
-    if self.ezoft is not None and self.ezduration is not None:
-      text = text + (
-    'ezoft = %s\n'%array2string(array(self.ezoft),max_line_width=60,separator=', ') +
-    'ezduration = %s\n'%array2string(array(self.ezduration),max_line_width=60,separator=', '))
+#   if self.ezoft is not None and self.ezduration is not None:
+#     text = text + (
+#   'ezoft = %s\n'%array2string(array(self.ezoft),max_line_width=60,separator=', ') +
+#   'ezduration = %s\n'%array2string(array(self.ezduration),max_line_width=60,separator=', '))
 
     if self.vvdata is not None:
-      text = text + 'vvdata = %s\n'%array2string(array(self.vvdata),max_line_width=60,separator=', ')
+      ii = min(10,len(self.vvdata))
+      text = text + 'vvdata = %s\n'%array2string(array(self.vvdata[:ii]),max_line_width=60,separator=', ')
 
     if text:
       plt(text,0.12,0.88,justify="LT")
