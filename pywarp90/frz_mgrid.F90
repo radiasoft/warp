@@ -10019,7 +10019,7 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, iaxis, nr0, nz0
 REAL(8), INTENT(IN OUT),TARGET :: u0(0:nr0+2,0:nz0+2)
 REAL(8), INTENT(IN OUT),TARGET :: rho0(nr0+1,nz0+1)
-INTEGER(ISZ):: accuracy
+REAL(8), INTENT(IN):: accuracy
 
 integer(ISZ):: ixlbnd
 
