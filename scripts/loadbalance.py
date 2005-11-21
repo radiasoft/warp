@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.41 2005/08/02 21:47:16 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.42 2005/11/21 20:25:50 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -90,6 +90,10 @@ recalculated on a finer mesh to give better balancing.
       zminp = minimum(zinjectmin,zminp)
       zmaxp = maximum(zinjectmax,zmaxp)
 
+    # --- Shift zminp and zmaxp into the grid frame
+    zminp = zminp - top.zbeam - w3d.zmminglobal
+    zmaxp = zmaxp - top.zbeam - w3d.zmminglobal
+
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
     if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
@@ -124,17 +128,19 @@ recalculated on a finer mesh to give better balancing.
       # --- Also, calculate the distribution if the moments were not
       # --- calculated on the most recent step.
       pnumz = zeros(1001,'d')
-      zmin = max(w3d.zmminglobal+top.zbeam,zminp-w3d.dz)
-      zmax = min(w3d.zmmaxglobal+top.zbeam,zmaxp+w3d.dz)
+      zmin = max(0.,                             zminp-w3d.dz)
+      zmax = min(w3d.zmmaxglobal-w3d.zmminglobal,zmaxp+w3d.dz)
       if zz is None:
         # --- If zz was not fetched above, then get it here.
         zz = getz(jslist=-1,gather=0)
-      setgrid1d(len(zz),zz,1000,pnumz,zmin,zmax)
+      setgrid1d(len(zz),zz,1000,pnumz,
+                zmin+top.zbeam+w3d.zmminglobal,zmax+top.zbeam+w3d.zmminglobal)
       pnumz = parallelsum(pnumz)
       dz = (zmax - zmin)/1000.
     else:
       # --- Otherwise use the already calculated z-moment
       pnumz = top.pnumz[:,-1]
+      zmin = 0.
       dz = w3d.dz
 
     # --- Calculate the right hand side padding.
@@ -156,7 +162,7 @@ recalculated on a finer mesh to give better balancing.
 
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=self.padleft,
-                         reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz,
+                         reorg=reorg,pnumz=pnumz,zmin=zmin,dz=dz,
                          zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
                          nzguard=self.nzguard)
     getphiforparticles()
@@ -278,10 +284,11 @@ grid points.
   zslave = decompose(pnumz,npes,lfullcoverage=0)
 
   # --- Scale to specified grid if zmin and/or dz input
-  if dz is not None: zslave = zslave*dz/w3d.dz
+  if dz is not None: zslave = zslave*dz
   if zmin is not None: zslave = zslave + zmin
   if zminp is not None: zslave[0] = min(zslave[0],zminp)
   if zmaxp is not None: zslave[-1] = max(zslave[-1],zmaxp)
+  if dz is not None: zslave = zslave/w3d.dz
 
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
