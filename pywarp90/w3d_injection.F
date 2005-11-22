@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.35 $, $Date: 2005/11/22 00:21:03 $
+c@(#) File w3d_injection.F, version $Revision: 1.36 $, $Date: 2005/11/22 01:53:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2404,15 +2404,15 @@ c     --- the emitting surface.
         inj_phi(xi(ii),yi(ii),in(ii)) = vinject(in(ii)) - pp(ii)
       enddo
         
-#ifdef MPIPARALLEL
-c     --- The result calculated on each processor is gathered on all
-      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*ninject)
-#endif
-
       if(inj_nz>1) then
         inj_dz = inj_dz_tmp
         call inj_setq_3darray_and_solvephi(nn,xx(1),yy(1),zz(1),xi(1),yi(1))
       end if
+
+#ifdef MPIPARALLEL
+c     --- The result calculated on each processor is gathered on all
+      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*ninject)
+#endif
 
 c     --- Smooth out inj_phi for this emitting surface.
       if (inj_nsmooth > 0) then
@@ -3323,7 +3323,7 @@ c the grid cell.
 
       dzmin = 1./(real(inj_nz-1)*2.**onethird+2.-real(inj_nz))**3
 c      dzmin = 1./(2.**(inj_nz-1))
-      deltaz(:) = inj_d(1)*inj_dz0
+      deltaz = inj_d*inj_dz0
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -3566,6 +3566,13 @@ c       --- contributing area which is within the emitting surface.
         enddo
       end if
 
+      allocate(rhs(1:inj_nz-1,nn),ab(2,1:inj_nz-1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"inj_setq_3darray_and_solvephi: allocation error ",allocerror,
+     &         ": could not allocate rhs and ab to shape ",inj_nz,nn
+        stop
+      endif
+
 c     --- assign charge deposited on emitter surface (slice 0) to slice 1
       IF(.not. l_inj_no_rho_on_emit) then
         inj_q(:,:,1,:) = inj_q(:,:,1,:) + inj_q(:,:,0,:)
@@ -3573,12 +3580,6 @@ c     --- assign charge deposited on emitter surface (slice 0) to slice 1
       end if
       do ij = 1, inj_ninj
         nrhs = nn
-        allocate(rhs(1:inj_nz-1,nrhs),ab(2,1:inj_nz-1),stat=allocerror)
-        if (allocerror /= 0) then
-          print*,"inj_setq_3darray_and_solvephi: allocation error ",allocerror,
-     &           ": could not allocate rhs and ab to shape ",inj_nz,nrhs
-          stop
-        endif
 c       --- set temporaries
         rinji = 1./rinject(ij)
         rinj = rinject(ij)
@@ -3742,9 +3743,9 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
           inj_ez_3d(ix,iy,inj_nz,ij) = ez_tmp(irhs)
           inj_phi(ix,iy,ij) = vinject(ij) - (inj_phi_3d(ix,iy,iz,ij)*wz0+inj_phi_3d(ix,iy,iz+1,ij)*wz1)
         end do
-        deallocate(rhs,ab)
       end do
 
+      deallocate(rhs,ab)
       deallocate(ijp)
       deallocate(ex_tmp,ey_tmp,ez_tmp)
       deallocate(dz_local)
