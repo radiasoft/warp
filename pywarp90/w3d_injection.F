@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.34 $, $Date: 2005/10/31 21:33:25 $
+c@(#) File w3d_injection.F, version $Revision: 1.35 $, $Date: 2005/11/22 00:21:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3123,17 +3123,20 @@ c to get zp.
       real(kind=8):: xxsq,yysq,r1sq,r2sq
       real(kind=8):: ainjsqi,binjsqi
       real(kind=8):: xm,ym,rrsq,aa,az
-      real(kind=8):: xx((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      real(kind=8):: yy((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      real(kind=8):: zz((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      integer(ISZ):: xi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      integer(ISZ):: yi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      integer(ISZ):: zi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      integer(ISZ):: in((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
-      real(kind=8):: pp((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:),pp(:)
+      integer(ISZ),allocatable:: xi(:),yi(:),zi(:),in(:)
       real(kind=8):: xg(0:inj_nx),yg(0:inj_ny),zg(0:inj_nz)
       real(kind=8):: zinj_grid,onethird,dz0,dz1,dzmin,zdist
       integer(ISZ):: nn,ii,i1,i2
+
+      allocate(xx((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(yy((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(zz((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(xi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(yi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(zi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(in((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+      allocate(pp((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -3242,6 +3245,8 @@ c     --- the emitting surface.
         inj_phi_3d(xi(ii),yi(ii),zi(ii),in(ii)) = pp(ii)
       enddo
         
+      deallocate(xx,yy,zz,xi,yi,zi,in,pp)
+
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
       call parallelnonzerorealarray(inj_phi_3d,(1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject)
@@ -3265,6 +3270,9 @@ c=============================================================================
       use Efields3d
       use Picglb
       use Picglb3d
+      integer(ISZ), intent(in) :: nn
+      real(kind=8), dimension(nn), intent(in) :: xxp, yyp, zzp
+      integer(ISZ), dimension(nn), intent(in) :: xi, yi
 
 c Calculate the charge density on the emitting surface.  The particles are
 c mapped onto the surface assuming a spherical emitter.  The charge density
@@ -3276,26 +3284,22 @@ c affects the edge of the emitting surface where only part of a grid cell
 c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
-      integer(ISZ), intent(in) :: nn
-      real(kind=8), dimension(nn), intent(in) :: xxp, yyp, zzp
-      integer(ISZ), dimension(nn), intent(in) :: xi, yi
-
-      integer(ISZ):: ijp(npmax)
+      integer(ISZ), allocatable:: ijp(:)
       integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,nrhs,irhs,kd,ldab,ldb,n,info
       real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
       real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,wws,dz0,dz1,zinj_grid
       real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
-      real(kind=8):: substarttime,wtime
       real(kind=8), allocatable, dimension(:,:) :: rhs, ab
-      real(kind=8), dimension(nn) :: ex_tmp, ey_tmp, ez_tmp
-      real(kind=8), dimension(0:inj_nz) :: dz_local
-      real(kind=8), dimension(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj) :: xinj3d,yinj3d,zinj3d
+      real(kind=8), allocatable, dimension(:) :: ex_tmp, ey_tmp, ez_tmp
+      real(kind=8), allocatable, dimension(:) :: dz_local
       integer(ISZ):: sx,sy
       integer(ISZ):: allocerror
-
-      real(8) :: inj_phi_tmp(0:inj_nx,0:inj_ny,0:inj_nz,1)
-
+      real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(ijp(npmax))
+      allocate(ex_tmp(nn),ey_tmp(nn),ez_tmp(nn))
+      allocate(dz_local(0:inj_nz))
 
       if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
         sx = 1
@@ -3741,6 +3745,10 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
         deallocate(rhs,ab)
       end do
 
+      deallocate(ijp)
+      deallocate(ex_tmp,ey_tmp,ez_tmp)
+      deallocate(dz_local)
+
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
 !$OMP END MASTER
@@ -3767,9 +3775,9 @@ c the tangential fields near the emitting surface can also be included.
 c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
-      real(kind=8):: xx(npart),yy(npart),zz(npart)
-      real(kind=8):: tex(npart),tey(npart),tez(npart)
-      integer(ISZ):: ijp(npart)
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:)
+      real(kind=8),allocatable:: tex(:),tey(:),tez(:)
+      integer(ISZ),allocatable:: ijp(:)
       integer(ISZ):: ip,ix,iy,iz,ij
       real(kind=8):: rinj,rinji,rr2,wr,dd,ca,dzmin,deltaz(ninject)
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en
@@ -3781,6 +3789,10 @@ c any conductor surface.
       real(kind=8):: dz0, dz1, zinj_grid
       real(kind=8), dimension(0:inj_nz) :: dz_local
       if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(xx(npart),yy(npart),zz(npart))
+      allocate(tex(npart),tey(npart),tez(npart))
+      allocate(ijp(npart))
 
       if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
         spreadx = 1
@@ -3985,6 +3997,10 @@ c            wz = dd*2.**(inj_nz-iz)-1.
       ex = ex + tex
       ey = ey + tey
       ez = ez + tez
+
+      deallocate(xx,yy,zz)
+      deallocate(tex,tey,tez)
+      deallocate(ijp)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
