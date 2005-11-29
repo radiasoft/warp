@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.222 $, $Date: 2005/10/04 22:35:47 $
+c@(#) File W3D.F, version $Revision: 3.223 $, $Date: 2005/11/29 18:32:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -78,7 +78,6 @@ c  This routine allots all of the neccesary dynamic arrays, calls the
 c  particle loader and does the initial load onto the charge density
 c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
-
 
       integer(ISZ):: i,j,k,is,ipmin,ip,iwin,nl
       real(kind=8):: substarttime,wtime
@@ -5233,16 +5232,16 @@ c     --- particles group.
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
-c     elseif(solvergeom==RZgeom) then
-c       call setemgridrz(ipmin,ip,is,ex,ey,ez)
+      elseif(solvergeom==RZgeom) then
+        call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv)
       elseif(solvergeom==XZgeom) then
-         call fieldweightxz(x,z,ex,ez,n,zgridprv)
+        call fieldweightxz(x,z,ex,ez,n,zgridprv)
       elseif(solvergeom==XYgeom) then
-         call fieldweightxz(x,y,ex,ey,n,0.)
+        call fieldweightxz(x,y,ex,ey,n,0.)
       elseif(solvergeom==Zgeom) then
-         call fieldweightz(z,ez,n,zgridprv)
+        call fieldweightz(z,ez,n,zgridprv)
       elseif(solvergeom==Rgeom) then
-         call fieldweightr(x,y,ex,ey,n)
+        call fieldweightr(x,y,ex,ey,n)
       elseif(solvergeom==AMRgeom) then
         call cho_gete3d(n,x,y,z,zgridprv,ex,ey,ez,is,-1)
       else
