@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.45 2005/11/22 01:34:36 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.46 2005/11/29 00:41:34 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -70,8 +70,8 @@ routines (such as ppxxp).
     assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
     self.iz = iz
     self.zz = zz
-    if wz is None: self.wz = w3d.dz
-    else:          self.wz = wz
+    if wz is None and w3d.dz != 0.: self.wz = w3d.dz
+    else:                           self.wz = wz
     self.laccumulate = laccumulate
     self.lautodump = lautodump
     self.name = name
@@ -167,7 +167,7 @@ routines (such as ppxxp).
     self.setuparrays(top.ns)
 
   def getid(self,safe=0):
-    'If safe, then return None is id is not found rather than raising error'
+    'If safe, then return None if id is not found rather than raising error'
     assert self.enabled,"This window is disabled and there is no associated id"
     for i in range(top.nepwin):
       if top.izepwin[i] == self.iz and self.iz >= 0: return i
@@ -183,7 +183,20 @@ routines (such as ppxxp).
     err = gchange("ExtPart")
     top.izepwin[-1] = self.iz
     top.zzepwin[-1] = self.zz
-    top.wzepwin[-1] = self.wz
+    if self.wz is not None:
+      top.wzepwin[-1] = self.wz
+    else:
+      installafterfs(self.setupwz)
+
+  def setupwz(self):
+    """This is needed in case the instance is created before the generate
+       and wz is not explicitly specified. Presumably, w3d.dz should be
+       set after a field solve is done."""
+    if w3d.dz > 0. or self.wz is not None:
+      if self.wz is None: self.wz = w3d.dz
+      id = self.getid(safe=1)
+      if id is not None: top.wzepwin[id] = self.wz
+      uninstallafterfs(self.setupwz)
 
   def enable(self):
     # --- Add this window to the list
@@ -201,6 +214,8 @@ routines (such as ppxxp).
     if not self.enabled: return
     # --- Set so accumulate method is not called after time steps
     uninstallafterstep(self.accumulate)
+    # --- Check if setupwz is installed, and if so, uninstall it
+    if isinstalledafterfs(self.setupwz): uninstallafterfs(self.setupwz)
     # --- Remove this window from the list. Turn safe on when gettin
     # --- the id, since it may for some reason not be consistent.
     id = self.getid(safe=1)
