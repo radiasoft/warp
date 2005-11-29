@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.36 $, $Date: 2005/11/22 01:53:58 $
+c@(#) File w3d_injection.F, version $Revision: 1.37 $, $Date: 2005/11/29 18:32:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3694,35 +3694,7 @@ c           --- transform field vector from source coordinates to lab coordinate
         call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,0)
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
-            if(solvergeom==XYZgeom) then
-              call sete3d(phip(0,0,-1),selfe(1,0,0,0),nn,
-     &                    xxp(1),yyp(1),zzp(1),
-     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nxp,nyp,nzp,
-     &                    efetch,
-     &                    ex_tmp(1),
-     &                    ey_tmp(1),
-     &                    ez_tmp(1),
-     &                    l2symtry,l4symtry)
-            elseif(solvergeom==RZgeom) then
-               call fieldweightrz(xxp(1),yyp(1),zzp(1),
-     &                    ex_tmp(1),
-     &                    ey_tmp(1),
-     &                    ez_tmp(1),
-     &                    nn,zgridprv)
-            elseif(solvergeom==XZgeom) then
-               call fieldweightxz(xxp(1),zzp(1),
-     &                    ex_tmp(1),
-     &                    ez_tmp(1),
-     &                    nn,zgridprv)
-            elseif(solvergeom==Zgeom) then
-               call fieldweightz(zzp(1),ez_tmp(1),nn,zgridprv)
-            elseif(solvergeom==AMRgeom) then
-              call cho_gete3d(nn,xxp(1),yyp(1),zzp(1),zgridprv,
-     &                    ex_tmp(1),
-     &                    ey_tmp(1),
-     &                    ez_tmp(1),
-     &                    -1,0)
-            endif
+        call fetche3dfrompositions(0,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp)
 
         dd = inj_d(ij)*dzmin
         if(dd>dzmin) then
