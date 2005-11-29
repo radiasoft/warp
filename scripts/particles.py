@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.32 2005/10/31 21:49:01 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.33 2005/11/29 00:39:33 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -885,7 +885,9 @@ Adds particles to the simulation
   x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be a arrays or
                      scalars. Scalars are broadcast to all particles. Any
                      that are unsupplied default to zero, except gi,
-                     which defaults to 1.
+                     which defaults to 1. (gi is 1/gamma, the relatistic
+                     paramter)
+  pid: additional particle information, such as an ID number or weight.
   js=0: species to which new particles belong
   lallindomain=false: When true, all particles are assumed to be with in the
                       z extent of the domain so particle scraping is not done.
