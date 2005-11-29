@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.12 2005/07/08 18:15:26 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.13 2005/11/29 00:42:20 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -47,6 +47,7 @@ def generate(command=None):
       except:
         pass
   command()
+  controllers.aftergenerate()
   # --- Get generate time
   top.gentime = wtime() - a
   #ruthere()

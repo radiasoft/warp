@@ -6,11 +6,11 @@ uninstall___: Uninstalls the function (so it won't be called anymore)
 isinstalled___: Checks if the function is installed
 
 The functions all take a function or instance method as an argument. Note that
-if an instance method is used, a reference to the instace must be kept,
-otherwise the method will not be called. If the instance is deleted, the
-method will no longer be called.
+if an instance method is used, the user must not delete the instance,
+otherwise the method will not be called and it will be removed from the list.
 
 Functions can be called at the following times:
+aftergenerate: immediately after the generate is complete
 beforefs: before the field solve
 afterfs: after the field solve
 beforestep: before the time step
@@ -25,6 +25,9 @@ plalways: during a special time step, when position and velocity are
           synchronized, specified by itplalways or zzplalways
 
 Here is the complete list of functions:
+
+installaftergenerate, uninstallaftergenerate, isinstalledaftergenerate
+
 installbeforefs, uninstallbeforefs, isinstalledbeforefs
 
 installafterfs, uninstallafterfs, isinstalledafterfs
@@ -47,7 +50,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.9 2005/10/24 23:02:57 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.10 2005/11/29 00:42:20 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -198,6 +201,7 @@ class ControllerFunction:
 #=============================================================================
 
 # --- Now create the actual instances.
+aftergenerate = ControllerFunction('aftergenerate')
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
 callscraper = ControllerFunction('callscraper')
@@ -252,7 +256,7 @@ Anything that may have already been installed will therefore be unaffected.
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
 controllerfunctioncontainer = ControllerFunctionContainer(
-                               [beforefs,afterfs,
+                               [aftergenerate,beforefs,afterfs,
                                 callscraper,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
@@ -260,6 +264,16 @@ controllerfunctioncontainer = ControllerFunctionContainer(
 
 
 #=============================================================================
+# ----------------------------------------------------------------------------
+def installaftergenerate(f):
+  "Adds a function to the list of functions called after a generate"
+  aftergenerate.installfuncinlist(f)
+def uninstallaftergenerate(f):
+  "Removes the function from the list of functions called after a generate"
+  aftergenerate.uninstallfuncinlist(f)
+def isinstalledaftergenerate(f):
+  return aftergenerate.isinstalledfuncinlist(f)
+
 # ----------------------------------------------------------------------------
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
