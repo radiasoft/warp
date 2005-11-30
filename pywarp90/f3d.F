@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.118 $, $Date: 2005/07/07 23:10:09 $
+c@(#) File F3D.M, version $Revision: 3.119 $, $Date: 2005/11/30 00:27:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -354,6 +354,7 @@ c-----------------------------------------------------------------------------
       logical(ISZ):: transposed
 #endif
 
+
 #ifdef MPIPARALLEL
 c  The input data is always assumed to be not transposed
       transposed = .false.
@@ -657,7 +658,7 @@ c         --- Normalization factor include above in the transver transform
 #ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
-        call transpose(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
         transposed = .true.
 
         if (ny_tran == 1) then
@@ -673,7 +674,7 @@ c         --- pass normal arguments
 
         if (iwhich == 2 .or. iwhich == 10) then
 c         --- Transpose back if not doing the full field solve
-          call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+          call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
           transposed = .false.
         endif
 #else
@@ -793,7 +794,7 @@ c         --- Normalization factor is include below in the transverse transform
 c  For parallel code, inverse transpose is used to redistribute phi into its
 c  original format.
         if (.not. transposed) then
-          call transpose(nx,ny,nz,a,nx_tran,ny_tran)
+          call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
           transposed = .true.
         endif
         if (ny_tran == 1) then
@@ -808,7 +809,7 @@ c         --- pass normal arguments
         endif
 
 c       --- Rearrange phi again back to original arrangement.
-        call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
         transposed = .false.
 
 #else
@@ -830,7 +831,7 @@ c ----------------------------------------------------------------------------
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
 c       --- Rearrange phi array so each axial line is on a single processor.
-        call transpose(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
 
 c       --- Find location of transverse data relative to original dimensions.
         ix = mod(my_index*nx_tran,nx)
@@ -851,7 +852,7 @@ c       --- min's.
      &               kxsq(ix),kysq(iy),kzsq,ikxm,ikym,0,zwork)
 
 c       --- Rearrange phi again back to original arrangement.
-        call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
 #else
 c  Serial version
         call tridiag(nx,ny,nz,nz2,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,1,zwork)

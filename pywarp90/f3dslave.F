@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.26 $, $Date: 2005/09/12 07:22:24 $
+c F3DSLAVE.M, version $Revision: 1.27 $, $Date: 2005/11/30 00:27:56 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -85,7 +85,7 @@ c     --- Now wait for everything to finish
       end
 c=============================================================================
 c=============================================================================
-      subroutine transpose(nx,ny,nz,phi,nx_tran,ny_tran)
+      subroutine warptranspose(nx,ny,nz,phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
@@ -152,7 +152,7 @@ c     --- are sent to each of the processors.
 
 
 c     --- The transpose is much less complicated when ny > nslaves.
-      if (ny .ge. nslaves) then
+      if (ny >= nslaves) then
 
 c       On the T3E, the loop over slaves using SENDRECV is 20 to 50% faster
 c       than the ALLTOALL. Go figure.
@@ -237,7 +237,7 @@ c DONE!
       return
       end
 c=============================================================================
-      subroutine transposei(nx,ny,nz,phi,nx_tran,ny_tran)
+      subroutine warptransposei(nx,ny,nz,phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
@@ -284,7 +284,7 @@ c the temp space.
      &                     mpinewtype,mpierror)
       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
 
-      if (ny .ge. nslaves) then
+      if (ny >= nslaves) then
 
         call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
         blen(1) = 1
@@ -520,7 +520,7 @@ c     --- Assemble reduced rhs
       enddo
 
 c     --- Transpose reduced tridiagonal matrix
-      call transpose(nx,ny,2,dtranlan,nx_tran,ny_tran)
+      call warptranspose(nx,ny,2,dtranlan,nx_tran,ny_tran)
 
 c     --- Find location of transverse data relative to original dimensions.
       jx = mod(my_index*nx_tran,nx)
@@ -557,7 +557,7 @@ c     --- Do tridiag solve
      &                    ctranlan,dtranlan,ikxmin,ikymin,0)
 
 c     --- Transpose back
-      call transposei(nx,ny,2,dtranlan,nx_tran,ny_tran)
+      call warptransposei(nx,ny,2,dtranlan,nx_tran,ny_tran)
 
 c     --- Load solved values back into 'a' array.
       do iy=ikymin,ny-1
