@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.31 2005/11/11 19:34:18 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.32 2005/11/30 00:23:31 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -54,6 +54,8 @@ conductors are an argument.
                     mglevel=0,aura=0.,install=1,grid=None): 
     self.mglevel = mglevel
     self.aura = aura
+    # --- Remember if the user specified the grid.
+    self.usergrid = (grid is not None)
     # --- Don't create the grid until it is needed.
     self.grid = grid
     # --- register any initial conductors
@@ -102,7 +104,7 @@ conductors are an argument.
     self.installscraper()
 
   def registerconductors(self,newconductors):
-    if self.grid is None: self.grid = Grid()
+    self.updategrid()
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
@@ -114,11 +116,34 @@ conductors are an argument.
     if not nooverlap:
       # --- This is horribly inefficient!!!
       self.grid.resetgrid()
-      for c in self.conductors:
-        self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+      self.updateconductors()
     else:
       self.grid.removeisinside(conductor)
       
+  def updategrid(self,lforce=0):
+    """Update the grid to match any changes to the underlying grid, for example
+after load balancing."""
+    if self.grid is None: lforce = 1
+    if self.usergrid and not lforce: return
+    if lparallel: nz = top.nzpslave[me]
+    else:         nz = w3d.nz
+    if (not lforce and (self.grid.nx == w3d.nx and
+                        self.grid.ny == w3d.ny and
+                        self.grid.nz ==     nz and
+                        self.grid.xmmin == w3d.xmmin and
+                        self.grid.xmmax == w3d.xmmax and
+                        self.grid.ymmin == w3d.ymmin and
+                        self.grid.ymmax == w3d.ymmax and
+                        self.grid.zmmin == w3d.zmminglobal and
+                        self.grid.zmmax == w3d.zmmaxglobal and
+                        self.grid.izslave[me] == top.izpslave[me])): return
+    self.grid = Grid(nz=nz,izslave=top.izpslave,nzslave=top.nzpslave)
+    self.updateconductors()
+
+  def updateconductors(self):
+    for c in self.conductors:
+      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+
   def saveoldpos(self):
     for js in xrange(top.ns):
       if top.nps[js]>0:
@@ -130,6 +155,7 @@ conductors are an argument.
       
   def scrapeall(self,clear=0):
     if len(self.conductors)==0 or parallelsum(sum(top.nps))==0: return
+    self.updategrid()
     for js in xrange(top.ns):
       if top.it%top.ndts[js]==0:
         if self.l_print_timing:tt=0.
@@ -156,8 +182,8 @@ conductors are an argument.
     xmax = self.grid.xmax
     ymin = self.grid.ymin
     ymax = self.grid.ymax
-    zmin = self.grid.zmin
-    zmax = self.grid.zmax
+    zmin = self.grid.zmmin + iz*dz + top.zbeam
+    zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
 
     # --- First, find any particles near a conductor
@@ -274,8 +300,8 @@ conductors are an argument.
     xmax = self.grid.xmax
     ymin = self.grid.ymin
     ymax = self.grid.ymax
-    zmin = self.grid.zmin
-    zmax = self.grid.zmax
+    zmin = self.grid.zmmin + iz*dz + top.zbeam
+    zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
 
     # --- First, find any particles near a conductor
@@ -364,8 +390,8 @@ conductors are an argument.
     xmax = self.grid.xmax
     ymin = self.grid.ymin
     ymax = self.grid.ymax
-    zmin = self.grid.zmin
-    zmax = self.grid.zmax
+    zmin = self.grid.zmmin + iz*dz + top.zbeam
+    zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
 
     i1 = top.inslost[js] - 1
@@ -417,7 +443,8 @@ conductors are an argument.
     for c in self.conductors:
       ii = compress(pp == c.condid,arange(nn))
       if len(ii) == 0: 
-        w=parallelsum(0.)
+        if self.lcollectlpdata:
+          w=parallelsum(0.)
         continue
       xc = take(x8,ii)
       yc = take(y8,ii)
