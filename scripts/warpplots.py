@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.161 2005/11/11 23:45:36 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.162 2005/11/30 17:42:53 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -194,7 +194,8 @@ Opens up an X window
       # --- is already attached to a device (the plot file).
       window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
     else:
-      window(winnum,dpi=dpi)
+      if xon: window(winnum,dpi=dpi)
+      else:   window(winnum,dpi=dpi,display='')
   else:
     # --- Check input errors
     try: setup.pname
@@ -212,7 +213,7 @@ Opens up an X window
     if xon:
       window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
     else:
-      window(winnum,dpi=dpi,dump=1,hcp=pname)
+      window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
 
 ##########################################################################
 # Plot run info to the current plot and plot info to the log file.
