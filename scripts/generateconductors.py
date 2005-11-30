@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.119 2005/11/29 21:00:16 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.120 2005/11/30 00:22:13 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1490,7 +1490,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                     gridrz=None,
-                    izfsslave=None,nzfsslave=None):
+                    izslave=None,nzslave=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1511,8 +1511,8 @@ Creates a grid object which can generate conductor data.
     self.zmmax = _default(zmmax,w3d.zmmaxglobal)
     self.l2symtry = _default(l2symtry,w3d.l2symtry)
     self.l4symtry = _default(l4symtry,w3d.l4symtry)
-    self.izfsslave = _default(izfsslave,top.izfsslave)
-    self.nzfsslave = _default(nzfsslave,top.nzfsslave)
+    self.izslave = _default(izslave,top.izfsslave)
+    self.nzslave = _default(nzslave,top.nzfsslave)
     
     if w3d.solvergeom==w3d.XYgeom and not wxy.lthick:
         self.zmmin=-smallpos
@@ -1553,7 +1553,7 @@ Creates a grid object which can generate conductor data.
       conductors = ConductorType()
       getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
                   conductors,
-                  top.my_index,top.nslaves,self.izfsslave,self.nzfsslave)
+                  top.my_index,top.nslaves,self.izslave,self.nzslave)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
@@ -1571,7 +1571,7 @@ Creates a grid object which can generate conductor data.
       self.mglevellz = f3d.mglevelslz[:f3d.mglevels].copy()
     else:
       self.mglevels = 1
-      self.mgleveliz = [self.izfsslave[me]]
+      self.mgleveliz = [self.izslave[me]]
       self.mglevelnz = [self.nz]
       self.mglevellx = [1]
       self.mglevelly = [1]
