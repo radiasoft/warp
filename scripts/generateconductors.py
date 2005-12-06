@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.120 2005/11/30 00:22:13 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.121 2005/12/06 19:28:08 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -245,16 +245,30 @@ Should never be directly created by the user.
                        kwlist=self.getkwlist())
     return result
 
+  def draw(self,**kw):
+    nowarn = kw.get('nowarn',0)
+    if not nowarn:
+      print 'draw method not implemeneted for '+self.__class__.__name__
+
+  def drawzx(self,**kw):
+    self.draw(**kw)
+
+  def drawzr(self,**kw):
+    kw.setdefault('fullplane',0)
+    self.draw(**kw)
+
   def plotdata(self,r,z,color='fg',filled=None,fullplane=1):
+    z = array(z) + self.zcent
+    r = array(r)
     if color is not None:
-      plg(r,z,color=color)
+      plg(self.xcent+r,z,color=color)
       if fullplane:
-        plg(-array(r),z,color=color)
+        plg(self.xcent-array(r),z,color=color)
     if filled is not None:
       c = array([filled],typecode='b')
-      plfp(c,r,z,[len(r)])
+      plfp(c,self.xcent+r,z,[len(r)])
       if fullplane:
-        plfp(c,-array(r),z,[len(r)])
+        plfp(c,self.xcent-array(r),z,[len(r)])
 
   def get_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100):
     """
@@ -493,6 +507,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
     self.dxobject = self.left.getdxobject(kwdict=kw)
+  def draw(self,**kw):
+    self.left.draw(**kw)
 
 
 class AssemblyAnd(Assembly):
@@ -522,6 +538,9 @@ AssemblyAnd class.  Represents 'and' of assemblies.
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
     self.dxobject = pyOpenDX.DXCollection(l,r)
+  def draw(self,**kw):
+    self.left.draw(**kw)
+    self.right.draw(**kw)
 
 
 class AssemblyPlus(Assembly):
@@ -551,6 +570,9 @@ AssemblyPlus class.  Represents 'or' of assemblies.
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
     self.dxobject = pyOpenDX.DXCollection(l,r)
+  def draw(self,**kw):
+    self.left.draw(**kw)
+    self.right.draw(**kw)
 
 
 class AssemblyMinus(Assembly):
@@ -580,6 +602,9 @@ AssemblyMinus class.
     l = self.left.getdxobject(kwdict=kw)
     r = self.right.getdxobject(kwdict=kw)
     self.dxobject = pyOpenDX.DXCollection(l,r)
+  def draw(self,**kw):
+    self.left.draw(**kw)
+    self.right.draw(**kw)
 
 #============================================================================
 class EllipticAssembly(Assembly):
@@ -1899,6 +1924,11 @@ Box class
     self.createextent([-self.xsize/2.,-self.ysize/2.,-self.zsize/2.],
                       [+self.xsize/2.,+self.ysize/2.,+self.zsize/2.])
 
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    r = self.xsize/2.*array([-1,+1,+1,-1,-1])
+    z = self.zsize/2.*array([-1,-1,+1,+1,-1])
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
 #============================================================================
 class Cylinder(Assembly):
   """
@@ -2014,7 +2044,7 @@ Cylinder aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
-  def draw(self,color='fg',filled=None,fullplane=1,rmin=None):
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -2023,6 +2053,7 @@ Plots the r versus z
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmin=0.: inner range in r to include in plot
     """
+    rmin = kw.get('rmin',None)
     if rmin is None: rmin = 0.
     r = [self.radius,self.radius,rmin,rmin,self.radius]
     z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
@@ -2108,7 +2139,7 @@ Outside of a cylinder aligned with z-axis
                        kwdict=kw)
     self.dxobject = v
 
-  def draw(self,color='fg',filled=None,fullplane=1,rmax=None):
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -2117,6 +2148,7 @@ Plots the r versus z
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=w3d.xmmax: outer range in r to include in plot
     """
+    rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
     r = [self.radius,self.radius,rmax,rmax,self.radius]
     z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
@@ -2427,6 +2459,13 @@ Sphere
                        kwdict=kw)
     self.dxobject = v
 
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    narcpoints = kw.get('narcpoints',64)
+    theta = span(0.,2.*pi,narcpoints+1)
+    r = self.radius*cos(theta)
+    z = self.radius*sin(theta)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
 #============================================================================
 class ZElliptoid(Sphere,EllipticAssembly):
   """
@@ -2610,6 +2649,13 @@ Torus
                        zcdata=[0.,0.],rcdata=[self.r1,self.r1],
                        kwdict=kw)
     self.dxobject = v
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    narcpoints = kw.get('narcpoints',64)
+    theta = span(0.,2.*pi,narcpoints+1)
+    r = self.r2*cos(theta) + self.r1
+    z = self.r2*sin(theta)
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
 class Beamletplate(Assembly):
@@ -2796,15 +2842,12 @@ data and make sure it is consistent.
     return data
 
   def getplotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints):
-    # --- Note that the zcent is added here but not any transverse offsets.
-    # --- Perhaps a flag could be added specifying whether to add xcent
-    # --- or ycent.
     r = []
     z = []
     for i in range(len(rdata)-1):
       if raddata[i] == largepos:
         r.append(rdata[i])
-        z.append(zdata[i]+self.zcent)
+        z.append(zdata[i])
       else:
         zz = span(zdata[i],zdata[i+1],narcpoints)
         if raddata[i] > 0.:
@@ -2812,9 +2855,15 @@ data and make sure it is consistent.
         else:
           rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
         r = r + list(rr)
-        z = z + list(zz+self.zcent)
+        z = z + list(zz)
     r.append(rdata[-1])
-    z.append(zdata[-1]+self.zcent)
+    z.append(zdata[-1])
+    # --- zcent needs to be added in when chopping the data at zmin and zmax,
+    # --- but then subtracted out since the base plotting routines adds
+    # --- in zcent.
+    z = array(z) + self.zcent
+    z = minimum(self.zmax,maximum(self.zmin,array(z)))
+    z = list(z - self.zcent)
     return r,z
 
 #============================================================================
@@ -2913,17 +2962,19 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1,rmax=None):
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
 Plots the r versus z
- - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
                 specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmax=None: when given, overrides the instance's value of rmax, useful in
               cases when the instance's value of rmax is largepos.
+ - narcpoints=40: number of points to draw along any circular arcs
     """
+    narcpoints = kw.get('narcpoints',40)
+    rmax = kw.get('rmax',None)
     if self.usedata:
       r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
                              self.rcdata,self.zcdata,narcpoints)
@@ -3049,17 +3100,19 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1,rmin=None):
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
 Plots the r versus z
- - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
                 specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
  - rmin: when given, overrides the instance's values of rmin - this is not
          really useful
+ - narcpoints=40: number of points to draw along any circular arcs
     """
+    narcpoints = kw.get('narcpoints',40)
+    rmin = kw.get('rmin',None)
     if self.usedata:
       r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
                              self.rcdata,self.zcdata,narcpoints)
@@ -3234,15 +3287,16 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,narcpoints=40,color='fg',filled=None,fullplane=1):
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
     """
 Plots the r versus z
- - narcpoints=40: number of points to draw along any circular arcs
  - color='fg': color of outline, set to None to not plot the outline
  - filled=None: when set to an integer, fills the outline with the color
                 specified from the current palette. Should be between 0 and 199.
  - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - narcpoints=40: number of points to draw along any circular arcs
     """
+    narcpoints = kw.get('narcpoints',40)
     if self.usemindata:
       ri,zi = self.getplotdata(self.rminofzdata,self.zmindata,self.radmindata,
                                self.rcmindata,self.zcmindata,narcpoints)
