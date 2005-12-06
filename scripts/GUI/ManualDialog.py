@@ -4,7 +4,7 @@ from wxPython.wx import *
 from wxPython.html import *
 from wxPython.lib.anchors import LayoutAnchors
 from wxPython.grid import *
-import os
+import os, sys, string
 import warp
 
 [wxID_PANEL, wxID_PANELBACK, wxID_PANELFORWARD, wxID_PANELHOME, 
@@ -68,6 +68,10 @@ class panel(wxPanel):
     def GoHome(self,which=None):
 	if which is not None:self.which = which
         warp_path = os.path.dirname(warp.__file__)
+        if sys.platform=='cygwin':
+          cpos = string.find(warp_path,'cygdrive')
+          if cpos>=0:
+            warp_path = string.upper(warp_path[cpos+9])+':'+warp_path[cpos+10:]
         if warp_path <> '':warp_path+='/'
         self.html.LoadPage(warp_path+'doc/html/'+self.which+'.html')
 

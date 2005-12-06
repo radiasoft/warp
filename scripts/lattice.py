@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.45 2005/06/13 23:45:05 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.46 2005/12/06 23:58:47 jlvay Exp $"
 
 def latticedoc():
   import lattice
@@ -2897,4 +2897,52 @@ such as contours, and cellarray.
   elif len(ax) == 3:
     # --- Will do isosurface or volume rendering in future
     raise '3-d plot Not yet implemented'
+
+class Emitter:
+  def __init__(self,a,b=None,ap=0.,bp=0.,x=0.,y=0.,z=0.,r=largepos,xp=0.,yp=0.,
+                    theta=0.,phi=0.,amin=0.,bmin=0.,d=1.,f=1.,voltage=0.):
+    
+    if b is None:b=a
+    self.a=a
+    self.b=b
+    self.ap=ap
+    self.bp=bp
+    
+    if top.ainject[0]<>0:
+      top.ninject+=1
+      gchange('InjectVars')
+    self.iinject=top.ninject-1
+    self.emitted_species=[]
+
+    top.ainject[-1]  = a
+    top.binject[-1]  = b
+    top.apinject[-1] = ap
+    top.bpinject[-1] = bp
+    top.xinject[-1]  = x
+    top.yinject[-1]  = y
+    top.zinject[-1]  = z
+    top.xpinject[-1] = xp
+    top.ypinject[-1] = yp
+    top.rinject[-1]  = r
+    top.thetainject[-1] = theta
+    top.phiinject[-1]   = phi
+    top.inj_d[-1]       = d
+    top.inj_f[-1]       = f
+    top.vinject[-1]     = voltage
+
+  def add_component(self,js=None,s=None,emitx=0.,emity=0.,vthperp=0.,vthz=0.,vz=0.,fraction=1.) : 
+    if js is None:
+      try:
+        js=s.jslist[0]
+      except:
+        raise('Error in Emitter.add_component: either js or s must be defined.')
+    
+    gchange('InjectVars')
+    top.vzinject[self.iinject,js] = vz
+    top.finject[self.iinject,js]  = fraction        
+    top.emitx_s[js] = emitx
+    top.emity_s[js] = emity
+    self.emitted_species.append(js)
+
+
 

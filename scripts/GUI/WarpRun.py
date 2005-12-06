@@ -18,6 +18,11 @@ import newstdout
 import wxDialog_proto
 import pygistDialog
 try:
+  import Egun_like_gui
+  l_egun=1
+except:
+  l_egun=0
+try:
   import pyOpenDXDialog
   l_opendx=1
 except:
@@ -362,14 +367,14 @@ class WarpRun(wxFrame):
         self.splitterWindow1.SetAutoLayout(True)
         self.splitterWindow1.SetMinimumPaneSize(30)
 
-        self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
-              name='MessageWindow', parent=self.splitterWindow1, pos=wxPoint(2,
-              357), size=wxSize(580, 310),
-              style=wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
-              value='')
-        self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
-              false, ''))
-        self.MessageWindow.SetBackgroundColour('CADET BLUE')
+#        self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
+#              name='MessageWindow', parent=self.splitterWindow1, pos=wxPoint(2,
+#              357), size=wxSize(580, 310),
+#              style=wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
+#              value='')
+#        self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
+#              false, ''))
+#        self.MessageWindow.SetBackgroundColour('CADET BLUE')
 
         self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
               parent=self.splitterWindow1, pos=wxPoint(2, 2), size=wxSize(612,
@@ -377,8 +382,8 @@ class WarpRun(wxFrame):
         EVT_NOTEBOOK_PAGE_CHANGED(self.notebook1, wxID_WARPRUNNOTEBOOK1,
               self.OnNotebook1NotebookPageChanged)
         EVT_SIZE(self.notebook1, self.OnNotebook1Size)
-        self.splitterWindow1.SplitHorizontally(self.notebook1,
-              self.MessageWindow, 350)
+#        self.splitterWindow1.SplitHorizontally(self.notebook1,
+#              self.MessageWindow, 350)
 
         self.txtEditor = wxTextCtrl(id=wxID_WARPRUNTXTEDITOR, name='txtEditor',
               parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(604, 322),
@@ -430,13 +435,6 @@ class WarpRun(wxFrame):
         self.notebook1.DeletePage(0)
         self.launch_pype()
         self.prefix = ''
-        self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self)
-        self.panels['Pplots']  = self.show_GUI(self.PplotsPanel,  'notebook','Pplots','frame',True)
-        self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
-        self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
-        self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
-        if l_opendx:
-          self.panels['OpenDX']     = self.show_GUI(pyOpenDXDialog,'notebook','OpenDX')
         # start console
         if l_PyCrust:
 	  def shortcuts(): 
@@ -469,21 +467,26 @@ Ctrl+=            Default font size.
 	  self.Crust = py.crust.Crust(self,-1,intro='For help on:\n - WARP      - type "warphelp()",\n - shortcuts - type "shorcuts()".\n\n')
           self.shell = self.Crust.shell
           self.crustnotebook = self.Crust.notebook
-          self.panels['Session']  = self.show_GUI(self.crustnotebook,  'notebook','Session','frame',True)
+          self.Crust.notebook.Reparent(self)
 
           self.Crust.filling.Destroy() # too CPU intensive, might be replaced with WARP data exploration at sopme point
           self.Crust.dispatcherlisting.Destroy() # of no interest
           self.Crust.display.Destroy() # not sure what this window does anyway
           self.crustnotebook.SetPageText(3,'History')
-	  self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.shell)
           self.shell.Reparent(self.splitterWindow1)
+          self.splitterWindow1.SplitHorizontally(self.notebook1,self.shell, 350)
+#          self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.shell)
+#          self.shell.Reparent(self.splitterWindow1)
           self.Crust.Destroy()
-          self.MessageWindow.Destroy()
+#          self.MessageWindow.Destroy()
+          if sys.platform <> 'cygwin':
+              self.panels['Session']  = self.show_GUI(self.crustnotebook,  'notebook','Session','frame',True)
 	  self.Console = self.shell
           self.inter = self.shell.interp
           def SetInsertionPointEnd():  
             self.shell.SetCurrentPos(self.shell.GetTextLength())
           self.shell.SetInsertionPointEnd=SetInsertionPointEnd
+
           __main__.autocomp=self.AutoComp
           __main__.calltip=self.CallTip
           self.CallTip() # turns off calltip
@@ -494,6 +497,15 @@ Ctrl+=            Default font size.
           self.MessageWindow=self.ConsolePanel.Console
           self.Console = self.ConsolePanel.Console
 # old:         self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter, in_notebook=1)
+        self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self)
+        self.panels['Pplots']  = self.show_GUI(self.PplotsPanel,  'notebook','Pplots','frame',True)
+        self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
+        self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
+        self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
+        if l_opendx:
+          self.panels['OpenDX']     = self.show_GUI(pyOpenDXDialog,'notebook','OpenDX')
+        if l_egun:
+          self.panels['Egun']     = self.show_GUI(Egun_like_gui,'notebook','Egun')
         self.notebook1.SetSelection(0) # open notebook on Editor
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
@@ -600,7 +612,7 @@ Ctrl+=            Default font size.
         sys.stdout.flush()
         self.SetPosition((0,0))
         pype.frame.SetPosition(self.GetPosition()+(10,10))
-        if sys.platform <> 'win32':
+        if sys.platform <> 'cygwin':
           pype.frame.Show(0)
  #         panel = WarpPanel.panel(self.notebook1)
  #         self.notebook1.AddPage(imageId=-1, page=panel, select=True, text='Editor')
@@ -1109,7 +1121,7 @@ Ctrl+=            Default font size.
     def OnWinonButton(self, event=None):
         if not self.isgistwindowon:
             winon()
-            if sys.platform <> 'win32':
+            if sys.platform <> 'cygwin':
                 self.HandleGistEvents()
                 self.isgistwindowon = 1
         
@@ -1184,13 +1196,13 @@ Ctrl+=            Default font size.
 	    pass
         else:
             self.OutToMessageWindow()
-        if sys.platform == 'win32':event.Skip()
+        if sys.platform == 'cygwin':event.Skip()
 
     def OnGistButton(self, event):
         import pygistDialog
         self.pygistDialog = pygistDialog.wxDialog1(self)
         self.pygistDialog.Show(1)
-        if sys.platform <> 'win32':event.Skip()
+        if sys.platform <> 'cygwin':event.Skip()
 
     def OnSeparateButton(self, event):
         current = self.notebook1.GetPage(self.notebook1.GetSelection())
