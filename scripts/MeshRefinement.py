@@ -982,8 +982,8 @@ Python version.
       dopbounds = ((child.pbounds[0] == 1 or
                     child.pbounds[1] == 1 or
                     child.pbounds[2] == 1) and
-                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
-                  (u[0] == self.rootdims[0] or
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0 or
+                   u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
 
@@ -1052,8 +1052,8 @@ Fortran version
       dopbounds = ((child.pbounds[0] == 1 or
                     child.pbounds[1] == 1 or
                     child.pbounds[2] == 1) and
-                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
-                  (u[0] == self.rootdims[0] or
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0 or
+                   u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
 
@@ -1097,8 +1097,8 @@ Python version with the loop over the child nodes as the inner loop
       dopbounds = ((child.pbounds[0] == 1 or
                     child.pbounds[1] == 1 or
                     child.pbounds[2] == 1) and
-                  (l[0] == 0 or l[1] == 0 or l[2] == 0) and
-                  (u[0] == self.rootdims[0] or
+                  (l[0] == 0 or l[1] == 0 or l[2] == 0 or
+                   u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
 
