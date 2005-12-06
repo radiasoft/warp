@@ -37,7 +37,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
 import os
-import keyword, traceback, cStringIO, imp, fnmatch, re
+import keyword, traceback, cStringIO, imp, fnmatch, re, string
 import time, pprint
 from wxPython.wx import *
 from wxPython.stc import *
@@ -819,7 +819,12 @@ class MainWindow(wxFrame):
             del self.openfiles[self.getAbsolute(fn, dn)]
 
     def getAbsolute(self, fn, dn):
-        return os.path.normcase(os.path.normpath(os.path.realpath(os.path.join(dn, fn))))
+        res = os.path.normcase(os.path.normpath(os.path.realpath(os.path.join(dn, fn))))
+        if sys.platform=='cygwin':
+          cpos =  string.find(res,':')
+          if cpos>=0:
+            res = res[cpos-1:]
+        return res
     def splitAbsolute(self, path):
         return os.path.split(os.path.normcase(path))
 
@@ -833,6 +838,10 @@ class MainWindow(wxFrame):
         if win.dirname:
             try:
                 ofn = os.path.join(win.dirname, win.filename)
+	        if sys.platform=='cygwin':
+        	  cpos =  string.find(ofn,':')
+          	  if cpos>=0:
+            	    ofn = ofn[cpos-1:]
                 fil = open(ofn, 'wb')
                 txt = win.GetText()
                 fil.write(txt)
