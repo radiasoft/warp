@@ -97,7 +97,11 @@ Input for constructor:
     installbeforefs(self.applyvoltage)
 
   def disable(self):
-    uninstallbeforefs(self.applyvoltage)
+    import __main__
+    if 'AMRtree' in __main__.__dict__:
+      __main__.__dict__['AMRtree'].uninstallbeforefs(self.applyvoltage)
+    else:
+      uninstallbeforefs(self.applyvoltage)
 
   def __setstate__(self,dict):
     # --- This is called when the instance is unpickled.

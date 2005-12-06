@@ -158,6 +158,9 @@ class AMRTree(object,Visualizable):
     def installbeforefs(self,f):
       self.beforefs.installfuncinlist(f)
 
+    def uninstallbeforefs(self,f):
+      self.beforefs.uninstallfuncinlist(f)
+
     def pfxy(self,**kw): self.blocks.pfxy(kwdict=kw)
     def pfzx(self,**kw): self.blocks.pfzx(kwdict=kw)
     def pfzy(self,**kw): self.blocks.pfzy(kwdict=kw)

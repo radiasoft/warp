@@ -136,8 +136,9 @@ Water=Molecule(mass=18.*amu,Symbol='H2O')
 class Species:
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,name=''):
     if js is None:
-      top.ns+=1
-      gchange('*')
+      if top.sm[0]<>0.:
+        top.ns+=1
+        gchange('*')
       js=top.ns-1
     self.jslist=[js]
     self.type=type
