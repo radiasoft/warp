@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.7 $, $Date: 2005/11/12 00:31:32 $
+c version $Revision: 1.8 $, $Date: 2005/12/07 22:36:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -22,10 +22,12 @@ c     use ifcore
       type(GRIDtype):: grid
       real(kind=8):: accuracy
       real(kind=8),allocatable:: iondensityarray(:,:)
+c     integer(4):: fff
 
       integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax
       logical(ISZ):: lrz
 c     call for_set_fpe(FPE_M_TRAP_INV)
+c     fff = for_set_fpe(15_4)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = grid%ixlbnd
@@ -37,7 +39,7 @@ c     --- Set flag for whether to do cylindrical or Cartesian.
       lrz = (solvergeom == RZgeom)
 
 c     --- Create array which holds the specified ion density data
-      allocate(iondensityarray(0:grid%nr,0: grid%nz))
+      allocate(iondensityarray(0:grid%nr,0:grid%nz))
       iondensityarray = 0.
       ixbemin = max(0 ,int((xbemin - grid%rmin)/grid%dr))
       ixbemax = min(grid%nr,int((xbemax - grid%rmin)/grid%dr))
@@ -333,6 +335,7 @@ c       --- Alloate new work space
         endif
  
 c       --- Calculate the coarsened phi
+        phicoarse = 0.
         call restrictberz(nx,nz,nzfull,phi,1,1,
      &                    nxcoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,
      &                    bounds,bounds,lzoffset)
@@ -356,13 +359,18 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
 
         deallocate(Lphi)
 
+c       --- Get the iondensity on the coarse mesh.
+        call restrictberz(nx,nz,nzfull,iondensity,0,0,
+     &                    nxcoarse,nzcoarse,nzfullcoarse,iondensitycoarse,0,0,
+     &                    bounds,bounds,lzoffset)
+
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphiberz(nxcoarse,nzcoarse,nzfullcoarse,
      &                dxcoarsesqi,dzcoarsesqi,xminodxcoarse,
      &                phicoarse,Lphicoarse,
      &                mglevel+1,bounds,mgparam,
      &                lrz,lcndbndy,icndbndy,bnd%next,
-     &                iondensity,electrontemperature,plasmapotential,
+     &                iondensitycoarse,electrontemperature,plasmapotential,
      &                electrondensitymaxscale)
         rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nzcoarse)
         call cond_potmgbezerorz(bnd%next,nxcoarse,nzcoarse,rhocoarse,
@@ -378,11 +386,6 @@ c       --- the corrections after relaxations.
           stop
         endif
         phicoarsesave = phicoarse
-
-c       --- Get the iondensity on the coarse mesh.
-        call restrictberz(nx,nz,nzfull,iondensity,0,0,
-     &                    nxcoarse,nzcoarse,nzfullcoarse,iondensitycoarse,0,0,
-     &                    bounds,bounds,lzoffset)
 
 c       --- Continue at the next coarsest level.
         call vcycleberz(mglevel+iszone,nxcoarse,nzcoarse,nzfullcoarse,
@@ -506,14 +509,14 @@ c     --- Do the loops.
 !$OMP END DO
 
 c     --- Set appropriate boundary values
-      if (delcx == 1) then
-        call applytransversebcberz(nxcoarse,nzcoarse,ucoarse,boundscoarse)
-      endif
+c     if (delcx == 1) then
+c       call applytransversebcberz(nxcoarse,nzcoarse,ucoarse,boundscoarse)
+c     endif
 
-      if (delcz == 1) then
-        call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
-     &                               ucoarse,boundscoarse)
-      endif
+c     if (delcz == 1) then
+c       call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
+c    &                               ucoarse,boundscoarse)
+c     endif
 
       return
       end
@@ -669,7 +672,7 @@ c       --- grid refinement.
             ix1 = ixmin + mod(ixmin + iz + parity,2)
             do ix=ix1,ixmax,2
 
-              if (iondensity(ix,iz) == 0) then
+              if (iondensity(ix,iz) == 0.) then
                 rhoe = 0.
               else
                 expo = (phi(ix,iz) - plasmapotential)/electrontemperature
@@ -700,7 +703,7 @@ c       --- grid refinement.
             ix1 = ixmin + mod(ixmin + iz + parity,2)
             do ix=ix1,ixmax,2
 
-              if (iondensity(ix,iz) == 0) then
+              if (iondensity(ix,iz) == 0.) then
                 rhoe = 0.
               else
                 expo = (phi(ix,iz) - plasmapotential)/electrontemperature
@@ -970,7 +973,7 @@ c         --- calculate the new phi based on the boundary conditions
           if (dosubgrid) then
             delxsqi = dxsqi/delx
             delzsqi = dzsqi/delz
-            if (iondensity(ix,iz) == 0) then
+            if (iondensity(ix,iz) == 0.) then
               rhoe = 0.
             else
               expo = (pik - plasmapotential)/electrontemperature
@@ -1089,9 +1092,9 @@ c     --- Zero the Lphi inside conductors.
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
         call condbndylphiberz(bnd,nx,nz,phi,lphi,dxsqi,dzsqi,xminodx,bounds,
-     &                       mglevel,lrz,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential,
-     &                       electrondensitymaxscale)
+     &                        mglevel,lrz,icndbndy,
+     &                        iondensity,electrontemperature,plasmapotential,
+     &                        electrondensitymaxscale)
       endif
 
 c     --- Transverse boundaries
@@ -1114,9 +1117,9 @@ c     --- Longitudinal boundaries
       end
 c=============================================================================
       subroutine condbndylphiberz(bnd,nx,nz,phi,lphi,dxsqi,dzsqi,xminodx,
-     &                           bounds,mglevel,lrz,icndbndy,
-     &                           iondensity,electrontemperature,plasmapotential,
-     &                           electrondensitymaxscale)
+     &                            bounds,mglevel,lrz,icndbndy,
+     &                            iondensity,electrontemperature,
+     &                            plasmapotential,electrondensitymaxscale)
       use Constant
       use BNDtypemodule
       use CONDtypemodule
