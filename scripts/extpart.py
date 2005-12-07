@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.47 2005/12/01 02:03:37 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.48 2005/12/07 22:38:04 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -862,6 +862,19 @@ each species and each one in the list. Also assign colors accordingly
       kw['lframe'] = 1
     settitles("Vz vs time","time","Vz",self.titleright(tc,wt,z))
     return ppgeneric(vz,t,kwdict=kw)
+
+  ############################################################################
+  def ptkez(self,js=0,tc=None,wt=None,tp=None,z=None,**kw):
+    """Plots time-kinetic energy for extraploated particles"""
+    self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptkez,(js,tc,wt,tp,z),kw): return
+    t = self.gett(js,tc,wt,tp,z)
+    vz = self.getvz(js,tc,wt,tp)
+    kez = 0.5*top.sm[js]*vz**2/jperev
+    if 'pplimits' in kw.keys():
+      kw['lframe'] = 1
+    settitles("KEz vs time","time","KE (volts)",self.titleright(tc,wt,z))
+    return ppgeneric(kez,t,kwdict=kw)
 
   ############################################################################
   def ptrace(self,js=0,tc=None,wt=None,tp=None,z=None,slope=0.,
