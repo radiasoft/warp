@@ -168,27 +168,48 @@ class Species:
       top.nion_s[js]=type.Z
     except:
       pass
-    
-  def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,nz=None,lost=0,charge=0):
+     
+  def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,nz=None,lost=0,charge=0,dens=None):
     if xmin is None:xmin=w3d.xmmin
     if xmax is None:xmax=w3d.xmmax
-    if nx is None:nx=w3d.nx
     if ymin is None:ymin=w3d.ymmin
     if ymax is None:ymax=w3d.ymmax
-    if ny is None:ny=w3d.ny
     if zmin is None:zmin=w3d.zmmin
     if zmax is None:zmax=w3d.zmmax
-    if nz is None:nz=w3d.nz
-    density = fzeros([nx+1,ny+1,nz+1],'d')
-    js=self.js
-    if top.nps[js]==0:return density
-    x=getx(js=js,lost=lost)
-    y=gety(js=js,lost=lost)
-    z=getz(js=js,lost=lost)
-    np=shape(x)[0]
-    print js,np,shape(x),shape(y),shape(z),top.nps[js]
-    setgrid3d(np,x,y,z,nx,ny,nz,density,xmin,xmax,ymin,ymax,zmin,zmax)
-    density*=top.sw[js]*nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
-    if charge:density*=top.sq[js]
-    return density
+    if dens is None:
+      if nx is None:nx=w3d.nx
+      if ny is None:ny=w3d.ny
+      if nz is None:nz=w3d.nz
+      density = fzeros([nx+1,ny+1,nz+1],'d')
+      densityc = fzeros([nx+1,ny+1,nz+1],'d')
+    else:
+      nx = shape(dens)[0]-1
+      ny = shape(dens)[1]-1
+      nz = shape(dens)[2]-1
+      density = dens
+      densityc = fzeros([nx+1,ny+1,nz+1],'d')
+
+    np=0
+    for js in self.jslist:
+      np+=top.nps[js]
+    if np==0:
+      if dens is None:
+        return density
+      else:
+        return
+    for js in self.jslist:
+      print js
+      x=getx(js=js,lost=lost)
+      y=gety(js=js,lost=lost)
+      z=getz(js=js,lost=lost)
+      np=shape(x)[0]
+      w=top.sw[js]*ones(np,'d')
+      if charge:w*=top.sq[js]    
+      deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+    density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+    if dens is None:return density
   
+  def addpart(self,x,y,z,vx,vy,vz,js=None):
+      if js is None:
+        js=self.jslist[0]
+      addparticles(x,y,z,vx,vy,vz,js=js)

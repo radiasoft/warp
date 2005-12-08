@@ -13,7 +13,7 @@ import timing as t
 import time
 import __main__
 
-secondaries_version = "$Id: Secondaries.py,v 1.3 2005/10/31 23:14:08 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.4 2005/12/08 23:24:44 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -486,7 +486,7 @@ Class for generating secondaries
               __main__.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
-              addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new)
+              self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new)
             
           t.finish()
           tadd+=t.micro()
