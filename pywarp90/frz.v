@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.43 $, $Date: 2005/10/29 00:05:30 $
+#@(#) File FRZ.V, version $Revision: 3.44 $, $Date: 2005/12/08 01:25:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.43 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.44 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -251,7 +251,8 @@ lphiberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
 restrictberz(nx:integer,nz:integer,nzfull:integer,u:real,delx:integer,delz:integer,
              nxcoarse:integer,nzcoarse:integer,nzfullcoarse:integer,ucoarse:real,
              delcx:integer,delcz:integer,
-             bounds:integer,boundscoarse:integer,lzoffset:integer) subroutine
+             bounds:integer,boundscoarse:integer,lzoffset:integer,
+             withoutzeros:logical) subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
