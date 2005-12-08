@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.8 $, $Date: 2005/12/07 22:36:59 $
+c version $Revision: 1.9 $, $Date: 2005/12/08 01:25:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -52,6 +52,10 @@ c     --- Create array which holds the specified ion density data
         else
           iondensityarray(ixbemin:ixbemax,izbemin:izbemax) = iondensity
         endif
+c       if (maxval(grid%phi(ixbemin:ixbemax,izbemin:izbemax)) == 0. .and.
+c    &      minval(grid%phi(ixbemin:ixbemax,izbemin:izbemax)) == 0.) then
+c         grid%phi(ixbemin:ixbemax,izbemin:izbemax) = plasmapotential
+c       endif
       endif
 
       call multigridberzsolve(grid%nr,grid%nz,grid%nz,grid%dr,grid%dz,
@@ -338,7 +342,7 @@ c       --- Calculate the coarsened phi
         phicoarse = 0.
         call restrictberz(nx,nz,nzfull,phi,1,1,
      &                    nxcoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,
-     &                    bounds,bounds,lzoffset)
+     &                    bounds,bounds,lzoffset,.false.)
         call cond_potmgberz(bnd%next,nxcoarse,nzcoarse,phicoarse,mglevel+1)
         call applytransversebcberz(nxcoarse,nzcoarse,phicoarse,bounds)
         call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
@@ -355,14 +359,14 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call applylongitudinalbcberz(nx,nz,nzfull,Lphi,bounds)
         call restrictberz(nx,nz,nzfull,Lphi,1,1,
      &                    nxcoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,
-     &                    bounds,bounds,lzoffset)
+     &                    bounds,bounds,lzoffset,.false.)
 
         deallocate(Lphi)
 
 c       --- Get the iondensity on the coarse mesh.
         call restrictberz(nx,nz,nzfull,iondensity,0,0,
      &                    nxcoarse,nzcoarse,nzfullcoarse,iondensitycoarse,0,0,
-     &                    bounds,bounds,lzoffset)
+     &                    bounds,bounds,lzoffset,.true.)
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphiberz(nxcoarse,nzcoarse,nzfullcoarse,
@@ -427,7 +431,7 @@ c=============================================================================
       subroutine restrictberz(nx,nz,nzfull,u,delx,delz,
      &                        nxcoarse,nzcoarse,nzfullcoarse,ucoarse,
      &                        delcx,delcz,
-     &                        bounds,boundscoarse,lzoffset)
+     &                        bounds,boundscoarse,lzoffset,withoutzeros)
       integer(ISZ):: nx,nz,nzfull,delx,delz,delcx,delcz
       integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
       real(kind=8):: u(-delx:nx+delx,-delz:nz+delz)
@@ -435,8 +439,12 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lzoffset
+      logical(ISZ):: withoutzeros
       
 c Restrict to a coarser grid.
+c The withoutzeros option is for the restriction of the iondensity, so that
+c for a constant value, it stays constant within the region of the plasm
+c domain.
 
       integer(ISZ):: ix,iz
       integer(ISZ):: ixcoarse,izcoarse
@@ -498,11 +506,16 @@ c     --- Do the loops.
           w = 0.
           do iz=izmin,izmax
               do ix=ixmin,ixmax
+                if (withoutzeros .and. u(ix,iz) == 0.) cycle
                 r = r + wx(ix-ixmin)*wz(iz-izmin)*u(ix,iz)
                 w = w + wx(ix-ixmin)*wz(iz-izmin)
               enddo
           enddo
-          ucoarse(ixcoarse,izcoarse) = r/w
+          if (w > 0.) then
+            ucoarse(ixcoarse,izcoarse) = r/w
+          else
+            ucoarse(ixcoarse,izcoarse) = 0.
+          endif
 
         enddo
       enddo
