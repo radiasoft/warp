@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.46 2005/12/06 23:58:47 jlvay Exp $"
+lattice_version = "$Id: lattice.py,v 1.47 2005/12/08 23:41:40 jlvay Exp $"
 
 def latticedoc():
   import lattice
@@ -2907,6 +2907,19 @@ class Emitter:
     self.b=b
     self.ap=ap
     self.bp=bp
+    self.x=x
+    self.y=y
+    self.z=z
+    self.r=r
+    self.xp=xp
+    self.yp=yp
+    self.theta=theta
+    self.phi=phi
+    self.amin=amin
+    self.bmin=bmin
+    self.d=d
+    self.f=f
+    self.voltage=voltage
     
     if top.ainject[0]<>0:
       top.ninject+=1

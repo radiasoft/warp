@@ -4,7 +4,7 @@ Ionization: class for generating particles from impact ionization.
 from warp import *
 import time
 
-ionization_version = "$Id: ionization.py,v 1.1 2005/10/31 23:14:55 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.2 2005/12/08 23:36:45 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -17,25 +17,25 @@ Class for generating particles from impact ionization.
  - emitted_species:   created species
  - cross_section: cross sections
   """
-  def __init__(self,l_verbose=0,stride=100,nx=None,ny=None,nz=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
-    self.nx = where(nx is None,w3d.nx,nx)
-    self.ny = where(ny is None,w3d.ny,ny)
-    self.nz = where(nz is None,w3d.nz,nz)
-    self.xmin = where(xmin is None,w3d.xmmin,xmin)
-    self.xmax = where(xmax is None,w3d.xmmax,xmax)
-    self.ymin = where(ymin is None,w3d.ymmin,ymin)
-    self.ymax = where(ymax is None,w3d.ymmax,ymax)
-    self.zmin = where(zmin is None,w3d.zmmin,zmin)
-    self.zmax = where(zmax is None,w3d.zmmax,zmax)    
+  def __init__(self,l_verbose=0,stride=100,nx=None,ny=None,nz=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None,l_timing=false):
+    self.nx = int(where(nx is None,w3d.nx,nx))
+    self.ny = int(where(ny is None,w3d.ny,ny))
+    self.nz = int(where(nz is None,w3d.nz,nz))
+    self.xmin = float(where(xmin is None,w3d.xmmin,xmin))
+    self.xmax = float(where(xmax is None,w3d.xmmax,xmax))
+    self.ymin = float(where(ymin is None,w3d.ymmin,ymin))
+    self.ymax = float(where(ymax is None,w3d.ymmax,ymax))
+    self.zmin = float(where(zmin is None,w3d.zmmin,zmin))
+    self.zmax = float(where(zmax is None,w3d.zmmax,zmax))   
     self.dx=(self.xmax-self.xmin)/w3d.nx
     self.dy=(self.ymax-self.ymin)/w3d.ny
     self.dz=(self.zmax-self.zmin)/w3d.nz
+    self.ndensc=fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
     self.invvol=1./(self.dx*self.dy*self.dz)
     self.l_verbose=l_verbose
     self.stride=stride
-    self.ndens=zeros((self.nx+1,self.ny+1,self.nz+1),'d')
-    self.ndensc=zeros((self.nx+1,self.ny+1,self.nz+1),'d')
     self.inter={}
+    self.target_dens={}
     self.npmax=4096
     self.nps={}
     self.x={}
@@ -44,6 +44,7 @@ Class for generating particles from impact ionization.
     self.vx={}
     self.vy={}
     self.vz={}
+    self.l_timing=l_timing
     self.install()
     
   def add(self,incident_species,emitted_species,cross_section,target_species=None,ndens=None):
@@ -56,6 +57,15 @@ Class for generating particles from impact ionization.
     self.inter[incident_species]['emitted_species'] +=[emitted_species]
     self.inter[incident_species]['cross_section']   +=[cross_section]
     self.inter[incident_species]['ndens']           +=[ndens]
+    if target_species is not None:
+      if not self.target_dens.has_key(target_species):
+        self.target_dens[target_species]={}
+        for key in ['ndens','ndens_updated']:
+          self.target_dens[target_species][key]=[]
+        self.target_dens[target_species]['ndens']           =fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
+        self.target_dens[target_species]['ndens_updated']   =0
+      
+    self.inter[incident_species]['cross_section']   +=[cross_section]
     for e in emitted_species:
       js=e.jslist[0]
       if not self.x.has_key(js):
@@ -147,7 +157,9 @@ Class for generating particles from impact ionization.
 #printall(io,l_cgm=1)
 
   def generate(self):
-    t1 = time.clock()
+    if self.l_timing:t1 = time.clock()
+    for target_species in self.target_dens.keys():
+      self.target_dens[target_species]['ndens_updated']=0    
     for incident_species in self.inter.keys():
       npinc = 0
       ispushed=0
@@ -157,15 +169,21 @@ Class for generating particles from impact ionization.
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
-        if target_species is None:
-          ndens=self.inter[incident_species]['ndens'][it]
+        ndens=self.inter[incident_species]['ndens'][it]
+        if ndens is not None:
+          continue
         else:
+          if self.target_dens[target_species]['ndens_updated']:
+            continue
+          else:
+            self.target_dens[target_species]['ndens_updated']=1
+          ndens = self.target_dens[target_species]['ndens']
           nptarget=0
           for jstarget in target_species.jslist:
             nptarget+=top.nps[jstarget]
           if nptarget==0:continue
-          self.ndens[...]=0.
           self.ndensc[...]=0.
+          ndens[...]=0.
           for jstarget in target_species.jslist:
             i1 = top.ins[jstarget] - 1
             i2 = top.ins[jstarget] + top.nps[jstarget] - 1
@@ -179,12 +197,23 @@ Class for generating particles from impact ionization.
             elif w3d.l2symtry:
               fact=0.5
             if w3d.l2symtry or w3d.l4symtry:yt=abs(yt)
-            deposgrid3d(1,top.nps[jstarget],xt,yt,zt,top.sw[jstarget]*self.invvol*fact*ones(top.nps[jstarget]), \
-                        self.nx,self.ny,self.nz,self.ndens,self.ndensc, \
+            deposgrid3d(1,top.nps[jstarget],xt,yt,zt,top.sw[jstarget]*self.invvol*fact*ones(top.nps[jstarget],'d'), \
+                        self.nx,self.ny,self.nz,ndens,self.ndensc, \
                         self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)    
+
 #          if w3d.l2symtry or w3d.l4symtry:self.ndens[:,0,:]*=2.
 #          if w3d.l4symtry:self.ndens[0,:,:]*=2.
-          ndens=self.ndens
+      
+    for incident_species in self.inter.keys():
+      npinc = 0
+      ispushed=0
+      for js in incident_species.jslist:
+        npinc+=top.nps[js]
+        if top.it%top.ndts[js]==0:ispushed=1
+      if npinc==0 or not ispushed:continue
+      for it,target_species in enumerate(self.inter[incident_species]['target_species']):
+        cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
+        ndens=self.inter[incident_species]['ndens'][it]
         for js in incident_species.jslist:
           i1 = top.ins[js] - 1 + top.it%self.stride
           i2 = top.ins[js] + top.nps[js] - 1
@@ -197,11 +226,15 @@ Class for generating particles from impact ionization.
           vyi=top.uyp[i1:i2:self.stride]*gaminvi#.copy()
           vzi=top.uzp[i1:i2:self.stride]*gaminvi#.copy()
           vi=sqrt(vxi*vxi+vyi*vyi+vzi*vzi)
-          dp=zeros(ni,'d')
-          getgrid3d(ni,xi,yi,zi,dp,
-                      self.nx,self.ny,self.nz,ndens, \
-                      self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
-                      w3d.l2symtry,w3d.l4symtry)    
+          if ndens is not None:
+            dp=ndens
+          else:
+            ndens = self.target_dens[target_species]['ndens']
+            dp=zeros(ni,'d')
+            getgrid3d(ni,xi,yi,zi,dp,
+                        self.nx,self.ny,self.nz,ndens, \
+                        self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
+                        w3d.l2symtry,w3d.l4symtry)    
           # probability
           ncol = dp*cross_section*vi*top.dt*top.ndts[js]*self.stride
           l_ionization_projectile=0
@@ -246,5 +279,5 @@ Class for generating particles from impact ionization.
       self.flushpart(js)
       processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
                        
-    print 'time ionization = ',time.clock()-t1,'s'
+    if self.l_timing:print 'time ionization = ',time.clock()-t1,'s'
 

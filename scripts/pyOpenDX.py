@@ -14,11 +14,15 @@ try:
 except:
   pass
 import __main__
-__main__.selectbox = 1
+__main__.selectbox = 0
 __main__.l_hardware_acceleration = 1
 __main__.l_dxforceupdate = 0
 __main__.l_dxupdate_all_windows = 1
 __main__.l_dxnewwindow = 0
+__main__.l_dxresetcamera=0 
+__main__.dxperspective = 0
+__main__.dxangle = 30
+__main__.dxtimerconstant = 10#0 # time between each interruption in ms
 __main__.DXWindows={}
 
 try:
@@ -28,7 +32,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.24 2004/12/22 21:53:20 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.25 2005/12/08 23:40:53 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -85,23 +89,65 @@ def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=
                        labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale,normalize=1)
 
 ###########################################################################
-def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
+def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz',display=1,color=None,intensity=1.,
+                    opacity=0.5,colorbar=1,colormap=None,include_mins=None,include_maxs=None,exclude_mins=None,exclude_maxs=None):
   if origins is None: origins = [0.,0.,0.]
   if deltas is None: deltas = [1.,1.,1.]
   f = DXObject_fromarray(data,origins,deltas)
+
+  if exclude_mins is not None and exclude_maxs is None:
+    exclude_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+  if exclude_maxs is not None and exclude_mins is None:
+    exclude_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+  if exclude_mins is not None:   
+    f=DXExcavate(f,exclude_mins,exclude_maxs)
+
+  if include_mins is not None and include_maxs is None:
+    include_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+  if include_maxs is not None and include_mins is None:
+    include_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+  if include_mins is not None:   
+    f=DXUnmark( DXInclude( DXMark(f,'positions') ,include_mins,include_maxs) ,'positions')
+
+  if type(isovalue) is type([]) or type(isovalue) is type(array(0)):
+    isovalues=array(isovalue).astype(Float32)
+    isovalue=DXNewArray(TYPE_FLOAT,CATEGORY_REAL,0)
+    DXAddArrayData(isovalue,0,shape(isovalues)[0],isovalues)
 
   minput = {'data':f,'value':isovalue}
   moutput = ['surface']
   (isosurface,) = DXCallModule('Isosurface',minput,moutput)
 
-  DXReference(isosurface)
-  minput = {'object':isosurface}
-  moutput = ['camera']
-  (camera,) = DXCallModule('AutoCamera',minput,moutput)
+  if color is not None:
+    if color=='auto' or colormap is not None:
+      if colormap is None:
+        isosurface,colormap = DXAutoColor(isosurface,opacity=opacity,intensity=intensity)
+      else:
+        isosurface = DXColor(isosurface,color=colormap,opacity=opacity)        
+    elif color=='greyscale':
+      isosurface = DXAutoGrayScale(isosurface,opacity=opacity,saturation=intensity)
+    else:
+      isosurface = DXColor(isosurface,color=color,opacity=opacity)
 
-  DXImage(isosurface,camera,name)
+  if color is not None and colorbar:
+    dxcolorbar = DXColorBar(colormap)
 
-def viewisosurface(data,isovalue,name='WARP viz'):
+  if display:
+    DXReference(isosurface)
+    minput = {'object':isosurface}
+    moutput = ['camera']
+    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    if color is not None and colorbar:
+      DXImage(DXCollect([isosurface,dxcolorbar]),camera,name)
+    else:
+      DXImage(isosurface,camera,name)
+  else:
+    if color is not None and colorbar:
+      return isosurface,dxcolorbar
+    else:
+      return isosurface
+
+def viewisosurface(data,isovalue,name='WARP viz',display=1):
   f = DXObject_fromarray(data)
   DXReference(f)
 
@@ -126,11 +172,40 @@ def viewisosurface(data,isovalue,name='WARP viz'):
   moutput = ['group']
   (group,) = DXCallModule('Collect',minput,moutput)
 
-  DXImage(group,camera,name)
+  if display:
+    DXImage(group,camera,name)
+  else:
+    return group
 
+def viewcoloredvolume(data,display=1,origins=None,deltas=None,name='WARP viz',opacity=0.5,intensity=2.):
+  if origins is None: origins = [0.,0.,0.]
+  if deltas is None: deltas = [1.,1.,1.]
+  f = DXObject_fromarray(data,origins,deltas)
+
+  dxobject,colormap = DXAutoColor(f,opacity=opacity,intensity=intensity)
+  if display:
+    DXImage(dxobject,camera=None,name=name)
+  else:
+    return fxobject
+  
+def viewgreyscalevolume(data,display=1,origins=None,deltas=None,name='WARP viz',opacity=0.5,hue=0.,saturation=0.):
+  if origins is None: origins = [0.,0.,0.]
+  if deltas is None: deltas = [1.,1.,1.]
+  f = DXObject_fromarray(data,origins,deltas)
+
+#  if color is not None:
+#    f = DXColor(f,color)
+  dxobject = DXAutoGrayScale(f,opacity=opacity,hue=hue,saturation=saturation)
+  if display:
+    DXImage(dxobject,camera=None,name=name)
+  else:
+    return fxobject
+  
 ###########################################################################
 def viewparticles(x,y,z,v,labels=None,name=None,
-                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None):
+                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None,
+                  color=None,intensity=1.,opacity=0.5,colorbar=1,colormap=None,
+                  include_mins=None,include_maxs=None,exclude_mins=None,exclude_maxs=None):
   if stride==1:
     x = gatherarray(x)
     y = gatherarray(y)
@@ -142,6 +217,37 @@ def viewparticles(x,y,z,v,labels=None,name=None,
     z = gatherarray(z[::stride])
     v = gatherarray(v[::stride])
   if me > 0: return
+
+  if 1: # alternative to method below
+  # include/exclude particles
+   if exclude_mins is not None and exclude_maxs is None:
+    exclude_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+   if exclude_maxs is not None and exclude_mins is None:
+    exclude_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+   if exclude_mins is not None:   
+     n = len(x);
+     ii = compress( 1- array((x>=exclude_mins[0]) & (x<=exclude_maxs[0]) & \
+                             (y>=exclude_mins[1]) & (y<=exclude_maxs[1]) & \
+                             (z>=exclude_mins[2]) & (z<=exclude_maxs[2])),arange(n))
+     x = take(x,ii)
+     y = take(y,ii)
+     z = take(z,ii)
+     v = take(v,ii)
+     
+   if include_mins is not None and include_maxs is None:
+    include_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+   if include_maxs is not None and include_mins is None:
+    include_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+   if include_mins is not None:   
+     n = len(x)
+     ii = compress((x>=include_mins[0]) & (x<=include_maxs[0]) & \
+                   (y>=include_mins[1]) & (y<=include_maxs[1]) & \
+                   (z>=include_mins[2]) & (z<=include_maxs[2]),arange(n))
+     x = take(x,ii)
+     y = take(y,ii)
+     z = take(z,ii)
+     v = take(v,ii)
+
   # --- First combine particle data and create a DX array
   n = len(x)
   p = zeros((n,3),'d')
@@ -159,12 +265,26 @@ def viewparticles(x,y,z,v,labels=None,name=None,
   DXSetComponentValue(dxf,'positions',dxp)
   DXSetComponentValue(dxf,'data',dxd)
   DXEndField(dxf)
+  
+  if 0: #for some reason, it does not work
+  # include/exclude particles
+   if exclude_mins is not None and exclude_maxs is None:
+    exclude_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+   if exclude_maxs is not None and exclude_mins is None:
+    exclude_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+   if exclude_mins is not None:   
+    dxf=DXExcavate(dxf,exclude_mins,exclude_maxs)
+
+   if include_mins is not None and include_maxs is None:
+    include_maxs=[w3d.xmmax,w3d.ymmax,w3d.zmmax]
+   if include_maxs is not None and include_mins is None:
+    include_mins=[w3d.xmmin,w3d.ymmin,w3d.zmmin]
+   if include_mins is not None:   
+    dxf=DXUnmark( DXInclude( DXMark(dxf,'positions') ,include_mins,include_maxs) ,'positions')
 
   # --- Create glyphs to render data
   if scale is not None:
-    origin = array([0.,0.,0.]).astype(Float32)
-    dxorigin = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
-    DXAddArrayData(dxorigin,0,1,origin)
+    dxorigin = DXVector([0.,0.,0.])
 
     dxdata = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,0)
     DXAddArrayData(dxdata,0,1,array(1.,Float32))
@@ -177,8 +297,7 @@ def viewparticles(x,y,z,v,labels=None,name=None,
     moutput = ['glyphs']
     (glyph,) = DXCallModule('Glyph',minput,moutput)
     
-    dxscale = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
-    DXAddArrayData(dxscale,0,1,array([1./scale[0],1./scale[1],1./scale[2]],Float32))
+    dxscale = DXVector([1./scale[0],1./scale[1],1./scale[2]])
     minput  = {'input':glyph,'scaling':dxscale}
     moutput = ['output']
     (type,) = DXCallModule('Scale',minput,moutput)
@@ -187,14 +306,30 @@ def viewparticles(x,y,z,v,labels=None,name=None,
   moutput = ['glyphs']
   (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
 
-  minput = {'data':glyphs}#,'opacity':.5} # significant slow down with opacity<1.
-  moutput = ['mapped']
-  (dxobject,) = DXCallModule('AutoColor',minput,moutput)
+  if color is not None:
+    if color=='auto' or colormap is not None:
+      if colormap is None:
+        glyphs,colormap = DXAutoColor(glyphs,opacity=opacity,intensity=intensity)
+      else:
+        glyphs = DXColor(glyphs,color=colormap,opacity=opacity)        
+    elif color=='greyscale':
+      glyphs = DXAutoGrayScale(glyphs,opacity=opacity,saturation=intensity)
+    else:
+      glyphs = DXColor(glyphs,color=color,opacity=opacity)
+
+  if color is not None and colorbar:
+    dxcolorbar = DXColorBar(colormap)
 
   if display:
-    DXImage(dxobject,name=name,labels=labels,scale=scale)
+    if color is not None and colorbar:
+      DXImage(DXCollect([glyphs,dxcolorbar]),name=name,labels=labels,scale=scale)
+    else:
+      DXImage(glyphs,name=name,labels=labels,scale=scale)
   else:
-    return dxobject
+    if color is not None and colorbar:
+      return glyphs,dxcolorbar
+    else:
+      return glyphs
 
 ###########################################################################
 def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
@@ -364,6 +499,11 @@ reference to the dxobject is deleted.
       self.createdxobject(kwdict=kw)
     dxobject = self.dxobject
     del self.dxobject
+    if __main__.selectbox:
+      try:
+        dxobject.SelectBox()
+      except:
+        pass
     return dxobject
   def visualize(self,kwdict={},**kw):
     """
@@ -451,24 +591,289 @@ def DXSuperviseWindow(name,visibility=1):
     return DXCallModule('SuperviseWindow',minput,moutput)
 
 def DXScale(dxobject,scale):
-    dxscale = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
-    DXAddArrayData(dxscale,0,1,array(scale,Float32))
-    minput  = {'input':dxobject,'scaling':dxscale}
+    minput  = {'input':dxobject,'scaling':DXVector(scale)}
     moutput = ['output']
     (dxobject_out,) = DXCallModule('Scale',minput,moutput)
     return dxobject_out
 
-def DXAutoAxes(dxobject,camera,labels):
+def DXAutoAxes(dxobject,camera,labels,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.):
     assert (len(labels) == 3),"Length of labels list must be three"
     DXReference(camera)
     labels = DXMakeStringList(labels)
-    minput = {'input':dxobject,'camera':camera,'labels':labels,
-              'ticks':3,'adjust':1,'colors':'grey'}#'yellow'}
+    minput = {'input':dxobject,
+              'camera':camera,
+              'labels':labels,
+              'ticks':ticks,
+              'frame':frame,
+              'adjust':adjust,
+              'grid':grid,
+              'colors':colors,
+              'annotation':annotation,
+              'labelscale':labelscale}
     moutput = ['axes']
     (dxobject_out,) = DXCallModule('AutoAxes',minput,moutput)
     return dxobject_out
 
-def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None):
+def DXAutoColor(dxobject,opacity=None,intensity=None,start=None,range=None,saturation=None,
+                min=None,max=None,delayed=None,outofrange=None):
+    minput = {'data':dxobject}
+    moutput = ['mapped','colormap']
+    if opacity is not None:minput['opacity']=opacity
+    if intensity is not None:minput['intensity']=intensity
+    if start is not None:minput['start']=start
+    if range is not None:minput['range']=range
+    if saturation is not None:minput['saturation']=saturation
+    if min is not None:minput['min']=min
+    if max is not None:minput['max']=max
+    if delayed is not None:minput['delayed']=delayed
+    if outofrange is not None:minput['outofrange']=outofrange
+    (dxobject_out,colormap) = DXCallModule('AutoColor',minput,moutput)
+    return dxobject_out,colormap
+
+def DXAutoGrayScale(dxobject,opacity=0.5,hue=0.,saturation=0.):
+    minput = {'data':dxobject,'opacity':opacity,'hue':hue,'saturation':saturation}
+    moutput = ['mapped']
+    (dxobject_out,) = DXCallModule('AutoGrayScale',minput,moutput)
+    return dxobject_out
+
+def DXColor(dxobject,color=None,opacity=0.5,component='colors',delayed=0):
+    if color is None:
+      return dxobject
+    minput = {'input':dxobject,'color':color,'opacity':opacity,'delayed':delayed}
+    moutput = ['colored']
+    (dxobject_out,) = DXCallModule('Color',minput,moutput)
+    return dxobject_out
+
+def DXColorBar(colormap,position=None,shape=None,horizontal=None,ticks=None,min=None,max=None,label=None,colors=None,
+               annotation=None,labelscale=None,font=None,ticklocations=None,ticklabels=None,background=None):
+    minput = {'colormap':colormap}
+    moutput = ['colorbar']
+    if position is not None:minput['position']=DXVector(position)
+    if shape is not None:minput['shape']=DXVector(shape)
+    if horizontal is not None:minput['horizontal']=horizontal
+    if ticks is not None:minput['ticks']=ticks
+    if min is not None:minput['min']=min
+    if max is not None:minput['max']=max
+    if label is not None:minput['label']=label
+    if colors is not None:minput['colors']=colors
+    if annotation is not None:minput['annotation']=annotation
+    if labelscale is not None:minput['labelscale']=labelscale
+    if font is not None:minput['font']=font
+    if ticklocations is not None:minput['ticklocations']=ticklocations
+    if ticklabels is not None:minput['ticklabels']=ticklabels
+    (colorbar1,) = DXCallModule('ColorBar',minput,moutput)
+    if background is not None:
+      if position is not None:minput['position']=DXVector(position)
+      if shape is None:
+        minput['shape']=DXVector([320,110])
+      else:
+        minput['shape']=DXVector([shape[0]+20,shape[1]+85])
+      minput['colormap']=DXColormap(min=0.,max=1.,ncolors=2,colors=[[0.,0.,0.],[0.,0.,0.]])[0]
+      minput['labelscale']=0.
+      CBbackground = DXColor(DXCallModule('ColorBar',minput,moutput)[0],background,opacity=1.)
+      colorbar=DXCollect([colorbar1,CBbackground])
+    else:
+      colorbar=colorbar1
+      
+    return colorbar
+
+def DXColormap(data=None,min=None,max=None,ncolors=None,colorstart=None,colorend=None,colors=None,opacitystart=None,opacityend=None,opacities=None):
+    if data is not None:
+      if min is None:min=minnd(data)
+      if max is None:max=maxnd(data)
+    if ncolors is None:ncolors=256
+    if colors is None:
+      if colorstart is None:colorstart=[0.,0.,1.]
+      if colorend is None:colorend=[1.,0.,0.]
+      colorstart=array(colorstart)
+      colorend=array(colorend)
+    if opacities is None:
+      if opacitystart is None: opacitystart=1.
+      if opacityend is None: opacityend=1.
+    dxpositions=[]
+    dxcolors = []
+    dxopacities = []
+    dc = 1./float(ncolors-1)
+    dp = (max-min)/(ncolors)
+    do = (opacityend-opacitystart)/(ncolors)
+    for i in range(ncolors+1):
+      if i<ncolors:
+        if colors is None:
+          alpha = i*dc
+          dxcolors.append((1.-alpha)*colorstart+alpha*colorend)
+        else:
+          dxcolors.append(colors[i])
+      dxpositions.append([min+i*dp])
+      if opacities is None:
+        dxopacities.append([opacitystart+i*do])
+      else:
+        dxopacities.append([opacities[i]])
+    dxpositions=DXVector(dxpositions)
+    dxcolors=DXVector(dxcolors)
+    dxopacities=DXVector(dxopacities)
+    DXReference(dxpositions)
+ 
+    colormap  = DXConstruct(origin=dxpositions,data=dxcolors)
+    opacities = DXConstruct(origin=dxpositions,data=dxopacities)
+
+    DXDelete(dxpositions)
+    return colormap,opacities
+    
+def DXConstruct(origin=None,deltas=None,counts=None,data=None):
+    minput = {}
+    moutput = ['output']
+    if origin is not None:minput['origin']=origin
+    if deltas is not None:minput['deltas']=deltas
+    if counts is not None:minput['counts']=counts
+    if data is not None:minput['data']=data
+    (dxobject,) = DXCallModule('Construct',minput,moutput)
+    return dxobject
+
+
+def DXGlyph(data,type=None,shape=None,scale=None,ratio=None,min=None,max=None,auto=0):
+    minput = {'data':data}
+    moutput = ['glyphs']
+    if type is not None:minput['type']=type
+    if shape is not None:minput['shape']=shape
+    if scale is not None:minput['scale']=scale
+    if ratio is not None:minput['ratio']=ratio
+    if min is not None:minput['min']=min
+    if max is not None:minput['max']=max
+    if auto:
+      (dxobject_out,) = DXCallModule('AutoGlyph',minput,moutput)
+    else:
+      (dxobject_out,) = DXCallModule('Glyph',minput,moutput)
+    return dxobject_out
+
+def DXAutoGlyph(data,type=None,shape=None,scale=None,ratio=None,min=None,max=None,auto=0):
+    return DXGlyph(data,type,shape,scale,ratio,min,max,auto=1)
+
+def DXMark(dxobject,name):
+    minput = {'input':dxobject,'name':name}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Mark',minput,moutput)
+    return dxobject_out
+
+def DXUnmark(dxobject,name):
+    minput = {'input':dxobject,'name':name}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Unmark',minput,moutput)
+    return dxobject_out
+
+def DXInclude(dxobject,min,max,exclude=0,cull=1,pointwise=0):
+    dxmin = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+    DXAddArrayData(dxmin,0,1,array(min,Float32))
+    dxmax = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+    DXAddArrayData(dxmax,0,1,array(max,Float32))
+    minput = {'data':dxobject,'min':dxmin,'max':dxmax,'exclude':exclude,'cull':cull,'pointwise':pointwise}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Include',minput,moutput)
+    return dxobject_out
+
+def DXExcavate(dxobject,min,max):
+    return DXUnmark( DXInclude( DXMark(dxobject,'positions') ,min,max,exclude=1) ,'positions')
+
+def DXTranslate(dxobject,translation):
+    minput = {'input':dxobject,'translation':DXVector(translation)}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Translate',minput,moutput)
+    return dxobject_out    
+
+def DXShade(dxobject,shade=None,how=None,specular=None,shininess=None,diffuse=None,ambient=None):
+    minput = {'input':dxobject}
+    moutput = ['output']
+    if shade is not None:minput['shade'] = shade
+    if how is not None:minput['how'] = how
+    if specular is not None:minput['specular'] = specular
+    if shininess is not None:minput['shininess'] = shininess
+    if diffuse is not None:minput['diffuse'] = diffuse
+    if ambient is not None:minput['ambient'] = ambient
+    (dxobject_out,) = DXCallModule('Shade',minput,moutput)
+    return dxobject_out    
+    
+def DXSlab(dxobject,dimension,position,thickness=0):
+    minput = {'input':dxobject,'dimension':dimension,'position':position,'thickness':thickness}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Slab',minput,moutput)
+    return dxobject_out    
+
+def DXSlice(dxobject,dimension,position):
+    minput = {'input':dxobject,'dimension':dimension,'position':position}
+    moutput = ['output']
+    (dxobject_out,) = DXCallModule('Slice',minput,moutput)
+    return dxobject_out    
+
+def DXDescribe(dxobject,options="all"):
+    minput={'object':dxobject,'options':options}
+    moutput=[]
+    DXCallModule('Describe',minput,moutput)
+
+def DXPrint(dxobject):
+    minput={'object':dxobject}
+    moutput=[]
+    DXCallModule('Print',minput,moutput)
+
+def DXVector(v,vtype=Float32):
+    """
+Returns DX vector from Numeric array v. The shape of v is [nx,ny,...,r], 
+where r is the rank of the vector and nx,ny,... are the dimensions of the 
+array of vectors. For a scalar vector, just pass a list [vx,vy,vz] or a 
+1-d array. 
+    """
+    if type(v) is type([]):v=array(v)
+#    v=array(v,Float32)
+#    v=v.astype(vtype)
+    dxv = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,shape(v)[-1])
+#    DXAddArrayData(dxv,0,product(shape(v)[:-1]),array(v,Float32))
+    DXAddArrayData(dxv,0,product(shape(v)[:-1]),v.astype(vtype))
+    return dxv
+
+def DXCamera(lookto=[0.,0.,0.],lookfrom=[0.,0.,1.],width=100.,resolution=640,aspect=0.75,up=[0,1,0],perspective=0,angle=30.,background='black'):
+    minput = {'to':DXVector(lookto),
+             'from':DXVector(lookfrom),
+              'width':width,       
+              'resolution':resolution,
+              'aspect':aspect,
+              'up':DXVector(up),
+              'perspective':perspective,
+              'angle':angle,
+              'background':'black'}
+    moutput = ['camera']
+    (camera,) = DXCallModule('Camera',minput,moutput)
+    return camera
+
+def DXAutocamera(dxobject,direction='front',width=100.,resolution=640,aspect=0.75,up=[0,1,0],perspective=0,angle=30.,background='black'):
+    if type(dxobject) is type([]):
+       dxobject=DXVector(direction)
+    else:
+       DXReference(dxobject)
+       width=dxobject
+    if type(direction) is type([]):
+       direction=DXVector(direction)
+    minput = {'object':dxobject,
+              'direction':direction,
+              'width':width,       
+              'resolution':resolution,
+              'aspect':aspect,
+              'up':DXVector(up),
+              'perspective':perspective,
+              'angle':angle,
+              'background':'black'}
+    moutput = ['camera']
+    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    return camera
+
+def DXCollect(dxobjects):
+  minput = {'object':dxobjects[0]}
+  n=len(dxobjects)
+  if n>1:
+    for i in range(1,n):
+      minput['object%g'%i]=dxobjects[i]
+  moutput=['group']
+  (group,) = DXCallModule('Collect',minput,moutput)
+  return group
+
+def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.):
   """
 Displays an image of the input object, allowing mouse controls for moving the
 image. Default mode is rotation. Press 1 for panning, 2 for zooming.
@@ -516,9 +921,10 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
 
   if camera is None:
     DXReference(__main__.dxwindow.dxobject)
-    minput = {'object':__main__.dxwindow.dxobject}
+    minput = {'object':__main__.dxwindow.dxobject,'perspective':__main__.dxperspective,'angle':__main__.dxangle}
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
+  __main__.dxcamera=camera
 
   try:
     __main__.gui_is_on = __main__.wgui.initialized
@@ -534,7 +940,8 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     else:
       if dxwindow.l_dxhaslabels:
         if dxwindow.l_dxrescaled:
-          dxwindow.dxobject = DXAutoAxes(dxwindow.dxobject,camera,labels) 
+          dxwindow.dxobject = DXAutoAxes(dxwindow.dxobject,__main__.dxcamera,labels,
+                                         ticks,frame,adjust,grid,colors,annotation,labelscale) 
           if dxwindow.l_hardware_acceleration:
             DXRendering(dxwindow,rendering='hardware')
           else:
@@ -546,9 +953,11 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       DXReference(dxobject)
       minput = {'where':dxwindow.wwhere,'size':dxwindow.wsize,'events':dxwindow.wevents,
                 'object':dxobject,'mode':dxwindow.interactor,'resetObject':1}
-      if l_init:
-        minput['defaultCamera'] = camera
+      if l_init or __main__.l_dxresetcamera:
+        if not l_init and __main__.l_dxresetcamera:camera=__main__.dxcamera
+        minput['defaultCamera'] = __main__.dxcamera
         minput['resetCamera'] = 1
+        __main__.l_dxresetcamera=0 
       moutput = ['object','camera','where']
       (dxwindow.dobject,dxwindow.dcamera,dxwindow.dwhere,) = DXCallModule('SuperviseState',minput,moutput)
 
@@ -573,8 +982,8 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     try: dxinter.previousmode
     except: dxinter.previousmode = 0
     forceupdate = (((winit.interactor != winit.previousmode) and
-                   (hardware or dxwindow.l_hardware_acceleration)) or 
-                   __main__.l_dxforceupdate)
+                   (hardware or __main__.dxwindow.l_hardware_acceleration)) or 
+                   __main__.l_dxforceupdate or __main__.l_dxresetcamera)
     if __main__.l_dxupdate_all_windows:
       for w in __main__.DXWindows.itervalues():
         if w is not winit:
@@ -607,7 +1016,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       timer = __main__.wgui.dx_timer
     except:
       __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
-      __main__.wgui.dx_timer.Start(100)
+      __main__.wgui.dx_timer.Start(__main__.dxtimerconstant)
   else:
     dxinter(1)
     print "Press 0 for rotation, 1 for panning, 2 for zooming, return to exit."
@@ -657,19 +1066,22 @@ Writes an image of the object to a file.
   if labels is None: labels = group.labels
 
   if camera is None:
-    DXReference(dxobject)
-    minput = {'object':dxobject}
+    DXReference(dxobject) 
+    minput = {'object':dxobject} 
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
 
   if labels is not None:
     assert (len(labels) == 3),"Length of lables list must be three"
     labels = DXMakeStringList(labels)
+    l_delete_camera=1
     DXReference(camera)
     minput = {'input':dxobject,'camera':camera,'labels':labels,
               'ticks':3,'colors':'yellow'}
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
+  else:
+    l_delete_camera=1
 
   if format=="dx" or format=="vrml":
     minput = {'object':dxobject,'name':filename,'format':format}
@@ -681,7 +1093,9 @@ Writes an image of the object to a file.
     (image,) = DXCallModule('Render',minput,moutput)
 
     minput = {'image':image,'name':filename}
-    if format is not None: minput['format'] = format
+    if format is not None: minput['format'] = format+' gamma=1.'
     moutput = []
     DXCallModule('WriteImage',minput,moutput)
 
+  if l_delete_camera:
+    DXDelete(camera)
