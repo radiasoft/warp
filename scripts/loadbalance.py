@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.42 2005/11/21 20:25:50 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.43 2005/12/12 21:29:55 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -156,7 +156,6 @@ recalculated on a finer mesh to give better balancing.
       if vzmaxp > 0.: padright = vzmaxp*top.dt*ii*2
       else:           padright = ii*w3d.dz
     else:             padright = self.padright
-    padright = max(padright,self.padright)
     if self.verbose:
       print "Load balancing padright = ",padright
 
