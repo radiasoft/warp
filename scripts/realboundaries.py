@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.64 2005/10/18 16:28:43 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.65 2005/12/13 20:27:21 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -999,6 +999,9 @@ in the celemid array. It returns each element only once.
     self.lastsolverparams = solverparams
 
     # --- Reset the list of conductors
+    # --- Note that self.conductor is a list of conductors that are always
+    # --- installed. Below, new conductors from any lattice elements are
+    # --- added to the list.
     self.newconductors = copy.copy(self.conductors)
 
     if w3d.solvergeom==w3d.XYgeom: del_conductors()
