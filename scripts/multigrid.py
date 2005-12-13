@@ -26,7 +26,8 @@ class MultiGrid(object):
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves',
+                   'my_index','nslaves','izfsslave','nzfsslave']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
   def __init__(self,**kw):
@@ -113,6 +114,8 @@ class MultiGrid(object):
       self.nzfull = self.nz
       self.zmminglobal = self.zmmin
       self.zmmaxglobal = self.zmmax
+      self.izfsslave = zeros(1)
+      self.nzfsslave = zeros(1) + self.nz
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
@@ -285,15 +288,6 @@ class MultiGrid(object):
     find_mgparam(resetpasses=resetpasses,solver=self)
 
   def solve(self,iwhich=0):
-    if self.nslaves > 1:
-      my_index = top.my_index
-      izfsslave = top.izfsslave
-      nzfsslave = top.nzfsslave
-    else:
-      my_index = 0
-      izfsslave = zeros(1)
-      nzfsslave = zeros(1)
-
     # --- Setup data for bends.
     if top.bends:
 
@@ -319,7 +313,7 @@ class MultiGrid(object):
                        self.lbuildquads,
                        self.gridmode,
                        self.conductors,
-                       top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+                       self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                          self.dx,self.dy,self.dz,self.phi,self.rho,
@@ -330,7 +324,8 @@ class MultiGrid(object):
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
                          self.lbuildquads,self.gridmode,self.conductors,
-                         top.my_index,top.nslaves,top.izfsslave,top.nzfsslave,
+                         self.my_index,self.nslaves,self.izfsslave,
+                         self.nzfsslave,
                          self.iondensity,self.electrontemperature,
                          self.plasmapotential,self.electrondensitymaxscale)
 
