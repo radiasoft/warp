@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.99 $, $Date: 2005/12/13 20:26:36 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.100 $, $Date: 2005/12/13 21:15:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -627,7 +627,7 @@ c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
 #ifdef MPIPARALLEL
 c       --- This must be a global operation since, due to roundoff, each
 c       --- processor can get a different value if dz == 4./3.*dx.
-c       call parallellor(partialcoarsening)
+c       if (nslaves > 1) call parallellor(partialcoarsening)
 #endif
         if (partialcoarsening) then
 
@@ -2618,7 +2618,7 @@ c       --- all axis.
 #ifdef MPIPARALLEL
 c       --- This must be a global operation since, due to roundoff, each
 c       --- processor can get a different value if dz == 4./3.*dx.
-c       call parallellor(partialcoarsening)
+c       if (nslaves > 1) call parallellor(partialcoarsening)
 #endif
 
         if (partialcoarsening) then
@@ -2722,7 +2722,7 @@ c     --- all axis.
 #ifdef MPIPARALLEL
 c     --- This must be a global operation since, due to roundoff, each
 c     --- processor can get a different value if dz == 4./3.*dx.
-c     call parallellor(partialcoarsening)
+c     if (nslaves > 1) call parallellor(partialcoarsening)
 #endif
 
       if (partialcoarsening) then
