@@ -32,7 +32,6 @@ Implements adaptive mesh refinement in 3d
                     lower=None,upper=None,
                     dims=None,mins=None,maxs=None,
                     nguard=1,
-                    root=None,
                     children=None,**kw):
 
     if parent is None:
@@ -46,8 +45,8 @@ Implements adaptive mesh refinement in 3d
     else:
       # --- Save the parent and the index number. These are saved in lists
       # --- since a block can have multiple parents.
-      self.parents = [parent]
-      self.root = root
+      self.parents = [parent.blocknumber]
+      self.root = parent.root
 
     # --- Get the current global block number and increment the counter.
     # --- Also, add self to the global list of blocks.
@@ -272,8 +271,7 @@ Add a mesh refined block to this block.
                                      constructor.
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
-                    refinement=refinement,
-                    nguard=self.nguard,root=self.root)
+                    refinement=refinement,nguard=self.nguard)
     #self.addblockaschild(child)
     self.children.append(child)
 
@@ -300,7 +298,10 @@ Given a block instance, installs it as a child.
 
   def installconductor(self,conductor,dfill=top.largepos):
     if not self.isfirstcall(): return
+    b = wtime()
     MultiGrid.installconductor(self,conductor,dfill=dfill)
+    a = wtime()
+    print a - b
     for child in self.children:
       child.installconductor(conductor,dfill=dfill)
 
@@ -374,7 +375,7 @@ Given a block instance, installs it as a child.
       #if alltrue(u >= l):
       if (u[0] >= l[0] and u[1] >= l[1] and u[2] >= l[2]):
         self.children.append(block)
-        block.parents.append(self)
+        block.parents.append(self.blocknumber)
 
     # --- Only the first block in the list makes the call for the next level.
     # --- This guarantees that this method is called only once for each block.
@@ -445,7 +446,7 @@ only once, rather than twice for each parent as in the original.
         # --- no reason to add the sibling to the block's list of overlaps
         # --- since the block will own all of the overlap area and not need
         # --- to give any rho info to the sibling.
-        sibling.overlaps[block] = block.blocknumber
+        sibling.overlaps[block.blocknumber] = block.blocknumber
 
         # --- This instance claims any cells that are unclaimed both here and
         # --- in the sibling
@@ -515,7 +516,7 @@ only once, rather than twice for each parent as in the original.
         #self.overlaps.append(sibling)
       # --- Using a dictionary, this operation is faster and doesn't
       # --- require a separate check is the sibling is already a key.
-      self.overlaps[sibling] = 1
+      self.overlaps[sibling.blocknumber] = sibling.blocknumber
 
     # --- Now, claim any parts of the domain within this parent that have
     # --- not already been set. i.e. those parts not covered by other blocks.
@@ -1160,7 +1161,8 @@ are owned by this instance.
     if not self.isfirstcall(): return
     for child in self.children:
       child.accumulaterhofromsiblings()
-    for other in self.overlaps.keys():
+    for othernumber in self.overlaps.keys():
+      other = self.getblockfromnumber(othernumber)
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
       srho = self.getrho(l,u)
@@ -1184,7 +1186,8 @@ Get rho from overlapping siblings where they own the region.
     if not self.isfirstcall(): return
     for child in self.children:
       child.getrhofromsiblings()
-    for other in self.overlaps.keys():
+    for othernumber in self.overlaps.keys():
+      other = self.getblockfromnumber(othernumber)
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
       srho = self.getrho(l,u)
@@ -1257,7 +1260,8 @@ Get rho from overlapping siblings where they own the region.
 Sets phi on the boundaries, using the values from the parent grid
     """
     if len(self.parents) == 0: return
-    for parent in self.parents:
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
@@ -1543,6 +1547,9 @@ Fetches the potential, given a list of positions
   #--------------------------------------------------------------------------
   # --- Utility methods
   #--------------------------------------------------------------------------
+
+  def getblockfromnumber(self,number):
+    return self.root.listofblocks[number]
 
   def islastcall(self):
     "Returns true when last parent has called"
@@ -2083,7 +2090,8 @@ Create DX object drawing the object.
     for child in self.children:
       child.solve2down()
 
-    for parent in self.parents:
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
       s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
       s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
       sx1,sy1,sz1 = s1 - self.fulllower
@@ -2101,7 +2109,8 @@ Create DX object drawing the object.
     dxsqi  = 1./self.dx**2
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
-    for parent in self.parents:
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
       s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
       s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
       sx1,sy1,sz1 = s1 - self.fulllower
@@ -2278,7 +2287,8 @@ Create DX object drawing the object.
     for child in self.children:
       child.solve2down()
 
-    for parent in self.parents:
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
       s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
       s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
       sx1,sy1,sz1 = s1 - self.fulllower
@@ -2296,7 +2306,8 @@ Create DX object drawing the object.
     dxsqi  = 1./self.dx**2
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
-    for parent in self.parents:
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
       s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
       s2 = minimum(self.fullupper,parent.fullupper*self.refinement)
       sx1,sy1,sz1 = s1 - self.fulllower
