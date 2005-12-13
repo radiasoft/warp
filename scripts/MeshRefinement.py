@@ -298,10 +298,7 @@ Given a block instance, installs it as a child.
 
   def installconductor(self,conductor,dfill=top.largepos):
     if not self.isfirstcall(): return
-    b = wtime()
     MultiGrid.installconductor(self,conductor,dfill=dfill)
-    a = wtime()
-    print a - b
     for child in self.children:
       child.installconductor(conductor,dfill=dfill)
 
