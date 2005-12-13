@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.201 $, $Date: 2005/09/12 07:15:56 $
+#@(#) File W3D.V, version $Revision: 3.202 $, $Date: 2005/12/13 20:26:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.201 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.202 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -574,23 +574,53 @@ alpha(npint)    _real             # interepolation parameter
 alphabar(npint) _real             # complement of interp param
 
 *********** AMR dump:
-AMRlevels                  integer /0/   # number of mesh refinement levels (0 = no mesh refinement)
+AMRlevels                  integer /0/   # number of mesh refinement levels
+                                         # (0 = no mesh refinement)
 AMRrefinement              integer /2/   # refinement ratio between levels
-AMRcoalescing(AMRlevels)  _real    /0.8/ # coefficient controlling coalescence for each refinement level
-                                         # range: between 0 and 1; 0=minimal coalescence; 1=most aggressive coalescence
-AMRtransit                 integer /2/   # number of transition cells around each patch, in units of parent cells.
-AMRgenerate_periodicity    integer /1/   # periodicity at which to generate new set of AMR blocks, in units of time steps.
-AMRmaxlevel_density        integer /-1/  # maximum level for automatic refinement based in charge density
-AMRmaxlevel_gradient       integer /-1/  # maximum level for automatic refinement based in charge density gradient
-AMRthreshold_gradient      real    /0.8/ # threshold above which to refine for automatic refinement based on gradient
-AMRmaxsize_isolated_blocks integer /0/   # maximum size of isolated blocks. Blocks which contain 
-                                         # AMRmaxsize_isolated_blocks^dim (where dim=2 in 2-D and dim=3 in 3-D) 
-                                         # cells or less are removed. The goal is to prevent the creation of 
-                                         # refinement blocks due to statistical noise. 
-                                         # THIS IS EXPERIMENTAL: this might be partially implemented or not 
-                                         # implemented at all. There is no guaranty at this stage that this would 
-                                         # effectively remove all isolated blocks nor that it would not remove 
-                                         # isolated blocks which are not due to statistical noise.
+AMRcoalescing(AMRlevels)  _real    /0.8/ # coefficient controlling coalescence
+                                         # for each refinement level;
+                                         # ranges between 0 and 1;
+                                         # 1=minimal coalescence;
+                                         # 0=most aggressive coalescence
+AMRtransit                 integer /2/   # number of transition cells around
+                                         # each patch, in units of parent cells.
+AMRgenerate_periodicity    integer /1/   # periodicity at which to generate new
+                                         # set of AMR blocks, in units of time
+                                         # steps.
+AMRmaxlevel_density        integer /-1/  # maximum level for automatic
+                                         # refinement based in charge density
+AMRmaxlevel_gradient       integer /-1/  # maximum level for automatic
+                                         # refinement based in charge density
+                                         # gradient
+AMRthreshold_gradient      real    /0.8/ # threshold above which to refine for
+                                         # automatic refinement based on
+                                         # gradient
+AMRmaxsize_isolated_blocks integer /0/   # maximum size of isolated blocks.
+                                         # Blocks which contain 
+                                         # AMRmaxsize_isolated_blocks^dim
+                                         # (where dim=2 in 2D and dim=3 in 3D) 
+                                         # cells or less are removed. The goal
+                                         # is to prevent the creation of 
+                                         # refinement blocks due to statistical
+                                         # noise. 
+                                         # THIS IS EXPERIMENTAL: this might be
+                                         # partially implemented or not 
+                                         # implemented at all. There is no
+                                         # guaranty at this stage that this
+                                         # would effectively remove all
+                                         # isolated blocks nor that it would
+                                         # not remove isolated blocks which are
+                                         # not due to statistical noise.
+AMRuse_inactive_regions logical /.false./# When true, the fields in inactive
+                                         # regions of refined patches will be
+                                         # used. An inactive region is a region
+                                         # that was not flagged to be refined,
+                                         # but is refined because of its
+                                         # proximity to other refined areas,
+                                         # for example between two patches
+                                         # that are coalesced. Normally, the
+                                         # fields in these regions are not
+                                         # used.
 
 *********** W3D_interpsubs:
 # Subroutines in file W3d_interp.F
@@ -746,6 +776,8 @@ inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
 getinj_phi() subroutine
 getinj_phi_3d() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
+fetche3dfrompositions(is:integer,n:integer,x:real,y:real,z:real,
+                      ex:real,ey:real,ez:real) subroutine
 particleboundaries3d() subroutine
 loadperpdist0(np:integer,x:real,y:real,xp:real,yp:real,
               rx:real,ry:real,rxp:real,ryp:real,emitx:real,emity:real,
