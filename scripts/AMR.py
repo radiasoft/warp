@@ -700,13 +700,14 @@ class AMRTree(object,Visualizable):
             print 'generated blocks in ',t.seconds(),' seconds.'
       
         # clear inactive regions in each blocks
-        if l_timing:t.start()
-        if self.solvergeom==w3d.XYZgeomMR:
-          self.blocks.clearinactiveregions(self.nbcells)
-        else:
-          g = frz.basegrid
-          adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
-        if l_timing:
+        if not w3d.AMRuse_inactive_regions:
+          if l_timing: t.start()
+          if self.solvergeom==w3d.XYZgeomMR:
+            self.blocks.clearinactiveregions(self.nbcells)
+          else:
+            g = frz.basegrid
+            adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
+          if l_timing:
             t.finish()
             print 'Cleared inactive regions in ',t.seconds(),' seconds.'
       
