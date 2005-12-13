@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.121 2005/12/06 19:28:08 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.122 2005/12/13 20:37:33 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -368,8 +368,11 @@ Should never be directly created by the user.
     maxs = self.getextent().maxs
     try:
       g=self.grid
+#     interior = g.conductors.interior
     except:
       g=w3d
+#     interior = f3d.conductors.interior
+
     # compute mins and maxs
     xmin = max(g.xmmin,mins[0])
     ymin = max(g.ymmin,mins[1])
@@ -414,6 +417,18 @@ Should never be directly created by the user.
 
      # compute total charge inside volume
      qc = sum(sum(sum(g.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*g.dx*g.dy*g.dz
+
+# --- This block of code is needed if the rho in conductor interiors is
+# --- not zeroed out. Note that the setting of interior above is also needed.
+#    # --- subtract off any charge inside of the conductors (This charge is
+#    # --- included in the sum over rho, but it does not affect the
+#    # --- potential and so is not represented in sum of Enormal and so is not
+#    # --- accounted for properly. It needs to be explicitly subtracted off
+#    # --- since it should not be included as image charge.)
+#    qinterior = cond_sumrhointerior(interior,g.nx,g.ny,g.nz,g.rho,
+#                                    ixmin,ixmax,iymin,iymax,izmin,izmax)
+#    qc = qc - qinterior
+
 
      # correct for symmetries
      if g.l4symtry:
