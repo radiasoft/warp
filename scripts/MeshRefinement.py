@@ -264,14 +264,14 @@ it knows whether to re-register itself.
       getattr(self,vname)[...] = a
 
   def addchild(self,lower=None,upper=None,mins=None,maxs=None,
-                    refinement=[2,2,2]):
+                    refinement=[2,2,2],nslaves=1):
     """
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
                                      constructor.
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
-                    refinement=refinement,nguard=self.nguard)
+                    refinement=refinement,nguard=self.nguard,nslaves=nslaves)
     #self.addblockaschild(child)
     self.children.append(child)
 
