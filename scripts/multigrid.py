@@ -26,7 +26,7 @@ class MultiGrid(object):
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves',
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
                    'my_index','nslaves','izfsslave','nzfsslave']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
