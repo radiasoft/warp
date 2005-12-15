@@ -159,9 +159,6 @@ Implements adaptive mesh refinement in 3d
       self.pbounds[1::2] = where(self.fullupper < self.rootdims,
                                 0,self.pbounds[1::2])
 
-      # --- Set so the solve is not parallelized
-      self.nslaves = 1
-
       # --- Create some temporaries for optimization
       self.fullloweroverrefinement = self.fulllower/self.refinement
       self.fullupperoverrefinement = self.fullupper/self.refinement
@@ -269,6 +266,7 @@ it knows whether to re-register itself.
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
                                      constructor.
+  -nslaves=1: defaults to one so it is not parallelized
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,nguard=self.nguard,nslaves=nslaves)
