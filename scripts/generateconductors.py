@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.122 2005/12/13 20:37:33 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.123 2005/12/20 02:19:20 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -949,6 +949,8 @@ distances to outside the surface are positive, inside negative.
   def __init__(self,ix=None,iy=None,iz=None,xx=None,yy=None,zz=None,
                     dels=None,vs=None,ns=None,
                     parity=None,voltage=0.,condid=1,generator=None,kwlist=[]):
+    # --- autobump is used in append in an attempt to minimize the amount
+    # --- of array reallocation.
     if ix is None:
       self.ndata = 0
       nn = 10000
@@ -963,6 +965,7 @@ distances to outside the surface are positive, inside negative.
       self.ns = zeros((6,nn))
       self.parity = zeros(nn)
       self.mglevel = zeros(nn)
+      self.autobump = 1
     elif generator is not None:
       self.ndata = len(ix)
       self.ix = ix
@@ -980,6 +983,7 @@ distances to outside the surface are positive, inside negative.
       self.setvoltages(voltage)
       self.setcondids(condid)
       self.setlevels(0)
+      self.autobump = self.ndata
     else:
       self.ndata = len(ix)
       self.ix = ix
@@ -993,6 +997,7 @@ distances to outside the surface are positive, inside negative.
       self.ns = int(ns)
       self.parity = parity
       self.setlevels(0)
+      self.autobump = self.ndata
     self.fuzzsign = -1
    
   def setvoltages(self,voltage):
@@ -1074,7 +1079,12 @@ has already been called.
       parity = self.parity[:n1]
       mglevel = self.mglevel[:n1]
 
-      newn = max(int(1*len(self.ix)),n1+n2)
+      # --- Aggressively increase the size of autobump to try to minimize
+      # --- the amount of array reallocation.
+      # --- The factor of 1.5 gives nearly the same amount of savings as 2,
+      # --- but doesn't waste quite as much space.
+      self.autobump = max(n2,int(1.5*self.autobump))
+      newn = n1 + self.autobump
       self.ix = zeros(newn)
       self.iy = zeros(newn)
       self.iz = zeros(newn)
@@ -1272,7 +1282,7 @@ The attribute 'distance' holds the calculated distance.
       self.distance = distance
    
   def __neg__(self):
-    "Delta not operator."
+    "Distance not operator."
     return Distance(self.xx,self.yy,self.zz, -self.distance)
 
   def __mul__(self,right):
@@ -1361,7 +1371,7 @@ The attribute 'isinside' holds the flag specifying whether a point is in or out
       self.isinside = isinside*self.condid
    
   def __neg__(self):
-    "Delta not operator."
+    "IsInside not operator."
     return IsInside(self.xx,self.yy,self.zz,
                     logical_not(self.isinside),
                     condid=self.condid,aura=self.aura)
@@ -1427,7 +1437,7 @@ at the intersection point.
       self.iphi = iphi
    
   def __neg__(self):
-    "Delta not operator."
+    "Intercept not operator."
     return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
                      self.xi,self.yi,self.zi,self.itheta+pi,self.iphi,
                      conductor=self.conductor,condid=self.condid)
