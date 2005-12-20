@@ -9,7 +9,7 @@ import Numeric
 _pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.11 2005/04/29 17:30:30 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.12 2005/12/20 02:21:16 dave Exp $"
 
 class AppendableArray:
   """
@@ -29,6 +29,14 @@ the time to copy the existing data to the new space.
                  is needed.
  - initunit=None: When given, the unitshape and the typecode are taken from
                   it. Also, this unit is make the first unit in the array.
+ - aggressivebumping=1.: Whenever new space is added, autobump will be
+                         increased by this factor in an attempt to
+                         minimize the number of reallocations. Its new
+                         value will be the max of the size of the appended data
+                         and this times the old autobump size. A good value is
+                         1.5 - this can greatly reduce the amount of
+                         rallocation withoug a significant amount of wasted
+                         space.
 
 Create an instance like so
 >>> a = AppendableArray(initlen=100,typecode='d')
@@ -46,8 +54,8 @@ will give the first four number appended
 
 Other methods include len, data, setautobump, cleardata, reshape
   """
-  def __init__(self,initlen=1,unitshape=None,typecode='i',autobump=100,
-               initunit=None,shape=None,type=None):
+  def __init__(self,initlen=1,unitshape=None,typecode=None,autobump=100,
+               initunit=None,shape=None,type=None,aggressivebumping=0):
     # --- The shape and type arguments are deprecated since they comfict with
     # --- other names.
     if shape is not None:
@@ -56,6 +64,7 @@ Other methods include len, data, setautobump, cleardata, reshape
     if type is not None:
       print "Warning: the type keyword argument is obsolete, please use typecode instead"
       typecode = type
+    if typecode is None: typecode = zeros(1).typecode()
     self._maxlen = initlen
     if initunit is None:
       self._typecode = typecode
@@ -71,11 +80,18 @@ Other methods include len, data, setautobump, cleardata, reshape
         self._unitshape = None
     self._datalen = 0
     self._autobump = autobump
+    self.aggressivebumping = aggressivebumping
     self._allocatearray()
     if initunit is not None: self.append(initunit)
+  def checkautobumpsize(self,deltalen):
+    # --- The factor of 1.5 gives nearly the same amount of savings as 2,
+    # --- but doesn't waste quite as much space.
+    newautobump = max(deltalen,int(1.5*self.getautobump()))
+    self.setautobump(newautobump)
   def _extend(self,deltalen):
     # --- Only increase of the size of the array if the extra space fills up
     if len(self) + deltalen > self._maxlen:
+      self.checkautobumpsize(deltalen)
       self._maxlen = self._maxlen + max(deltalen,self._autobump)
       a = self._array[:len(self),...] + 0
       self._allocatearray()
@@ -115,11 +131,23 @@ Return the data.
 Set the autobump attribute to the value specified.
     """
     self._autobump = a
+  def getautobump(self):
+    """
+Get the autobump attribute
+    """
+    return self._autobump
   def cleardata(self):
     """
 Reset the array so it has a length of zero.
     """
     self._datalen = 0
+  def resetdata(self,data):
+    """
+Resets the data to be the input values - all of the original data is thrown
+away. The unit shape of data must be the same.
+    """
+    self.cleardata()
+    self.append(data)
   def reshape(self,newunitshape):
     """
 Change the shape of the appendable unit. Can only be used if a unitshape was
