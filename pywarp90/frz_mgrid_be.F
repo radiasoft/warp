@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.10 $, $Date: 2005/12/21 01:17:38 $
+c version $Revision: 1.11 $, $Date: 2005/12/21 21:37:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -43,7 +43,7 @@ c     --- Create array which holds the specified ion density data
       iondensityarray = 0.
       ixbemin = (max(grid%rmin,xbemin) - grid%rmin)/grid%dr
       ixbemax = (min(grid%rmax,xbemax) - grid%rmin)/grid%dr
-      izbemin = (max(grid%rmin,zbemin) - grid%zmin)/grid%dz
+      izbemin = (max(grid%zmin,zbemin) - grid%zmin)/grid%dz
       izbemax = (min(grid%zmax,zbemax) - grid%zmin)/grid%dz
       if (ixbemax >= ixbemin .and. izbemax >= izbemin) then
         if (luseparticleldensity) then
