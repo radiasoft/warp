@@ -1,15 +1,18 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.202 $, $Date: 2005/12/13 20:26:02 $
+#@(#) File W3D.V, version $Revision: 3.203 $, $Date: 2005/12/21 01:16:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
 # 3D - PIC package of 3d particle code
 # Alex Friedman, LLNL, (510)422-0827
 # David P. Grote, LLNL, (510)423-7194
+{
+LARGEPOS = 1.0e+36 # This must be the same as in top.v
+}
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.202 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.203 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -371,18 +374,18 @@ electrondensitymaxscale real /2./ # Limit of electron density relative to
                                   # to not affect the solution, but small
                                   # enough to prevent divergences during
                                   # field solve.
-xbemin real /0./ [m] # Minimum of the extent in x over which Boltzmann
-                     # electrons are included
-xbemax real /0./ [m] # Maximum of the extent in x over which Boltzmann
-                     # electrons are included
-ybemin real /0./ [m] # Minimum of the extent in y over which Boltzmann
-                     # electrons are included
-ybemax real /0./ [m] # Maximum of the extent in y over which Boltzmann
-                     # electrons are included
-zbemin real /0./ [m] # Minimum of the extent in z over which Boltzmann
-                     # electrons are included
-zbemax real /0./ [m] # Maximum of the extent in z over which Boltzmann
-                     # electrons are included
+xbemin real /-LARGEPOS/ [m] # Minimum of the extent in x over which Boltzmann
+                            # electrons are included
+xbemax real /+LARGEPOS/ [m] # Maximum of the extent in x over which Boltzmann
+                            # electrons are included
+ybemin real /-LARGEPOS/ [m] # Minimum of the extent in y over which Boltzmann
+                            # electrons are included
+ybemax real /+LARGEPOS/ [m] # Maximum of the extent in y over which Boltzmann
+                            # electrons are included
+zbemin real /-LARGEPOS/ [m] # Minimum of the extent in z over which Boltzmann
+                            # electrons are included
+zbemax real /+LARGEPOS/ [m] # Maximum of the extent in z over which Boltzmann
+                            # electrons are included
 luseparticleldensity logical /.false./ # When true, use the density from the particles
                                        # rather than the specified constant iondensity.
                                        # Only applies now to the RZ solver.
