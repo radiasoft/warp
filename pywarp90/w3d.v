@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.203 $, $Date: 2005/12/21 01:16:41 $
+#@(#) File W3D.V, version $Revision: 3.204 $, $Date: 2005/12/23 00:04:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.203 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.204 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -386,9 +386,16 @@ zbemin real /-LARGEPOS/ [m] # Minimum of the extent in z over which Boltzmann
                             # electrons are included
 zbemax real /+LARGEPOS/ [m] # Maximum of the extent in z over which Boltzmann
                             # electrons are included
-luseparticleldensity logical /.false./ # When true, use the density from the particles
-                                       # rather than the specified constant iondensity.
+luseparticleldensity logical /.false./ # When true, use the density from the
+                                       # particles rather than the specified
+                                       # constant iondensity.
                                        # Only applies now to the RZ solver.
+lclampphitophimax logical /.false./ # When true, the potential is clamped to
+                                    # phimax, which is calculated assuming that
+                                    # the max electron density is the max of
+                                    # iondensity and the density from ion
+                                    # particles.
+                                    # Only applies now to the RZ solver.
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
