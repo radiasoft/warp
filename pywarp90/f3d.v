@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.142 $, $Date: 2005/12/13 20:26:35 $
+#@(#) File F3D.V, version $Revision: 3.143 $, $Date: 2006/01/05 17:43:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.142 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.143 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -320,7 +320,10 @@ lphibe(nx:integer,ny:integer,nz:integer,nzfull:integer,dxsqi:real,dysqi:real,dzs
        electrondensitymaxscale:real) subroutine
 restrictbe3d(nx:integer,ny:integer,nz:integer,nzfull:integer,u:real,delz:integer,
              nxcoarse:integer,nycoarse:integer,nzcoarse:integer,nzfullcoarse:integer,ucoarse:real,
-             bounds:integer,boundscoarse:integer,lzoffset:integer) subroutine
+             bounds:integer,boundscoarse:integer,lzoffset:integer,
+             my_index:integer,nslaves:integer,izfsslavec:integer,nzfsslavec:integer,
+             whosendingleftc:integer,izsendingleftc:integer,
+             whosendingrightc:integer,izsendingrightc:integer) subroutine
 expandbe3d(nx:integer,ny:integer,nz:integer,nzfull:integer,phi:real,
            nxcoarse:integer,nycoarse:integer,nzcoarse:integer,nzfullcoarse:integer,phicoarse:real,
            bounds:integer,lzoffset:integer) subroutine
