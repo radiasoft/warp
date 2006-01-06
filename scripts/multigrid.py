@@ -42,22 +42,22 @@ class MultiGrid(object):
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
-        if kw.has_key(name): del kw[name]
+      if kw.has_key(name): del kw[name]
     for name in MultiGrid.__f3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
-        if kw.has_key(name): del kw[name]
+      if kw.has_key(name): del kw[name]
     for name in MultiGrid.__topinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(top,name))
-        if kw.has_key(name): del kw[name]
+      if kw.has_key(name): del kw[name]
     for name,defvalue in MultiGrid.__flaginputs__.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
-        if kw.has_key(name): del kw[name]
+      if kw.has_key(name): del kw[name]
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
