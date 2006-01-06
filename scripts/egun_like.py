@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.43 2005/12/06 23:56:48 jlvay Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.44 2006/01/06 17:15:00 dave Exp $"
 
 
 ##############################################################################
@@ -333,8 +333,15 @@ set when a current is specified"""
            rhoprevious = rhoprevious+[g.rho.copy()]
 
     # --- Zero the charge density array
-    w3d.rhop = 0.
-    if w3d.solvergeom==w3d.RZgeom: reset_rzmgrid_rho()
+    # --- A call to loadrho is made since it will zero the charge density
+    # --- for whatever field solver is being used. The top.laccumulate_rho
+    # --- is turned off otherwise rho won't be zeroed. Note that there are
+    # --- no particles now (top.nps=0).
+    top.laccumulate_rho = false
+    loadrho()
+    top.laccumulate_rho = true
+    #w3d.rhop = 0.
+    #if w3d.solvergeom==w3d.RZgeom: reset_rzmgrid_rho()
     top.curr = 0.
 
     # --- If this is the final iteration and if zmoments are being calculated,
@@ -522,6 +529,7 @@ set when a current is specified"""
     if ((i == iter-1 or (gun_iter%nhist) == 0) and top.ifzmmnt > 0):
       top.laccumulate_zmoments = laccumulate_zmoments
       getzmom.zmmnt(3)
+      if top.nszarr > 0: top.curr[:,-1] = sum(top.curr[:,:-1],1)
 
     # --- If a current was specified, addjust the particle weights to match
     # --- that current.
@@ -574,8 +582,6 @@ set when a current is specified"""
     gun.steps = gun_steps
     gun.iter = gun_iter
     gun.time = gun_time
-
-    print "Number of iterations = %d"%gun_iter
 
     # --- call insertafteriter if defined
     if insertafteriter is not None:
@@ -632,6 +638,8 @@ set when a current is specified"""
         ptitles('X, Y norm. emittance','Z','',v=6)
       refresh()
       window(0)
+
+    print "Number of iterations completed = %d"%gun_iter
 
   # --- end of multiple iterations
 
