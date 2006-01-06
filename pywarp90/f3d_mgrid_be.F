@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.16 $, $Date: 2006/01/05 19:56:17 $
+c version $Revision: 1.17 $, $Date: 2006/01/06 00:38:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1507,6 +1507,7 @@ c     if (bounds(5) == 1) phiout(:,:,nz+1) = phiout(:,:,nz-1)
 c     if (bounds(4) == 2 .and. nz == nzfull) phiout(:,:,-1) = phiout(:,:,nz-1)
 c     if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
 
+#ifdef MPIPARALLEL
       call mgexchange_phi(nx,ny,nz,nzfull,phiout,bounds,-2,1,3,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
@@ -1515,6 +1516,7 @@ c     if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
+#endif
 
 
       return
