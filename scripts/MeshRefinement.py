@@ -261,7 +261,7 @@ it knows whether to re-register itself.
       getattr(self,vname)[...] = a
 
   def addchild(self,lower=None,upper=None,mins=None,maxs=None,
-                    refinement=[2,2,2],nslaves=1):
+                    refinement=[2,2,2],nslaves=1,my_index=0):
     """
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
@@ -269,7 +269,8 @@ Add a mesh refined block to this block.
   -nslaves=1: defaults to one so it is not parallelized
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
-                    refinement=refinement,nguard=self.nguard,nslaves=nslaves)
+                    refinement=refinement,nguard=self.nguard,
+                    nslaves=nslaves,my_index=my_index)
     #self.addblockaschild(child)
     self.children.append(child)
 

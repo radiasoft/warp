@@ -16,7 +16,7 @@ except ImportError:
 ##############################################################################
 class MultiGrid(object):
   
-  __w3dinputs__ = ['nx','ny','nz','nzfull',
+  __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
                    'zmminglobal','zmmaxglobal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
@@ -228,15 +228,13 @@ class MultiGrid(object):
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
       getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nx,self.ny,self.nz,self.rho,
-                            me,self.nslaves,
-                          top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
+                            self.nx,self.ny,self.nz,self.rho,self.nzpguard)
 
   def makerhoperiodic_parallel(self):
     tag = 70
     if me == self.nslaves-1:
-      request = mpi.isend(self.rho[:,:,nz],0,tag)
-      self.rho[:,:,nz],status = mpi.recv(0,tag)
+      request = mpi.isend(self.rho[:,:,self.nz],0,tag)
+      self.rho[:,:,self.nz],status = mpi.recv(0,tag)
     elif me == 0:
       rhotemp,status = mpi.recv(self.nslaves-1,tag)
       self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
