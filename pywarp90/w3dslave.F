@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.31 $, $Date: 2005/09/16 01:21:09 $
+c W3DSLAVE.M, version $Revision: 1.32 $, $Date: 2006/01/07 00:37:25 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -989,8 +989,10 @@ c     --- Copy any data locally as well.
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
-            rho(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
-     &        rhop(:,:,izsend(i):izsend(i)+nzsend(i)-1)
+            if (loc(rho) .ne. loc(rhop)) then
+              rho(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
+     &          rhop(:,:,izsend(i):izsend(i)+nzsend(i)-1)
+            endif
           endif
         endif
       enddo
