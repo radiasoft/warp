@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.162 2005/11/30 17:42:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.163 2006/01/09 18:19:15 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2540,21 +2540,22 @@ to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    iy=0
+  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+    if solver is w3d: solver = frz.basegrid
+    if iy is not None: iy = None
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return solver.rho
     if ix is not None and iy is None     and iz is None    :
-      return solver.rho[ix,:,:]
+      return solver.rho[ix,...]
     if ix is None     and iy is not None and iz is None    :
       return solver.rho[:,iy,:]
     if ix is None     and iy is None     and iz is not None:
-      return solver.rho[:,:,iz]
+      return solver.rho[...,iz]
     if ix is not None and iy is not None and iz is None    :
       return solver.rho[ix,iy,:]
     if ix is not None and iy is None     and iz is not None:
-      return solver.rho[ix,:,iz]
+      return solver.rho[ix,...,iz]
     if ix is None     and iy is not None and iz is not None:
       return solver.rho[:,iy,iz]
     if ix is not None and iy is not None and iz is not None:
@@ -2583,7 +2584,7 @@ to all three.
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setrho(val,ix=None,iy=None,iz=None,solver=w3d):
+def setrho(val,ix=None,iy=None,iz=None,local=0,solver=w3d):
   """Sets slices of rho, the charge density array. The shape of the input
 object depends on the number of arguments specified, which can be from none
 to all three.
@@ -2592,21 +2593,22 @@ to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
   """
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    iy=0
-  if not lparallel:
+  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+    if solver is w3d: solver = frz.basegrid
+    if iy is not None: iy = None
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      solver.rho[:,:,:] = val
+      solver.rho[...] = val
     if ix is not None and iy is None     and iz is None    :
-      solver.rho[ix,:,:] = val
+      solver.rho[ix,...] = val
     if ix is None     and iy is not None and iz is None    :
       solver.rho[:,iy,:] = val
     if ix is None     and iy is None     and iz is not None:
-      solver.rho[:,:,iz] = val
+      solver.rho[...,iz] = val
     if ix is not None and iy is not None and iz is None    :
       solver.rho[ix,iy,:] = val
     if ix is not None and iy is None     and iz is not None:
-      solver.rho[ix,:,iz] = val
+      solver.rho[ix,...,iz] = val
     if ix is None     and iy is not None and iz is not None:
       solver.rho[:,iy,iz] = val
     if ix is not None and iy is not None and iz is not None:
@@ -2690,7 +2692,7 @@ be from none to all three.
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setphi(val,ix=None,iy=None,iz=None,solver=w3d):
+def setphi(val,ix=None,iy=None,iz=None,local=0,solver=w3d):
   """Sets slices of phi, the electrostatic potential array. The shape of
 the input object depends on the number of arguments specified, which can
 be from none to all three.
@@ -2702,7 +2704,7 @@ be from none to all three.
   """
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
-  if not lparallel:
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       solver.phi[:,:,1:-1] = val
     if ix is not None and iy is None     and iz is None    :
