@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.143 $, $Date: 2006/01/05 17:43:30 $
+#@(#) File F3D.V, version $Revision: 3.144 $, $Date: 2006/01/11 21:33:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.143 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.144 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -126,7 +126,7 @@ indx(0:2,nmax)  _integer # Coordinates of points in conductor
 volt(nmax)    _real    # Voltage of points in conductor
 numb(nmax)    _integer # Number of the conductor the points are in
 ilevel(nmax)  _integer /-1/ # Coarseness level at which the point is on grid
-istart(0:100)  integer # Start of the conductor points for each MG level
+istart(0:100)  integer /1/ # Start of the conductor points for each MG level
 
 %%%%%%%%%% ConductorSubGridType:
 nmax            integer /0/ # Maximum number of points for sub-grid boundaries
@@ -138,7 +138,7 @@ dels(0:5,nmax)   _real    # Distances to the surface - stored in the order
 volt(0:5,nmax) _real    # Voltage of points for sub-grid boundaries
 numb(0:5,nmax) _integer # ID of the conductor the points are in
 ilevel(nmax)   _integer /-1/ # Coarseness level at which the point is on grid
-istart(0:100)   integer # Start of the conductor data for each MG level
+istart(0:100)   integer /1/ # Start of the conductor data for each MG level
 
 %%%%%%%%%% ConductorType:
 interior ConductorInteriorType   # Interior of the conductors
