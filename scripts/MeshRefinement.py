@@ -213,10 +213,6 @@ Implements adaptive mesh refinement in 3d
     # --- same level. If there are no siblings, then it is not needed.
     self.siblingdomains = None
 
-    # --- This is a temporary array, similar to childdomains but setup in
-    # --- the order of the listofblocks. It is used only for setting up
-    # --- the siblingdomains array.
-    self.orderedchilddomains = None
     # --- Now add any specified children
     self.children = []
     if children is not None:
@@ -288,7 +284,6 @@ Given a block instance, installs it as a child.
     self.listofblocks = [self]
     self.siblingdomains = None
     self.childdomains = None
-    self.orderedchilddomains = None
     self.children = []
 
   #--------------------------------------------------------------------------
@@ -1629,14 +1624,6 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
     return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-  def getorderedchilddomains(self,lower,upper):
-    if self.orderedchilddomains is None:
-      #self.orderedchilddomains = zeros(1+self.dims) - 1
-      self.orderedchilddomains = zeros(1+self.dims)
-      subtract(self.orderedchilddomains,1,self.orderedchilddomains)
-    ix1,iy1,iz1 = lower - self.fulllower
-    ix2,iy2,iz2 = upper - self.fulllower + 1
-    return self.orderedchilddomains[ix1:ix2,iy1:iy2,iz1:iz2]
   def getsiblingdomains(self,lower,upper):
     if self.siblingdomains is None:
       #self.siblingdomains = zeros(1+self.dims) - 1
