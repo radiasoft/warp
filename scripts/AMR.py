@@ -18,7 +18,8 @@ class AMRTree(object,Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
-    def __init__(self):
+    def __init__(self,lremoveblockswithoutparticles=1):
+      self.lremoveblockswithoutparticles = lremoveblockswithoutparticles
       self.nblocks      = 0
       self.f            = None
       self.nbcells_user = None
@@ -558,6 +559,8 @@ class AMRTree(object,Visualizable):
             mothergrid = mothergrid.down
         r=self.MRfact**i
         for patch in blocks:
+          if (self.lremoveblockswithoutparticles and
+             not self.patchhasparticles(patch)): continue
           self.nblocks+=1
           if self.solvergeom == w3d.XYZgeomMR:
             lower = nint(array(patch[:3])*r)
@@ -623,6 +626,18 @@ class AMRTree(object,Visualizable):
         self.nblocks=0
         g.loc_part=g.gid[0]
         g.loc_part_fd=g.gid[0]
+
+    def patchhasparticles(self,patch):
+      if self.solvergeom==w3d.XYZgeomMR:
+        i1,j1,k1 = patch[:3]
+        i2,j2,k2 = array([i1,j1,k1]) + patch[3:]
+        rho = self.blocks.rho[i1:i2+1,j1:j2+1,k1:k2+1]
+      else:
+        i1,j1 = patch[:2]
+        i2,j2 = array([i1,j1]) + patch[2:]
+        rho = frz.basegrid.rho[i1:i2+1,j1:j2+1]
+      if maxnd(abs(rho)) == 0.: return 0
+      else:                     return 1
 
     def generate(self,l_timing=0):
       """
