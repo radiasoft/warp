@@ -20,12 +20,15 @@ When the "+++" prompt is displayed, the remote job will stop execution
 and wait for commands. To continue the job, type the control-d key.
 """
 from warp import *
-import gist
+try:
+  gist
+except NameError:
+  import gist
 import socket
 import time
 import re
 import md5
-monitor_version = "$Id: monitor.py,v 1.8 2006/01/17 19:23:16 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.9 2006/01/17 19:48:00 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -193,7 +196,7 @@ and if so, get commands from it.
           gist.__dict__['__version__']
           pyg_pending()
           pyg_idler()
-        except:
+        except KeyError:
           ygdispatch()
 
       # --- When done, release the socket and return some variables
