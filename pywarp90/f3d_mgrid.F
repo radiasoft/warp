@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.100 $, $Date: 2005/12/13 21:15:07 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.101 $, $Date: 2006/01/17 05:26:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3459,8 +3459,7 @@ c=============================================================================
 c=============================================================================
       subroutine gatherrhofromchild(rho,nn,childrho,cnn,
      &                              l,u,fulllower,childlower,childupper,
-     &                              r,weights,owndomain,
-     &                              dopbounds,pbounds,rootdims)
+     &                              r,weights,dopbounds,pbounds,rootdims)
       use Subtimersf3d
       integer(ISZ):: nn(0:2),cnn(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
@@ -3470,9 +3469,6 @@ c=============================================================================
       real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
       real(kind=8):: childrho(0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
-c     --- Note that owndomains is passed in with C ordering so that a
-c     --- transpose/copy of it is not done.
-      integer(ISZ):: owndomain(0:cnn(2),0:cnn(1),0:cnn(0))
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
@@ -3506,28 +3502,24 @@ c     --- transpose/copy of it is not done.
             do iwz=iwz1,iwz2
               do iwy=iwy1,iwy2
                 do iwx=iwx1,iwx2
-                  if (owndomain(icz+iwz,icy+iwy,icx+iwx) == 1) then
-                    wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
+                  wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
 
 c                   --- Adjust for symmetries
                     if (dopbounds == 1) then
-                      if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
-     &                  wrho = 2*wrho
-                      if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
-     &                  wrho = 2*wrho
-                      if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
-     &                  wrho = 2*wrho
-                      if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
-     &                  wrho = 2*wrho
-                      if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
-     &                  wrho = 2*wrho
-                      if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
-     &                  wrho = 2*wrho
-                    endif
-
-                    rho(ix0,iy0,iz0) = rho(ix0,iy0,iz0) + wrho
-
+                    if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+     &                wrho = 2*wrho
+                    if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+     &                wrho = 2*wrho
+                    if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+     &                wrho = 2*wrho
+                    if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+     &                wrho = 2*wrho
+                    if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+     &                wrho = 2*wrho
+                    if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+     &                wrho = 2*wrho
                   endif
+                  rho(ix0,iy0,iz0) = rho(ix0,iy0,iz0) + wrho
 
                 enddo
               enddo
@@ -3538,119 +3530,6 @@ c                   --- Adjust for symmetries
 
       if (lf3dtimesubs) timegatherrhofromchild = timegatherrhofromchild +
      &                                           wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine setupsiblingdomain(nn,sd,od)
-      integer(ISZ):: nn(0:2)
-      integer(ISZ):: sd(0:nn(2),0:nn(1),0:nn(0))
-      integer(ISZ):: od(0:nn(2),0:nn(1),0:nn(0))
-
-c Note that the input array sd is in C ordering.
-      integer(ISZ):: ix,iy,iz
-
-      do ix=0,nn(0)
-        do iy=0,nn(1)
-          do iz=0,nn(2)
-
-c           --- This instance claims any cells that are unclaimed both here
-c           --- and in the sibling
-            if ((od(iz,iy,ix) == -1) .and. (sd(iz,iy,ix) == -1)) then
-              sd(iz,iy,ix) = 1
-            endif
-
-c           --- Any cells that are marked as claimed here or in the sibling but
-c           --- are not set in the other are marked as claimed by others.
-            if (sd(iz,iy,ix) == -1) sd(iz,iy,ix) = 0
-            if (od(iz,iy,ix) == -1) od(iz,iy,ix) = 0
-
-c           --- It is possible that some areas will be claimed by multiple
-c           --- siblings. Remove claim to those areas from the sibling.
-            if ((od(iz,iy,ix) == 1) .and. (sd(iz,iy,ix) == 1)) then
-              od(iz,iy,ix) = 0
-            endif
-
-          enddo
-        enddo
-      enddo
-
-      return
-      end
-c=============================================================================
-      subroutine expandsiblingdomain(nn,d,r)
-      integer(ISZ):: nn(0:2),r(0:2)
-      integer(ISZ):: d(0:nn(2),0:nn(1),0:nn(0))
-
-      integer(ISZ):: ix,iy,iz
-      integer(ISZ):: ixc,iyc,izc,wx,wy,wz,ww,ws
-      integer(ISZ):: ixcpr,iycpr,izcpr
-
-c Note that the input array d is in C ordering.
-
-c     --- Claim any unclaimed areas, though there shouldn't be any assuming
-c     --- that all of the childs area is covered by a parent.
-      do ixc=0,nn(0),r(0)
-        do iyc=0,nn(1),r(1)
-          do izc=0,nn(2),r(2)
-            if (d(izc,iyc,ixc) == -1) d(izc,iyc,ixc) = 1
-          enddo
-        enddo
-      enddo
-
-      do ix=0,nn(0)
-        do iy=0,nn(1)
-          do iz=0,nn(2)
-            wz = mod(iz,r(2))
-            wy = mod(iy,r(1))
-            wx = mod(ix,r(0))
-            if (wz == 0 .and. wy == 0 .and. wx == 0) cycle
-            izc = iz - wz
-            iyc = iy - wy
-            ixc = ix - wx
-c           if (izc < nn(2)) then
-c             izcpr = izc + r(2)
-c           else
-c             izcpr = izc
-c             wx = 0
-c           endif
-c           if (iyc < nn(1)) then
-c             iycpr = iyc + r(1)
-c           else
-c             iycpr = iyc
-c             wy = 0
-c           endif
-c           if (ixc < nn(0)) then
-c             ixcpr = ixc + r(0)
-c           else
-c             ixcpr = ixc
-c             wz = 0
-c           endif
-c           ws = (r(2) - wz)*(r(1) - wy)*(r(0) - wx) +
-c    &                   wz *(r(1) - wy)*(r(0) - wx) +
-c    &           (r(2) - wz)*        wy *(r(0) - wx) +
-c    &                   wz *        wy *(r(0) - wx) +
-c    &           (r(2) - wz)*(r(1) - wy)*        wx  +
-c    &                   wz *(r(1) - wy)*        wx  +
-c    &           (r(2) - wz)*        wy *        wx  +
-c    &                   wz *        wy *        wx
-c           ww = (r(2) - wz)*(r(1) - wy)*(r(0) - wx)*d(izc  ,iyc  ,ixc  ) +
-c    &                   wz *(r(1) - wy)*(r(0) - wx)*d(izcpr,iyc  ,ixc  ) +
-c    &           (r(2) - wz)*        wy *(r(0) - wx)*d(izc  ,iycpr,ixc  ) +
-c    &                   wz *        wy *(r(0) - wx)*d(izcpr,iycpr,ixc  ) +
-c    &           (r(2) - wz)*(r(1) - wy)*        wx *d(izc  ,iyc  ,ixcpr) +
-c    &                   wz *(r(1) - wy)*        wx *d(izcpr,iyc  ,ixcpr) +
-c    &           (r(2) - wz)*        wy *        wx *d(izc  ,iycpr,ixcpr) +
-c    &                   wz *        wy *        wx *d(izcpr,iycpr,ixcpr)
-            if (d(izc  ,iyc  ,ixc  ) == 1) then
-              d(iz,iy,ix) = 1
-            else
-              d(iz,iy,ix) = 0
-            endif
-
-          enddo
-        enddo
-      enddo
 
       return
       end
