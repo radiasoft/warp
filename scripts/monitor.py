@@ -25,7 +25,7 @@ import socket
 import time
 import re
 import md5
-monitor_version = "$Id: monitor.py,v 1.7 2004/02/19 19:06:17 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.8 2006/01/17 19:23:16 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -190,7 +190,7 @@ and if so, get commands from it.
 
         # --- Handle any gist events
         try:
-          v = gist.__version__
+          gist.__dict__['__version__']
           pyg_pending()
           pyg_idler()
         except:
