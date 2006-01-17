@@ -55,7 +55,8 @@ Implements adaptive mesh refinement in 3d
     self.root.listofblocks.append(self)
 
     # --- Note that a dictionary is used for the overlaps so that lookups
-    # --- are faster.
+    # --- are faster, also, the values in the dictionary are list containing
+    # --- temporary storage arrays for rho.
     self.overlaps = {}
     self.nguard = nguard
     self.conductorlist = []
@@ -430,89 +431,23 @@ only once, rather than twice for each parent as in the original.
         # --- Don't do anything if there is no overlap.
         sl = maximum(sibling.fulllower,block.fulllower)
         su = minimum(sibling.fullupper,block.fullupper)
-        #if sometrue(sl > su): continue
         if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
 
-        # --- Add block to the siblings list of overlaps. Note that there's
-        # --- no reason to add the sibling to the block's list of overlaps
-        # --- since the block will own all of the overlap area and not need
-        # --- to give any rho info to the sibling.
-        sibling.overlaps[block.blocknumber] = block.blocknumber
-
-        # --- This instance claims any cells that are unclaimed both here and
-        # --- in the sibling
-        sd = block.getsiblingdomains(sl,su)
-        od = sibling.getsiblingdomains(sl,su)
-        unclaimed = (od == -1) & (sd == -1)
-        sd[...] = where(unclaimed,1,sd)
-        od[...] = where(unclaimed,0,sd)
-
-      # --- Now, claim any parts of the domain that have
-      # --- not already been set. i.e. those parts not covered by other blocks.
-      sd = block.getsiblingdomains(block.fulllower,block.fullupper)
-      sd[...] = where(sd == -1,1,sd)
-
-  def findoverlappingsiblingsold(self,parent=None):
-    # --- This is an old version of the routine which did a pair wise search
-    # --- through all of the siblings. This was more expensive than the new
-    # --- version.
-    # --- Recursively call the children.
-    for child in self.children:
-      child.findoverlappingsiblings(self)
-
-    # --- If parent is None, then there are no siblings, so return.
-    if parent is None: return
-
-    # --- Note that this routine will be called once from each parent and that
-    # --- each parent can have a different ordering of children. To avoid
-    # --- problems with areas being claimed multiple times, only the region
-    # --- within the calling parent is operated on. When created, the
-    # --- siblingdomains is filled with -1 to flag all areas as being unset.
-    # --- Get extent of domain within the calling parent
-    l = maximum(parent.fulllower*self.refinement,self.fulllower)
-    u = minimum(parent.fullupper*self.refinement,self.fullupper)
-    # --- Loop over siblings with the parent, checking for overlaps with them.
-    for sibling in parent.children:
-      if sibling == self: continue
-
-      # --- Find domain which overlaps the sibling. Do nothing if the
-      # --- domain is zero size.
-      sl = maximum(l,sibling.fulllower)
-      su = minimum(u,sibling.fullupper)
-      #if sometrue(sl > su): continue
-      if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
-      sd = self.getsiblingdomains(sl,su)
-      od = sibling.getsiblingdomains(sl,su)
-
-      """
-      setupsiblingdomain(su-sl,transpose(sd),transpose(od))
-      """
-      # --- This instance claims any cells that are unclaimed both here and in
-      # --- the sibling
-      unclaimed = (od == -1) & (sd == -1)
-      sd[...] = where(unclaimed,1,sd)
-
-      # --- Any cells that are marked as claimed here or in the sibling but
-      # --- are not set in the other are marked as claimed by others.
-      sd[...] = where(sd == -1,0,sd)
-      od[...] = where(od == -1,0,od)
-
-      # --- It is possible that some areas will be claimed by multiple
-      # --- siblings. Remove claim to those areas from the sibling.
-      overclaimed = (od == 1) & (sd == 1)
-      od[...] = where(overclaimed,0,od)
-
-      # --- Keep a list of overlapping siblings
-      #if sibling not in self.overlaps:
-        #self.overlaps.append(sibling)
-      # --- Using a dictionary, this operation is faster and doesn't
-      # --- require a separate check is the sibling is already a key.
-      self.overlaps[sibling.blocknumber] = sibling.blocknumber
-
-    # --- Now, claim any parts of the domain within this parent that have
-    # --- not already been set. i.e. those parts not covered by other blocks.
-    sd = self.getsiblingdomains(l,u)
-    sd[...] = where(sd == -1,1,sd)
+        # --- Create an array to hold the rho in the overlapping region.
+        # --- Boths blocks need to know about these arrays since they will
+        # --- both contribute to it and use it.
+        # --- The first array in the list will be used to store the rho
+        # --- from the block. Then after all of the blocks have set that
+        # --- array, each block will then add the rho from the second array
+        # --- in the list to its own rho. This way, each block will be able
+        # --- to accumulate the rho from the overlapping blocks without
+        # --- double counting its own rho or missing some data.
+        # --- A small optimization would be to save the sl and su in the list
+        # --- as well.
+        overlaprho1 = zeros(su-sl+1,'d')
+        overlaprho2 = zeros(su-sl+1,'d')
+        sibling.overlaps[block.blocknumber] = [overlaprho1,overlaprho2]
+        block.overlaps[sibling.blocknumber] = [overlaprho2,overlaprho1]
 
   def clearinactiveregions(self,nbcells,parent=None,level=1):
     """
@@ -633,12 +568,13 @@ the top level grid.
     self.zerorhointerior(lrootonly)
 
   def propagaterhobetweenpatches(self,depositallparticles):
-      self.accumulaterhofromsiblings()
-      self.getrhofromsiblings()
+      self.copyrhotooverlaprho()
+      self.getrhofromoverlaps(0)
       if not depositallparticles:
         #self.gatherrhofromchildren_reversed()
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
+      self.getrhofromoverlaps(1)
 
   def zerorhointerior(self,lrootonly=0):
     if not self.isfirstcall(): return
@@ -717,6 +653,8 @@ the top level grid.
   def zerorho(self,lrootonly=0):
     if not self.isfirstcall(): return
     self.rho[...] = 0.
+    for othernumber,overlaprhos in self.overlaps.items():
+      overlaprhos[0][...] = 0.
     if not lrootonly:
       for child in self.children:
         child.zerorho()
@@ -1049,13 +987,17 @@ Fortran version
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
 
-      # --- Note that child.siblingdomains is passed in with C ordering
-      # --- to avoid the transpose/copy.
       w = self.getwarrayforrho(child.refinement)
       gatherrhofromchild(self.rho,self.dims,child.rho,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
-                         child.refinement,w,transpose(child.siblingdomains),
+                         child.refinement,w,
                          dopbounds,child.pbounds,self.rootdims)
+
+    # --- zerorhooverlap is call here so that the value saved will include
+    # --- both the contribution from the siblings and from the children.
+    # --- Also, the zeroing must be done now, so that any contribution from
+    # --- the children in the overlap regions will get zeroed as necessary.
+    self.zerorhooverlap()
 
   def gatherrhofromchildren_reversed(self):
     """
@@ -1143,51 +1085,59 @@ Python version with the loop over the child nodes as the inner loop
             # --- Now add in the contribution (in place)
             self.rho[ix0,iy0,iz0] += sum(ravel(rh))
 
-  def accumulaterhofromsiblings(self):
+  def copyrhotooverlaprho(self):
     """
-Loop over overlapping siblings and collect the rho from them from regions that
-are owned by this instance.
+Loop over overlapping siblings and copy the rho into the temporary array that
+extends over the overlapping region.
     """
     # --- This should only be done once.
     if not self.isfirstcall(): return
+    # --- Recursively call the routine for the children
     for child in self.children:
-      child.accumulaterhofromsiblings()
-    for othernumber in self.overlaps.keys():
+      child.copyrhotooverlaprho()
+    # --- Loop over overlapping siblings
+    for othernumber,overlaprhos in self.overlaps.items():
       other = self.getblockfromnumber(othernumber)
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
-      srho = self.getrho(l,u)
-      orho = other.getrho(l,u)
-      # --- Pull the data
-      #sown = self.getsiblingdomains(l,u)
-      ##srho[...] = srho + where(sown,orho,0.)
-      #add(srho,where(sown,orho,0.),srho)
-      # --- Push the data - needed with partial list of overlaps
-      oown = other.getsiblingdomains(l,u)
-      #orho[...] = orho + where(oown,srho,0.)
-      add(orho,where(oown,srho,0.),orho)
-      # --- Doesn't seem to work and I didn't take the time to debug it
-      #nx,ny,nz = array(shape(srho)) - 1
-      #addrhotoowner(nx,ny,nz,srho,sown,orho)
+      overlaprhos[0][...] = self.getrho(l,u)
 
-  def getrhofromsiblings(self):
+  def getrhofromoverlaps(self,undozerorhooverlap=0):
     """
-Get rho from overlapping siblings where they own the region.
+Add in the rho from temporary overlap arrays.
+For undozerorhooverlap, see comments in zerorhooverlap. If that is being done,
+then don't add in the rho for the block which did not have its rho zeroed out.
     """
     if not self.isfirstcall(): return
     for child in self.children:
-      child.getrhofromsiblings()
-    for othernumber in self.overlaps.keys():
+      child.getrhofromoverlaps(undozerorhooverlap)
+    for othernumber,overlaprhos in self.overlaps.items():
+      if self.blocknumber < othernumber and undozerorhooverlap: continue
       other = self.getblockfromnumber(othernumber)
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
       srho = self.getrho(l,u)
-      orho = other.getrho(l,u)
-      oown = other.getsiblingdomains(l,u)
-      srho[...] = where(oown,orho,srho)
-      # --- Doesn't seem to work and I didn't take the time to debug it
-      #nx,ny,nz = array(shape(srho)) - 1
-      #getrhofromowner(nx,ny,nz,srho,oown,orho)
+      add(srho,overlaprhos[1],srho)
+
+  def zerorhooverlap(self):
+    """
+For overlapping regions, this saves the rho into the temporary overlap arrays
+and zeros out rho in that region. When rho is passed from child to parent, in
+any overlapping regions only one child needs to pass the data to the parent.
+The choice as to which does the passing is determined by the blocknumber - the
+lower gets to do the passing. For the others, the rho in the overlapping
+region is cleared out. But that rho must be restored later, and so is copied
+to the temporary overlap arrays. That restoration is done by calling
+getrhofromoverlaps.
+    """
+    for othernumber,overlaprhos in self.overlaps.items():
+      other = self.getblockfromnumber(othernumber)
+      l = maximum(self.fulllower,other.fulllower)
+      u = minimum(self.fullupper,other.fullupper)
+      srho = self.getrho(l,u)
+      if self.blocknumber > othernumber:
+        overlaprhos[1][...] = srho
+        srho[...] = 0.
 
   #--------------------------------------------------------------------------
   # --- Methods to carry out the field solve
