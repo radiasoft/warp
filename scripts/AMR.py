@@ -18,7 +18,7 @@ class AMRTree(object,Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
-    def __init__(self,lremoveblockswithoutparticles=1):
+    def __init__(self,lremoveblockswithoutparticles=0):
       self.lremoveblockswithoutparticles = lremoveblockswithoutparticles
       self.nblocks      = 0
       self.f            = None
