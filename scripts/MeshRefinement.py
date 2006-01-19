@@ -209,11 +209,6 @@ Implements adaptive mesh refinement in 3d
     # --- then it is not needed.
     self.childdomains = None
 
-    # --- siblingdomains is the node centered grid which keeps track of which
-    # --- cells are owned by this instance and those owned by others at the
-    # --- same level. If there are no siblings, then it is not needed.
-    self.siblingdomains = None
-
     # --- Now add any specified children
     self.children = []
     if children is not None:
@@ -225,7 +220,7 @@ Implements adaptive mesh refinement in 3d
 Check whether this instance is the registered solver so that upon unpickling
 it knows whether to re-register itself.
     """
-    dict = self.__dict__.copy()
+    dict = MultiGrid.__getstate__(self)
     if self is getregisteredsolver():
       dict['iamtheregisteredsolver'] = 1
     else:
@@ -233,7 +228,7 @@ it knows whether to re-register itself.
     return dict
 
   def __setstate__(self,dict):
-    self.__dict__.update(dict)
+    MultiGrid.__setstate__(self,dict)
    #self.makefortranordered('phi')
    #self.makefortranordered('rho')
    #self.makefortranordered('selfe')
@@ -250,6 +245,13 @@ it knows whether to re-register itself.
         w3d.nzp = self.nz
         w3d.rhop = w3d.rho
         w3d.phip = w3d.phi
+    if self == self.root and self.lreducedpickle:
+      # --- If rho and phi weren't saved, make sure that they are setup.
+      # --- Though, this may not always be the right thing to do.
+      # --- These can only be done at the end of the restart since only then
+      # --- is it gauranteed that the particles are read in.
+      installafterrestart(self.loadrho)
+      installafterrestart(self.solve)
 
   def makefortranordered(self,vname):
     a = getattr(self,vname)
@@ -283,7 +285,6 @@ Given a block instance, installs it as a child.
     self.root = self
     self.totalnumberofblocks = 1
     self.listofblocks = [self]
-    self.siblingdomains = None
     self.childdomains = None
     self.children = []
 
@@ -931,12 +932,11 @@ Python version.
 
             prho = self.getrho(l+pm,u-pp)
             crho = child.getrho(ls+r*pm,us-r*pp,r)
-            cowns = child.getsiblingdomains(ls+r*pm,us-r*pp)[::r,::r,::r]
+            rh = crho.copy()
 
-            # --- Get the rho that will be contributed.
-            rh = where(cowns,crho,0.)
             # --- Multiply by the weight in place.
             multiply(rh,w[i+1,j+1,k+1],rh)
+
             # --- Adjust for symmetries
             if dopbounds:
               if child.pbounds[0] == 1 and i > 0 and l[0] == 0:
@@ -1058,10 +1058,7 @@ Python version with the loop over the child nodes as the inner loop
             iwx2 = ix2 - (ix*r[0] - r[0] + 1) + 1
 
             crho = child.getrho([ix1,iy1,iz1],[ix2,iy2,iz2])
-            cowns = child.getsiblingdomains([ix1,iy1,iz1],[ix2,iy2,iz2])
-
-            # --- Get the rho that will be contributed.
-            rh = where(cowns,crho,0.)
+            rh = crho.copy()
 
             # --- Multiply by the weight in place.
             wt = w[iwx1:iwx2,iwy1:iwy2,iwz1:iwz2]
@@ -1157,13 +1154,13 @@ getrhofromoverlaps.
         self.createphispecies()
 
     # solve on phi
-    self.setphiboundaries()
+    self.setphifromparents()
     MultiGrid.solve(self,iwhich)
     # solve on phispecies as needed
     if sum(top.lselfb)>0:
       for js in self.iselfb:
         self.pointphitophispecies(js,lselfonly=1)
-        self.setphiboundaries()
+        self.setphifromparents()
         MultiGrid.solve(self,iwhich)
         self.pointphitophicopy(lselfonly=1)
         # scale phispecies by -(1-1/gamma*2) store into top.fselfb
@@ -1195,6 +1192,24 @@ getrhofromoverlaps.
     if not lselfonly:
       for child in self.children:
         child.pointphitophicopy()
+
+  def setphifromparents(self):
+    """
+Sets phi, using the values from the parent grid. Setting the full phi array
+gives a better initial guess for the field solver.
+    """
+    for parentnumber in self.parents:
+      parent = self.getblockfromnumber(parentnumber)
+      # --- Coordinates of mesh relative to parent's mesh location
+      # --- and refinement. The minimum and maximum are needed in case
+      # --- this mesh extends beyond the parent's.
+      l = maximum(parent.fulllower*self.refinement,self.fulllower)
+      u = minimum(parent.fullupper*self.refinement,self.fullupper)
+      # --- The full phi arrays are passed in to avoid copying the subsets
+      # --- since the fortran needs contiguous arrays.
+      gatherphifromparents(self.phi,self.dims,l,u,self.fulllower,
+                           parent.phi,parent.dims,parent.fulllower,
+                           self.refinement)
 
   def setphiboundaries(self):
     """
@@ -1574,14 +1589,6 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
     return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-  def getsiblingdomains(self,lower,upper):
-    if self.siblingdomains is None:
-      #self.siblingdomains = zeros(1+self.dims) - 1
-      self.siblingdomains = zeros(1+self.dims)
-      subtract(self.siblingdomains,1,self.siblingdomains)
-    ix1,iy1,iz1 = lower - self.fulllower
-    ix2,iy2,iz2 = upper - self.fulllower + 1
-    return self.siblingdomains[ix1:ix2,iy1:iy2,iz1:iz2]
   def getlocalarray(self,array,lower,upper,r=[1,1,1],fulllower=None,
                     upperedge=1):
     if fulllower is None: fulllower = self.fulllower
