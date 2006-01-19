@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.101 $, $Date: 2006/01/17 05:26:35 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.102 $, $Date: 2006/01/19 19:49:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3530,6 +3530,246 @@ c                   --- Adjust for symmetries
 
       if (lf3dtimesubs) timegatherrhofromchild = timegatherrhofromchild +
      &                                           wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine gatherphifromparents(phi,nn,l,u,fulllower,
+     &                                parentphi,pnn,parentfulllower,r)
+      use Subtimersf3d
+      integer(ISZ):: nn(0:2),pnn(0:2)
+      integer(ISZ):: r(0:2)
+      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
+      integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
+      real(kind=8):: phi(0:nn(0),0:nn(1),-1:nn(2)+1)
+      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),-1:pnn(2)+1)
+
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
+      integer(ISZ):: ixp,iyp,izp
+      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      do iz0=l(2),u(2)
+        iz = iz0 - fulllower(2)
+        izp1 = int(iz0/r(2) - parentfulllower(2))
+        wz(1) = 1.*mod(iz0,r(2))/r(2)
+        wz(0) = 1. - wz(1)
+        if (wz(1) == 0.) then
+          izp2 = izp1
+        else
+          izp2 = izp1 + 1
+        endif
+
+        do iy0=l(1),u(1)
+          iy = iy0 - fulllower(1)
+          iyp1 = int(iy0/r(1) - parentfulllower(1))
+          wy(1) = 1.*mod(iy0,r(1))/r(1)
+          wy(0) = 1. - wy(1)
+          if (wy(1) == 0.) then
+            iyp2 = iyp1
+          else
+            iyp2 = iyp1 + 1
+          endif
+
+          do ix0=l(0),u(0)
+            ix = ix0 - fulllower(0)
+            ixp1 = int(ix0/r(0) - parentfulllower(0))
+            wx(1) = 1.*mod(ix0,r(0))/r(0)
+            wx(0) = 1. - wx(1)
+            if (wx(1) == 0.) then
+              ixp2 = ixp1
+            else
+              ixp2 = ixp1 + 1
+            endif
+
+            phi(ix,iy,iz) = 0.
+
+            do izp=izp1,izp2
+              do iyp=iyp1,iyp2
+                do ixp=ixp1,ixp2
+
+                  phi(ix,iy,iz) = phi(ix,iy,iz) + 
+     &              wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
+     &              parentphi(ixp,iyp,izp)
+
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+
+      if (lf3dtimesubs) timegatherphifromparents = timegatherphifromparents +
+     &                                             wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine gatherphifromparentstest(phi,rho,nn,deltas,parentphi,pnn,r)
+      use Constant
+      use Subtimersf3d
+      integer(ISZ):: nn(0:2),pnn(0:2)
+      integer(ISZ):: r(0:2)
+      real(kind=8):: deltas(0:2)
+      real(kind=8):: phi(0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),0:pnn(2))
+
+      integer(ISZ):: ix,iy,iz,ii
+      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
+      integer(ISZ):: ixp,iyp,izp
+      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
+      real(kind=8):: delsq,denom
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      delsq = deltas(0)**2 + deltas(1)**2 + deltas(2)**2
+
+      do iz=0,nn(2),2
+        izp1 = iz/2
+        do iy=0,nn(1),2
+          iyp1 = iy/2
+          do ix=0,nn(0),2
+            ixp1 = ix/2
+            phi(ix,iy,iz) = parentphi(ixp1,iyp1,izp1)
+          enddo
+        enddo
+      enddo
+
+      do iz=1,nn(2)-1,2
+        do iy=1,nn(1)-1,2
+          do ix=1,nn(0)-1,2
+            phi(ix,iy,iz) = 0.125*(rho(ix,iy,iz)*delsq/eps0 + 
+     &                             phi(ix-1,iy-1,iz-1) +
+     &                             phi(ix+1,iy-1,iz-1) +
+     &                             phi(ix-1,iy+1,iz-1) +
+     &                             phi(ix+1,iy+1,iz-1) +
+     &                             phi(ix-1,iy-1,iz+1) +
+     &                             phi(ix+1,iy-1,iz+1) +
+     &                             phi(ix-1,iy+1,iz+1) +
+     &                             phi(ix+1,iy+1,iz+1))
+          enddo
+        enddo
+      enddo
+
+c     - - - - 
+      delsq = deltas(0)**2 + deltas(1)**2
+      denom = 4./delsq + 2./deltas(2)**2
+      do iz=0,nn(2),2
+        do iy=1,nn(1)-1,2
+          do ix=1,nn(0)-1,2
+            if (iz == 0 .or. iz == nn(2)) then
+              phi(ix,iy,iz) = 0.25*(phi(ix-1,iy-1,iz) +
+     &                              phi(ix+1,iy-1,iz) +
+     &                              phi(ix-1,iy+1,iz) +
+     &                              phi(ix+1,iy+1,iz))
+            else
+              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
+     &                         (phi(ix-1,iy-1,iz) +
+     &                          phi(ix+1,iy-1,iz) +
+     &                          phi(ix-1,iy+1,iz) +
+     &                          phi(ix+1,iy+1,iz))/delsq +
+     &                         (phi(ix,iy,iz+1) +
+     &                          phi(ix,iy,iz-1))/deltas(2)**2)/denom
+            endif
+          enddo
+        enddo
+      enddo
+
+      delsq = deltas(0)**2 + deltas(2)**2
+      denom = 4./delsq + 2./deltas(1)**2
+      do iz=1,nn(2)-1,2
+        do iy=0,nn(1),2
+          do ix=1,nn(0)-1,2
+            if (iy == 0 .or. iy == nn(1)) then
+              phi(ix,iy,iz) = 0.25*(phi(ix-1,iy,iz-1) +
+     &                              phi(ix+1,iy,iz-1) +
+     &                              phi(ix-1,iy,iz+1) +
+     &                              phi(ix+1,iy,iz+1))
+            else
+              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
+     &                         (phi(ix-1,iy,iz-1) +
+     &                          phi(ix+1,iy,iz-1) +
+     &                          phi(ix-1,iy,iz+1) +
+     &                          phi(ix+1,iy,iz+1))/delsq +
+     &                         (phi(ix,iy+1,iz) +
+     &                          phi(ix,iy-1,iz))/deltas(1)**2)/denom
+            endif
+          enddo
+        enddo
+      enddo
+
+      delsq = deltas(1)**2 + deltas(2)**2
+      denom = 4./delsq + 2./deltas(0)**2
+      do iz=1,nn(2)-1,2
+        do iy=1,nn(1)-1,2
+          do ix=0,nn(0),2
+            if (ix == 0 .or. ix == nn(0)) then
+              phi(ix,iy,iz) = 0.25*(phi(ix,iy-1,iz-1) +
+     &                              phi(ix,iy+1,iz-1) +
+     &                              phi(ix,iy-1,iz+1) +
+     &                              phi(ix,iy+1,iz+1))
+            else
+              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
+     &                         (phi(ix,iy-1,iz-1) +
+     &                          phi(ix,iy+1,iz-1) +
+     &                          phi(ix,iy-1,iz+1) +
+     &                          phi(ix,iy+1,iz+1))/delsq +
+     &                         (phi(ix+1,iy,iz) +
+     &                          phi(ix-1,iy,iz))/deltas(0)**2)/denom
+            endif
+          enddo
+        enddo
+      enddo
+
+c     - - - - -
+      denom = 2./deltas(0)**2 + 2./deltas(1)**2 + 2./deltas(2)**2
+      do iz=0,nn(2)
+        do iy=0,nn(1)
+          do ix=0,nn(0)
+            if (mod(ix,2) + mod(iy,2) + mod(iz,2) == 1) then
+              if ((iy == 0 .or. iy == nn(1)) .and.
+     &            (iz == 0 .or. iz == nn(2))) then
+                phi(ix,iy,iz) = 0.5*(phi(ix-1,iy,iz) + phi(ix+1,iy,iz))
+              else if ((ix == 0 .or. ix == nn(0)) .and.
+     &                 (iz == 0 .or. iz == nn(2))) then
+                phi(ix,iy,iz) = 0.5*(phi(ix,iy-1,iz) + phi(ix,iy+1,iz))
+              else if ((ix == 0 .or. ix == nn(0)) .and.
+     &                 (iy == 0 .or. iy == nn(1))) then
+                phi(ix,iy,iz) = 0.5*(phi(ix,iy,iz-1) + phi(ix,iy,iz+1))
+              else if (ix == 0 .or. ix == nn(0)) then
+                phi(ix,iy,iz) = 0.25*(phi(ix,iy-1,iz  ) +
+     &                                phi(ix,iy+1,iz  ) +
+     &                                phi(ix,iy  ,iz+1) +
+     &                                phi(ix,iy  ,iz+1))
+              else if (iy == 0 .or. iy == nn(1)) then
+                phi(ix,iy,iz) = 0.25*(phi(ix-1,iy,iz  ) +
+     &                                phi(ix+1,iy,iz  ) +
+     &                                phi(ix  ,iy,iz+1) +
+     &                                phi(ix  ,iy,iz+1))
+              else if (iz == 0 .or. iz == nn(2)) then
+                phi(ix,iy,iz) = 0.25*(phi(ix-1,iy  ,iz) +
+     &                                phi(ix+1,iy  ,iz) +
+     &                                phi(ix  ,iy+1,iz) +
+     &                                phi(ix  ,iy-1,iz))
+              else
+                phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
+     &                           (phi(ix-1,iy  ,iz  ) +
+     &                            phi(ix+1,iy  ,iz  ))/deltas(0)**2 +
+     &                           (phi(ix  ,iy-1,iz  ) +
+     &                            phi(ix  ,iy+1,iz  ))/deltas(1)**2 +
+     &                           (phi(ix  ,iy  ,iz+1) +
+     &                            phi(ix  ,iy  ,iz-1))/deltas(2)**2)/denom
+              endif
+            endif
+          enddo
+        enddo
+      enddo
+
+      if (lf3dtimesubs) timegatherphifromparents = timegatherphifromparents +
+     &                                             wtime() - substarttime
 
       return
       end
