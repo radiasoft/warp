@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.92 2005/11/10 01:48:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.93 2006/01/19 19:45:22 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -831,6 +831,9 @@ Reads in data from file, redeposits charge density and does field solve
     if dofieldsol: fieldsol(0)
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
+  # --- Call any functions that had been registered to be called after
+  # --- the restart.
+  controllers.callafterrestartfuncs()
 
 ##############################################################################
 ##############################################################################
