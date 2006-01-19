@@ -50,7 +50,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.10 2005/11/29 00:42:20 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.11 2006/01/19 19:44:50 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -78,15 +78,17 @@ class ControllerFunction:
 # --- won't be restorable.
   """
 
-  def __init__(self,name=None):
+  def __init__(self,name=None,lcallonce=0):
     self.funcs = []
     self.time = 0.
     self.name = name
+    self.lcallonce = lcallonce
 
   def __call__(self):
     "Call all of the functions in the list"
     tt = self.callfuncsinlist()
     self.time = self.time + tt
+    if self.lcallonce: self.funcs = []
 
   def __getstate__(self):
     """
@@ -212,6 +214,7 @@ callbeforeplotfuncs = ControllerFunction('callbeforeplotfuncs')
 callafterplotfuncs = ControllerFunction('callafterplotfuncs')
 callplseldomfuncs = ControllerFunction('callplseldomfuncs')
 callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
+callafterrestartfuncs = ControllerFunction('callafterrestartfuncs',lcallonce=1)
 
 #=============================================================================
 class ControllerFunctionContainer:
@@ -260,7 +263,8 @@ controllerfunctioncontainer = ControllerFunctionContainer(
                                 callscraper,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
-                                callplseldomfuncs,callplalwaysfuncs])
+                                callplseldomfuncs,callplalwaysfuncs,
+                                callafterrestartfuncs])
 
 
 #=============================================================================
@@ -381,4 +385,36 @@ def uninstallplalways(f):
   callplalwaysfuncs.uninstallfuncinlist(f)
 def isinstalledplalways(f):
   return callplalwaysfuncs.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
+def installafterrestart(f):
+  "Adds a function to the list of functions called immediately after a restart"
+  callafterrestartfuncs.installfuncinlist(f)
+def uninstallafterrestart(f):
+  "Removes the function from the list of functions called immediately after a restart"
+  callafterrestartfuncs.uninstallfuncinlist(f)
+def isinstalledafterrestart(f):
+  return callafterrestartfuncs.isinstalledfuncinlist(f)
+
+
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+def fixcontrollersfromolddump():
+  import __main__
+  import controllers
+  controllernames = ['aftergenerate','beforefs','afterfs','callscraper',
+                     'calladdconductor','callbeforestepfuncs',
+                     'callafterstepfuncs','callbeforeplotfuncs',
+                     'callafterplotfuncs','callplseldomfuncs',
+                     'callplalwaysfuncs']
+  for cname in controllernames:
+    if cname in __main__.__dict__:
+      controller = __main__.__dict__[cname]
+      if 'funcnamelist' in controller.__dict__:
+        controllers.__dict__[controller.name] = controller
+        controller.funcs = controller.funcnamelist
+        del controller.funcnamelist
+    else:
+      print "Controller ",cname," not found"
 
