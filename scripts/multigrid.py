@@ -28,7 +28,8 @@ class MultiGrid(object):
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
                    'my_index','nslaves','izfsslave','nzfsslave']
-  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
+  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
+                    'lreducedpickle':0}
 
   def __init__(self,**kw):
     self.solvergeom = w3d.XYZgeom
@@ -131,6 +132,41 @@ class MultiGrid(object):
     self.nyp = self.ny
     self.nzp = self.nz
 
+    # --- Create phi and rho arrays and other arrays.
+    self.allocatefieldarrays()
+
+    # --- Create a conductor object, which by default is empty.
+    self.conductors = ConductorType()
+    self.conductorlist = []
+
+    # --- These must be arrays since they are modified in the call to the
+    # --- MG solver.
+    self.mgiters = zeros(1)
+    self.mgerror = zeros(1,'d')
+
+    # --- At the start, assume that there are no bends. This is corrected
+    # --- in the solve method when there are bends.
+    self.linbend = false
+
+    # --- Turn of build quads option
+    self.lbuildquads = false
+
+  def __getstate__(self):
+    dict = self.__dict__.copy()
+    if self.lreducedpickle:
+      del dict['rho']
+      del dict['rhop']
+      del dict['phi']
+      del dict['phip']
+      del dict['selfe']
+    return dict
+
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    if self.lreducedpickle:
+      self.allocatefieldarrays()
+
+  def allocatefieldarrays(self):
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
@@ -149,22 +185,6 @@ class MultiGrid(object):
       self.nz_selfe = 0
     self.rhop = self.rho
     self.phip = self.phi
-
-    # --- Create a conductor object, which by default is empty.
-    self.conductors = ConductorType()
-    self.conductorlist = []
-
-    # --- These must be arrays since they are modified in the call to the
-    # --- MG solver.
-    self.mgiters = zeros(1)
-    self.mgerror = zeros(1,'d')
-
-    # --- At the start, assume that there are no bends. This is corrected
-    # --- in the solve method when there are bends.
-    self.linbend = false
-
-    # --- Turn of build quads option
-    self.lbuildquads = false
 
   def setrho(self,x,y,z,uz,q,w):
     n = len(x)
