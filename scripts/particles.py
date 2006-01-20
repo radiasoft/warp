@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.33 2005/11/29 00:39:33 dave Exp $"
+particles_version = "$Id: particles.py,v 1.34 2006/01/20 01:08:56 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -256,8 +256,12 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   # --- to do the take operation with a pre-defined ii.
   if ii is not None: return ii
 
-  ins = getattrwithsuffix(object,'ins',suffix)
-  nps = getattrwithsuffix(object,'nps',suffix)
+  # --- If lost is true, append the suffix lost to the variable names
+  if lost: suffixparticle = 'lost' + suffix
+  else:    suffixparticle = suffix
+
+  ins = getattrwithsuffix(object,'ins',suffixparticle)
+  nps = getattrwithsuffix(object,'nps',suffixparticle)
   ns = len(ins)
 
   # --- If jslist defined, call selectparticles repeatedly for each species
@@ -279,9 +283,6 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     if object is not top: w3dobject = object
     else:                 w3dobject = w3d
 
-  # --- If lost is true, append the suffix lost to the variable names
-  if lost: suffix1 = 'lost' + suffix
-  else:    suffix1 = suffix
 
   ir1 = ins[js] - 1
   ir2 = ins[js] + nps[js] - 1
@@ -289,7 +290,7 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   if ir2 <= ir1: return array([])
 
   if zl is not None or zu is not None:
-    if z is None: z = getattrwithsuffix(object,'zp',suffix1)
+    if z is None: z = getattrwithsuffix(object,'zp',suffixparticle)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
@@ -300,7 +301,7 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xmmin + ix*dx - wx*dx
     xu = xmmin + ix*dx + wx*dx
-    x = getattrwithsuffix(object,'xp',suffix1)
+    x = getattrwithsuffix(object,'xp',suffixparticle)
     ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
   elif iy is not None:
@@ -308,11 +309,11 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = ymmin + iy*dy - wy*dy
     yu = ymmin + iy*dy + wy*dy
-    y = getattrwithsuffix(object,'yp',suffix1)
+    y = getattrwithsuffix(object,'yp',suffixparticle)
     ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
   elif iz is not None:
-    z = getattrwithsuffix(object,'zp',suffix1)
+    z = getattrwithsuffix(object,'zp',suffixparticle)
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zmminglobal = getattrwithsuffix(w3dobject,'zmminglobal',suffix,pkg='w3d')
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
@@ -321,21 +322,21 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif zc is not None:
-    z = getattrwithsuffix(object,'zp',suffix1)
+    z = getattrwithsuffix(object,'zp',suffixparticle)
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
     zl = zc - wz*dz
     zu = zc + wz*dz
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif xc is not None:
-    x = getattrwithsuffix(object,'xp',suffix1)
+    x = getattrwithsuffix(object,'xp',suffixparticle)
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xc - wx*dx
     xu = xc + wx*dx
     ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
   elif yc is not None:
-    y = getattrwithsuffix(object,'yp',suffix1)
+    y = getattrwithsuffix(object,'yp',suffixparticle)
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = yc - wy*dy
     yu = yc + wy*dy
@@ -370,10 +371,10 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     zwindows = getattrwithsuffix(object,'zwindows',suffix)
     if win is None: win = zwindows[:,iw] + zbeam
     if len(shape(win)) == 2: win = win[:,iw]
-    if z is None: z = getattrwithsuffix(object,'zp',suffix1)
+    if z is None: z = getattrwithsuffix(object,'zp',suffixparticle)
     ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
-  uz = getattrwithsuffix(object,'uzp',suffix1)
+  uz = getattrwithsuffix(object,'uzp',suffixparticle)
   ii = compress(not_equal(take(uz,ii),0.),ii)
   return ii
 
