@@ -56,8 +56,11 @@ Implements adaptive mesh refinement in 3d
 
     # --- Note that a dictionary is used for the overlaps so that lookups
     # --- are faster, also, the values in the dictionary are list containing
-    # --- temporary storage arrays for rho.
-    self.overlaps = {}
+    # --- the domain of the overlap. The blocks with lower and higher block
+    # --- number are treated differently, so create separate lists for each.
+    # --- Two separate lists is likely only a small optimization.
+    self.overlapslower = {}
+    self.overlapshigher = {}
     self.nguard = nguard
     self.conductorlist = []
 
@@ -399,6 +402,9 @@ Sets the regions that are covered by the children.
       # --- Set interior to positive child number.
       l = maximum(self.fulllower,child.lower/child.refinement)
       u = child.upper/child.refinement
+      # --- Check against the case where only the guard cells of the child
+      # --- overlap the parent.
+      if (u[0] < l[0] or u[1] < l[1] or u[2] < l[2]): continue
       # --- If the child extends to the edge of the parent mesh, it claims the
       # --- grid points on the upper edges.
       u = u + where(u == self.fullupper,1,0)
@@ -434,21 +440,12 @@ only once, rather than twice for each parent as in the original.
         su = minimum(sibling.fullupper,block.fullupper)
         if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
 
-        # --- Create an array to hold the rho in the overlapping region.
-        # --- Boths blocks need to know about these arrays since they will
-        # --- both contribute to it and use it.
-        # --- The first array in the list will be used to store the rho
-        # --- from the block. Then after all of the blocks have set that
-        # --- array, each block will then add the rho from the second array
-        # --- in the list to its own rho. This way, each block will be able
-        # --- to accumulate the rho from the overlapping blocks without
-        # --- double counting its own rho or missing some data.
-        # --- A small optimization would be to save the sl and su in the list
-        # --- as well.
-        overlaprho1 = zeros(su-sl+1,'d')
-        overlaprho2 = zeros(su-sl+1,'d')
-        sibling.overlaps[block.blocknumber] = [overlaprho1,overlaprho2]
-        block.overlaps[sibling.blocknumber] = [overlaprho2,overlaprho1]
+        if block.blocknumber < sibling.blocknumber:
+          block.overlapshigher[sibling.blocknumber] = [sl,su]
+          sibling.overlapslower[block.blocknumber] = [sl,su]
+        else:
+          block.overlapslower[sibling.blocknumber] = [sl,su]
+          sibling.overlapshigher[block.blocknumber] = [sl,su]
 
   def clearinactiveregions(self,nbcells,parent=None,level=1):
     """
@@ -569,13 +566,12 @@ the top level grid.
     self.zerorhointerior(lrootonly)
 
   def propagaterhobetweenpatches(self,depositallparticles):
-      self.copyrhotooverlaprho()
-      self.getrhofromoverlaps(0)
+      self.getrhofromoverlaps()
       if not depositallparticles:
         #self.gatherrhofromchildren_reversed()
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
-      self.getrhofromoverlaps(1)
+      self.restorerhoinoverlaps()
 
   def zerorhointerior(self,lrootonly=0):
     if not self.isfirstcall(): return
@@ -654,8 +650,6 @@ the top level grid.
   def zerorho(self,lrootonly=0):
     if not self.isfirstcall(): return
     self.rho[...] = 0.
-    for othernumber,overlaprhos in self.overlaps.items():
-      overlaprhos[0][...] = 0.
     if not lrootonly:
       for child in self.children:
         child.zerorho()
@@ -993,11 +987,9 @@ Fortran version
                          child.refinement,w,
                          dopbounds,child.pbounds,self.rootdims)
 
-    # --- zerorhooverlap is call here so that the value saved will include
-    # --- both the contribution from the siblings and from the children.
-    # --- Also, the zeroing must be done now, so that any contribution from
+    # --- zerorhoinoverlap is call here so that any contribution from
     # --- the children in the overlap regions will get zeroed as necessary.
-    self.zerorhooverlap()
+    self.zerorhoinoverlap()
 
   def gatherrhofromchildren_reversed(self):
     """
@@ -1082,59 +1074,59 @@ Python version with the loop over the child nodes as the inner loop
             # --- Now add in the contribution (in place)
             self.rho[ix0,iy0,iz0] += sum(ravel(rh))
 
-  def copyrhotooverlaprho(self):
+  def getrhofromoverlaps(self):
     """
-Loop over overlapping siblings and copy the rho into the temporary array that
-extends over the overlapping region.
+Add in the rho from overlaping areas. The rho is gathered into the block with
+the lowerest number. Later on, the rho will be copied back to the higher
+numbered blocks. This should only ever be called by the root block.
     """
-    # --- This should only be done once.
-    if not self.isfirstcall(): return
-    # --- Recursively call the routine for the children
-    for child in self.children:
-      child.copyrhotooverlaprho()
-    # --- Loop over overlapping siblings
-    for othernumber,overlaprhos in self.overlaps.items():
-      other = self.getblockfromnumber(othernumber)
-      l = maximum(self.fulllower,other.fulllower)
-      u = minimum(self.fullupper,other.fullupper)
-      overlaprhos[0][...] = self.getrho(l,u)
+    assert self is self.root,"This should only be called by the root block"
+    # --- This loops over the blocks in ascending order to ensure that in any
+    # --- area with overlap, the block with the lowest number is the one that
+    # --- gets the rho. This avoids problems of double counting rho. This
+    # --- could also be done be zeroing out orho, but that is extra
+    # --- (unecessary) computational work, since it already will be done
+    # --- at the end of gatherrhofromchildren.
+    for block in self.listofblocks:
+      for othernumber,overlapdomain in block.overlapshigher.items():
+        other = block.getblockfromnumber(othernumber)
+        l,u = overlapdomain
+        srho = block.getrho(l,u)
+        orho = other.getrho(l,u)
+        add(srho,orho,srho)
 
-  def getrhofromoverlaps(self,undozerorhooverlap=0):
+  def restorerhoinoverlaps(self):
     """
-Add in the rho from temporary overlap arrays.
-For undozerorhooverlap, see comments in zerorhooverlap. If that is being done,
-then don't add in the rho for the block which did not have its rho zeroed out.
+Restore rho in overlapping areas for blocks which had the rho zeroed out, the
+higher numbered blocks. This should only ever be called by the root block.
     """
-    if not self.isfirstcall(): return
-    for child in self.children:
-      child.getrhofromoverlaps(undozerorhooverlap)
-    for othernumber,overlaprhos in self.overlaps.items():
-      if self.blocknumber < othernumber and undozerorhooverlap: continue
-      other = self.getblockfromnumber(othernumber)
-      l = maximum(self.fulllower,other.fulllower)
-      u = minimum(self.fullupper,other.fullupper)
-      srho = self.getrho(l,u)
-      add(srho,overlaprhos[1],srho)
+    assert self is self.root,"This should only be called by the root block"
+    # --- The loop does not need to be in ascending order, but this just
+    # --- matches the getrhofromoverlaps routine.
+    for block in self.listofblocks:
+      for othernumber,overlapdomain in block.overlapslower.items():
+        other = block.getblockfromnumber(othernumber)
+        l,u = overlapdomain
+        srho = block.getrho(l,u)
+        orho = other.getrho(l,u)
+        srho[...] = orho
 
-  def zerorhooverlap(self):
+  def zerorhoinoverlap(self):
     """
-For overlapping regions, this saves the rho into the temporary overlap arrays
-and zeros out rho in that region. When rho is passed from child to parent, in
-any overlapping regions only one child needs to pass the data to the parent.
-The choice as to which does the passing is determined by the blocknumber - the
-lower gets to do the passing. For the others, the rho in the overlapping
-region is cleared out. But that rho must be restored later, and so is copied
-to the temporary overlap arrays. That restoration is done by calling
-getrhofromoverlaps.
+This zeros out rho in overlapping regions for higher numbered blocks.  When
+rho is passed from child to parent, in any overlapping regions only one child
+needs to pass the data to the parent.  The choice as to which does the
+passing is determined by the blocknumber - the lower gets to do the passing.
+For the others, the rho in the overlapping region is cleared out. That rho
+will be restored later by a call to restorerhoinoverlaps.
+Note that this is not recursive, since it is called separately by each block
+from gatherrhofromchildren.
     """
-    for othernumber,overlaprhos in self.overlaps.items():
+    for othernumber,overlapdomain in self.overlapslower.items():
       other = self.getblockfromnumber(othernumber)
-      l = maximum(self.fulllower,other.fulllower)
-      u = minimum(self.fullupper,other.fullupper)
+      l,u = overlapdomain
       srho = self.getrho(l,u)
-      if self.blocknumber > othernumber:
-        overlaprhos[1][...] = srho
-        srho[...] = 0.
+      srho[...] = 0.
 
   #--------------------------------------------------------------------------
   # --- Methods to carry out the field solve
@@ -1634,9 +1626,9 @@ contribute within their domains of ownership.
     elif arraystring == 'selfe': getarray = self.getselfe
     if comp is None: array = getarray(self.fulllower,self.fullupper)
     else:            array = getarray(self.fulllower,self.fullupper,comp)
-    c = self.getchilddomains(self.fulllower,self.fullupper,1)
-    # --- Skip points that don't self doesn't own
-    if c is not None:
+    if len(self.children) > 0:
+      # --- Skip points that don't self doesn't own
+      c = self.getchilddomains(self.fulllower,self.fullupper,1)
       array = where(c[ix,iy,iz]==self.blocknumber,array[ix,iy,iz],null)
     # --- Find the max of self's and the children's phi
     result = opnd(array)
