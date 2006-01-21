@@ -203,15 +203,7 @@ Implements adaptive mesh refinement in 3d
       self.fulllower = zeros(3)
       self.fullupper = self.dims
       self.rootdims = self.dims
-      # --- This may or may not be a good idea...
-      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
-        w3d.rho = self.rho
-        w3d.phi = self.phi
-        w3d.nxp = self.nx
-        w3d.nyp = self.ny
-        w3d.nzp = self.nz
-        w3d.rhop = self.rho
-        w3d.phip = self.phi
+      self.mirrorarraystow3d()
 
     # --- childdomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
@@ -223,6 +215,18 @@ Implements adaptive mesh refinement in 3d
     if children is not None:
       for l,u,r in children:
         self.addchild(l,u,refinement=r)
+
+  def mirrorarraystow3d(self):
+    if self != self.root: return
+    # --- This may or may not be a good idea...
+    if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+      w3d.rho = self.rho
+      w3d.phi = self.phi
+      w3d.nxp = self.nx
+      w3d.nyp = self.ny
+      w3d.nzp = self.nz
+      w3d.rhop = self.rho
+      w3d.phip = self.phi
 
   def __getstate__(self):
     """
@@ -255,17 +259,8 @@ it knows whether to re-register itself.
     if self.iamtheregisteredsolver:
       del self.iamtheregisteredsolver
       registersolver(self)
-      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
-        # --- The arrays are assigned in such a way that ensures that
-        # --- mr.phi is in the same fortran ordering of w3d.phi.
-        w3d.rho = self.rho
-        w3d.phi = self.phi
-        w3d.nxp = self.nx
-        w3d.nyp = self.ny
-        w3d.nzp = self.nz
-        w3d.rhop = w3d.rho
-        w3d.phip = w3d.phi
     if self == self.root and self.lreducedpickle:
+      self.mirrorarraystow3d()
       # --- It is assumed that at this point, all of the children have been
       # --- restored.
       # --- Regenerate childdomains
@@ -283,6 +278,8 @@ it knows whether to re-register itself.
       # --- is it gauranteed that the particles are read in.
       installafterrestart(self.loadrho)
       installafterrestart(self.solve)
+      # --- Do this after the restart since it has check for grid sizes.
+      installafterrestart(self.mirrorarraystow3d)
 
   def makefortranordered(self,vname):
     a = getattr(self,vname)
