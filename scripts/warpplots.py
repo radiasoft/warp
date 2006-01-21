@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.163 2006/01/09 18:19:15 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.164 2006/01/21 01:11:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -78,8 +78,6 @@ setup(): does the work needed to start writing plots to a file automatically
 plotruninfo(): plots run info at bottom of plots (called by fma and hcp)
 nf() = fma() Emulation of Basis command
 sf() = redraw() Emulation of Basis command
-warpplg(): for plotting data distributed across processors
-warpplp(): for plotting particles distributed across processors
 plothist(): convenience routine for plotting generic history data
 
 Define variable names for various colors
@@ -164,7 +162,7 @@ Does the work needed to start writing plots to a file automatically
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
   # --- Print the versions to the plot file.
   plt(time.ctime(top.starttime)+'\n'+versionstext()+'\n'+runcomments,
-      0.15,0.88,justify="LT")
+      0.15,0.88,justify="LT",local=1)
   fma()
 
 # --- Convenience function to open a window with default value specilized to
@@ -228,19 +226,19 @@ def plotruninfo():
         arraytostr(top.pline2)+'\n'+
         arraytostr(top.pline1))
   ss = re.sub(r'x10\|S2\|','e',ss)
-  plt(ss,0.12,0.28)
+  plt(ss,0.12,0.28,local=1)
   runmaker = arraytostr(top.runmaker)
   codeid = arraytostr(top.codeid)
   rundate = arraytostr(top.rundate)
   runtime = arraytostr(top.runtime)
   runid = arraytostr(top.runid)
   ss = '%-28s  %-8s  %-8s  %-9s  %-8s'%(runmaker,codeid,rundate,runtime,runid)
-  plt(ss,0.12,0.24)
+  plt(ss,0.12,0.24,local=1)
   if current_window()==0:
     # --- Only increment and print frame number and log if the active
     # --- device is window(0).
     numframes = numframes + 1
-    plt(repr(numframes),0.68,0.9,justify='RA')
+    plt(repr(numframes),0.68,0.9,justify='RA',local=1)
     if cgmlogfile:
       cgmlogfile.write('%d Step %d %s %s %s %s\n' %
                        (numframes,top.it,framet,frameb,framel,framer))
@@ -251,8 +249,53 @@ def plotruninfo():
 # before the normal gist fma is called. Also created are alternate (Basis
 # like) names for fma and redraw.
 gistplg = plg
+gistplfc = plfc
+gistpldj = pldj
+gistplfp = plfp
+gistplc = plc
+gistpli = pli
+gistplf = plf
+gistplv = plv
+gistplt = plt
 gistfma = fma
 gisthcp = hcp
+gistplsys = plsys
+
+# --- This is a global switch which toggles between directly calling the gist
+# --- plotting routines and accumulating lists of things to plot, which are then
+# --- plotted when a final command is given. The functions provide the API for
+# --- toggling the switch.
+_accumulateplotlists = 0
+def accumulateplotlists():
+  global _accumulateplotlists
+  _accumulateplotlists = 1
+def makeplotsdirectly():
+  global _accumulateplotlists
+  _accumulateplotlists = 0
+
+# --- This is the global list of the things to be plotted and the function
+# --- which actually does the plotting.
+_listofthingstoplot = []
+def addthingtoplot(pfunc,args,kw):
+  if type(pfunc) is not StringType: pfunc = pfunc.__name__
+  pfunc = 'gist' + pfunc
+  _listofthingstoplot.append([pfunc,args,kw])
+def callplotfunction(pfunc,args=[],kw={}):
+  if _accumulateplotlists:
+    addthingtoplot(pfunc,args,kw)
+  else:
+    pfunc(*args,**kw)
+def plotlistofthings(lturnofflist=0):
+  global _listofthingstoplot
+  if not _accumulateplotlists: return
+  listsofthings = gather(_listofthingstoplot)
+  _listofthingstoplot = []
+  for things in listsofthings:
+    for thing in things:
+      pfunc = __main__.__dict__[thing[0]]
+      pfunc(*thing[1],**thing[2])
+  if lturnofflist: makeplotsdirectly()
+
 def fma(legend=1):
   """
 Frame advance - plots run info on the bottom of the frame, gets graphics window
@@ -260,9 +303,10 @@ ready for next plot and sends image to hard copy file if one is opened. Checks
 for before and after plot commands.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
+  plotlistofthings()
   if legend: plotruninfo()
   controllers.callafterplotfuncs()
-  gistfma()
+  callplotfunction(gistfma)
   controllers.callbeforeplotfuncs()
   oldlimits = limits()
 def hcp(legend=1):
@@ -274,7 +318,7 @@ copy file.
   controllers.callafterplotfuncs()
   if legend: plotruninfo()
   controllers.callbeforeplotfuncs()
-  gisthcp()
+  callplotfunction(gisthcp)
 
 def refresh():
   """
@@ -292,7 +336,7 @@ sf = redraw
 ##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
 # It replaces the plg from gist, which can only plot 1-d arrays.
-def pla(y,x=None,linetype="solid",decomposed=0,**kw):
+def pla(y,x=None,linetype="solid",local=1,**kw):
   """This comment is replaced with gistplg.__doc__. The linetype argument is
   only needed for backward compatibility."""
   kw.setdefault('type',linetype)
@@ -327,38 +371,107 @@ def pla(y,x=None,linetype="solid",decomposed=0,**kw):
   else:
     # --- Extend yy into a 2-D array, with a second dimension of length 1.
     yy = y[:,NewAxis]
-  # --- The i%n is used in case the 2nd dimensions are not equal. This
-  # --- is most useful if the 2nd dimension of xx is 1, in which case
-  # --- all of the plots use that as the abscissa.
-  n = shape(xx)[1]
-  for i in xrange(yy.shape[1]):
-    if decomposed:
-      warpplg(yy[:,i],xx[:,i%n],**kw)
+  if not local and lparallel:
+    # --- This way is preferred over a gatherarray since, for large data sets,
+    # --- it reduces the risk of running out of memory since only part of the
+    # --- data is stored on PE0 at a time.
+    if me == 0:
+      for i in range(0,npes):
+        if i > 0:
+          yy = mpirecv(i,3)
+          xx = mpirecv(i,3)
+        if len(xx) > 0 and len(yy)==len(xx):
+          plg(yy,xx,local=1,**kw)
     else:
+      mpi.send(yy,0,3)
+      mpi.send(xx,0,3)
+  else:
+    # --- The i%n is used in case the 2nd dimensions are not equal. This
+    # --- is most useful if the 2nd dimension of xx is 1, in which case
+    # --- all of the plots use that as the abscissa.
+    n = shape(xx)[1]
+    for i in xrange(yy.shape[1]):
       if len(yy[:,i]) > 0:
-        gistplg(yy[:,i],xx[:,i%n],**kw)
+        callplotfunction(gistplg,[yy[:,i],xx[:,i%n]],kw)
 
 pla.__doc__ = gistplg.__doc__
 plg = pla
 
-##########################################################################
-# Create the plotting routines. It is different in the serial and parallel
-# versions.
-if not lparallel:
-  def warpplp(y,x,linetype="none",marker="\1",msize=1.0,**kw):
-    "Plots particles, same as plg but with different defaults"
-    kw.setdefault('type',linetype)
-    kw['marker'] = marker
-    kw['msize'] = msize
-    if len(y) > 0: gistplg(y,x,**kw)
-  def warpplg(y,x,linetype="solid",**kw):
-    "Same as plg but with different defaults"
-    kw.setdefault('type',linetype)
-    if len(y) > 0: gistplg(y,x,**kw)
-else:
-  warpplp = plotpart
-  warpplg = plotarray
+# --- This replaces functions from gist, filtering through callplotfunction
+def pldj(x0,y0,x1,y1,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    x0 = gatherarray(x0)
+    y0 = gatherarray(y0)
+    x1 = gatherarray(x1)
+    y1 = gatherarray(y1)
+  if size(x0) == 0 or size(y0) == 0 or size(x1) == 0 or size(y1) == 0: return
+  callplotfunction(gistpldj,[x0,y0,x1,y1],kw)
+def plfp(z,y,x,n,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    z = gatherarray(z)
+    y = gatherarray(y)
+    x = gatherarray(x)
+    n = gatherarray(n)
+  if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(n) == 0: return
+  callplotfunction(gistplfp,[z,y,x,n],kw)
+def plfc(z,y,x,ireg,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    z = gatherarray(z)
+    y = gatherarray(y)
+    x = gatherarray(x)
+    ireg = gatherarray(ireg)
+  if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(ireg) == 0: return
+  callplotfunction(gistplfc,[z,y,x,ireg],kw)
+def plc(z,y=None,x=None,ireg=None,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    z = gatherarray(z)
+    if y is not None: y = gatherarray(y)
+    if x is not None: x = gatherarray(x)
+    if ireg is not None: ireg = gatherarray(ireg)
+  if size(z) == 0: return
+  callplotfunction(gistplc,[z,y,x,ireg],kw)
+def pli(z,x0,y0,x1=None,y1=None,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    z = gatherarray(z)
+    x0 = gatherarray(x0)
+    y0 = gatherarray(y0)
+    if x1 is not None: x1 = gatherarray(x1)
+    if y1 is not None: y1 = gatherarray(y1)
+  if size(z) == 0 or size(x0) == 0 or size(y0) == 0: return
+  callplotfunction(gistpli,[z,x0,y0,x1,y1],kw)
+def plf(z,y=None,x=None,ireg=None,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    z = gatherarray(z)
+    if y is not None: y = gatherarray(y)
+    if x is not None: x = gatherarray(x)
+    if ireg is not None: ireg = gatherarray(ireg)
+  if size(z) == 0: return
+  callplotfunction(gistplf,[z,y,x,ireg],kw)
+def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    vy = gatherarray(vy)
+    vx = gatherarray(vx)
+    if y is not None: y = gatherarray(y)
+    if x is not None: x = gatherarray(x)
+    if ireg is not None: ireg = gatherarray(ireg)
+  if size(vy) == 0 or size(vx) == 0: return
+  callplotfunction(gistplv,[vy,vx,y,x,ireg],kw)
+def plt(text,x,y,local=1,**kw):
+  if not _accumulateplotlists and not local:
+    textlist = gather(text)
+    xlist = gather(x)
+    ylist = gather(y)
+  else:
+    textlist = [text]
+    xlist = [x]
+    ylist = [y]
+  for text,x,y in zip(textlist,xlist,ylist):
+    callplotfunction(gistplt,[text,x,y],kw)
+def plsys(n=None,**kw):
+  if n is None: return gistplsys()
+  callplotfunction(gistplsys,[n])
 
+##########################################################################
 # --- Plot particles
 circle = '\4'
 star = '\3'
@@ -369,7 +482,7 @@ def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
 markers instead of lines"""
   if type(y) in [FloatType,IntType]: y = [y]
   if type(x) in [FloatType,IntType]: x = [x]
-  if len(y) == 0: return
+  #if len(y) == 0: return
   kw.setdefault('type',linetype)
   kw['marker'] = marker
   kw['msize'] = msize
@@ -391,7 +504,7 @@ Plots any history versus z
 # --- Simple interface to contour plotting. Only requires the 2-D array
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=8,
-          filled=0,width=1.,linetype='solid',cmin=None,cmax=None):
+          filled=0,width=1.,linetype='solid',cmin=None,cmax=None,local=1):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -426,10 +539,12 @@ Simple interface to contour plotting, same arguments as plc
     if cmax is None: cmax = maxnd(zz)
     contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
   if filled:
-    plfc(zz,xx,yy,ireg,contours=contours)
+    plfc(zz,xx,yy,ireg,contours=contours,local=local)
   else:
-    plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype)
-def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
+    plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
+        local=local)
+
+def plotfc(zz,xx=None,yy=None,ireg=None,contours=8,local=1):
   """
 Simple interface to filled contour plotting, same arguments as plfc
   - zz 2-D array to be plotted
@@ -438,7 +553,8 @@ Simple interface to filled contour plotting, same arguments as plfc
   - color='fg'
   - contours Optional number of levels or list of levels
   """
-  plotc(zz,xx=xx,yy=yy,ireg=ireg,color=color,contours=contours,filled=1)
+  plotc(zz,xx=xx,yy=yy,ireg=ireg,color=color,contours=contours,filled=1,
+        local=local)
 
 # --- Define variables names for the allowed colors
 fg = 'fg'
@@ -511,19 +627,19 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
   framer=titler
   if titlet:
     plt(titlet,ptitle_placement[v-1][0][0],ptitle_placement[v-1][0][1],
-        justify="CC",orient=0)
+        justify="CC",orient=0,local=1)
   if titleb:
     plt(titleb,ptitle_placement[v-1][1][0],ptitle_placement[v-1][1][1],
-        justify="CC",orient=0)
+        justify="CC",orient=0,local=1)
   if titlel:
     plt(titlel,ptitle_placement[v-1][2][0],ptitle_placement[v-1][2][1],
-        justify="CC",orient=1)
+        justify="CC",orient=1,local=1)
   if titler:
     plt(titler,ptitle_placement[v-1][3][0],ptitle_placement[v-1][3][1],
-        justify="CC",orient=0)
+        justify="CC",orient=0,local=1)
   settitles()
 def ptitlebottom(text=""):
-  plt(text,0.3950,0.37,justify="CC")
+  plt(text,0.3950,0.37,justify="CC",local=1)
 
 ##########################################################################
 ##########################   UTILITY ROUTINES  ###########################
@@ -603,7 +719,7 @@ def pptitleright(iw=0,kwdict={},**kw):
 #-------------------------------------------------------------------------
 def ppmoments(text):
   "Plots text in upper right hand corner of the plot"
-  plt(text,0.61,.855,justify="RT",height=12,font="courierB")
+  plt(text,0.61,.855,justify="RT",height=12,font="courierB",local=1)
 
 #############################################################################
 #############################################################################
@@ -675,6 +791,9 @@ def ppgeneric_doc(x,y):
                   which requires a grid is requested (such as a contour
                   plot), no plotting is done and the grid and extrema
                   are returned in a tuple
+  - local=None: Forces the plotting to be local or non-local (parallel).
+                Otherwise, particle plots are non-local and grid plots
+                are local.
   """
   return doc%vars()
 #-------------------------------------------------------------------------
@@ -706,7 +825,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
-                'returngrid':0,
+                'returngrid':0,'local':1,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -782,6 +901,14 @@ Note that either the x and y coordinates or the grid must be passed in.
      (not hash and not contours and not surface and not cellarray):
     cellarray = 1
 
+  # --- Whether a grid plot is parallel or not depends on the input.
+  # --- If particle data is input, then the parallel work is handled
+  # --- in ppgeneric and the plot is then local. grid_local will be set
+  # --- below in that code handling the parallelism. Otherwise, use the
+  # --- default value or the one passed in. An input grid can be either
+  # --- local or parallel.
+  grid_local = local
+
   # --- Make sure that nothing is not plotted over a surface plot
   if surface:
     particles = 0
@@ -805,7 +932,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- Get slope subtracted value of y
     yms = y - (x-xoffset)*slope - yoffset - offset
     # --- Get mins and maxs of particles that were not supplied by the user.
-    if lparallel:
+    if lparallel and not local:
       if xmin is None: xmintemp = globalmin(x)
       if xmax is None: xmaxtemp = globalmax(x)
       if ymin is None: ymintemp = globalmin(yms)
@@ -874,10 +1001,13 @@ Note that either the x and y coordinates or the grid must be passed in.
     else:
       setgrid2dw(len(x),x,yms,weights,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
     # --- If parallel, do a reduction on the grid
-    try:
-      parallelsumrealarray(densitygrid,size(densitygrid))
-    except:
-      densitygrid = parallelsum(densitygrid)
+    if lparallel and not local:
+      try:
+        parallelsumrealarray(densitygrid,size(densitygrid))
+      except:
+        densitygrid = parallelsum(densitygrid)
+      # --- Set grid_local so that grid plots will now be done locally
+      grid_local = 1
 
     if (type(grid) != ArrayType and zz is None): grid = densitygrid
 
@@ -902,12 +1032,15 @@ Note that either the x and y coordinates or the grid must be passed in.
       deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
     # --- If parallel, do a reduction on the grid
-    try:
-      parallelsumrealarray(grid,size(grid))
-      parallelsumrealarray(gridcount,size(gridcount))
-    except:
-      grid = parallelsum(grid)
-      gridcount = parallelsum(gridcount)
+    if lparallel and not local:
+      try:
+        parallelsumrealarray(grid,size(grid))
+        parallelsumrealarray(gridcount,size(gridcount))
+      except:
+        grid = parallelsum(grid)
+        gridcount = parallelsum(gridcount)
+      # --- Set grid_local so that grid plots will now be done locally
+      grid_local = 1
 
     # --- Divide out the particle counts by hand.
     grid = grid/where(greater(gridcount,0.),gridcount,1.)
@@ -972,8 +1105,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     if cmin is None: cmin = minnd(grid)
     if cmax is None: cmax = maxnd(grid)
   elif zz is not None:
-    if cmin is None: cmin = min(zz)
-    if cmax is None: cmax = max(zz)
+    if cmin is None and len(zz) > 0: cmin = min(zz)
+    if cmax is None and len(zz) > 0: cmax = max(zz)
   ppgeneric.cmin = cmin
   ppgeneric.cmax = cmax
 
@@ -994,7 +1127,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   if contours and filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
-            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
+            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
+            local=grid_local)
 
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it. The min and max are adjusted so that the patch for
@@ -1018,9 +1152,10 @@ Note that either the x and y coordinates or the grid must be passed in.
         xmaxc = xmax
         yminc = ymin
         ymaxc = ymax
-      pli(transpose(grid),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
+      pli(transpose(grid),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax,
+          local=grid_local)
     else:
-      plf(grid,ymesh,xmesh)
+      plf(grid,ymesh,xmesh,local=grid_local)
 
   # --- Plot particles
   if particles:
@@ -1048,19 +1183,19 @@ Note that either the x and y coordinates or the grid must be passed in.
         z1 = compress(ipick,z1)
     if color == 'density':
       # --- Plot particles with color based on the density from the grid.
-      ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
-           xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,zmin=cmin,zmax=cmax,
-           ncolor=ncolor,usepalette=usepalette)
+      ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,zmin=cmin,zmax=cmax,
+           ncolor=ncolor,usepalette=usepalette,local=local)
     else:
       # --- Plot particles as a solid color.
-      warpplp(yms,x,color=color,marker=marker,msize=msize)
+      plp(yms,x,color=color,marker=marker,msize=msize,local=local)
 
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
   if contours and not filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
-            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
+            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
+            local=grid_local)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
@@ -1152,7 +1287,7 @@ Note that both the x and y grids must be passed in.
                 'pplimits':('e','e','e','e'),'scale':1.,
                 'color':'fg',
                 'xbound':dirichlet,'ybound':dirichlet,
-                'xmesh':None,'ymesh':None,
+                'xmesh':None,'ymesh':None,'local':1,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -1192,10 +1327,10 @@ Note that both the x and y grids must be passed in.
 
   # --- Compute scale
   scale = scale*min(dx,dy)/dvnz(max(maxnd(abs(gridx)),maxnd(abs(gridy))))
-  print scale
+  #print scale
 
   # --- Make plot
-  plv(gridy,gridx,yy,xx,scale=scale)
+  plv(gridy,gridx,yy,xx,scale=scale,local=local)
 
 #############################################################################
 #############################################################################
@@ -1249,6 +1384,8 @@ values from zmin to zmax.
   - levs: an optional list of color levels
   - ctop=199: number of colors from palette to use
   """
+  # --- This is only ever done on processor 0, so otherwise return
+  if me > 0: return
   plsys(0)
   xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   fontsize = colorbar_fontsize[view-1]
@@ -1262,7 +1399,7 @@ values from zmin to zmax.
     xx = array([xmin,xmax])*ones(255)[:,NewAxis]
     yy = span(ymin,ymax,255)[:,NewAxis]*ones(2)
     ireg = ones((255,2))
-    plfc(plotval,yy,xx,ireg,contours=array(levs))
+    plfc(plotval,yy,xx,ireg,contours=array(levs),local=1)
   else:
     # --- Use cell array plotting for this case. All of the colors get a block
     # --- of the same size. If levs is not specified, the uniform spacing 
@@ -1274,10 +1411,10 @@ values from zmin to zmax.
        plotval = arange(zmin,zmax+1,typecode='b')[:,NewAxis]*ones(2)
     else:
        plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
-    pli(plotval,xmin,ymin,xmax,ymax,top=ctop)
+    pli(plotval,xmin,ymin,xmax,ymax,top=ctop,local=1)
   # --- Draw a black box around it
   pldj([xmin,xmin,xmin,xmax],[ymin,ymax,ymin,ymin],
-       [xmax,xmax,xmin,xmax],[ymin,ymax,ymax,ymax])
+       [xmax,xmax,xmin,xmax],[ymin,ymax,ymax,ymax],local=1)
   # --- Generate nice levels for the labels and tick marks.
   if levs is None:
     # --- Use the nicelevels routine to get evenly spaced labels.
@@ -1310,10 +1447,10 @@ values from zmin to zmax.
   ylast = 0.
   for i in xrange(llev):
     if ys[i] - ylast > (ymax-ymin)/30:
-      plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005,height=fontsize)
+      plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005,height=fontsize,local=1)
       ylast = ys[i]
   # --- Plot the tick marks
-  pldj(llev*[xmax],ys,llev*[xmax+0.005],ys)
+  pldj(llev*[xmax],ys,llev*[xmax+0.005],ys,local=1)
   # --- Return to plot system 1.
   plsys(view)
 
@@ -1625,6 +1762,7 @@ def ppzxy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
@@ -1652,6 +1790,7 @@ def ppzx(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
@@ -1670,6 +1809,7 @@ def ppzy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.yplmin,top.yplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
@@ -1688,6 +1828,7 @@ def ppzr(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
@@ -1706,6 +1847,7 @@ def ppzxp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
@@ -1724,6 +1866,7 @@ def ppzvx(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
@@ -1742,6 +1885,7 @@ def ppzyp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin,top.ypplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
@@ -1760,6 +1904,7 @@ def ppzvy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
@@ -1778,6 +1923,7 @@ def ppzvz(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
@@ -1796,6 +1942,7 @@ def ppzvr(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vr vs Z","Z","Vr",pptitleright(iw=iw,kwdict=kw))
@@ -1814,6 +1961,7 @@ def ppzvtheta(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vtheta vs Z","Z","Vtheta",pptitleright(iw=iw,kwdict=kw))
@@ -1832,6 +1980,7 @@ def ppzrp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
@@ -1849,6 +1998,7 @@ def ppxy(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
@@ -1871,6 +2021,7 @@ def ppxxp(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
@@ -1893,6 +2044,7 @@ def ppyyp(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
@@ -1918,6 +2070,7 @@ def ppxpyp(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
+  kw.setdefault('local',0)
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
@@ -1946,6 +2099,7 @@ def ppxvx(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
@@ -1969,6 +2123,7 @@ def ppyvy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
@@ -1987,6 +2142,7 @@ def ppxvz(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
@@ -2005,6 +2161,7 @@ def ppyvz(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
@@ -2054,6 +2211,7 @@ def pprrp(iw=0,scale=0,slopejs=-1,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                       top.xpplmin/xpscale,top.xpplmax/ypscale)
+  kw.setdefault('local',0)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(rp,rr,kwdict=kw)
@@ -2101,6 +2259,7 @@ def pprtp(iw=0,scale=0,slopejs=-1,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                       top.xpplmin/xpscale,top.xpplmax/ypscale)
+  kw.setdefault('local',0)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Theta' vs R","R","Theta'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(tp,rr,kwdict=kw)
@@ -2117,6 +2276,7 @@ def pprvz(iw=0,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
@@ -2135,6 +2295,7 @@ that plot.
   """
   checkparticleplotarguments(kw)
   if ppmultispecies(pptrace,(iw,normalize),kw): return
+  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   x = getx(ii=ii,gather=0,**kw)
   y = gety(ii=ii,gather=0,**kw)
@@ -2232,166 +2393,172 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 ##########################################################################
 ##########################################################################
-def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
-           ncolor=None,nskipcol=None,nstepcol=None):
+def ppzxco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
   """Plots Z-X with color based in particle index
-     - js=0 species to plot
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - sys=1 specifies section of plot frame to use
-     - titles=1 specifies whether or not to plot titles"""
-  if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
-  inp=top.nps[js]/ncolor
-  istep=nskipcol*nstepcol
-  #if (lframadv) nf
-  istart = top.ins[js]-1
-  if (inp < istep): istep = 1
-  for ij in xrange(1,istep+1,nskipcol*2):
-    for ic in xrange(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii=compress(not_equal(top.uzp[irs1:irs2:irs3],0.),iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-inp*(ic-1))/istep
-      warpplp(take(top.xp[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-    for ic in xrange(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii = compress(not_equal(top.uzp[irs1:irs2:irs3],0.),
-                    iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
-      warpplp(take(top.xp[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-  if titles: ptitles(" ","Z","X"," ",sys)
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.xplmin,top.xplmax)
-
-##########################################################################
-def ppzyco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
-           ncolor=None,nskipcol=None,nstepcol=None):
-  """Plots Z-Y with color based in paricle index
-     - js=0 species to plot
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - sys=1 specifies section of plot frame to use
-     - titles=1 specifies whether or not to plot titles"""
-  if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
-  inp=top.nps[js]/ncolor
-  istep=nskipcol*nstepcol
-  #if (lframadv) nf
-  istart = top.ins[js]-1
-  if (inp < istep): istep = 1
-  for ij in xrange(1,istep+1,nskipcol*2):
-    for ic in xrange(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii=compress(not_equal(top.uzp[irs1:irs2:irs3],0.),iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-inp*(ic-1))/istep
-      warpplp(take(top.yp[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-    for ic in xrange(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii = compress(not_equal(top.uzp[irs1:irs2:irs3],0.),
-                    iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
-      warpplp(take(top.yp[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-           color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-  if titles: ptitles(" ","Z","Y"," ",sys)
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.yplmin,top.yplmax)
-
-##########################################################################
-def ppzxyco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
-            ncolor=None,nskipcol=None,nstepcol=None):
-  """Plots Z-X and Z-Y in single frame with color based in paricle index
-     - js=0 species to plot
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  plsys(9)
-  ppzxco(js,sys=9,marker=marker,msize=msize,lframe=lframe,titles=titles,
-         ncolor=ncolor,nskipcol=nskipcol,nstepcol=nstepcol)
-  plsys(10)
-  ppzyco(js,sys=10,marker=marker,msize=msize,lframe=lframe,titles=titles,
-         ncolor=ncolor,nskipcol=nskipcol,nstepcol=nstepcol)
-
-##########################################################################
-def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
-            ncolor=None,nskipcol=None,nstepcol=None):
-  """Plots Z-Vz with color based in paricle index
-     - js=0 species to plot
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
-  inp=top.nps[js]/ncolor
-  istep=nskipcol*nstepcol
-  #if (lframadv) nf
-  (vzmin,vzmax) = getvzrange()
-  istart = top.ins[js]-1
-  for ij in xrange(1,istep+1,nskipcol*2):
-    for ic in xrange(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii=compress(not_equal(top.uzp[irs1:irs2:irs3],0.),iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-inp*(ic-1))/istep
-      warpplp(take(top.uzp[irs1:irs2:irs3]*top.gaminv[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-    for ic in xrange(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
-      irs3 = istep
-      ii = compress(not_equal(top.uzp[irs1:irs2:irs3],0.),
-                    iota(irs1,irs2,irs3))
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
-      warpplp(take(top.uzp[irs1:irs2:irs3]*top.gaminv[irs1:irs2:irs3],ii),
-              take(top.zp[irs1:irs2:irs3],ii),
-         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
-  if titles: ptitles("Vz vs Z","Z","Vz"," ")
-  if (lframe): limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
-
-##########################################################################
-def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
-         zmin=None,zmax=None,ncolor=None,usepalette=1,
-         marker="\1",msize=1.0,lframe=0):
-  """Plots y versus x with color based in z
-     - y is y coordinate
-     - x is x coordinate
-     - z is used to calculate the color
-     - xmin, xmax, ymin, ymax, zmin, zmax optional bounds
-     - ncolor is number of colors to use, defaults to top.ncolor
-     - usepalette=1 when true, uses palette, otherwise uses colors in array
-                    color
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles
+ - ncolor=top.ncolor: number of colors to use
+ - nskipcol=top.nskipcol:
+ - nstepcol=top.nstepcol:
   """
+  # --- First part copied from ppzx
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzxco,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xplmin,top.xplmax)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
+  x = getx(ii=ii,gather=0,**kw)
+  z = getz(ii=ii,gather=0,**kw)
 
-  # --- If there are not particles to plot, just return
-  np = globalsum(len(x))
-  if np == 0: return
+  # --- Second part from the original ppzxco
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
+  inp=1.*len(x)/ncolor
+  istep=nskipcol*nstepcol
+  istart = 0
+  if (inp < istep): istep = 1
+  for ij in range(1,istep+1,nskipcol*2):
+    for ic in range(1,ncolor+1):
+      irs1 = istart+ij+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-inp*(ic-1))/istep
+      plp(take(x[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
+    for ic in range(ncolor,0,-1):
+      irs1 = istart+ij+nskipcol+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      plp(take(x[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
 
+##########################################################################
+def ppzyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
+  """Plots Z-Y with color based in particle index
+ - ncolor=top.ncolor: number of colors to use
+ - nskipcol=top.nskipcol:
+ - nstepcol=top.nstepcol:
+  """
+  # --- First part copied from ppzy
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzyco,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.yplmin,top.yplmax)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
+  y = gety(ii=ii,gather=0,**kw)
+  z = getz(ii=ii,gather=0,**kw)
+
+  # --- Second part from the original ppzyco
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
+  inp=1.*len(y)/ncolor
+  istep=nskipcol*nstepcol
+  istart = 0
+  if (inp < istep): istep = 1
+  for ij in range(1,istep+1,nskipcol*2):
+    for ic in range(1,ncolor+1):
+      irs1 = istart+ij+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-inp*(ic-1))/istep
+      plp(take(y[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
+    for ic in range(ncolor,0,-1):
+      irs1 = istart+ij+nskipcol+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      plp(take(y[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
+
+##########################################################################
+def ppzxyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
+  """Plots Z-X and Z-Y in single frame with color based in paricle index
+See documentation for ppzxco and ppzyco.
+  """
+  plsys(9)
+  ppzxco(ncolor=ncolor,nskipcol=nskipcol,nstepcol=nstepcol,**kw)
+  plsys(10)
+  ppzyco(ncolor=ncolor,nskipcol=nskipcol,nstepcol=nstepcol,**kw)
+
+##########################################################################
+def ppzvzco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
+  """Plots Z-Vz with color based in particle index
+ - ncolor=top.ncolor: number of colors to use
+ - nskipcol=top.nskipcol:
+ - nstepcol=top.nstepcol:
+  """
+  # --- First part copied from ppzvz
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzvzco,(iw,),kw): return
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
+  kw.setdefault('local',0)
+
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
+  vz = getvz(ii=ii,gather=0,**kw)
+  z = getz(ii=ii,gather=0,**kw)
+
+  # --- Second part from the original ppzvzco
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
+  inp=1.*len(vz)/ncolor
+  istep=nskipcol*nstepcol
+  istart = 0
+  if (inp < istep): istep = 1
+  for ij in range(1,istep+1,nskipcol*2):
+    for ic in range(1,ncolor+1):
+      irs1 = istart+ij+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-inp*(ic-1))/istep
+      plp(take(vz[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
+    for ic in range(ncolor,0,-1):
+      irs1 = istart+ij+nskipcol+inp*(ic-1)
+      irs2 = istart+inp*ic
+      irs3 = istep
+      ii = iota(irs1,irs2,irs3)
+      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      plp(take(vz[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
+          color=color[ic%len(color)],local=0,**kw)
+
+##########################################################################
+def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
+         ncolor=None,usepalette=1,local=1):
+  """Plots y versus x with color based in z
+     - y: y coordinate
+     - x: x coordinate
+     - z: used to calculate the color
+     - zmin, zmax: optional bounds on the coloring data
+     - ncolor: number of colors to use, defaults to top.ncolor
+     - usepalette=1: when true, uses palette, otherwise uses colors in array
+                     color
+  """
   # --- Make sure the lengths of the input are the same
   assert (len(y) == len(x) == len(z)),"x, y, and z must all be the same length"
 
@@ -2399,14 +2566,15 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
   # --- colors since synchronization is needed for each color.
   # --- So, if there arn't too many particles, transfer everything to PE0
   # --- and let it do the work.
-  if np < 1000000:
-    alllocal = 1
+  np = len(y)
+  if not local: np = globalsum(np)
+  if np < 1000000 and not local:
+    local = 1
     y = gatherarray(y)
     x = gatherarray(x)
     z = gatherarray(z)
     if type(uz) == ArrayType: uz = gatherarray(uz)
-  else:
-    alllocal = 0
+    if me > 0: return
 
   # --- Make sure arrays are 1-D
   rx = ravel(x)
@@ -2414,12 +2582,12 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
   rz = ravel(z)
 
   # --- Find extrema
-  if xmin is None: xmin = globalmin(rx)
-  if xmax is None: xmax = globalmax(rx)
-  if ymin is None: ymin = globalmin(ry)
-  if ymax is None: ymax = globalmax(ry)
-  if zmin is None: zmin = globalmin(rz)
-  if zmax is None: zmax = globalmax(rz)
+  if not local:
+    if zmin is None: zmin = globalmin(rz)
+    if zmax is None: zmax = globalmax(rz)
+  else:
+    if zmin is None: zmin = min(rz)
+    if zmax is None: zmax = max(rz)
 
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
@@ -2430,13 +2598,7 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
       c = nint(199*ic/(ncolor-1.))
     else:
       c = color[ic%len(color)]
-    if alllocal:
-      plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize)
-    else:
-      warpplp(take(y,ii),take(x,ii),
-              color=c,linetype="none",marker=marker,msize=msize)
-  if (lframe): limits(xmin,xmax,ymin,ymax)
-
+    plp(take(y,ii),take(x,ii),color=c,marker=marker,msize=msize,local=local)
 
 ##########################################################################
 # To be implemented
@@ -2543,6 +2705,10 @@ to all three.
   if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     if solver is w3d: solver = frz.basegrid
     if iy is not None: iy = None
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return solver.rho
@@ -2651,6 +2817,10 @@ be from none to all three.
   """
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return solver.phi[:,:,1:-1]
@@ -2743,7 +2913,8 @@ be from none to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+             solver=w3d):
   """Returns slices of selfe, the electrostatic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2775,7 +2946,11 @@ be from none to all three.
       solver.getselfe()
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
-  if not lparallel:
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       eee = solver.selfe[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
@@ -2846,7 +3021,8 @@ be from none to all three.
       eee = ee1
     return eee
 # --------------------------------------------------------------------------
-def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+         solver=w3d):
   """Returns slices of J, the current density array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2864,7 +3040,11 @@ be from none to all three.
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver.bfield
-  if not lparallel:
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       j = bfield.j[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
@@ -2936,7 +3116,8 @@ be from none to all three.
     return j
 
 # --------------------------------------------------------------------------
-def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+         solver=w3d):
   """Returns slices of B, the magnetic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2954,7 +3135,11 @@ be from none to all three.
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver.bfield
-  if not lparallel:
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       b = bfield.b[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
@@ -3025,7 +3210,8 @@ be from none to all three.
       b = b1
     return b
 # --------------------------------------------------------------------------
-def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
+def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
+         solver=w3d):
   """Returns slices of B, the magnetic vector potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3043,7 +3229,11 @@ be from none to all three.
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
   else:             bfield = solver.bfield
-  if not lparallel:
+  try:
+    if solver.nslaves <= 1: local = 1
+  except:
+    pass
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       a = bfield.a[ic,1:-1,1:-1,1:-1]
     elif ix is not None and iy is None     and iz is None    :
@@ -3115,7 +3305,7 @@ be from none to all three.
     return a
 
 ##########################################################################
-def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
+def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
@@ -3136,16 +3326,16 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
                       solver.ymmin,solver.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
-  rrr = getrho(ix=ix,solver=solver)
-  if me > 0: rrr = zeros((solver.ny+1,solver.nzfull+1),'d')
+  rrr = getrho(ix=ix,solver=solver,local=local)
+  if me > 0 and not local: rrr = zeros((solver.ny+1,solver.nzfull+1),'d')
   rrr = transpose(rrr)
-  ppgeneric(grid=rrr,kwdict=kw)
+  ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
-    ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
+def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
@@ -3166,16 +3356,16 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
-  rrr = getrho(iy=iy,solver=solver)
-  if me > 0: rrr = zeros((solver.nx+1,solver.nzfull+1),'d')
+  rrr = getrho(iy=iy,solver=solver,local=local)
+  if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nzfull+1),'d')
   rrr = transpose(rrr)
-  ppgeneric(grid=rrr,kwdict=kw)
+  ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and solver.l4symtry:
-    ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcrhoxy(iz=None,fullplane=1,solver=w3d,**kw):
+def pcrhoxy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   """Plots contours of charge density in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
@@ -3192,19 +3382,19 @@ def pcrhoxy(iz=None,fullplane=1,solver=w3d,**kw):
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
-  rrr = getrho(iz=iz,solver=solver)
-  if me > 0: rrr = zeros((solver.nx+1,solver.ny+1),'d')
-  ppgeneric(grid=rrr,kwdict=kw)
+  rrr = getrho(iz=iz,solver=solver,local=local)
+  if me > 0 and not local: rrr = zeros((solver.nx+1,solver.ny+1),'d')
+  ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and solver.l4symtry:
-    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=0)
-    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
-    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
   elif fullplane and solver.l2symtry:
-    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
+def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
@@ -3225,16 +3415,16 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
                       solver.ymmin,solver.ymmax)
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
-  ppp = getphi(ix=ix,solver=solver)
-  if me > 0: ppp = zeros((solver.ny+1,solver.nzfull+1),'d')
+  ppp = getphi(ix=ix,solver=solver,local=local)
+  if me > 0 and not local: ppp = zeros((solver.ny+1,solver.nzfull+1),'d')
   ppp = transpose(ppp)
-  ppgeneric(grid=ppp,kwdict=kw)
+  ppgeneric(grid=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
-    ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
+def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
@@ -3243,8 +3433,12 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmminglobal + zbeam)
-  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmminglobal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
@@ -3255,16 +3449,16 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,**kw):
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
-  ppp = getphi(iy=iy,solver=solver)
-  if me > 0: ppp = zeros((solver.nx+1,solver.nzfull+1),'d')
+  ppp = getphi(iy=iy,solver=solver,local=local)
+  if me > 0 and not local: ppp = zeros((solver.nx+1,solver.nzfull+1),'d')
   ppp = transpose(ppp)
-  ppgeneric(grid=ppp,kwdict=kw)
+  ppgeneric(grid=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcphixy(iz=None,fullplane=1,solver=w3d,**kw):
+def pcphixy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
@@ -3281,20 +3475,20 @@ def pcphixy(iz=None,fullplane=1,solver=w3d,**kw):
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Electrostatic potential in x-y plane","X","Y","iz = "+repr(iz))
-  ppp = getphi(iz=iz,solver=solver)
-  if me > 0: ppp = zeros((solver.nx+1,solver.ny+1),'d')
-  ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=0)
+  ppp = getphi(iz=iz,solver=solver,local=local)
+  if me > 0 and not local: ppp = zeros((solver.nx+1,solver.ny+1),'d')
+  ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=0,flipyaxis=0)
   if fullplane and solver.l4symtry:
-    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=0)
-    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
-    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
   elif fullplane and solver.l2symtry:
-    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
-              lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+              lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
@@ -3321,17 +3515,17 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(eee),kwdict=kw)
+    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
   else:
-    ey = getselfe(comp='y',ix=ix,fullplane=fullplane,solver=solver)
-    ez = getselfe(comp='z',ix=ix,fullplane=fullplane,solver=solver)
-    ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw)
+    ey = getselfe(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ez = getselfe(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
-              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+              lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
@@ -3358,16 +3552,17 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(eee),kwdict=kw)
+    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
   else:
-    ex = getselfe(comp='x',iy=iy,fullplane=fullplane,solver=solver)
-    ez = getselfe(comp='z',iy=iy,fullplane=fullplane,solver=solver)
-    ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw)
+    ex = getselfe(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ez = getselfe(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+              local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=nint(-zmmin/dz): Z index of plane
@@ -3393,17 +3588,17 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=eee,kwdict=kw)
+    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=eee,kwdict=kw,local=1)
   else:
-    ex = getselfe(comp='x',iz=iz,fullplane=fullplane,solver=solver)
-    ey = getselfe(comp='y',iz=iz,fullplane=fullplane,solver=solver)
-    ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw)
+    ex = getselfe(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ey = getselfe(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
-          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of current density in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
@@ -3430,17 +3625,17 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(j),kwdict=kw)
+    j = getj(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(j),kwdict=kw,local=1)
   else:
-    jy = getj(comp='y',ix=ix,fullplane=fullplane,solver=solver)
-    jz = getj(comp='z',ix=ix,fullplane=fullplane,solver=solver)
-    ppvector(transpose(jy[::sy,::sz]),transpose(jz[::sy,::sz]),kwdict=kw)
+    jy = getj(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    jz = getj(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(jy[::sy,::sz]),transpose(jz[::sy,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcjzy.__doc__ = pcjzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
-              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+              lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of current density in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
@@ -3467,16 +3662,17 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(j),kwdict=kw)
+    j = getj(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(j),kwdict=kw,local=1)
   else:
-    jx = getj(comp='x',iy=iy,fullplane=fullplane,solver=solver)
-    jz = getj(comp='z',iy=iy,fullplane=fullplane,solver=solver)
-    ppvector(transpose(jx[::sx,::sz]),transpose(jz[::sx,::sz]),kwdict=kw)
+    jx = getj(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    jz = getj(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(jx[::sx,::sz]),transpose(jz[::sx,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcjzx.__doc__ = pcjzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+          local=0,**kw):
   """Plots contours of current density in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=nint(-zmmin/dz): Z index of plane
@@ -3502,17 +3698,17 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=j,kwdict=kw)
+    j = getj(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=j,kwdict=kw,local=1)
   else:
-    jx = getj(comp='x',iz=iz,fullplane=fullplane,solver=solver)
-    jy = getj(comp='y',iz=iz,fullplane=fullplane,solver=solver)
-    ppvector(jy[::sx,::sy],jx[::sx,::sy],kwdict=kw)
+    jx = getj(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    jy = getj(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppvector(jy[::sx,::sy],jx[::sx,::sy],kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
-          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
@@ -3539,17 +3735,17 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(b),kwdict=kw)
+    b = getb(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(b),kwdict=kw,local=1)
   else:
-    by = getb(comp='y',ix=ix,fullplane=fullplane,solver=solver)
-    bz = getb(comp='z',ix=ix,fullplane=fullplane,solver=solver)
-    ppvector(transpose(by[::sy,::sz]),transpose(bz[::sy,::sz]),kwdict=kw)
+    by = getb(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    bz = getb(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(by[::sy,::sz]),transpose(bz[::sy,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcbzy.__doc__ = pcbzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
-              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+          lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
@@ -3576,16 +3772,17 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(b),kwdict=kw)
+    b = getb(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(b),kwdict=kw,local=1)
   else:
-    bx = getb(comp='x',iy=iy,fullplane=fullplane,solver=solver)
-    bz = getb(comp='z',iy=iy,fullplane=fullplane,solver=solver)
-    ppvector(transpose(bx[::sx,::sz]),transpose(bz[::sx,::sz]),kwdict=kw)
+    bx = getb(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    bz = getb(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(bx[::sx,::sz]),transpose(bz[::sx,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcbzx.__doc__ = pcbzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+          local=0,**kw):
   """Plots contours of the magnetic field in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=nint(-zmmin/dz): Z index of plane
@@ -3611,17 +3808,17 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=b,kwdict=kw)
+    b = getb(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=b,kwdict=kw,local=1)
   else:
-    bx = getb(comp='x',iz=iz,fullplane=fullplane,solver=solver)
-    by = getb(comp='y',iz=iz,fullplane=fullplane,solver=solver)
-    ppvector(by[::sx,::sy],bx[::sx,::sy],kwdict=kw)
+    bx = getb(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    by = getb(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppvector(by[::sx,::sy],bx[::sx,::sy],kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
-          lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+          lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
@@ -3648,17 +3845,17 @@ def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(a),kwdict=kw)
+    a = geta(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(a),kwdict=kw,local=1)
   else:
-    ay = geta(comp='y',ix=ix,fullplane=fullplane,solver=solver)
-    az = geta(comp='z',ix=ix,fullplane=fullplane,solver=solver)
-    ppvector(transpose(ay[::sy,::sz]),transpose(az[::sy,::sz]),kwdict=kw)
+    ay = geta(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    az = geta(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(ay[::sy,::sz]),transpose(az[::sy,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcazy.__doc__ = pcazy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
 def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
-              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+          lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
@@ -3685,16 +3882,17 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=transpose(a),kwdict=kw)
+    a = geta(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=transpose(a),kwdict=kw,local=1)
   else:
-    ax = geta(comp='x',iy=iy,fullplane=fullplane,solver=solver)
-    az = geta(comp='z',iy=iy,fullplane=fullplane,solver=solver)
-    ppvector(transpose(ax[::sx,::sz]),transpose(az[::sx,::sz]),kwdict=kw)
+    ax = geta(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    az = geta(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
+    ppvector(transpose(ax[::sx,::sz]),transpose(az[::sx,::sz]),kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcazx.__doc__ = pcazx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
+def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+          local=0,**kw):
   """Plots contours of the magnetic vector potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=nint(-zmmin/dz): Z index of plane
@@ -3720,12 +3918,12 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
-    ppgeneric(grid=a,kwdict=kw)
+    a = geta(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppgeneric(grid=a,kwdict=kw,local=1)
   else:
-    ax = geta(comp='x',iz=iz,fullplane=fullplane,solver=solver)
-    ay = geta(comp='y',iz=iz,fullplane=fullplane,solver=solver)
-    ppvector(ay[::sx,::sy],ax[::sx,::sy],kwdict=kw)
+    ax = geta(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ay = geta(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
+    ppvector(ay[::sx,::sy],ax[::sx,::sy],kwdict=kw,local=1)
 if sys.version[:5] != "1.5.1":
   pcaxy.__doc__ = pcaxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
@@ -3764,9 +3962,9 @@ field domain.
     zmax = top.izfsslave[i]*w3d.dz + top.nzfsslave[i]*w3d.dz
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,0,0,-mm]))
-  plfp(array(z),y,x,5*ones(len(z)),cmin=0,cmax=4)
+  plfp(array(z),y,x,5*ones(len(z)),cmin=0,cmax=4,local=1)
   for i in xrange(len(z)):
-    pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5])
+    pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5],local=1)
       
 
 ##########################################################################
@@ -3999,7 +4197,14 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
         if font == 'New Century': font = 4
       font=4*font+bold+2*italic
     if system is None:
-      systems = [plsys(plsys())-1]
+      # --- Not sure why plsys is called twice, but the rewrite just below
+      # --- is needed to be consistent with the wrapped version of plsys
+      # --- defined above.
+      #systems = [plsys(plsys())-1]
+      view = plsys()
+      plsys(view)
+      view = plsys()
+      systems = [view-1]
     else:
       if(system=='all'):
         systems = range(0,len(gist_style['systems']))

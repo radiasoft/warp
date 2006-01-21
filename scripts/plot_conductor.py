@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.98 2005/11/18 17:50:19 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.99 2006/01/21 01:11:44 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -42,7 +42,7 @@ cleanconductors: not a plot routine, buts removes conductor points not
 
 # --- Convenience function to plot the sub-grid data
 def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
-             conductors):
+             conductors,local):
   if conductors is None: return
   interior = conductors.interior
   nn = interior.n
@@ -71,10 +71,10 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
     ii = compress(equal(cnumb,numb),ii)
   xx = (take(ixc,ii)*dx+xmin)*xscale
   yy = (take(iyc,ii)*dy+ymin)*yscale
-  warpplp(yy,xx,color=color)
+  plp(yy,xx,color=color,local=local)
 
 def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
-                yscale,xscale,conductors):
+                yscale,xscale,conductors,local):
   if conductors is None: return
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
@@ -152,19 +152,6 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     yypx = yy
     yymy = yy
     yypy = yy
-  if lparallel:
-    xxmx = gatherarray(xxmx)
-    xxpx = gatherarray(xxpx)
-    xxmy = gatherarray(xxmy)
-    xxpy = gatherarray(xxpy)
-    yymx = gatherarray(yymx)
-    yypx = gatherarray(yypx)
-    yymy = gatherarray(yymy)
-    yypy = gatherarray(yypy)
-    delmx = gatherarray(delmx)
-    delpx = gatherarray(delpx)
-    delmy = gatherarray(delmy)
-    delpy = gatherarray(delpy)
   # --- This code combines all of the individual lines into the list pp.
   # --- This vectorized code avoids slower explicit loops.
   pp = []
@@ -178,12 +165,13 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     dl = take(dl,ii)
     pp = pp + map(mapfunc,xx,yy,dl)
   # --- Convert the list to an array and plot it
-  if len(pp) > 0:
-    pp = array(pp)
-    pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
+  # --- If the length is zero, create an empty array that conforms
+  if len(pp) == 0: pp = transpose(array([[],[],[],[]],typecode='d'))
+  pp = array(pp)
+  pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color,local=local)
 
 def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,yscale,xscale,
-                 conductors):
+                 conductors,local):
   """
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
@@ -318,26 +306,8 @@ by the conductor number.
   numbpx = take(numbpx,iis)
   numbmy = take(numbmy,iis)
   numbpy = take(numbpy,iis)
-  if lparallel:
-    ixc = gatherarray(ixc)
-    iyc = gatherarray(iyc)
-    xxc = gatherarray(xxc)
-    yyc = gatherarray(yyc)
-    numb = gatherarray(numb)
-    ixs = gatherarray(ixs)
-    iys = gatherarray(iys)
-    xxs = gatherarray(xxs)
-    yys = gatherarray(yys)
-    delmx = gatherarray(delmx)
-    delpx = gatherarray(delpx)
-    delmy = gatherarray(delmy)
-    delpy = gatherarray(delpy)
-    numbmx = gatherarray(numbmx)
-    numbpx = gatherarray(numbpx)
-    numbmy = gatherarray(numbmy)
-    numbpy = gatherarray(numbpy)
-  # --- Now, after the global gather, if there is no data then quit.
-  if len(ixc) + len(ixs) == 0: return
+# # --- Now, after the global gather, if there is no data then quit.
+# if len(ixc) + len(ixs) == 0: return
   # --- Get max grid point so that an array can be created which covers all
   # --- of the data.
   if len(ixc) == 0:
@@ -405,11 +375,10 @@ by the conductor number.
         elif i3[1] is not None: z.append(i3[1])
         elif i4[1] is not None: z.append(i4[1])
 
-  if len(n) > 0:
-    # --- Now that the data is gathered, make the plot.
-    z = array(z)
-    z = z.astype('b')
-    plfp(z,y,x,n)
+  # --- Now that the data is gathered, make the plot.
+  z = array(z)
+  z = z.astype('b')
+  plfp(z,y,x,n,local=local)
 
 def _corner1(ix,iy,sx,sy,delsx,delsy,nm,nmsx,nmsy,iparity,
              iii,xxc,yyc,xxs,yys,x,y,z,n):
@@ -443,7 +412,7 @@ cell. It must be called for each of the four corners of a grid cell.
   return nn,numb
 
 def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,yscale,xscale,
-                    f3dcond,f3dmg):
+                    f3dcond,f3dmg,local):
   """
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
@@ -580,26 +549,8 @@ by the conductor number.
   numbpx = take(numbpx,iis)
   numbmy = take(numbmy,iis)
   numbpy = take(numbpy,iis)
-  if lparallel:
-    ixc = gatherarray(ixc)
-    iyc = gatherarray(iyc)
-    xxc = gatherarray(xxc)
-    yyc = gatherarray(yyc)
-    numb = gatherarray(numb)
-    ixs = gatherarray(ixs)
-    iys = gatherarray(iys)
-    xxs = gatherarray(xxs)
-    yys = gatherarray(yys)
-    delmx = gatherarray(delmx)
-    delpx = gatherarray(delpx)
-    delmy = gatherarray(delmy)
-    delpy = gatherarray(delpy)
-    numbmx = gatherarray(numbmx)
-    numbpx = gatherarray(numbpx)
-    numbmy = gatherarray(numbmy)
-    numbpy = gatherarray(numbpy)
-  # --- Now, after the global gather, if there is no data then quit.
-  if len(ixc) + len(ixs) == 0: return
+# # --- Now, after the global gather, if there is no data then quit.
+# if len(ixc) + len(ixs) == 0: return
   # --- Get max grid point so that an array can be created which covers all
   # --- of the data.
   if len(ixc) == 0:
@@ -773,14 +724,14 @@ by the conductor number.
       del n[-1]
       del z[-1]
 
+  # --- Note that this may not work in parallel!!
   print n
-  if len(n) > 0:
-    # --- Now that the data is gathered, make the plot.
-    z = array(z)
-    z = z.astype('b')
-    plfp(z,y,x,n)
-    plp([y[0]],[x[0]],marker=circle,color=green)
-    plg(y,x,color=red)
+  # --- Now that the data is gathered, make the plot.
+  z = array(z)
+  z = z.astype('b')
+  plfp(z,y,x,n,local=local)
+  plp([y[0]],[x[0]],marker=circle,color=green,local=local)
+  plg(y,x,color=red,local=local)
 
 ######################################################################
 ######################################################################
@@ -841,6 +792,9 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     if solver is w3d: conductors = f3d.conductors
     else:             conductors = solver.conductors
 
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   # --- This logic is needed since in the parallel version, zmmin is local.
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
@@ -878,43 +832,46 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       kwdict['ccolor'] = selfecolor
       pcselfexy(*(comp,iz,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,xscale,conductors)
+    plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,xscale,conductors,
+                 local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,-xscale,conductors)
+      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,yscale,-xscale,conductors,
+                   local)
     if fullplane and solver.l4symtry:
-      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-yscale,xscale,conductors)
+      plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-yscale,xscale,conductors,
+                   local)
       plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-yscale,-xscale,
-                   conductors)
+                   conductors,local)
   if cond:
     plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,yscale,xscale,
-             conductors)
+             conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-yscale,xscale,
-               conductors)
+               conductors,local)
     if fullplane and solver.l4symtry:
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,yscale,-xscale,
-               conductors)
+               conductors,local)
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,
-               -yscale,-xscale,conductors)
+               -yscale,-xscale,conductors,local)
   if plotsg:
     plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,yscale,-xscale,conductors)
+                  subgridlen,mglevel,yscale,-xscale,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,yscale,-xscale,conductors)
+                  subgridlen,mglevel,yscale,-xscale,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-yscale,-xscale,conductors)
+                  subgridlen,mglevel,-yscale,-xscale,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-yscale,-xscale,conductors)
+                  subgridlen,mglevel,-yscale,-xscale,conductors,local)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
@@ -975,6 +932,9 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if solver is w3d: conductors = f3d.conductors
     else:             conductors = solver.conductors
 
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   if iyf is not None: iy = iyf
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
@@ -1006,25 +966,27 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       kwdict['ccolor'] = selfecolor
       pcselfezx(*(comp,iy,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,yscale,xscale,conductors)
+    plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,yscale,xscale,conductors,
+                 local)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-      plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-yscale,xscale,conductors)
+      plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-yscale,xscale,conductors,
+                   local)
   if plotsg:
     plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
       plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
   if cond:
     plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,yscale,xscale,
-             conductors)
+             conductors,local)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-yscale,xscale,
-               conductors)
+               conductors,local)
 
 # z-r plane
 def pfzr(**kw):
@@ -1090,6 +1052,9 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     if solver is w3d: conductors = f3d.conductors
     else:             conductors = solver.conductors
 
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   if ixf is not None: ix = ixf
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if ix < 0 or solver.nx < ix: return
@@ -1121,25 +1086,27 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
       kwdict['ccolor'] = selfecolor
       pcselfezy(*(comp,ix,fullplane,solver),**kwdict)
   if fill:
-    plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,yscale,xscale,conductors)
+    plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,yscale,xscale,conductors,
+                 local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
-      plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,-yscale,xscale,conductors)
+      plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,-yscale,xscale,conductors,
+                   local)
   if cond:
     plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,yscale,xscale,
-             conductors)
+             conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-yscale,xscale,
-               conductors)
+               conductors,local)
   if plotsg:
     plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors)
+                subgridlen,mglevel,yscale,xscale,conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
       plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors)
+                  subgridlen,mglevel,-yscale,xscale,conductors,local)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -1242,6 +1209,10 @@ in X-Y plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   if izf is not None: iz = izf
   if not iz: iz = nint(-solver.zmmin/solver.dz)
   if iz < 0 or solver.nzfull < iz: return
@@ -1279,13 +1250,10 @@ in X-Y plane
   else:
     x = array([])
     y = array([])
-  if lparallel:
-    x = gatherarray(x)
-    y = gatherarray(y)
   if len(x) > 0:
     pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
         array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2]),
-        color=condcolor)
+        color=condcolor,local=local)
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
@@ -1314,6 +1282,10 @@ in Z-X plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   if iyf is not None: iy = iyf
   if not iy: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
@@ -1350,13 +1322,10 @@ in Z-X plane
   else:
     x = array([])
     z = array([])
-  if lparallel:
-    x = gatherarray(x)
-    z = gatherarray(z)
   if len(x) > 0:
     pla(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2]),
         array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-        color=condcolor)
+        color=condcolor,local=local)
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
@@ -1385,6 +1354,10 @@ in Z-Y plane
   """
   if kwdict is None: kwdict = {}
   kwdict.update(kw)
+
+  # --- This routine by default operates in parallel
+  local = kwdict.setdefault('local',0)
+
   if ixf is not None: ix = ixf
   if not ix: ix = nint(-solver.xmmin/solver.dx)
   if ix < 0 or solver.nx < ix: return
@@ -1421,13 +1394,10 @@ in Z-Y plane
   else:
     y = array([])
     z = array([])
-  if lparallel:
-    y = gatherarray(y)
-    z = gatherarray(z)
   if len(y) > 0:
     pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
         array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-        color=condcolor)
+        color=condcolor,local=local)
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
@@ -1504,7 +1474,8 @@ def findunique(i):
   result = list(compress(ii[:-1]!=ii[1:],ii[:-1])) + [ii[-1]]
   return result
 
-def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors):
+def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors,
+              local):
   if conductors is None: return
   ncolor = len(color)
   if conductors.interior.n > 0: nn = conductors.interior.numb
@@ -1514,11 +1485,11 @@ def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors):
   nlist = broadcast(nlist)
   for i in nlist:
     plotcond(yy,xx,zz,iz,i,ymmin,xmmin,dy,dx,color[i%ncolor],
-             mglevel,signy,signx,conductors)
+             mglevel,signy,signx,conductors,local)
 
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
           scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
-          conductors=f3d.conductors,solver=w3d):
+          conductors=f3d.conductors,solver=w3d,local=0):
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
   if colors is None: colors = color
@@ -1532,9 +1503,9 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors)
+  plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors,local)
   if fullplane and solver.l4symtry:
-    plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-1,1,conductors)
+    plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-1,1,conductors,local)
   ncolor = len(colors)
   nlist = gatherarray(conductors.evensubgrid.numb[0,:conductors.evensubgrid.n])
   nlist = findunique(nlist)
@@ -1542,19 +1513,19 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1,conductors)
+                colors[i%ncolor],subgridlen,mglevel,1,1,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors)
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors,local)
   nlist = gatherarray(conductors.oddsubgrid.numb[0,:conductors.oddsubgrid.n])
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1,conductors)
+                colors[i%ncolor],subgridlen,mglevel,1,1,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors)
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors,local)
 
 
 ############################################################################

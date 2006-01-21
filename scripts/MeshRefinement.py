@@ -435,10 +435,10 @@ siblings.
 This is faster than the original routine since each pair of blocks is checked
 only once, rather than twice for each parent as in the original.
     """
-    # --- When the list is empty, there are no blocks, so just return.
-    if len(blocklists[0]) == 0: return
     # --- Make the call for the next level.
     self.findoverlappingsiblings(blocklists[1:])
+    # --- When the list is empty, there are no blocks, so just return.
+    if len(blocklists[0]) == 0: return
 
     # --- Get a copy of the list (which will be mangled below).
     blocklistscopy = copy.copy(blocklists[0])
@@ -1739,8 +1739,13 @@ be plotted.
         if cmin is None: cmin = self.getphislicemin(ip,idim)
         if cmax is None: cmax = self.getphislicemax(ip,idim)
 
+      cmin = globalmin(cmin)
+      cmax = globalmax(cmax)
       kw['cmin'] = cmin
       kw['cmax'] = cmax
+      kw['local'] = 1
+
+      accumulateplotlists()
 
     # --- Only make the plot if the plane is included in the domain.
     # --- Even if there is no overlap, the children must be called since
@@ -1768,6 +1773,8 @@ be plotted.
 
     for child in self.children:
       child.genericpf(kw,idim,pffunc,ip)
+
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def pfxy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -1800,66 +1807,78 @@ be plotted.
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
+    if self is self.root: accumulateplotlists()
     plg(self.phi[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],self.zmesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plphiz(ix*child.refinement[0],iy*child.refinement[1],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plphix(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.phi[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plphix(iy*child.refinement[1],iz*child.refinement[2],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plphiy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iz < self.fulllower[2]: return
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.phi[ix-self.fulllower[0],:,iz-self.fulllower[2]+1],self.ymesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plphiy(ix*child.refinement[0],iz*child.refinement[2],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plrhoz(self,ix=None,iy=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
+    if self is self.root: accumulateplotlists()
     plg(self.rho[ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plrhoz(ix*child.refinement[0],iy*child.refinement[1],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plrhox(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plrhox(iy*child.refinement[1],iz*child.refinement[2],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plrhoy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iz < self.fulllower[2]: return
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.rho[ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
         color=color)
     if not selfonly:
       for child in self.children:
         child.plrhoy(ix*child.refinement[0],iz*child.refinement[2],color=color)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plselfez(self,comp=2,ix=None,iy=None,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1873,12 +1892,14 @@ be plotted.
     if iy < lower[1]: return
     if ix > upper[0]: return
     if iy > upper[1]: return
+    if self is self.root: accumulateplotlists()
     plg(self.selfe[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
         self.zmesh[iz],color=color)
     if not selfonly:
       for child in self.children:
         child.plselfez(comp,ix*child.refinement[0],iy*child.refinement[1],
                        color=color,withguard=withguard)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plselfex(self,comp=2,iy=None,iz=None,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1892,12 +1913,14 @@ be plotted.
     if iz < lower[2]: return
     if iy > upper[1]: return
     if iz > upper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.selfe[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
                    self.xmesh[ix],color=color)
     if not selfonly:
       for child in self.children:
         child.plselfex(comp,iy*child.refinement[1],iz*child.refinement[2],
                        color=color,withguard=withguard)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plselfey(self,comp=2,ix=None,iz=None,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1911,12 +1934,14 @@ be plotted.
     if iz < lower[2]: return
     if ix > upper[0]: return
     if iz > upper[2]: return
+    if self is self.root: accumulateplotlists()
     plg(self.selfe[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
         self.ymesh[iy],color=color)
     if not selfonly:
       for child in self.children:
         child.plselfey(comp,ix*child.refinement[0],iz*child.refinement[2],
                        color=color,withguard=withguard)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
@@ -1940,11 +1965,13 @@ be plotted.
       yy,xx = xx,yy
     else:
       xx = array(xx) + top.zbeam
+    if self is self.root: accumulateplotlists()
     plg(yy,xx,color=color[0])
     if not selfonly:
       for child in self.children:
         child.drawbox(ip=ip*child.refinement[idim],idim=idim,
                       withguards=withguards,color=color[1:])
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def drawboxzy(self,ix=None,withguards=1,color=[],selfonly=0):
     self.drawbox(ip=ix,idim=0,withguards=withguards,color=color,
@@ -1976,11 +2003,13 @@ be plotted.
     if idim==2: xx,yy = yy,xx
     if ibox is None: ibox = ones(1,'b')
     else:            ibox = (ibox+1).astype('b')
+    if self is self.root: accumulateplotlists()
     plfp(ibox,yy,xx,[5])
     if not selfonly:
       for child in self.children:
         child.drawfilledbox(ip=ip*child.refinement[idim],idim=idim,
                             withguards=withguards,ibox=ibox)
+    if self is self.root: plotlistofthings(lturnofflist=1)
 
   def createdxobject(self,kwdict={},**kw):
     """
