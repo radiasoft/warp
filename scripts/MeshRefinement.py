@@ -27,12 +27,18 @@ Implements adaptive mesh refinement in 3d
  - children: list of tuples, each containing three elements,
              (lower,upper,refinement). Children can also be added later
              using addchild.
+ - lreducedpickle=false: when true, a small pickle is made by removing all of
+                         the big arrays, including the conductor data. The
+                         information can be regenerated upon restart.
   """
   def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
                     dims=None,mins=None,maxs=None,
                     nguard=1,
-                    children=None,**kw):
+                    children=None,lreducedpickle=1,**kw):
+
+    # --- Pass the input value of lreducedpickle into the Multigrid class
+    kw['lreducedpickle'] = lreducedpickle
 
     if parent is None:
       # --- No parents, so just create empty lists
@@ -223,7 +229,18 @@ Implements adaptive mesh refinement in 3d
 Check whether this instance is the registered solver so that upon unpickling
 it knows whether to re-register itself.
     """
+    # --- Make sure the the lreducedpickle option gets propagated to all
+    # --- of the blocks.
+    for child in self.children:
+      child.lreducedpickle = self.lreducedpickle
     dict = MultiGrid.__getstate__(self)
+    if self.lreducedpickle:
+      # --- Remove the big objects from the dictionary. These can be
+      # --- regenerated upon the restore.
+      dict['childdomains'] = None
+      del dict['conductors']
+    # --- Flag whether this is the registered solver so it know whether
+    # --- to reregister itself upon the restore.
     if self is getregisteredsolver():
       dict['iamtheregisteredsolver'] = 1
     else:
@@ -249,6 +266,17 @@ it knows whether to re-register itself.
         w3d.rhop = w3d.rho
         w3d.phip = w3d.phi
     if self == self.root and self.lreducedpickle:
+      # --- It is assumed that at this point, all of the children have been
+      # --- restored.
+      # --- Regenerate childdomains
+      self.initializechilddomains()
+      # --- Regenerate the conductor information
+      conductorlist = self.conductorlist
+      for block in self.listofblocks:
+        block.conductorlist = []
+        block.conductors = ConductorType()
+      for conductor in conductorlist:
+        self.installconductor(conductor)
       # --- If rho and phi weren't saved, make sure that they are setup.
       # --- Though, this may not always be the right thing to do.
       # --- These can only be done at the end of the restart since only then
