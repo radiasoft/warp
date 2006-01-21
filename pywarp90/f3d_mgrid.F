@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.102 $, $Date: 2006/01/19 19:49:23 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.103 $, $Date: 2006/01/21 01:56:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3544,6 +3544,7 @@ c=============================================================================
       real(kind=8):: phi(0:nn(0),0:nn(1),-1:nn(2)+1)
       real(kind=8):: parentphi(0:pnn(0),0:pnn(1),-1:pnn(2)+1)
 
+      integer(ISZ):: ix0,iy0,iz0
       integer(ISZ):: ix,iy,iz
       integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
       integer(ISZ):: ixp,iyp,izp
