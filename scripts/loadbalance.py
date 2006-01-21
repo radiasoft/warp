@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.43 2005/12/12 21:29:55 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.44 2006/01/21 00:58:11 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -87,6 +87,15 @@ recalculated on a finer mesh to give better balancing.
       rpinj = sqrt(top.xpinject**2 + top.ypinject**2)
       zinjectmin = max(w3d.zmminglobal,min(top.zinject - rinj*rpinj))
       zinjectmax = min(w3d.zmmaxglobal,max(top.zinject + rinj*rpinj))
+      # --- Add in term accounting for the curvature of the source
+      rmax = maximum(top.ainject,top.binject)
+      injdepth = max(rmax**2/(top.rinject+sqrt(top.rinject**2-rmax**2)))
+      injdepth = max(injdepth,maxnd(w3d.inj_grid))
+      if min(top.inj_d) < 0.: zinjectmin = zinjectmin - injdepth
+      if max(top.inj_d) > 0.: zinjectmax = zinjectmax + injdepth
+      # --- Also make sure that the injection virtual surface is included.
+      zinjectmin = zinjectmin + min(top.inj_d)*w3d.dz
+      zinjectmax = zinjectmax + max(top.inj_d)*w3d.dz
       zminp = minimum(zinjectmin,zminp)
       zmaxp = maximum(zinjectmax,zmaxp)
 
