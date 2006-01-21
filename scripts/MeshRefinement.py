@@ -435,10 +435,10 @@ siblings.
 This is faster than the original routine since each pair of blocks is checked
 only once, rather than twice for each parent as in the original.
     """
-    # --- Make the call for the next level.
-    self.findoverlappingsiblings(blocklists[1:])
     # --- When the list is empty, there are no blocks, so just return.
     if len(blocklists[0]) == 0: return
+    # --- Make the call for the next level.
+    self.findoverlappingsiblings(blocklists[1:])
 
     # --- Get a copy of the list (which will be mangled below).
     blocklistscopy = copy.copy(blocklists[0])
