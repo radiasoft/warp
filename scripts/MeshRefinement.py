@@ -1646,6 +1646,10 @@ contribute within their domains of ownership.
       # --- Skip points that don't self doesn't own
       c = self.getchilddomains(self.fulllower,self.fullupper,1)
       array = where(c[ix,iy,iz]==self.blocknumber,array[ix,iy,iz],null)
+    else:
+      # --- The transpose is taken so that the array is in C ordering so
+      # --- the opnd will be faster.
+      array = transpose(array[ix,iy,iz])
     # --- Find the max of self's and the children's phi
     result = opnd(array)
     for child in self.children:
