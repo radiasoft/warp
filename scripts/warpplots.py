@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.164 2006/01/21 01:11:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.165 2006/01/21 01:53:04 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2400,45 +2400,39 @@ def ppzxco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - nstepcol=top.nstepcol:
   """
   # --- First part copied from ppzx
-  checkparticleplotarguments(kw)
   if ppmultispecies(ppzxco,(iw,),kw): return
-  if kw.has_key('pplimits'):
-    kw['lframe'] = 1
-  else:
-    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                      top.xplmin,top.xplmax)
-  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   x = getx(ii=ii,gather=0,**kw)
   z = getz(ii=ii,gather=0,**kw)
+  kw.setdefault('local',0)
 
   # --- Second part from the original ppzxco
   if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
+  if nskipcol is None: nskipcol = top.nskipcol
+  if nstepcol is None: nstepcol = top.nstepcol
   inp=1.*len(x)/ncolor
   istep=nskipcol*nstepcol
   istart = 0
   if (inp < istep): istep = 1
   for ij in range(1,istep+1,nskipcol*2):
     for ic in range(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = istart+ij+int(inp*(ic-1))
+      irs2 = istart+int(inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-inp*(ic-1))/istep
+      ii = (ii-istart-ij-int(inp*(ic-1)))/istep
       plp(take(x[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
     for ic in range(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = istart+ij+nskipcol+int(inp*(ic-1))
+      irs2 = istart+int(inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      ii = (ii-istart-ij-nskipcol-int(inp*(ic-1)))/istep
       plp(take(x[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
 
 ##########################################################################
 def ppzyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
@@ -2448,45 +2442,39 @@ def ppzyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - nstepcol=top.nstepcol:
   """
   # --- First part copied from ppzy
-  checkparticleplotarguments(kw)
   if ppmultispecies(ppzyco,(iw,),kw): return
-  if kw.has_key('pplimits'):
-    kw['lframe'] = 1
-  else:
-    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
-                      top.yplmin,top.yplmax)
-  kw.setdefault('local',0)
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   y = gety(ii=ii,gather=0,**kw)
   z = getz(ii=ii,gather=0,**kw)
+  kw.setdefault('local',0)
 
   # --- Second part from the original ppzyco
   if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
+  if nskipcol is None: nskipcol = top.nskipcol
+  if nstepcol is None: nstepcol = top.nstepcol
   inp=1.*len(y)/ncolor
   istep=nskipcol*nstepcol
   istart = 0
   if (inp < istep): istep = 1
   for ij in range(1,istep+1,nskipcol*2):
     for ic in range(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = istart+ij+int(inp*(ic-1))
+      irs2 = istart+int(inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-inp*(ic-1))/istep
+      ii = (ii-istart-ij-int(inp*(ic-1)))/istep
       plp(take(y[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
     for ic in range(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = istart+ij+nskipcol+int(inp*(ic-1))
+      irs2 = istart+int(inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      ii = (ii-istart-ij-nskipcol-int(inp*(ic-1)))/istep
       plp(take(y[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
 
 ##########################################################################
 def ppzxyco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
@@ -2506,46 +2494,41 @@ def ppzvzco(iw=0,ncolor=None,nskipcol=None,nstepcol=None,**kw):
  - nstepcol=top.nstepcol:
   """
   # --- First part copied from ppzvz
-  checkparticleplotarguments(kw)
   if ppmultispecies(ppzvzco,(iw,),kw): return
   (vzmin,vzmax) = getvzrange(kwdict=kw)
-  if kw.has_key('pplimits'):
-    kw['lframe'] = 1
-  else:
-    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
-  kw.setdefault('local',0)
 
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
   vz = getvz(ii=ii,gather=0,**kw)
   z = getz(ii=ii,gather=0,**kw)
+  kw.setdefault('local',0)
 
   # --- Second part from the original ppzvzco
   if ncolor is None: ncolor = top.ncolor
-  if nskipcol is None: ncolor = top.nskipcol
-  if nstepcol is None: ncolor = top.nstepcol
+  if nskipcol is None: nskipcol = top.nskipcol
+  if nstepcol is None: nstepcol = top.nstepcol
   inp=1.*len(vz)/ncolor
   istep=nskipcol*nstepcol
   istart = 0
   if (inp < istep): istep = 1
   for ij in range(1,istep+1,nskipcol*2):
     for ic in range(1,ncolor+1):
-      irs1 = istart+ij+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = int(istart+ij+inp*(ic-1))
+      irs2 = int(istart+inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-inp*(ic-1))/istep
+      ii = (ii-istart-ij-int(inp*(ic-1)))/istep
       plp(take(vz[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
     for ic in range(ncolor,0,-1):
-      irs1 = istart+ij+nskipcol+inp*(ic-1)
-      irs2 = istart+inp*ic
+      irs1 = int(istart+ij+nskipcol+inp*(ic-1))
+      irs2 = int(istart+inp*ic)
       irs3 = istep
       ii = iota(irs1,irs2,irs3)
-      ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
+      ii = (ii-istart-ij-nskipcol-int(inp*(ic-1)))/istep
       plp(take(vz[irs1:irs2:irs3],ii),take(z[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],local=0,**kw)
+          color=color[ic%len(color)],**kw)
 
 ##########################################################################
 def ppco(y,x,z,uz=1.,marker='\1',msize=1.0,zmin=None,zmax=None,
