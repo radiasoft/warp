@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.26 2005/07/12 19:29:40 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.27 2006/01/21 01:00:10 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -48,18 +48,6 @@ def number_of_PE():
 def get_rank():
   if not lparallel: return 0
   return mpi.rank
-
-if me == 0:
-  try:
-    from gist import *
-  except ImportError:
-    #from gistdummy import *
-    pass
-else:
-  try:
-    from gistdummy import *
-  except ImportError:
-    pass
 
 # ---------------------------------------------------------------------------
 # Enable output from all processors
@@ -112,73 +100,9 @@ def getarray(src,v,dest=0):
   return v
 
 # ---------------------------------------------------------------------------
-# Plot an array that is distributed on all processors
-def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
-              width=1.0):
-  ff = gatherarray(f)
-  zz = gatherarray(z)
-  if len(ff) > 0 and len(zz) == len(ff):
-    plg(ff,zz,color=color,marker=marker,msize=msize,width=width,type=linetype)
-# if mpi.rank == 0:
-#   # --- Start list with PE0 data
-#   x = [f]
-#   y = [z]
-#   # --- Append rest of PE's data to list
-#   for i in range(1,mpi.procs):
-#     x.append(mpirecv(i,2))
-#     y.append(mpirecv(i,2))
-#   # --- Get total number of elements in list
-#   l = 0
-#   for i in range(0,mpi.procs):
-#     l = l + len(x[i])
-#   # --- Create space for total list (flattened out)
-#   xx = zeros(l,"d")
-#   yy = zeros(l,"d")
-#   # --- Copy data to new space
-#   l = 0
-#   for i in range(0,mpi.procs):
-#     xx[l:l+len(x[i])] = x[i]
-#     yy[l:l+len(y[i])] = y[i]
-#     l = l + len(y[i])
-#   # --- Now plot the result
-#   plg(xx,yy,color=color,marker=marker,msize=msize,width=width,type=linetype)
-# else:
-#   mpi.send(f,0,2)
-#   mpi.send(z,0,2)
-    
-# ---------------------------------------------------------------------------
-# Plot particles that are distributed on all processors
-def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
-# ff = gatherarray(f)
-# zz = gatherarray(z)
-# if len(ff) > 0 and len(zz) == len(ff):
-#   plg(ff,zz,color=color,type=linetype,marker=marker,msize=msize)
-  kw['color'] = color
-  kw['type'] = linetype
-  kw['marker'] = marker
-  kw['msize'] = msize
-  if not lparallel:
-    apply(plg,(f,z),kw)
-    return
-  # --- This way is preferred since for large data sets, it reduces the
-  # --- risk of running out of memory since only part of the data is stored
-  # --- on PE0 at a time.
-  if mpi.rank == 0:
-    if len(f) > 0 and len(f)==len(z):
-      apply(plg,(f,z),kw)
-    for i in range(1,mpi.procs):
-      x = mpirecv(i,3)
-      y = mpirecv(i,3)
-      if len(x) > 0 and len(y)==len(x):
-        apply(plg,(x,y),kw)
-  else:
-    mpi.send(f,0,3)
-    mpi.send(z,0,3)
-
-# ---------------------------------------------------------------------------
 # Gather an object from all processors into a list
 def gather(obj,dest=0):
-  if not lparallel: return obj
+  if not lparallel: return [obj]
   if mpi.rank == dest:
     result = []
     for i in range(mpi.procs):
@@ -189,7 +113,7 @@ def gather(obj,dest=0):
     return result
   else:
     mpi.send(obj,dest)
-    return obj
+    return [obj]
 
 # ---------------------------------------------------------------------------
 # Define a barrier
