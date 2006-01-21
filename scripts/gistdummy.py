@@ -1,6 +1,6 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.15 2005/10/10 17:33:46 dave Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.16 2006/01/21 00:58:52 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
@@ -67,6 +67,8 @@ def pli(*x,**xx):
 def pldj(*x,**xx):
   pass
 def plfp(*x,**xx):
+  pass
+def plf(*x,**xx):
   pass
 def unzoom(*x,**xx):
   pass
