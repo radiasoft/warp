@@ -159,12 +159,19 @@ class MultiGrid(object):
       del dict['phi']
       del dict['phip']
       del dict['selfe']
+      del dict['conductors']
     return dict
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
     if self.lreducedpickle:
       self.allocatefieldarrays()
+      # --- Regenerate the conductor data
+      self.conductors = ConductorType()
+      conductorlist = self.conductorlist
+      self.conductorlist = []
+      for conductor in conductorlist:
+        self.installconductor(conductor)
 
   def allocatefieldarrays(self):
     # --- Create phi and rho arrays and other arrays. These are created

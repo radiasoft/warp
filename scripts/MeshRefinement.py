@@ -28,8 +28,8 @@ Implements adaptive mesh refinement in 3d
              (lower,upper,refinement). Children can also be added later
              using addchild.
  - lreducedpickle=false: when true, a small pickle is made by removing all of
-                         the big arrays, including the conductor data. The
-                         information can be regenerated upon restart.
+                         the big arrays. The information can be regenerated
+                         upon restart.
   """
   def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
@@ -68,7 +68,6 @@ Implements adaptive mesh refinement in 3d
     self.overlapslower = {}
     self.overlapshigher = {}
     self.nguard = nguard
-    self.conductorlist = []
 
     if parent is None:
       # --- For the root, the dimensions and extent of the grid should
@@ -242,7 +241,6 @@ it knows whether to re-register itself.
       # --- Remove the big objects from the dictionary. These can be
       # --- regenerated upon the restore.
       dict['childdomains'] = None
-      del dict['conductors']
     # --- Flag whether this is the registered solver so it know whether
     # --- to reregister itself upon the restore.
     if self is getregisteredsolver():
@@ -265,13 +263,6 @@ it knows whether to re-register itself.
       # --- restored.
       # --- Regenerate childdomains
       self.initializechilddomains()
-      # --- Regenerate the conductor information
-      conductorlist = self.conductorlist
-      for block in self.listofblocks:
-        block.conductorlist = []
-        block.conductors = ConductorType()
-      for conductor in conductorlist:
-        self.installconductor(conductor)
       # --- If rho and phi weren't saved, make sure that they are setup.
       # --- Though, this may not always be the right thing to do.
       # --- These can only be done at the end of the restart since only then
