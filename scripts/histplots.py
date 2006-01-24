@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.27 2005/08/04 18:12:27 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.28 2006/01/24 17:53:04 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -183,7 +183,7 @@ only required argument of course is the data to be plotted.
   # --- Now actually make the plot after all of that ado.   
   oldplsys = plsys(plsysval)
   pla(transpose(oord),absc,color=color,msize=msize,marks=marks,marker=marker,
-      width=width,linetype=linetype,decomposed=0)
+      width=width,linetype=linetype)
   if titles: ptitles(titlet,titleb,titlel,titler,plsysval)
   limits(xmin,xmax,ymin,ymax)
   if logplot: logxy(0,0)
