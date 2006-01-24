@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.165 2006/01/21 01:53:04 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.166 2006/01/24 18:39:29 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -281,6 +281,9 @@ def addthingtoplot(pfunc,args,kw):
   pfunc = 'gist' + pfunc
   _listofthingstoplot.append([pfunc,args,kw])
 def callplotfunction(pfunc,args=[],kw={}):
+  # --- Note that any None's need to be cleared out since some functions
+  # --- don't like them.
+  while len(args) > 0 and args[-1] is None: del args[-1]
   if _accumulateplotlists:
     addthingtoplot(pfunc,args,kw)
   else:
@@ -406,6 +409,7 @@ def pldj(x0,y0,x1,y1,local=1,**kw):
     y1 = gatherarray(y1)
   if size(x0) == 0 or size(y0) == 0 or size(x1) == 0 or size(y1) == 0: return
   callplotfunction(gistpldj,[x0,y0,x1,y1],kw)
+pldj.__doc__ = gistpldj.__doc__
 def plfp(z,y,x,n,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -414,6 +418,7 @@ def plfp(z,y,x,n,local=1,**kw):
     n = gatherarray(n)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(n) == 0: return
   callplotfunction(gistplfp,[z,y,x,n],kw)
+plfp.__doc__ = gistplfp.__doc__
 def plfc(z,y,x,ireg,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -422,6 +427,7 @@ def plfc(z,y,x,ireg,local=1,**kw):
     ireg = gatherarray(ireg)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(ireg) == 0: return
   callplotfunction(gistplfc,[z,y,x,ireg],kw)
+plfc.__doc__ = gistplfc.__doc__
 def plc(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -430,15 +436,17 @@ def plc(z,y=None,x=None,ireg=None,local=1,**kw):
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
   callplotfunction(gistplc,[z,y,x,ireg],kw)
-def pli(z,x0,y0,x1=None,y1=None,local=1,**kw):
+plc.__doc__ = gistplc.__doc__
+def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
-    x0 = gatherarray(x0)
-    y0 = gatherarray(y0)
+    if x0 is not None: x0 = gatherarray(x0)
+    if y0 is not None: y0 = gatherarray(y0)
     if x1 is not None: x1 = gatherarray(x1)
     if y1 is not None: y1 = gatherarray(y1)
-  if size(z) == 0 or size(x0) == 0 or size(y0) == 0: return
+  if size(z) == 0: return
   callplotfunction(gistpli,[z,x0,y0,x1,y1],kw)
+pli.__doc__ = gistpli.__doc__
 def plf(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -447,6 +455,7 @@ def plf(z,y=None,x=None,ireg=None,local=1,**kw):
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
   callplotfunction(gistplf,[z,y,x,ireg],kw)
+plf.__doc__ = gistplf.__doc__
 def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     vy = gatherarray(vy)
@@ -456,6 +465,7 @@ def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
     if ireg is not None: ireg = gatherarray(ireg)
   if size(vy) == 0 or size(vx) == 0: return
   callplotfunction(gistplv,[vy,vx,y,x,ireg],kw)
+plv.__doc__ = gistplv.__doc__
 def plt(text,x,y,local=1,**kw):
   if not _accumulateplotlists and not local:
     textlist = gather(text)
@@ -467,9 +477,11 @@ def plt(text,x,y,local=1,**kw):
     ylist = [y]
   for text,x,y in zip(textlist,xlist,ylist):
     callplotfunction(gistplt,[text,x,y],kw)
+plt.__doc__ = gistplt.__doc__
 def plsys(n=None,**kw):
   if n is None: return gistplsys()
   callplotfunction(gistplsys,[n])
+plsys.__doc__ = gistplsys.__doc__
 
 ##########################################################################
 # --- Plot particles
