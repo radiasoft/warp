@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.4 $, $Date: 2004/09/07 15:26:50 $
+c@(#) File w3d_utilities.F, version $Revision: 1.5 $, $Date: 2006/01/25 01:09:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -393,62 +393,6 @@ c=============================================================================
 
 !$OMP MASTER
       if (lw3dtimesubs) timeputsortedefield = timeputsortedefield +
-     &                                        wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine addrhotoowner(nx,ny,nz,srho,sown,orho)
-      use Subtimers3d
-      integer(ISZ):: nx,ny,nz
-      real(kind=8),dimension(0:nx,0:ny,0:nz):: srho,orho
-      integer(ISZ),dimension(0:nx,0:ny,0:nz):: sown
-
-      integer(ISZ):: ix,iy,iz
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      do iz = 0,nz
-        do iy = 0,ny
-          do ix = 0,nx
-            if (sown(ix,iy,iz) == 1) then
-              srho(ix,iy,iz) = srho(ix,iy,iz) + orho(ix,iy,iz)
-            endif
-          enddo
-        enddo
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timeaddrhotoowner = timeaddrhotoowner +
-     &                                      wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine getrhofromowner(nx,ny,nz,srho,oown,orho)
-      use Subtimers3d
-      integer(ISZ):: nx,ny,nz
-      real(kind=8),dimension(0:nx,0:ny,0:nz):: srho,orho
-      integer(ISZ),dimension(0:nx,0:ny,0:nz):: oown
-
-      integer(ISZ):: ix,iy,iz
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      do iz = 0,nz
-        do iy = 0,ny
-          do ix = 0,nx
-            if (oown(ix,iy,iz) == 1) then
-              srho(ix,iy,iz) = orho(ix,iy,iz)
-            endif
-          enddo
-        enddo
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timegetrhofromowner = timegetrhofromowner +
      &                                        wtime() - substarttime
 !$OMP END MASTER
 
