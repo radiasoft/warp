@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.160 $, $Date: 2005/11/30 23:43:37 $
+c@(#) File TOP.F, version $Revision: 3.161 $, $Date: 2006/01/25 01:09:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6554,121 +6554,6 @@ c                  --- randomly absorb particles according to transparency coeff
         end do
       end do
       
-      end
-c=============================================================================
-c A general particle scraping routine, which allows particles to be scraped
-c efficiently using complex geometries.
-c=============================================================================
-      subroutine griddedparticlescraper(is,distance,nx,ny,nz,dx,dy,dz,
-     &                                  xmin,ymin,zmin,zbeam,l2symtry,l4symtry)
-      use Particles
-      use Scraped_Particles
-      use Z_arrays
-      use InGen
-      integer(ISZ):: is,nx,ny,nz
-      real(kind=8):: dx,dy,dz,xmin,ymin,zmin,zbeam
-      logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: distance(0:nx,0:ny,0:nz)
-
-c This provides a method of scraping particles in a complex geometry.
-c The 3-d array distances holds the distance of each node to the nearest
-c scraping boundary, a negative value being inside.
-c This distance is linearly interpolated to the particle
-c position. If the resulting value is negative, then the particle is
-c considered inside the boundary and is removed.
-
-c Input:
-c   is: species number of particles to process
-c   distance(0:nx,0:ny,0:nz): distance to boundary surface
-c   nx,ny,nz: grid dimensions
-c   dx,dy,dz: grid cell sizes
-c   xmin,ymin,zmin: coordinates of lower left hand corner of grid
-c   zbeam: location of the beam frame (not used)
-c   l2symtry,l4symtry: level of symmetry to use
-
-      integer(ISZ):: ip,ix,iy,iz
-      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
-      real(kind=8):: dd,xpold,ypold,zpold,ddratio
- 
-c     --- set grid cell inverse sizes
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-
-c     --- initializes number of scraped particles
-      if(is==1) scr_np = 0
-      scr_ins(is) = scr_np + 1
-      scr_nps(is) = scr_np
-
-c     --- loop over particles
-      do ip = ins(is), ins(is) + nps(is)
-
-c       --- find location on grid
-        if (l4symtry) then
-          ix = abs((xp(ip) - xmin)*dxi)
-          iy = abs((yp(ip) - ymin)*dyi)
-          iz =     (zp(ip) - zmin)*dzi
-          wx = abs((xp(ip) - xmin)*dxi) - ix
-          wy = abs((yp(ip) - ymin)*dyi) - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        else if (l2symtry) then
-          ix =     (xp(ip) - xmin)*dxi
-          iy = abs((yp(ip) - ymin)*dyi)
-          iz =     (zp(ip) - zmin)*dzi
-          wx =     (xp(ip) - xmin)*dxi - ix
-          wy = abs((yp(ip) - ymin)*dyi) - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        else
-          ix =     (xp(ip) - xmin)*dxi
-          iy =     (yp(ip) - ymin)*dyi
-          iz =     (zp(ip) - zmin)*dzi
-          wx =     (xp(ip) - xmin)*dxi - ix
-          wy =     (yp(ip) - ymin)*dyi - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        endif
- 
-c       --- if within grid, examine the particle, otherwise assume its OK.
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny .and.
-     &      iz >= 0 .and. iz < nz) then
-
-          dd = distance(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
-     &         distance(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
-     &         distance(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
-     &         distance(ix+1,iy+1,iz  )*      wx *      wy *(1. - wz) +
-     &         distance(ix  ,iy  ,iz+1)*(1. - wx)*(1. - wy)*      wz  +
-     &         distance(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
-     &         distance(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
-     &         distance(ix+1,iy+1,iz+1)*      wx *      wy *      wz
-
-          if (dd < 0.) then
-c           --- Scrape the particle
-            scr_np = scr_np + 1
-            scr_nps(is) = scr_nps(is) + 1
-            if(scr_npmax<scr_np) then
-              scr_npmax = scr_npmax + scr_npbunch
-              call gchange("Scraped_Particles",0)
-            end if
-            xpold = xp(ip) - uxp(ip) * gaminv(ip) * dt
-            ypold = yp(ip) - uyp(ip) * gaminv(ip) * dt
-            zpold = zp(ip) - uzp(ip) * gaminv(ip) * dt
-            ddratio = min(1.,1.00001*abs(dd)/sqrt((xp(ip)-xpold)**2
-     &                                           +(yp(ip)-ypold)**2
-     &                                           +(zp(ip)-zpold)**2))
-            scr_xp(scr_np) = xp(ip) - ddratio * uxp(ip) * gaminv(ip)*dt
-            scr_yp(scr_np) = yp(ip) - ddratio * uyp(ip) * gaminv(ip)*dt
-            scr_zp(scr_np) = zp(ip) - ddratio * uzp(ip) * gaminv(ip)*dt
-            scr_uxp(scr_np) = uxp(ip)
-            scr_uyp(scr_np) = uyp(ip)
-            scr_uzp(scr_np) = uzp(ip)
-            gaminv(ip) = 0.
-          endif
-
-        endif
- 
-      enddo
-
-      return
       end
 c=============================================================================
 c=============================================================================
