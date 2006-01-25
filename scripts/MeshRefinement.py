@@ -1456,7 +1456,8 @@ blocknumber rather than the child number relative to the parent.
       #put(ex,isort,tex)
       #put(ey,isort,tey)
       #put(ez,isort,tez)
-      putsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
+      n = len(x)
+      putsortedefield(len(tex),isort,tex,tey,tez,ex[:n],ey[:n],ez[:n])
 
   def fetchphi(self):
     """
