@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.151 $, $Date: 2005/10/28 23:50:39 $
+#@(#) File TOP.V, version $Revision: 3.152 $, $Date: 2006/01/25 01:42:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.151 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.152 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -475,51 +475,6 @@ bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
-
-applyuniformfields(np:integer,ez:real,bz:real) subroutine
-  # Applies the uniform fields at the locations passed in.
-applybend(np:integer,xp:real,uzp:real,npz:integer,bendres:real,bendradi:real,
-          m:real,q:real,lslice:logical,by:real) subroutine
-  # Applies the bend element at the locations passed in.
-applyquad(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
-          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,bx:real,
-          by:real) subroutine
-  # Applies the quad element at the locations passed in.
-applydipo(np:integer,npz:integer,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
-          dt:real,lslice:logical,ex:real,ey:real,bx:real,by:real) subroutine
-  # Applies the dipo element at the locations passed in.
-applysext(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
-          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,bx:real,
-          by:real) subroutine
-  # Applies the sext element at the locations passed in.
-applyhele(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
-          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,ez:real,
-          bx:real,by:real,bz:real) subroutine
-  # Applies the hele element at the locations passed in.
-applyemlt(np:integer,xp:real,yp:real,npz:integer,zp:real,dtl:real,dtr:real,
-          dt:real,lslice:logical,ex:real,ey:real,ez:real) subroutine
-  # Applies the emlt element at the locations passed in.
-applymmlt(np:integer,xp:real,yp:real,npz:integer,zp:real,dtl:real,dtr:real,
-          dt:real,lslice:logical,bx:real,by:real,bz:real) subroutine
-  # Applies the mmlt element at the locations passed in.
-applybgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
-          bx:real,by:real,bz:real) subroutine
-  # Applies the bgrd element at the locations passed in.
-applybsqgrad(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
-           b:real) subroutine
-  # Applies the bsqgrad element at the locations passed in using the alternate
-  # form of the gridded data (top.bgrd array). The returned array b must be
-  # shaped (bgrdnc,np).
-applypgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,ex:real,
-          ey:real,ez:real) subroutine
-  # Applies the pgrd element at the locations passed in.
-applyaccl(np:integer,xp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
-          dt:real,qoverm:real,lslice:logical,ez:real) subroutine
-  # Applies the accl element at the locations passed in.
-applyacclxy(np:integer,xp:real,zp:real,uzp:real,gaminv:real,dtp:real,dtl:real,
-          dtr:real,m:real,q:real,dt:real,lslice:logical,ez:real) subroutine
-  # Applies the accl element for slice code at the locations passed in.
-
 
 ******** Mult_data dump:
 nemltsets          integer /0/  # Number of different electrostatic data sets
@@ -2101,118 +2056,124 @@ yypspw(npsplt,4)            _real # Scratch for ordinate values of particles
 
 *********** TopPhys:
 # "Physics" subroutines at top level
-cigar (np:real,zunifrm:real,zpunifrm:real,z:real,zp:real,perpscal:real,
-       straight:real,scrtch1:real,scrtch2:real,scrtch3:real,scrtch4:real)
-            subroutine # Adjusts z and vz to make a finite, cigar beam
 derivqty()  subroutine # Calculates global derived qtys.
-getzmmnt(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
+getzmmnt(np,xp(np):real,yp(np):real,zp(np):real,
+         uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
          q:real,m:real,w:real,dt:real,itask,nplive,
-         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer,
+         uxpo(np):real,uypo(np):real,uzpo(np):real,is:integer,ns:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1
-getzmmnt_weights(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
-         wp:real,q:real,m:real,w:real,dt:real,itask,nplive,
+getzmmnt_weights(np,xp(np):real,yp(np):real,zp(np):real,
+         uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+         wp(np):real,q:real,m:real,w:real,dt:real,itask,nplive,
          uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
-periz(np,zp:real,zgrid:real,zmmax:real,zmmin:real)
-            subroutine # Imposes periodicity on z
-griddedparticlescraper(is:integer,distance:real,
-                       nx:integer,ny:integer,nz:integer,
-                       dx:real,dy:real,dz:real,xmin:real,ymin:real,zmin:real,
-                       zbeam:real,l2symtry:logical,l4symtry:logical) subroutine
-                       # General particle scraper which allows scraping
-                       # in complex geometries.
 setgamma(lrelativ)
             subroutine # Converts v to u, sets gammainv for all ptcls
-gammaadv(np,gaminv:real,uxp:real,uyp:real,uzp:real,gamadv:string,lrelativ)
+gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
+         gamadv:string,lrelativ)
             subroutine # Advances gamma
 resetlat()  subroutine # Resizes lattice arrays to their true lengths
 setlatt()   subroutine # Sets lattice pointers for the current beam location
 setlattzt(zbeam:real,time:real,fstype:integer)
             subroutine # Sets lattice pointers at zbeam and time
-getelemid(z:real,offset:real,nelem:integer,elemzs:real,elemze:real,
-          oelemnn:integer,oelemoi:integer,oelemio:integer,id:integer)
-            subroutine # Gets id of element located nearest z
 species()   subroutine # Sets species related arrays.
-stckyz(np,zp:real,zmmax:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,
-       gaminv:real,zgrid:real)
-            subroutine # Enforces sticky z walls
-zgapcorr(np:integer,zp:real,xp:real,uzp:real,gaminv:real,
+zgapcorr(np:integer,zp(np):real,xp(np):real,uzp(np):real,gaminv(np):real,
          dtl:real,dtr:real,dt:real,m:real,q:real,time:real)
             subroutine # Adds z correction term for accelerating gap residence
                        # correction.
 
 *********** TopDiag:
 # Subroutines in package TOP
-setgrid1d(np:integer,x:real,nx:integer,grid:real,xmin:real,xmax:real)
+setgrid1d(np:integer,x(np):real,nx:integer,grid(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid.
-deposgrid1d(itask:integer,np:integer,x:real,z:real,nx:integer,
-            grid:real,gridcount,xmin:real,xmax:real)
+deposgrid1d(itask:integer,np:integer,x(np):real,z(np):real,nx:integer,
+            grid(0:nx):real,gridcount(0:nx):real,xmin:real,xmax:real)
         subroutine
         # Deposits data onto a 1-D grid.
-getgrid1d(np:integer,x:real,z:real,nx:integer,grid:real,xmin:real,xmax:real)
+getgrid1d(np:integer,x(np):real,z(np):real,nx:integer,grid(0:nx):real,
+          xmin:real,xmax:real)
         subroutine
         # Gathers data from a 1-D grid.
-setgrid2d(np:integer,x:real,y:real,nx:integer,ny:integer,grid:real,
+setgrid2d(np:integer,x(np):real,y(np):real,nx:integer,ny:integer,
+          grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Deposits uniform data onto a 2-D grid.
-deposgrid2d(itask:integer,np:integer,x:real,y:real,z:real,nx:integer,ny:integer,
-            grid:real,gridcount,xmin:real,xmax:real,ymin:real,ymax:real)
+deposgrid2d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+            nx:integer,ny:integer,
+            grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
+            xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits data onto a 2-D grid.
-setgrid2dw(np:integer,x:real,y:real,w:real,nx:integer,ny:integer,grid:real,
-          xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+setgrid2dw(np:integer,x(np):real,y(np):real,w(np):real,
+           nx:integer,ny:integer,grid(0:nx,0:ny):real,
+           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Deposits uniform data onto a 2-D grid.
-deposgrid2dw(itask:integer,np:integer,x:real,y:real,z:real,w:real,nx:integer,ny:integer,
-            grid:real,gridcount,xmin:real,xmax:real,ymin:real,ymax:real)
+deposgrid2dw(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+             w(np):real,nx:integer,ny:integer,
+            grid(0:nx,0:ny):real,gridcount(0:nx,0:ny):real,
+            xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits data onto a 2-D grid.
-getgrid2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
+getgrid2d(np:integer,x(np):real,y(np):real,z(np):real,
+          nx:integer,ny:integer,grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Gathers data from a 2-D grid.
-getgridngp2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
-          xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+getgridngp2d(np:integer,x(np):real,y(np):real,z(np):real,
+             nx:integer,ny:integer,grid(0:nx,0:ny):real,
+             xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Gathers data from a 2-D grid using nearest grid point
-setgrid3d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,nz:integer,
-          grid:real,xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)        subroutine
+setgrid3d(np:integer,x(np):real,y(np):real,z(np):real,
+          nx:integer,ny:integer,nz:integer,
+          grid(0:nx,0:ny,0:nz):real,
+          xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
+          subroutine
         # Deposits uniform data onto a 3-D grid.
-deposgrid3d(itask:integer,np:integer,x:real,y:real,z:real,q:real,
-            nx:integer,ny:integer,nz:integer,grid:real,gridcount,
+deposgrid3d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+            q(np):real,
+            nx:integer,ny:integer,nz:integer,
+            grid(0:nx,0:ny,0:nz):real,gridcount(0:nx,0:ny,0:nz):real,
             xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
         subroutine
         # Deposits data onto a 3-D grid.
-getgrid3d(np:integer,x:real,y:real,z:real,f:real,
-          nx:integer,ny:integer,nz:integer,grid:real,
+getgrid3d(np:integer,x(np):real,y(np):real,z(np):real,f(np):real,
+          nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
           l2symtry:logical,l4symtry:logical) subroutine
         # Gathers data from a 3-D grid.
-getgridngp3d(np:integer,x:real,y:real,z:real,f:real,
-             nx:integer,ny:integer,nz:integer,grid:real,
+getgridngp3d(np:integer,x(np):real,y(np):real,z(np):real,f(np):real,
+             nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):real,
              xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
              zgrid:real,l2symtry:logical,l4symtry:logical) subroutine
         # Gathers data from a 3-D grid using nearest grid point.
-grid2grid(unew:real,nxnew:integer,nynew:integer,
+
+
+
+grid2grid(unew(0:nxnew,0:nynew):real,nxnew:integer,nynew:integer,
           xminnew:real,xmaxnew:real,yminnew:real,ymaxnew:real,
-          uold:real,nxold:integer,nyold:integer,
+          uold(0:nxold,0:nyold):real,nxold:integer,nyold:integer,
           xminold:real,xmaxold:real,yminold:real,ymaxold:real) subroutine
         # project field from one grid to another
 gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
-             xminin:real,xmaxin:real,yminin:real,ymaxin:real,zminin:real,zmaxin:real,
-             gridin:real,
+             xminin:real,xmaxin:real,yminin:real,ymaxin:real,
+             zminin:real,zmaxin:real,
+             gridin(0:nxin,0:nyin,0:nzin):real,
              nxout:integer,nyout:integer,nzout:integer,
-             xminout:real,xmaxout:real,yminout:real,ymaxout:real,zminout:real,zmaxout:real,
-             gridout:real) subroutine
+             xminout:real,xmaxout:real,yminout:real,ymaxout:real,
+             zminout:real,zmaxout:real,
+             gridout(0:nxout,0:nyout,0:nzout):real) subroutine
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
-take2dint(a:integer,n1:integer,n2:integer,i:integer,j:integer,n:integer,
-          b:integer) subroutine
-getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
-         hmax:real,zl:real,zr:real,zp:real,uzp:real,slope:real)
+take2dint(a(0:n1-1,0:n2-1):integer,n1:integer,n2:integer,
+          i(n):integer,j(n):integer,n:integer,b(n):integer) subroutine
+getpsgrd(np,xp(np):real,uxp(np):real,nw,nh,psgrd(0:nw,0:nh):real,
+         wmin:real,wmax:real,hmin:real,
+         hmax:real,zl:real,zr:real,zp(np):real,uzp(np):real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space
-emitthresh(n:integer,threshold:real,js:integer,iw:integer,
-           ngridw:integer,ngridh:integer,tepsx:real,tepsy:real)
+emitthresh(n:integer,threshold(n):real,js:integer,iw:integer,
+           ngridw:integer,ngridh:integer,tepsx(n):real,tepsy(n):real)
               subroutine # Calculates the emittance with thesholding.
         # --- Input:
         # ---   - n is number of thresholds
@@ -2238,17 +2199,18 @@ unshear(xp:real,xprime:real,npart:integer,xsqbar:real,xpsqbar:real,
                          # rotates it to produce an ellipse with its axes
                          # along the coordinate axes and center at the same
                          # position as the original ellipse.
-emitfrac(xp:real,uxp:real,uzp:real,np:integer,xbar:real,xpbar:real,
+emitfrac(xp(np):real,uxp(np):real,uzp(np):real,np:integer,xbar:real,xpbar:real,
          xsqbar:real,xxpbar:real,xpsqbar:real,
-         fracbin:real,emitbin:real,npts:integer,emitbinmax:real, 
-         tx:real,txp:real,emitp:real,rwork:real,iwork:integer)
+         fracbin(0:npts):real,emitbin(0:npts):real,npts:integer,emitbinmax:real, 
+         tx(np):real,txp(np):real,emitp(np):real,
+         rwork(0:npts):real,iwork:integer)
          subroutine # Calculates the emittance versus the fraction of the
                     # beam (live particles) particles in phase space 
                     # enclosed by nested emittance ellipses with the rms 
                     # equivalent beam.  Also returns single particle 
                     # emittances.
-prin(xp:real,uxp:real,uzp:real,np:integer,xsqbar:real,xpsqbar:real,
-     xxpbar:real,xbar:real,xpbar:real,tx:real,txp:real,
+prin(xp(np):real,uxp(np):real,uzp(np):real,np:integer,xsqbar:real,xpsqbar:real,
+     xxpbar:real,xbar:real,xpbar:real,tx(np):real,txp(np):real,
      txsqbar:real,txpsqbar:real,txxpbar:real)
          subroutine # Tranforms a phase ellipse which has non-zero <xx'>, 
                     # <x> and <x'> and translates and rotates it to 
@@ -2260,7 +2222,8 @@ stepid(it,time:real,zbeam:real)
                          # of every frame
 thisstep(it,itcount,n) logical function
                          #
-thiszbeam(zl:real,zr:real,zcount,n) logical function
+thiszbeam(zl:real,zr:real,control(ncontrol):real,ncontrol:integer)
+              logical function
                          #
 savehist(time:real)
               subroutine # saves moments data to history arrays
@@ -2269,24 +2232,19 @@ prntpara(dxperp:real,dz:real)
 psplots(freqflag:integer) 
               subroutine # Controls phase space plots
 onedplts(freqflag:integer) subroutine # plots all 1d qtys w/ freqflag
-tolabfrm(zcent:real,nn,x:real,z:real) subroutine
+tolabfrm(zcent:real,nn,x(nn):real,z(nn):real) subroutine
              # Converts data from WARP frame to lab frame.
 
 *********** TopUtil:
 # "Utility" subroutines at top level
-copyarry(source:real,target:real,nwords)
-             subroutine # Copies array from source to targer
 dolabwn() logical function
                         # Checks if lab window is in beam frame
-psumx(a:real,b:real,n)
-             subroutine # b := partial sum of a
-fnice(i,e10:real)
-          real function   # makes nice contours values
 alotpart()   subroutine # Allocate space for particles and setup associated data
 chckpart(is:integer,nlower:integer,nhigher:integer,lfullshft:logical)
              subroutine # Makes sure there is enough space for nn particles.
-addpart(nn:integer,npid:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
-        gi:real,pid:real,
+addpart(nn:integer,npid:integer,x(nn):real,y(nn):real,z(nn):real,
+        vx(nn):real,vy(nn):real,vz(nn):real,
+        gi(nn):real,pid(nn,npid):real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
@@ -2301,15 +2259,15 @@ checkparticleblock(block:ParticleBlock,is:integer,
                    nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles in
                         # the given particle block.
-copyparttoblock(nn:integer,ii:integer,istart:integer,block:ParticleBlock,
-                it:integer)
+copyparttoblock(nn:integer,ii(0:nn-1):integer,istart:integer,
+                block:ParticleBlock,it:integer)
              subroutine # Copies particle data from base particle arrays into
                         # the specified block.
-copyblocktopart(nn:integer,ii:integer,istart:integer,block:ParticleBlock,
-                it:integer)
+copyblocktopart(nn:integer,ii(0:nn-1):integer,istart:integer,
+                block:ParticleBlock,it:integer)
              subroutine # Copies particle data from the specified block into
                         # the base particle arrays
-load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
+load2d(np,x(np):real,y(np):real,nx,ny,n(0:nx,0:ny):real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
                         # Moves particle data to end of species block.
@@ -2325,19 +2283,13 @@ r2rev(lastrev:real)
                         # lastrev is `call by address', e.g. r2rev(&x)
 rnrev(i:integer,nbase:integer)
           real function # i base `nbase' reversed.
-rnrevarray(n:integer,x:real,i:integer,nbase:integer)
+rnrevarray(n:integer,x(n):real,i:integer,nbase:integer)
           subroutine    # Fills an array with uniform digit reversed rand numbs
 rnorm()   real function # Gaussian random numbers.
-rnormdig(i1,n,nbase1,nbase2,dx:real,x:real)
+rnormdig(i1,n,nbase1,nbase2,dx:real,x(n):real)
              subroutine # Gaussian random numbers via digit reversed.
 rm()      real function # Pseudo-Gaussian random numbers (6 uniform nos.).
-rma(a:real,n) subroutine # rma(&a,n) gives n Pseudo-Gaussian rand numbers.
-sphere4(a:real,b:real,c:real,d:real,n:integer)
-             subroutine # distrib pts on surf of 4d unit sphere
-                        # a-d are arrays declared (1:n)
-sphere4f(a:real,b:real,c:real,d:real,ig1,ig2,ig3)
-             subroutine # distr pts on surf of 4d unit sphere
-                        # a-d are arrays declared (1:n)
+rma(a(n):real,n) subroutine # rma(&a,n) gives n Pseudo-Gaussian rand numbers.
 dsifa(a:real,lda,n,kpvt,info)
              subroutine # LINPACK matrix reduction routine # (in file UTIL.F)
 dsidi(a:real,lda,n,kpvt,det:real,inert,work:real,job:real)

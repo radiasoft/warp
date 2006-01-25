@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.205 $, $Date: 2006/01/07 00:29:59 $
+#@(#) File W3D.V, version $Revision: 3.206 $, $Date: 2006/01/25 01:42:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.205 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.206 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -662,19 +662,23 @@ geteb(np,is,ipmin,x:real,y:real,z:real)
 w3dgen() subroutine
 w3dexe() subroutine
 w3dfin() subroutine
-divxy(iz,ndiv,divx:real,divy:real,divvx:real,divvx2:real,divvy:real,
-      divvy2:real,wnpx:real,wnpy:real,itask)
+divxy(iz,ndiv,divx(0:ndiv):real,divy(0:ndiv):real,divvx(0:ndiv):real,
+      divvx2(0:ndiv):real,divvy(0:ndiv):real,
+      divvy2(0:ndiv):real,wnpx(0:ndiv):real,wnpy(0:ndiv):real,itask)
              subroutine # calculates RMS vx and vy versus x and y
-exteb3d(np:integer,xp:real,yp:real,zp:real,uzp:real,gaminv:real,
-        dtl:real,dtr:real,
-        bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
-        m:real,q:real,bendres:real,bendradi:real,gammabar:real,dt:real)
+exteb3d(np:integer,xp(np):real,yp(np):real,zp(np):real,uzp(np):real,
+        gaminv(np):real,dtl:real,dtr:real,
+        bx(np):real,by(np):real,bz(np):real,
+        ex(np):real,ey(np):real,ez(np):real,
+        m:real,q:real,bendres(np):real,bendradi(np):real,gammabar:real,dt:real)
              subroutine # Sets external E and B fields
-othere3d(np:integer,xp:real,yp:real,zp:real,zbeam:real,zimax:real,zimin:real,
-         straight:real,ifeears,eears:real,eearsofz:real,dzzi:real,nzzarr,
+othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
+         zbeam:real,zimax:real,zimin:real,
+         straight:real,ifeears,eears:real,eearsofz(0:nzzarr):real,
+         dzzi:real,nzzarr,
          zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
-         ex:real,ey:real,ez:real,
-         bx:real,by:real,bz:real)
+         ex(np):real,ey(np):real,ez(np):real,
+         bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field
 getese3d()   subroutine # Computes electrostatic energy
 gtlchg3d()   subroutine # Computes line charge density
@@ -683,18 +687,19 @@ inject3d(itask:integer)
 injctint()   subroutine # Initialization for injection
 fill_inj()   subroutine # Initializes arrays describing the geometry of the
                         # emitting surface. Automatically called.
-inj_sete3d(np:integer,xp:real,yp:real,zp:real,pid:real,dz:real,
-           ex:real,ey:real,ez)
+inj_sete3d(np:integer,xp(np):real,yp(np):real,zp(np):real,pid(np):real,dz:real,
+           ex(np):real,ey(np):real,ez(np):real)
              subroutine # Calculate the E field for particles near the
                         # emitting surface.
-inj_transform(np:integer,x:real,y:real,z:real,ni:integer,ijp:integer,
+inj_transform(np:integer,x(np):real,y(np):real,z(np):real,
+              ni:integer,ijp(ni):integer,
               tsign:integer,lshift:logical)
              subroutine # Transforms coordinates into and out of frame
                         # of injection sources
 loadrho3d(ins:integer,nps:integer,is:integer,lzero:logical) 
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
-fetchphi(n:integer,x:real,y:real,z:real,p:real)
+fetchphi(n:integer,x(n):real,y(n):real,z(n):real,p(n):real)
              subroutine # Fetches the electrostatic potential at the given
                         # list of locations. It uses whatever geometry and
                         # field solver that is active.
@@ -702,71 +707,82 @@ setupfields3dparticles(ns:integer,ndts:integer,it:integer)
              subroutine # Sets up the Fields3dParticles group
 getrhoforfieldsolve()
              subroutine # Copies data from rhop to rho - mainly for parallel
-getrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,rho:real,
-                      nxp:integer,nyp:integer,nzp:integer,rhop:real,
+getrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
+                      rho(0:nx,0:ny,0:nz):real,
+                      nxp:integer,nyp:integer,nzp:integer,
+                      rhop(0:nx,0:ny,0:nz):real,
                       nzpguard:integer)
              subroutine # Copies data from rhop to rho - for parallel
 getphiforparticles()
              subroutine # Copies data from phi to phip - mainly for parallel
 padvnc3d(center:string)
              subroutine # Advances particles and rho
-perphi3d(phi:real,nx,ny,nz)
+perphi3d(phi(0:nx,0:ny,-1:nz+1):real,nx,ny,nz)
              subroutine # Equates end slices of phi for periodicity
-perrho3d(rho:real,nx:integer,ny:integer,nz:integer,
+perrho3d(rho(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
          bound0:integer,boundxy:integer)
              subroutine # Sums end slices of rho for periodicity
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
-bendez3d(np,xp:real,zp:real,ez:real,bendres:real,bendradi:real,
+bendez3d(np,xp(np):real,zp(np):real,ez(np):real,
+         bendres(np):real,bendradi(np):real,
          bends:logical,bnezflag:logical,linbend:logical)
              subroutine #  Corrects axial electric field for warped geometry
-zbendcor(np, xp:real, zp:real, uxp:real,uzp:real, gaminv:real, ddt:real,
-         bendres:real,bendradi:real, bends:logical,linbend:logical)
+zbendcor(np,xp(np):real,zp(np):real,uxp(np):real,uzp(np):real,gaminv(np):real,
+         ddt:real,bendres(np):real,bendradi(np):real,
+         bends:logical,linbend:logical)
              subroutine # Applies correction to z-advance for bends
-epush3d(np,uxp:real,uyp:real,uzp:real,ex:real,ey:real,ez:real,q:real,m:real,
-        dt:real)
+epush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,
+        ex(np):real,ey(np):real,ez(np):real,q:real,m:real,dt:real)
              subroutine # Particle velocity advance from E field
-bpush3d (np,uxp:real,uyp:real,uzp:real,gaminv:real,bx:real,by:real,bz:real,
-         q:real,m:real,dt:real,ibpush:integer)
+bpush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+        bx(np):real,by(np):real,bz(np):real,
+        q:real,m:real,dt:real,ibpush:integer)
              subroutine # Particle velocity advance from B field
-bpusht3d (np,uxp:real,uyp:real,uzp:real,gaminv:real,bx:real,by:real,bz:real,
-          q:real,m:real,dt:real,fdt:real,ibpush:integer)
+bpusht3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+         bx(np):real,by(np):real,bz(np):real,
+         q:real,m:real,dtp(np):real,fdt:real,ibpush:integer)
              subroutine # Particle velocity advance from B field with varying dt
-xpush3d (np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
-         dt:real)
+xpush3d(np,xp(np):real,yp(np):real,zp(np):real,
+        uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,dt:real)
              subroutine # Particle position advance
-seteears ()  subroutine # Sets eearsofz, the axial confining field
-sete3d (phi1d:real,selfe:real,np,xp:real,yp:real,zp:real,zgrid:real,
-        xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
-        efetch:integer,ex:real,ey:real,ez:real,
-        l2symtry:logical,l4symtry:logical)
+seteears()  subroutine # Sets eearsofz, the axial confining field
+sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
+       xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
+       efetch:integer,ex(np):real,ey(np):real,ez(np):real,
+       l2symtry:logical,l4symtry:logical)
              subroutine # Sets internal E field
-getselfe3d(phi:real,nx:integer,ny:integer,nz:integer,
-           selfe:real,nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
+getselfe3d(phi(0:nx,0:ny,-1:nz+1):real,nx:integer,ny:integer,nz:integer,
+           selfe(3,0:nx,0:ny,0:nz):real,
+           nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,
            boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer)
              subroutine # Calculates the self-E via finite difference of phi
-setrho3d(rho:real,rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,
+setrho3d(rho(0:nx,0:ny,0:nz):real,rho1d:real,
+         np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
-setrho3dselect(rho:real,rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,
-         q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
-         dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
-         l2symtry:logical,l4symtry:logical)
+setrho3dselect(rho(0:nx,0:ny,0:nz):real,rho1d:real,
+               np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
+               q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+               dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
+               l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
 sezax3d()    subroutine # Sets EZAX, Ez on axix
 sphiax3d()   subroutine # Sets PHIAX, E. S. potential on axis
 srhoax3d()   subroutine # Sets RHOAX, charge density on axis
 rhodia3d()   subroutine # Sets rhomid and rhomax diagnostics
-stckxy3d(np,xp:real,xmmax:real,xmmin:real,dx:real,yp:real,ymmax:real,ymmin:real,
-         dy:real,zp:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,
-         gaminv:real,zgrid:real,zbeam:real,
+stckxy3d(np,xp(np):real,xmmax:real,xmmin:real,dx:real,
+            yp(np):real,ymmax:real,ymmin:real,dy:real,
+         zp(np):real,zmmin:real,dz:real,
+         uxp(np):real,uyp(np):real,uzp(np):real,
+         gaminv(np):real,zgrid:real,zbeam:real,
          l2symtry:logical,l4symtry:logical,pboundxy:real,lcountaslost:logical)
              subroutine # Enforces sticky x and y walls
 stptcl3d()   subroutine # Particle initializer
-setrstar(rstar:real,nz:integer,dz:real,zmmin:real,zgrid:real)
+setrstar(rstar(-1:nz+1):real,nz:integer,dz:real,zmmin:real,zgrid:real)
              subroutine # Loads radius of reference orbit into rstar array 
 fieldsol3d(iwhich) subroutine # Bent-self-field iterative solver
 vp3d(iwhich) subroutine # The 3d Poisson solver
@@ -778,70 +794,72 @@ multpole(lmod:integer,nlmod:integer,irpowmx:integer,
          lcosex:logical,lsinex:logical,aper:real,xcen:real,ycen:real,
          nmult:integer,nres:integer,tol:real) 
             subroutine # calculate the multipole moments of the potential
-inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
-             xmmin:real,ymmin:real,x0:real,y0:real,a0:real,b0:real,
+inj_smoother(nx:integer,ny:integer,inj_phi(0:nx,0:ny):real,
+             dx:real,dy:real,xmmin:real,ymmin:real,
+             x0:real,y0:real,a0:real,b0:real,
              inj_nsmooth:integer) subroutine
 getinj_phi() subroutine
 getinj_phi_3d() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
-fetche3dfrompositions(is:integer,n:integer,x:real,y:real,z:real,
-                      ex:real,ey:real,ez:real) subroutine
+fetche3dfrompositions(is:integer,n:integer,x(n):real,y(n):real,z(n):real,
+                      ex(n):real,ey(n):real,ez(n):real) subroutine
 particleboundaries3d() subroutine
-loadperpdist0(np:integer,x:real,y:real,xp:real,yp:real,
-              rx:real,ry:real,rxp:real,ryp:real,emitx:real,emity:real,
-              distrbtn:string) subroutine
-loadperpdist(np:integer,x:real,y:real,xp:real,yp:real,
-             rx:real,ry:real,rxp:real,ryp:real,emitx:real,emity:real,
-             distrbtn:string) subroutine
+loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
+              rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
+              epsx(np):real,epsy(np):real) subroutine
+loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
+             rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
+             epsx(np):real,epsy(np):real) subroutine
 
 *********** W3Dutilities:
-sortparticlesbyindex(n:integer,indx:integer,x:real,y:real,z:real,uz:real,
-                     nblocks:integer,
-                     xout:real,yout:real,zout:real,uzout:real,pcounts:integer)
+sortparticlesbyindex(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
+                     uz(n):real,nblocks:integer,
+                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
+                     pcounts(0:nblocks-1):integer)
       subroutine
-sortparticlesbyindexwithcounts(n:integer,indx:integer,
-                     x:real,y:real,z:real,uz:real,
+sortparticlesbyindexwithcounts(n:integer,indx(n):integer,
+                     x(n):real,y(n):real,z(n):real,uz(n):real,
                      nblocks:integer,
-                     xout:real,yout:real,zout:real,uzout:real,pcounts:integer)
+                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
+                     pcounts(0:nblocks-1):integer)
       subroutine
-sortparticlesbyindexgetisort(n:integer,indx:integer,x:real,y:real,z:real,
+sortparticlesbyindexgetisort(n:integer,indx(n):integer,
+                             x(n):real,y(n):real,z(n):real,
                              nblocks:integer,
-                             xout:real,yout:real,zout:real,isort:integer,
-                             pcounts:integer)
+                             xout(n):real,yout(n):real,zout(n):real,
+                             isort(n):integer,pcounts(0:nblocks-1):integer)
       subroutine
-getichild(gridnumb:integer,np:integer,x:real,y:real,z:real,
-          ichild:integer,
-          nx:integer,ny:integer,nz:integer,grid:integer,
+getichild(gridnumb:integer,np:integer,x(np):real,y(np):real,z(np):real,
+          ichild(np):integer,
+          nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):integer,
           xmin:real,xmax:real,ymin:real,ymax:real,
           zmin:real,zmax:real,
           zgrid:real,l2symtry:logical,l4symtry:logical)
       subroutine # Gathers data from a 3-D grid using nearest grid point.
-getichildandcount(np:integer,x:real,y:real,z:real,
-          ichild:integer,nblocks:integer,nperchild:integer,
-          nx:integer,ny:integer,nz:integer,grid:integer,
+getichildandcount(np:integer,x(np):real,y(np):real,z(np):real,
+          ichild:integer,nblocks:integer,nperchild(0:nblocks-1):integer,
+          nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):integer,
           xmin:real,xmax:real,ymin:real,ymax:real,
           zmin:real,zmax:real,
           zgrid:real,l2symtry:logical,l4symtry:logical)
       subroutine # Gathers data from a 3-D grid using nearest grid point.
-getichildpositiveonly(gridnumb:integer,np:integer,x:real,y:real,z:real,
-                      ichild:integer,
-                      nx:integer,ny:integer,nz:integer,grid:integer,
+getichildpositiveonly(gridnumb:integer,np:integer,
+                      x(np):real,y(np):real,z(np):real,
+                      ichild(np):integer,
+                      nx:integer,ny:integer,nz:integer,
+                      grid(0:nx,0:ny,0:nz):integer,
                       xmin:real,xmax:real,ymin:real,ymax:real,
                       zmin:real,zmax:real,
                       zgrid:real,l2symtry:logical,l4symtry:logical)
       subroutine # Gathers data from a 3-D grid using nearest grid point.
                  # Only gathers positive values.
-addrhotoowner(nx:integer,ny:integer,nz:integer,srho:real,sown:integer,
-              orho:real)
-      subroutine
-getrhofromowner(nx:integer,ny:integer,nz:integer,srho:real,sown:integer,
-                orho:real)
-      subroutine
-getabsgrad3d(nx:integer,ny:integer,nz:integer,f:real,gr:real,
+getabsgrad3d(nx:integer,ny:integer,nz:integer,
+             f(0:nx,0:ny,0:nz):real,gr(0:nx,0:ny,0:nz):real,
              dx:real,dy:real,dz:real)
       subroutine
-putsortedefield(n:integer,isort:integer,tex:real,tey:real,tez:real,
-                ex:real,ey:real,ez:real)
+putsortedefield(n:integer,isort(0:n-1):integer,
+                tex(0:n-1):real,tey(0:n-1):real,tez(0:n-1):real,
+                ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
 getextpart()  subroutine
 
@@ -895,12 +913,12 @@ te_exp_nterm integer  # max number of terms to use in series expansion for
                       #   TE density.  Should set this to at least 100.
 te_exp_alpha(0:te_exp_nterm) _real 
    # Code set: Coefficients of series expansion for TE density profile
-te_den_exp_coeff(delta:real,nterm:integer,alpha:real) subroutine 
+te_den_exp_coeff(delta:real,nterm:integer,alpha(0:nterm):real) subroutine 
    # Calculate expansion coefficients for CF TE density profile
-te_den_exp(rho:real,delta:real,nterm:integer,alpha:real,tol:real) 
+te_den_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real) 
    real function 
    # Calculate the density of a CF TE using a series expansion
-te_denp_exp(rho:real,delta:real,nterm:integer,alpha:real,tol:real) 
+te_denp_exp(rho:real,delta:real,nterm:integer,alpha(0:nterm):real,tol:real) 
    real function 
    # Calculate the derivative with respect of rho of the density of a 
    #   CF TE using a series expansion
@@ -911,7 +929,8 @@ te_delta_est(sc_param:real) real function
 te_radial_den(delta:real) subroutine 
    # Calculate the normalized radial density profile of TE for dimensionless 
    #   space-charge parameter delta 
-integrate_test(y:real,nvar:integer,nstep:integer,x1:real,x2:real) subroutine 
+integrate_test(y(nvar,nstep):real,nvar:integer,nstep:integer,x1:real,x2:real)
+   subroutine 
    # temp routine link for debugging 
 te_constr_test(sc_param:real,delta:real) real function 
    # temp routine link for debugging 
