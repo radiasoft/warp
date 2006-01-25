@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.223 $, $Date: 2005/11/29 18:32:59 $
+c@(#) File W3D.F, version $Revision: 3.224 $, $Date: 2006/01/25 00:52:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2539,6 +2539,7 @@ c        + ...
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy
+      real(kind=8):: xi,yj,zk
       integer(ISZ):: noff(32)
       save noff
 
@@ -3054,6 +3055,149 @@ c            --- Adjust sign of E field for appropriate quadrant.
      &                     -u0*v1*phi1d(noff(24)+ind0)
      &                     -u1*v1*phi1d(noff(25)+ind0))
 
+          enddo
+
+        endif
+
+      else if (efetch == 5) then
+c       --- This is the same as efetch==1, but has checks to skip particles that
+c       --- are out of bounds.
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          do ip = 1, np
+
+            xi =  (xp(ip) - xmmin) * dxi
+            yj =  (yp(ip) - ymmin) * dyi
+            zk =  (zp(ip) - zgrid - zmmin) * dzi
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny .or.
+     &          zk < 0. .or. zk > nz) then
+              ex(ip) = 0.
+              ey(ip) = 0.
+              ez(ip) = 0.
+              cycle
+            endif
+            i = int(xi)
+            j = int(yj)
+            k = int(zk)
+            ind0 = i + j*nnx + k*nnxy
+
+            u1 = xi - i
+            v1 = yj - j
+            w1 = zk - k
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+
+            ex(ip)=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
+
+            ey(ip)=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
+
+            ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+          enddo
+
+        else
+
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          soy = 2*nnx
+          sox = 0
+          if (l4symtry) sox = 2
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          do ip = 1, np
+
+            xi =  (abs(xp(ip)) - xmmin)*dxi
+            yj =  (abs(yp(ip)) - ymmin)*dyi
+            zk =  (zp(ip) - zgrid - zmmin)*dzi
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny .or.
+     &          zk < 0. .or. zk > nz) then
+              ex(ip) = 0.
+              ey(ip) = 0.
+              ez(ip) = 0.
+              cycle
+            endif
+            i = int(xi)
+            j = int(yj)
+            k = int(zk)
+            ind0 = i + j*nnx + k*nnxy
+
+            u1 = xi - i
+            v1 = yj - j
+            w1 = zk - k
+
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            oy = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+            if (j == 0 .and. ymmin == 0.) oy = soy
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            ysign = tdyi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            if (yp(ip) < 0.) ysign = sy*tdyi
+           ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
+
+           ey(ip)=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+
+            ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &                 + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &                 + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &                 + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &                 + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &                 + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &                 + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &                 + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
           enddo
 
         endif
