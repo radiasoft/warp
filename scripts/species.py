@@ -4,6 +4,7 @@ Species), a dictionary of the periodic table of elements, as well as the instanc
 usual particles as object (Electron, Positron, Water, atoms from periodic table).
 """
 from warp import *
+import RandomArray
 
 class Particle:
   def __init__(self,mass=None,charge=None):
@@ -130,11 +131,17 @@ for k in periodic_table.keys():
 #  exec(k+"=periodic_table['"+k+"']")
 
 Electron=Particle(charge=-echarge,mass=emass)
-Positron=Particle(charge=echarge,mass=emass)
-Water=Molecule(mass=18.*amu,Symbol='H2O')
+Positron=Particle(charge= echarge,mass=emass)
+
+Dihydrogen = Molecule(mass=  2.*amu, Symbol='H2')
+Dinitrogen = Molecule(mass=28.*amu, Symbol='N2')
+Dioxygen   = Molecule(mass=32.*amu, Symbol='O2')
+Carbon_Monoxide = Molecule(mass=28.*amu, Symbol='CO')
+Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2')
+Water           = Molecule(mass=18.*amu, Symbol='H2O')
 
 class Species:
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,name=''):
+  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name=''):
     if js is None:
       if top.sm[0]<>0.:
         top.ns+=1
@@ -163,6 +170,8 @@ class Species:
       except:
         top.sm[js]=mass
     self.mass=top.sm[js]
+    if weight is not None:
+      top.sw[js]=weight
     # set atomic number, if any
     try:
       top.nion_s[js]=type.Z
@@ -213,3 +222,14 @@ class Species:
       if js is None:
         js=self.jslist[0]
       addparticles(x,y,z,vx,vy,vz,js=js)
+      
+  def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None):
+    x=xmin+(xmax-xmin)*RandomArray.random(np)
+    y=ymin+(ymax-ymin)*RandomArray.random(np)
+    z=zmin+(zmax-zmin)*RandomArray.random(np)
+    vx=RandomArray.normal(vxmean,vthx,np)
+    vy=RandomArray.normal(vymean,vthy,np)
+    vz=RandomArray.normal(vzmean,vthz,np)
+    self.addpart(x,y,z,vx,vy,vz,js)
+    
+    
