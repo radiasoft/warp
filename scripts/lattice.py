@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.47 2005/12/08 23:41:40 jlvay Exp $"
+lattice_version = "$Id: lattice.py,v 1.48 2006/01/27 21:42:52 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1593,6 +1593,8 @@ drft arrays with the same suffices:
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
+  return ie
+
 # ----------------------------------------------------------------------------
 # --- BEND --- XXX
 def addnewbend(zs,ze,rc,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.):
@@ -1651,6 +1653,8 @@ bend arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  return ie
 
 # ----------------------------------------------------------------------------
 # --- DIPO --- XXX
@@ -1712,6 +1716,8 @@ dipo arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  return ie
 
 # ----------------------------------------------------------------------------
 # --- QUAD --- XXX
@@ -1797,6 +1803,8 @@ quad and qdel arrays with the same suffices:
       # --- There are two arrays which are 2-D, quadet, and quadbt.
       e[:,ie] = ldict[xx]
 
+  return ie
+
 # ----------------------------------------------------------------------------
 # --- SEXT --- XXX
 def addnewsext(zs,ze,db=0.,de=0.):
@@ -1852,6 +1860,8 @@ sext arrays with the same suffices:
   # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
+
+  return ie
 
 # ----------------------------------------------------------------------------
 # --- HELE --- XXX
@@ -1934,6 +1944,8 @@ hele arrays with the same suffices:
     else:
       # --- These are quantities input for each multipole component
       e[:,ie] = ldict[xx]
+
+  return ie
 
 # ----------------------------------------------------------------------------
 # --- EMLT --- XXX
@@ -2097,7 +2109,7 @@ emlt arrays with the same suffices:
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to knowne its actual number.
-  return top.emltid[ie]
+  return ie,top.emltid[ie]
 
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
@@ -2257,7 +2269,7 @@ mmlt arrays with the same suffices:
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to knowne its actual number.
-  return top.mmltid[ie]
+  return ie,top.mmltid[ie]
 
 # ----------------------------------------------------------------------------
 # --- ACCL --- XXX
@@ -2324,6 +2336,8 @@ accl arrays with the same suffices:
     else:
       # --- acclet is 2-D
       e[:,ie] = ldict[xx]
+
+  return ie
 
 # ----------------------------------------------------------------------------
 # --- BGRD --- XXX
@@ -2429,7 +2443,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
-  return top.bgrdid[ie]
+  return ie,top.bgrdid[ie]
 
 # ----------------------------------------------------------------------------
 # --- BSQGRAD --- XXX
@@ -2536,7 +2550,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
-  return top.bsqgradid[ie]
+  return ie,top.bsqgradid[ie]
 
 # ----------------------------------------------------------------------------
 # --- PGRD --- XXX
@@ -2635,7 +2649,7 @@ pgrd arrays with the same suffices:
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
-  return top.pgrdid[ie]
+  return ie,top.pgrdid[ie]
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
