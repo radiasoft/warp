@@ -300,7 +300,15 @@ it knows whether to re-register itself.
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
+    self._makefortranordered('phi')
+    self._makefortranordered('rho')
+    self._makefortranordered('selfe')
+    if self.useselfb:
+      self._makefortranordered('bx')
+      self._makefortranordered('by')
+      self._makefortranordered('bz')
     if self.iamtheregisteredsolver:
+      del self.iamtheregisteredsolver
       registersolver(self)
       if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
         w3d.rho = self.rho
@@ -310,6 +318,13 @@ it knows whether to re-register itself.
         w3d.nzp = self.nz
         w3d.rhop = self.rho
         w3d.phip = self.phi
+
+  def _makefortranordered(self,vname):
+    a = getattr(self,vname)
+    if type(a) is ArrayType:
+      setattr(self,vname,fzeros(shape(a),a.typecode()))
+      getattr(self,vname)[...] = a
+
 
 
 ##############################################################################
@@ -495,7 +510,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       by = transpose(self.beamsolver.by)
 
       bsq = bx**2 + by**2
-      id = self.bsqgradid - 1
+      id = self.bsqgradid[1] - 1
       bsqgrad = transpose(top.bsqgrad[:,:,:,:,id])
       bsqgrad[1:-1,:,:,0] = (bsq[2:,:,:] - bsq[:-2,:,:])/(2.*w3d.dz)
       bsqgrad[:,:,1:-1,1] = (bsq[:,:,2:] - bsq[:,:,:-2])/(2.*w3d.dx)
@@ -617,6 +632,7 @@ it knows whether to re-register itself.
   def __setstate__(self,dict):
     self.__dict__.update(dict)
     if self.iamtheregisteredsolver:
+      del self.iamtheregisteredsolver
       registersolver(self)
       if (self.beamsolver.nx == w3d.nx and
           self.beamsolver.ny == w3d.ny and

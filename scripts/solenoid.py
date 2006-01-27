@@ -22,7 +22,7 @@ included, up B0'''.
 """
 from warp import *
 from lattice import addnewmmlt
-solenoid_version = "$Id: solenoid.py,v 1.1 2005/03/16 21:33:03 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.2 2006/01/27 21:43:16 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -145,6 +145,6 @@ by ri. The fringelen uses the actual sheet radius.
   msp[:,1] = B0ppp(z,zcent,current,R,l)
   nn = [0,0]
   vv = [0,1]
-  addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv)
+  return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv)
 
 
