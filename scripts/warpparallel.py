@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.53 2006/01/21 01:11:45 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.54 2006/01/31 23:01:44 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -644,7 +644,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                            gpdbname='conductors%d@parallel'%me)
 
   # --- Allocate any groups with parallel arrays
-  gchange("Particles")
+  gchangeparticles()
   gchange("LostParticles")
   gchange("Particlesxy")
 
