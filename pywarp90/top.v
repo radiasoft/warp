@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.152 $, $Date: 2006/01/25 01:42:36 $
+#@(#) File TOP.V, version $Revision: 3.153 $, $Date: 2006/01/31 23:01:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.152 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.153 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1878,49 +1878,57 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # VyVz bar versus space and time
 
-*********** Particles dump parallel:
+*********** Particles dump:
 # Dynamic particle arrays, and related data
+pgroup ParticleGroup +parallel # Main group holding the particles
 np     integer    /0/  # Total no. of particles (including lost ones).
 nplive integer    /0/  # No. of "live" particles
-npmax  integer    /0/  # Maximum no. of particles
-                       # (user input for some loadings)
-npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
-npidmax integer   /1/  # Maximum number of columns for pid.
-                       # This is used so that the pid array is always allocated
 npid   integer    /0/  # number of columns for pid.
-npmaxi integer    /1/  # Maximum no. of particles for pid.
 spid   integer    /0/  # position of particles SSNs in array pid (FORTRAN indexed: based 1)
 wpid   integer    /0/  # position of particle weights in array pid (FORTRAN indexed: based 1)
 tpid   integer    /0/  # position of particle creation time in array pid (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid (FORTRAN indexed: based 1)
 ssn    integer    /1/  # next particles 'social security number' available
-sm(ns) _real [kg] /0./ -parallel # Species mass
-sq(ns) _real [C]  /0./ -parallel # Species charge
-sw(ns) _real [1]  /0./ -parallel # Species weight
+sm(:) _real [kg] /0./  # Species mass
+sq(:) _real [C]  /0./  # Species charge
+sw(:) _real [1]  /0./  # Species weight
                        # (real particles per simulation particles)
-ins(ns)  _integer /1/  # Index of first particle in species
-nps(ns)  _integer /0/  # Number of particles in species
-ndts(ns) _integer /1/  -parallel # Stride for time step advance for each species
-ldts(ns) _logical  /1/ -parallel
-lselfb(ns) _logical 
-fselfb(ns) _real   /0./
-dtscale(ns) _real /1./ -parallel # Scale factor applied to time step size for
-                                 # each species. Only makes sense in steady
-                                 # state and transverse slice modes.
-gaminv(npmax)  _real  [1]   /1./ # inverse relativistic gamma factor
-xp(npmaxb)     _real  [m]        # X-positions of particles
-yp(npmaxb)     _real  [m]        # Y-positions of particles
-zp(npmax)      _real  [m]        # Z-positions of particles
-uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
-uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
-uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
-pid(npmaxi,npidmax) _real [1]    # Particle ID - used for various purposes
+ndts(:) _integer /1/   # Stride for time step advance for each species
+ldts(:) _logical  /1/ 
+lselfb(:) _logical 
+fselfb(:) _real   /0./
+dtscale(:) _real /1./ # Scale factor applied to time step size for
+                      # each species. Only makes sense in steady
+                      # state and transverse slice modes.
+ins(:)  _integer /1/ +parallel  # Index of first particle in species
+nps(:)  _integer /0/ +parallel  # Number of particles in species
+npmax  integer    /0/ +parallel  # Maximum no. of particles
+                                 # (user input for some loadings)
+npmaxb integer    /0/ +parallel  # Maximum no. of particles for xp, yp, uxp, uyp
+npmaxi integer    /1/ +parallel  # Maximum no. of particles for pid.
+npidmax integer   /1/  # Maximum number of columns for pid.
+                       # This is used so that the pid array is always allocated
+gaminv(:) _real  [1]   /1./ +parallel # inverse relativistic gamma factor
+xp(:)     _real  [m]        +parallel # X-positions of particles
+yp(:)     _real  [m]        +parallel # Y-positions of particles
+zp(:)     _real  [m]        +parallel # Z-positions of particles
+uxp(:)    _real  [m/s]      +parallel # gamma * X-velocities of particles
+uyp(:)    _real  [m/s]      +parallel # gamma * Y-velocities of particles
+uzp(:)    _real  [m/s]      +parallel # gamma * Z-velocities of particles
+pid(:,:)  _real  [1]    +parallel # Particle ID - used for various purposes
+gchangeparticles() subroutine
 
-%%%%%%%%%%% ParticleBlock:
+%%%%%%%%%%% ParticleGroup:
 # Dynamic particle arrays, and related data
 ns     integer    /1/  # Number of species
 npmax  integer    /0/  # Size of data arrays
+npmaxi integer    /1/  # Maximum no. of particles for pid.
 npid   integer    /0/  # number of columns for pid.
+npidmax integer   /1/  # Maximum number of columns for pid.
+                       # This is used so that the pid array is always allocated
+npmax_s(0:ns)  _integer [1] /0/
+   # Maximum number of particles of each species
+   # Index of 0 is used as a guard and always has a value of zero.
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
@@ -1932,6 +1940,10 @@ ldts(ns) _logical /1/
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
+lselfb(ns) _logical    # Flag determining whether particles are affected by
+                       # their own magnetic field, using the 1/gamma**2
+                       # approximation.
+fselfb(ns) _real   /0./
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
 xp(npmax)       _real [m]       # X-positions of particles
 yp(npmax)       _real [m]       # Y-positions of particles
@@ -1939,7 +1951,7 @@ zp(npmax)       _real [m]       # Z-positions of particles
 uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
 uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
-pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
+pid(npmaxi,npidmax) _real [1]       # Particle ID - used for various purposes
 
 *********** Scraped_Particles dump:
 # Arrays for scraped particles
@@ -2255,22 +2267,22 @@ processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
 alotlostpart() subroutine # Allocate space for saving lost particles
-checkparticleblock(block:ParticleBlock,is:integer,
+checkparticlegroup(pgroup:ParticleGroup,is:integer,
                    nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles in
-                        # the given particle block.
-copyparttoblock(nn:integer,ii(0:nn-1):integer,istart:integer,
-                block:ParticleBlock,it:integer)
+                        # the given particle group.
+copyparttogroup(nn:integer,ii:integer,istart:integer,
+                pgroup:ParticleGroup,it:integer)
              subroutine # Copies particle data from base particle arrays into
-                        # the specified block.
-copyblocktopart(nn:integer,ii(0:nn-1):integer,istart:integer,
-                block:ParticleBlock,it:integer)
-             subroutine # Copies particle data from the specified block into
+                        # the specified group.
+copygrouptopart(nn:integer,ii:integer,istart:integer,
+                pgroup:ParticleGroup,it:integer)
+             subroutine # Copies particle data from the specified group into
                         # the base particle arrays
 load2d(np,x(np):real,y(np):real,nx,ny,n(0:nx,0:ny):real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
-                        # Moves particle data to end of species block.
+                        # Moves particle data to end of species group.
 copypart(it:integer,nn:integer,ii:integer;istart:integer) subroutine
                         # Copies particle data from one location to another
 wrandom(method:string,ii:integer,idig:integer,ifib1:integer,ifib2:integer)
@@ -2485,10 +2497,10 @@ timeprocesslostpart            real /0./
 timealotlostpart               real /0./
 timechcklostpart               real /0./
 timeshftlostpart               real /0./
-timecheckparticleblock         real /0./
-timeshiftparticleblock         real /0./
-timecopyparttoblock            real /0./
-timecopyblocktopart            real /0./
+timecheckparticlegroup         real /0./
+timeshiftparticlegroup         real /0./
+timecopyparttogroup            real /0./
+timecopygrouptopart            real /0./
 timezpartbnd_slave             real /0./
 timereorgparticles_parallel    real /0./
 timecheckzpartbnd              real /0./

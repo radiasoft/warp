@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.15 $, $Date: 2005/01/19 20:51:54 $
+c@(#) File WRZ.M, version $Revision: 3.16 $, $Date: 2006/01/31 23:01:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -145,7 +145,7 @@ c          npmax = 8*ia/2*(ia+1)*izb
           npmax = (4*(ia+1)*(ia+2)+1)*izb
       endif
       npmaxb = npmax
-      call gallot ("Particles", 0)
+      call gchangeparticles()
 
 c  Load the particles, calculate the charge density and current
  
@@ -212,7 +212,7 @@ c  Initialize the surface charge if we are including resistivity
 c  Change the size of the dynamic arrays for particles to true length
  
       npmaxb = npmax
-      call gchange ("Particles", 0)
+      call gchangeparticles()
 
 c  Create the dynamic arrays for particle moments; calculate moments
  

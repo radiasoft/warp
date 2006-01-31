@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.161 $, $Date: 2006/01/25 01:09:51 $
+c@(#) File TOP.F, version $Revision: 3.162 $, $Date: 2006/01/31 23:01:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6630,6 +6630,44 @@ c Calculate the center of mass of the beam along the z axis from the particles
       return
       end
 c=============================================================================
+c=============================================================================
+      subroutine gchangeparticles()
+      use InPart
+      use Particles
+
+      pgroup%ns = ns
+      pgroup%npmax = npmax
+      pgroup%npmaxi = npmaxi
+      pgroup%npid = npid
+      pgroup%npidmax = npidmax
+
+      call gchange("Particles",0)
+
+      sm => pgroup%sm
+      sq => pgroup%sq
+      sw => pgroup%sw
+
+      npmax_s => pgroup%npmax_s
+      ins => pgroup%ins
+      nps => pgroup%nps
+      ndts => pgroup%ndts
+      ldts => pgroup%ldts
+      dtscale => pgroup%dtscale
+      lselfb => pgroup%lselfb
+      fselfb => pgroup%fselfb
+
+      xp => pgroup%xp
+      yp => pgroup%yp
+      zp => pgroup%zp
+      uxp => pgroup%uxp
+      uyp => pgroup%uyp
+      uzp => pgroup%uzp
+      gaminv => pgroup%gaminv
+      pid => pgroup%pid
+
+      return
+      end
+c=============================================================================
       subroutine alotpart
       use Subtimerstop
       use InPart
@@ -6670,7 +6708,7 @@ c     --- distribute the particles among the processors.
 
 c     --- Allocate space. A gchange is done primarily so that any data
 c     --- in npmax_s is preserved.
-      call gchange("Particles",0)
+      call gchangeparticles()
 
 c     --- setup npmax_s array
       npmax_s(0) = 0
@@ -6735,7 +6773,7 @@ c       --- change the particle array dimension variables and allot space
           npmaxi = 1
         endif
         npidmax = max(1,npid)
-        call gchange("Particles",0)
+        call gchangeparticles()
 
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
@@ -7153,7 +7191,7 @@ c     --- reallocated.
 
       npmaxb = npmax
       if (npid > 0) npmaxi = npmax
-      call gchange("Particles",0)
+      call gchangeparticles()
 
 !$OMP MASTER
       if (ltoptimesubs) timeshrinkpart = timeshrinkpart + wtime() - substarttime
@@ -7384,12 +7422,12 @@ c=============================================================================
       return
       end
 c=============================================================================
-c Routines for handling particle blocks
+c Routines for handling particle groups
 c=============================================================================
-      subroutine checkparticleblock(block,is,nlower,nhigher)
+      subroutine checkparticlegroup(pgroup,is,nlower,nhigher)
       use Subtimerstop
-      use ParticleBlockmodule
-      type(ParticleBlock):: block
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,nlower,nhigher
 
 c Make sure that there is enough space in the particle arrays for nlower
@@ -7397,7 +7435,7 @@ c new particles below and nhigher above the live particles.  Returns if
 c there is already enough space above and below.  If there is enough total
 c space but not enough room above or below, the particles are shifted
 c appropriately.  If lfullshft is true, the particles are shifted all the
-c way to the end of the species block minus nhigher.  If there is not
+c way to the end of the species pgroup minus nhigher.  If there is not
 c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
@@ -7410,15 +7448,15 @@ c     --- If there is already enough space, then return.
       if (is == 1) then
         ilower = 0
       else
-        ilower = block%ins(is-1) + block%nps(is-1) - 1
+        ilower = pgroup%ins(is-1) + pgroup%nps(is-1) - 1
       endif
-      if (is == block%ns) then
-        ihigher = block%npmax + 1
+      if (is == pgroup%ns) then
+        ihigher = pgroup%npmax + 1
       else
-        ihigher = block%ins(is+1)
+        ihigher = pgroup%ins(is+1)
       endif
-      spacebelow = block%ins(is) - ilower - 1
-      spaceabove = ihigher - block%ins(is) - block%nps(is)
+      spacebelow = pgroup%ins(is) - ilower - 1
+      spaceabove = ihigher - pgroup%ins(is) - pgroup%nps(is)
       if (spacebelow >= nlower .and.
      &    spaceabove >= nhigher) return
 
@@ -7435,13 +7473,13 @@ c       --- 10000, add the amount of space needed.
         naddabove = min(10*naddabove, max(10000, naddabove))
 
 c       --- change the particle array dimension variables and allot space
-        block%npmax = block%npmax + naddbelow + naddabove
-        call ParticleBlockchange(block)
+        pgroup%npmax = pgroup%npmax + naddbelow + naddabove
+        call ParticleGroupchange(pgroup)
 
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
-        do i=block%ns,is+1,-1
-          call shiftparticleblock(block,i,naddbelow + naddabove)
+        do i=pgroup%ns,is+1,-1
+          call shiftparticlegroup(pgroup,i,naddbelow + naddabove)
         enddo
 
       endif
@@ -7453,29 +7491,29 @@ c     --- ishift is zero.
       if (is == 1) then
         ilower = 0
       else
-        ilower = block%ins(is-1) + block%nps(is-1) - 1
+        ilower = pgroup%ins(is-1) + pgroup%nps(is-1) - 1
       endif
-      if (is == block%ns) then
-        ihigher = block%npmax + 1
+      if (is == pgroup%ns) then
+        ihigher = pgroup%npmax + 1
       else
-        ihigher = block%ins(is+1)
+        ihigher = pgroup%ins(is+1)
       endif
-      spacebelow = block%ins(is) - ilower - 1
-      spaceabove = ihigher - block%ins(is) - block%nps(is)
+      spacebelow = pgroup%ins(is) - ilower - 1
+      spaceabove = ihigher - pgroup%ins(is) - pgroup%nps(is)
       ishift = max(0,nlower - spacebelow) + min(0,spaceabove - nhigher)
-      call shiftparticleblock(block,is,ishift)
+      call shiftparticlegroup(pgroup,is,ishift)
 
 !$OMP MASTER
-      if (ltoptimesubs) timecheckparticleblock = timecheckparticleblock + wtime() - substarttime
+      if (ltoptimesubs) timecheckparticlegroup = timecheckparticlegroup + wtime() - substarttime
 !$OMP END MASTER
 
       return
       end
 c=============================================================================
-      subroutine shiftparticleblock(block,is,ishift)
+      subroutine shiftparticlegroup(pgroup,is,ishift)
       use Subtimerstop
-      use ParticleBlockmodule
-      type(ParticleBlock):: block
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,ishift
 
 c Shift particles by 'ishift'.
@@ -7495,23 +7533,23 @@ c     --- a negative shift may result in lost data.
       if (ishift > 0) then
 
 c       --- Loop only over live particles
-        do ip=block%ins(is)+block%nps(is)-1, block%ins(is), -1
-          block%xp(ip+ishift) = block%xp(ip)
-          block%yp(ip+ishift) = block%yp(ip)
-          block%zp(ip+ishift) = block%zp(ip)
-          block%uxp(ip+ishift) = block%uxp(ip)
-          block%uyp(ip+ishift) = block%uyp(ip)
-          block%uzp(ip+ishift) = block%uzp(ip)
-          block%gaminv(ip+ishift) = block%gaminv(ip)
-          if (block%npid > 0) then
-            block%pid(ip+ishift,:) = block%pid(ip,:)
-c           block%pid(ip,:) = 0
+        do ip=pgroup%ins(is)+pgroup%nps(is)-1, pgroup%ins(is), -1
+          pgroup%xp(ip+ishift) = pgroup%xp(ip)
+          pgroup%yp(ip+ishift) = pgroup%yp(ip)
+          pgroup%zp(ip+ishift) = pgroup%zp(ip)
+          pgroup%uxp(ip+ishift) = pgroup%uxp(ip)
+          pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
+          pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
+          pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
+          if (pgroup%npid > 0) then
+            pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
+c           pgroup%pid(ip,:) = 0
           endif
-c         block%uzp(ip) = 0.
+c         pgroup%uzp(ip) = 0.
         enddo
 
 c       --- change lower bound of live particles
-        block%ins(is) = block%ins(is) + ishift
+        pgroup%ins(is) = pgroup%ins(is) + ishift
 
       else
 c       --- Loop only over live particles.
@@ -7519,54 +7557,54 @@ c       --- Note that particles will be clobbered if shifted onto species below.
         if (is == 1) then
           ilower = 0
         else
-          ilower = block%ins(is-1) + block%nps(is-1) - 1
+          ilower = pgroup%ins(is-1) + pgroup%nps(is-1) - 1
         endif
-        if (block%ins(is) - ilower - 1 < -ishift) then
-          print*,"WARNING: shiftparticleblock: particle data will be lost"
+        if (pgroup%ins(is) - ilower - 1 < -ishift) then
+          print*,"WARNING: shiftparticlegroup: particle data will be lost"
           print*,"         since there is  not enough space in the arrays."
         endif
 
-        do ip=block%ins(is), block%ins(is)+block%nps(is)-1
-          block%xp(ip+ishift) = block%xp(ip)
-          block%yp(ip+ishift) = block%yp(ip)
-          block%zp(ip+ishift) = block%zp(ip)
-          block%uxp(ip+ishift) = block%uxp(ip)
-          block%uyp(ip+ishift) = block%uyp(ip)
-          block%uzp(ip+ishift) = block%uzp(ip)
-          block%gaminv(ip+ishift) = block%gaminv(ip)
-          if (block%npid > 0) then
-            block%pid(ip+ishift,:) = block%pid(ip,:)
-c           block%pid(ip,:) = 0
+        do ip=pgroup%ins(is), pgroup%ins(is)+pgroup%nps(is)-1
+          pgroup%xp(ip+ishift) = pgroup%xp(ip)
+          pgroup%yp(ip+ishift) = pgroup%yp(ip)
+          pgroup%zp(ip+ishift) = pgroup%zp(ip)
+          pgroup%uxp(ip+ishift) = pgroup%uxp(ip)
+          pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
+          pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
+          pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
+          if (pgroup%npid > 0) then
+            pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
+c           pgroup%pid(ip,:) = 0
           endif
-c         block%uzp(ip) = 0.
+c         pgroup%uzp(ip) = 0.
         enddo
 
 c       --- change number of particles if data is lost
-        if (block%ins(is) - ilower - 1 < -ishift) then
-          block%nps(is) = block%nps(is) - (-ishift - (block%ins(is) - ilower - 1))
-          block%ins(is) = ilower + 1
+        if (pgroup%ins(is) - ilower - 1 < -ishift) then
+          pgroup%nps(is) = pgroup%nps(is) - (-ishift - (pgroup%ins(is) - ilower - 1))
+          pgroup%ins(is) = ilower + 1
         else
 c         --- change lower bound only
-          block%ins(is) = block%ins(is) + ishift
+          pgroup%ins(is) = pgroup%ins(is) + ishift
         endif
 
       endif
 
 !$OMP MASTER
-      if (ltoptimesubs) timeshiftparticleblock = timeshiftparticleblock + wtime() - substarttime
+      if (ltoptimesubs) timeshiftparticlegroup = timeshiftparticlegroup + wtime() - substarttime
 !$OMP END MASTER
 
       return
       end
 c=============================================================================
-      subroutine copyparttoblock(nn,ii,istart,block,it)
+      subroutine copyparttogroup(nn,ii,istart,pgroupout,it)
       use Subtimerstop
       use InPart
       use Particles
-      use ParticleBlockmodule
+      use ParticleGroupmodule
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
-      type(ParticleBlock):: block
+      type(ParticleGroup):: pgroupout
 
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
@@ -7580,49 +7618,49 @@ c starting at 'istart' to locations starting at 'it'.
         do i=0,nn-1
           ij = istart + i
           in = it + i
-          block%xp(in) = xp(ij)
-          block%yp(in) = yp(ij)
-          block%zp(in) = zp(ij)
-          block%uxp(in) = uxp(ij)
-          block%uyp(in) = uyp(ij)
-          block%uzp(in) = uzp(ij)
-          block%gaminv(in) = gaminv(ij)
+          pgroupout%xp(in) = xp(ij)
+          pgroupout%yp(in) = yp(ij)
+          pgroupout%zp(in) = zp(ij)
+          pgroupout%uxp(in) = uxp(ij)
+          pgroupout%uyp(in) = uyp(ij)
+          pgroupout%uzp(in) = uzp(ij)
+          pgroupout%gaminv(in) = gaminv(ij)
           if (npid > 0) then
-            block%pid(in,:) = pid(ij,:)
+            pgroupout%pid(in,:) = pid(ij,:)
           endif
         enddo
       else
         do i=0,nn-1
           ij = ii(i)
           in = it + i
-          block%xp(in) = xp(ij)
-          block%yp(in) = yp(ij)
-          block%zp(in) = zp(ij)
-          block%uxp(in) = uxp(ij)
-          block%uyp(in) = uyp(ij)
-          block%uzp(in) = uzp(ij)
-          block%gaminv(in) = gaminv(ij)
+          pgroupout%xp(in) = xp(ij)
+          pgroupout%yp(in) = yp(ij)
+          pgroupout%zp(in) = zp(ij)
+          pgroupout%uxp(in) = uxp(ij)
+          pgroupout%uyp(in) = uyp(ij)
+          pgroupout%uzp(in) = uzp(ij)
+          pgroupout%gaminv(in) = gaminv(ij)
           if (npid > 0) then
-            block%pid(in,:) = pid(ij,:)
+            pgroupout%pid(in,:) = pid(ij,:)
           endif
         enddo
       endif
 
 !$OMP MASTER
-      if (ltoptimesubs) timecopyparttoblock = timecopyparttoblock + wtime() - substarttime
+      if (ltoptimesubs) timecopyparttogroup = timecopyparttogroup + wtime() - substarttime
 !$OMP END MASTER
 
       return
       end
 c=============================================================================
-      subroutine copyblocktopart(nn,ii,istart,block,it)
+      subroutine copygrouptopart(nn,ii,istart,pgroupin,it)
       use Subtimerstop
       use InPart
       use Particles
-      use ParticleBlockmodule
+      use ParticleGroupmodule
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
-      type(ParticleBlock):: block
+      type(ParticleGroup):: pgroupin
 
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
@@ -7636,36 +7674,36 @@ c starting at 'istart' to locations starting at 'it'.
         do i=0,nn-1
           ij = istart + i
           in = it + i
-          xp(in) = block%xp(ij)
-          yp(in) = block%yp(ij)
-          zp(in) = block%zp(ij)
-          uxp(in) = block%uxp(ij)
-          uyp(in) = block%uyp(ij)
-          uzp(in) = block%uzp(ij)
-          gaminv(in) = block%gaminv(ij)
+          xp(in) = pgroupin%xp(ij)
+          yp(in) = pgroupin%yp(ij)
+          zp(in) = pgroupin%zp(ij)
+          uxp(in) = pgroupin%uxp(ij)
+          uyp(in) = pgroupin%uyp(ij)
+          uzp(in) = pgroupin%uzp(ij)
+          gaminv(in) = pgroupin%gaminv(ij)
           if (npid > 0) then
-            pid(in,:) = block%pid(ij,:)
+            pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
       else
         do i=0,nn-1
           ij = ii(i)
           in = it + i
-          xp(in) = block%xp(ij)
-          yp(in) = block%yp(ij)
-          zp(in) = block%zp(ij)
-          uxp(in) = block%uxp(ij)
-          uyp(in) = block%uyp(ij)
-          uzp(in) = block%uzp(ij)
-          gaminv(in) = block%gaminv(ij)
+          xp(in) = pgroupin%xp(ij)
+          yp(in) = pgroupin%yp(ij)
+          zp(in) = pgroupin%zp(ij)
+          uxp(in) = pgroupin%uxp(ij)
+          uyp(in) = pgroupin%uyp(ij)
+          uzp(in) = pgroupin%uzp(ij)
+          gaminv(in) = pgroupin%gaminv(ij)
           if (npid > 0) then
-            pid(in,:) = block%pid(ij,:)
+            pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
       endif
 
 !$OMP MASTER
-      if (ltoptimesubs) timecopyblocktopart = timecopyblocktopart + wtime() - substarttime
+      if (ltoptimesubs) timecopygrouptopart = timecopygrouptopart + wtime() - substarttime
 !$OMP END MASTER
 
       return

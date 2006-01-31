@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.38 $, $Date: 2005/12/06 18:14:59 $
+c@(#) File w3d_injection.F, version $Revision: 1.39 $, $Date: 2006/01/31 23:01:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1845,7 +1845,7 @@ c Allocate the particle index. The index keeps track of which source the
 c particles are injected from.  It is also used to store the fractional
 c timestep for each particle upon emission.
       npmaxi = npmax
-      call gchange("Particles",0)
+      call gchangeparticles()
 
 c Check if the voltages were specified.  If so, set so conductor will be
 c set up for source.
