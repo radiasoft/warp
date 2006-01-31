@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.146 $, $Date: 2006/01/19 19:49:23 $
+#@(#) File F3D.V, version $Revision: 3.147 $, $Date: 2006/01/31 01:31:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.146 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.147 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -211,8 +211,9 @@ getmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
    # Calculates levels of coarsening. Note that mglevels
    # must be zero when calling this routine.
 multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
-             dx:real,dy:real,dz:real,phi:real,rho:real,
-             rstar:real,linbend:logical,
+             dx:real,dy:real,dz:real,
+             phi(0:nx,0:ny,-1:nz+1):real,rho(0:nx,0:ny,0:nz):real,
+             rstar(-1:nz+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
              xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
@@ -220,8 +221,9 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
    # Solves Poisson's equation using the multigrid method. This uses variables
    # from the f3d package to control the iterations and conductors.
 multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
-                 dx:real,dy:real,dz:real,phi:real,rho:real,
-                 rstar:real,linbend:logical,bounds:integer,
+                 dx:real,dy:real,dz:real,
+                 phi(0:nx,0:ny,-1:nz+1):real,rho(0:nx,0:ny,0:nz):real,
+                 rstar(-1:nz+1):real,linbend:logical,bounds:integer,
                  xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
@@ -234,52 +236,62 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
    # Solves Poisson's equation using the multigrid method. All input is
    # through the argument list.
 residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
-         dxsqi:real,dysqi:real,dzsqi:real,phi:real,rho:real,res:real,
+         dxsqi:real,dysqi:real,dzsqi:real,
+         phi(0:nx,0:ny,-1:nz+1):real,rho(0:nx,0:ny,0:nz):real,
+         res(-1:nx+1,-1:ny+1,-3:nz+3):real,
          mglevel:integer,bounds:integer,
          mgparam:real,mgform:integer,mgform2init:logical,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Calculates the residual
-restrict2d(nx:integer,ny:integer,nz:integer,res:real,
-           nxcoarse:integer,nycoarse:integer,rhocoarse:real,
+restrict2d(nx:integer,ny:integer,nz:integer,res(-1:nx+1,-1:ny+1,-3:nz+3):real,
+           nxcoarse:integer,nycoarse:integer,
+           rhocoarse(0:nxcoarse,0:nycoarse,0:nz):real,
            ff:integer,bounds:integer)
    subroutine
    # Restricts phi in 2 transverse dimensions
-expand2d(nx:integer,ny:integer,nz:integer,phi:real,
-         nxcoarse:integer,nycoarse:integer,phicoarse:real,bounds:integer)
+expand2d(nx:integer,ny:integer,nz:integer,phi(0:nx,0:ny,-1:nz+1):real,
+         nxcoarse:integer,nycoarse:integer,phicoarse(0:nx,0:ny,-1:nz+1):real,
+         bounds(0:5):integer)
    subroutine
    # Expands phi in 2 transverse dimensiosn
-restrict3d(nx:integer,ny:integer,nz:integer,nzfull:integer,res:real,
+restrict3d(nx:integer,ny:integer,nz:integer,nzfull:integer,
+           res(-1:nx+1,-1:ny+1,-3:nz+3):real,
            nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
-           nzfullcoarse:integer,rhocoarse:real,
-           ff:real,bounds:integer,boundscoarse:integer,
+           nzfullcoarse:integer,
+           rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse):real,
+           ff:real,bounds(0:5):integer,boundscoarse(0:5):integer,
            lzoffset:integer)
    subroutine
    # Restricts phi in 3 dimensions
-expand3d(nx:integer,ny:integer,nz:integer,nzfull:integer,phi:real,
+expand3d(nx:integer,ny:integer,nz:integer,nzfull:integer,
+         phi(0:nx,0:ny,-1:nz+1):real,
          nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
-         nzfullcoarse:integer,phicoarse:real,
-         bounds:integer,lzoffset:integer)
+         nzfullcoarse:integer,
+         phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1):real,
+         bounds(0:5):integer,lzoffset:integer)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
               nx:integer,ny:integer,nz:integer,nzfull:integer,
-              phi:real,rho:real,rstar:real,dxsqi:real,dysqi:real,dzsqi:real,
-              linbend:logical,bendx:real,bounds:integer,
+              phi(0:nx,0:ny,-1:nz+1):real,rho(0:nx,0:ny,0:nz):real,
+              rstar(-1:nz+1):real,dxsqi:real,dysqi:real,dzsqi:real,
+              linbend:logical,bendx((nx+1)*(ny+1)):real,bounds(0:5):integer,
               mgparam:real,mgform:integer,
               lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Performs one pass of SOR relaxation, either even or odd.
 cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
-           phi:real,mglevel:integer,mgform:integer,mgform2init:logical)
+           phi(0:nx,0:ny,-1:nz+1):real,
+           mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
 cond_zerorhointerior(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
-                     rho:real)
+                     rho(0:nx,0:ny,0:nz):real)
     subroutine
     # Sets rho to zero inside conductor points.
 cond_sumrhointerior(interior:ConductorInteriorType,
-                    nx:integer,ny:integer,nz:integer,rho:real,
+                    nx:integer,ny:integer,nz:integer,rho(0:nx,0:ny,0:nz):real,
                     ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                     izmin:integer,izmax:integer) real function
 
@@ -478,10 +490,10 @@ getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,
 setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
                            bfield:BFieldGridType,bfieldp:BFieldGridType)
              subroutine #
-fetchb3dfrompositions(is:integer,n:integer,x:real,y:real,z:real,
-                      bx:real,by:real,bz:real)
+fetchb3dfrompositions(is:integer,n:integer,x(n):real,y(n):real,z(n):real,
+                      bx(n):real,by(n):real,bz(n):real)
              subroutine #
-fetcha(n:integer,x:real,y:real,z:real,a:real)
+fetcha(n:integer,x(n):real,y(n):real,z(n):real,a(n):real)
              subroutine #
 getbforparticles()
              subroutine #
@@ -559,16 +571,6 @@ setcndtr(xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,nx,ny,nz,
          dx:real,dy:real,dz:real,bound0:integer,boundnz:integer,boundxy:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine # Calculates conductor locations
-rodpoint(ixmin,ixmax,iymin,iymax,dx:real,dy:real,rodx:real,rody:real,
-         lz_in_rod:logical,rminsq:real,rodrrsq:real,ix_axis,iy_axis,rrr:real,
-         rodmxsq:real,delz_in:real,quadsl:real,rodap:real,fuzz:real,qzs:real,
-         dz:real,iz,voltage:real)
-     subroutine # Set conductor points for general rod.
-platepnt(ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
-         ix_axis:integer,iy_axis:integer,dx:real,dy:real,aper:real,rmax:real,
-         vvv:real,xoff:real,yoff:real,delz_in:real,iz:integer,
-         lz_in_plate:logical,fuzz:real)
-     subroutine # Set conductor points for a transverse plate
 srfrvoutf(rofzfunc:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,rmax:real,lfill:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
