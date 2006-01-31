@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.44 2006/01/06 17:15:00 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.45 2006/01/31 23:03:02 dave Exp $"
 
 
 ##############################################################################
@@ -375,7 +375,7 @@ set when a current is specified"""
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
-    allblocks = []
+    allpgroups = []
     if (i == iter-1 and _ipstep > 0):
 
       # --- Shrink down the live particles just injected.
@@ -384,13 +384,13 @@ set when a current is specified"""
       # --- Save initial number of particles
       nps_save = top.nps.copy()
 
-      blocks = []
-      allblocks.append(blocks)
+      pgroups = []
+      allpgroups.append(pgroups)
       for js in xrange(top.ns):
-        block = ParticleBlock()
-        block.ns = 1
-        block.gchange()
-        blocks.append(block)
+        pgroup = ParticleGroup()
+        pgroup.ns = 1
+        pgroup.gchange()
+        pgroups.append(pgroup)
 
         if (top.nps[js] > 0):
           # --- get indices of live particles.
@@ -407,13 +407,15 @@ set when a current is specified"""
             ii = compress(less(ranf(ii),1./_ipstep),ii)
 
           # --- save data of just injected particles
-          block.npmax = len(ii)
-          block.npid = top.npidmax
-          block.ins = 1
-          block.nps = len(ii)
+          pgroup.npmax = len(ii)
+          pgroup.npmaxi = pgroup.npmax
+          pgroup.npidmax = top.npidmax
+          pgroup.npid = top.npid
+          pgroup.ins = 1
+          pgroup.nps = len(ii)
           if (len(ii) > 0):
-            block.gchange()
-            copyparttoblock(len(ii),ii,-1,block,1)
+            pgroup.gchange()
+            copyparttogroup(len(ii),ii,-1,pgroup,1)
 
     # --- Turn injection off for remaing time steps. inject is set to a value
     # --- greater than zero so that inject3d subroutine is called so it can
@@ -449,13 +451,13 @@ set when a current is specified"""
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
       if (i == iter-1 and _ipstep > 0):
-        blocks = []
-        allblocks.append(blocks)
+        pgroups = []
+        allpgroups.append(pgroups)
         for js in xrange(top.ns):
-          block = ParticleBlock()
-          block.ns = 1
-          block.gchange()
-          blocks.append(block)
+          pgroup = ParticleGroup()
+          pgroup.ns = 1
+          pgroup.gchange()
+          pgroups.append(pgroup)
           # --- Make sure that there are actually particles to save
           if (top.nps[js] > 0):
             if (_save_same_part):
@@ -471,17 +473,19 @@ set when a current is specified"""
               ii = compress(less(ranf(ii),1./_ipstep),ii)
 
             # --- save data of just injected particles
-            block.npmax = len(ii)
-            block.npid = top.npidmax
-            block.ins = 1
-            block.nps = len(ii)
+            pgroup.npmax = len(ii)
+            pgroup.npmaxi = pgroup.npmax
+            pgroup.npidmax = top.npidmax
+            pgroup.npid = top.npid
+            pgroup.ins = 1
+            pgroup.nps = len(ii)
             if (len(ii) > 0):
               if w3d.l_inj_rec_inittime:
                 ip1 = top.ins[js]-1
                 ip2 = top.ins[js]+top.nps[js]-1
                 top.pid[ip1:ip2,top.tpid-1]=top.pid[ip1:ip2,top.tpid-1]-top.dt
-              block.gchange()
-              copyparttoblock(len(ii),ii,-1,block,1)
+              pgroup.gchange()
+              copyparttogroup(len(ii),ii,-1,pgroup,1)
 
       npssum = sum(parallelsum(top.nps))
       maxvz = parallelmax(top.vzmaxp)
@@ -553,20 +557,20 @@ set when a current is specified"""
 
     # --- Copy saved data into the base particle arrays. Note that these
     # --- are array references. The current base array memory will be freed.
-    if len(allblocks) > 0:
-      top.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allblocks])
-      top.np_s[:] = [sum([allblocks[i][j].nps[0] for i in range(len(allblocks))])
+    if len(allpgroups) > 0:
+      top.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allpgroups])
+      top.np_s[:] = [sum([allpgroups[i][j].nps[0] for i in range(len(allpgroups))])
                      for j in range(top.ns)]
       alotpart()
       top.ins[:] = [1] + list(cumsum(top.np_s)+1)[:-1]
       top.nps[:] = top.np_s
       for js in range(top.ns):
         ii = top.ins[js]
-        for it in range(len(allblocks)):
-          block = allblocks[it][js]
-          if block.nps[0] > 0:
-            copyblocktopart(block.nps[0],0,1,block,ii)
-            ii = ii + block.nps[0]
+        for it in range(len(allpgroups)):
+          pgroup = allpgroups[it][js]
+          if pgroup.nps[0] > 0:
+            copygrouptopart(pgroup.nps[0],0,1,pgroup,ii)
+            ii = ii + pgroup.nps[0]
 
     # --- Print out warning message if needed.
     if top.time-gun_time > maxtime:
