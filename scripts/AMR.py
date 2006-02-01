@@ -69,10 +69,13 @@ class AMRTree(object,Visualizable):
       # --- this instance may be restored before frz.basegrid is restored.
       self.__dict__.update(dict)
       self.enable()
+      installafterrestart(self.restorefrzgrid)
 
     def restorefrzgrid(self):
       # --- This should be called whenever 'grid' is used to ensure that it
       # --- has been properly restored after being unpickled.
+      # --- Note that it can't be called right away since the frz.basegrid
+      # --- may not have been restored yet.
       try:
         cleanblocks = self.__dict__['cleanblocks']
         for g in walkfrzgrid():
@@ -661,7 +664,7 @@ class AMRTree(object,Visualizable):
       self.ntransit = w3d.AMRtransit
       
       # generate nbcells from self.f or use self.nbcells_user if provided
-      if self.nbcells_user==None:
+      if self.nbcells_user is None:
         if l_timing:t.start()
         l_nbcellsnone=1
         # set self.f to the charge density array by default
@@ -697,7 +700,10 @@ class AMRTree(object,Visualizable):
             t.finish()
             print 'created nbcells in ',t.seconds(),' seconds.'
       else:
-        nbcells=self.nbcells_user
+        if callable(self.nbcells_user):
+          nbcells=self.nbcells_user()
+        else:
+          nbcells=self.nbcells_user
                                    
       if nbcells is not None:
         # generate list of blocks from array nbcells
