@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.123 2005/12/20 02:19:20 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.124 2006/02/01 22:14:32 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -949,23 +949,20 @@ distances to outside the surface are positive, inside negative.
   def __init__(self,ix=None,iy=None,iz=None,xx=None,yy=None,zz=None,
                     dels=None,vs=None,ns=None,
                     parity=None,voltage=0.,condid=1,generator=None,kwlist=[]):
-    # --- autobump is used in append in an attempt to minimize the amount
-    # --- of array reallocation.
+    self.datalist = []
     if ix is None:
       self.ndata = 0
-      nn = 10000
-      self.ix = zeros(nn)
-      self.iy = zeros(nn)
-      self.iz = zeros(nn)
-      self.xx = zeros(nn,'d')
-      self.yy = zeros(nn,'d')
-      self.zz = zeros(nn,'d')
-      self.dels = zeros((6,nn),'d')
-      self.vs = zeros((6,nn),'d')
-      self.ns = zeros((6,nn))
-      self.parity = zeros(nn)
-      self.mglevel = zeros(nn)
-      self.autobump = 1
+      self.ix = None
+      self.iy = None
+      self.iz = None
+      self.xx = None
+      self.yy = None
+      self.zz = None
+      self.dels = None
+      self.vs = None
+      self.ns = None
+      self.parity = None
+      self.mglevel = None
     elif generator is not None:
       self.ndata = len(ix)
       self.ix = ix
@@ -975,6 +972,7 @@ distances to outside the surface are positive, inside negative.
       self.yy = yy
       self.zz = zz
       self.dels = zeros((6,self.ndata),'d')
+      self.parity = zeros(self.ndata)
       fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.dels[0,:],self.dels[1,:],
@@ -983,7 +981,6 @@ distances to outside the surface are positive, inside negative.
       self.setvoltages(voltage)
       self.setcondids(condid)
       self.setlevels(0)
-      self.autobump = self.ndata
     else:
       self.ndata = len(ix)
       self.ix = ix
@@ -997,8 +994,9 @@ distances to outside the surface are positive, inside negative.
       self.ns = int(ns)
       self.parity = parity
       self.setlevels(0)
-      self.autobump = self.ndata
     self.fuzzsign = -1
+
+    self.append(self)
    
   def setvoltages(self,voltage):
     "Routine to set appropriate voltages."
@@ -1037,7 +1035,6 @@ grid cell sizes.
     """
     # --- Using the inplace add is slightly faster since it doesn't have to
     # --- allocate a new array.
-    self.parity = zeros(self.ndata)
     add(self.parity,999,self.parity)
     self.fuzzsign = fuzzsign
     fuzz = 1.e-9
@@ -1064,63 +1061,7 @@ has already been called.
     self.ndata = len(self.ix)
 
   def append(self,d):
-    n1 = self.ndata
-    n2 = d.ndata
-    if n1 + n2 > len(self.ix):
-      ix = self.ix[:n1]
-      iy = self.iy[:n1]
-      iz = self.iz[:n1]
-      xx = self.xx[:n1]
-      yy = self.yy[:n1]
-      zz = self.zz[:n1]
-      dels = self.dels[:,:n1]
-      vs = self.vs[:,:n1]
-      ns = self.ns[:,:n1]
-      parity = self.parity[:n1]
-      mglevel = self.mglevel[:n1]
-
-      # --- Aggressively increase the size of autobump to try to minimize
-      # --- the amount of array reallocation.
-      # --- The factor of 1.5 gives nearly the same amount of savings as 2,
-      # --- but doesn't waste quite as much space.
-      self.autobump = max(n2,int(1.5*self.autobump))
-      newn = n1 + self.autobump
-      self.ix = zeros(newn)
-      self.iy = zeros(newn)
-      self.iz = zeros(newn)
-      self.xx = zeros(newn,'d')
-      self.yy = zeros(newn,'d')
-      self.zz = zeros(newn,'d')
-      self.dels = zeros((6,newn),'d')
-      self.vs = zeros((6,newn),'d')
-      self.ns = zeros((6,newn))
-      self.parity = zeros(newn)
-      self.mglevel = zeros(newn)
-
-      self.ix[:n1] = ix
-      self.iy[:n1] = iy
-      self.iz[:n1] = iz
-      self.xx[:n1] = xx
-      self.yy[:n1] = yy
-      self.zz[:n1] = zz
-      self.dels[:,:n1] = dels
-      self.vs[:,:n1] = vs
-      self.ns[:,:n1] = ns
-      self.parity[:n1] = parity
-      self.mglevel[:n1] = mglevel
-
-    self.ix[n1:n1+n2] = d.ix[:n2]
-    self.iy[n1:n1+n2] = d.iy[:n2]
-    self.iz[n1:n1+n2] = d.iz[:n2]
-    self.xx[n1:n1+n2] = d.xx[:n2]
-    self.yy[n1:n1+n2] = d.yy[:n2]
-    self.zz[n1:n1+n2] = d.zz[:n2]
-    self.dels[:,n1:n1+n2] = d.dels[:,:n2]
-    self.vs[:,n1:n1+n2] = d.vs[:,:n2]
-    self.ns[:,n1:n1+n2] = d.ns[:,:n2]
-    self.parity[n1:n1+n2] = d.parity[:n2]
-    self.mglevel[n1:n1+n2] = d.mglevel[:n2]
-    self.ndata = n1 + n2
+    self.datalist.append(d)
 
   def install(self,installrz=1,solvergeom=None,conductors=None,grid=None):
     """
@@ -1150,57 +1091,73 @@ Installs the data into the WARP database
       conductors.evensubgrid.n = 0
       conductors.oddsubgrid.n = 0
 
-    # --- Install all of the conductor data into the database.
-    ntot = 0
+    # --- Count how much data there is
+    ncnew = 0
+    nenew = 0
+    nonew = 0
+    for data in self.datalist:
+      if data.parity is None: continue
+      ncnew += sum(where(data.parity == -1,1,0))
+      nenew += sum(where(data.parity == 0,1,0))
+      nonew += sum(where(data.parity == 1,1,0))
+
+    ntot = ncnew + nenew + nonew
+
     nc = conductors.interior.n
-    nn = sum(where(self.parity[:self.ndata] == -1,1,0))
-    ntot = ntot + nn
-    if nn > 0:
-      if nc + nn > conductors.interior.nmax:
-        conductors.interior.nmax = nn + nc
-        conductors.gchange("*")
-      conductors.interior.n = conductors.interior.n + nn
-      ii = nonzero(self.parity[:self.ndata] == -1)
-      conductors.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
-      conductors.interior.indx[1,nc:nc+nn] = take(self.iy,ii)
-      conductors.interior.indx[2,nc:nc+nn] = take(self.iz,ii)
-      conductors.interior.volt[nc:nc+nn] = take(self.vs[0,:],ii)
-      conductors.interior.numb[nc:nc+nn] = take(self.ns[0,:],ii)
-      conductors.interior.ilevel[nc:nc+nn] = take(self.mglevel,ii)
-
     ne = conductors.evensubgrid.n
-    nn = sum(where(self.parity[:self.ndata] == 0,1,0))
-    ntot = ntot + nn
-    if nn > 0:
-      if ne + nn > conductors.evensubgrid.nmax:
-        conductors.evensubgrid.nmax = nn + ne
-        conductors.gchange("*")
-      conductors.evensubgrid.n = conductors.evensubgrid.n + nn
-      ii = nonzero(self.parity[:self.ndata] == 0)
-      conductors.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
-      conductors.evensubgrid.indx[1,ne:ne+nn] = take(self.iy,ii)
-      conductors.evensubgrid.indx[2,ne:ne+nn] = take(self.iz,ii)
-      conductors.evensubgrid.dels[:,ne:ne+nn] = take(self.dels,ii,1)
-      conductors.evensubgrid.volt[:,ne:ne+nn] = take(self.vs,ii,1)
-      conductors.evensubgrid.numb[:,ne:ne+nn] = take(self.ns,ii,1)
-      conductors.evensubgrid.ilevel[ne:ne+nn] = take(self.mglevel,ii)
-
     no = conductors.oddsubgrid.n
-    nn = sum(where(self.parity[:self.ndata] == 1,1,0))
-    ntot = ntot + nn
-    if nn > 0:
-      if no + nn > conductors.oddsubgrid.nmax:
-        conductors.oddsubgrid.nmax = nn + no
-        conductors.gchange("*")
-      conductors.oddsubgrid.n = conductors.oddsubgrid.n + nn
-      ii = nonzero(self.parity[:self.ndata] == 1)
-      conductors.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
-      conductors.oddsubgrid.indx[1,no:no+nn] = take(self.iy,ii)
-      conductors.oddsubgrid.indx[2,no:no+nn] = take(self.iz,ii)
-      conductors.oddsubgrid.dels[:,no:no+nn] = take(self.dels,ii,1)
-      conductors.oddsubgrid.volt[:,no:no+nn] = take(self.vs,ii,1)
-      conductors.oddsubgrid.numb[:,no:no+nn] = take(self.ns,ii,1)
-      conductors.oddsubgrid.ilevel[no:no+nn] = take(self.mglevel,ii)
+
+    if ncnew + nc > conductors.interior.nmax:
+      conductors.interior.nmax = ncnew + nc
+    if nenew + ne > conductors.evensubgrid.nmax:
+      conductors.evensubgrid.nmax = nenew + ne
+    if nonew + no > conductors.oddsubgrid.nmax:
+      conductors.oddsubgrid.nmax = nonew + no
+
+    conductors.gchange("*")
+
+    conductors.interior.n = nc + ncnew
+    conductors.evensubgrid.n = ne + nenew
+    conductors.oddsubgrid.n = no + nonew
+
+    # --- Install all of the conductor data into the database.
+    for data in self.datalist:
+      if data.parity is None: continue
+
+      ncnew = sum(where(data.parity == -1,1,0))
+      if ncnew > 0:
+        ii = nonzero(data.parity == -1)
+        conductors.interior.indx[0,nc:nc+ncnew] = take(data.ix,ii)
+        conductors.interior.indx[1,nc:nc+ncnew] = take(data.iy,ii)
+        conductors.interior.indx[2,nc:nc+ncnew] = take(data.iz,ii)
+        conductors.interior.volt[nc:nc+ncnew] = take(data.vs[0,:],ii)
+        conductors.interior.numb[nc:nc+ncnew] = take(data.ns[0,:],ii)
+        conductors.interior.ilevel[nc:nc+ncnew] = take(data.mglevel,ii)
+        nc = nc + ncnew
+
+      nenew = sum(where(data.parity == 0,1,0))
+      if nenew > 0:
+        ii = nonzero(data.parity == 0)
+        conductors.evensubgrid.indx[0,ne:ne+nenew] = take(data.ix,ii)
+        conductors.evensubgrid.indx[1,ne:ne+nenew] = take(data.iy,ii)
+        conductors.evensubgrid.indx[2,ne:ne+nenew] = take(data.iz,ii)
+        conductors.evensubgrid.dels[:,ne:ne+nenew] = take(data.dels,ii,1)
+        conductors.evensubgrid.volt[:,ne:ne+nenew] = take(data.vs,ii,1)
+        conductors.evensubgrid.numb[:,ne:ne+nenew] = take(data.ns,ii,1)
+        conductors.evensubgrid.ilevel[ne:ne+nenew] = take(data.mglevel,ii)
+        ne = ne + nenew
+
+      nonew = sum(where(data.parity == 1,1,0))
+      if nonew > 0:
+        ii = nonzero(data.parity == 1)
+        conductors.oddsubgrid.indx[0,no:no+nonew] = take(data.ix,ii)
+        conductors.oddsubgrid.indx[1,no:no+nonew] = take(data.iy,ii)
+        conductors.oddsubgrid.indx[2,no:no+nonew] = take(data.iz,ii)
+        conductors.oddsubgrid.dels[:,no:no+nonew] = take(data.dels,ii,1)
+        conductors.oddsubgrid.volt[:,no:no+nonew] = take(data.vs,ii,1)
+        conductors.oddsubgrid.numb[:,no:no+nonew] = take(data.ns,ii,1)
+        conductors.oddsubgrid.ilevel[no:no+nonew] = take(data.mglevel,ii)
+        no = no + nonew
 
     # --- If the RZ solver is being used, then copy the data into that
     # --- database. This also copies all of the accumulated data back into
