@@ -9948,7 +9948,8 @@ subroutine adjust_lpfd(f,nr,nz,rmin,rmax,zmin,zmax)
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
-REAL(8), INTENT(IN) :: f(nr+1,nz+1), rmin, rmax, zmin, zmax
+INTEGER(ISZ), INTENT(IN) :: f(nr+1,nz+1)
+REAL(8), INTENT(IN) :: rmin, rmax, zmin, zmax
 
 TYPE(GRIDtype), pointer :: g
 INTEGER(ISZ) :: i, j, l, r, jf, lf

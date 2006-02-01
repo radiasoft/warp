@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.44 $, $Date: 2005/12/08 01:25:50 $
+#@(#) File FRZ.V, version $Revision: 3.45 $, $Date: 2006/02/01 00:27:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.44 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.45 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -238,7 +238,7 @@ test_subgrid_rz() subroutine
 test_subgrid_xz() subroutine
 sum_neighbors(fin:integer,fout:integer,nx:integer,ny:integer) subroutine
          # returns sum of neighboring cells (inculding itself)
-adjust_lpfd(f:real,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:real) subroutine
+adjust_lpfd(f:integer,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:real) subroutine
          # adjust loc_part_fd arrays according to array (f) used to generate grids.
 setphirz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
          # get phi in p from RZ grid at locations [x,y,z]
