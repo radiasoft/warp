@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.224 $, $Date: 2006/01/25 00:52:57 $
+c@(#) File W3D.F, version $Revision: 3.225 $, $Date: 2006/02/02 00:10:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5273,16 +5273,16 @@ c       --- and the data needs to be copied around.
         api_xlf2 = .true.
         ipapi    = ip
         ipminapi = ipmin
-        exfsapi => ex
-        eyfsapi => ey
-        ezfsapi => ez
+        exfsapi => ex(1:ip)
+        eyfsapi => ey(1:ip)
+        ezfsapi => ez(1:ip)
 #else
         xfsapi => xp(ipmin:ipmin+ip-1)
         yfsapi => yp(ipmin:ipmin+ip-1)
         zfsapi => zp(ipmin:ipmin+ip-1)
-        exfsapi => ex
-        eyfsapi => ey
-        ezfsapi => ez
+        exfsapi => ex(1:ip)
+        eyfsapi => ey(1:ip)
+        ezfsapi => ez(1:ip)
 #endif
 #endif
         call execuser("fetcheMR")
