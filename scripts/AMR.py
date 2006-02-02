@@ -22,6 +22,7 @@ class AMRTree(object,Visualizable):
       self.lremoveblockswithoutparticles = lremoveblockswithoutparticles
       self.nblocks      = 0
       self.f            = None
+      self.f_user       = None
       self.nbcells_user = None
       if getcurrpkg()=='w3d' and (w3d.solvergeom==w3d.XYZgeom or w3d.solvergeom==w3d.XYZgeomMR):
         self.solvergeom = w3d.XYZgeomMR
@@ -300,6 +301,7 @@ class AMRTree(object,Visualizable):
 #      return b**int(log(fg)/log(b**dim))
 
     def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,lmax=4):
+      if f is None: return None
       if maxnd(abs(self.f))==0: return None
       fg1 = self.getnbcell_edges(f,dx,dy,dz,threshold,Rgrad)
       fg2 = self.getnbcell_rho(f,Rdens,MRfact)
@@ -319,6 +321,8 @@ class AMRTree(object,Visualizable):
       return f
 
     def setlist(self,f,rl,b,progressive=true,nooverlap=true):
+      self.listblocks = [0]
+      if maxnd(abs(f)) == 0.: return
       p = progressive
       nlevels = nint(log(maxnd(f))/log(b))+1
       dim = rank(f)
@@ -328,7 +332,6 @@ class AMRTree(object,Visualizable):
         nz = shape(f)[2]
       else:
         nz=0; iz=0; izm=0; l=0
-      self.listblocks = [0]
 
       # loop all refinement levels
       for i in range(nlevels-1,0,-1):
@@ -668,7 +671,12 @@ class AMRTree(object,Visualizable):
         if l_timing:t.start()
         l_nbcellsnone=1
         # set self.f to the charge density array by default
-        if self.f is None:
+        if self.f_user is not None:
+          if callable(self.f_user):
+            self.f = self.f_user()
+          else:
+            self.f = self.f_user
+        elif self.f is None:
           if self.solvergeom==w3d.XYZgeomMR:
             self.f = self.blocks.rho
           else:
@@ -694,21 +702,20 @@ class AMRTree(object,Visualizable):
           self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**2
         self.nbcells=self.getnbcells(self.f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
                                      MRfact=self.MRfact,lmax=self.maxcells_isolated_blocks)
-        nbcells=self.nbcells
         self.f = None
         if l_timing:
             t.finish()
             print 'created nbcells in ',t.seconds(),' seconds.'
       else:
         if callable(self.nbcells_user):
-          nbcells=self.nbcells_user()
+          self.nbcells = self.nbcells_user()
         else:
-          nbcells=self.nbcells_user
-                                   
-      if nbcells is not None:
+          self.nbcells = self.nbcells_user
+
+      if self.nbcells is not None:
         # generate list of blocks from array nbcells
         if l_timing:t.start()
-        self.setlist(nbcells[:-1,:-1],w3d.AMRcoalescing,self.MRfact,true)
+        self.setlist(self.nbcells[:-1,:-1],w3d.AMRcoalescing,self.MRfact,true)
         if l_timing:
             t.finish()
             print 'generated list in ',t.seconds(),' seconds.'
