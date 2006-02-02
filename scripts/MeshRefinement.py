@@ -27,9 +27,9 @@ Implements adaptive mesh refinement in 3d
  - children: list of tuples, each containing three elements,
              (lower,upper,refinement). Children can also be added later
              using addchild.
- - lreducedpickle=false: when true, a small pickle is made by removing all of
-                         the big arrays. The information can be regenerated
-                         upon restart.
+ - lreducedpickle=true: when true, a small pickle is made by removing all of
+                        the big arrays. The information can be regenerated
+                        upon restart.
   """
   def __init__(self,parent=None,refinement=None,
                     lower=None,upper=None,
@@ -238,7 +238,7 @@ it knows whether to re-register itself.
       child.lreducedpickle = self.lreducedpickle
     dict = MultiGrid.__getstate__(self)
     if self.lreducedpickle:
-      # --- Remove the big objects from the dictionary. These can be
+      # --- Remove the big objects from the dictionary. This can be
       # --- regenerated upon the restore.
       dict['childdomains'] = None
     # --- Flag whether this is the registered solver so it know whether
@@ -258,7 +258,6 @@ it knows whether to re-register itself.
       del self.iamtheregisteredsolver
       registersolver(self)
     if self == self.root and self.lreducedpickle:
-      self.mirrorarraystow3d()
       # --- It is assumed that at this point, all of the children have been
       # --- restored.
       # --- Regenerate childdomains
@@ -1168,9 +1167,11 @@ from gatherrhofromchildren.
     if sum(top.lselfb)>0:
       for js in self.iselfb:
         self.pointphitophispecies(js,lselfonly=1)
+        self.pointrhotorhospecies(js,lselfonly=1)
         self.setphifromparents()
         MultiGrid.solve(self,iwhich)
         self.pointphitophicopy(lselfonly=1)
+        self.pointrhotorhocopy(lselfonly=1)
         # scale phispecies by -(1-1/gamma*2) store into top.fselfb
         self.phispecies[js]*=top.fselfb[js]
     # solve for children
