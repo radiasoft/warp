@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.124 2006/02/01 22:14:32 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.125 2006/02/02 00:14:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -265,6 +265,7 @@ Should never be directly created by the user.
       if fullplane:
         plg(self.xcent-array(r),z,color=color)
     if filled is not None:
+      if filled == 'condid': filled = self.condid
       c = array([filled],typecode='b')
       plfp(c,self.xcent+r,z,[len(r)])
       if fullplane:
