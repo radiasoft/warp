@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.225 $, $Date: 2006/02/02 00:10:28 $
+c@(#) File W3D.F, version $Revision: 3.226 $, $Date: 2006/02/02 01:31:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -727,9 +727,9 @@ c  No step at all if generating.
 
       if (caller == "w3dexe") then
         if (lspecial) then
-            call padvnc3d ("halfv")
+            call padvnc3d ("halfv",pgroup)
          else
-            call padvnc3d ("fullv")
+            call padvnc3d ("fullv",pgroup)
          endif
       endif
 
@@ -833,9 +833,9 @@ c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
 
       if (caller == "w3dexe" .and. lspecial) then
-         call padvnc3d ("synchv")
+         call padvnc3d ("synchv",pgroup)
       elseif (caller == "w3dgen") then
-         call padvnc3d ("gen")
+         call padvnc3d ("gen",pgroup)
       endif
 
 c  Finish transverse space-charge limited injection: change ins and nps.
@@ -1311,7 +1311,8 @@ c       --- Add on linear pressure term
       return
       end
 c=============================================================================
-      subroutine padvnc3d(center_in)
+      subroutine padvnc3d(center_in,pgroup)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
       use InMesh3d
@@ -1322,7 +1323,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles
+      use Particles,Only: nplive,wpid,npid,npidmax
       use Fields3d
       use Fields3dParticles
       use Efields3d
@@ -1339,11 +1340,19 @@ c=============================================================================
       use DKInterp
       use DKInterptmp
       use FieldSolveAPI
+      type(ParticleGroup):: pgroup
       character(*):: center_in
       character(len=len(center_in)):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
+
+c     --- Create local pointers to the arrays in pgroup.
+      real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: gaminv(:),pid(:,:)
+      real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
+      integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
+      logical(ISZ),pointer:: ldts(:)
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
@@ -1368,6 +1377,25 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
+
+c     --- Create local pointers to the arrays in pgroup.
+      xp => pgroup%xp
+      yp => pgroup%yp
+      zp => pgroup%zp
+      uxp => pgroup%uxp
+      uyp => pgroup%uyp
+      uzp => pgroup%uzp
+      gaminv => pgroup%gaminv
+      pid => pgroup%pid
+
+      sm => pgroup%sm
+      sq => pgroup%sq
+      sw => pgroup%sw
+      ins => pgroup%ins
+      nps => pgroup%nps
+      ldts => pgroup%ldts
+      ndts => pgroup%ndts
+      dtscale => pgroup%dtscale
 
       halfdt = 0.5*dt
       center = center_in
