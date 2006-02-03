@@ -578,7 +578,7 @@ the top level grid.
           self.pointrhotorhocopy(lrootonly)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
-    self.zerorhointerior(lrootonly)
+    #self.zerorhointerior(lrootonly)
 
   def propagaterhobetweenpatches(self,depositallparticles):
       self.getrhofromoverlaps()
