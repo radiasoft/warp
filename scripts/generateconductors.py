@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.126 2006/02/03 00:33:31 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.127 2006/02/07 22:51:59 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -973,7 +973,6 @@ distances to outside the surface are positive, inside negative.
       self.yy = yy
       self.zz = zz
       self.dels = zeros((6,self.ndata),'d')
-      self.parity = zeros(self.ndata)
       fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.dels[0,:],self.dels[1,:],
@@ -1036,6 +1035,7 @@ grid cell sizes.
     """
     # --- Using the inplace add is slightly faster since it doesn't have to
     # --- allocate a new array.
+    self.parity = zeros(self.ndata)
     add(self.parity,999,self.parity)
     self.fuzzsign = fuzzsign
     fuzz = 1.e-9
@@ -1511,6 +1511,7 @@ Creates a grid object which can generate conductor data.
     self.ny = _default(ny,w3d.ny)
     self.nz = _default(nz,w3d.nz)
     self.nzfull = _default(nzfull,w3d.nzfull)
+    if self.nzfull == 0: self.nzfull = self.nz
     self.xmmin = _default(xmmin,w3d.xmmin)
     self.ymmin = _default(ymmin,w3d.ymmin)
     self.zmmin = _default(zmmin,w3d.zmminglobal)
