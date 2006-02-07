@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.166 2006/01/24 18:39:29 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.167 2006/02/07 20:37:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -41,6 +41,7 @@ The following plot various particles projections.
 ppzxy(), ppzx(), ppzy(), ppzr()
 ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr()
 ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
+ppvxvy(), ppvxvz(), ppvyvz()
 pptrace()
 pprrp(), pprtp(), pprvz()
 
@@ -591,6 +592,7 @@ yellow = 'yellow'
 # ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz()
 # ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy()
 # ppxvz(), ppyvz(), pprvz(), ppzxy(), pptrace()
+# ppvxvy(), ppvxvz(), ppvyvz()
 # ppco(y,x,z;uz,xmin,xmax,ymin,ymax,zmin,zmax)
 #
 # The following only work properly serially
@@ -2181,6 +2183,102 @@ def ppyvz(iw=0,**kw):
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
+
+##########################################################################
+def ppvxvy(iw=0,**kw):
+  "Plots Vx-Vy. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppvxvy,(iw,),kw): return
+  slope = kw.get('slope',0.)
+  kw['slope'] = 0.
+  if type(slope) == type(''):
+    (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    vxslope = xslope*vz
+    vxoffset = xpoffset*vz
+    vyslope = yslope*vz
+    vyoffset = ypoffset*vz
+  else:
+    (vxslope,xoffset,vxoffset) = (slope,0.,0.)
+    (vyslope,yoffset,vyoffset) = (slope,0.,0.)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,
+                      top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw.setdefault('local',0)
+  settitles("Vy vs Vx","Vx","Vy",pptitleright(iw=iw,kwdict=kw))
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  x = getx(ii=ii,gather=0,**kw)
+  y = gety(ii=ii,gather=0,**kw)
+  vx = getvx(ii=ii,gather=0,**kw)
+  vy = getvy(ii=ii,gather=0,**kw)
+  vxms = (vx - vxslope*(x-xoffset) - vxoffset)
+  vyms = (vy - vyslope*(y-yoffset) - vyoffset)
+  return ppgeneric(vyms,vxms,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppvxvy.__doc__ = ppvxvy.__doc__ + ppgeneric_doc("Vx","Vy")
+
+##########################################################################
+def ppvxvz(iw=0,**kw):
+  "Plots Vx-Vz. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppvxvz,(iw,),kw): return
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
+  slope = kw.get('slope',0.)
+  kw['slope'] = 0.
+  if type(slope) == type(''):
+    (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    vxslope = xslope*vz
+    vxoffset = xpoffset*vz
+  else:
+    (vxslope,xoffset,vxoffset) = (slope,0.,0.)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,vzmin,vzmax)
+  kw.setdefault('local',0)
+  settitles("Vz vs Vx","Vx","Vz",pptitleright(iw=iw,kwdict=kw))
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  x = getx(ii=ii,gather=0,**kw)
+  vx = getvx(ii=ii,gather=0,**kw)
+  vxms = (vx - vxslope*(x-xoffset) - vxoffset)
+  vz = getvz(ii=ii,gather=0,**kw)
+  return ppgeneric(vz,vxms,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppvxvz.__doc__ = ppvxvz.__doc__ + ppgeneric_doc("Vx","Vz")
+
+##########################################################################
+def ppvyvz(iw=0,**kw):
+  "Plots Vy-Vz. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppvyvz,(iw,),kw): return
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
+  slope = kw.get('slope',0.)
+  kw['slope'] = 0.
+  if type(slope) == type(''):
+    (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    vyslope = yslope*vz
+    vyoffset = ypoffset*vz
+  else:
+    (vyslope,yoffset,vyoffset) = (slope,0.,0.)
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.ypplmin*top.vbeam,top.ypplmax*top.vbeam,vzmin,vzmax)
+  kw.setdefault('local',0)
+  settitles("Vz vs Vy","Vy","Vz",pptitleright(iw=iw,kwdict=kw))
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  y = gety(ii=ii,gather=0,**kw)
+  vy = getvy(ii=ii,gather=0,**kw)
+  vyms = (vy - vyslope*(y-yoffset) - vyoffset)
+  vz = getvz(ii=ii,gather=0,**kw)
+  return ppgeneric(vz,vyms,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppvyvz.__doc__ = ppvyvz.__doc__ + ppgeneric_doc("Vy","Vz")
 
 ##########################################################################
 def pprrp(iw=0,scale=0,slopejs=-1,**kw):
