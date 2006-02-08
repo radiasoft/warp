@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.163 $, $Date: 2006/02/08 00:48:05 $
+c@(#) File TOP.F, version $Revision: 3.164 $, $Date: 2006/02/08 23:23:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4523,7 +4523,7 @@ c         --- Set the correction to the beam frame position
       end
 c=============================================================================
       subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                    uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -4534,7 +4534,7 @@ c=============================================================================
       use ExtPart
       use Timers
       use Particles, only: wpid,dtscale
-      integer(ISZ):: np,itask,nplive,is,ns
+      integer(ISZ):: np,itask,nplive,is,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -4606,8 +4606,8 @@ c          --- Check if the moments are to be calculated separately for
 c          --- each species. If so, check if nszmmnt already has been set
 c          --- appropriately. If not, set it and allocate the arrays.
 c          --- If only one species, then don't have separate species data.
-           if (nszmmnt /= ns .and. ns > 1) then
-             nszmmnt = ns
+           if (nszmmnt < ismax .and. ismax > 1) then
+             nszmmnt = ismax
              call gchange("Z_Moments",0)
            endif
          else
@@ -5405,7 +5405,7 @@ c           --- anything.
       end
 c=============================================================================
       subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                    uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -5416,7 +5416,7 @@ c=============================================================================
       use ExtPart
       use Timers
       use Particles, only: dtscale
-      integer(ISZ):: np,itask,nplive,is,ns
+      integer(ISZ):: np,itask,nplive,is,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
@@ -5482,7 +5482,7 @@ c     --- done afterwards. Otherwise, only calculate the combined moments.
 
       if (itask == 1 .and. .not. laccumulate_zmoments) then
         call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
       if (itask == 2) then
@@ -5896,7 +5896,7 @@ c         --- End of Z moments accumulation
 
       if (itask == 3 .and. .not. laccumulate_zmoments) then
         call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
 !$OMP ATOMIC
@@ -6635,6 +6635,8 @@ c=============================================================================
       use InPart
       use Particles
 
+      integer(ISZ):: js
+
       pgroup%ns = ns
       pgroup%npmax = npmax
       pgroup%npmaxi = npmaxi
@@ -6664,6 +6666,10 @@ c=============================================================================
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
       pid => pgroup%pid
+
+      do js=0,pgroup%ns-1
+        pgroup%js(js) = js
+      enddo
 
       return
       end

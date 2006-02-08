@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.226 $, $Date: 2006/02/02 01:31:10 $
+c@(#) File W3D.F, version $Revision: 3.227 $, $Date: 2006/02/08 23:23:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -72,6 +72,7 @@ c=============================================================================
       use DKInterp
       use InDiag3d
       use ExtPart
+c     use ifcore
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -80,8 +81,10 @@ c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
       integer(ISZ):: i,j,k,is,ipmin,ip,iwin,nl
+c     integer(4):: fff
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+c     fff = for_set_fpe(14_4)
 
 c  Announce that we're starting up
 
@@ -1318,7 +1321,7 @@ c=============================================================================
       use InMesh3d
       use InGen
       use InGen3d
-      use InPart
+      use InPart,Only: zimin,zimax
       use InGaps
       use InDiag
       use Lattice
@@ -1354,7 +1357,7 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
       logical(ISZ),pointer:: ldts(:)
 
-      integer(ISZ):: is,ip,ipmin,i
+      integer(ISZ):: is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
       real(kind=8):: fulldt_s,halfdt_s
       real(kind=8):: zpo(nparpgrp)
@@ -1397,6 +1400,8 @@ c     --- Create local pointers to the arrays in pgroup.
       ndts => pgroup%ndts
       dtscale => pgroup%dtscale
 
+      ismax = maxval(pgroup%js)+1
+
       halfdt = 0.5*dt
       center = center_in
 
@@ -1411,8 +1416,8 @@ c  Zero the moments if center is synchv
 c       --- 0. is passed in as a dummy for all of the particles coordinates
 c       --- which are not used at this time.
         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns,
+     &                0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,ismax,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1449,7 +1454,7 @@ c  Set storage for field arrays if not adequate already
       endif
 
 c  Loop over species
-      do is=1,ns
+      do is=1,pgroup%ns
         jsapi=is-1
 c  Advance species according to subcycling rule governed by ndts.
         if (mod(it,ndts(is))/=0) then
@@ -1771,14 +1776,16 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(is),sm(is),sw(is),
-     &                         halfdt_s,2,nplive,uxpo,uypo,uzpo,is,ns,
+     &                         halfdt_s,2,nplive,uxpo,uypo,uzpo,
+     &                         pgroup%js(is-1)+1,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
      &                         sq(is),sm(is),sw(is),halfdt_s,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns,
+     &                         uxpo,uypo,uzpo,
+     &                         pgroup%js(is-1)+1,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 endif
                 if (npid > 0) then
@@ -1786,13 +1793,15 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
      &                           zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                           npidmax,pid(ipmin:ipmin+ip-1,:),
-     &                           dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
+     &                           dt/2.,uxpo,uypo,uzpo,
+     &                           pgroup%js(is-1)+1,time,zbeam)
                 else
                   call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),
      &                           zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                           0,0.,
-     &                           dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
+     &                           dt/2.,uxpo,uypo,uzpo,
+     &                           pgroup%js(is-1)+1,time,zbeam)
                 endif
               endif
             endif
@@ -1839,7 +1848,7 @@ c     ---  Do final stuff for moments calculation
 #endif
         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
      &                sq(1),sm(1),sw(1),halfdt,3,nplive,uxpo,uypo,uzpo,
-     &                1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+     &                1,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         call getlabwn()
 c       --- load rho diagnostic quantities
         call rhodia3d
@@ -1855,8 +1864,8 @@ c         --- Check if the moments are to be calculated separately for
 c         --- each species. If so, check if nszarr already has been set
 c         --- appropriately. If not, set it and allocate the arrays.
 c         --- If only one species, then don't have separate species data.
-          if (nszarr /= ns .and. ns > 1) then
-            nszarr = ns
+          if (nszarr < ismax .and. ismax > 1) then
+            nszarr = ismax
             call gchange("Z_arrays",0)
           endif
         else
@@ -1869,19 +1878,21 @@ c         --- If only one species, then don't have separate species data.
         if (.not. laccumulate_rho) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
 
 !$OMP PARALLEL PRIVATE(ip)
-        do is=1,ns
+        do is=1,pgroup%ns
 !$OMP DO
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             if(wpid==0) then
               call setcurr(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),sq(is),sw(is)*dtscale(is),is,
-     &                     zbeam,dzz,zzmin,ns,lspeciesmoments)
+     &                     gaminv(ipmin),sq(is),sw(is)*dtscale(is),
+     &                     pgroup%js(is-1)+1,
+     &                     zbeam,dzz,zzmin,ismax,lspeciesmoments)
             else
               call setcurr_weights(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
      &                             pid(ipmin,wpid),gaminv(ipmin),
-     &                             sq(is),sw(is)*dtscale(is),is,zbeam,dzz,zzmin,
-     &                             ns,lspeciesmoments)
+     &                             sq(is),sw(is)*dtscale(is),
+     &                             pgroup%js(is-1)+1,zbeam,dzz,zzmin,
+     &                             ismax,lspeciesmoments)
             end if
           enddo
 !$OMP END DO
