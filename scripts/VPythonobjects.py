@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.20 2004/11/24 22:52:03 jlvay Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.21 2006/02/08 22:45:12 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -375,6 +375,57 @@ name='WARP viz': Display name - only used when new scene created.
         self.FacetedPolygon([points[i,j], points[i,j+1],
                              points[i+1,j+1], points[i+1,j]],
                             color=color)
+
+    if display:
+      self.createdxobject()
+      self.Display()
+
+#########################################################################
+class VisualBox (VisualModel):
+  """
+xsize,ysize,zsize: size of the box
+xcent,yceny,zcent=0.: location of the box center
+color=None: can be specified as an [r,g,b] list
+scene=None: an already existing display scene. When None, create a new one.
+name='WARP viz': Display name - only used when new scene created.
+  """
+  def __init__(self, xsize,ysize,zsize,xcent=0.,ycent=0.,zcent=0.,
+               xscaled=0,zscaled=0,
+               color=None,
+               scene=None,name=None,vrange=None,viewer=None,
+               rscale=None,zscale=None,display=0,kwdict={}):
+    for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
+    VisualModel.__init__(self,twoSided=0,normalsign=1,
+                              scene=scene,name=name,
+                              vrange=vrange,viewer=viewer,
+                              rscale=rscale,zscale=zscale)
+
+    if xscaled:
+      xcent = xcent/xsize
+      ycent = ycent/xsize
+      xsize = xsize/xsize
+      ysize = ysize/xsize
+    if zscaled:
+      xrange = maxnd(xvalues) - minnd(xvalues)
+      zrange = maxnd(zvalues) - minnd(zvalues)
+      zcent = zcent/zsize*xsize/2.
+      zsize = xsize/2.
+
+    p000 = array([xcent-xsize/2.,ycent-ysize/2.,zcent-zsize/2.])
+    p100 = array([xcent+xsize/2.,ycent-ysize/2.,zcent-zsize/2.])
+    p010 = array([xcent-xsize/2.,ycent+ysize/2.,zcent-zsize/2.])
+    p110 = array([xcent+xsize/2.,ycent+ysize/2.,zcent-zsize/2.])
+    p001 = array([xcent-xsize/2.,ycent-ysize/2.,zcent+zsize/2.])
+    p101 = array([xcent+xsize/2.,ycent-ysize/2.,zcent+zsize/2.])
+    p011 = array([xcent-xsize/2.,ycent+ysize/2.,zcent+zsize/2.])
+    p111 = array([xcent+xsize/2.,ycent+ysize/2.,zcent+zsize/2.])
+
+    self.FacetedPolygon([p000,p100,p110,p010],color=color)
+    self.FacetedPolygon([p001,p101,p111,p011],color=color)
+    self.FacetedPolygon([p000,p100,p101,p001],color=color)
+    self.FacetedPolygon([p010,p110,p111,p011],color=color)
+    self.FacetedPolygon([p000,p010,p011,p001],color=color)
+    self.FacetedPolygon([p100,p110,p111,p101],color=color)
 
     if display:
       self.createdxobject()
