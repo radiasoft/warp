@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.162 $, $Date: 2006/01/31 23:01:03 $
+c@(#) File TOP.F, version $Revision: 3.163 $, $Date: 2006/02/08 00:48:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6744,6 +6744,9 @@ c appropriately.
       integer(ISZ):: nadd,i,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Call this here in case chckpart has been called before alotpart.
+      call gchangeparticles()
 
 c     --- Make sure that ins has a sensible value
       if (ins(is) == 0 .and. npmax_s(is) == 0) ins(is) = 1
