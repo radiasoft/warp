@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.53 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3537,7 +3537,8 @@ c=======================================================================
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -3777,7 +3778,8 @@ c near the surface, the distance has the correct sign.
       real(kind=8):: zzprev,xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
 
         xx = x(i) - xcent
@@ -4131,7 +4133,8 @@ c=======================================================================
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -4369,7 +4372,8 @@ c near the surface, the distance has the correct sign.
       real(kind=8):: zzprev,xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
 
         xx = x(i) - xcent
@@ -4762,7 +4766,8 @@ c=======================================================================
       real(kind=8):: delmz1,delpz1
       real(kind=8):: linrzintersection,linrzrextremum
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -5161,7 +5166,8 @@ c near the surface, the distance has the correct sign.
       real(kind=8):: zzprev,xx,yy,zz,rr,rmin,rmax,zd,rd
       real(kind=8):: srfrv_f
 
-      zzprev = -LARGEPOS
+c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
+      zzprev = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
 
         xx = x(i) - xcent
