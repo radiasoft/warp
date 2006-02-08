@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.127 2006/02/07 22:51:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.128 2006/02/08 22:45:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1912,6 +1912,13 @@ Box class
     r = self.xsize/2.*array([-1,+1,+1,-1,-1])
     z = self.zsize/2.*array([-1,-1,+1,+1,-1])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+
+  def createdxobject(self,kwdict={},**kw):
+    kw.update(kwdict)
+    v = VPythonobjects.VisualBox(self.xsize,self.ysize,self.zsize,
+                                 self.xcent,self.ycent,self.zcent,
+                                 kwdict=kw)
+    self.dxobject = v
 
 #============================================================================
 class Cylinder(Assembly):
