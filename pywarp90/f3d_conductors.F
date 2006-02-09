@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.54 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3531,14 +3531,15 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
-      real(kind=8):: zzprev
+      real(kind=8):: zzprev1,zzprev2
       real(kind=8):: xx,yy,zz,rr,rsrf
       real(kind=8):: risrf,xisrf,yisrf,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
 c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
-      zzprev = 1.5*abs(z(1) - zcent) + 1.
+      zzprev1 = 1.5*abs(z(1) - zcent) + 1.
+      zzprev2 = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -3555,7 +3556,8 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          if (zz .ne. zzprev) risrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev1) risrf = srfrv_f(zz,rofzfunc,0,0)
+          zzprev1 = zz
           xisrf = sqrt(max(0.,risrf**2 - yy**2))
           yisrf = sqrt(max(0.,risrf**2 - xx**2))
           ximax = sqrt(max(0.,rmax**2 - yy**2))
@@ -3611,7 +3613,8 @@ c       --- conductor or within the max radius.
      &      zz <= zmax + griddz .and.
      &      rr <= rmax) then
 
-          if (zz .ne. zzprev) then
+          if (zz .ne. zzprev2) then
+            zzprev2 = zz
             zzz = min(max(zz,zmin),zmax)
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
@@ -3749,7 +3752,6 @@ c             --- 10% in the delta and slowing down the code.
 
         endif
 
-        zzprev = zz
       enddo
 
       return
@@ -4127,14 +4129,15 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
-      real(kind=8):: zzprev
+      real(kind=8):: zzprev1,zzprev2
       real(kind=8):: xx,yy,zz,rr,rsrf
       real(kind=8):: risrf,xisrf,yisrf,ximin,yimin
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
 c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
-      zzprev = 1.5*abs(z(1) - zcent) + 1.
+      zzprev1 = 1.5*abs(z(1) - zcent) + 1.
+      zzprev2 = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -4151,7 +4154,8 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          if (zz .ne. zzprev) risrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev1) risrf = srfrv_f(zz,rofzfunc,0,0)
+          zzprev1 = zz
           xisrf = sqrt(max(0.,risrf**2 - yy**2))
           yisrf = sqrt(max(0.,risrf**2 - xx**2))
           ximin = sqrt(max(0.,rmin**2 - yy**2))
@@ -4207,7 +4211,8 @@ c       --- conductor or within the max radius.
      &      zz <= zmax + griddz .and.
      &      rr >= rmin) then
 
-          if (zz .ne. zzprev) then
+          if (zz .ne. zzprev2) then
+            zzprev2 = zz
             zzz = min(max(zz,zmin),zmax)
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
@@ -4343,7 +4348,6 @@ c             --- 10% in the delta and slowing down the code.
 
         endif
 
-        zzprev = zz
       enddo
 
       return
@@ -4757,7 +4761,7 @@ c=======================================================================
 
       integer(ISZ):: i,iterrf,ii
       real(kind=8):: srfrv_f
-      real(kind=8):: zzprev
+      real(kind=8):: zzprev1,zzprev2
       real(kind=8):: xx,yy,zz,rr,rimin,rimax,rmin,rmax
       real(kind=8):: ximin,yimin,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rfuzz
@@ -4767,7 +4771,8 @@ c=======================================================================
       real(kind=8):: linrzintersection,linrzrextremum
 
 c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
-      zzprev = 1.5*abs(z(1) - zcent) + 1.
+      zzprev1 = 1.5*abs(z(1) - zcent) + 1.
+      zzprev2 = 1.5*abs(z(1) - zcent) + 1.
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -4784,7 +4789,8 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          if (zz .ne. zzprev) then
+          if (zz .ne. zzprev1) then
+            zzprev1 = zz
             rimin = min(srfrv_f(zz,rminofz,1,-1),srfrv_f(zz,rminofz,1,+1))
             rimax = max(srfrv_f(zz,rmaxofz,2,-1),srfrv_f(zz,rmaxofz,2,+1))
           endif
@@ -4842,7 +4848,8 @@ c       --- conductor or within the max radius.
         if (zz >= zmin - griddz .and.
      &      zz <= zmax + griddz) then
 
-          if (zz .ne. zzprev) then
+          if (zz .ne. zzprev2) then
+            zzprev2 = zz
             zzz = min(max(zz,zmin),zmax)
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
@@ -5138,7 +5145,6 @@ c                 --- 10% in the delta and slowing down the code.
 
         endif
 
-        zzprev = zz
       enddo
       return
       end
