@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.94 2006/01/21 01:11:45 dave Exp $"
+warp_version = "$Id: warp.py,v 1.95 2006/02/09 18:07:22 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -989,8 +989,8 @@ def printtimers(file=None):
 # --- Import these here near the end so the functions defined above are
 # --- included in their dictionaries.
 from particles import *
-from warpplots import *
 if lparallel: from warpparallel import *
+from warpplots import *
 from histplots import *
 from pzplots import *
 from plot_conductor import *
