@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.54 2006/01/31 23:01:44 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.55 2006/02/09 18:06:37 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -130,61 +130,6 @@ contains that value."""
   else:
     pe = None
   return pe
-
-###########################################################################
-# --- Parallel plotting routines
-# --- plotarray and plotpart are now obsolete and should just be deleted.
-# ---------------------------------------------------------------------------
-# Plot an array that is distributed on all processors
-def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
-              width=1.0):
-  ff = gatherarray(f)
-  zz = gatherarray(z)
-  if len(ff) > 0 and len(zz) == len(ff):
-    plg(ff,zz,color=color,marker=marker,msize=msize,width=width,type=linetype)
-# ---------------------------------------------------------------------------
-# Plot particles that are distributed on all processors
-def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
-  kw['color'] = color
-  kw['type'] = linetype
-  kw['marker'] = marker
-  kw['msize'] = msize
-  if not lparallel:
-    apply(plg,(f,z),kw)
-    return
-  # --- This way is preferred since for large data sets, it reduces the
-  # --- risk of running out of memory since only part of the data is stored
-  # --- on PE0 at a time.
-  if mpi.rank == 0:
-    if len(f) > 0 and len(f)==len(z):
-      apply(plg,(f,z),kw)
-    for i in range(1,mpi.procs):
-      x = mpirecv(i,3)
-      y = mpirecv(i,3)
-      if len(x) > 0 and len(y)==len(x):
-        apply(plg,(x,y),kw)
-  else:
-    mpi.send(f,0,3)
-    mpi.send(z,0,3)
-# ---------------------------------------------------------------------------
-# Plot particles that are distributed on all processors
-def parallel_plg(y,x,**kw):
-  if not lparallel:
-    plg(y,x,local=1,**kw)
-    return
-  # --- This way is preferred since for large data sets, it reduces the
-  # --- risk of running out of memory since only part of the data is stored
-  # --- on PE0 at a time.
-  if mpi.rank == 0:
-    for i in range(0,mpi.procs):
-      if i > 0:
-        y = mpirecv(i,3)
-        x = mpirecv(i,3)
-      if len(x) > 0 and len(y)==len(x):
-        plg(y,x,local=1,**kw)
-  else:
-    mpi.send(y,0,3)
-    mpi.send(x,0,3)
 
 ###########################################################################
 ###########################################################################
