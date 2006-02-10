@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.36 2006/02/10 19:50:30 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.37 2006/02/10 20:02:16 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -78,7 +78,6 @@ conductors are an argument.
       top.npidmax+=3
       gchangeparticles()
       installbeforestep(self.saveoldpos)
-    self.scrape=self.scrape2
     self.l_print_timing=0
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
@@ -175,6 +174,9 @@ after load balancing."""
           self.savecondid(js)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
+
+  def scrape(self,js):
+    self.scrape2(js)
 
   def scrape2(self,js):
     t.start()
