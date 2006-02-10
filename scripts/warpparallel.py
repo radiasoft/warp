@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.55 2006/02/09 18:06:37 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.56 2006/02/10 19:50:30 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -159,6 +159,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   nps_p.shape = (top.nslaves,top.ns)
   nps_p0 = zeros((top.nslaves+1,top.ns+1))
   nps_p0[1:,1:] = nps_p
+  top.npmax = top.pgroup.npmax
 
   # --- Same for npslost
   npslost_p = gatherarray(top.npslost,bcast=1)
@@ -252,9 +253,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             ff.write(pdbname,w3d.zmminglobal)
           elif p == 'w3d' and vname in ['nz','izfsmax','nz_selfe','nzp']:
             ff.write(pdbname,w3d.nzfull)
-          elif (p=='top' and vname in ['np','nplive','npmax','npmaxb',
-                                       'npmaxi']) or\
-               (p=='wxy' and vname in ['npmaxxy']):
+          elif ((p=='top' and vname in ['np','nplive','npmax']) or
+                (p=='wxy' and vname in ['npmaxxy'])):
             ff.write(pdbname,sum(nps_p)[0])
           elif p=='top' and vname in ['npmaxlost']:
             ff.write(pdbname,sum(npslost_p)[0])
@@ -273,7 +273,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           # --- the file big enough to fit the data from all of the
           # --- processors. Other arrays have special requirements.
           # --- First deal with the exceptions
-          if vname == 'npmax_s' and p == 'top':
+          if vname == 'ipmax_s' and p == 'top':
             # --- This is set to be correct globally
             ff.write(pdbname,array([0]+list(cumsum(sum(nps_p[:,:])))))
             ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns+1))
@@ -297,7 +297,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           elif p == 'top' and vname == 'pid':
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
-            if top.npmaxi == top.npmax and sum(sum(nps_p)) > 0:
+            if top.npid > 0 and sum(sum(nps_p)) > 0:
               ff.defent(pdbname,v,(sum(sum(nps_p)),top.npidmax))
           elif p == 'wxy' and vname in ['dtp']:
             # --- A WARPxy particle array
@@ -416,7 +416,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- The data is now written into the space which was set aside
         # --- above by PE0.
         # --- First the exceptions
-        if p == 'top' and vname in ['npmax_s','ins','nps',
+        if p == 'top' and vname in ['ipmax_s','ins','nps',
                                     'npmaxlost_s','inslost','npslost']:
           # --- Write out to parallel space
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
@@ -430,7 +430,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
                        indx=(ipmin,))
         elif p == 'top' and vname == 'pid':
-          if top.npmaxi == top.npmax:
+          if top.npid > 0:
             # --- Write out each species seperately.
             for js in range(top.ns):
               if top.nps[js] > 0:
@@ -589,6 +589,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                            gpdbname='conductors%d@parallel'%me)
 
   # --- Allocate any groups with parallel arrays
+  top.pgroup.npmax = top.npmax
   gchangeparticles()
   gchange("LostParticles")
   gchange("Particlesxy")
@@ -616,7 +617,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       parallelvar = re.search('parallel',a)
       if not parallelvar: continue
       # --- Many arrays need special handling. These are dealt with first.
-      if vname == 'npmax_s' and p == 'top':
+      if vname == 'ipmax_s' and p == 'top':
         itriple = array([me,me,1,0,top.ns,1])
         s = p+'.forceassign(vname,\
                ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...])'
@@ -645,7 +646,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
-        if top.npmaxi == top.npmax:
+        if top.npid > 0:
           for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])

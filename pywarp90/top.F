@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.164 $, $Date: 2006/02/08 23:23:46 $
+c@(#) File TOP.F, version $Revision: 3.165 $, $Date: 2006/02/10 19:50:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6638,10 +6638,13 @@ c=============================================================================
       integer(ISZ):: js
 
       pgroup%ns = ns
-      pgroup%npmax = npmax
-      pgroup%npmaxi = npmaxi
       pgroup%npid = npid
-      pgroup%npidmax = npidmax
+      if (pgroup%npid > 0) then
+        pgroup%npmaxi = pgroup%npmax
+      else
+        pgroup%npmaxi = 1
+      endif
+      pgroup%npidmax = max(1,pgroup%npid)
 
       call gchange("Particles",0)
 
@@ -6649,7 +6652,6 @@ c=============================================================================
       sq => pgroup%sq
       sw => pgroup%sw
 
-      npmax_s => pgroup%npmax_s
       ins => pgroup%ins
       nps => pgroup%nps
       ndts => pgroup%ndts
@@ -6685,42 +6687,32 @@ c Allocate space for particles and set up associated arrays.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-c     --- Set one of npmax and np_s from the other. If they are both set,
-c     --- then do nothing. That is not an error since the two variables
-c     --- do not need to be consistent. For example, the parallel 3-D code
-c     --- sets npmax to the local size of the arrays and np_s to the total
-c     --- number of particles across all of the processors, leaving
-c     --- np_s > npmax.
-c     --- Note that here npmax is not set in the parallel code since it is
-c     --- assumed that the parallel routines will set npmax properly to
-c     --- distribute the particles among the processors.
+c     --- Either npmax or np_s can be used as input quantities. If one of
+c     --- them is zero, set it from the other. If both are set, the code
+c     --- uses np_s, ignoring npmax.
       do is=1,ns
         if (np_s(is) == 0) np_s(is) = npmax*sp_fract(is)
       enddo
-#ifndef MPIPARALLEL
-      npmax = 0
-      do is=1,ns
-        npmax = npmax + np_s(is)
-      enddo
+      if (npmax == 0) npmax = sum(np_s)
+
+c     --- Force pgroup%npmax to be large enough to hold all of the particles
+c     --- to be loaded.
+      pgroup%npmax = sum(np_s)
+
+c     --- This code will eventually be deleted once Warp goes completely
+c     --- over to particle blocks.
       np = npmax
-#endif
-      npmaxb = npmax
-      if (npid > 0) then
-        npmaxi = npmax
-      else
-        npmaxi = 1
-      endif
       npidmax = max(1,npid)
 
 c     --- Allocate space. A gchange is done primarily so that any data
-c     --- in npmax_s is preserved.
+c     --- in ipmax_s is preserved.
       call gchangeparticles()
 
-c     --- setup npmax_s array
-      npmax_s(0) = 0
+c     --- setup ipmax_s array
+      pgroup%ipmax_s(0) = 0
       do is=1,ns
-        if (npmax_s(is) == 0) npmax_s(is) = npmax_s(is-1) + np_s(is)
-        ins(is) = npmax_s(is-1) + 1
+        pgroup%ipmax_s(is) = pgroup%ipmax_s(is-1) + np_s(is)
+        ins(is) = pgroup%ipmax_s(is-1) + 1
         nps(is) = 0
       enddo
 
@@ -6755,44 +6747,38 @@ c     --- Call this here in case chckpart has been called before alotpart.
       call gchangeparticles()
 
 c     --- Make sure that ins has a sensible value
-      if (ins(is) == 0 .and. npmax_s(is) == 0) ins(is) = 1
+      if (ins(is) == 0 .and. pgroup%ipmax_s(is) == 0) ins(is) = 1
 
 c     --- If there is already enough space, then return.
-      if (ins(is)-npmax_s(is-1)-1 >= nlower .and.
-     &    npmax_s(is)-ins(is)-nps(is)+1 >= nhigher) return
+      if (ins(is)-pgroup%ipmax_s(is-1)-1 >= nlower .and.
+     &    pgroup%ipmax_s(is)-ins(is)-nps(is)+1 >= nhigher) return
 
 c     --- If there is not enough space, then allocate new space.
-      if (ins(is)-npmax_s(is-1)-1 + npmax_s(is)-ins(is)-nps(is)+1 <
-     &    nlower + nhigher) then
+      if (ins(is)-pgroup%ipmax_s(is-1)-1 +
+     &    pgroup%ipmax_s(is)-ins(is)-nps(is)+1 <
+     &      nlower + nhigher) then
 
 c       --- Amount of new space to add: this is calculated to be a sizable
 c       --- chunk, but not too big.  By default, add 10 times the space needed.
 c       --- Limit that to 10000, except, if the space needed is greater than
 c       --- 10000, add the amount of space needed.
         nadd = nlower + nhigher -
-     &           (ins(is)-npmax_s(is-1)-1 + npmax_s(is)-ins(is)-nps(is)+1)
+     &   (ins(is)-pgroup%ipmax_s(is-1)-1 + pgroup%ipmax_s(is)-ins(is)-nps(is)+1)
         nadd = min(10*nadd, max(10000, nadd))
 
 c       --- change the particle array dimension variables and allot space
-        npmax = npmax + nadd
-        npmaxb = npmax
-        if (npid > 0) then
-          npmaxi = npmax
-        else
-          npmaxi = 1
-        endif
-        npidmax = max(1,npid)
+        pgroup%npmax = pgroup%npmax + nadd
         call gchangeparticles()
 
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
         do i=ns,is+1,-1
-          npmax_s(i) = npmax_s(i) + nadd
+          pgroup%ipmax_s(i) = pgroup%ipmax_s(i) + nadd
           call shftpart(i,nadd)
         enddo
 
 c       --- Increase size of the block for species 'is'.
-        npmax_s(is) = npmax_s(is) + nadd
+        pgroup%ipmax_s(is) = pgroup%ipmax_s(is) + nadd
 
       endif
 
@@ -6803,10 +6789,10 @@ c     --- Note that is some cases no shift will be needed.  In those cases,
 c     --- ishift comes out to be zero and shftpart returns immediately when
 c     --- ishift is zero.
       if (lfullshft) then
-        ishift = npmax_s(is) - ins(is) - nps(is) + 1 - nhigher
+        ishift = pgroup%ipmax_s(is) - ins(is) - nps(is) + 1 - nhigher
       else
-        ishift = max(0,nlower - (ins(is)-npmax_s(is-1)-1)) +
-     &          min(0,(npmax_s(is)-ins(is)-nps(is)+1) - nhigher)
+        ishift = max(0,nlower - (ins(is)-pgroup%ipmax_s(is-1)-1)) +
+     &          min(0,(pgroup%ipmax_s(is)-ins(is)-nps(is)+1) - nhigher)
       endif
       call shftpart(is,ishift)
 
@@ -6821,16 +6807,19 @@ c=============================================================================
       use InPart
       use Particles
       integer(ISZ):: is,ishift
-      call shftpartwork(is,ishift,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
-     &                  xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
+      call shftpartwork(is,ishift,pgroup%npmax,pgroup%npmaxi,ns,pgroup%ipmax_s,
+     &                  pgroup%ins,pgroup%nps,pgroup%npid,
+     &                  pgroup%xp,pgroup%yp,pgroup%zp,
+     &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
+     &                  pgroup%pid)
       return
       end
 c=============================================================================
-      subroutine shftpartwork(is,ishift,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
+      subroutine shftpartwork(is,ishift,npmax,npmaxi,ns,ipmax_s,ins,nps,npid,
      &                        xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       use Subtimerstop
       integer(ISZ):: is,ishift
-      integer(ISZ):: npmax,npmaxi,ns,npmax_s(0:ns),ins(ns),nps(ns),npid
+      integer(ISZ):: npmax,npmaxi,ns,ipmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
       real(kind=8):: gaminv(npmax),pid(npmaxi,npid)
@@ -6855,7 +6844,7 @@ c     --- a negative shift may result in lost data.
       if (ishift > 0) then
 
 c       --- Loop from top of live particles to bottom of species block.
-        do ip=ins(is)+nps(is)-1, npmax_s(is-1)+1, -1
+        do ip=ins(is)+nps(is)-1, ipmax_s(is-1)+1, -1
           xp(ip+ishift) = xp(ip)
           yp(ip+ishift) = yp(ip)
           zp(ip+ishift) = zp(ip)
@@ -6869,7 +6858,7 @@ c       --- Loop from top of live particles to bottom of species block.
         enddo
 c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
-        do ip=npmax_s(is-1)+1,npmax_s(is-1)+1+ishift-1
+        do ip=ipmax_s(is-1)+1,ipmax_s(is-1)+1+ishift-1
           uzp(ip) = 0.
           if (npid > 0) pid(ip,:) = 0
         enddo
@@ -6880,13 +6869,13 @@ c       --- change lower bound of live particles
       else
 c       --- Loop from -ishift above bottom of species block to top of live
 c       --- particles.  Note that particles will be clobbered if
-c       --- (ins(is) - npmax_s(is-1)) < -ishift
-        if (ins(is) - npmax_s(is-1) < -ishift) then
+c       --- (ins(is) - ipmax_s(is-1)) < -ishift
+        if (ins(is) - ipmax_s(is-1) < -ishift) then
           print*,"WARNING: shftpart: particle data will be lost since there is"
           print*,"                   not enough space in the arrays."
         endif
 
-        do ip=npmax_s(is-1)+1-ishift, ins(is)+nps(is)-1
+        do ip=ipmax_s(is-1)+1-ishift, ins(is)+nps(is)-1
           xp(ip+ishift) = xp(ip)
           yp(ip+ishift) = yp(ip)
           zp(ip+ishift) = zp(ip)
@@ -6906,9 +6895,9 @@ c       --- up. This will also be slightly faster too, maybe.
         enddo
 
 c       --- change number of particles if data is lost
-        if (ins(is) - npmax_s(is-1) < -ishift) then
-          nps(is) = nps(is) - (-ishift - (ins(is) - npmax_s(is-1)))
-          ins(is) = npmax_s(is-1) + 1
+        if (ins(is) - ipmax_s(is-1) < -ishift) then
+          nps(is) = nps(is) - (-ishift - (ins(is) - ipmax_s(is-1)))
+          ins(is) = ipmax_s(is-1) + 1
         else
 c         --- change lower bound only
           ins(is) = ins(is) + ishift
@@ -7180,26 +7169,24 @@ c down and then gchange is called to free the left over space.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      oldnpmax = npmax
+      oldnpmax = pgroup%npmax
 
       call shftpart(1,1-ins(1))
       ins(1) = 1
-      npmax_s(1) = ins(1) + nps(1) - 1
+      pgroup%ipmax_s(1) = ins(1) + nps(1) - 1
 
       do is=2,ns
         call shftpart(is,ins(is-1)+nps(is-1)-ins(is))
         ins(is) = ins(is-1)+nps(is-1)
-        npmax_s(is) = ins(is) + nps(is) - 1
+        pgroup%ipmax_s(is) = ins(is) + nps(is) - 1
       enddo
 
-      npmax = npmax_s(ns)
+      pgroup%npmax = pgroup%ipmax_s(ns)
 
 c     --- Force npmax to change to ensure that the particles arrays are
 c     --- reallocated.
-      if (npmax == oldnpmax) npmax = npmax + 1
+      if (pgroup%npmax == oldnpmax) pgroup%npmax = pgroup%npmax + 1
 
-      npmaxb = npmax
-      if (npid > 0) npmaxi = npmax
       call gchangeparticles()
 
 !$OMP MASTER

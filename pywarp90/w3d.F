@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.227 $, $Date: 2006/02/08 23:23:46 $
+c@(#) File W3D.F, version $Revision: 3.228 $, $Date: 2006/02/10 19:50:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -208,6 +208,10 @@ c  for the parallel code.
       zmminglobal = zmmin
       zmmaxglobal = zmmax
 
+c     --- Make sure the arrays are setup OK
+c     --- This won't be needed once the pointers in Particles are removed
+      call gchangeparticles()
+
 c------- Parallel only -----------------------------------------------------
 #ifdef MPIPARALLEL
       call init_w3d_parallel()
@@ -399,9 +403,6 @@ c  use a user-set npmax directly)
       if (xrandom == "grid") npmax = nxstripe*nystripe*nzstripe
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
 
-      if (distrbtn .ne. "preload") then
-        call alotpart
-      endif
       call alotlostpart
 
 c  Load the particles, calculate the charge density
@@ -3413,7 +3414,7 @@ c  Set npgrp so arrays are correct size
         call kaboom (0)
       endif
 
-c  Set npm to loop through all possible particles
+c  Set npm to be greater than zero if any particles are to be loaded.
       if (xrandom == "fibonacc") then
         npm = nfibgrps*fibg1
       elseif (xrandom == "digitrev") then
@@ -3537,26 +3538,24 @@ c  Allocate scratch space for load. Must be done in the parallel block
       do is = 1, ns
 
 c       --- Get number of particles to be loaded for this species.
-        if (xrandom == "fibonacc") then
-          npm = nfibgrps*fibg1*sp_fract(is)
-        elseif (xrandom == "digitrev") then
-          npm = np_s(is)
-        elseif (xrandom == "pseudo") then
-          npm = np_s(is)
-        elseif (xrandom == "grid") then
-          npm = nxstripe*nystripe*nzstripe*sp_fract(is)
+        if (np_s(is) == 0) then
+c         --- Only set np_s is it had not been set be the user
+          if (xrandom == "fibonacc") then
+            np_s(is) = nfibgrps*fibg1*sp_fract(is)
+          elseif (xrandom == "digitrev") then
+            np_s(is) = npmax*sp_fract(is)
+          elseif (xrandom == "pseudo") then
+            np_s(is) = npmax*sp_fract(is)
+          elseif (xrandom == "grid") then
+            np_s(is) = nxstripe*nystripe*nzstripe*sp_fract(is)
+          endif
         endif
+        npm = np_s(is)
 
         zmid = .5 * (zimax_s(is) + zimin_s(is)) + zbeam
         zlen = zimax_s(is) - zimin_s(is)
         zleni = 1./zlen
         if (zlen == 0) zleni = 0.
-        ip = ins(is) - 1
-!$OMP SINGLE
-#ifdef _OPENMP
-        iptotal = ins(is) - 1
-#endif
-!$OMP END SINGLE
 
 c       --- Inverse of the number of particles. When multiplied by the particle
 c       --- index and added to the normalized value of zmin, the normalized 
@@ -3599,10 +3598,19 @@ c       --- Make sure that there is enough room to load the particles.
 c       --- This is only needed here in the parallel version since it is
 c       --- difficult to gaurantee that there is room when an arbitrary
 c       --- domain decomposition is allowed.
+#endif
+
 !$OMP MASTER
+c       --- Make sure there is space allocated for the new particles.
         call chckpart(is,0,npm,.false.)
 !$OMP END MASTER
+
+        ip = ins(is) - 1
+!$OMP SINGLE
+#ifdef _OPENMP
+        iptotal = ins(is) - 1
 #endif
+!$OMP END SINGLE
 
 c       --- Shift ioff by randoffset so that the seed for the quiet start
 c       --- random number generators can be controlled.

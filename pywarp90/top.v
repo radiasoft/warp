@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.154 $, $Date: 2006/02/08 23:23:47 $
+#@(#) File TOP.V, version $Revision: 3.155 $, $Date: 2006/02/10 19:50:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.154 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.155 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -971,9 +971,6 @@ clearlostpart             integer /1/
 # Particle input quantities (input qtys)
 ns              integer         /1/
    # Number of species
-npmax_s(0:ns)  _integer [1]     /0/ +parallel
-   # Maximum number of particles of each species
-   # Index of 0 is used as a guard and always has a value of zero.
 np_s(ns)       _integer [1]     /0/
    # Number of particles by species: if zero, set to npmax; if npmax is zero,
    # it is set to sum(np_s).
@@ -1880,7 +1877,7 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
 
 *********** Particles dump:
 # Dynamic particle arrays, and related data
-pgroup ParticleGroup +parallel # Main group holding the particles
+pgroup ParticleGroup # Main group holding the particles
 np     integer    /0/  # Total no. of particles (including lost ones).
 nplive integer    /0/  # No. of "live" particles
 npid   integer    /0/  # number of columns for pid.
@@ -1904,8 +1901,6 @@ ins(:)  _integer /1/ +parallel  # Index of first particle in species
 nps(:)  _integer /0/ +parallel  # Number of particles in species
 npmax  integer    /0/ +parallel  # Maximum no. of particles
                                  # (user input for some loadings)
-npmaxb integer    /0/ +parallel  # Maximum no. of particles for xp, yp, uxp, uyp
-npmaxi integer    /1/ +parallel  # Maximum no. of particles for pid.
 npidmax integer   /1/  # Maximum number of columns for pid.
                        # This is used so that the pid array is always allocated
 gaminv(:) _real  [1]   /1./ +parallel # inverse relativistic gamma factor
@@ -1926,8 +1921,8 @@ npmaxi integer    /1/  # Maximum no. of particles for pid.
 npid   integer    /0/  # number of columns for pid.
 npidmax integer   /1/  # Maximum number of columns for pid.
                        # This is used so that the pid array is always allocated
-npmax_s(0:ns)  _integer [1] /0/
-   # Maximum number of particles of each species
+ipmax_s(0:ns)  _integer [1] /0/
+   # Maximum index of particles of each species
    # Index of 0 is used as a guard and always has a value of zero.
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
@@ -2345,7 +2340,6 @@ reorgparticles() subroutine
 nslaves       integer /0/         # Number of slaves
 my_index      integer   +parallel # Processor index to array of task ids
 grid_overlap  integer       +dump # Overlap of field grid in processors
-slavenp       integer /0/   +dump # Value of npmax that slave is to use
 maxslaves     integer /512/ +dump # Max numer of slaves
 lautodecomp   logical /.true./    # When false, the domain decompostion for the
                                   # particles is supplied by the user.

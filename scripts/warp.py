@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.95 2006/02/09 18:07:22 dave Exp $"
+warp_version = "$Id: warp.py,v 1.96 2006/02/10 19:50:30 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -814,6 +814,7 @@ Reads in data from file, redeposits charge density and does field solve
   package(__main__.__dict__["currpkg"])
   # --- Allocate all arrays appropriately
   gchange("*")
+  gchangeparticles()
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.

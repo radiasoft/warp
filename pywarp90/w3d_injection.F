@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.39 $, $Date: 2006/01/31 23:01:03 $
+c@(#) File w3d_injection.F, version $Revision: 1.40 $, $Date: 2006/02/10 19:50:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1693,7 +1693,6 @@ c Also set particle parameters: charge, mass and weight
       if (maxval(nps) == 0) then
         npmax = max(injctspc,npmax)
         np_s = 0
-        npmax_s = 0
         sp_fract = sp_fract/total_frac
         call alotpart()
         sp_fract = sp_fract*total_frac
@@ -1844,7 +1843,6 @@ c Set pid index for injection information for particles
 c Allocate the particle index. The index keeps track of which source the
 c particles are injected from.  It is also used to store the fractional
 c timestep for each particle upon emission.
-      npmaxi = npmax
       call gchangeparticles()
 
 c Check if the voltages were specified.  If so, set so conductor will be

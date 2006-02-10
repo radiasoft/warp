@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.34 $, $Date: 2005/08/12 22:46:06 $
+c TOPSLAVE.M, version $Revision: 1.35 $, $Date: 2006/02/10 19:50:34 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -600,13 +600,13 @@ c     --- that if more space is not needed, an unneccesary realloction is not
 c     --- done.
       pnp = sum(nprecv)
       np_s = sum(nprecv,2)
-      if (pnp > npmax) npmax = int(1.1*pnp)
+      if (pnp > pgroup%npmax) pgroup%npmax = int(1.1*pnp)
       if (pnp > 0) then
-        np_s = int(np_s*npmax/pnp)
+        np_s = int(np_s*pgroup%npmax/pnp)
       else
-        np_s = npmax/ns
+        np_s = pgroup%npmax/ns
       endif
-      np_s(ns) = npmax - sum(np_s(1:ns-1))
+      np_s(ns) = pgroup%npmax - sum(np_s(1:ns-1))
       call alotpart()
       
 c     --- Create space for incoming data

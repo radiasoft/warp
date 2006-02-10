@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.45 2006/01/31 23:03:02 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.46 2006/02/10 19:50:30 dave Exp $"
 
 
 ##############################################################################
@@ -282,7 +282,7 @@ set when a current is specified"""
 
     # --- set number of particles to zero.
     top.nps = 0
-    top.ins[0:]=top.npmax_s[1:]
+    top.pgroup.ins[0:]=top.pgroup.ipmax_s[1:]
 
     # --- call insertbeforeriter if defined
     if insertbeforeiter is not None:
@@ -809,7 +809,6 @@ Performs steady-state iterations in a cascade using different resolutions.
         top.inj_param = 0.5
       # reset particle arrays
       top.np_s = 0
-      top.npmax_s = 0
       top.npmax = 1
       alotpart()
       # performs all iterations but the last one

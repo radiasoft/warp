@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.32 $, $Date: 2006/01/07 00:37:25 $
+c W3DSLAVE.M, version $Revision: 1.33 $, $Date: 2006/02/10 19:50:35 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -16,7 +16,6 @@ c===========================================================================
       use Picglb3d
       use Fields3d
       use Fields3dParticles
-      use Particles
       use Io
       use Z_arrays
       use LatticeInternal
@@ -290,18 +289,11 @@ c     --- both the particle and field solve domain.
 c---------------------------------------------------------------------------
 c     --- Save global array sizes
       nzfull = nz
-      slavenp = npmax
-      np = npmax
       zplmin = zmmin
       zplmax = zmmax
 
 c---------------------------------------------------------------------------
 c     --- Reset local values
-      if (.not. associated(zp)) then
-c       --- Only change npmax if the particle arrays have not already been
-c       --- allocated.
-        npmax = npmax/nslaves*1.1
-      endif
       if (injctspc > 0) then
         injctspc = max(1,int(injctspc/nslaves*1.1))
       endif
@@ -316,33 +308,15 @@ c       --- allocated.
       zmmin = zmslmin(my_index)
       zmmax = zmslmax(my_index)
 
-c---------------------------------------------------------------------------
-c     --- Set np_s here using slavenp, which is the total number of
-c     --- particles, instead of using the value set in alotpart (based
-c     --- on npmax, which is only a local number of particles).
-c     --- This is done so that in stptcl3d, the total number of particles is
-c     --- known and can be divied up among the appropriate processors.
-      do is=1,ns
-        if (np_s(is) == 0) np_s(is) = slavenp*sp_fract(is)
-      enddo
-
-c     --- Set npmax_s here using the local number of particles per
-c     --- processor. The estimated scaling of np_s here is the same
-c     --- as that used to scale npmax above.
-      npmax_s(0) = 0
-      do is=1,ns
-        if (npmax_s(is) == 0) npmax_s(is) = npmax_s(is-1)+np_s(is)/nslaves*1.1
-      enddo
-
 c     --- Set value of izextra, which is the amount of extra space at the
 c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
 c     --- to be made larger to hold the transposed array. izextra could
 c     --- actualy be one less then the value calculated here, but I don't
 c     --- subtract one so there is some extra slop.
       if(solvergeom==XYZgeom) then
-       if (nx+ny < nslaves) then
-        izextra = max(1,(nzfull-nzfull/nslaves*(nx+ny))/(nx*ny))
-       endif
+        if (nx+ny < nslaves) then
+          izextra = max(1,(nzfull-nzfull/nslaves*(nx+ny))/(nx*ny))
+        endif
       endif
 
 !$OMP MASTER

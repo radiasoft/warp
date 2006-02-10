@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.58 $, $Date: 2005/09/13 17:28:49 $
+c@(#) File WXY.M, version $Revision: 3.59 $, $Date: 2006/02/10 19:50:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -244,9 +244,6 @@ c  use a user-set npmax directly)
       call remark(" ---  Allocating space for particles")
       if (xrandom == "grid") npmax = nxstripe*nystripe*nzstripe
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
-      if (distrbtn .ne. "preload") then
-        call alotpart
-      endif
       call alotlostpart
 
 c  Load the particles, calculate the charge density

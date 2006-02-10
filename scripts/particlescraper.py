@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.35 2006/02/08 18:18:17 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.36 2006/02/10 19:50:30 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -61,9 +61,7 @@ conductors are an argument.
     # --- register any initial conductors
     self.conductors = []
     self.registerconductors(conductors)
-    ## --- Make sure that npmaxi is set
-    #top.npmaxi = max(top.npmax,2)
-    #gchangeparticles()
+    # --- Allocate arrays for lost particles
     gchange("LostParticles")
     # --- If the conductor id where particles are lost is being saved,
     # --- need to turn on saving of lost particles.
@@ -78,7 +76,6 @@ conductors are an argument.
       self.zoldpid=top.npid+2
       top.npid+=3
       top.npidmax+=3
-      top.npmaxi=top.npmax
       gchangeparticles()
       installbeforestep(self.saveoldpos)
     self.scrape=self.scrape2
