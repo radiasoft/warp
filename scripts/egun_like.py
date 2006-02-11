@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.46 2006/02/10 19:50:30 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.47 2006/02/11 01:59:39 dave Exp $"
 
 
 ##############################################################################
@@ -234,8 +234,8 @@ set when a current is specified"""
     delphi = abs(getphi(w3d.ix_axis,w3d.iy_axis,0,bcast=1) -
                  getphi(w3d.ix_axis,w3d.iy_axis,w3d.nz,bcast=1))
     if delphi == 0.: delphi = smallpos
-    transittime = (3.*(w3d.nzfull*w3d.dz)*sqrt(0.5*top.sm[0]/abs(top.sq[0])/
-                                               delphi))
+    transittime = (3.*(w3d.nzfull*w3d.dz)*
+                   sqrt(0.5*top.pgroup.sm[0]/abs(top.pgroup.sq[0])/delphi))
     # --- Set the default maxtime to 3*transittime. The factor of 3 is a random
     # --- guess at a safety factor. The maxtime is used since in some cases it
     # --- is possible for some particles to get stuck in a low field region,
@@ -243,7 +243,7 @@ set when a current is specified"""
     maxtime = 3*transittime
     
   if lvariabletimestep:
-    _dtscaleinit=top.dtscale+0
+    _dtscaleinit=top.pgroup.dtscale+0
 
   # --- make multiple iterations
   for i in xrange(iter):
@@ -278,11 +278,13 @@ set when a current is specified"""
     if ipstep is not None: _ipstep = ipstep
 
     # --- Save current value of ins for reference below when saving particles.
-    ins_save = top.ins.copy()
+    ins_save = top.pgroup.ins.copy()
 
     # --- set number of particles to zero.
-    top.nps = 0
-    top.pgroup.ins[0:]=top.pgroup.ipmax_s[1:]
+    top.pgroup.nps = 0
+    top.pgroup.ins[0:] = top.pgroup.ipmax_s[1:]
+    # --- Make sure that ins has a minimum value of 1.
+    top.pgroup.ins[:] = where(top.pgroup.ins==0,1,top.pgroup.ins)
 
     # --- call insertbeforeriter if defined
     if insertbeforeiter is not None:
@@ -346,7 +348,7 @@ set when a current is specified"""
 
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
-    if ((i == iter-1 or (gun_iter%nhist) == 0) and _ifzmmnt > 0 and top.npmax>0):
+    if ((i == iter-1 or (gun_iter%nhist) == 0) and _ifzmmnt > 0):
       top.ifzmmnt = _ifzmmnt
       getzmom.zmmnt(1)
       # --- Make sure that moments are calculated on each time step. This is
@@ -371,7 +373,7 @@ set when a current is specified"""
     print "Number of particles injected = %d"%(top.npinject)
 
     # --- check if any particles were injected
-    npssum = sum(parallelsum(top.nps))
+    npssum = sum(parallelsum(top.pgroup.nps))
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
@@ -382,26 +384,26 @@ set when a current is specified"""
       shrinkpart()
 
       # --- Save initial number of particles
-      nps_save = top.nps.copy()
+      nps_save = top.pgroup.nps.copy()
 
       pgroups = []
       allpgroups.append(pgroups)
-      for js in xrange(top.ns):
+      for js in xrange(top.pgroup.ns):
         pgroup = ParticleGroup()
         pgroup.ns = 1
         pgroup.gchange()
         pgroups.append(pgroup)
 
-        if (top.nps[js] > 0):
+        if (top.pgroup.nps[js] > 0):
           # --- get indices of live particles.
           if (_save_same_part):
-            ip1 = top.ins[js]
-            ip2 = top.ins[js]+top.nps[js]-1
+            ip1 = top.pgroup.ins[js]
+            ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
             ip3 = _ipstep
             ii = iota(ip1,ip2,ip3)
           else:
-            ip1 = top.ins[js]
-            ip2 = top.ins[js]+top.nps[js]-1
+            ip1 = top.pgroup.ins[js]
+            ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
             ip3 = 1
             ii = iota(ip1,ip2,ip3)
             ii = compress(less(ranf(ii),1./_ipstep),ii)
@@ -426,7 +428,7 @@ set when a current is specified"""
     top.inject = 100
 
     if ntblocks>1:
-      _time_s=zeros(top.ns,'d')
+      _time_s=zeros(top.pgroup.ns,'d')
     
     # --- Run until all particles are out of the system (no injection, no field
     # --- solves).  Accumulation of charge density and particle moments is done
@@ -439,13 +441,13 @@ set when a current is specified"""
         if max(_time_s)-gun_time>gun_iter*maxtime/(3*ntblocks):break
       # --- adjust time step according to maximum velocity and mesh size in z
       if lvariabletimestep:
-        for js in xrange(top.ns):
+        for js in xrange(top.pgroup.ns):
           vzmax=max(abs(getvz(js=js)))
-          top.dtscale[js]=max(_dtscaleinit[js],(fvariabletimestep*w3d.dz/vzmax)/top.dt)
+          top.pgroup.dtscale[js]=max(_dtscaleinit[js],(fvariabletimestep*w3d.dz/vzmax)/top.dt)
       # --- push markers one step ahead
       step()
       if ntblocks>1:
-        _time_s+=top.dt*top.dtscale
+        _time_s+=top.dt*top.pgroup.dtscale
       # --- print statusline
       if lstatusline: statusline()
       tmp_gun_steps = tmp_gun_steps + 1
@@ -453,21 +455,21 @@ set when a current is specified"""
       if (i == iter-1 and _ipstep > 0):
         pgroups = []
         allpgroups.append(pgroups)
-        for js in xrange(top.ns):
+        for js in xrange(top.pgroup.ns):
           pgroup = ParticleGroup()
           pgroup.ns = 1
           pgroup.gchange()
           pgroups.append(pgroup)
           # --- Make sure that there are actually particles to save
-          if (top.nps[js] > 0):
+          if (top.pgroup.nps[js] > 0):
             if (_save_same_part):
-              ip1 = top.ins[js]
-              ip2 = top.ins[js]+top.nps[js]-1
+              ip1 = top.pgroup.ins[js]
+              ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
               ip3 = _ipstep
               ii = iota(ip1,ip2,ip3)
             else:
-              ip1 = top.ins[js]
-              ip2 = top.ins[js]+top.nps[js]-1
+              ip1 = top.pgroup.ins[js]
+              ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
               ip3 = 1
               ii = iota(ip1,ip2,ip3)
               ii = compress(less(ranf(ii),1./_ipstep),ii)
@@ -481,13 +483,13 @@ set when a current is specified"""
             pgroup.nps = len(ii)
             if (len(ii) > 0):
               if w3d.l_inj_rec_inittime:
-                ip1 = top.ins[js]-1
-                ip2 = top.ins[js]+top.nps[js]-1
-                top.pid[ip1:ip2,top.tpid-1]=top.pid[ip1:ip2,top.tpid-1]-top.dt
+                ip1 = top.pgroup.ins[js]-1
+                ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
+                top.pgroup.pid[ip1:ip2,top.tpid-1]=top.pgroup.pid[ip1:ip2,top.tpid-1]-top.dt
               pgroup.gchange()
               copyparttogroup(len(ii),ii,-1,pgroup,1)
 
-      npssum = sum(parallelsum(top.nps))
+      npssum = sum(parallelsum(top.pgroup.nps))
       maxvz = parallelmax(top.vzmaxp)
 
     # --- Print a blank line so that the previous status line is not written
@@ -540,12 +542,13 @@ set when a current is specified"""
     # --- Note that this code is intended to be used with plasma source, but
     # --- could be useful elsewhere.
     if current is not None and currentiz is not None:
-      swsum = sum(top.sw)
-      for js in range(top.ns):
-        avecurrent = ave(top.curr[currentiz,js])
-        f = (1. + (current[js]/avecurrent - 1.)*0.5)
-        top.sw[js] = top.sw[js]*f
-      w3d.iondensity = w3d.iondensity*sum(top.sw)/swsum
+      swsum = sum(top.pgroup.sw)
+      for js in range(top.pgroup.ns):
+        js1 = top.pgroup.js[js]
+        avecurrent = ave(top.curr[currentiz,js1])
+        f = (1. + (current[js1]/avecurrent - 1.)*0.5)
+        top.pgroup.sw[js] = top.pgroup.sw[js]*f
+      w3d.iondensity = w3d.iondensity*sum(top.pgroup.sw)/swsum
 
     # --- Save the history data
     if nhist>0:
@@ -558,14 +561,14 @@ set when a current is specified"""
     # --- Copy saved data into the base particle arrays. Note that these
     # --- are array references. The current base array memory will be freed.
     if len(allpgroups) > 0:
-      top.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allpgroups])
+      top.pgroup.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allpgroups])
       top.np_s[:] = [sum([allpgroups[i][j].nps[0] for i in range(len(allpgroups))])
-                     for j in range(top.ns)]
+                     for j in range(top.pgroup.ns)]
       alotpart()
-      top.ins[:] = [1] + list(cumsum(top.np_s)+1)[:-1]
-      top.nps[:] = top.np_s
-      for js in range(top.ns):
-        ii = top.ins[js]
+      top.pgroup.ins[:] = [1] + list(cumsum(top.np_s)+1)[:-1]
+      top.pgroup.nps[:] = top.np_s
+      for js in range(top.pgroup.ns):
+        ii = top.pgroup.ins[js]
         for it in range(len(allpgroups)):
           pgroup = allpgroups[it][js]
           if pgroup.nps[0] > 0:
@@ -668,7 +671,7 @@ set when a current is specified"""
     uninstallafterstep(plottraces)
   
   if lvariabletimestep:
-    top.dtscale=_dtscaleinit
+    top.pgroup.dtscale[:]=_dtscaleinit
 #
   if egundata_nz is not None:
     return  [array(egundata_curr),
@@ -784,8 +787,8 @@ Performs steady-state iterations in a cascade using different resolutions.
       # reset a few variables so that the weights of particles is
       # computed according to the current grid resolution
       top.dt = gundt[i]
-      swprev = top.sw*1.
-      top.sw[:] = 0.
+      swprev = top.pgroup.sw*1.
+      top.pgroup.sw[:] = 0.
       top.npinje_s[:] = 0
       top.rnpinje_s[:] = 0
       top.npinject = gunnpinject[i]
@@ -809,7 +812,7 @@ Performs steady-state iterations in a cascade using different resolutions.
         top.inj_param = 0.5
       # reset particle arrays
       top.np_s = 0
-      top.npmax = 1
+      top.pgroup.npmax = 1
       alotpart()
       # performs all iterations but the last one
       if(iter>1):
@@ -958,9 +961,9 @@ Prints a running line showing current status of the step.
   if (top.it % 10) == 0:
     CR = curses.ascii.ctrl('m')
     sys.stdout.write("%5d "%top.it)
-    nplive = sum(parallelsum(top.nps))
+    nplive = sum(parallelsum(top.pgroup.nps))
     sys.stdout.write("nplive = %5d "%nplive)
-    try: zz = top.zp[top.ins[0]-1]
+    try: zz = top.pgroup.zp[top.pgroup.ins[0]-1]
     except: zz = 0.
     if zz < w3d.zmminglobal: zz = w3d.zmmaxglobal
     sys.stdout.write("zz = %6.4f"%(zz))
