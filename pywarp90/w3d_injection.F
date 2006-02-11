@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.40 $, $Date: 2006/02/10 19:50:35 $
+c@(#) File w3d_injection.F, version $Revision: 1.41 $, $Date: 2006/02/11 01:04:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -90,6 +90,28 @@ c regions have changed.
       inj_zmmin = zmmin
       inj_zmmax = zmmax
 #endif
+
+c     --- Set factor so correct number of particles are loaded when
+c     --- symmetry is used.  With 2-fold, particles need to be loaded
+c     --- on both sides of the symmetry axis.  With 4-fold, particles
+c     --- need to be loaded in each of the four quadrants.
+      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+        spreadx = 1
+        spready = 1
+      elseif(solvergeom==RZgeom) then
+        spreadx = 1
+        if(l_inj_rz) then
+          spready = 0
+        else
+          spready = 1
+        end if
+      elseif(solvergeom==XZgeom) then
+        spreadx = 1
+        spready = 0
+      elseif(solvergeom==Zgeom) then
+        spreadx = 0
+        spready = 0
+      endif
 
 c If itask = 1, zero npinject. This is done here since npinject is used both
 c by normal and transverse space-charge limited injection. Both sections
@@ -275,10 +297,10 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi)
               wxx = spreadx*(abs(xt(ip) - inj_xmmin(ij))*dxi - ixx)
               wyy = spready*(abs(yt(ip) - inj_ymmin(ij))*dyi - iyy)
-              zs = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
-     &             inj_grid(ixx+1,iyy  ,ij)*      wxx *(1. - wyy) +
-     &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
-     &             inj_grid(ixx+1,iyy+1,ij)*      wxx *      wyy
+              zs = inj_grid(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
+     &             inj_grid(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
+     &             inj_grid(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
+     &             inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (inj_zmmin <= zs+zinj .and. zs+zinj < inj_zmmax) then
                 ii = ins(is) - 1 - npinjtmp(is,ij)
@@ -607,28 +629,6 @@ c           --- Set some temporaries.
 
 c           --- The potential drop in front of the surface is now
 c           --- calculated by a call to getinj_phi from padvnc3d.
-
-c           --- Set factor so correct number of particles are loaded when
-c           --- symmetry is used.  With 2-fold, particles need to be loaded
-c           --- on both sides of the symmetry axis.  With 4-fold, particles
-c           --- need to be loaded in each of the four quadrants.
-            if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
-              spreadx = 1
-              spready = 1
-            elseif(solvergeom==RZgeom) then
-              spreadx = 1
-              if(l_inj_rz) then
-                spready = 0
-              else
-                spready = 1
-              end if
-            elseif(solvergeom==XZgeom) then
-              spreadx = 1
-              spready = 0
-            elseif(solvergeom==Zgeom) then
-              spreadx = 0
-              spready = 0
-            endif
 
             do is=1,ns
               vzinj = vzinject(ij,is)
