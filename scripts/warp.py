@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.97 2006/02/14 00:14:05 dave Exp $"
+warp_version = "$Id: warp.py,v 1.98 2006/02/14 00:14:42 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -508,19 +508,19 @@ w3d.ymmin, w3d.ymmax, w3d.zmmin, w3d.zmmax.
   if nx > 0:
     dx = (xmax - xmin)/nx
   else:
-    dx = 0
+    dx = 0.
     xmin = 0.
     xmax = 0.
   if ny > 0:
     dy = (ymax - ymin)/ny
   else:
-    dy = 0
+    dy = 0.
     ymin = 0.
     ymax = 0.
   if nz > 0:
     dz = (zmax - zmin)/nz
   else:
-    dz = 0
+    dz = 0.
     zmin = 0.
     zmax = 0.
 
