@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.96 2006/02/10 19:50:30 dave Exp $"
+warp_version = "$Id: warp.py,v 1.97 2006/02/14 00:14:05 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -493,18 +493,37 @@ the grid: nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax. The defaults values
 are respectively: w3d.nx, w3d.ny, w3d.nz, w3d.xmmin, w3d.xmmax,
 w3d.ymmin, w3d.ymmax, w3d.zmmin, w3d.zmmax.
   """
-  if nx is None:nx=w3d.nx
-  if ny is None:ny=w3d.ny
-  if nz is None:nz=w3d.nz
-  if xmin is None:xmin=w3d.xmmin
-  if xmax is None:xmax=w3d.xmmax
-  if ymin is None:ymin=w3d.ymmin
-  if ymax is None:ymax=w3d.ymmax
-  if zmin is None:zmin=w3d.zmmin
-  if zmax is None:zmax=w3d.zmmax
-  dx = (xmax - xmin)/nx
-  dy = (ymax - ymin)/ny
-  dz = (zmax - zmin)/nz
+
+  if nx is None: nx=w3d.nx
+  if ny is None: ny=w3d.ny
+  if nz is None: nz=w3d.nz
+  if xmin is None: xmin=w3d.xmmin
+  if xmax is None: xmax=w3d.xmmax
+  if ymin is None: ymin=w3d.ymmin
+  if ymax is None: ymax=w3d.ymmax
+  if zmin is None: zmin=w3d.zmmin
+  if zmax is None: zmax=w3d.zmmax
+
+  # --- Calculate the grid cell sizes, checking for zero values
+  if nx > 0:
+    dx = (xmax - xmin)/nx
+  else:
+    dx = 0
+    xmin = 0.
+    xmax = 0.
+  if ny > 0:
+    dy = (ymax - ymin)/ny
+  else:
+    dy = 0
+    ymin = 0.
+    ymax = 0.
+  if nz > 0:
+    dz = (zmax - zmin)/nz
+  else:
+    dz = 0
+    zmin = 0.
+    zmax = 0.
+
   x,y,z = getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz)
   nxyz = product(array(shape(x)))
   x.shape = (nxyz,)
