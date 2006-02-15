@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.41 $, $Date: 2006/02/11 01:04:08 $
+c@(#) File w3d_injection.F, version $Revision: 1.42 $, $Date: 2006/02/15 00:53:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2907,7 +2907,7 @@ c affects the edge of the emitting surface where only part of a grid cell
 c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
-      integer(ISZ):: ijp(npmax)
+      integer(ISZ):: ijp(pgroup%npmax)
       integer(ISZ):: is,ip,ix,iy,ij,ij1
       real(kind=8):: rinj,rinji,rr2,dd
       real(kind=8):: aa,az,px,py,wx1,wy1,wx0,wy0,ww
@@ -3042,7 +3042,7 @@ c affects the edge of the emitting surface where only part of a grid cell
 c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
-      integer(ISZ):: ijp(npmax)
+      integer(ISZ):: ijp(pgroup%npmax)
       integer(ISZ):: is,ip,ij,j,ij1
       real(kind=8):: dd
       real(kind=8):: ww
@@ -3295,7 +3295,7 @@ c the grid cell.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      allocate(ijp(npmax))
+      allocate(ijp(pgroup%npmax))
       allocate(ex_tmp(nn),ey_tmp(nn),ez_tmp(nn))
       allocate(dz_local(0:inj_nz))
 
