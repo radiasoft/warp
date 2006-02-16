@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.98 2006/02/14 00:14:42 dave Exp $"
+warp_version = "$Id: warp.py,v 1.99 2006/02/16 21:54:18 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -732,9 +732,51 @@ def fixrestoreswithmomentswithoutspecies(filename):
       a = getattr(top,v)
       a[...,-1] = d
 
+def fixrestoreswitholdparticlearrays(filename):
+  # --- Open the file
+  ff = PR.PR(filename,verbose=0)
+  # --- Check if it is an old file
+  # --- An old file would have top.npmaxb save in it
+  if 'npmaxb@top' not in ff.inquire_names():
+    ff.close()
+    return
+  # --- Setup top.pgroup
+  # --- Only this needs to be read in.
+  top.pgroup.ipmax_s = ff.read('npmax_s@top')
+  ff.close()
+  # --- Everything else has already been read in.
+  top.pgroup.ns = top.ns
+  top.pgroup.npmax = top.npmax
+  top.pgroup.npmaxi = top.npmaxi
+  top.pgroup.npid = top.npid
+  top.pgroup.npidmax = top.npidmax
+  top.pgroup.sm = top.sm
+  top.pgroup.sq = top.sq
+  top.pgroup.sw = top.sw
+  top.pgroup.ins = top.ins
+  top.pgroup.nps = top.nps
+  top.pgroup.ndts = top.ndts
+  top.pgroup.ldts = top.ldts
+  top.pgroup.dtscale = top.dtscale
+  top.pgroup.lselfb = top.lselfb
+  top.pgroup.fselfb = top.fselfb
+
+  top.pgroup.js = arange(top.ns)
+
+  top.pgroup.gaminv = top.gaminv
+  top.pgroup.xp = top.xp
+  top.pgroup.yp = top.yp
+  top.pgroup.zp = top.zp
+  top.pgroup.uxp = top.uxp
+  top.pgroup.uyp = top.uyp
+  top.pgroup.uzp = top.uzp
+  top.pgroup.pid = top.pid
+
+
 def restoreolddump(filename):
   fixrestoresfrombeforeelementoverlaps(filename)
   fixrestoreswithmomentswithoutspecies(filename)
+  fixrestoreswitholdparticlearrays(filename)
 
 ##############################################################################
 ##############################################################################
