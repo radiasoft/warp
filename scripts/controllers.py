@@ -50,7 +50,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.11 2006/01/19 19:44:50 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.12 2006/02/16 22:17:46 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -148,6 +148,16 @@ class ControllerFunction:
           continue
       else:
         result = f
+      if not callable(result):
+        print "\n\nWarning: a controller was found that is not callable."
+        print "Only callable objects can be installed."
+        print "It is possible that the callable's name has been overwritten"
+        print "by something not callable. This can happen during restart"
+        print "if a function name had later been used as a variable name."
+        if type(f) == StringType:
+          print "The name of the controller is ",f
+        print "\n\n"
+        continue
       yield result
 
   def installfuncinlist(self,f):
