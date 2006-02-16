@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.99 2006/02/16 21:54:18 dave Exp $"
+warp_version = "$Id: warp.py,v 1.100 2006/02/16 22:03:57 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -741,13 +741,14 @@ def fixrestoreswitholdparticlearrays(filename):
     ff.close()
     return
   # --- Setup top.pgroup
-  # --- Only this needs to be read in.
+  # --- Do this first since ipmax_s needs the correct size
+  top.pgroup.ns = top.ns
+  # --- Only these needs to be read in.
   top.pgroup.ipmax_s = ff.read('npmax_s@top')
+  top.pgroup.npmaxi = ff.read('npmaxi@top')
   ff.close()
   # --- Everything else has already been read in.
-  top.pgroup.ns = top.ns
   top.pgroup.npmax = top.npmax
-  top.pgroup.npmaxi = top.npmaxi
   top.pgroup.npid = top.npid
   top.pgroup.npidmax = top.npidmax
   top.pgroup.sm = top.sm
