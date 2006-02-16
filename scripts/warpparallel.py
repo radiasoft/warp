@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.56 2006/02/10 19:50:30 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.57 2006/02/16 01:27:43 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -525,6 +525,11 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   # --- the simulation which made the restart dump. The following
   # --- variables are needed to get that setup correctly.
   # --- In all cases, check if the variable was written out first.
+  if 'npmax@top' in vlistparallel:
+    itriple = array([me,me,1])
+    top.npmax = ff.read_part('npmax@top@parallel',itriple)[0]
+    top.pgroup.npmax = top.npmax
+    gchangeparticles()
   if 'nps_p' in vlistparallel:
     nps_p = ff.read('nps_p@parallel')
     nps_p0 = zeros((top.nslaves+1,top.ns+1))
@@ -534,6 +539,8 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
     top.ins[:] = ff.read_part('ins@top@parallel',itriple)[0,...]
   if 'nps@top' in vlistparallel:
     top.nps[:] = ff.read_part('nps@top@parallel',itriple)[0,...]
+  top.pgroup.ipmax_s[1:-1] = top.ins[1:] - 1
+  top.pgroup.ipmax_s[-1] = top.npmax
 
   if 'npslost_p' in vlistparallel:
     npslost_p = ff.read('npslost_p@parallel')
@@ -589,8 +596,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                            gpdbname='conductors%d@parallel'%me)
 
   # --- Allocate any groups with parallel arrays
-  top.pgroup.npmax = top.npmax
-  gchangeparticles()
   gchange("LostParticles")
   gchange("Particlesxy")
 
