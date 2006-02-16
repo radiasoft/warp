@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.100 2006/02/16 20:06:46 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.101 2006/02/16 21:30:31 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1799,8 +1799,8 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
   - axis: selects axis to plot, either 'x' or 'y'
   """
   if zu is None and zl is None:
-    zl = w3d.zmmin + top.zbeam
-    zu = w3d.zmmax + top.zbeam
+    zl = w3d.zmminglobal + top.zbeam
+    zu = w3d.zmmaxglobal + top.zbeam
   if zu is not None and zoffset is None and top.zlatperi > 0.:
     # --- This allows multiple periodic repeats of the lattice to be
     # --- plotted.
@@ -1854,7 +1854,7 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
       if gridframe:
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
-        zz = (zz - w3d.zmmin)/w3d.dz
+        zz = (zz - w3d.zmminglobal)/w3d.dz
       if outline:
         plg(rr1,zz,color=color)
         plg(rr2,zz,color=color)
@@ -1887,8 +1887,8 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
         rrl2 = rrl2/w3d.dx
         rrr1 = rrr1/w3d.dx
         rrr2 = rrr2/w3d.dx
-        zzl = (zzl - w3d.zmmin)/w3d.dz
-        zzr = (zzr - w3d.zmmin)/w3d.dz
+        zzl = (zzl - w3d.zmminglobal)/w3d.dz
+        zzr = (zzr - w3d.zmminglobal)/w3d.dz
       if outline:
         plg(rrl1,zzl,color=color)
         plg(rrl2,zzl,color=color)
