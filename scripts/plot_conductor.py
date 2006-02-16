@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.99 2006/01/21 01:11:44 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.100 2006/02/16 20:06:46 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -47,7 +47,9 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
   interior = conductors.interior
   nn = interior.n
   if nn > 0:
-    sx,sy,sz = take(['x','y','z'],[ix,iy,iz])
+    sx = ['x','y','z'][ix]
+    sy = ['x','y','z'][iy]
+    sz = ['x','y','z'][iz]
     lx = getattr(conductors,'levell'+sx)[mglevel]
     ly = getattr(conductors,'levell'+sy)[mglevel]
     lz = getattr(conductors,'levell'+sz)[mglevel]
@@ -82,7 +84,9 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
   subgrid = [evensubgrid,oddsubgrid][pp]
   nn = subgrid.n
   if nn > 0:
-    sx,sy,sz = take(['x','y','z'],[ix,iy,iz])
+    sx = ['x','y','z'][ix]
+    sy = ['x','y','z'][iy]
+    sz = ['x','y','z'][iz]
     lx = getattr(conductors,'levell'+sx)[mglevel]
     ly = getattr(conductors,'levell'+sy)[mglevel]
     lz = getattr(conductors,'levell'+sz)[mglevel]
@@ -180,7 +184,9 @@ by the conductor number.
   interior = conductors.interior
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
-  sx,sy,sz = take(['x','y','z'],[ix,iy,iz])
+  sx = ['x','y','z'][ix]
+  sy = ['x','y','z'][iy]
+  sz = ['x','y','z'][iz]
   # --- Get the numbers of conductor points
   nc = interior.n
   ne = evensubgrid.n
