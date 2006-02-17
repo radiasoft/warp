@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.151 $, $Date: 2005/07/12 19:33:25 $
+c@(#) File DW3D.F, version $Revision: 3.152 $, $Date: 2006/02/17 22:54:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -395,7 +395,7 @@ c=============================================================================
       use InMesh3d
       use InDiag
       use InPart
-      use Particles
+      use Particles,Only: pgroup
       use Picglb
       use Picglb3d
       use Fields3d
@@ -414,8 +414,6 @@ c X and Y.
 c The arrays divvx, divvx2, divvy, and divvy2 set up so that this routine can
 c be called several times to build up data.  When itask is non-zero, the
 c arrays are not cleared out.
-
-
 
       integer(ISZ):: i,ip,ix,iy
       real(kind=8):: ddxi,ddyi,wx,wy
@@ -437,33 +435,33 @@ c Set inverse grid cell lengths
       ddyi = ndiv/(yplmax - yplmin)
 
 c loop through particles
-      do ip=ins(1),ins(1)+nps(1)-1
+      do ip=pgroup%ins(1),pgroup%ins(1)+pgroup%nps(1)-1
 
 c if particle within z grid cell and not lost, accumulate
-        if (zmesh(iz)+zbeam < zp(ip) .and.
-     &                           zp(ip) < zmesh(iz+1)+zbeam
-     &      .and. uzp(ip) /= 0.) then
-          ix = (xp(ip) - xplmin)*ddxi
-          iy = (yp(ip) - yplmin)*ddyi
+        if (zmesh(iz)+zbeam < pgroup%zp(ip) .and.
+     &                           pgroup%zp(ip) < zmesh(iz+1)+zbeam
+     &      .and. pgroup%uzp(ip) /= 0.) then
+          ix = (pgroup%xp(ip) - xplmin)*ddxi
+          iy = (pgroup%yp(ip) - yplmin)*ddyi
 c         if within x grid, accumulate
           if (ix >= 0 .and. ix < ndiv) then
-            wx = (xp(ip) - xplmin)*ddxi - ix
+            wx = (pgroup%xp(ip) - xplmin)*ddxi - ix
             wnpx(ix) = wnpx(ix) + 1. - wx
             wnpx(ix+1) = wnpx(ix+1) + wx
-            divvx(ix+1)  = divvx(ix+1) +   uxp(ip)/uzp(ip)*    wx
-            divvx2(ix+1) = divvx2(ix+1) + (uxp(ip)/uzp(ip))**2*wx
-            divvx(ix)  = divvx(ix) +   uxp(ip)/uzp(ip)*    (1. - wx)
-            divvx2(ix) = divvx2(ix) + (uxp(ip)/uzp(ip))**2*(1. - wx)
+            divvx(ix+1)  = divvx(ix+1) +   pgroup%uxp(ip)/pgroup%uzp(ip)*wx
+            divvx2(ix+1) = divvx2(ix+1) + (pgroup%uxp(ip)/pgroup%uzp(ip))**2*wx
+            divvx(ix)  = divvx(ix) +   pgroup%uxp(ip)/pgroup%uzp(ip)*(1. - wx)
+            divvx2(ix) = divvx2(ix) + (pgroup%uxp(ip)/pgroup%uzp(ip))**2*(1.-wx)
           endif
 c         if within y grid, accumulate
           if (iy >= 0 .and. iy < ndiv) then
-            wy = (yp(ip) - yplmin)*ddyi - iy
+            wy = (pgroup%yp(ip) - yplmin)*ddyi - iy
             wnpy(iy) = wnpy(iy) + 1. - wy
             wnpy(iy+1) = wnpy(iy+1) + wy
-            divvy(iy)  = divvy(iy) +   uyp(ip)/uzp(ip)*    (1. - wy)
-            divvy2(iy) = divvy2(iy) + (uyp(ip)/uzp(ip))**2*(1. - wy)
-            divvy(iy+1)  = divvy(iy+1) +   uyp(ip)/uzp(ip)*    wy
-            divvy2(iy+1) = divvy2(iy+1) + (uyp(ip)/uzp(ip))**2*wy
+            divvy(iy)  = divvy(iy) +   pgroup%uyp(ip)/pgroup%uzp(ip)*(1.-wy)
+            divvy2(iy) = divvy2(iy) + (pgroup%uyp(ip)/pgroup%uzp(ip))**2*(1.-wy)
+            divvy(iy+1)  = divvy(iy+1) +   pgroup%uyp(ip)/pgroup%uzp(ip)*wy
+            divvy2(iy+1) = divvy2(iy+1) + (pgroup%uyp(ip)/pgroup%uzp(ip))**2*wy
           endif
         endif
       enddo
