@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.11 $, $Date: 2005/11/03 17:33:29 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.12 $, $Date: 2006/02/17 23:51:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -120,7 +120,8 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine loadj3d(ins_i,nps_i,is_i,lzero)
+      subroutine loadj3d(ins_i,nps_i,is_i,lzero,pgroup)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimersf3d
       use InGen
@@ -128,10 +129,11 @@ c=============================================================================
       use InPart
       use Picglb
       use Picglb3d
-      use Particles
+      use Particles,Only: wpid
       use BFieldGrid
       use GridBoundary3d
       use f3d_bfield_interfaces
+      type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -152,7 +154,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
 c     --- Ensure that the jp array is setup properly
       if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call setupbfieldsforparticles3d(ns,ndts,it,bfield,bfieldp)
+        call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
       endif
 
 c     --- zero jp if requested
@@ -166,7 +168,7 @@ c     --- zero jp if requested
 c     --- set limits on loop over species
       if (is_i == -1) then
         is1 = 1
-        is2 = ns
+        is2 = pgroup%ns
       else
         is1 = is_i
         is2 = is_i
@@ -187,21 +189,21 @@ c       --- cleared out.
 c       if (solvergeom == AMRgeom) call clearpart(is,1)
 
 c       --- get loop limits for particles if needed
-        if (ins_i == -1) ins_u = ins(is)
-        if (nps_i == -1) nps_u = nps(is)
+        if (ins_i == -1) ins_u = pgroup%ins(is)
+        if (nps_i == -1) nps_u = pgroup%nps(is)
 
 c       --- Scale the weight, sw, by the time step scale size. This only
 c       --- makes sense for steady-state and slice modes. In time-dependent
 c       --- mode, it is assumed that dtscale has not been changed from 1.
-        swtmp = sw(is)*dtscale(is)
+        swtmp = pgroup%sw(is)*pgroup%dtscale(is)
 
         if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
           ipmin = ins_u
           if (nps_u > 0) then
-            if (ndts(is)>1) then
+            if (pgroup%ndts(is)>1) then
 c             --- This code would be better if it were in setj3d, but since
 c             --- jp is passed into it, this must be done here.
-              if (mod(it+1,ndts(is))==0) then
+              if (mod(it+1,pgroup%ndts(is))==0) then
 c                --- If this species is being advanced this step, then
 c                --- deposit its j into jptmp.
                  jpcopy => bfieldp%j
@@ -216,26 +218,33 @@ c                --- just add its saved jptmp into jp.
             end if
             if(wpid==0) then
               call setj3d(bfieldp,bfieldp%j,nps_u,
-     &                    xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
-     &                    zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                    uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
-     &                    uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
-     &                    sq(is)*swtmp(1),0,swtmp,depos,l2symtry,l4symtry)
+     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                    pgroup%sq(is)*swtmp(1),
+     &                    0,swtmp,depos,l2symtry,l4symtry)
             else
 c             --- Due to compiler bug, the pid array needs to be temporarily
 c             --- pointed to in order to be properly passed into setj3d.
 c             --- When pid is passed directly into setj3d, it is just all
 c             --- zeros.
-              pidtmp => pid(ipmin:ipmin+nps_u-1,wpid)
+              pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
               call setj3d(bfieldp,bfieldp%j,nps_u,
-     &                    xp(ipmin:ipmin+nps_u-1),yp(ipmin:ipmin+nps_u-1),
-     &                    zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                    uxp(ipmin:ipmin+nps_u-1),uyp(ipmin:ipmin+nps_u-1),
-     &                    uzp(ipmin:ipmin+nps_u-1),gaminv(ipmin:ipmin+nps_u-1),
-     &                    sq(is)*swtmp(1),nps_u,pidtmp,
+     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                    pgroup%sq(is)*swtmp(1),nps_u,pidtmp,
      &                    depos,l2symtry,l4symtry)
             endif
-            if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
+            if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
 c             --- If this species is being advanced this step, then restore
 c             --- jp and copy its j into jp.
               bfieldp%j => jpcopy
