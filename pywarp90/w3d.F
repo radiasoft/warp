@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.228 $, $Date: 2006/02/10 19:50:34 $
+c@(#) File W3D.F, version $Revision: 3.229 $, $Date: 2006/02/17 23:49:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -412,7 +412,7 @@ c  Load the particles, calculate the charge density
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
       call loadrho3d(-1,-1,-1,.true.)
-      if (bfstype >= 0) call loadj3d(-1,-1,-1,.true.)
+      if (bfstype >= 0) call loadj3d(-1,-1,-1,.true.,pgroup)
       call remark(" ---  done")
 
 c  Set up for injection
@@ -464,17 +464,12 @@ c  and set limits for plots
 
 c     call remark(" ---  Allocating scratch space for plots")
 c     if (npsplt == 0) npsplt = nparpgrp-1
-c     call gchange("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
       if (xplmax == 0.) xplmax = xmmax
       if (yplmin == 0.) yplmin = -ymmax
       if (yplmax == 0.) yplmax = ymmax
       if (zplmin == 0.) zplmin = zmmin
       if (zplmax == 0.) zplmax = zmmax
-
-c  Choose which particles will be plotted in "subset" plots
-
-      call psubsets
 
 c  Setup history mechanism
 
@@ -624,7 +619,6 @@ c=============================================================================
       use Z_Moments
       use Z_arrays
       use Hist
-c     use Pspwork
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -659,7 +653,6 @@ c  release storage
       call gfree ("Lattice")
       call gfree ("LatticeInternal")
       call gfree ("Particles")
-c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
 !$OMP MASTER
@@ -1915,7 +1908,7 @@ c        if (any((mod(it,ndts)==0) .and. (nps>0))) then
  
 c       --- Collect charge density (3d)
         call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
-        if (bfstype >= 0) call loadj3d(-1,-1,-1,.not. laccumulate_rho)
+        if (bfstype >= 0) call loadj3d(-1,-1,-1,.not. laccumulate_rho,pgroup)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
