@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.100 2006/02/16 22:03:57 dave Exp $"
+warp_version = "$Id: warp.py,v 1.101 2006/02/17 23:51:48 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -399,7 +399,7 @@ package. Only w3d and wxy have field solves defined.
 
 
 #=============================================================================
-def loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+def loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=true,pgroup=None):
   """
 loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
 This routine provides a simple call from the interpreter to load the
@@ -424,11 +424,14 @@ The default is to zero out rho.
   # --- only species number 1 is included
   if (nps_i != -1 and is_i == -1): is_i = 1
 
+  # --- If pgroup is not given, then use the default one in top.
+  if pgroup is None: pgroup = top.pgroup
+
   # --- Now call the appropriate compiled interface routine based on the
   # --- current package
   currpkg = package()[0]
   if (currpkg == "w3d"):
-    loadj3d(ins_i,nps_i,is_i,lzero)
+    loadj3d(ins_i,nps_i,is_i,lzero,pgroup)
   elif (currpkg == "wxy"):
     #loadrhoxy(ins_i,nps_i,is_i,lzero)
     print "loadj  not support in wxy yet"
