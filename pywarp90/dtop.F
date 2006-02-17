@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.138 $, $Date: 2005/10/28 23:50:39 $
+c@(#) File DTOP.F, version $Revision: 3.139 $, $Date: 2006/02/17 22:48:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -305,7 +305,7 @@ c=============================================================================
       use Io
       use Ch_var
       use Constant
-      use Particles
+      use Particles,Only: pgroup,npmax
       use Picglb
       use OutParams
       use Beam_acc
@@ -324,9 +324,9 @@ c  Current density at the center of the beam
 c  Charge density at the center of the beam
       chrgdens = currdens/dvnz(vbeam)
 c  Number density
-      numbdens = chrgdens/dvnz(sq(1))
+      numbdens = chrgdens/dvnz(zion*echarge)
 c  Plasma frequency
-      omegap = sqrt(abs(numbdens*sq(1)**2/dvnz(eps0)/dvnz(sm(1))))
+      omegap = sqrt(abs(numbdens*(zion*echarge)**2/dvnz(eps0)/dvnz(aion*amu)))
       omegapdt = omegap*dt
       omegaptq = omegap*(tunelen/dvnz(vbeam))
       taup = 2.*Pi/dvnz(omegap)
@@ -351,13 +351,13 @@ c  Longitudinal Debye wavelength
 c  Beam velocity
       vbeamoc = vbeam/dvnz(clight)
 c  Totals
-      npreal  = np*sw(1)
-      totmass = np*sw(1)*sm(1)
-      totchrg = np*sw(1)*sq(1)
+      npreal  = npmax*pgroup%sw(1)
+      totmass = npmax*pgroup%sw(1)*(aion*amu)
+      totchrg = npmax*pgroup%sw(1)*(zion*echarge)
 c  Generalized perveance
-      genperv = ibeam*sq(1)/dvnz(2.*Pi*eps0*sm(1)*(vbeam*gammabar)**3)
+      genperv = ibeam*(zion*echarge)/dvnz(2.*Pi*eps0*(aion*amu)*(vbeam*gammabar)**3)
 c  Characteristic current
-      charcurr = 4.*Pi*eps0*sm(1)*clight**3/dvnz(sq(1))
+      charcurr = 4.*Pi*eps0*(aion*amu)*clight**3/dvnz((zion*echarge))
 c  Budker parameter
       budker = ibeam/dvnz(charcurr*vbeam/clight)
 c  Particle Betatron frequencies, both undepressed and depressed in the 
@@ -448,9 +448,9 @@ c  Start a new frame since they all don't fit on one
       call remark  (textline)
       write (textline,20) "Kinetic energy = ",ekin," eV"
       call remark  (textline)
-      write (textline,20) "Weight of simulation particles = ",sw(1)," "
+      write (textline,20) "Weight of simulation particles = ",pgroup%sw(1)," "
       call remark  (textline)
-      write (textline,30) "Number of simulation particles = ",np," "
+      write (textline,30) "Number of simulation particles = ",npmax," "
       call remark  (textline)
       write (textline,20) "Number of real particles = ",npreal," "
       call remark  (textline)
@@ -569,53 +569,6 @@ c  Write to text output file
       return
       end
 c============================================================================
-      subroutine psubsets
-      use InDiag
-      use InPart
-      use Pspwork
-      use Particles
-
-c  Establishes particle subsets used for phase space plots.
-c  The same subsets are used for all time, since we don't want
-c  movies to flicker as subsets change.
-
-
-      integer(ISZ):: iset,ip,ndone,nnew
-      real(kind=8):: fracplot,wranf
-
-      do iset = 1, NSUBSETS
-         if (npplot(iset).gt.0 .and. inclump(iset).gt.0) then
-            if (inclump(iset)*(npsplt/inclump(iset)) .ne. npsplt) then
-               call remark("PSUBSETS Error: npsplt not divisible by inclump.")
-               call kaboom (0)
-            endif
-            fracplot = min( 1., 1.*npplot(iset)/max(1.*np_s(1), 1.) )
-            ntopick(iset) = fracplot * inclump(iset) + 0.5
-            if (ntopick(iset) .lt. 1) then
-               call remark ("PSUBSETS Warning: ntopick < 1, set to 1")
-               call remark ("  so plots are not devoid of particles.")
-               call remark ("  Try a bigger clump size (inclump).")
-               ntopick(iset) = 1
-            endif
-            do ip=1,npsplt
-              isubset(ip,iset) = 0
-            enddo
-            do ip = 1, npsplt, inclump(iset)
-               ndone = 0
-               do while (ndone .lt. ntopick(iset))
-                  nnew = inclump(iset) * wranf()
-                  if (isubset(ip+nnew,iset) == 0) then
-                     ndone = ndone + 1
-                     isubset(ip+nnew,iset) = 1
-                  endif
-               end do
-            enddo
-         endif
-      enddo
-
-      return
-      end
-c============================================================================
       subroutine psplots (freqflag)
       use InDiag
       use InPltCtl
@@ -673,7 +626,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.138 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.139 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -2004,7 +1957,7 @@ c===========================================================================
       use InDiag
       use Picglb
       use Win_Moments
-      use Particles
+      use Particles,Only: pgroup
       integer(ISZ):: n
       real(kind=8):: threshold(n)
       integer(ISZ):: is,iw,ngridw,ngridh
@@ -2037,8 +1990,8 @@ c ---   - tepsx,tepsy
       real(kind=8):: dwxi,dhxi,dwyi,dhyi
 
 c     --- Set some temporaries
-      i1 = ins(is)
-      i2 = ins(is)+nps(is)-1
+      i1 = pgroup%ins(is)
+      i2 = pgroup%ins(is)+pgroup%nps(is)-1
       zw1 = zwindows(1,iw)+zbeam
       zw2 = zwindows(2,iw)+zbeam
       js = min(is,nswind)
@@ -2049,16 +2002,17 @@ c     --- Find min and max of position and velocity
       mines = +LARGEPOS
       maxes = -LARGEPOS
       do ip=i1,i2
-        if (uzp(ip) /= 0. .and. zw1 <= zp(ip) .and. zp(ip) <= zw2) then
-          uzpi = 1./uzp(ip)
-          mines(1) = min(mines(1),xp(ip))
-          maxes(1) = max(maxes(1),xp(ip))
-          mines(2) = min(mines(2),yp(ip))
-          maxes(2) = max(maxes(2),yp(ip))
-          vms = uxp(ip)*uzpi - xp(ip)*slopex
+        if (pgroup%uzp(ip) /= 0. .and.
+     &      zw1 <= pgroup%zp(ip) .and. pgroup%zp(ip) <= zw2) then
+          uzpi = 1./pgroup%uzp(ip)
+          mines(1) = min(mines(1),pgroup%xp(ip))
+          maxes(1) = max(maxes(1),pgroup%xp(ip))
+          mines(2) = min(mines(2),pgroup%yp(ip))
+          maxes(2) = max(maxes(2),pgroup%yp(ip))
+          vms = pgroup%uxp(ip)*uzpi - pgroup%xp(ip)*slopex
           mines(3) = min(mines(3),vms)
           maxes(3) = max(maxes(3),vms)
-          vms = uyp(ip)*uzpi - yp(ip)*slopey
+          vms = pgroup%uyp(ip)*uzpi - pgroup%yp(ip)*slopey
           mines(4) = min(mines(4),vms)
           maxes(4) = max(maxes(4),vms)
         endif
@@ -2084,12 +2038,16 @@ c     --- within range (min,max]. Calculate grid cell sizes.
 c     --- Bin up the data onto a 2-D grid
       xxpmesh = 0.
       yypmesh = 0.
-      call getpsgrd(nps(is),xp(ins(is)),uxp(ins(is)),ngridw,ngridh,xxpmesh,
+      i1 = pgroup%ins(is)
+      i2 = pgroup%ins(is) + pgroup%nps(is) - 1
+      call getpsgrd(pgroup%nps(is),pgroup%xp(i1:i2),pgroup%uxp(i1:i2),
+     &              ngridw,ngridh,xxpmesh,
      &              mines(1),maxes(1),mines(3),maxes(3),
-     &              zw1,zw2,zp(ins(is)),uzp(ins(is)),slopex)
-      call getpsgrd(nps(is),yp(ins(is)),uyp(ins(is)),ngridw,ngridh,yypmesh,
+     &              zw1,zw2,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),slopex)
+      call getpsgrd(pgroup%nps(is),pgroup%yp(i1:i2),pgroup%uyp(i1:i2),
+     &              ngridw,ngridh,yypmesh,
      &              mines(2),maxes(2),mines(4),maxes(4),
-     &              zw1,zw2,zp(ins(is)),uzp(ins(is)),slopey)
+     &              zw1,zw2,pgroup%zp(i1:i2),pgroup%uzp(i1:i2),slopey)
 
 #ifdef MPIPARALLEL
       call parallelsumrealarray(xxpmesh,(1+ngridw)*(1+ngridh))
@@ -2105,11 +2063,12 @@ c     --- Calculate average of particles in regions meeting threshold.
       nn = 0
       aves = 0.
       do ip=i1,i2
-        if (uzp(ip) /= 0. .and. zw1 <= zp(ip) .and. zp(ip) <= zw2) then
-          uzpi = 1./uzp(ip)
-          jw = int((xp(ip) - mines(1))*dwxi)
-          ww =    ((xp(ip) - mines(1))*dwxi) - jw
-          vms = uxp(ip)*uzpi - slopex*xp(ip)
+        if (pgroup%uzp(ip) /= 0. .and.
+     &      zw1 <= pgroup%zp(ip) .and. pgroup%zp(ip) <= zw2) then
+          uzpi = 1./pgroup%uzp(ip)
+          jw = int((pgroup%xp(ip) - mines(1))*dwxi)
+          ww =    ((pgroup%xp(ip) - mines(1))*dwxi) - jw
+          vms = pgroup%uxp(ip)*uzpi - slopex*pgroup%xp(ip)
           jh = int((vms - mines(3))*dhxi)
           wh =    ((vms - mines(3))*dhxi) - jh
           density = xxpmesh(jw  ,jh  )*(1.-ww)*(1.-wh) +
@@ -2118,15 +2077,15 @@ c     --- Calculate average of particles in regions meeting threshold.
      &              xxpmesh(jw+1,jh+1)*(   ww)*(   wh)
           where (density > threshold)
             nn(1,:) = nn(1,:) + 1
-            aves(1,1,:) = aves(1,1,:) + xp(ip)
+            aves(1,1,:) = aves(1,1,:) + pgroup%xp(ip)
             aves(1,2,:) = aves(1,2,:) + vms
-            aves(1,3,:) = aves(1,3,:) + xp(ip)**2
+            aves(1,3,:) = aves(1,3,:) + pgroup%xp(ip)**2
             aves(1,4,:) = aves(1,4,:) + vms**2
-            aves(1,5,:) = aves(1,5,:) + xp(ip)*vms
+            aves(1,5,:) = aves(1,5,:) + pgroup%xp(ip)*vms
           end where
-          jw = int((yp(ip) - mines(2))*dwyi)
-          ww =    ((yp(ip) - mines(2))*dwyi) - jw
-          vms = uyp(ip)*uzpi - slopey*yp(ip)
+          jw = int((pgroup%yp(ip) - mines(2))*dwyi)
+          ww =    ((pgroup%yp(ip) - mines(2))*dwyi) - jw
+          vms = pgroup%uyp(ip)*uzpi - slopey*pgroup%yp(ip)
           jh = int((vms - mines(4))*dhyi)
           wh =    ((vms - mines(4))*dhyi) - jh
           density = yypmesh(jw  ,jh  )*(1.-ww)*(1.-wh) +
@@ -2135,11 +2094,11 @@ c     --- Calculate average of particles in regions meeting threshold.
      &              yypmesh(jw+1,jh+1)*(   ww)*(   wh)
           where (density > threshold)
             nn(2,:) = nn(2,:) + 1
-            aves(2,1,:) = aves(2,1,:) + yp(ip)
+            aves(2,1,:) = aves(2,1,:) + pgroup%yp(ip)
             aves(2,2,:) = aves(2,2,:) + vms
-            aves(2,3,:) = aves(2,3,:) + yp(ip)**2
+            aves(2,3,:) = aves(2,3,:) + pgroup%yp(ip)**2
             aves(2,4,:) = aves(2,4,:) + vms**2
-            aves(2,5,:) = aves(2,5,:) + yp(ip)*vms
+            aves(2,5,:) = aves(2,5,:) + pgroup%yp(ip)*vms
           end where
         endif
       enddo
