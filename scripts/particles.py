@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.34 2006/01/20 01:08:56 dave Exp $"
+particles_version = "$Id: particles.py,v 1.35 2006/02/17 23:52:12 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -117,31 +117,6 @@ def populationsample(population,k,self=random.Random(0)):
                 j = _int(random() * n)
             result[i] = selected[j] = population[j]
     return result
-
-# --- Old method which replicates the numbers selected by the fortran
-# --- routine psubsets. Note that that method breaks down when
-# --- nps/inclump[i] > npplot[i], when nps/inclump[i] particles will be plotted.
-# --- This version is maintained in case a user wants a close comparison with
-# --- the Basis version.
-def setup_subsetsold(js=0):
-  """Old subset calculator, do not use"""
-  global psubset
-  # --- Print warning if npsplt is zero, in which case the subsets won't work
-  if (top.npsplt == 0):
-    remark("WARNING: npsplt is zero, subsets not calculated")
-    return
-  d2 = len(top.npplot)
-  # --- Create temp ii array and copy top.isubset into it. Then replicate
-  # --- the data throughout ii.
-  for i in xrange(0,d2):
-    n = sum(top.isubset[:,i])
-    nsets = int(min(top.np_s[js],top.npmax)/top.npsplt+1)
-    ii = zeros(n*nsets,'i') + top.npmax
-    ii[0:n] = nonzero(top.isubset[:,i])
-    for j in xrange(1,nsets):
-      ii[j*n:j*n+n] = ii[0:n] + j*top.npsplt
-    ii = compress(less(ii,top.npmax),ii)
-    psubset.append(ii)
 
 ##########################################################################
 #-------------------------------------------------------------------------
