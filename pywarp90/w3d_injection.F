@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.42 $, $Date: 2006/02/15 00:53:57 $
+c@(#) File w3d_injection.F, version $Revision: 1.43 $, $Date: 2006/02/17 00:55:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -168,96 +168,121 @@ c         --- Loop over species.
             if (mod(it,ndts(is))/=0) cycle
             fulldt_s    = dt*ndts(is)*dtscale(is)
 
-            rnn = rnpinje_s(is)*finject(ij,is)
-c                 --- Add a random number to the number of particles injected
-c                 --- so that the average number of particles injected is
-c                 --- correct.  For example, if rnn < 1., without the
-c                 --- addition of the random number, no particles would ever
-c                 --- be injected.  With the random number, particles will be
-c                 --- injected and but the average number will be less than 1.
-            rnn = rnn + wranf()
-            nn = int(rnn)
-            if(nn==0) cycle
+            if (l_inj_user_particles) then
 
-c           --- Check if there is enough room for the new injected particles.
-            call chckpart(is,nn,0,.true.)
+              call execuser("generateuserparticlesforinjection")
+              rnn = npgrp
+              nn = npgrp
+              if (nn == 0) cycle
 
-c           --- Make sure there is enough temp space
-            if (nn > npgrp) then
-              npgrp = nn
-              call gallot("Setpwork3d",0)
-            endif
+c             --- Check if there is enough room for the new injected particles.
+              call chckpart(is,nn,0,.true.)
 
-c           --- set random numbers
-c           --- rt(ip) used to hold f(r**2)=constant
-c           --- tt(ip) used to hold f(theta)=constant if injection
-c           --- is over an elliptical surface
-            do ip = 1,nn
-              rt(ip) = wrandom(xrandom,injctcnt+ip-1,dig1,1,1)
-              rt(ip) = rt(ip)*(1.-(ainjmin(ij)*ainji)**2) +
-     &                            (ainjmin(ij)*ainji)**2
-              tt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
-            enddo
-
-            if (l_inj_regular) then
-              do ip=1,nn
-                rt(ip) = (ip-1.)/(nn-1.)
-              enddo
-            endif
-
-c           --- Transform the positions into a Gaussian if distrbtn is GA0
-            if (distrbtn == "GA0") then
-              do ip = 1,nn
-                rt(ip) = -0.5*log(rt(ip))
-              enddo
-            endif
-
-c           --- or rt(ip) used to hold f(r)~(h+(1-h)r^2)
-            if (hollow == 2) then
-              do ip = 1,nn
-                rt(ip) = (1 + hollow_h)*rt(ip)/
-     &               (hollow_h + sqrt(hollow_h**2 + (1. - hollow_h**2)*rt(ip)))
-              enddo
-            endif
-
-c           --- Get velocity distribution.
-            if (distrbtn == "K-V") then
-c             --- For the K-V load, need another random number.
-              do ip = 1,nn
-                t = wrandom(vtrandom,injctcnt+ip-1,dig3,1,1)
-                rr = sqrt(1. - rt(ip))
-                uxt(ip) = rr*cos(2.*pi*t)
-                uyt(ip) = rr*sin(2.*pi*t)
-              enddo
             else
-c             --- Default is to use a Semi-Gaussian distribution
-c             --- Note that the loops must be broken up in this way since the
-c             --- routine wrandomgauss must be called in the correct order.
+
+              rnn = rnpinje_s(is)*finject(ij,is)
+c             --- Add a random number to the number of particles injected
+c             --- so that the average number of particles injected is
+c             --- correct.  For example, if rnn < 1., without the
+c             --- addition of the random number, no particles would ever
+c             --- be injected.  With the random number, particles will be
+c             --- injected and but the average number will be less than 1.
+              rnn = rnn + wranf()
+              nn = int(rnn)
+              if(nn==0) cycle
+
+c             --- Check if there is enough room for the new injected particles.
+              call chckpart(is,nn,0,.true.)
+
+c             --- Make sure there is enough temp space
+              if (nn > npgrp) then
+                npgrp = nn
+                call gallot("Setpwork3d",0)
+              endif
+
+c             --- set random numbers
+c             --- rt(ip) used to hold f(r**2)=constant
+c             --- tt(ip) used to hold f(theta)=constant if injection
+c             --- is over an elliptical surface
               do ip = 1,nn
-                uxt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig3,dig4,
-     &                                 1,1,.true.)
+                rt(ip) = wrandom(xrandom,injctcnt+ip-1,dig1,1,1)
+                rt(ip) = rt(ip)*(1.-(ainjmin(ij)*ainji)**2) +
+     &                              (ainjmin(ij)*ainji)**2
+                tt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
               enddo
+
+              if (l_inj_regular) then
+                do ip=1,nn
+                  rt(ip) = (ip-1.)/(nn-1.)
+                enddo
+              endif
+
+c             --- Transform the positions into a Gaussian if distrbtn is GA0
+              if (distrbtn == "GA0") then
+                do ip = 1,nn
+                  rt(ip) = -0.5*log(rt(ip))
+                enddo
+              endif
+
+c             --- or rt(ip) used to hold f(r)~(h+(1-h)r^2)
+              if (hollow == 2) then
+                do ip = 1,nn
+                  rt(ip) = (1 + hollow_h)*rt(ip)/
+     &                 (hollow_h + sqrt(hollow_h**2 + (1. - hollow_h**2)*rt(ip)))
+                enddo
+              endif
+
+c             --- Get velocity distribution.
+              if (distrbtn == "K-V") then
+c               --- For the K-V load, need another random number.
+                do ip = 1,nn
+                  t = wrandom(vtrandom,injctcnt+ip-1,dig3,1,1)
+                  rr = sqrt(1. - rt(ip))
+                  uxt(ip) = rr*cos(2.*pi*t)
+                  uyt(ip) = rr*sin(2.*pi*t)
+                enddo
+              else
+c               --- Default is to use a Semi-Gaussian distribution
+c               --- Note that the loops must be broken up in this way since the
+c               --- routine wrandomgauss must be called in the correct order.
+                do ip = 1,nn
+                  uxt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig3,dig4,
+     &                                   1,1,.true.)
+                enddo
+                do ip = 1,nn
+                  uyt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig5,dig6,
+     &                                   1,1,.true.)
+                enddo
+              endif
+
+c             --- Axial thermal spread
               do ip = 1,nn
-                uyt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig5,dig6,
-     &                                 1,1,.true.)
+                uzt(ip) = wrandomgauss(vzrandom,injctcnt+ip-1,dig7,dig8,
+     &                                   1,1,.true.)
               enddo
+
+c             --- Initialize positions as rectangular or elliptical depending on linj_rectangle
+              if(linj_rectangle) then
+                do ip=1,nn
+                  xt(ip) = ainj*(2.*rt(ip)-1.0)
+                  yt(ip) = binj*(2.*tt(ip)-1.0)
+                enddo
+              else if (l_inj_rz) then
+                do ip=1,nn
+                  tt(ip) = 2.*pi*tt(ip)
+                  xt(ip) = ainj*rt(ip)*cos(tt(ip))
+                  yt(ip) = binj*rt(ip)*sin(tt(ip))
+                enddo
+              else
+                do ip=1,nn
+c                 --- Convert r**2 into r and tt into a random angle
+                  rt(ip) = sqrt(rt(ip))
+                  tt(ip) = 2.*pi*tt(ip)
+                  xt(ip) = ainj*rt(ip)*cos(tt(ip))
+                  yt(ip) = binj*rt(ip)*sin(tt(ip))
+                enddo
+              endif
             endif
-
-c           --- Axial thermal spread
-            do ip = 1,nn
-              uzt(ip) = wrandomgauss(vzrandom,injctcnt+ip-1,dig7,dig8,
-     &                                 1,1,.true.)
-            enddo
-
-c           --- Increment the particle counter for the digit reversed seed
-            injctcnt = injctcnt + nn
-
-c           --- Load particles into initial positions.
-c           --- Shifts axial position by values in inj_grid.
-c           --- uses beam envelope of ainject, binject, apinject and bpinject
-c           --- (data is loaded into particle arrays)
-            zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*fulldt_s*(it+1)
-            zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
 
 c           --- Precalculate larmor frequency if needed. The code assumes
 c           --- that the beam was injected in a field free region.
@@ -265,31 +290,16 @@ c           --- that the beam was injected in a field free region.
               larmorfreq = -0.5*sq(is)*bz0/sm(is)/gammabar
             endif
 
-c           --- Initialize positions as rectangular or elliptical depending on linj_rectangle
             spreadx = 1
             spready = 1
-            if(linj_rectangle) then
-              do ip=1,nn
-                xt(ip) = ainj*(2.*rt(ip)-1.0)
-                yt(ip) = binj*(2.*tt(ip)-1.0)
-              enddo
-            else if (l_inj_rz) then
-              do ip=1,nn
-                tt(ip) = 2.*pi*tt(ip)
-                xt(ip) = ainj*rt(ip)*cos(tt(ip))
-                yt(ip) = binj*rt(ip)*sin(tt(ip))
-              enddo
+            if (l_inj_rz) then
               spreadx = 1
               spready = 0
-            else
-              do ip=1,nn
-c               --- Convert r**2 into r and tt into a random angle
-                rt(ip) = sqrt(rt(ip))
-                tt(ip) = 2.*pi*tt(ip)
-                xt(ip) = ainj*rt(ip)*cos(tt(ip))
-                yt(ip) = binj*rt(ip)*sin(tt(ip))
-              enddo
             endif
+
+c           --- Increment the particle counter for the digit reversed seed
+            injctcnt = injctcnt + nn
+
             do ip=1,nn
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
@@ -413,6 +423,8 @@ c           --- Set fractional time to advance particles
 
 c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
+            zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*fulldt_s*(it+1)
+            zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
             do ip=1,nn
               ii = ins(is) - 1 + ip
               ztilt = bpt(ip)*vzinj
