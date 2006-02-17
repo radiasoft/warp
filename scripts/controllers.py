@@ -50,7 +50,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.12 2006/02/16 22:17:46 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.13 2006/02/17 00:56:47 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -225,6 +225,7 @@ callafterplotfuncs = ControllerFunction('callafterplotfuncs')
 callplseldomfuncs = ControllerFunction('callplseldomfuncs')
 callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
 callafterrestartfuncs = ControllerFunction('callafterrestartfuncs',lcallonce=1)
+generateuserparticlesforinjection = ControllerFunction('generateuserparticlesforinjection')
 
 #=============================================================================
 class ControllerFunctionContainer:
@@ -274,7 +275,8 @@ controllerfunctioncontainer = ControllerFunctionContainer(
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
                                 callplseldomfuncs,callplalwaysfuncs,
-                                callafterrestartfuncs])
+                                callafterrestartfuncs,
+                                generateuserparticlesforinjection])
 
 
 #=============================================================================
@@ -406,6 +408,15 @@ def uninstallafterrestart(f):
 def isinstalledafterrestart(f):
   return callafterrestartfuncs.isinstalledfuncinlist(f)
 
+# ----------------------------------------------------------------------------
+def installuserparticlesinjection(f):
+  "Adds a function that is to be called during injection which creates the particles to be injected."
+  generateuserparticlesforinjection.installfuncinlist(f)
+def uninstalluserparticlesinjection(f):
+  "Removes a function that would be called during injection which creates the particles to be injected."
+  generateuserparticlesforinjection.uninstallfuncinlist(f)
+def isinstalleduserparticlesinjection(f):
+  return generateuserparticlesforinjection.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
