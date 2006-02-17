@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.155 $, $Date: 2006/02/10 19:50:33 $
+#@(#) File TOP.V, version $Revision: 3.156 $, $Date: 2006/02/17 23:50:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.155 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.156 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -792,17 +792,10 @@ nhist                     integer /5/
 npplot(NSUBSETS)          integer /50000,20000,5000/
    # Nominal no. of particles in each subset for phase space plots
    # Actual no. plotted is float(ntopick)/inclump - np
-inclump(NSUBSETS)         integer /51,51,51/
-   # clump size for choosing which ptcls to plot-MUST DIVIDE npsplt(in Pspwork)
-charsbig integer /46/ # Number of characters per line for one-to-a-page plots
-charssma integer /60/ # Number of characters per line for four-to-a-page plots
-labels   logical /.false./ # Determines whether or not contours are labelled
 nskipcol integer /5/       # number of particles to skip in color plots
 nstepcol integer /10/      # number of sweeps to plots colot plots
 ncolor   integer /5/       # number of colors in color plots
 iscolor  integer /2/       # starting color number in color plots
-lframadv logical /.true./  # When true, advance frame after each fortran plot
-ppmark   character*8 /"dot"/ # Marker used in particle plots.
 lprntpara logical /.true./ # When true print output parameters at start
 loneliner logical /.false./ # When true, calls interpreter function 'oneliner'
                             # otherwise calls fortran function oneliner.
@@ -2047,20 +2040,6 @@ uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
 uyep(nepmax,nepwin,ns) _real        # Y velocities at grid cell centers
 uzep(nepmax,nepwin,ns) _real        # Z velocities at grid cell centers
 pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID 
-
-*********** Pspwork:
-# Scratch arrays for phase space plots
-# (perhaps we should overlay some of this with other scratch space)
-npsplt              integer /255/ # Number of particles to process at a time
-                                  # 255 gives better "subsets" plots than 256
-isubset(npsplt,NSUBSETS) _integer # Holds particle subsets for plotting
-ntopick(NSUBSETS)         integer # Number of particles to pick from each clump
-xxpsp(npsplt)               _real # Scratch for abscissa values of particles
-yypsp(npsplt)               _real # Scratch for ordinate values of particles
-xppsp(npsplt)               _real # Scratch for abscissa values of particles
-yppsp(npsplt)               _real # Scratch for ordinate values of particles
-xxpspw(npsplt,4)            _real # Scratch for abscissa values of particles
-yypspw(npsplt,4)            _real # Scratch for ordinate values of particles
 
 *********** TopPhys:
 # "Physics" subroutines at top level
