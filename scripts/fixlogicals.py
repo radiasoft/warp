@@ -1,5 +1,5 @@
 from warp import *
-fixlogicals_version = "$Id: fixlogicals.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+fixlogicals_version = "$Id: fixlogicals.py,v 1.2 2006/02/17 23:52:36 dave Exp $"
 
 def fixlogicals():
   if cir.lcirout: cir.lcirout = true
@@ -28,8 +28,6 @@ def fixlogicals():
   if top.lacclzl: top.lacclzl = true
   if top.diposet: top.diposet = true
   if top.laccumulate_zmoments: top.laccumulate_zmoments = true
-  if top.labels: top.labels = true
-  if top.lframadv: top.lframadv = true
   if top.lprntpara: top.lprntpara = true
   if top.loneliner: top.loneliner = true
   if top.lpsplots: top.lpsplots = true
