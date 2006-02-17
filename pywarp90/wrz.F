@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.17 $, $Date: 2006/02/10 19:50:35 $
+c@(#) File WRZ.M, version $Revision: 3.18 $, $Date: 2006/02/17 23:49:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -51,7 +51,6 @@ c=============================================================================
       use FFTDiagrz
       use Sortrz
       use LinearBeam
-c     use Pspwork
  
 c  Invoked by the GENERATE command, it sets up the problem
  
@@ -274,7 +273,6 @@ c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
  
 c     npsplt = min(nparpgrp, npmax)
-c     call gallot ("Pspwork", 0)
       if (xplmin .eq. 0.) xplmin = rmmin
       if (xplmax .eq. 0.) xplmax = rmmax
       if (yplmin .eq. 0.) yplmin = rmmin
@@ -282,10 +280,6 @@ c     call gallot ("Pspwork", 0)
       if (zplmin .eq. 0.) zplmin = zmmin
       if (zplmax .eq. 0.) zplmax = zmmax
  
-c  Choose which particles will be plotted in "subset" plots
-
-      call psubsets
-
 c  Create the dynamic arrays for history data; set pointer into them
  
       lenhist = min ( nt/nhist + 1 , 100) 
@@ -506,7 +500,6 @@ c  release storage
       call gfree ("Win_Moments")
       call gfree ("Moments")
       call gfree ("Particles")
-c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
  
       return

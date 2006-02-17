@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.59 $, $Date: 2006/02/10 19:50:34 $
+c@(#) File WXY.M, version $Revision: 3.60 $, $Date: 2006/02/17 23:49:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -63,7 +63,6 @@ c=============================================================================
       use Damped_eom
       use Hist
       use AMR
-c     use Pspwork
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -307,17 +306,12 @@ c  and set limits for plots
 c     call remark(" ---  Allocating scratch space for plots")
 c     npsplt = min(nparpgrp-1, npmax)
 c     if (npsplt == 0) npsplt = nparpgrp-1
-c     call gallot("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
       if (xplmax == 0.) xplmax =  xmmax
       if (yplmin == 0.) yplmin = -ymmax
       if (yplmax == 0.) yplmax =  ymmax
       if (zplmin == 0.) zplmin =  zmmin
       if (zplmax == 0.) zplmax =  zmmax
-
-c  Choose which particles will be plotted in "subset" plots
-
-      call psubsets
 
 c  Setup history mechanism
 
@@ -536,7 +530,6 @@ c=============================================================================
       use Z_Moments
       use Z_arrays
       use Hist
-c     use Pspwork
 
 c  Finish up at end of RUN, or on receipt of FIN
 c  This routine is never called, at present; history plots are
@@ -570,7 +563,6 @@ c  release storage
       call gfree ("LatticeInternal")
       call gfree ("Particles")
       call gfree ("Particlesxy")
-c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
       if (lwxytimesubs) timewxyfin = timewxyfin + wtime() - substarttime
