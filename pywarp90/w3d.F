@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.229 $, $Date: 2006/02/17 23:49:53 $
+c@(#) File W3D.F, version $Revision: 3.230 $, $Date: 2006/02/18 00:26:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5348,7 +5348,7 @@ c       --- and the data needs to be copied around.
 #endif
 #endif
       elseif(solvergeom==RZgeom) then
-        call setemgridrz(ipmin,ip,is,ex,ey,ez)
+        call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(xp(ipmin),zp(ipmin),ex,ez,ip,zgridprv)
       elseif(solvergeom==XYgeom) then
