@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.57 2006/02/16 01:27:43 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.58 2006/02/18 01:57:00 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -299,10 +299,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- all of the data is created.
             if top.npid > 0 and sum(sum(nps_p)) > 0:
               ff.defent(pdbname,v,(sum(sum(nps_p)),top.npidmax))
-          elif p == 'wxy' and vname in ['dtp']:
-            # --- A WARPxy particle array
-            if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(nps_p)),))
           elif vname == 'npmaxlost_s' and p == 'top':
             # --- This is set to be correct globally
             ff.write(pdbname,array([0]+list(cumsum(sum(npslost_p[:,:])))))
@@ -421,8 +417,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           # --- Write out to parallel space
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
         elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                      'gaminv']) or \
-             (p == 'wxy' and vname in ['dtp']):
+                                      'gaminv']):
           # --- Write out each species seperately.
           for js in range(top.ns):
             if top.nps[js] > 0:
@@ -494,7 +489,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 
   # --- Long list of parallel variables that are to be skipped in the serial
   # --- restore.
-  skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','dtp','pid',
+  skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','pid',
     'xplost','yplost','zplost','uxplost','uyplost','uzplost','gaminvlost',
     'tplost','pidlost','conductors','rho','phi']
 
@@ -631,11 +626,8 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- needed to read in the particles.
         s = 'pass'
       elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                    'gaminv']) or \
-           (p == 'wxy' and vname in ['dtp']):
+                                    'gaminv']):
         # --- Read in each species seperately.
-        # --- The assumption is made that if wxy.dtp was written out,
-        # --- it has the same shape as the other particle arrays.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
@@ -671,8 +663,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                                     'uxplost','uyplost','uzplost',
                                     'gaminvlost','tplost']:
         # --- Read in each species seperately.
-        # --- The assumption is made that if wxy.dtp was written out,
-        # --- it has the same shape as the other particle arrays.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'

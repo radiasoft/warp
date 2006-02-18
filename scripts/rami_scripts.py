@@ -73,7 +73,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.5 2005/05/13 15:33:53 ramiak Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.6 2006/02/18 01:57:00 dave Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
@@ -136,7 +136,7 @@ def change_t_step(step_size):
     """
     wxy.ds = step_size
     top.dt = wxy.ds/top.vbeam
-    wxy.dtp = wxy.ds/where( greater(top.uzp,0.), top.uzp, top.vbeam )
+    top.pid[:,wxy.dtpid-1] = wxy.ds/where( greater(top.uzp,0.), top.uzp, top.vbeam )
 
 #===========
 

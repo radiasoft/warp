@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.20 2006/02/10 19:50:30 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.21 2006/02/18 01:57:00 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -310,7 +310,7 @@ is not alive."""
         self.spvz[i].append(top.uzp[self.ip1 + i])
         self.spgi[i].append(top.gaminv[self.ip1 + i])
         if package()[0] == 'wxy':
-          self.spdt[i].append(wxy.dtp[self.ip1 + i])
+          self.spdt[i].append(top.pid[self.ip1 + i,wxy.dtpid-1])
 
   #----------------------------------------------------------------------
   def getsavedata(self):
