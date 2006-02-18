@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.12 $, $Date: 2006/02/17 23:51:09 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.13 $, $Date: 2006/02/18 01:53:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -126,7 +126,6 @@ c=============================================================================
       use Subtimersf3d
       use InGen
       use InGen3d
-      use InPart
       use Picglb
       use Picglb3d
       use Particles,Only: wpid
