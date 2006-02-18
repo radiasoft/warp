@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.44 $, $Date: 2005/07/28 21:40:06 $
+#@(#) File WXY.V, version $Revision: 3.45 $, $Date: 2006/02/18 01:55:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,13 +9,11 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.44 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.45 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
-npmaxxy    integer # Number of particles - same as npmax from TOP
-dtp(npmaxxy) _real # Time step size for each particle.
-                   # Note that ultimately, this should be included somehow in
-                   # the top group Particles
+dtpid      integer # ID in the pid array where the time step size for each
+                   # particle is saved.
 
 *********** InGenxy dump:
 ds       real              # Axial step size, defaults to vbeam*dt

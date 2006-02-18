@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.60 $, $Date: 2006/02/17 23:49:13 $
+c@(#) File WXY.M, version $Revision: 3.61 $, $Date: 2006/02/18 01:55:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -50,7 +50,7 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles
+      use Particles, Only: npmax,npid
       use Particlesxy
       use Picglb
       use Picglb3d
@@ -245,6 +245,11 @@ c  use a user-set npmax directly)
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
       call alotlostpart
 
+c  Create a spot in the pid array for the particle time step size
+
+      dtpid = npid + 1
+      npid = npid + 1
+
 c  Load the particles, calculate the charge density
 
       call remark(" ---  Loading particles")
@@ -344,12 +349,11 @@ c=============================================================================
       subroutine wxyexe()
       use Subtimersxy
       use Picglb
-      use InPart
       use InGen
       use InGenxy
       use Picglb3d
       use Ctl_to_pic
-      use Particles
+      use Particles,Only: pgroup,nplive
       use Particlesxy
 
 c  Takes a time step
@@ -387,9 +391,9 @@ c  but that value wouldn't be changed much.
         ds0 = ds
         ds = zz
         dt = dt*zz/ds0
-        do is=1,ns
-          do ip=ins(is),ins(is)+nps(is)-1
-            dtp(ip) = dtp(ip)*dt/(ds0/vbeamfrm)
+        do is=1,pgroup%ns
+          do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%pid(ip,dtpid) = pgroup%pid(ip,dtpid)*dt/(ds0/vbeamfrm)
           enddo
         enddo
         ldiag = .false.
@@ -443,9 +447,9 @@ c  size is rescaled appropriately for that next step.
       if (lbendend) then
         call stepxy ("wxyexe")
 
-        do is=1,ns
-          do ip=ins(is),ins(is)+nps(is)-1
-            dtp(ip) = dtp(ip)*(ds0/vbeamfrm - dt)/dt
+        do is=1,pgroup%ns
+          do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%pid(ip,dtpid) = pgroup%pid(ip,dtpid)*(ds0/vbeamfrm - dt)/dt
           enddo
         enddo
         ds = ds0 - ds
@@ -484,9 +488,9 @@ c  call the routine that does the actual work
 c  Reset the step size if extra substep was taken.
 
       if (lbendend) then
-        do is=1,ns
-          do ip=ins(is),ins(is)+nps(is)-1
-            dtp(ip) = dtp(ip)*ds0/vbeamfrm/dt
+        do is=1,pgroup%ns
+          do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%pid(ip,dtpid) = pgroup%pid(ip,dtpid)*ds0/vbeamfrm/dt
           enddo
         enddo
         ds = ds0
@@ -522,8 +526,6 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles
-      use Particlesxy
       use Picglb
       use Picglb3d
       use Win_Moments
@@ -561,8 +563,6 @@ c  release storage
       call gfree ("Moments")
       call gfree ("Lattice")
       call gfree ("LatticeInternal")
-      call gfree ("Particles")
-      call gfree ("Particlesxy")
       call gfree ("Z_arrays")
 
       if (lwxytimesubs) timewxyfin = timewxyfin + wtime() - substarttime
@@ -581,7 +581,7 @@ c=============================================================================
       use Fields3d
       use Efields3d
       use Io
-      use Particles
+      use Particles,Only: pgroup
       use Picglb
       use Picglb3d
       use Lattice
@@ -623,7 +623,7 @@ c  Full-step in v from t.l. it-3/2 if last step not "special"
 c  No step at all if generating.
 
       if (caller == "wxyexe") then
-        call padvncxy ("halfv")
+        call padvncxy ("halfv",pgroup)
       endif
 
 c  The next two variables are the left and right ends of the range centered
@@ -695,9 +695,9 @@ c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
 
       if (caller == "wxyexe") then
-         call padvncxy ("synchv")
+         call padvncxy ("synchv",pgroup)
       elseif (caller == "wxygen") then
-         call padvncxy ("gen")
+         call padvncxy ("gen",pgroup)
       endif
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
@@ -865,7 +865,7 @@ c=============================================================================
       use InGenxy
       use InGen3d
       use InMesh3d
-      use Particles
+      use Particles,Only: pgroup
       use Fields3d
       use Fields3dParticles
       use Efields3d
@@ -880,26 +880,28 @@ c         --- Note that zp, zgrid, and zmmin are all passed in as zero
 c         --- to avoid any possible funny business with rounding.
 c         --- ds is passed in for dz since that is the distance between
 c         --- the locations where phi is known.
-          zpo = zp(ipmin:ipmin+ip-1)
-          zp(ipmin:ipmin+ip-1) = 0.
-          call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+          zpo = 0.
+          call sete3d(phi(0,0,-1),selfe,ip,
+     &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
      &                efetch,ex,ey,ez,l2symtry,l4symtry)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
-          zp(ipmin:ipmin+ip-1) = zpo
+          pgroup%zp(ipmin:ipmin+ip-1) = zpo
         else
-          call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+          call sete3d(phi(0,0,-1),selfe,ip,
+     &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
      &                efetch,ex,ey,ez,l2symtry,l4symtry)
         endif
       elseif(solvergeom==XYgeom) then
-        call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,zgridprv)
+        call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv)
       end if
       return
       end
 c=============================================================================
-      subroutine padvncxy(center)
+      subroutine padvncxy(center,pgroup)
+      use ParticleGroupmodule
       use Subtimersxy
       use GlobalVars
       use InMesh3d
@@ -911,7 +913,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles
+      use Particles,Only: nplive,wpid
       use Particlesxy
       use Fields3d
       use Efields3d
@@ -922,11 +924,19 @@ c=============================================================================
       use Z_Moments, only: nzmmnt,nszmmnt,tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Damped_eom
       character(*):: center
+      type(ParticleGroup):: pgroup
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
 
-      integer(ISZ):: is,ip,ipmin,i
+c     --- Create local pointers to the arrays in pgroup.
+      real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: gaminv(:),pid(:,:)
+      real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
+      integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
+      logical(ISZ),pointer:: ldts(:)
+
+      integer(ISZ):: is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
       real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp), ezo(nparpgrp)
       real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
@@ -946,6 +956,27 @@ c  and also loads RHO at the new time level.
       integer(ISZ):: iter_dt,niter_dt_tmp
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
+
+c     --- Create local pointers to the arrays in pgroup.
+      xp => pgroup%xp
+      yp => pgroup%yp
+      zp => pgroup%zp
+      uxp => pgroup%uxp
+      uyp => pgroup%uyp
+      uzp => pgroup%uzp
+      gaminv => pgroup%gaminv
+      pid => pgroup%pid
+
+      sm => pgroup%sm
+      sq => pgroup%sq
+      sw => pgroup%sw
+      ins => pgroup%ins
+      nps => pgroup%nps
+      ldts => pgroup%ldts
+      ndts => pgroup%ndts
+      dtscale => pgroup%dtscale
+
+      ismax = maxval(pgroup%js)+1
 
 c  Zero curr if center is synchv or if using gaps
 c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)
@@ -971,9 +1002,9 @@ c         --- If only one species, then don't have separate species data.
 
 c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
-        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
-     &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns,
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,ismax,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1060,7 +1091,8 @@ c           --- Set quad, dipole E and B;  All: Bz
      &              maxval(abs(by(1:ip))) == 0.))) then
                 niter_dt_tmp = 1
 c               --- Calculate new step size directly.
-                call getnewdtpwithe(ip,dtp(ipmin),uzp(ipmin),gaminv(ipmin),
+                call getnewdtpwithe(ip,pid(ipmin,dtpid),
+     &                              uzp(ipmin),gaminv(ipmin),
      &                              ez,sq(is),sm(is),ds)
               else
                 niter_dt_tmp = niter_dt
@@ -1084,31 +1116,38 @@ c           --- (Only done when lvzchang is true.)
             do iter_dt=1,niter_dt_tmp
 c             --- Get field from accelerating elements (depends on dtp)
               call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         dtp(ipmin),0.,dt*0.5,sm(is),sq(is),dt,
+     &                         pid(ipmin,dtpid),0.,dt*0.5,
+     &                         sm(is),sq(is),dt,
      &                         .true.,ez)
 c             --- Correction to z on entry/exit to accelerator gap
               call zgapcorrxy(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        dtp(ipmin),0., dt*0.5, dt, sm(1), sq(1), time)
+     &                        pid(ipmin,dtpid),0., dt*0.5, dt,
+     &                        sm(1), sq(1), time)
 c             --- Magnetic field increment to momenta
               call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                      bx, by, bz, sq(is), sm(is),
+     &                      pid(ipmin,dtpid),0.5,ibpush)
 c             --- Final half-electric field increment to momenta
               call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                      ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+     &                      ex, ey, ez, sq(is), sm(is),
+     &                      pid(ipmin,dtpid), 0.5)
 c             --- Advance relativistic Gamma factor
               call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                      gamadv,lrelativ)
 c             --- Position advance
               call xpushxy (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
-     &                      uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtp(ipmin))
+     &                      uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                      pid(ipmin,dtpid))
 c             --- Simplified translation of position for warped mesh effect
               call bendcorxy(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),dtp(ipmin),zpo,ds,bendres,bendradi,
+     &                       gaminv(ipmin),pid(ipmin,dtpid),
+     &                       zpo,ds,bendres,bendradi,
      &                       lexbend)
 
               if (lvzchang .and. iter_dt < niter_dt_tmp) then
 c               --- Calculate dt for particles.
-                call setdtp(ip,dtp(ipmin),xp(ipmin),zp(ipmin),zpo,uzp(ipmin),
+                call setdtp(ip,pid(ipmin,dtpid),
+     &                      xp(ipmin),zp(ipmin),zpo,uzp(ipmin),
      &                      bendres,bendradi,zgridprv)
 c               --- Restore position and velocity if not finished with iteration
                 do i=1,ip
@@ -1145,16 +1184,19 @@ c           --- Set quad, dipole E and B;  All: Bz
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                    bx, by, bz, sq(is), sm(is),
+     &                    pid(ipmin,dtpid),0.5,ibpush)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is), dtp(ipmin), 1.0)
+     &                    ex, ey, ez, sq(is), sm(is),
+     &                    pid(ipmin,dtpid), 1.0)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                    bx, by, bz, sq(is), sm(is),
+     &                    pid(ipmin,dtpid),0.5,ibpush)
 
 c         --- PUSHV
           elseif (center == "lpushv") then
@@ -1168,13 +1210,15 @@ c           --- Set quad, dipole E and B;  All: Bz
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+     &                    ex, ey, ez, sq(is), sm(is),
+     &                    pid(ipmin,dtpid), 0.5)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                    bx, by, bz, sq(is), sm(is),
+     &                    pid(ipmin,dtpid),0.5,ibpush)
 
 c         --- PUSHV
           elseif (center == "rpushv") then
@@ -1188,10 +1232,12 @@ c           --- Set quad, dipole E and B;  All: Bz
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                    bx, by, bz, sq(is), sm(is),
+     &                    pid(ipmin,dtpid),0.5,ibpush)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+     &                    ex, ey, ez, sq(is), sm(is),
+     &                    pid(ipmin,dtpid), 0.5)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
@@ -1200,7 +1246,8 @@ c         --- PUSHX
           elseif (center == "pushx") then
 c             --- Position advance
               call xpushxy (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
-     &                      uyp(ipmin),uzp(ipmin),gaminv(ipmin),dtp(ipmin))
+     &                      uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                      pid(ipmin,dtpid))
 
 c         --- SYNCHV or GEN
           elseif (center == "synchv" .or. center == "gen") then
@@ -1228,17 +1275,20 @@ c            --- Set quad, dipole E and B; All: Bz
      &                     gammabar,zbeam,vbeam,dt,time)
 c            --- Get field from accelerating elements (depends on dtp)
              call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        dtp(ipmin),-dt*0.5,0.,sm(is),sq(is),dt,
+     &                        pid(ipmin,dtpid),-dt*0.5,0.,
+     &                        sm(is),sq(is),dt,
      &                        .true.,ez)
 c            --- Half electric field increment to momenta
              call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                     ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
+     &                     ex, ey, ez, sq(is), sm(is),
+     &                     pid(ipmin,dtpid), 0.5)
 c            --- Advance relativistic Gamma factor
              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                     gamadv,lrelativ)
 c            --- Half magnetic field increment to momenta
              call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                     bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
+     &                     bx, by, bz, sq(is), sm(is),
+     &                     pid(ipmin,dtpid),0.5,ibpush)
              if (center == "gen") then
 c              --- Reset uxp to uxpo, set uxpo to half step backward
 c              --- for interpolation in moments calculation
@@ -1604,7 +1654,7 @@ c============================================================================
       use InPart
       use Picglb
       use InGenxy
-      use Particles
+      use Particles,Only: pgroup
 
 c If requested to, this routine sets the z value of all of the particles to
 c zbeam.
@@ -1612,8 +1662,8 @@ c zbeam.
       integer(ISZ):: is
 
       if (lcommonz .or. lwithez) then
-        do is=1,ns
-          zp(ins(is):ins(is)+nps(is)-1) = zbeam
+        do is=1,pgroup%ns
+          pgroup%zp(pgroup%ins(is):pgroup%ins(is)+pgroup%nps(is)-1) = zbeam
         enddo
       endif
 
@@ -1623,36 +1673,30 @@ c============================================================================
       subroutine initdtp()
       use Subtimersxy
       use Beam_acc
-      use InPart
       use InGen
       use InGenxy
-      use Particles
+      use Particles,Only: pgroup
       use Particlesxy
 c Initializes dtp
       integer(ISZ):: is,i1,i2
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
-c     --- First check if the allocation size has changed
-      if (npmaxxy /= npmax .or. .not. associated(dtp)) then
-        npmaxxy = npmax
-        call gchange("Particlesxy",0)
-      endif
-
 c     --- Give an initial value to dtp if it has not already been set or
 c     --- if any values are zero.
 !$OMP DO PRIVATE(i1,i2)
-      do is=1,ns
-        i1 = ins(is)
-        i2 = ins(is) + nps(is) - 1
-        if (minval(abs(dtp(i1:i2))) == 0.) then
+      do is=1,pgroup%ns
+        i1 = pgroup%ins(is)
+        i2 = pgroup%ins(is) + pgroup%nps(is) - 1
+        if (minval(abs(pgroup%pid(i1:i2,dtpid))) == 0.) then
           if (lthick .or. vbeam == 0.) then
-            dtp(i1:i2) = dt
+            pgroup%pid(i1:i2,dtpid) = dt
           else
-            where (uzp(i1:i2) .ne. 0.)
-              dtp(i1:i2) = dt*vbeam/(uzp(i1:i2)*gaminv(i1:i2))
+            where (pgroup%uzp(i1:i2) .ne. 0.)
+              pgroup%pid(i1:i2,dtpid) = dt*vbeam/
+     &                               (pgroup%uzp(i1:i2)*pgroup%gaminv(i1:i2))
             elsewhere
-              dtp(i1:i2) = 0.
+              pgroup%pid(i1:i2,dtpid) = 0.
             endwhere
           endif
         endif
@@ -2176,10 +2220,9 @@ c=============================================================================
       use InGen
       use InGenxy
       use InGen3d
-      use InPart
       use Picglb
       use Picglb3d
-      use Particles
+      use Particles,Only: pgroup,wpid
       use Particlesxy
       use InMesh3d
       use Fields3d
@@ -2209,7 +2252,7 @@ c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     --- set limits on loop over species
       if (is_i == -1) then
         is1 = 1
-        is2 = ns
+        is2 = pgroup%ns
       else
         is1 = is_i
         is2 = is_i
@@ -2224,26 +2267,32 @@ c     --- loop over species
       do is=is1,is2
 
 c        --- get loop limits for particles if needed
-         if (ins_i == -1) ins_u = ins(is)
-         if (nps_i == -1) nps_u = nps(is)
+         if (ins_i == -1) ins_u = pgroup%ins(is)
+         if (nps_i == -1) nps_u = pgroup%nps(is)
 
 c        --- loop over particle blocks
          if(solvergeom==XYgeom) then
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
              ip = min(nparpgrp, ins_u+nps_u-ipmin)
              if(wpid==0) then
-               call rhoweightrz(xp(ipmin),yp(ipmin),yp(ipmin),ip,
-     &                          sq(is)*sw(is),nx,ny,dx,dy,xmmin,ymmin)
+               call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                          pgroup%yp(ipmin),ip,
+     &                          pgroup%sq(is)*pgroup%sw(is),
+     &                          nx,ny,dx,dy,xmmin,ymmin)
              else
-               call rhoweightrz_weights(xp(ipmin),yp(ipmin),yp(ipmin),pid(ipmin,wpid),ip,
-     &                          sq(is)*sw(is),nx,ny,dx,dy,xmmin,ymmin)
+               call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                                  pgroup%yp(ipmin),pgroup%pid(ipmin,wpid),
+     &                                  ip,pgroup%sq(is)*pgroup%sw(is),
+     &                                  nx,ny,dx,dy,xmmin,ymmin)
              end if
            enddo
          else
            ip = nps_u
            ipmin = ins_u
-           call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                   uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
+           call setrhoxy(rho(0,0,0),ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                   pgroup%zp(ipmin),zgrid,
+     &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &                   pgroup%sq(is),pgroup%sw(is))
          end if
       enddo
 
