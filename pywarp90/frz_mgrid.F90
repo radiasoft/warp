@@ -5269,7 +5269,7 @@ subroutine multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
 USE InGen
 USE InPart
 USE InMesh3d
-USE Particles
+USE Particles,Only: nps,ns
 USE InjectVars
 USE InjectVars3d
 USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a
@@ -6330,7 +6330,7 @@ end subroutine gtlchgrz
 
 subroutine dep_rho_rz(is,rho,nr,nz,dr,dz,xmin,zmin)
 USE Constant
-use Particles
+use Particles,Only: pgroup,wpid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: is, nr, nz
@@ -6360,13 +6360,13 @@ REAL(8):: q, qw
     end do
   END if
 
-  q = sq(is)*sw(is)
+  q = pgroup%sq(is)*pgroup%sw(is)
 
   ! make charge deposition using CIC weighting
   IF(wpid==0) then
-   do i = ins(is), ins(is) + nps(is) - 1
-    rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-xmin)*invdr
-    zpos = (zp(i)-zmin)*invdz
+   do i = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1
+    rpos = (SQRT(pgroup%xp(i)*pgroup%xp(i)+pgroup%yp(i)*pgroup%yp(i))-xmin)*invdr
+    zpos = (pgroup%zp(i)-zmin)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6381,9 +6381,9 @@ REAL(8):: q, qw
     rho(jnp,lnp) = rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
    end do
   else
-   do i = ins(is), ins(is) + nps(is) - 1
-    rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-xmin)*invdr
-    zpos = (zp(i)-zmin)*invdz
+   do i = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1
+    rpos = (SQRT(pgroup%xp(i)*pgroup%xp(i)+pgroup%yp(i)*pgroup%yp(i))-xmin)*invdr
+    zpos = (pgroup%zp(i)-zmin)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6392,7 +6392,7 @@ REAL(8):: q, qw
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-    qw = q*pid(i,wpid)
+    qw = q*pgroup%pid(i,wpid)
     rho(jn, ln)  = rho(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
     rho(jnp,ln)  = rho(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
     rho(jn, lnp) = rho(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
@@ -8438,23 +8438,25 @@ END if
   return
 end subroutine fieldweightz
 
-subroutine setemgridrz(ipmin,ip,is,ex,ey,ez)
+subroutine setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
+use ParticleGroupmodule
 use InGen
 use multigridrz
 use FRZmgrid
-use Particles
 use Efields3d
 use Picglb
 
+type(ParticleGroup):: pgroup
 integer(ISZ):: ipmin,ip,is
 real(kind=8):: ex(ip),ey(ip),ez(ip)
 
   if(.not.mgridrz_deform) then
-    call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,ip,zgridprv)
+    call fieldweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
+                       ex,ey,ez,ip,zgridprv)
   else
-    if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
+    if(is==1 .and. ipmin==pgroup%ins(is)) call calc_phi3d_from_phirz()
     call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip, &
-                xp(ipmin),yp(ipmin),zp(ipmin), &
+                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
                 zgridprv,0.,0.,basegrid%zmin, &
                 basegrid%dr,basegrid%dr,basegrid%dz, &
                 mgridrz_nx,mgridrz_ny,mgridrz_nz, &
@@ -8688,7 +8690,7 @@ end subroutine fieldweightrz_deform_old
 !subroutine calcfact_deform(xp,yp,zp,np,dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
 subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws,zgrid)
 USE Constant
-USE Particles, ONLY: xp, yp, zp
+USE Particles, ONLY: pgroup
 use FRZmgrid
 implicit none
 
@@ -8716,15 +8718,15 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
 !return
   do isp = 1, ns
     do i = ins(is(isp)), ins(is(isp))+nps(is(isp))-1
-      zpos = (zp(i)-zmin-zgrid)*invdz
+      zpos = (pgroup%zp(i)-zmin-zgrid)*invdz
       ln = 1+INT(zpos)
       lnp = ln+1
       ddz = zpos-REAL(ln-1)
       oddz = 1._8-ddz
       wddz = ws(is(isp))*ddz
       woddz = ws(is(isp))*oddz
-      xp2 = xp(i)**2
-      yp2 = yp(i)**2
+      xp2 = pgroup%xp(i)**2
+      yp2 = pgroup%yp(i)**2
       xfact(ln) = xfact(ln) + xp2 * woddz
       yfact(ln) = yfact(ln) + yp2 * woddz
       xfact(lnp) = xfact(lnp) + xp2 * wddz
