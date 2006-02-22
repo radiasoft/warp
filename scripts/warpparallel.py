@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.58 2006/02/18 01:57:00 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.59 2006/02/22 01:29:32 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -592,7 +592,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 
   # --- Allocate any groups with parallel arrays
   gchange("LostParticles")
-  gchange("Particlesxy")
 
   # --- Now read in the arrays.
   for v in vlist:
