@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.139 $, $Date: 2006/02/17 22:48:23 $
+c@(#) File DTOP.F, version $Revision: 3.140 $, $Date: 2006/02/22 00:09:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -355,7 +355,8 @@ c  Totals
       totmass = npmax*pgroup%sw(1)*(aion*amu)
       totchrg = npmax*pgroup%sw(1)*(zion*echarge)
 c  Generalized perveance
-      genperv = ibeam*(zion*echarge)/dvnz(2.*Pi*eps0*(aion*amu)*(vbeam*gammabar)**3)
+      genperv = ibeam*(zion*echarge)/
+     &          dvnz(2.*Pi*eps0*(aion*amu)*(vbeam*gammabar)**3)
 c  Characteristic current
       charcurr = 4.*Pi*eps0*(aion*amu)*clight**3/dvnz((zion*echarge))
 c  Budker parameter
@@ -626,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.139 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.140 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
