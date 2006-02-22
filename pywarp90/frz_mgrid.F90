@@ -5269,7 +5269,7 @@ subroutine multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
 USE InGen
 USE InPart
 USE InMesh3d
-USE Particles,Only: nps,ns
+USE Particles,Only: nps
 USE InjectVars
 USE InjectVars3d
 USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a
