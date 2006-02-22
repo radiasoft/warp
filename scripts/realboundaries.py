@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.65 2005/12/13 20:27:21 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.66 2006/02/22 00:00:30 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -795,7 +795,8 @@ Constructor arguments:
       return self.roundpipexy(id,zs,ze,ap,ax,ay,ox,oy,cm)
   #----------------------------------------------------------------------------
   def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
-    if ze < w3d.zmmin+top.zbeam or zs > w3d.zmmax+top.zbeam: return 0
+    if (ze < w3d.zmminglobal+top.zbeam or
+        zs > w3d.zmmaxglobal+top.zbeam): return 0
     ax = ax[id]
     ay = ay[id]
     ap = ap[id]
@@ -842,8 +843,8 @@ Constructor arguments:
     zc = 0.5*(zs+ze)
     zl = zc-0.5*(rl+gl)-pw
     zr = zc+0.5*(rl+gl)+pw
-    if (zr < w3d.zmmin+top.zbeam or
-        zl > w3d.zmmax+top.zbeam): return 0
+    if (zr < w3d.zmminglobal+top.zbeam or
+        zl > w3d.zmmaxglobal+top.zbeam): return 0
     quad = Quadrupole(zcent=zc,condid=100+elemid,elem=elem,elemid=elemid,
                       splitrodids=1)
     ap = getattr(top,elem+'ap')[elemid]
