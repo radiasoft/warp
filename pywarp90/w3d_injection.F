@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.43 $, $Date: 2006/02/17 00:55:43 $
+c@(#) File w3d_injection.F, version $Revision: 1.44 $, $Date: 2006/02/22 02:12:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -78,18 +78,8 @@ c Print warning if vbeamfrm is not zero
 c Clear out the lost particles.
       if (itask == 1) call clearpart(-1,2)
 
-c Set inject z min and max. This is only really needed for
-c the parallel version, but is useful for the serial version to
-c prevent particles from being injected off of the grid.
-c These are also set in injctint but are reenforced here in case the
-c regions have changed.
-#ifdef MPIPARALLEL
-      inj_zmmin = zpslmin(my_index)
-      inj_zmmax = zpslmax(my_index)
-#else
-      inj_zmmin = zmmin
-      inj_zmmax = zmmax
-#endif
+c Set inject z min and max.
+      call updateinj_zmminmax()
 
 c     --- Set factor so correct number of particles are loaded when
 c     --- symmetry is used.  With 2-fold, particles need to be loaded
@@ -1610,18 +1600,8 @@ c     --- Set mins for meshes around each source.
       inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
       if (l_inj_rz) inj_xmmin = 0.
 
-c     --- Set inject z min and max. This is only really needed for
-c     --- the parallel version, but is useful for the serial version to
-c     --- prevent particles from being injected off of the grid.
-c     --- These are also set in inject3d in case the
-c     --- regions have changed.
-#ifdef MPIPARALLEL
-      inj_zmmin = zpslmin(my_index)
-      inj_zmmax = zpslmax(my_index)
-#else
-      inj_zmmin = zmmin
-      inj_zmmax = zmmax
-#endif
+c     --- Set inject z min and max.
+      call updateinj_zmminmax()
 
 c Check if the user has set the obsolete values of inj_d or inj_f.
 c If so, then copy values to the new variables in top.
@@ -1874,6 +1854,28 @@ c use of the normal E field with the Child-Langmuir profile
 !$OMP MASTER
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
 !$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine updateinj_zmminmax()
+      use InjectVars3d,Only: inj_zmmin,inj_zmmax
+
+c Set inject z min and max. This is only really needed for
+c the parallel version, but is useful for the serial version to
+c prevent particles from being injected off of the grid.
+c These are also set in injctint but are reenforced here in case the
+c regions have changed.
+
+#ifdef MPIPARALLEL
+      use Parallel, Only: my_index,zpslmin,zpslmax
+      inj_zmmin = zpslmin(my_index)
+      inj_zmmax = zpslmax(my_index)
+#else
+      use InMesh3d,Only: zmmin,zmmax
+      inj_zmmin = zmmin
+      inj_zmmax = zmmax
+#endif
+
       return
       end
 c=============================================================================
@@ -2320,6 +2322,8 @@ c to get zp.
       integer(ISZ):: nn,ii,i1,i2
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      call updateinj_zmminmax()
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -3147,6 +3151,8 @@ c to get zp.
       allocate(zi((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
       allocate(in((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
       allocate(pp((1+inj_nx)*(1+inj_ny)*(1+inj_nz)*ninject))
+
+      call updateinj_zmminmax()
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
