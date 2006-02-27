@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.152 $, $Date: 2006/02/17 22:54:14 $
+c@(#) File DW3D.F, version $Revision: 3.153 $, $Date: 2006/02/27 23:40:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -56,27 +56,27 @@ c  Gather up various lattice qtys for printout
 
 c  Write to plot frame
       write (textline,30) "Number of grid points in x = ",nx," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,30) "Number of grid points in y = ",ny," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,30) "Number of grid points in z = ",nzfull," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Grid spacing in x = ",dx," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Grid spacing in y = ",dy," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Grid spacing in z = ",dz," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Bend radius = ",xrbend," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Bending field = ",xbbend," T"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Bend length = ",xbendlen," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Straight section length = ",xstralen," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Z at start of first bend = ",xz0bend," m"
-      call remark  (textline)
+      call remark(trim(textline))
 
 c  Write to text output file
       if (warpout > -1) then
