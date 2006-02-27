@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.140 $, $Date: 2006/02/22 00:09:15 $
+c@(#) File DTOP.F, version $Revision: 3.141 $, $Date: 2006/02/27 23:38:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -391,113 +391,113 @@ c  Write to plot frame
    40 format(1x,a,1pe11.4,a,1pe11.4,a)
    30 format(1x,a,i8,a)
       write (textline,20) "Atomic number of ion = ",aion," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Charge state of ion  = ",zion," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Initial X, Y emittances = ",
      &      emitx,",  ",emity," m-rad"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Initial X,Y envelope radii  = ",a0,",  ",b0," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Initial X,Y envelope angles = ",ap0,",  ",bp0," rad"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Input beam current = ",ibeam," amps"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Current density = ",currdens," amps/m**2"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Charge density = ",chrgdens," Coul/m**3"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Number density = ",numbdens," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Plasma frequency     = ",omegap," 1/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   times dt          = ",omegapdt," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   times quad period = ",omegaptq," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Plasma period        = ",taup," s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "X-, Y-Thermal Velocities     = ",vthx,",  ",
      &                                                      vthy," m/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "   times dt                  = ",vthxdt,",  ", 
      &                                                      vthydt," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "   times dt/dx, dt/dy (X, Y) = ",vthxdtodx,",  ", 
      &                                                      vthydtody," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "X-, Y-Debye Wavelengths  = ",lamdebx,",  ",
      &                                                  lamdeby," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "   over dx, dy (X and Y) = ",lamdebxodx,",  ", 
      &                                                  lamdebyody," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Longitudinal thermal velocity (rms) = ",vthz," m/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   times dt                   = ",vthzdt," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   times dt/dz                = ",vthzdtodz," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Longitudinal Debye wavelength = ",lamdebz," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   over dz                    = ",lamdebzodz," "
-      call remark  (textline)
+      call remark(trim(textline))
 c  Start a new frame since they all don't fit on one
       write (textline,20) "Beam velocity = ",vbeam," m/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "   over c     = ",vbeamoc," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Kinetic energy = ",ekin," eV"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Weight of simulation particles = ",pgroup%sw(1)," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,30) "Number of simulation particles = ",npmax," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Number of real particles = ",npreal," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Total mass = ",totmass," kg"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Total charge = ",totchrg," Coul"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Generalized perveance = ",genperv," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Characteristic current = ",charcurr," amps"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Budker parameter = ",budker," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Timestep size dt = ",dt," s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Tune length = ",tunelen," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Undep. X-, Y-Betatron frequencies  = ",
      &                    omegab0x,",  ",omegab0y," 1/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Undep. X-, Y-Betatron periods      = ",
      &                    taub0x,",  ",taub0y," s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Undep. X-, Y-Betatron wavelengths  = ",
      &                    lambdab0x,",  ",lambdab0y," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Dep.   X-, Y-Betatron frequencies  = ",
      &                    omegabx,",  ",omegaby," 1/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Dep.   X-, Y-Betatron periods      = ",
      &                    taubx,",  ",tauby," s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "Dep.   X-, Y-Betatron wavelengths  = ",
      &                    lambdabx,",  ",lambdaby," m"
       write (textline,40) "X-, Y-Tune Depressions (sigma/sigma0) = ",
      &                    sigmax/dvnz(sigma0x),",  ",sigmay/dvnz(sigma0y)," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Space charge wave velocity = ",vwave," m/s"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Effective wall radius = ",rwall," m"
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,20) "Geometric factor = ",gfactor," "
-      call remark  (textline)
+      call remark(trim(textline))
       write (textline,40) "X-, Y-Emittance over Space charge forces = ",
      &                                  femtxofscx,",  ",femtyofscy," "
-      call remark  (textline)
+      call remark(trim(textline))
 
 c  Write to text output file
       if (warpout > -1) then
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.140 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.141 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
