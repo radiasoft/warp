@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.66 2006/02/22 00:00:30 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.67 2006/02/28 23:01:40 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -117,20 +117,20 @@ Constructor arguments
       fxy.ncxy = n
       fxy.ncxymax = n
       # --- Point fortran arrays to coordinate and voltage data
-      fxy.forceassign("xcond",s.xcond)
-      fxy.forceassign("ycond",s.ycond)
-      fxy.forceassign("vcond",s.vcond)
+      fxy.xcond = s.xcond
+      fxy.ycond = s.ycond
+      fxy.vcond = s.vcond
       # --- Create space for work arrays (in CapMatxy) and point the fortran
       # --- arrays to it.
       s.pcond = fzeros(n,'d')
       s.qcond = fzeros(n,'d')
       s.kpvtxy = fzeros(n)
-      fxy.forceassign("pcond",s.pcond)
-      fxy.forceassign("qcond",s.qcond)
-      fxy.forceassign("kpvtxy",s.kpvtxy)
+      fxy.pcond = s.pcond
+      fxy.qcond = s.qcond
+      fxy.kpvtxy = s.kpvtxy
       # --- Create space for the matrix.
       s.cmatxy = fzeros((n,n),'d')
-      fxy.forceassign("cmatxy",s.cmatxy)
+      fxy.cmatxy = s.cmatxy
       # --- Calculate matrix
       top.fstype = 1
       fieldsol(1)
@@ -150,13 +150,13 @@ Constructor arguments
       # --- Point the fortran arrays to the data arrays. Each instance of this
       # --- object contains its own copies of the arrays in the group CapMatxy.
       # --- The pointers are repointed rather than copying the data.
-      fxy.forceassign("xcond",s.xcond)
-      fxy.forceassign("ycond",s.ycond)
-      fxy.forceassign("vcond",vcond)
-      fxy.forceassign("pcond",s.pcond)
-      fxy.forceassign("qcond",s.qcond)
-      fxy.forceassign("kpvtxy",s.kpvtxy)
-      fxy.forceassign("cmatxy",s.cmatxy)
+      fxy.xcond = s.xcond
+      fxy.ycond = s.ycond
+      fxy.vcond = vcond
+      fxy.pcond = s.pcond
+      fxy.qcond = s.qcond
+      fxy.kpvtxy = s.kpvtxy
+      fxy.cmatxy = s.cmatxy
       # --- Turn on capacity matrix field solver
       top.fstype = 1
     else:
