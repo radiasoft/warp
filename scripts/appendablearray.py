@@ -9,7 +9,7 @@ import Numeric
 _pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.12 2005/12/20 02:21:16 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.13 2006/02/28 22:30:10 dave Exp $"
 
 class AppendableArray:
   """
@@ -148,6 +148,11 @@ away. The unit shape of data must be the same.
     """
     self.cleardata()
     self.append(data)
+  def unitshape(self):
+    if self._unitshape is None:
+      return (1,)
+    else:
+      return self._unitshape
   def reshape(self,newunitshape):
     """
 Change the shape of the appendable unit. Can only be used if a unitshape was
