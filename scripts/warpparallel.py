@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.59 2006/02/22 01:29:32 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.60 2006/02/28 23:56:25 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -377,7 +377,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   # --- Loop through all variables, getting the ones with attribute attr
   # --- See comments above for more details.
   for p in package():
-    pkg = eval(p,__main__.__dict__)
+    pkg = packageobject(p)
     vlist = []
     for a in attr: vlist = vlist + pkg.varlist(a)
     for vname in vlist:
@@ -556,7 +556,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- Variable is a fortran variable
       vname = v[:-4]
       p = v[-3:]
-      pkg = eval(p,__main__.__dict__)
+      pkg = packageobject(p)
       pname = p+'.'+vname
       # --- The shape is used determine whether the variable is an array
       # --- or not. When the length of the shape is zero, then the
@@ -573,9 +573,9 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 #     if not parallelvar: continue
       if verbose: print "reading "+p+"."+vname
       # --- Get data saved with parallel suffix.
-      s = pname+'= ff.read_part(vname+"@"+p+"@parallel",array([me,me,1]))[0]'
       try:
-        exec(s,__main__.__dict__,locals())
+        data = ff.read_part(vname+"@"+p+"@parallel",array([me,me,1]))[0]
+        setattr(pkg,vname,data)
       except:
         print "Warning: There was a problem restoring %s"%(pname)
 
@@ -599,7 +599,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- Variable is a fortran variable
       vname = v[:-4]
       p = v[-3:]
-      pkg = eval(p,__main__.__dict__)
+      pkg = packageobject(p)
       pname = p+'.'+vname
       # --- The shape is used determine whether the variable is an array
       # --- or not. When the length of the shape is zero, then the
@@ -611,97 +611,83 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       try:
         a = pkg.getvarattr(vname)
       except:
-        print "Warning: There was a problem %s - it can't be found."%(pname)
+        print "Warning: %s no longer a variable."%(pname)
         continue
       parallelvar = re.search('parallel',a)
       if not parallelvar: continue
       # --- Many arrays need special handling. These are dealt with first.
       if vname == 'ipmax_s' and p == 'top':
         itriple = array([me,me,1,0,top.ns,1])
-        s = p+'.forceassign(vname,\
-               ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...])'
+        data = ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...]
+        setattr(pkg,vname,data)
       elif p == 'top' and vname in ['ins','nps']:
         # --- These have already been restored above since they are
         # --- needed to read in the particles.
-        s = 'pass'
       elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
                                     'gaminv']):
         # --- Read in each species seperately.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
-        s = 'pass'
         for js in range(top.ns):
           if top.nps[js] > 0:
             ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.nps[js]-1,1])
-            ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1]'
-            exec(pname+ip+' = ff.read_part(v,itriple)',
-                 __main__.__dict__,locals())
+            lhs = getattr(pkg,vname)
+            rhs = ff.read_part(v,itriple)
+            lhs[top.ins[js]-1:top.ins[js]+top.nps[js]-1] = rhs
       elif p == 'top' and vname == 'pid':
         # --- Read in each species seperately.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
-        s = 'pass'
         if top.npid > 0:
           for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
               itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npidmax-1,1])
-              ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
-              exec(pname+ip+' = ff.read_part(v,itriple)',
-                   __main__.__dict__,locals())
+              lhs = getattr(pkg,vname)
+              rhs = ff.read_part(v,itriple)
+              lhs[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:] = rhs
       elif vname == 'npmaxlost_s' and p == 'top':
         itriple = array([me,me,1,0,top.ns,1])
-        s = p+'.forceassign(vname,\
-               ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...])'
+        data = ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...]
+        setattr(pkg,vname,data)
       elif p == 'top' and vname in ['inslost','npslost']:
         # --- These have already been restored above since they are
         # --- needed to read in the lost particles.
-        s = 'pass'
       elif p == 'top' and vname in ['xplost','yplost','zplost',
                                     'uxplost','uyplost','uzplost',
                                     'gaminvlost','tplost']:
         # --- Read in each species seperately.
-        # --- The command is exec'ed here since a different command
-        # --- is needed for each species.  Errors are not caught.
-        s = 'pass'
         for js in range(top.ns):
           if top.npslost[js] > 0:
-            ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
+            ipmin = sum(sum(npslost_p0[:,0:js+1]))+sum(npslost_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.npslost[js]-1,1])
-            ip = '[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1]'
-            exec(pname+ip+' = ff.read_part(v,itriple)',
-                 __main__.__dict__,locals())
+            lhs = getattr(pkg,vname)
+            rhs = ff.read_part(v,itriple)
+            lhs[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1] = rhs
       elif p == 'top' and vname == 'pidlost':
         # --- Read in each species seperately.
-        # --- The command is exec'ed here since a different command
-        # --- is needed for each species.  Errors are not caught.
-        s = 'pass'
         for js in range(top.ns):
           if top.npslost[js] > 0:
-            ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
-            itriple = array([ipmin,ipmin+top.npslost[js]-1,1,0,top.npidlostmax-1,1])
-            ip = '[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:]'
-            exec(pname+ip+' = ff.read_part(v,itriple)',
-                 __main__.__dict__,locals())
+            ipmin = sum(sum(npslost_p0[:,0:js+1]))+sum(npslost_p0[:me+1,js+1])
+            itriple = array([ipmin,ipmin+top.npslost[js]-1,1,
+                             0,top.npidlostmax-1,1])
+            lhs = getattr(pkg,vname)
+            rhs = ff.read_part(v,itriple)
+            lhs[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:] = rhs
       elif p == 'w3d' and vname in ['rho']:
         itriple = array([0,w3d.nx,1,0,w3d.ny,1,
                     top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
-        s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+        setattr(pkg,vname,ff.read_part(v,itriple))
       elif p == 'w3d' and vname in ['phi']:
         itriple = array([0,w3d.nx,1,0,w3d.ny,1,
             top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
-        s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+        setattr(pkg,vname,ff.read_part(v,itriple))
       else:
         # --- The rest are domain decomposed Z arrays
         itriple = array([top.izpslave[me],
                          top.izpslave[me]+top.nzpslave[me],1])
-        s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-
-      try:
-        exec(s,__main__.__dict__,locals())
-      except:
-        print "Warning: There was a problem restoring %s"%(pname)
+        setattr(pkg,vname,ff.read_part(v,itriple))
 
   ff.close()
 
