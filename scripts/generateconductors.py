@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.128 2006/02/08 22:45:35 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.129 2006/02/28 21:57:53 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2943,11 +2943,11 @@ Methods:
     if self.usedata:
       f3d.lsrlinr = true
       f3d.npnts_sr = len(self.zdata)
-      f3d.forceassign('z_sr',self.zdata)
-      f3d.forceassign('r_sr',self.rofzdata)
-      f3d.forceassign('rad_sr',self.raddata)
-      f3d.forceassign('zc_sr',self.zcdata)
-      f3d.forceassign('rc_sr',self.rcdata)
+      f3d.z_sr = self.zdata
+      f3d.r_sr = self.rofzdata
+      f3d.rad_sr = self.raddata
+      f3d.zc_sr = self.zcdata
+      f3d.rc_sr = self.rcdata
     else:
       f3d.lsrlinr = false
 
@@ -3081,11 +3081,11 @@ Methods:
     if self.usedata:
       f3d.lsrlinr = true
       f3d.npnts_sr = len(self.zdata)
-      f3d.forceassign('z_sr',self.zdata)
-      f3d.forceassign('r_sr',self.rofzdata)
-      f3d.forceassign('rad_sr',self.raddata)
-      f3d.forceassign('zc_sr',self.zcdata)
-      f3d.forceassign('rc_sr',self.rcdata)
+      f3d.z_sr = self.zdata
+      f3d.r_sr = self.rofzdata
+      f3d.rad_sr = self.raddata
+      f3d.zc_sr = self.zcdata
+      f3d.rc_sr = self.rcdata
     else:
       f3d.lsrlinr = false
 
@@ -3257,22 +3257,22 @@ Methods:
     if self.usemindata:
       f3d.lsrminlinr = true
       f3d.npnts_srmin = len(self.zmindata)
-      f3d.forceassign('z_srmin',self.zmindata)
-      f3d.forceassign('r_srmin',self.rminofzdata)
-      f3d.forceassign('rad_srmin',self.radmindata)
-      f3d.forceassign('zc_srmin',self.zcmindata)
-      f3d.forceassign('rc_srmin',self.rcmindata)
+      f3d.z_srmin = self.zmindata
+      f3d.r_srmin = self.rminofzdata
+      f3d.rad_srmin = self.radmindata
+      f3d.zc_srmin = self.zcmindata
+      f3d.rc_srmin = self.rcmindata
     else:
       f3d.lsrminlinr = false
 
     if self.usemaxdata:
       f3d.lsrmaxlinr = true
       f3d.npnts_srmax = len(self.zmaxdata)
-      f3d.forceassign('z_srmax',self.zmaxdata)
-      f3d.forceassign('r_srmax',self.rmaxofzdata)
-      f3d.forceassign('rad_srmax',self.radmaxdata)
-      f3d.forceassign('zc_srmax',self.zcmaxdata)
-      f3d.forceassign('rc_srmax',self.rcmaxdata)
+      f3d.z_srmax = self.zmaxdata
+      f3d.r_srmax = self.rmaxofzdata
+      f3d.rad_srmax = self.radmaxdata
+      f3d.zc_srmax = self.zcmaxdata
+      f3d.rc_srmax = self.rcmaxdata
     else:
       f3d.lsrmaxlinr = false
 
