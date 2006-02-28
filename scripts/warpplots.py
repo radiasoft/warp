@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.167 2006/02/07 20:37:50 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.168 2006/02/28 23:11:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -266,13 +266,19 @@ gistplsys = plsys
 # --- plotting routines and accumulating lists of things to plot, which are then
 # --- plotted when a final command is given. The functions provide the API for
 # --- toggling the switch.
+# --- Note that _accumulateplotlists is incremented each time that
+# --- accumulateplotlists is called and decrement in makeplotsdirectly.
+# --- This allows the switch to be set and unset in multiple places and
+# --- ensures that the switch will only be turned off when every call to
+# --- accumulateplotlists is matched with a call to makeplotsdirectly.
 _accumulateplotlists = 0
 def accumulateplotlists():
   global _accumulateplotlists
-  _accumulateplotlists = 1
+  _accumulateplotlists += 1
 def makeplotsdirectly():
   global _accumulateplotlists
-  _accumulateplotlists = 0
+  assert (_accumulateplotlists>0),"makeplotsdirectly should only ever be called after a call to accumulateplotlists"
+  _accumulateplotlists -= 1
 
 # --- This is the global list of the things to be plotted and the function
 # --- which actually does the plotting.
@@ -552,6 +558,9 @@ Simple interface to contour plotting, same arguments as plc
     if cmax is None: cmax = maxnd(zz)
     contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
   if filled:
+    # --- ireg must be of type integer because some legacy code used
+    # --- expects it.
+    ireg = ireg.astype('i')
     plfc(zz,xx,yy,ireg,contours=contours,local=local)
   else:
     plc(zz,xx,yy,ireg,color=color,levs=contours,width=width,type=linetype,
@@ -1412,7 +1421,9 @@ values from zmin to zmax.
     plotval = span(zmin,zmax,255)[:,NewAxis]*ones(2)
     xx = array([xmin,xmax])*ones(255)[:,NewAxis]
     yy = span(ymin,ymax,255)[:,NewAxis]*ones(2)
-    ireg = ones((255,2))
+    # --- ireg must be of type integer because some legacy code used
+    # --- expects it.
+    ireg = ones((255,2),'i')
     plfc(plotval,yy,xx,ireg,contours=array(levs),local=1)
   else:
     # --- Use cell array plotting for this case. All of the colors get a block
