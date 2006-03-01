@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.61 $, $Date: 2006/02/18 01:55:33 $
+c@(#) File WXY.M, version $Revision: 3.62 $, $Date: 2006/03/01 01:26:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -50,7 +50,7 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles, Only: npmax,npid
+      use Particles, Only: npmax
       use Particlesxy
       use Picglb
       use Picglb3d
@@ -74,6 +74,7 @@ c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
       integer(ISZ):: i,j,k,is,ipmin,ip,iwin,nl
+      integer(ISZ):: nextpid
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -247,8 +248,7 @@ c  use a user-set npmax directly)
 
 c  Create a spot in the pid array for the particle time step size
 
-      dtpid = npid + 1
-      npid = npid + 1
+      dtpid = nextpid()
 
 c  Load the particles, calculate the charge density
 
@@ -976,7 +976,7 @@ c     --- Create local pointers to the arrays in pgroup.
       ndts => pgroup%ndts
       dtscale => pgroup%dtscale
 
-      ismax = maxval(pgroup%js)+1
+      ismax = maxval(pgroup%sid)+1
 
 c  Zero curr if center is synchv or if using gaps
 c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)

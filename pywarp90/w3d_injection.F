@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.44 $, $Date: 2006/02/22 02:12:23 $
+c@(#) File w3d_injection.F, version $Revision: 1.45 $, $Date: 2006/03/01 01:26:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1530,7 +1530,7 @@ c=============================================================================
       integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
-      integer(ISZ), external :: oneiftrue
+      integer(ISZ), external :: oneiftrue, nextpid
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1828,9 +1828,7 @@ c control of injection.
       end if
 
 c Set pid index for injection information for particles
-      npid = npid + 1
-      injpid = npid
-      npidmax = max(1,npid)
+      injpid = nextpid()
 
 c Allocate the particle index. The index keeps track of which source the
 c particles are injected from.  It is also used to store the fractional

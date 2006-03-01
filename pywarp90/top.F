@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.165 $, $Date: 2006/02/10 19:50:33 $
+c@(#) File TOP.F, version $Revision: 3.166 $, $Date: 2006/03/01 01:26:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4523,7 +4523,7 @@ c         --- Set the correction to the beam frame position
       end
 c=============================================================================
       subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
+     &                    uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -4534,7 +4534,7 @@ c=============================================================================
       use ExtPart
       use Timers
       use Particles, only: wpid,dtscale
-      integer(ISZ):: np,itask,nplive,is,ismax
+      integer(ISZ):: np,itask,nplive,is,isid,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -4594,7 +4594,7 @@ c     --- species separately. The moments for all species combined will be
 c     --- done afterwards. Otherwise, only calculate the combined moments.
       if (lspeciesmoments) then
 c       --- Note that species index for these arrays is zero based.
-        js = is - 1
+        js = isid - 1
       else
         js = 0
       endif
@@ -5405,7 +5405,7 @@ c           --- anything.
       end
 c=============================================================================
       subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
+     &                    uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -5416,7 +5416,7 @@ c=============================================================================
       use ExtPart
       use Timers
       use Particles, only: dtscale
-      integer(ISZ):: np,itask,nplive,is,ismax
+      integer(ISZ):: np,itask,nplive,is,isid,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
@@ -5475,14 +5475,14 @@ c     --- If lspeciesmoments is true, then calculate the moments for each
 c     --- species separately. The moments for all species combined will be
 c     --- done afterwards. Otherwise, only calculate the combined moments.
       if (lspeciesmoments) then
-        js = is - 1
+        js = isid - 1
       else
         js = 0
       endif
 
       if (itask == 1 .and. .not. laccumulate_zmoments) then
         call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
+     &                uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
       if (itask == 2) then
@@ -5896,7 +5896,7 @@ c         --- End of Z moments accumulation
 
       if (itask == 3 .and. .not. laccumulate_zmoments) then
         call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                uxpo,uypo,uzpo,is,ismax,maxp,minp,zmmnts0,zmmnts)
+     &                uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
 !$OMP ATOMIC
@@ -5905,18 +5905,16 @@ c         --- End of Z moments accumulation
       return
       end
 c=============================================================================
-      subroutine getextrapolatedparticles(np,xp,yp,zp,uxp,uyp,uzp,gaminv,
-     &                                    npidmax,pid,
-     &                                    dt,uxpo,uypo,uzpo,is,time,zbeam)
+      subroutine getextrapolatedparticles(ipmin,np,pgroup,npidmax,
+     &                                    dt,uxpo,uypo,uzpo,isid,time,zbeam)
+      use ParticleGroupmodule
       use Z_Moments
       use ExtPart
       use Timers
-      integer(ISZ):: np,is,npidmax
+      integer(ISZ):: ipmin,np,npidmax,isid
+      type(ParticleGroup):: pgroup
       real(kind=8):: dt,time,zbeam
-      real(kind=8):: xp(np), yp(np), zp(np)
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8):: pid(np,npidmax)
-      real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+      real(kind=8):: uxpo(np),uypo(np),uzpo(np)
 
 c Given current and previous velocities, extrapolates particles to the
 c positions given (in the lab frame) by zzepwin.
@@ -5961,30 +5959,30 @@ c       --- Skip windows that are outside of the grid frame.
 
 c       --- Make sure that there is enough room - assuming that all particles
 c       --- could be saved.
-        if (nep(iw,is)+np > nepmax) then
-          nepmax = nep(iw,is)+np
+        if (nep(iw,isid)+np > nepmax) then
+          nepmax = nep(iw,isid)+np
           call gchange("ExtPart",0)
         endif
 
 c       --- extrapolate to window if near it
-        do ip=1,np
-          if (zp(ip) < zzep-wzep .or.
-     &        zp(ip) > zzep+wzep) cycle
+        do ip=ipmin,ipmin+np-1
+          if (pgroup%zp(ip) < zzep-wzep .or.
+     &        pgroup%zp(ip) > zzep+wzep) cycle
 
 c         --- Check if particle has already been saved in this window.
 c         --- This only works if multiple windows don't overlap.
           if (lepsaveonce) then
-            if (pid(ip,epflagpid) == iw) cycle
+            if (pgroup%pid(ip,epflagpid) == iw) cycle
           endif
 
-          vx = uxp(ip)*gaminv(ip)
-          vy = uyp(ip)*gaminv(ip)
-          vz = uzp(ip)*gaminv(ip)
-          ax = (uxp(ip) - uxpo(ip))*oneondt
-          ay = (uyp(ip) - uypo(ip))*oneondt
-          az = (uzp(ip) - uzpo(ip))*oneondt
+          vx = pgroup%uxp(ip)*pgroup%gaminv(ip)
+          vy = pgroup%uyp(ip)*pgroup%gaminv(ip)
+          vz = pgroup%uzp(ip)*pgroup%gaminv(ip)
+          ax = (pgroup%uxp(ip) - uxpo(ip-ipmin+1))*oneondt
+          ay = (pgroup%uyp(ip) - uypo(ip-ipmin+1))*oneondt
+          az = (pgroup%uzp(ip) - uzpo(ip-ipmin+1))*oneondt
 
-          delz = (zzep - zp(ip))
+          delz = (zzep - pgroup%zp(ip))
           dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
 
 c         --- Make an estimate of where the particle will be on the next step.
@@ -5993,7 +5991,7 @@ c         --- If it will be much closer to the z plane (smaller dtstar),
 c         --- then wait until then to save the particle.
           if (lepsaveonce) then
             vznp1 = vz + 0.5*az*dt
-            zznp1 = zp(ip) + vznp1*dt
+            zznp1 = pgroup%zp(ip) + vznp1*dt
             vznp1 = vznp1 + 0.5*az*dt
             delznp1 = (zzep - zznp1)
             dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
@@ -6003,20 +6001,20 @@ c           --- dtstarnp1 is way off.
             if (abs(dtstarnp1) < abs(dtstar)*epclosenessfactor) cycle
           endif
 
-          nep(iw,is) = nep(iw,is) + 1
-          nn = nep(iw,is)
+          nep(iw,isid) = nep(iw,isid) + 1
+          nn = nep(iw,isid)
 
           if (lepsaveonce) then
-            pid(ip,epflagpid) = iw
+            pgroup%pid(ip,epflagpid) = iw
           endif
 
-          tep(nn,iw,is) = time + dtstar
-          xep(nn,iw,is) = xp(ip) + vx*dtstar + 0.5*ax*dtstar**2
-          yep(nn,iw,is) = yp(ip) + vy*dtstar + 0.5*ay*dtstar**2
-          uxep(nn,iw,is) = vx + ax*dtstar
-          uyep(nn,iw,is) = vy + ay*dtstar
-          uzep(nn,iw,is) = vz + az*dtstar
-          if (npidmax > 0) pidep(nn,:,iw,is) = pid(ip,:)
+          tep(nn,iw,isid) = time + dtstar
+          xep(nn,iw,isid) = pgroup%xp(ip) + vx*dtstar + 0.5*ax*dtstar**2
+          yep(nn,iw,isid) = pgroup%yp(ip) + vy*dtstar + 0.5*ay*dtstar**2
+          uxep(nn,iw,isid) = vx + ax*dtstar
+          uyep(nn,iw,isid) = vy + ay*dtstar
+          uzep(nn,iw,isid) = vz + az*dtstar
+          if (npidmax > 0) pidep(nn,:,iw,isid) = pgroup%pid(ip,:)
 
         enddo
       enddo
@@ -6646,31 +6644,38 @@ c=============================================================================
       endif
       pgroup%npidmax = max(1,pgroup%npid)
 
-      call gchange("Particles",0)
+c     call gchange("Particles",0)
+      call ParticleGroupchange(pgroup)
 
-      sm => pgroup%sm
-      sq => pgroup%sq
-      sw => pgroup%sw
+      if (pgroup%ns > 0) then
+        sm => pgroup%sm
+        sq => pgroup%sq
+        sw => pgroup%sw
 
-      ins => pgroup%ins
-      nps => pgroup%nps
-      ndts => pgroup%ndts
-      ldts => pgroup%ldts
-      dtscale => pgroup%dtscale
-      lselfb => pgroup%lselfb
-      fselfb => pgroup%fselfb
+        ins => pgroup%ins
+        nps => pgroup%nps
+        ndts => pgroup%ndts
+        ldts => pgroup%ldts
+        dtscale => pgroup%dtscale
+        lselfb => pgroup%lselfb
+        fselfb => pgroup%fselfb
+      endif
 
-      xp => pgroup%xp
-      yp => pgroup%yp
-      zp => pgroup%zp
-      uxp => pgroup%uxp
-      uyp => pgroup%uyp
-      uzp => pgroup%uzp
-      gaminv => pgroup%gaminv
-      pid => pgroup%pid
+      if (pgroup%npmax > 0) then
+        xp => pgroup%xp
+        yp => pgroup%yp
+        zp => pgroup%zp
+        uxp => pgroup%uxp
+        uyp => pgroup%uyp
+        uzp => pgroup%uzp
+        gaminv => pgroup%gaminv
+      endif
+      if (pgroup%npmaxi > 0 .and. pgroup%npidmax > 0) then
+        pid => pgroup%pid
+      endif
 
       do js=0,pgroup%ns-1
-        pgroup%js(js) = js
+        pgroup%sid(js) = js
       enddo
 
       return
@@ -7707,6 +7712,19 @@ c starting at 'istart' to locations starting at 'it'.
 c=============================================================================
 c=============================================================================
 c  VARIOUS UTILITIES
+c=============================================================================
+      integer(ISZ) function nextpid()
+      use Particles,Only: npid
+
+c     --- Returns the next value of pid and increments npid.
+c     --- Note that this should be used and that npid should not be directly
+c     --- changed.
+
+      npid = npid + 1
+      nextpid = npid
+
+      return
+      end
 c=============================================================================
       subroutine copyarry (source, target, nwords)
       integer(ISZ):: nwords

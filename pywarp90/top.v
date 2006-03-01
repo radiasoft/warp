@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.156 $, $Date: 2006/02/17 23:50:36 $
+#@(#) File TOP.V, version $Revision: 3.157 $, $Date: 2006/03/01 01:26:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.156 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.157 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1923,7 +1923,7 @@ sw(ns) _real [1]  /0./ # Species weight
                        # (real particles per simulation particles)
 ins(ns)  _integer /1/  # Index of first particle in species
 nps(ns)  _integer /0/  # Number of particles in species
-js(0:ns-1) _integer /-1/ # Global species index for each species
+sid(0:ns-1) _integer /-1/ # Global species index for each species
 ndts(ns) _integer /1/  # Stride for time step advance for each species
 ldts(ns) _logical /1/
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
@@ -2047,13 +2047,14 @@ derivqty()  subroutine # Calculates global derived qtys.
 getzmmnt(np,xp(np):real,yp(np):real,zp(np):real,
          uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
          q:real,m:real,w:real,dt:real,itask,nplive,
-         uxpo(np):real,uypo(np):real,uzpo(np):real,is:integer,ns:integer,
+         uxpo(np):real,uypo(np):real,uzpo(np):real,
+         is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1
 getzmmnt_weights(np,xp(np):real,yp(np):real,zp(np):real,
          uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
          wp(np):real,q:real,m:real,w:real,dt:real,itask,nplive,
-         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer,
+         uxpo:real,uypo:real,uzpo:real,is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
 setgamma(lrelativ)
@@ -2224,6 +2225,10 @@ tolabfrm(zcent:real,nn,x(nn):real,z(nn):real) subroutine
 
 *********** TopUtil:
 # "Utility" subroutines at top level
+nextpid() integer function
+                        # Returns the next value of npid. Note that this
+                        # function should be used rather that directly
+                        # changing npid.
 dolabwn() logical function
                         # Checks if lab window is in beam frame
 alotpart()   subroutine # Allocate space for particles and setup associated data
