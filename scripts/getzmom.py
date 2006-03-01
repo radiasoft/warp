@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.17 2005/03/24 19:57:37 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.18 2006/03/01 01:27:40 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -39,11 +39,8 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
 
   # Zero out the moments arrays
   if (itask == 0 or itask == 1):
-    try:
-      getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,0,0.,0.,0.,1,top.ns,
-               top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
-    except:
-      getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,0,0.,0.,0.,1,top.ns)
+    getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,0,0.,0.,0.,1,1,top.ns,
+             top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Calculate the moments
   if jslist is None:
@@ -63,47 +60,27 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
          except AttributeError:
            weighted = 0
          if(not weighted):
-           try:
-             getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                      top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                      top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
-                      top.dt,2,top.nplive,
-                      uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns,
-                      top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
-           except:
-             getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                      top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                      top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
-                      top.dt,2,top.nplive,
-                      uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns)
+           getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
+                    top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
+                    top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
+                    top.dt,2,top.nplive,
+                    uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,js+1,top.ns,
+                    top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
          else:
-           try:
-             getzmmnt_weights(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                      top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                      top.gaminv[ipmin:],top.pid[ipmin:,top.wpid-1],
-                      top.sq[js],top.sm[js],top.sw[js],
-                      top.dt,2,top.nplive,
-                      uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns,
-                      top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
-           except:
-             getzmmnt_weights(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                      top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                      top.gaminv[ipmin:],top.pid[ipmin:,top.wpid-1],
-                      top.sq[js],top.sm[js],top.sw[js],
-                      top.dt,2,top.nplive,
-                      uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns)
+           getzmmnt_weights(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
+                    top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
+                    top.gaminv[ipmin:],top.pid[ipmin:,top.wpid-1],
+                    top.sq[js],top.sm[js],top.sw[js],
+                    top.dt,2,top.nplive,
+                    uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,js+1,top.ns,
+                    top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Do final summing and averaging of the moments
   if (itask == 0 or itask == 3):
-    try:
-      getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,
-               top.sq,top.sm,top.sw,top.dt/2.,3,
-               top.nplive,0.,0.,0.,1,top.ns,
-               top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
-    except:
-      getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,
-               top.sq,top.sm,top.sw,top.dt/2.,3,
-               top.nplive,0.,0.,0.,1,top.ns)
+    getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,
+             top.sq,top.sm,top.sw,top.dt/2.,3,
+             top.nplive,0.,0.,0.,1,1,top.ns,
+             top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Restore the value of laccumulate_zmoments
 # if (itask > 0):
