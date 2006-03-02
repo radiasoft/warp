@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.169 2006/03/02 18:06:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.170 2006/03/02 19:20:23 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -41,7 +41,7 @@ The following plot various particles projections.
 ppzxy(), ppzx(), ppzy(), ppzr()
 ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
 ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
-ppvxvy(), ppvxvz(), ppvyvz()
+ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
 pptrace()
 pprrp(), pprtp(), pprvz()
 
@@ -2015,7 +2015,7 @@ def ppzvperp(iw=0,**kw):
   vperp = sqrt(vx**2 + vy**2)
   return ppgeneric(vperp,getz(ii=ii,gather=0,**kw),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppzvtheta.__doc__ = ppzvtheta.__doc__ + ppgeneric_doc('z','vtheta')
+  ppzvperp.__doc__ = ppzvperp.__doc__ + ppgeneric_doc('z','vperp')
 
 ##########################################################################
 def ppzrp(iw=0,**kw):
@@ -2312,6 +2312,29 @@ def ppvyvz(iw=0,**kw):
   return ppgeneric(vz,vyms,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppvyvz.__doc__ = ppvyvz.__doc__ + ppgeneric_doc("Vy","Vz")
+
+##########################################################################
+def ppvzvperp(iw=0,**kw):
+  "Plots Vz-Vperp (sqrt(Vx**2 + Vy**2))"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzvperp,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    vperpmin = min(top.xpplmin*top.vbeam,top.ypplmin*top.vbeam)
+    vperpmax = min(top.xpplmax*top.vbeam,top.ypplmax*top.vbeam)
+    (vzmin,vzmax) = getvzrange(kwdict=kw)
+    kw['pplimits'] = (vzmin,vzmax,vperpmin,vperpmax)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Vperp vs Vz","Vz","Vperp",pptitleright(iw=iw,kwdict=kw))
+  vx = getvx(ii=ii,gather=0,**kw)
+  vy = getvy(ii=ii,gather=0,**kw)
+  vperp = sqrt(vx**2 + vy**2)
+  return ppgeneric(vperp,getvz(ii=ii,gather=0,**kw),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppvzvperp.__doc__ = ppvzvperp.__doc__ + ppgeneric_doc('vz','vperp')
 
 ##########################################################################
 def pprrp(iw=0,scale=0,slopejs=-1,**kw):
