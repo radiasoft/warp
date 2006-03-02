@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.21 2006/02/08 22:45:12 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.22 2006/03/02 19:15:38 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -95,7 +95,7 @@ class VisualModel(Visualizable):
       self.connections = arange(n)
       self.connections.shape = (nint(n/3),3)
     cc = pyOpenDX.DXNewArray(pyOpenDX.TYPE_INT,pyOpenDX.CATEGORY_REAL,1,3)
-    pyOpenDX.DXAddArrayData(cc,0,nint(n/3),self.connections.astype(Int))
+    pyOpenDX.DXAddArrayData(cc,0,nint(n/3),self.connections.astype(Int32))
     pyOpenDX.DXSetStringAttribute(cc,'ref','positions')
     pyOpenDX.DXSetStringAttribute(cc,'element type','triangles')
     pyOpenDX.DXSetStringAttribute(cc,'dep','connections')
