@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.168 2006/02/28 23:11:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.169 2006/03/02 18:06:53 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -39,7 +39,7 @@ getrho(), getphi(), setrho(), setphi()
 
 The following plot various particles projections.
 ppzxy(), ppzx(), ppzy(), ppzr()
-ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr()
+ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
 ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
 ppvxvy(), ppvxvz(), ppvyvz()
 pptrace()
@@ -1992,6 +1992,28 @@ def ppzvtheta(iw=0,**kw):
   settitles("Vtheta vs Z","Z","Vtheta",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getvtheta(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
                    kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvtheta.__doc__ = ppzvtheta.__doc__ + ppgeneric_doc('z','vtheta')
+
+##########################################################################
+def ppzvperp(iw=0,**kw):
+  "Plots Z-Vperp (sqrt(Vx**2 + Vy**2))"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzvperp,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    vperpmin = min(top.xpplmin*top.vbeam,top.ypplmin*top.vbeam)
+    vperpmax = min(top.xpplmax*top.vbeam,top.ypplmax*top.vbeam)
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vperpmin,vperpmax)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Vperp vs Z","Z","Vperp",pptitleright(iw=iw,kwdict=kw))
+  vx = getvx(ii=ii,gather=0,**kw)
+  vy = getvy(ii=ii,gather=0,**kw)
+  vperp = sqrt(vx**2 + vy**2)
+  return ppgeneric(vperp,getz(ii=ii,gather=0,**kw),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvtheta.__doc__ = ppzvtheta.__doc__ + ppgeneric_doc('z','vtheta')
 
