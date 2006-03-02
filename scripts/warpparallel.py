@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.60 2006/02/28 23:56:25 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.61 2006/03/02 20:00:59 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -623,8 +623,8 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       elif p == 'top' and vname in ['ins','nps']:
         # --- These have already been restored above since they are
         # --- needed to read in the particles.
-      elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                    'gaminv']):
+        continue
+      elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp','gaminv']):
         # --- Read in each species seperately.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
