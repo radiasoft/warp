@@ -5,6 +5,7 @@ from wxPython.lib.anchors import LayoutAnchors
 import matchenv
 import newstdout
 import warp
+import sys
 import __main__
 
 [wxID_PANEL, wxID_PANELENDMATCHOUTPUT, wxID_PANELFINALA, 
