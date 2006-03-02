@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.49 2006/03/01 01:28:41 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.50 2006/03/02 19:29:39 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -569,21 +569,25 @@ functions.
     """
     badargs = ppgeneric(checkargs=1,kwdict=kw)
     kw['allowbadargs'] = 1
-    if badargs: raise "bad arguments ",string.join(badargs.keys())
+    if badargs: raise 'bad arguments ',string.join(badargs.keys())
 
-  def titleright(self,tc=None,wt=None,z=None):
+  def titleright(self,tc=None,wt=None,z=None,slope=None):
     if tc is None:
       ttext = ''
     else:
       if wt is None: wt = self.dt
-      ttext = "  time = %e ^+_-%e"%(tc,wt)
+      ttext = '  time = %e ^+_-%e'%(tc,wt)
     if self.iz >= 0:
-      ztext =  "iz = %d (z = %f m)"%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
+      ztext =  'iz = %d (z = %f m)'%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
     else:
-      ztext =  "z = %f m"%self.zz
+      ztext =  'z = %f m'%self.zz
     if z is not None:
-      ztext = ztext + " projected to z = %f m"%z
-    return ztext + ttext
+      ztext = ztext + ' projected to z = %f m'%z
+    if slope is None:
+      slopetext = ''
+    else:
+      slopetext = '  slope=%7.4f'%slope
+    return ztext + ttext + slopetext
 
 #?def ppmultispecies(self,pp,args,kw):
 #?  kw['js'] = args[0]
@@ -647,7 +651,7 @@ each species and each one in the list. Also assign colors accordingly
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
-    settitles("X' vs X","X","X'",self.titleright(tc,wt,z))
+    settitles("X' vs X","X","X'",self.titleright(tc,wt,z,slope))
     return ppgeneric(xp,x,kwdict=kw)
 
   ############################################################################
@@ -674,7 +678,7 @@ each species and each one in the list. Also assign colors accordingly
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
-    settitles("Y' vs Y","Y","Y'",self.titleright(tc,wt,z))
+    settitles("Y' vs Y","Y","Y'",self.titleright(tc,wt,z,slope))
     return ppgeneric(yp,y,kwdict=kw)
 
   ############################################################################
@@ -732,7 +736,7 @@ each species and each one in the list. Also assign colors accordingly
     else:
       kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                         top.xpplmin/xpscale,top.xpplmax/ypscale)
-    settitles("R' vs R","R","R'",self.titleright(tc,wt,z))
+    settitles("R' vs R","R","R'",self.titleright(tc,wt,z,slope))
     return ppgeneric(rp,r,kwdict=kw)
 
   ############################################################################
