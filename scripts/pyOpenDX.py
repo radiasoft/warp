@@ -32,7 +32,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.25 2005/12/08 23:40:53 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.26 2006/03/02 21:46:38 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -438,7 +438,7 @@ def DXMountainPlot(f,xmin=0.,ymin=0.,dx=1.,dy=1.,scale=1.,display=1,labels=['x',
   dxdeltas = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,2)
   DXAddArrayData(dxdeltas,0,1,deltas)
 
-  counts = array([nx,ny])
+  counts = array([nx,ny]).astype(Int32)
   dxcounts = DXNewArray(TYPE_INT,CATEGORY_REAL,1,2)
   DXAddArrayData(dxcounts,0,1,counts)
 
@@ -460,7 +460,7 @@ def DXMountainPlot(f,xmin=0.,ymin=0.,dx=1.,dy=1.,scale=1.,display=1,labels=['x',
   moutput = ['graph']
   (dxobject,) = DXCallModule('RubberSheet',minput,moutput)
 
-  up = array([0,0,1])
+  up = array([0,0,1]).astype(Int32)
   dxup = DXNewArray(TYPE_INT,CATEGORY_REAL,1,3)
   DXAddArrayData(dxup,0,1,up)
   DXReference(dxobject)
