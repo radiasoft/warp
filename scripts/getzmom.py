@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.18 2006/03/01 01:27:40 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.19 2006/03/03 23:44:57 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -49,9 +49,6 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
     else:
       jslist = [js]
   if (itask == 0 or itask == 2):
-    uxpo = top.uxp
-    uypo = top.uyp
-    uzpo = top.uzp
     for js in jslist:
       for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,groupsize):
          ip = min(groupsize, top.ins[js]+top.nps[js]-ipmin-1)
@@ -59,20 +56,22 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
            weighted = top.wpid
          except AttributeError:
            weighted = 0
+         x = top.xp[ipmin:ipmin+ip]
+         y = top.yp[ipmin:ipmin+ip]
+         z = top.zp[ipmin:ipmin+ip]
+         ux = top.uxp[ipmin:ipmin+ip]
+         uy = top.uyp[ipmin:ipmin+ip]
+         uz = top.uzp[ipmin:ipmin+ip]
+         gaminv = top.gaminv[ipmin:ipmin+ip]
          if(not weighted):
-           getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                    top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                    top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
-                    top.dt,2,top.nplive,
-                    uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,js+1,top.ns,
+           getzmmnt(ip,x,y,z,ux,uy,uz,gaminv,top.sq[js],top.sm[js],top.sw[js],
+                    top.dt,2,top.nplive,ux,uy,uz,js+1,js+1,top.ns,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
          else:
-           getzmmnt_weights(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
-                    top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
-                    top.gaminv[ipmin:],top.pid[ipmin:,top.wpid-1],
-                    top.sq[js],top.sm[js],top.sw[js],
-                    top.dt,2,top.nplive,
-                    uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,js+1,top.ns,
+           pid = top.pid[ipmin:ipmin+ip,top.wpid-1]
+           getzmmnt_weights(ip,x,y,z,ux,uy,uz,gaminv,pid,
+                    top.sq[js],top.sm[js],top.sw[js],top.dt,2,top.nplive,
+                    ux,uy,uz,js+1,js+1,top.ns,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Do final summing and averaging of the moments
