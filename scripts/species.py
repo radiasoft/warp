@@ -143,35 +143,37 @@ Water           = Molecule(mass=18.*amu, Symbol='H2O')
 class Species:
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name=''):
     if js is None:
-      if top.sm[0]<>0.:
+      if top.pgroup.sm[0]<>0.:
         top.ns+=1
+        top.pgroup.ns+=1
         gchange('*')
       js=top.ns-1
+      top.pgroup.sid[js] = js
     self.jslist=[js]
     self.type=type
     self.name=name
     # set charge
     try:
-      top.sq[js]=type.charge
+      top.pgroup.sq[js]=type.charge
     except:
       if type.__class__ is not Particle:
-        top.sq[js]=echarge*charge_state
+        top.pgroup.sq[js]=echarge*charge_state
         self.charge_state=charge_state
       else:
-        top.sq[js]=charge
-    self.charge=top.sq[js]
+        top.pgroup.sq[js]=charge
+    self.charge=top.pgroup.sq[js]
     # set mass
     try:
-      top.sm[js]=type.mass
+      top.pgroup.sm[js]=type.mass
     except:
       try: 
-        top.sm[js]=type.A*amu
+        top.pgroup.sm[js]=type.A*amu
         top.aion_s[js]=type.A
       except:
-        top.sm[js]=mass
-    self.mass=top.sm[js]
+        top.pgroup.sm[js]=mass
+    self.mass=top.pgroup.sm[js]
     if weight is not None:
-      top.sw[js]=weight
+      top.pgroup.sw[js]=weight
     # set atomic number, if any
     try:
       top.nion_s[js]=type.Z
@@ -200,7 +202,7 @@ class Species:
 
     np=0
     for js in self.jslist:
-      np+=top.nps[js]
+      np+=top.pgroup.nps[js]
     if np==0:
       if dens is None:
         return density
@@ -212,8 +214,8 @@ class Species:
       y=gety(js=js,lost=lost)
       z=getz(js=js,lost=lost)
       np=shape(x)[0]
-      w=top.sw[js]*ones(np,'d')
-      if charge:w*=top.sq[js]    
+      w=top.pgroup.sw[js]*ones(np,'d')
+      if charge:w*=top.pgroup.sq[js]    
       deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
     density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
     if dens is None:return density
@@ -232,4 +234,4 @@ class Species:
     vz=RandomArray.normal(vzmean,vthz,np)
     self.addpart(x,y,z,vx,vy,vz,js)
     
-    
+
