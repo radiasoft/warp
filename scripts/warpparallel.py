@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.61 2006/03/02 20:00:59 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.62 2006/03/03 17:44:08 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -654,6 +654,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       elif p == 'top' and vname in ['inslost','npslost']:
         # --- These have already been restored above since they are
         # --- needed to read in the lost particles.
+        continue
       elif p == 'top' and vname in ['xplost','yplost','zplost',
                                     'uxplost','uyplost','uzplost',
                                     'gaminvlost','tplost']:
