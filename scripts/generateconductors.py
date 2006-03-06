@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.129 2006/02/28 21:57:53 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.130 2006/03/06 20:25:21 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1558,7 +1558,7 @@ Creates a grid object which can generate conductor data.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
-    if top.fstype in [7,11,12,13]:
+    if self.ny > 0:
       conductors = ConductorType()
       getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
                   conductors,
@@ -1569,7 +1569,7 @@ Creates a grid object which can generate conductor data.
       self.mglevellx = conductors.levellx[:self.mglevels].copy()
       self.mglevelly = conductors.levelly[:self.mglevels].copy()
       self.mglevellz = conductors.levellz[:self.mglevels].copy()
-    elif top.fstype == 10:
+    else:
       if gridrz is None:gridrz=frz.basegrid
       setmglevels_rz(gridrz)
       self.mglevels = f3d.mglevels
@@ -1578,13 +1578,6 @@ Creates a grid object which can generate conductor data.
       self.mglevellx = f3d.mglevelslx[:f3d.mglevels].copy()
       self.mglevelly = f3d.mglevelsly[:f3d.mglevels].copy()
       self.mglevellz = f3d.mglevelslz[:f3d.mglevels].copy()
-    else:
-      self.mglevels = 1
-      self.mgleveliz = [self.izslave[me]]
-      self.mglevelnz = [self.nz]
-      self.mglevellx = [1]
-      self.mglevelly = [1]
-      self.mglevellz = [1]
 
     # --- Create empty lists of conductors
     self.dlist = []
