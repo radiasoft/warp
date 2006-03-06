@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.101 2006/02/17 23:51:48 dave Exp $"
+warp_version = "$Id: warp.py,v 1.102 2006/03/06 20:23:58 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -765,7 +765,10 @@ def fixrestoreswitholdparticlearrays(filename):
   top.pgroup.lselfb = top.lselfb
   top.pgroup.fselfb = top.fselfb
 
-  top.pgroup.js = arange(top.ns)
+  try:
+    top.pgroup.sid = arange(top.ns)
+  except:
+    top.pgroup.js = arange(top.ns)
 
   top.pgroup.gaminv = top.gaminv
   top.pgroup.xp = top.xp
