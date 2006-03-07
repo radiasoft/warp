@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.102 2006/03/06 20:23:58 dave Exp $"
+warp_version = "$Id: warp.py,v 1.103 2006/03/07 01:10:45 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -169,8 +169,11 @@ Computes current density from Child-Langmuir formula
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
-  if x == 0.: return top.smallpos
-  else:       return x
+  if type(x) in [IntType,FloatType]:
+    if x == 0.: return top.smallpos
+    else:       return x
+  else:
+    return where(x==0.,top.smallpos,x)
   #return sign(abs(x)+top.smallpos,x)
 
 #=============================================================================
