@@ -157,7 +157,7 @@ pyDXObject_DXAddArrayData(PyObject *self,PyObject *args)
   PyObject *a,*data;
   PyArrayObject *pyarr;
   Array e;
-  int start,n,type=PyArray_DOUBLE;
+  int start,n;
   if (!PyArg_ParseTuple(args, "O!iiO",&PyDXObject_Type,&a,&start,&n,&data))
     return NULL;
   pyarr = (PyArrayObject *)PyArray_ContiguousFromObject(data,
