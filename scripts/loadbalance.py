@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.44 2006/01/21 00:58:11 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.45 2006/03/09 00:58:12 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -54,6 +54,10 @@ recalculated on a finer mesh to give better balancing.
     if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    installafterstep(self.doloadbalance)
+
   def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
     if not lparallel: return
 
@@ -94,8 +98,8 @@ recalculated on a finer mesh to give better balancing.
       if min(top.inj_d) < 0.: zinjectmin = zinjectmin - injdepth
       if max(top.inj_d) > 0.: zinjectmax = zinjectmax + injdepth
       # --- Also make sure that the injection virtual surface is included.
-      zinjectmin = zinjectmin + min(top.inj_d)*w3d.dz
-      zinjectmax = zinjectmax + max(top.inj_d)*w3d.dz
+      zinjectmin = zinjectmin + min(0.,min(top.inj_d)*w3d.dz)
+      zinjectmax = zinjectmax + max(0.,max(top.inj_d)*w3d.dz)
       zminp = minimum(zinjectmin,zminp)
       zmaxp = maximum(zinjectmax,zmaxp)
 
@@ -105,7 +109,7 @@ recalculated on a finer mesh to give better balancing.
 
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
-    if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
+    if top.zpslmax[-1] < w3d.zmmaxglobal-0.5*w3d.dz:
       if zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
         lforce = true
         if self.verbose:
