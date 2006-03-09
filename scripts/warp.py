@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.103 2006/03/07 01:10:45 dave Exp $"
+warp_version = "$Id: warp.py,v 1.104 2006/03/09 00:56:12 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -451,6 +451,7 @@ Registers the solver to be used in the particle simulation.
 
   """
   _fieldsolver[0] = solver
+  w3d.solvergeom = w3d.XYZgeomMR
 def getregisteredsolver():
   return _fieldsolver[0]
 def loadrhoMR():
