@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.157 $, $Date: 2006/03/01 01:26:30 $
+#@(#) File TOP.V, version $Revision: 3.158 $, $Date: 2006/03/10 00:53:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.157 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.158 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2243,6 +2243,9 @@ addpart(nn:integer,npid:integer,x(nn):real,y(nn):real,z(nn):real,
 clearpart(js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
 shrinkpart() subroutine # Removes unused space in the particle arrays
+particlesortyzwithcopy(pgroup:ParticleGroup,dy:real,dz:real,
+                       ymmin:real,zmmin:real,ny:integer,nz:integer)
+             subroutine # Sorts particles via a full copy
 processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).

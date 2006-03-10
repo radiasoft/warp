@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.166 $, $Date: 2006/03/01 01:26:30 $
+c@(#) File TOP.F, version $Revision: 3.167 $, $Date: 2006/03/10 00:53:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7310,6 +7310,103 @@ c         --- Zero out the velocity, the flag for a lost particle.
 
       return
       end
+c=============================================================================
+      subroutine particlesortyzwithcopy(pgroup,dy,dz,ymmin,zmmin,ny,nz)
+      use ParticleGroupmodule
+      use Beam_acc,Only: lrelativ
+      type(ParticleGroup):: pgroup
+      real(kind=8):: dy,dz,ymmin,zmmin
+      integer(ISZ):: ny,nz
+
+c Sorts particles, using a full size extra particle array for temporary
+c space.
+
+      integer(ISZ):: is,ip,ipg,iy,iz,ipid
+      integer(ISZ),allocatable:: pindex(:)
+      integer(ISZ),allocatable:: npgrid(:),ipgrid(:)
+      real(kind=8),pointer:: pdata(:),ptemp(:)
+
+      allocate(pindex(pgroup%npmax))
+      allocate(npgrid((1+ny)*(1+nz)))
+      allocate(ipgrid((1+ny)*(1+nz)))
+
+      pindex = 0
+
+c     --- Treat the particles in each species separately
+      do is=1,pgroup%ns
+        npgrid = 0
+
+c     --- First, find which block each particle goes into and cound how
+c     --- many are in each block
+        do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          iy = abs(pgroup%yp(ip) - ymmin)/dy
+          iz = abs(pgroup%zp(ip) - zmmin)/dz
+          ipg = iy + (ny+1)*iz
+          pindex(ip) = ipg
+          npgrid(ipg) = npgrid(ipg) + 1
+        enddo
+
+        ipgrid(1) = pgroup%ins(is)
+        do ipg=2,(1+ny)*(1+nz)
+          ipgrid(ipg) = ipgrid(ipg-1) + npgrid(ipg-1)
+        enddo
+
+        do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          ipg = pindex(ip)
+          pindex(ip) = ipgrid(ipg)
+          ipgrid(ipg) = ipgrid(ipg) + 1
+        enddo
+
+c     --- End of loop over species
+      enddo
+
+c     --- pindex is setup for all species. Now do the moving of data.
+      allocate(pdata(pgroup%npmax))
+      call particlecopysorteddata(pgroup%npmax,pgroup%xp,pdata,pindex)
+      call particlecopysorteddata(pgroup%npmax,pgroup%yp,pdata,pindex)
+      call particlecopysorteddata(pgroup%npmax,pgroup%zp,pdata,pindex)
+      call particlecopysorteddata(pgroup%npmax,pgroup%uxp,pdata,pindex)
+      call particlecopysorteddata(pgroup%npmax,pgroup%uyp,pdata,pindex)
+      call particlecopysorteddata(pgroup%npmax,pgroup%uzp,pdata,pindex)
+      if (lrelativ) then
+        call particlecopysorteddata(pgroup%npmax,pgroup%gaminv,pdata,pindex)
+      endif
+
+      if (pgroup%npmaxi == pgroup%npmax) then
+        do ipid=1,pgroup%npidmax
+          call particlecopysorteddata(pgroup%npmax,pgroup%pid(:,ipid),pdata,
+     &                                pindex)
+        enddo
+      endif
+
+      deallocate(pdata)
+      deallocate(pindex)
+      deallocate(npgrid)
+      deallocate(ipgrid)
+
+      return
+      end
+c=============================================================================
+      subroutine particlecopysorteddata(npmax,source,target,pindex)
+      integer(ISZ):: npmax
+      real(kind=8):: source(npmax),target(npmax)
+      integer(ISZ):: pindex(npmax)
+
+      integer(ISZ):: ip,ipi
+
+      do ip=1,npmax
+        ipi = pindex(ip)
+        if (ipi == 0) cycle
+        target(ipi) = source(ip)
+      enddo
+      do ip=1,npmax
+        source(ip) = target(ip)
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
 c=============================================================================
       subroutine alotlostpart
       use Subtimerstop
