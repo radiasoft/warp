@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.231 $, $Date: 2006/03/01 01:26:29 $
+c@(#) File W3D.F, version $Revision: 3.232 $, $Date: 2006/03/10 00:38:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2542,7 +2542,7 @@ c        + u1 * v0 * w0 * ex(i+1,j  ,k  )
 c        + u0 * v1 * w0 * ex(i  ,j+1,k  )
 c        + ...
 
-      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,m
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,m,inext,jnext,knext
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy
@@ -3208,6 +3208,144 @@ c           --- Adjust sign of E field for appropriate quadrant.
           enddo
 
         endif
+
+      else if (efetch == 6) then
+
+c     --- Same as efetch=1 but the i,j,k and are recalculated for the next
+c     --- particle since the float to integer conversion can be slow
+
+      if (.not. (l2symtry .or. l4symtry)) then
+        inext = (xp(1) - xmmin) * dxi
+        jnext = (yp(1) - ymmin) * dyi
+        knext = (zp(1) - zgrid - zmmin) * dzi
+        do ip = 1, np
+
+           i = inext
+           j = jnext
+           k = knext
+           if (ip < np) then
+             inext = (xp(ip+1) - xmmin) * dxi
+             jnext = (yp(ip+1) - ymmin) * dyi
+             knext = (zp(ip+1) - zgrid - zmmin) * dzi
+           endif
+           ind0 = i + j*nnx + k*nnxy
+
+           u1 = (xp(ip) - xmmin) * dxi - i
+           v1 = (yp(ip) - ymmin) * dyi - j
+           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+
+           u0 = 1. - u1
+           v0 = 1. - v1
+           w0 = 1. - w1
+
+           ex(ip)=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &                + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &                + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
+     &                + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &                + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
+
+           ey(ip)=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &                + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &                + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
+     &                + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
+     &                + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
+
+           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+        enddo
+
+      else
+
+c       --- Set offsets for indices on axis of symmetry.  The offsets change
+c       --- the sign of the grid cells which are on the negative side
+c       --- of the axis of symmetry.
+        soy = 2*nnx
+        sox = 0
+        if (l4symtry) sox = 2
+
+c       --- Set the signs of the E field for particles on negative side of
+c       --- the axis of symmetry.
+        sy = -1.
+        sx = 1.
+        if (l4symtry) sx = -1.
+
+c       --- special loop symmetry is used
+        inext = (abs(xp(1)) - xmmin)*dxi
+        jnext = (abs(yp(1)) - ymmin)*dyi
+        knext = (zp(1) - zgrid - zmmin)*dzi
+        do ip = 1, np
+
+           i = inext
+           j = jnext
+           k = knext
+           if (ip < np) then
+             inext = (abs(xp(ip+1)) - xmmin)*dxi
+             jnext = (abs(yp(ip+1)) - ymmin)*dyi
+             knext = (zp(ip+1) - zgrid - zmmin)*dzi
+           endif
+           ind0 = i + j*nnx + k*nnxy
+
+           u1 = (abs(xp(ip)) - xmmin)*dxi - i
+           v1 = (abs(yp(ip)) - ymmin)*dyi - j
+           w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+           u0 = 1. - u1
+           v0 = 1. - v1
+           w0 = 1. - w1
+
+c          --- Set offsets for points on symmetry axis of grid.  The offset
+c          --- for points off the axis is zero.
+           ox = 0
+           oy = 0
+           if (i == 0 .and. xmmin == 0.) ox = sox
+           if (j == 0 .and. ymmin == 0.) oy = soy
+
+c          --- Adjust sign of E field for appropriate quadrant.
+           xsign = tdxi
+           ysign = tdyi
+           if (xp(ip) < 0.) xsign = sx*tdxi
+           if (yp(ip) < 0.) ysign = sy*tdyi
+          ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &                + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &                + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
+     &                + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &                + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
+
+          ey(ip)=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &                + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &                + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
+     &                + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
+     &                + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+
+           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+        enddo
+
+      endif
 
       endif
 
@@ -4250,6 +4388,7 @@ c     --- For both algorithms
       real(kind=8),allocatable:: s(:,:)
 
       integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
+      integer(ISZ):: inext,jnext,knext
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -4288,7 +4427,7 @@ c       --- transverse boundaries.
 !$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
 !$OMP&FIRSTPRIVATE(np)
 
-      if (depos == "vector") then 
+      if (depos == "vector" .or. depos == "vector1") then 
         allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
       elseif (depos == "scalar") then
         allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1),
@@ -4516,12 +4655,160 @@ c     --- scalar loop does the actual deposition
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D2)
 
+      else if (depos == "vector1") then
+
+c     --- Here, the i,j,k are precalculated for the next particle
+c     --- since the float to integer conversion can be expensive.
+c     --- Tests however only show about a 5% speed up.
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+c       --- special loop for 2-fold symmetry
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        inext = int((xp(ipmin) - xmmin) * dxi)
+        jnext = int((abs(yp(ipmin)) - ymmin)*dyi)
+        knext = int((zp(ipmin) - zgrid - zmmin) * dzi)
+        do ip = ipmin,ipmin+nptmp-1
+           i = inext
+           j = jnext
+           k = knext
+           if (ip < ipmin+nptmp-1) then
+             inext = int((xp(ip+1) - xmmin) * dxi)
+             jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+             knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
+           endif
+           u1 =     (xp(ip) - xmmin) * dxi - i
+           u0 = 1. - u1
+           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+           v0 = 1. - v1
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           w0 = 1. - w1
+           ir = ip - ipmin
+           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
+           gyfact = 1.
+           if (j == 0 .and. ymmin == 0.) gyfact = 2.
+           s(0,ir) = u0 * v0 * w0 * g*gyfact
+           s(1,ir) = u1 * v0 * w0 * g*gyfact
+           s(2,ir) = u0 * v1 * w0 * g
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g*gyfact
+           s(5,ir) = u1 * v0 * w1 * g*gyfact
+           s(6,ir) = u0 * v1 * w1 * g
+           s(7,ir) = u1 * v1 * w1 * g
+        enddo
+      elseif (l4symtry) then
+c       --- special loop for 4-fold symmetry
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        inext  = int((abs(xp(ipmin)) - xmmin)*dxi)
+        jnext  = int((abs(yp(ipmin)) - ymmin)*dyi)
+        knext  = int((zp(ipmin) - zgrid - zmmin) * dzi)
+        do ip = ipmin,ipmin+nptmp-1
+           i = inext
+           j = jnext
+           k = knext
+           if (ip < ipmin+nptmp-1) then
+              inext = int((abs(xp(ip+1)) - xmmin)*dxi)
+              jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
+           endif
+           u1 =     (abs(xp(ip)) - xmmin)*dxi - i
+           u0 = 1. - u1
+           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+           v0 = 1. - v1
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           w0 = 1. - w1
+           ir = ip - ipmin
+           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
+           gxfact = 1.
+           gyfact = 1.
+           if (i == 0 .and. xmmin == 0.) gxfact = 2.
+           if (j == 0 .and. ymmin == 0.) gyfact = 2.
+           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
+           s(1,ir) = u1 * v0 * w0 * g*gyfact
+           s(2,ir) = u0 * v1 * w0 * g*gxfact
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
+           s(5,ir) = u1 * v0 * w1 * g*gyfact
+           s(6,ir) = u0 * v1 * w1 * g*gxfact
+           s(7,ir) = u1 * v1 * w1 * g
+        enddo
+      else
+c       --- normal loop
+        inext = int((xp(ipmin) - xmmin) * dxi)
+        jnext = int((yp(ipmin) - ymmin) * dyi)
+        knext = int((zp(ipmin) - zgrid - zmmin) * dzi)
+        do ip = ipmin,ipmin+nptmp-1
+           i = inext
+           j = jnext
+           k = knext
+           if (ip < ipmin+nptmp-1) then
+             inext = int((xp(ip+1) - xmmin) * dxi)
+             jnext = int((yp(ip+1) - ymmin) * dyi)
+             knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
+           endif
+           u1 =     (xp(ip) - xmmin) * dxi - i
+           u0 = 1. - u1
+           v1 =     (yp(ip) - ymmin) * dyi - j
+           v0 = 1. - v1
+           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           w0 = 1. - w1
+           ir = ip - ipmin
+           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
+           s(0,ir) = u0 * v0 * w0 * g
+           s(1,ir) = u1 * v0 * w0 * g
+           s(2,ir) = u0 * v1 * w0 * g
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g
+           s(5,ir) = u1 * v0 * w1 * g
+           s(6,ir) = u0 * v1 * w1 * g
+           s(7,ir) = u1 * v1 * w1 * g
+        enddo
+      endif
+c     --- vectorized deposition over the 8 cells touched;
+c     --- there'd be a hazard if we interchanged the loops.
+!$OMP CRITICAL (CRITICAL_SETRHO3D1)
+      do ir = 0,nptmp-1
+        if (uzp(ir+ipmin) /= 0.) then
+          do m = 0, 7
+             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
+        endif
+      enddo
+!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
+
       endif
 
       enddo
 !$OMP END DO
 
-      if (depos == "vector") then 
+
+      if (depos == "vector" .or. depos == "vector1") then 
         deallocate(indx,s)
       elseif (depos == "scalar") then
         deallocate(ii,jj,kk,s)
