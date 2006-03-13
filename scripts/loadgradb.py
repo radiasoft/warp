@@ -77,16 +77,19 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
         dt=top.dt;dtr=.5*dt;dtl=-dtr
         nx1=nx+1;ny1=ny+1;nz1=nz+1
         npuse=nx1*ny1*nz1
-        bx=zeros((nx1,ny1,nz1),"d")
-        by=zeros((nx1,ny1,nz1),"d")
-        bz=zeros((nx1,ny1,nz1),"d")
-        ex=zeros((nx1,ny1,nz1),"d")
-        ey=zeros((nx1,ny1,nz1),"d")
-        ez=zeros((nx1,ny1,nz1),"d")
-        gaminv=ones((nx1,ny1,nz1),"d")
-        uzd=ones((nx1,ny1,nz1),"d")
-        bendres=zeros((nx1,ny1,nz1),"d")
-        bendradi=zeros((nx1,ny1,nz1),"d")
+        x.shape = (nx1*ny1*nz1,)
+        y.shape = (nx1*ny1*nz1,)
+        z.shape = (nx1*ny1*nz1,)
+        bx=zeros((nx1*ny1*nz1),"d")
+        by=zeros((nx1*ny1*nz1),"d")
+        bz=zeros((nx1*ny1*nz1),"d")
+        ex=zeros((nx1*ny1*nz1),"d")
+        ey=zeros((nx1*ny1*nz1),"d")
+        ez=zeros((nx1*ny1*nz1),"d")
+        gaminv=ones((nx1*ny1*nz1),"d")
+        uzd=ones((nx1*ny1*nz1),"d")
+        bendres=zeros((nx1*ny1*nz1),"d")
+        bendradi=zeros((nx1*ny1*nz1),"d")
         # now fetch the B array 
         print "about to call exteb3d"
         print "shapes", shape(x),shape(uzd),shape(gaminv)
@@ -95,6 +98,9 @@ def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
                     bx,by,bz,ex,ey,ez,top.sm[0],
                     top.sq[0],bendres,bendradi,gaminv,dt)
         print "called exteb3d"
+    bx.shape=(nx1,ny1,nz1)
+    by.shape=(nx1,ny1,nz1)
+    bz.shape=(nx1,ny1,nz1)
     fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry,zonly)
     resetlat()
     setlatt()
