@@ -13,7 +13,7 @@ import timing as t
 import time
 import __main__
 
-secondaries_version = "$Id: Secondaries.py,v 1.4 2005/12/08 23:24:44 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.5 2006/03/14 00:03:44 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -236,7 +236,6 @@ Class for generating secondaries
         if self.l_verbose:print 'ics',ics
         iit = compress(top.pidlost[i1+top.it%stride:i2:stride,-1]==icond,arange(top.it%stride,top.npslost[js],stride))
         n = len(iit)
-#        print '*1',n
         if n==0:continue
         xplost = take(top.xplost[i1:i2],iit)
         yplost = take(top.yplost[i1:i2],iit)
@@ -273,7 +272,7 @@ Class for generating secondaries
         vzplost = (zplost-zplostold)/top.dt
         gaminvlost = take(top.gaminvlost[i1:i2],iit)
         e0 = where(gaminvlost==1., \
-                   0.5*top.sm[js]*sqrt(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
+                   0.5*top.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
                    (1./gaminvlost-1.)*top.sm[js]*clight**2/top.echarge)
 #        print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
         v = array([vxplost,vyplost,vzplost])
@@ -379,7 +378,7 @@ Class for generating secondaries
                if self.inter[js]['material'][ics]=='SS':target_num=10025
                ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
                                           max(0.04,coseta[i]),
-                                          incident_species.type.Z,
+                                          float(incident_species.type.Z),
                                           incident_species.type.A,
                                           target_num,
                                           self.emitted_e,
@@ -387,15 +386,24 @@ Class for generating secondaries
                                           self.emitted_bt,
                                           self.emitted_bz)
                ns = min(ns,self.npmax)
-               ekstot=zeros(ns,'d')
-               bn=zeros(ns,'d')
-               bt=zeros(ns,'d')
-               bz=zeros(ns,'d')
+               self.coseta=coseta[i]
+               nsemit=ns+0
+               # for some reason, the energy is sometimes negative on OSX
                for iemit in range(ns):
-                 ekstot=self.emitted_e 
-                 bn[iemit]=self.emitted_bn[iemit] 
-                 bt[iemit]=self.emitted_bt[iemit] 
-                 bz[iemit]=self.emitted_bz[iemit] 
+                 if self.emitted_e[iemit]<0.:
+                   print 'Warning: negative energy from txphysics.ion_ind_elecs:',self.emitted_e[iemit]
+                   nsemit-=1
+               bn=zeros(nsemit,'d')
+               bt=zeros(nsemit,'d')
+               bz=zeros(nsemit,'d')
+               iwemit=0
+               for iemit in range(ns):
+                 if self.emitted_e[iemit]>=0.:
+                   bn[iwemit]=self.emitted_bn[iemit] 
+                   bt[iwemit]=self.emitted_bt[iemit] 
+                   bz[iwemit]=self.emitted_bz[iemit] 
+                   iwemit+=1
+               ns=nsemit
                if self.l_verbose:
                  print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
               except:
@@ -415,7 +423,7 @@ Class for generating secondaries
                                 vyplost[i]*n_unit0[0][i]-vxplost[i]*n_unit0[1][i]])
               z_unit  = z/sqrt(sum(z*z))
               cospsi  = sum(z_unit*z_unit0)
-              sinpsi  = sqrt(1.-cospsi*cospsi)
+              sinpsi  = sqrt(max(0.,1.-cospsi*cospsi))
 #              bt0 = (cospsi*bt - sinpsi*bz)
 #              bz0 = (sinpsi*bt + cospsi*bz)
               bt0 = -(cospsi*bt - sinpsi*bz)
@@ -470,7 +478,8 @@ Class for generating secondaries
             vznew = zeros(ns,'d')
 
             #compute the desorbed neutrals
-            desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1./gaminvlost[i],0.4,top.sm[js],7000,vx,vy,vz)
+            # note that the gamma0 (1.) and rel_weight (top.sw[js_new]/top.sw[js]) are actually not used
+            desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1.,0.4,top.sm[js],top.sw[js_new]/top.sw[js],vx,vy,vz)
             for ivnew in range(ns):
               vxnew[ivnew]=vx[ivnew]
               vynew[ivnew]=vy[ivnew]
@@ -506,7 +515,7 @@ Class for generating secondaries
             c.emitparticles_data += [[top.time, 
                                       totemit,
                                       top.dt,
-                                      self.inter[js]['emitted_species'][ics][ie]]]
+                                      self.inter[js]['emitted_species'][ics][ie].jslist[0]]]
 
 #    w3d.lcallscraper=0
 #    particleboundaries3d()
