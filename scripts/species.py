@@ -142,6 +142,16 @@ Water           = Molecule(mass=18.*amu, Symbol='H2O')
 
 class Species:
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name=''):
+    self.jslist=[]
+    self.type=type
+    self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
+    self.charge=top.pgroup.sq[self.jslist[0]]
+    self.mass=top.pgroup.sm[self.jslist[0]]
+    if type.__class__ is not Particle:
+      self.charge_state=charge_state
+    self.name=name
+     
+  def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
       if top.pgroup.sm[0]<>0.:
         top.ns+=1
@@ -150,19 +160,19 @@ class Species:
         gchangeparticles()
       js=top.ns-1
       top.pgroup.sid[js] = js
-    self.jslist=[js]
-    self.type=type
-    self.name=name
+    self.jslist.append(js)
+    type=self.type
+    if charge is None:charge=self.charge
+    if mass is None:mass=self.mass
     # set charge
     try:
       top.pgroup.sq[js]=type.charge
     except:
       if type.__class__ is not Particle:
+        if charge_state is None:charge_state=self.charge_state
         top.pgroup.sq[js]=echarge*charge_state
-        self.charge_state=charge_state
       else:
         top.pgroup.sq[js]=charge
-    self.charge=top.pgroup.sq[js]
     # set mass
     try:
       top.pgroup.sm[js]=type.mass
@@ -172,7 +182,6 @@ class Species:
         top.aion_s[js]=type.A
       except:
         top.pgroup.sm[js]=mass
-    self.mass=top.pgroup.sm[js]
     if weight is not None:
       top.pgroup.sw[js]=weight
     # set atomic number, if any
@@ -235,4 +244,128 @@ class Species:
     vz=RandomArray.normal(vzmean,vthz,np)
     self.addpart(x,y,z,vx,vy,vz,js)
     
+  def getn(self,**kw):
+    return getn(jslist=self.jslist,**kw)
+    
+  def getx(self,**kw):
+    return getx(jslist=self.jslist,**kw)
+    
+  def gety(self,**kw):
+    return gety(jslist=self.jslist,**kw)
+    
+  def getz(self,**kw):
+    return getz(jslist=self.jslist,**kw)
+    
+  def getr(self,**kw):
+    return getr(jslist=self.jslist,**kw)
 
+  def getvx(self,**kw):
+    return getvx(jslist=self.jslist,**kw)
+    
+  def getvy(self,**kw):
+    return getvy(jslist=self.jslist,**kw)
+    
+  def getvz(self,**kw):
+    return getvz(jslist=self.jslist,**kw)
+    
+  def getux(self,**kw):
+    return getux(jslist=self.jslist,**kw)
+    
+  def getuy(self,**kw):
+    return getuy(jslist=self.jslist,**kw)
+    
+  def getuz(self,**kw):
+    return getuz(jslist=self.jslist,**kw)
+    
+  def getxp(self,**kw):
+    return getxp(jslist=self.jslist,**kw)
+    
+  def getyp(self,**kw):
+    return getyp(jslist=self.jslist,**kw)
+    
+  def getrp(self,**kw):
+    return getrp(jslist=self.jslist,**kw)
+    
+  def gettp(self,**kw):
+    return gettp(jslist=self.jslist,**kw)
+    
+  def getgaminv(self,**kw):
+    return getgaminv(jslist=self.jslist,**kw)
+    
+  def getpid(self,**kw):
+    return getpid(jslist=self.jslist,**kw)
+
+  def ppxy(self,**kw):
+    return ppxy(jslist=self.jslist,**kw)
+
+  def ppxxp(self,**kw):
+    return ppxxp(jslist=self.jslist,**kw)
+
+  def ppyyp(self,**kw):
+    return ppyyp(jslist=self.jslist,**kw)
+
+  def ppxpyp(self,**kw):
+    return ppxpyp(jslist=self.jslist,**kw)
+
+  def ppxvx(self,**kw):
+    return ppxvx(jslist=self.jslist,**kw)
+
+  def ppyvy(self,**kw):
+    return ppyvy(jslist=self.jslist,**kw)
+
+  def ppxvz(self,**kw):
+    return ppxvz(jslist=self.jslist,**kw)
+
+  def ppyvz(self,**kw):
+    return ppyvz(jslist=self.jslist,**kw)
+
+  def ppzxy(self,**kw):
+    return ppzxy(jslist=self.jslist,**kw)
+
+  def ppzx(self,**kw):
+    return ppzx(jslist=self.jslist,**kw)
+
+  def ppzy(self,**kw):
+    return ppzy(jslist=self.jslist,**kw)
+
+  def ppzr(self,**kw):
+    return ppzr(jslist=self.jslist,**kw)
+
+  def ppzxp(self,**kw):
+    return ppzxp(jslist=self.jslist,**kw)
+
+  def ppzvx(self,**kw):
+    return ppzvx(jslist=self.jslist,**kw)
+
+  def ppzyp(self,**kw):
+    return ppzyp(jslist=self.jslist,**kw)
+
+  def ppzvy(self,**kw):
+    return ppzvy(jslist=self.jslist,**kw)
+
+  def ppzvz(self,**kw):
+    return ppzvz(jslist=self.jslist,**kw)
+
+  def ppzrp(self,**kw):
+    return ppzrp(jslist=self.jslist,**kw)
+
+  def ppzvr(self,**kw):
+    return ppzvr(jslist=self.jslist,**kw)
+
+  def ppzvperp(self,**kw):
+    return ppzvperp(jslist=self.jslist,**kw)
+
+  def ppvzvperp(self,**kw):
+    return ppvzvperp(jslist=self.jslist,**kw)
+
+  def pptrace(self,**kw):
+    return pptrace(jslist=self.jslist,**kw)
+
+  def pprrp(self,**kw):
+    return pprrp(jslist=self.jslist,**kw)
+
+  def pprtp(self,**kw):
+    return pprtp(jslist=self.jslist,**kw)
+
+  def pprvz(self,**kw):
+    return pprvz(jslist=self.jslist,**kw)
