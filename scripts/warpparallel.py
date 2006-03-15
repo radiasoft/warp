@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.62 2006/03/03 17:44:08 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.63 2006/03/15 17:42:47 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -463,6 +463,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           if me == 0: izmin = 0
           else:       izmin = top.izslave[me]+1
           ff.write(pdbname,ppp,indx=(0,0,izmin))
+        elif p == 'w3d' and vname in ['zmesh']:
+          # --- This has the same decomposition as the fields
+          iz1 = 0
+          iz2 = top.nzfsslave[me] + 1
+          ff.write(pdbname,v[iz1:iz2],indx=(top.izfsslave[me],))
         else:
           # --- The rest are domain decomposed Z arrays
           # --- Assuming they have the same decomposition as the particles.
@@ -683,6 +688,11 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       elif p == 'w3d' and vname in ['phi']:
         itriple = array([0,w3d.nx,1,0,w3d.ny,1,
             top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
+        setattr(pkg,vname,ff.read_part(v,itriple))
+      elif p == 'w3d' and vname in ['zmesh']:
+        # --- The rest are domain decomposed Z arrays
+        itriple = array([top.izfsslave[me],
+                         top.izfsslave[me]+top.nzfsslave[me],1])
         setattr(pkg,vname,ff.read_part(v,itriple))
       else:
         # --- The rest are domain decomposed Z arrays
