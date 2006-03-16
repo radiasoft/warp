@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.232 $, $Date: 2006/03/10 00:38:20 $
+c@(#) File W3D.F, version $Revision: 3.233 $, $Date: 2006/03/16 02:00:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4362,6 +4362,85 @@ c=============================================================================
       real(kind=8):: xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
 
+c  Sets charge density using various algorithms
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c--------------------------------------
+c  Vectorized deposition loop
+c--------------------------------------
+      if (depos == "vector") then
+
+        call setrho3dvector(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      l2symtry,l4symtry)
+
+c--------------------------------------
+c  Scalar deposition loop
+c--------------------------------------
+      elseif (depos == "scalar") then
+
+        call setrho3dscalar(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      l2symtry,l4symtry)
+
+c--------------------------------------
+c  Direct deposition loop
+c--------------------------------------
+      elseif (depos == "direct") then
+
+        call setrho3ddirect(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                      l2symtry,l4symtry)
+
+c--------------------------------------
+c  Direct deposition loop with precalculated integer conversions
+c--------------------------------------
+      elseif (depos == "direct1") then
+
+        call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                       l2symtry,l4symtry)
+
+c--------------------------------------
+c  Vectorized deposition loop with precalculated integer conversions
+c--------------------------------------
+      else if (depos == "vector1") then
+
+        call setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                       l2symtry,l4symtry)
+
+c--------------------------------------
+c  Direct deposition using a second order spline
+c--------------------------------------
+      else if (depos == "dspline2") then
+
+        call setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                             nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                             l2symtry,l4symtry)
+
+      endif
+
+!$OMP END PARALLEL
+
+      if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
+      return
+      end
+c=============================================================================
+      subroutine setrho3dvector(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
 c  Sets charge density
 
 c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nz) outside,
@@ -4369,8 +4448,8 @@ c  but is made one dimensional in this routine
 c  so cell index into 1d rho array for vectorized deposition is:
 c     i + j*(nx+1) + k*(nx+1)*(ny+1)
 c  In each case,
-c     rho(i  ,j  ,k  ) = rho(i  ,j  ,k  ) + u0 * v0 * w0 * g
-c     rho(i+1,j  ,k  ) = rho(i+1,j  ,k  ) + u1 * v0 * w0 * g
+c     rho(i  ,j  ,k  ) = rho(i  ,j  ,k  ) + u0*v0*w0*g
+c     rho(i+1,j  ,k  ) = rho(i+1,j  ,k  ) + u1*v0*w0*g
 c  Note that many changes are possible; for example, we might define
 c  ind0(ir) and not use indx; this saves some store operations but
 c  leads to a more complicated indirect address for the vectorized
@@ -4378,35 +4457,24 @@ c  gather-add-scatter loop.  It seems about 3% slower than the present way.
 c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
-c     --- For vectorized algorithm
       integer(ISZ):: moff(0:7)
       integer(ISZ),allocatable:: indx(:,:)
-      save moff
-c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
-c     --- For both algorithms
       real(kind=8),allocatable:: s(:,:)
 
       integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
-      integer(ISZ):: inext,jnext,knext
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
 
-c  Set up offset array for vectorized deposition:
+c     --- Set up offset array for vectorized deposition:
+      moff(0) = 0
+      moff(1) = 1
+      moff(2) = nx+1
+      moff(3) = nx+2
+      moff(4) = (nx+1)*(ny+1)
+      moff(5) = (nx+1)*(ny+1)+1
+      moff(6) = (nx+1)*(ny+1)+nx+1
+      moff(7) = (nx+1)*(ny+1)+nx+2
 
-c      if (moff(4) /= (nx+1)*(ny+1)) then
-        moff(0) = 0
-        moff(1) = 1
-        moff(2) = nx+1
-        moff(3) = nx+2
-        moff(4) = (nx+1)*(ny+1)
-        moff(5) = (nx+1)*(ny+1)+1
-        moff(6) = (nx+1)*(ny+1)+nx+1
-        moff(7) = (nx+1)*(ny+1)+nx+2
-c      endif
-
-      g = wght * q / (dx * dy * dz)
+      g = wght*q/(dx*dy*dz)
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -4424,225 +4492,267 @@ c       --- transverse boundaries.
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
 ! I don't know why it works, but it does.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
-!$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
+!$OMP&                 gyfact,gxfact,m)
 !$OMP&FIRSTPRIVATE(np)
 
-      if (depos == "vector" .or. depos == "vector1") then 
-        allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
-      elseif (depos == "scalar") then
-        allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1),
-     &           s(0:7,0:nparpgrp-1))
-      endif
+      allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
 
 !$OMP DO
       do ipmin = 1,np,nparpgrp
         nptmp = min(nparpgrp, np+1-ipmin)
 
-c--------------------------------------
-c  Begin vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
-
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-c       --- special loop for 2-fold symmetry
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((xp(ip) - xmmin) * dxi)
-           u1 =     (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           j  = int((abs(yp(ip)) - ymmin)*dyi)
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           gyfact = 1.
-           if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      elseif (l4symtry) then
-c       --- special loop for 4-fold symmetry
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((abs(xp(ip)) - xmmin)*dxi)
-           u1 =     (abs(xp(ip)) - xmmin)*dxi - i
-           u0 = 1. - u1
-           j  = int((abs(yp(ip)) - ymmin)*dyi)
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           gxfact = 1.
-           gyfact = 1.
-           if (i == 0 .and. xmmin == 0.) gxfact = 2.
-           if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g*gxfact
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g*gxfact
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-           i  = int((xp(ip) - xmmin) * dxi)
-           u1 =     (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           j  = int((yp(ip) - ymmin) * dyi)
-           v1 =     (yp(ip) - ymmin) * dyi - j
-           v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0 * v0 * w0 * g
-           s(1,ir) = u1 * v0 * w0 * g
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g
-           s(5,ir) = u1 * v0 * w1 * g
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      endif
-c     --- vectorized deposition over the 8 cells touched;
-c     --- there'd be a hazard if we interchanged the loops.
-!$OMP CRITICAL (CRITICAL_SETRHO3D1)
-      do ir = 0,nptmp-1
-        if (uzp(ir+ipmin) /= 0.) then
-          do m = 0, 7
-             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+c         --- special loop for 2-fold symmetry
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          do ip = ipmin,ipmin+nptmp-1
+            i  = int((xp(ip) - xmmin)*dxi)
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((abs(yp(ip)) - ymmin)*dyi)
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            k  = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            gyfact = 1.
+            if (j == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        elseif (l4symtry) then
+c         --- special loop for 4-fold symmetry
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          do ip = ipmin,ipmin+nptmp-1
+            i  = int((abs(xp(ip)) - xmmin)*dxi)
+            u1 =     (abs(xp(ip)) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((abs(yp(ip)) - ymmin)*dyi)
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            k  = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            gxfact = 1.
+            gyfact = 1.
+            if (i == 0 .and. xmmin == 0.) gxfact = 2.
+            if (j == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gxfact*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g*gxfact
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gxfact*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g*gxfact
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        else
+c         --- normal loop
+          do ip = ipmin,ipmin+nptmp-1
+            i  = int((xp(ip) - xmmin)*dxi)
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            j  = int((yp(ip) - ymmin)*dyi)
+            v1 =     (yp(ip) - ymmin)*dyi - j
+            v0 = 1. - v1
+            k  = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            s(0,ir) = u0*v0*w0*g
+            s(1,ir) = u1*v0*w0*g
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g
+            s(5,ir) = u1*v0*w1*g
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
           enddo
         endif
+
+c       --- vectorized deposition over the 8 cells touched;
+c       --- there'd be a hazard if we interchanged the loops.
+!$OMP CRITICAL (CRITICAL_SETRHO3DVECTOR)
+        do ir = 0,nptmp-1
+          if (uzp(ir+ipmin) /= 0.) then
+            do m = 0, 7
+              rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+            enddo
+          endif
+        enddo
+!$OMP END CRITICAL (CRITICAL_SETRHO3DVECTOR)
+
       enddo
-!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
+!$OMP END DO
 
-c--------------------------------------
-c  Begin scalar deposition loop
-c--------------------------------------
-      elseif (depos == "scalar") then
+      deallocate(indx,s)
+!$OMP END PARALLEL
 
-c  Begin main loop over species
+      return
+      end
+c=============================================================================
+      subroutine setrho3dscalar(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
 
-c     --- vectorized loop to compute indices, weights
+c  Sets charge density
+c  Similar to vector, but rho is treated as a 3d array rather than a 1d array
+
+      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
+      real(kind=8),allocatable:: s(:,:)
+
+      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,ir
+      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+
+      g = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
       if (l2symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin) * dxi)
-          u1     =     (xp(ip) - xmmin) * dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
-          w0     = 1. - w1
-          gyfact = 1.
-          if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
-        enddo
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
       elseif (l4symtry) then
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
-          u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
-          v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
-          w0     = 1. - w1
-          gxfact = 1.
-          gyfact = 1.
-          if (ii(ir) == 0 .and. xmmin == 0.) gxfact = 2.
-          if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g*gxfact
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g*gxfact
-          s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      else
-c       --- normal loop
-        do ip = ipmin,ipmin+nptmp-1
-          ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin) * dxi)
-          u1     = (xp(ip) - xmmin) * dxi - ii(ir)
-          u0     = 1. - u1
-          jj(ir) = int((yp(ip) - ymmin) * dyi)
-          v1     = (yp(ip) - ymmin) * dyi - jj(ir)
-          v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     = (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
-          w0     = 1. - w1
-          s(0,ir) = u0 * v0 * w0 * g
-          s(1,ir) = u1 * v0 * w0 * g
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g
-          s(5,ir) = u1 * v0 * w1 * g
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
-        enddo
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
       endif
-c     --- scalar loop does the actual deposition
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,u1,u0,v1,v0,w1,w0,ir,ip,
+!$OMP&                 gyfact,gxfact,s,ii,jj,kk)
+!$OMP&FIRSTPRIVATE(np)
+
+      allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1))
+      allocate(s(0:7,0:nparpgrp-1))
+
+!$OMP DO
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+          do ip = ipmin,ipmin+nptmp-1
+            ir = ip - ipmin
+            ii(ir) = int((xp(ip) - xmmin)*dxi)
+            u1     =     (xp(ip) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+            v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
+            w0     = 1. - w1
+            gyfact = 1.
+            if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        elseif (l4symtry) then
+          do ip = ipmin,ipmin+nptmp-1
+            ir = ip - ipmin
+            ii(ir) = int((abs(xp(ip)) - xmmin)*dxi)
+            u1     =     (abs(xp(ip)) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
+            v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
+            w0     = 1. - w1
+            gxfact = 1.
+            gyfact = 1.
+            if (ii(ir) == 0 .and. xmmin == 0.) gxfact = 2.
+            if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gxfact*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g*gxfact
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gxfact*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g*gxfact
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        else
+c         --- normal loop
+          do ip = ipmin,ipmin+nptmp-1
+            ir = ip - ipmin
+            ii(ir) = int((xp(ip) - xmmin)*dxi)
+            u1     = (xp(ip) - xmmin)*dxi - ii(ir)
+            u0     = 1. - u1
+            jj(ir) = int((yp(ip) - ymmin)*dyi)
+            v1     = (yp(ip) - ymmin)*dyi - jj(ir)
+            v0     = 1. - v1
+            kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+            w1     = (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
+            w0     = 1. - w1
+            s(0,ir) = u0*v0*w0*g
+            s(1,ir) = u1*v0*w0*g
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g
+            s(5,ir) = u1*v0*w1*g
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        endif
+c       --- scalar loop does the actual deposition
 !$OMP CRITICAL (CRITICAL_SETRHO3D2)
       do ir = 0, nptmp-1
-         if (uzp(ir+ipmin) /= 0) then
+        if (uzp(ir+ipmin) /= 0) then
          rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
          rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
          rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
@@ -4655,170 +4765,804 @@ c     --- scalar loop does the actual deposition
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHO3D2)
 
-      else if (depos == "vector1") then
-
-c     --- Here, the i,j,k are precalculated for the next particle
-c     --- since the float to integer conversion can be expensive.
-c     --- Tests however only show about a 5% speed up.
-
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-c       --- special loop for 2-fold symmetry
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        inext = int((xp(ipmin) - xmmin) * dxi)
-        jnext = int((abs(yp(ipmin)) - ymmin)*dyi)
-        knext = int((zp(ipmin) - zgrid - zmmin) * dzi)
-        do ip = ipmin,ipmin+nptmp-1
-           i = inext
-           j = jnext
-           k = knext
-           if (ip < ipmin+nptmp-1) then
-             inext = int((xp(ip+1) - xmmin) * dxi)
-             jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-             knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
-           endif
-           u1 =     (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           gyfact = 1.
-           if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      elseif (l4symtry) then
-c       --- special loop for 4-fold symmetry
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        inext  = int((abs(xp(ipmin)) - xmmin)*dxi)
-        jnext  = int((abs(yp(ipmin)) - ymmin)*dyi)
-        knext  = int((zp(ipmin) - zgrid - zmmin) * dzi)
-        do ip = ipmin,ipmin+nptmp-1
-           i = inext
-           j = jnext
-           k = knext
-           if (ip < ipmin+nptmp-1) then
-              inext = int((abs(xp(ip+1)) - xmmin)*dxi)
-              jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-              knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
-           endif
-           u1 =     (abs(xp(ip)) - xmmin)*dxi - i
-           u0 = 1. - u1
-           v1 =     (abs(yp(ip)) - ymmin)*dyi - j
-           v0 = 1. - v1
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           gxfact = 1.
-           gyfact = 1.
-           if (i == 0 .and. xmmin == 0.) gxfact = 2.
-           if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g*gxfact
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g*gxfact
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      else
-c       --- normal loop
-        inext = int((xp(ipmin) - xmmin) * dxi)
-        jnext = int((yp(ipmin) - ymmin) * dyi)
-        knext = int((zp(ipmin) - zgrid - zmmin) * dzi)
-        do ip = ipmin,ipmin+nptmp-1
-           i = inext
-           j = jnext
-           k = knext
-           if (ip < ipmin+nptmp-1) then
-             inext = int((xp(ip+1) - xmmin) * dxi)
-             jnext = int((yp(ip+1) - ymmin) * dyi)
-             knext = int((zp(ip+1) - zgrid - zmmin) * dzi)
-           endif
-           u1 =     (xp(ip) - xmmin) * dxi - i
-           u0 = 1. - u1
-           v1 =     (yp(ip) - ymmin) * dyi - j
-           v0 = 1. - v1
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
-           w0 = 1. - w1
-           ir = ip - ipmin
-           ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ir) = ind0 + moff(0)
-           indx(1,ir) = ind0 + moff(1)
-           indx(2,ir) = ind0 + moff(2)
-           indx(3,ir) = ind0 + moff(3)
-           indx(4,ir) = ind0 + moff(4)
-           indx(5,ir) = ind0 + moff(5)
-           indx(6,ir) = ind0 + moff(6)
-           indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0 * v0 * w0 * g
-           s(1,ir) = u1 * v0 * w0 * g
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g
-           s(5,ir) = u1 * v0 * w1 * g
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
-        enddo
-      endif
-c     --- vectorized deposition over the 8 cells touched;
-c     --- there'd be a hazard if we interchanged the loops.
-!$OMP CRITICAL (CRITICAL_SETRHO3D1)
-      do ir = 0,nptmp-1
-        if (uzp(ir+ipmin) /= 0.) then
-          do m = 0, 7
-             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
-          enddo
-        endif
-      enddo
-!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
-
-      endif
-
       enddo
 !$OMP END DO
 
+      deallocate(ii,jj,kk,s)
 
-      if (depos == "vector" .or. depos == "vector1") then 
-        deallocate(indx,s)
-      elseif (depos == "scalar") then
-        deallocate(ii,jj,kk,s)
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirect(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+
+      integer(ISZ):: ip,ii,jj,kk
+      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+
+      g = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,gyfact,gxfact)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = int((xp(ip) - xmmin)*dxi)
+          u1 =     (xp(ip) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((abs(yp(ip)) - ymmin)*dyi)
+          v1 =     (abs(yp(ip)) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          kk = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1 =     (zp(ip) - zgrid - zmmin)*dzi - kk
+          w0 = 1. - w1
+          gyfact = 1.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = int((abs(xp(ip)) - xmmin)*dxi)
+          u1 =     (abs(xp(ip)) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((abs(yp(ip)) - ymmin)*dyi)
+          v1 =     (abs(yp(ip)) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          kk = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1 =     (zp(ip) - zgrid - zmmin)*dzi - kk
+          w0 = 1. - w1
+          gxfact = 1.
+          gyfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = int((xp(ip) - xmmin)*dxi)
+          u1 = (xp(ip) - xmmin)*dxi - ii
+          u0 = 1. - u1
+          jj = int((yp(ip) - ymmin)*dyi)
+          v1 = (yp(ip) - ymmin)*dyi - jj
+          v0 = 1. - v1
+          kk = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1 = (zp(ip) - zgrid - zmmin)*dzi - kk
+          w0 = 1. - w1
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
       endif
 
 !$OMP END PARALLEL
 
-      if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
       return
       end
+c=============================================================================
+      subroutine setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj,kk
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: u1next,v1next,w1next
+
+      g = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,gyfact,gxfact,
+!$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gyfact = 1.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gxfact = 1.
+          gyfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((yp(1) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (yp(1) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((yp(ip+1) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Same as vector except that the float to integer conversions are
+c  precalculated for the next particle since the conversion can be a bottleneck.
+
+      integer(ISZ):: moff(0:7)
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: s(:,:)
+
+      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
+      integer(ISZ):: inext,jnext,knext
+      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+
+c  Set up offset array for vectorized deposition:
+
+      moff(0) = 0
+      moff(1) = 1
+      moff(2) = nx+1
+      moff(3) = nx+2
+      moff(4) = (nx+1)*(ny+1)
+      moff(5) = (nx+1)*(ny+1)+1
+      moff(6) = (nx+1)*(ny+1)+nx+1
+      moff(7) = (nx+1)*(ny+1)+nx+2
+
+      g = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
+!$OMP&                 gyfact,gxfact,m,inext,jnext,knext)
+!$OMP&FIRSTPRIVATE(np)
+
+      allocate(indx(0:7,0:nparpgrp-1),s(0:7,0:nparpgrp-1))
+
+!$OMP DO
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c       --- Here, the i,j,k are precalculated for the next particle
+c       --- since the float to integer conversion can be expensive.
+c       --- Tests however only show about a 5% speed up.
+
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+c         --- special loop for 2-fold symmetry
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          inext = int((xp(ipmin) - xmmin)*dxi)
+          jnext = int((abs(yp(ipmin)) - ymmin)*dyi)
+          knext = int((zp(ipmin) - zgrid - zmmin)*dzi)
+          do ip = ipmin,ipmin+nptmp-1
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < ipmin+nptmp-1) then
+              inext = int((xp(ip+1) - xmmin)*dxi)
+              jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              knext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            endif
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            gyfact = 1.
+            if (j == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        elseif (l4symtry) then
+c         --- special loop for 4-fold symmetry
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          inext  = int((abs(xp(ipmin)) - xmmin)*dxi)
+          jnext  = int((abs(yp(ipmin)) - ymmin)*dyi)
+          knext  = int((zp(ipmin) - zgrid - zmmin)*dzi)
+          do ip = ipmin,ipmin+nptmp-1
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < ipmin+nptmp-1) then
+               inext = int((abs(xp(ip+1)) - xmmin)*dxi)
+               jnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+               knext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            endif
+            u1 =     (abs(xp(ip)) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
+            v0 = 1. - v1
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            gxfact = 1.
+            gyfact = 1.
+            if (i == 0 .and. xmmin == 0.) gxfact = 2.
+            if (j == 0 .and. ymmin == 0.) gyfact = 2.
+            s(0,ir) = u0*v0*w0*g*gxfact*gyfact
+            s(1,ir) = u1*v0*w0*g*gyfact
+            s(2,ir) = u0*v1*w0*g*gxfact
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g*gxfact*gyfact
+            s(5,ir) = u1*v0*w1*g*gyfact
+            s(6,ir) = u0*v1*w1*g*gxfact
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        else
+c         --- normal loop
+          inext = int((xp(ipmin) - xmmin)*dxi)
+          jnext = int((yp(ipmin) - ymmin)*dyi)
+          knext = int((zp(ipmin) - zgrid - zmmin)*dzi)
+          do ip = ipmin,ipmin+nptmp-1
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < ipmin+nptmp-1) then
+              inext = int((xp(ip+1) - xmmin)*dxi)
+              jnext = int((yp(ip+1) - ymmin)*dyi)
+              knext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            endif
+            u1 =     (xp(ip) - xmmin)*dxi - i
+            u0 = 1. - u1
+            v1 =     (yp(ip) - ymmin)*dyi - j
+            v0 = 1. - v1
+            w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
+            w0 = 1. - w1
+            ir = ip - ipmin
+            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+            indx(0,ir) = ind0 + moff(0)
+            indx(1,ir) = ind0 + moff(1)
+            indx(2,ir) = ind0 + moff(2)
+            indx(3,ir) = ind0 + moff(3)
+            indx(4,ir) = ind0 + moff(4)
+            indx(5,ir) = ind0 + moff(5)
+            indx(6,ir) = ind0 + moff(6)
+            indx(7,ir) = ind0 + moff(7)
+            s(0,ir) = u0*v0*w0*g
+            s(1,ir) = u1*v0*w0*g
+            s(2,ir) = u0*v1*w0*g
+            s(3,ir) = u1*v1*w0*g
+            s(4,ir) = u0*v0*w1*g
+            s(5,ir) = u1*v0*w1*g
+            s(6,ir) = u0*v1*w1*g
+            s(7,ir) = u1*v1*w1*g
+          enddo
+        endif
+
+c       --- vectorized deposition over the 8 cells touched;
+c       --- there'd be a hazard if we interchanged the loops.
+!$OMP CRITICAL (CRITICAL_SETRHO3D1)
+        do ir = 0,nptmp-1
+          if (uzp(ir+ipmin) /= 0.) then
+            do m = 0, 7
+              rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+            enddo
+          endif
+        enddo
+!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
+
+      enddo
+!$OMP END DO
+
+      deallocate(indx,s)
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  Uses a second order spline with direct deposition (no particle blocks)
+
+      integer(ISZ):: ip,ii,jj,kk,iim1,jjm1
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g,dxi,dyi,dzi
+      real(kind=8):: wx,wy,wz
+      real(kind=8):: wxnext,wynext,wznext
+      real(kind=8):: u0,u1,u2,v0,v1,v2,w0,w1,w2
+      real(kind=8):: gxf,gyf,gxfm1,gyfm1
+
+      g = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,wx,wy,wz,u2,u1,u0,v2,v1,v0,w2,w1,w0,ip,
+!$OMP&                 gyfact,gxfact)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+        wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          wx = wxnext
+          wy = wynext
+          wz = wznext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0.) cycle
+          if (ii-1 < 0 .or. ii+1 > nx .or.
+     &                      jj+1 > ny .or.
+     &        kk-1 < 0 .or. kk+1 > nz) cycle
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          jjm1 = abs(jj - 1)
+
+          gyf = 1.
+          gyfm1 = 1.
+          if (jj == 0 .and. ymmin == 0.) gyf = 2.
+          if (jjm1 == 0 .and. ymmin == 0.) gyfm1 = 2.
+
+          rho(ii-1,jjm1,kk-1) = rho(ii-1,jjm1,kk-1) + u0*v0*w0*g*gyfm1
+          rho(ii  ,jjm1,kk-1) = rho(ii  ,jjm1,kk-1) + u1*v0*w0*g*gyfm1
+          rho(ii+1,jjm1,kk-1) = rho(ii+1,jjm1,kk-1) + u2*v0*w0*g*gyfm1
+          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g*gyf
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g*gyf
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g*gyf
+          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
+
+          rho(ii-1,jjm1,kk  ) = rho(ii-1,jjm1,kk  ) + u0*v0*w1*g*gyfm1
+          rho(ii  ,jjm1,kk  ) = rho(ii  ,jjm1,kk  ) + u1*v0*w1*g*gyfm1
+          rho(ii+1,jjm1,kk  ) = rho(ii+1,jjm1,kk  ) + u2*v0*w1*g*gyfm1
+          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g*gyf
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g*gyf
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g*gyf
+          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
+
+          rho(ii-1,jjm1,kk+1) = rho(ii-1,jjm1,kk+1) + u0*v0*w2*g*gyfm1
+          rho(ii  ,jjm1,kk+1) = rho(ii  ,jjm1,kk+1) + u1*v0*w2*g*gyfm1
+          rho(ii+1,jjm1,kk+1) = rho(ii+1,jjm1,kk+1) + u2*v0*w2*g*gyfm1
+          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g*gyf
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g*gyf
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g*gyf
+          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = nint((abs(xp(1)) - xmmin)*dxi)
+        jjnext = nint((abs(yp(1)) - ymmin)*dyi)
+        kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+        wxnext = (abs(xp(1)) - xmmin)*dxi - iinext
+        wynext = (abs(yp(1)) - ymmin)*dyi - jjnext
+        wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          wx = wxnext
+          wy = wynext
+          wz = wznext
+          if (ip < np) then
+            iinext = nint((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = nint((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+            wxnext = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            wynext = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0.) cycle
+          if (              ii+1 > nx .or.
+     &                      jj+1 > ny .or.
+     &        kk-1 < 0 .or. kk+1 > nz) cycle
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          iim1 = abs(ii - 1)
+          jjm1 = abs(jj - 1)
+
+          gxf = 1.
+          gyf = 1.
+          gxfm1 = 1.
+          gyfm1 = 1.
+          if (ii == 0 .and. xmmin == 0.) gxf = 2.
+          if (jj == 0 .and. ymmin == 0.) gyf = 2.
+          if (iim1 == 0 .and. xmmin == 0.) gxfm1 = 2.
+          if (jjm1 == 0 .and. ymmin == 0.) gyfm1 = 2.
+
+          rho(iim1,jjm1,kk-1) = rho(iim1,jjm1,kk-1) + u0*v0*w0*g*gxfm1*gyfm1
+          rho(ii  ,jjm1,kk-1) = rho(ii  ,jjm1,kk-1) + u1*v0*w0*g*gxf*gyfm1
+          rho(ii+1,jjm1,kk-1) = rho(ii+1,jjm1,kk-1) + u2*v0*w0*g*gyfm1
+          rho(iim1,jj  ,kk-1) = rho(iim1,jj  ,kk-1) + u0*v1*w0*g*gxfm1*gyf
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g*gxf*gyf
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g*gyf
+          rho(iim1,jj+1,kk-1) = rho(iim1,jj+1,kk-1) + u0*v2*w0*g*gxfm1
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g*gxf
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
+
+          rho(iim1,jjm1,kk  ) = rho(iim1,jjm1,kk  ) + u0*v0*w1*g*gxfm1*gyfm1
+          rho(ii  ,jjm1,kk  ) = rho(ii  ,jjm1,kk  ) + u1*v0*w1*g*gxf*gyfm1
+          rho(ii+1,jjm1,kk  ) = rho(ii+1,jjm1,kk  ) + u2*v0*w1*g*gyfm1
+          rho(iim1,jj  ,kk  ) = rho(iim1,jj  ,kk  ) + u0*v1*w1*g*gxfm1*gyf
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g*gxf*gyf
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g*gyf
+          rho(iim1,jj+1,kk  ) = rho(iim1,jj+1,kk  ) + u0*v2*w1*g*gxfm1
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g*gxf
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
+
+          rho(iim1,jjm1,kk+1) = rho(iim1,jjm1,kk+1) + u0*v0*w2*g*gxfm1*gyfm1
+          rho(ii  ,jjm1,kk+1) = rho(ii  ,jjm1,kk+1) + u1*v0*w2*g*gxf*gyfm1
+          rho(ii+1,jjm1,kk+1) = rho(ii+1,jjm1,kk+1) + u2*v0*w2*g*gyfm1
+          rho(iim1,jj  ,kk+1) = rho(iim1,jj  ,kk+1) + u0*v1*w2*g*gxfm1*gyf
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g*gxf*gyf
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g*gyf
+          rho(iim1,jj+1,kk+1) = rho(iim1,jj+1,kk+1) + u0*v2*w2*g*gxfm1
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g*gxf
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = nint((xp(1) - xmmin)*dxi)
+        jjnext = nint((yp(1) - ymmin)*dyi)
+        kknext = nint((zp(1) - zgrid - zmmin)*dzi)
+        wxnext = (xp(1) - xmmin)*dxi - iinext
+        wynext = (yp(1) - ymmin)*dyi - jjnext
+        wznext = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          wx = wxnext
+          wy = wynext
+          wz = wznext
+          if (ip < np) then
+            iinext = nint((xp(ip+1) - xmmin)*dxi)
+            jjnext = nint((yp(ip+1) - ymmin)*dyi)
+            kknext = nint((zp(ip+1) - zgrid - zmmin)*dzi)
+            wxnext = (xp(ip+1) - xmmin)*dxi - iinext
+            wynext = (yp(ip+1) - ymmin)*dyi - jjnext
+            wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0.) cycle
+          if (ii-1 < 0 .or. ii+1 > nx .or.
+     &        jj-1 < 0 .or. jj+1 > ny .or.
+     &        kk-1 < 0 .or. kk+1 > nz) cycle
+          u0 = 0.5*(0.5 - wx)**2
+          u1 = (0.75 - wx**2)
+          u2 = 0.5*(0.5 + wx)**2
+          v0 = 0.5*(0.5 - wy)**2
+          v1 = (0.75 - wy**2)
+          v2 = 0.5*(0.5 + wy)**2
+          w0 = 0.5*(0.5 - wz)**2
+          w1 = (0.75 - wz**2)
+          w2 = 0.5*(0.5 + wz)**2
+
+          rho(ii-1,jj-1,kk-1) = rho(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rho(ii  ,jj-1,kk-1) = rho(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rho(ii+1,jj-1,kk-1) = rho(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
+
+          rho(ii-1,jj-1,kk  ) = rho(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rho(ii  ,jj-1,kk  ) = rho(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rho(ii+1,jj-1,kk  ) = rho(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
+
+          rho(ii-1,jj-1,kk+1) = rho(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rho(ii  ,jj-1,kk+1) = rho(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rho(ii+1,jj-1,kk+1) = rho(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
 c=============================================================================
       subroutine setrho3dselect(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
@@ -4842,8 +5586,8 @@ c  but is made one dimensional in this routine
 c  so cell index into 1d rho array for vectorized deposition is:
 c     i + j*(nx+1) + k*(nx+1)*(ny+1)
 c  In each case,
-c     rho(i  ,j  ,k  ) = rho(i  ,j  ,k  ) + u0 * v0 * w0 * g
-c     rho(i+1,j  ,k  ) = rho(i+1,j  ,k  ) + u1 * v0 * w0 * g
+c     rho(i  ,j  ,k  ) = rho(i  ,j  ,k  ) + u0*v0*w0*g
+c     rho(i+1,j  ,k  ) = rho(i+1,j  ,k  ) + u1*v0*w0*g
 c  Note that many changes are possible; for example, we might define
 c  ind0(ir) and not use indx; this saves some store operations but
 c  leads to a more complicated indirect address for the vectorized
@@ -4878,7 +5622,7 @@ c      if (moff(4) /= (nx+1)*(ny+1)) then
         moff(7) = (nx+1)*(ny+1)+nx+2
 c      endif
 
-      g = wght * q / (dx * dy * dz)
+      g = wght*q / (dx*dy*dz)
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -4923,14 +5667,14 @@ c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         do ip = ipmin,ipmin+nptmp-1
            if (uzp(ip) == 0.) cycle
-           i  = int((xp(ip) - xmmin) * dxi)
-           u1 =     (xp(ip) - xmmin) * dxi - i
+           i  = int((xp(ip) - xmmin)*dxi)
+           u1 =     (xp(ip) - xmmin)*dxi - i
            u0 = 1. - u1
            j  = int((abs(yp(ip)) - ymmin)*dyi)
            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
            v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           k  = int((zp(ip) - zgrid - zmmin)*dzi)
+           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -4944,14 +5688,14 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
            if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
+           s(0,ir) = u0*v0*w0*g*gyfact
+           s(1,ir) = u1*v0*w0*g*gyfact
+           s(2,ir) = u0*v1*w0*g
+           s(3,ir) = u1*v1*w0*g
+           s(4,ir) = u0*v0*w1*g*gyfact
+           s(5,ir) = u1*v0*w1*g*gyfact
+           s(6,ir) = u0*v1*w1*g
+           s(7,ir) = u1*v1*w1*g
         enddo
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
@@ -4965,8 +5709,8 @@ c       --- transverse boundaries.
            j  = int((abs(yp(ip)) - ymmin)*dyi)
            v1 =     (abs(yp(ip)) - ymmin)*dyi - j
            v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           k  = int((zp(ip) - zgrid - zmmin)*dzi)
+           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -4982,27 +5726,27 @@ c       --- transverse boundaries.
            gyfact = 1.
            if (i == 0 .and. xmmin == 0.) gxfact = 2.
            if (j == 0 .and. ymmin == 0.) gyfact = 2.
-           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-           s(1,ir) = u1 * v0 * w0 * g*gyfact
-           s(2,ir) = u0 * v1 * w0 * g*gxfact
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-           s(5,ir) = u1 * v0 * w1 * g*gyfact
-           s(6,ir) = u0 * v1 * w1 * g*gxfact
-           s(7,ir) = u1 * v1 * w1 * g
+           s(0,ir) = u0*v0*w0*g*gxfact*gyfact
+           s(1,ir) = u1*v0*w0*g*gyfact
+           s(2,ir) = u0*v1*w0*g*gxfact
+           s(3,ir) = u1*v1*w0*g
+           s(4,ir) = u0*v0*w1*g*gxfact*gyfact
+           s(5,ir) = u1*v0*w1*g*gyfact
+           s(6,ir) = u0*v1*w1*g*gxfact
+           s(7,ir) = u1*v1*w1*g
         enddo
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
            if (uzp(ip) == 0.) cycle
-           i  = int((xp(ip) - xmmin) * dxi)
-           u1 =     (xp(ip) - xmmin) * dxi - i
+           i  = int((xp(ip) - xmmin)*dxi)
+           u1 =     (xp(ip) - xmmin)*dxi - i
            u0 = 1. - u1
-           j  = int((yp(ip) - ymmin) * dyi)
-           v1 =     (yp(ip) - ymmin) * dyi - j
+           j  = int((yp(ip) - ymmin)*dyi)
+           v1 =     (yp(ip) - ymmin)*dyi - j
            v0 = 1. - v1
-           k  = int((zp(ip) - zgrid - zmmin) * dzi)
-           w1 =     (zp(ip) - zgrid - zmmin) * dzi - k
+           k  = int((zp(ip) - zgrid - zmmin)*dzi)
+           w1 =     (zp(ip) - zgrid - zmmin)*dzi - k
            w0 = 1. - w1
            ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
@@ -5014,14 +5758,14 @@ c       --- normal loop
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           s(0,ir) = u0 * v0 * w0 * g
-           s(1,ir) = u1 * v0 * w0 * g
-           s(2,ir) = u0 * v1 * w0 * g
-           s(3,ir) = u1 * v1 * w0 * g
-           s(4,ir) = u0 * v0 * w1 * g
-           s(5,ir) = u1 * v0 * w1 * g
-           s(6,ir) = u0 * v1 * w1 * g
-           s(7,ir) = u1 * v1 * w1 * g
+           s(0,ir) = u0*v0*w0*g
+           s(1,ir) = u1*v0*w0*g
+           s(2,ir) = u0*v1*w0*g
+           s(3,ir) = u1*v1*w0*g
+           s(4,ir) = u0*v0*w1*g
+           s(5,ir) = u1*v0*w1*g
+           s(6,ir) = u0*v1*w1*g
+           s(7,ir) = u1*v1*w1*g
         enddo
       endif
 c     --- vectorized deposition over the 8 cells touched;
@@ -5048,25 +5792,25 @@ c     --- vectorized loop to compute indices, weights
         do ip = ipmin,ipmin+nptmp-1
           if (uzp(ip) == 0.) cycle
           ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin) * dxi)
-          u1     =     (xp(ip) - xmmin) * dxi - ii(ir)
+          ii(ir) = int((xp(ip) - xmmin)*dxi)
+          u1     =     (xp(ip) - xmmin)*dxi - ii(ir)
           u0     = 1. - u1
           jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
           v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
           w0     = 1. - w1
           gyfact = 1.
           if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
+          s(0,ir) = u0*v0*w0*g*gyfact
+          s(1,ir) = u1*v0*w0*g*gyfact
+          s(2,ir) = u0*v1*w0*g
+          s(3,ir) = u1*v1*w0*g
+          s(4,ir) = u0*v0*w1*g*gyfact
+          s(5,ir) = u1*v0*w1*g*gyfact
+          s(6,ir) = u0*v1*w1*g
+          s(7,ir) = u1*v1*w1*g
         enddo
       elseif (l4symtry) then
         do ip = ipmin,ipmin+nptmp-1
@@ -5078,44 +5822,44 @@ c     --- vectorized loop to compute indices, weights
           jj(ir) = int((abs(yp(ip)) - ymmin)*dyi)
           v1     =     (abs(yp(ip)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     =     (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1     =     (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
           w0     = 1. - w1
           gxfact = 1.
           gyfact = 1.
           if (ii(ir) == 0 .and. xmmin == 0.) gxfact = 2.
           if (jj(ir) == 0 .and. ymmin == 0.) gyfact = 2.
-          s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
-          s(1,ir) = u1 * v0 * w0 * g*gyfact
-          s(2,ir) = u0 * v1 * w0 * g*gxfact
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
-          s(5,ir) = u1 * v0 * w1 * g*gyfact
-          s(6,ir) = u0 * v1 * w1 * g*gxfact
-          s(7,ir) = u1 * v1 * w1 * g
+          s(0,ir) = u0*v0*w0*g*gxfact*gyfact
+          s(1,ir) = u1*v0*w0*g*gyfact
+          s(2,ir) = u0*v1*w0*g*gxfact
+          s(3,ir) = u1*v1*w0*g
+          s(4,ir) = u0*v0*w1*g*gxfact*gyfact
+          s(5,ir) = u1*v0*w1*g*gyfact
+          s(6,ir) = u0*v1*w1*g*gxfact
+          s(7,ir) = u1*v1*w1*g
         enddo
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
           if (uzp(ip) == 0.) cycle
           ir = ip - ipmin
-          ii(ir) = int((xp(ip) - xmmin) * dxi)
-          u1     = (xp(ip) - xmmin) * dxi - ii(ir)
+          ii(ir) = int((xp(ip) - xmmin)*dxi)
+          u1     = (xp(ip) - xmmin)*dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((yp(ip) - ymmin) * dyi)
-          v1     = (yp(ip) - ymmin) * dyi - jj(ir)
+          jj(ir) = int((yp(ip) - ymmin)*dyi)
+          v1     = (yp(ip) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
-          w1     = (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
+          kk(ir) = int((zp(ip) - zgrid - zmmin)*dzi)
+          w1     = (zp(ip) - zgrid - zmmin)*dzi - kk(ir)
           w0     = 1. - w1
-          s(0,ir) = u0 * v0 * w0 * g
-          s(1,ir) = u1 * v0 * w0 * g
-          s(2,ir) = u0 * v1 * w0 * g
-          s(3,ir) = u1 * v1 * w0 * g
-          s(4,ir) = u0 * v0 * w1 * g
-          s(5,ir) = u1 * v0 * w1 * g
-          s(6,ir) = u0 * v1 * w1 * g
-          s(7,ir) = u1 * v1 * w1 * g
+          s(0,ir) = u0*v0*w0*g
+          s(1,ir) = u1*v0*w0*g
+          s(2,ir) = u0*v1*w0*g
+          s(3,ir) = u1*v1*w0*g
+          s(4,ir) = u0*v0*w1*g
+          s(5,ir) = u1*v0*w1*g
+          s(6,ir) = u0*v1*w1*g
+          s(7,ir) = u1*v1*w1*g
         enddo
       endif
 c     --- scalar loop does the actual deposition
