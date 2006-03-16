@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.35 2006/02/17 23:52:12 dave Exp $"
+particles_version = "$Id: particles.py,v 1.36 2006/03/16 19:02:00 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -164,6 +164,11 @@ otherwise an exception is raised.
     except KeyError:
       pass
 
+  # --- If all else fails, try finding the name without the suffix.
+  if suffix != '':
+    return getattrwithsuffix(object=object,name=name,suffix='',
+                             checkmain=checkmain,pkg=pkg,default=default)
+
   if default is not None:
     return default
   else:
@@ -175,6 +180,7 @@ def selectparticles(iw=0,kwdict={},**kw):
   """
 Selects particles based on either subsets or windows. By default it selects
 from window 0, getting all of the live partilces (whose uzp != 0).
+Multiple selection criteria are now supported.
   - iw=0: Window to chose from
   - js=0: Species to chose from
   - jslist=None: List of Species to choose from, e.g. [0,3,4]; -1 for all specs
@@ -227,10 +233,6 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   if badargs and not allowbadargs:
     raise "bad argument ",string.join(badargs.keys())
 
-  # --- If ii is defined, then just return it. This allows the 'get' routines
-  # --- to do the take operation with a pre-defined ii.
-  if ii is not None: return ii
-
   # --- If lost is true, append the suffix lost to the variable names
   if lost: suffixparticle = 'lost' + suffix
   else:    suffixparticle = suffix
@@ -264,60 +266,84 @@ from window 0, getting all of the live partilces (whose uzp != 0).
 
   if ir2 <= ir1: return array([])
 
+  indices = arrayrange(ir1,ir2)
+  islice = slice(ir1,ir2)
+
   if zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(object,'zp',suffixparticle)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
-    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
-                arrayrange(ir1,ir2))
-  elif ix is not None:
+    if ii is not None:
+      z = take(z,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+  if ix is not None:
     xmmin = getattrwithsuffix(w3dobject,'xmmin',suffix,pkg='w3d')
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xmmin + ix*dx - wx*dx
     xu = xmmin + ix*dx + wx*dx
     x = getattrwithsuffix(object,'xp',suffixparticle)
-    ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
-                arrayrange(ir1,ir2))
-  elif iy is not None:
+    if ii is not None:
+      x = take(x,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+  if iy is not None:
     ymmin = getattrwithsuffix(w3dobject,'ymmin',suffix,pkg='w3d')
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = ymmin + iy*dy - wy*dy
     yu = ymmin + iy*dy + wy*dy
     y = getattrwithsuffix(object,'yp',suffixparticle)
-    ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
-                arrayrange(ir1,ir2))
-  elif iz is not None:
-    z = getattrwithsuffix(object,'zp',suffixparticle)
+    if ii is not None:
+      y = take(y,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+  if iz is not None:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zmminglobal = getattrwithsuffix(w3dobject,'zmminglobal',suffix,pkg='w3d')
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
     zl = zmminglobal + iz*dz - wz*dz + zbeam
     zu = zmminglobal + iz*dz + wz*dz + zbeam
-    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
-                arrayrange(ir1,ir2))
-  elif zc is not None:
+    z = getattrwithsuffix(object,'zp',suffixparticle)
+    if ii is not None:
+      z = take(z,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+  if zc is not None:
     z = getattrwithsuffix(object,'zp',suffixparticle)
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
     zl = zc - wz*dz
     zu = zc + wz*dz
-    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
-                arrayrange(ir1,ir2))
-  elif xc is not None:
+    if ii is not None:
+      z = take(z,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+  if xc is not None:
     x = getattrwithsuffix(object,'xp',suffixparticle)
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xc - wx*dx
     xu = xc + wx*dx
-    ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
-                arrayrange(ir1,ir2))
-  elif yc is not None:
+    if ii is not None:
+      x = take(x,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+  if yc is not None:
     y = getattrwithsuffix(object,'yp',suffixparticle)
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = yc - wy*dy
     yu = yc + wy*dy
-    ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
-                arrayrange(ir1,ir2))
-  elif iw < 0:
+    if ii is not None:
+      y = take(y,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+  if iw < 0:
     # --- Add some smarts about choosing which method to use.
     # --- If the number of particles is increasing, then use the
     # --- population sampling. Otherwise use the preset subsets.
@@ -330,25 +356,33 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     if selectparticles.npsprev[js] >= nps[js]:
       if psubset==[]: setup_subsets()
       if -iw > len(psubset): raise "Bad window number"
-      ii = ir1 + compress(less(psubset[-iw-1],nps[js]),psubset[-iw-1])
+      if ii is None: nn = nps[js]
+      else:          nn = len(ii)
+      subset = compress(less(psubset[-iw-1],nn),psubset[-iw-1])
+      if ii is None: ii = ir1 + subset
+      else:          ii = take(ii,subset)
     else:
       # --- Once this method is used, always use it.
       selectparticles.npsprev = zeros(ns)
       npplot = getattrwithsuffix(object,'npplot',suffix)
       if nps[js] <= npplot[-iw-1]:
-        ii = ir1 + arange(nps[js])
+        ii = indices
       else:
-        ii = ir1 + populationsample(xrange(nps[js]),npplot[-iw-1])
+        ii = populationsample(indices,npplot[-iw-1])
   elif iw == 0:
-    ii = xrange(ir1,ir2)
+    if ii is None: ii = indices
   else:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zwindows = getattrwithsuffix(object,'zwindows',suffix)
     if win is None: win = zwindows[:,iw] + zbeam
     if len(shape(win)) == 2: win = win[:,iw]
     if z is None: z = getattrwithsuffix(object,'zp',suffixparticle)
-    ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
-                arrayrange(ir1,ir2))
+    if ii is not None:
+      z = take(z,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii=compress(logical_and(less(win[0],z[islice]),less(z[islice],win[1])),
+                indices)
   uz = getattrwithsuffix(object,'uzp',suffixparticle)
   ii = compress(not_equal(take(uz,ii),0.),ii)
   return ii
