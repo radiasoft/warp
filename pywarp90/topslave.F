@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.35 $, $Date: 2006/02/10 19:50:34 $
+c TOPSLAVE.M, version $Revision: 1.36 $, $Date: 2006/03/17 21:59:24 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -110,7 +110,7 @@ c           --- in the arrays.
               temp = gaminv(ip)
               gaminv(ip) = gaminv(idest)
               gaminv(idest) = temp
-              if (npid > 0) then
+              if (npidmax > 0) then
                 pidtemp = pid(ip,:)
                 pid(ip,:) = pid(idest,:)
                 pid(idest,:) = pidtemp
@@ -144,7 +144,7 @@ c           --- in the arrays.
               temp = gaminv(ip)
               gaminv(ip) = gaminv(idest)
               gaminv(idest) = temp
-              if (npid > 0) then
+              if (npidmax > 0) then
                 pidtemp = pid(ip,:)
                 pid(ip,:) = pid(idest,:)
                 pid(idest,:) = pidtemp
@@ -211,9 +211,9 @@ c       --- Make sure these are zero in case they are not set below.
         nsendrightsum = 0
 
 c       --- Number of quantities to be exchanged. Normally it is seven,
-c       --- but when npid>0, then it is more since pid is also exchanged.
+c       --- but when npidmax>0, then it is more since pid is also exchanged.
         nquant = 7
-        if (npid > 0) nquant = nquant + npid
+        if (npidmax > 0) nquant = nquant + npidmax
 
 c       --- Copy particles being sent to the left to buffer1.
         if (pbound0==periodic .or. my_index > 0) then
@@ -236,7 +236,7 @@ c       --- Copy particles being sent to the left to buffer1.
                 buffer1(ii+4*nn:ii+5*nn-1) = uyp(ip:ip+nn-1)
                 buffer1(ii+5*nn:ii+6*nn-1) = uzp(ip:ip+nn-1)
                 buffer1(ii+6*nn:ii+7*nn-1) = gaminv(ip:ip+nn-1)
-                do ipid=1,npid
+                do ipid=1,npidmax
                   buffer1(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
@@ -266,7 +266,7 @@ c       --- Copy particles being sent to the right to buffer2.
                 buffer2(ii+4*nn:ii+5*nn-1) = uyp(ip:ip+nn-1)
                 buffer2(ii+5*nn:ii+6*nn-1) = uzp(ip:ip+nn-1)
                 buffer2(ii+6*nn:ii+7*nn-1) = gaminv(ip:ip+nn-1)
-                do ipid=1,npid
+                do ipid=1,npidmax
                   buffer2(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
@@ -343,7 +343,7 @@ c     call VTBEGIN(60,IERR)
               uyp(ip:ip+nn-1) = buffer3(ii+4*nn:ii+5*nn-1)
               uzp(ip:ip+nn-1) = buffer3(ii+5*nn:ii+6*nn-1)
               gaminv(ip:ip+nn-1) = buffer3(ii+6*nn:ii+7*nn-1)
-              do ipid=1,npid
+              do ipid=1,npidmax
                 pid(ip:ip+nn-1,ipid) = buffer3(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
@@ -369,7 +369,7 @@ c     call VTBEGIN(60,IERR)
               uyp(ip:ip+nn-1) = buffer4(ii+4*nn:ii+5*nn-1)
               uzp(ip:ip+nn-1) = buffer4(ii+5*nn:ii+6*nn-1)
               gaminv(ip:ip+nn-1) = buffer4(ii+6*nn:ii+7*nn-1)
-              do ipid=1,npid
+              do ipid=1,npidmax
                 pid(ip:ip+nn-1,ipid) = buffer4(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
@@ -407,7 +407,7 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       do ipid=1,npid
+c       do ipid=1,npidmax
 c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
@@ -434,7 +434,7 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       do ipid=1,npid
+c       do ipid=1,npidmax
 c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
@@ -510,7 +510,7 @@ c     --- over every processor to find which one the particle is in.
 
 c     --- Next, create temporary arrays to hold the sorted particles.
       pnp = sum(nps)
-      ncoords = 7 + npid
+      ncoords = 7 + npidmax
       pnpmax = max(1_4,pnp)
       allocate(ptemp(0:ncoords-1,pnpmax),pprocs(pnpmax),stat=allocerror)
       if (allocerror /= 0) then
@@ -573,7 +573,7 @@ c     --- Copy sorted particle data into the temporary array
           ptemp(4,iitemp) = uyp(ii)
           ptemp(5,iitemp) = uzp(ii)
           ptemp(6,iitemp) = gaminv(ii)
-          if (npid > 0) then
+          if (npidmax > 0) then
             ptemp(7:,iitemp) = pid(ii,:)
           endif
         enddo
@@ -654,7 +654,7 @@ c     --- Now copy the data into the particle arrays
             uyp(ii1:ii2) = precv(4,ip1:ip2)
             uzp(ii1:ii2) = precv(5,ip1:ip2)
             gaminv(ii1:ii2) = precv(6,ip1:ip2)
-            do ii=1,npid
+            do ii=1,npidmax
               pid(ii1:ii2,ii) = precv(6+ii,ip1:ip2)
             enddo
           endif

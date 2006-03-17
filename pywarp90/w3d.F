@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.233 $, $Date: 2006/03/16 02:00:03 $
+c@(#) File W3D.F, version $Revision: 3.234 $, $Date: 2006/03/17 21:59:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1314,7 +1314,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,npid,npidmax
+      use Particles,Only: nplive,wpid,npidmax
       use Fields3d
       use Fields3dParticles
       use Efields3d
@@ -3451,7 +3451,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: pgroup,npmax,npid
+      use Particles,Only: pgroup,npmax,npidmax
       use Picglb
       use Picglb3d
 #ifdef MPIPARALLEL
@@ -4096,7 +4096,7 @@ c            --- put velocity into particle arrays
      &                   vty*uyt(ii) + vzt(ii)*ypct(ii)
              pgroup%uzp(ip+i) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni) +
      &                   vtzt(ii)*uzt(ii)
-             if (npid > 0) pgroup%pid(ip+i,:) = 0.
+             if (npidmax > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -4228,7 +4228,7 @@ c                  2nd term: centroid component
 c            --- set longitudinal particle gamma*velocity 
              pgroup%uzp(ip+i) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
-             if (npid > 0) pgroup%pid(ip+i,:) = 0.
+             if (npidmax > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp

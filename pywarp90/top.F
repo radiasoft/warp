@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.167 $, $Date: 2006/03/10 00:53:41 $
+c@(#) File TOP.F, version $Revision: 3.168 $, $Date: 2006/03/17 21:59:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6642,7 +6642,9 @@ c=============================================================================
       else
         pgroup%npmaxi = 1
       endif
-      pgroup%npidmax = max(1,pgroup%npid)
+      pgroup%npidmax = max(1,pgroup%npidmax)
+      pgroup%npidmax = max(pgroup%npid,pgroup%npidmax)
+      npidmax = pgroup%npidmax
 
 c     call gchange("Particles",0)
       call ParticleGroupchange(pgroup)
@@ -6813,21 +6815,21 @@ c=============================================================================
       use Particles
       integer(ISZ):: is,ishift
       call shftpartwork(is,ishift,pgroup%npmax,pgroup%npmaxi,ns,pgroup%ipmax_s,
-     &                  pgroup%ins,pgroup%nps,pgroup%npid,
+     &                  pgroup%ins,pgroup%nps,pgroup%npidmax,
      &                  pgroup%xp,pgroup%yp,pgroup%zp,
      &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
      &                  pgroup%pid)
       return
       end
 c=============================================================================
-      subroutine shftpartwork(is,ishift,npmax,npmaxi,ns,ipmax_s,ins,nps,npid,
+      subroutine shftpartwork(is,ishift,npmax,npmaxi,ns,ipmax_s,ins,nps,npidmax,
      &                        xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       use Subtimerstop
       integer(ISZ):: is,ishift
-      integer(ISZ):: npmax,npmaxi,ns,ipmax_s(0:ns),ins(ns),nps(ns),npid
+      integer(ISZ):: npmax,npmaxi,ns,ipmax_s(0:ns),ins(ns),nps(ns),npidmax
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
-      real(kind=8):: gaminv(npmax),pid(npmaxi,npid)
+      real(kind=8):: gaminv(npmax),pid(npmaxi,npidmax)
 
 c Shift particles by 'ishift'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
@@ -6857,7 +6859,7 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
-          if (npid > 0) then
+          if (npidmax > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
@@ -6865,7 +6867,7 @@ c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ipmax_s(is-1)+1,ipmax_s(is-1)+1+ishift-1
           uzp(ip) = 0.
-          if (npid > 0) pid(ip,:) = 0
+          if (npidmax > 0) pid(ip,:) = 0
         enddo
 
 c       --- change lower bound of live particles
@@ -6888,7 +6890,7 @@ c       --- (ins(is) - ipmax_s(is-1)) < -ishift
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
-          if (npid > 0) then
+          if (npidmax > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
@@ -6896,7 +6898,7 @@ c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishift+1,-1
           uzp(ip) = 0.
-          if (npid > 0) pid(ip,:) = 0
+          if (npidmax > 0) pid(ip,:) = 0
         enddo
 
 c       --- change number of particles if data is lost
@@ -6943,7 +6945,7 @@ c starting at 'istart' to locations starting at 'it'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npid > 0) then
+          if (npidmax > 0) then
             pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -6958,7 +6960,7 @@ c starting at 'istart' to locations starting at 'it'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npid > 0) then
+          if (npidmax > 0) then
             pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -6971,14 +6973,15 @@ c starting at 'istart' to locations starting at 'it'.
       return
       end
 c=============================================================================
-      subroutine addpart(nn,nnpid,x,y,z,vx,vy,vz,gi,ppid,is,lallindomain,zmmin,zmmax,
-     &                   lmomentum)
+      subroutine addpart(nn,nnpidmax,x,y,z,vx,vy,vz,gi,ppid,is,
+     &                   lallindomain,zmmin,zmmax,lmomentum)
       use Subtimerstop
       use Constant
       use Particles
       use Beam_acc
-      integer(ISZ):: is,nn,nnpid
-      real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn),ppid(nn,nnpid)
+      integer(ISZ):: is,nn,nnpidmax
+      real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
+      real(kind=8):: ppid(nn,nnpidmax)
       logical(ISZ):: lallindomain,lmomentum
       real(kind=8):: zmmin,zmmax
 
@@ -7013,7 +7016,7 @@ c     --- transversely.
               vy(n1) = vy(ip)
               vz(n1) = vz(ip)
               gi(n1) = gi(ip)
-              if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
+              if (nnpidmax > 0) ppid(n1,:) = ppid(ip,:)
             endif
           endif
         enddo
@@ -7032,6 +7035,7 @@ c     --- momentum.
       endif
 
 c     --- Make room for the particles
+      pgroup%npidmax = max(pgroup%npidmax,nnpidmax)
       call chckpart(is,0,n1,.false.)
 
 c     --- Now, copy data into arrays
@@ -7044,7 +7048,7 @@ c     --- Now, copy data into arrays
       uyp(i1:i2) = vy(1:n1)
       uzp(i1:i2) = vz(1:n1)
       gaminv(i1:i2) = gi(1:n1)
-      if (nnpid > 0) pid(i1:i2,1:nnpid) = ppid(1:n1,:)
+      if (nnpidmax > 0) pid(i1:i2,1:nnpidmax) = ppid(1:n1,:)
       if (spid > 0) then
         pid(i1:i2,spid) = (/(ssn+i,i=0,n1-1)/)
         ssn = ssn + n1
@@ -7105,7 +7109,7 @@ c       --- to fill in the empty spaces.
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npid > 0) then
+                if (npidmax > 0) then
                   pid(ip,:) = pid(ips,:)
                   pid(ips,:) = 0
                 endif
@@ -7139,7 +7143,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npid > 0) then
+                if (npidmax > 0) then
                   pid(ip,:) = pid(ips,:)
                   pid(ips,:) = 0
                 endif
@@ -7288,7 +7292,7 @@ c         --- lost on a previous step but wasn't cleared out of the array.
               gaminvlost(i1) = 1.
             endif
             tplost(i1) = time
-            if (npid > 0) pidlost(i1,1:npidmax) = pid(ip,:)
+            if (npidmax > 0) pidlost(i1,1:npidmax) = pid(ip,:)
             if (npidlostmax > npidmax) pidlost(i1,npidmax+1:) = 0.
             npslost(is) = npslost(is) + 1
           endif
@@ -7421,6 +7425,7 @@ c Allocate space for lost particles and set up associated arrays.
       if (ltoptimesubs) substarttime = wtime()
 
       npidlostmax = max(npidmax,npidlostmax)
+      npidlostmax = max(npid,npidlostmax)
       call gchange("LostParticles",0)
 
       npmaxlost_s(0) = 0
@@ -7441,6 +7446,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use LostParticles
+      use Particles,Only: npid,npidmax
       integer(ISZ):: is,nlower,nhigher
 
 c Make sure that there is enough space in the lost particle arrays for nlower
@@ -7453,6 +7459,12 @@ c Particle data is shifted appropriately.
       integer(ISZ):: nadd,i,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Make sure that npidlostmax is up to date.
+      if (npid > npidlostmax .or. npidmax > npidlostmax) then
+        npidlostmax = max(npid,npidmax)
+        call gchange("LostParticles",0)
+      endif
 
 c     --- If there is already enough space, then return.
       if (inslost(is)-npmaxlost_s(is-1)-1 >= nlower .and.
@@ -7509,7 +7521,7 @@ c=============================================================================
       if (ltoptimesubs) substarttime = wtime()
 
       call shftpartwork(is,ishift,npmaxlost,npmaxlost,ns,npmaxlost_s,
-     &                  inslost,npslost,npid,
+     &                  inslost,npslost,npidlostmax,
      &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                  gaminvlost,pidlost)
 
@@ -7639,7 +7651,7 @@ c       --- Loop only over live particles
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
-          if (pgroup%npid > 0) then
+          if (pgroup%npidmax > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
@@ -7670,7 +7682,7 @@ c       --- Note that particles will be clobbered if shifted onto species below.
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
-          if (pgroup%npid > 0) then
+          if (pgroup%npidmax > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
@@ -7723,7 +7735,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = uyp(ij)
           pgroupout%uzp(in) = uzp(ij)
           pgroupout%gaminv(in) = gaminv(ij)
-          if (npid > 0) then
+          if (pgroup%npidmax > 0) then
             pgroupout%pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -7738,7 +7750,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = uyp(ij)
           pgroupout%uzp(in) = uzp(ij)
           pgroupout%gaminv(in) = gaminv(ij)
-          if (npid > 0) then
+          if (pgroup%npidmax > 0) then
             pgroupout%pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -7779,7 +7791,7 @@ c starting at 'istart' to locations starting at 'it'.
           uyp(in) = pgroupin%uyp(ij)
           uzp(in) = pgroupin%uzp(ij)
           gaminv(in) = pgroupin%gaminv(ij)
-          if (npid > 0) then
+          if (pgroup%npidmax > 0) then
             pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
@@ -7794,7 +7806,7 @@ c starting at 'istart' to locations starting at 'it'.
           uyp(in) = pgroupin%uyp(ij)
           uzp(in) = pgroupin%uzp(ij)
           gaminv(in) = pgroupin%gaminv(ij)
-          if (npid > 0) then
+          if (pgroup%npidmax > 0) then
             pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
