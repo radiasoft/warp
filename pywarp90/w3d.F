@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.234 $, $Date: 2006/03/17 21:59:24 $
+c@(#) File W3D.F, version $Revision: 3.235 $, $Date: 2006/03/18 01:51:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1314,7 +1314,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,npidmax
+      use Particles,Only: nplive,wpid
       use Fields3d
       use Fields3dParticles
       use Efields3d
@@ -1377,7 +1377,7 @@ c     --- Create local pointers to the arrays in pgroup.
       uyp => pgroup%uyp
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
-      pid => pgroup%pid
+      if (pgroup%npidmax > 0) pid => pgroup%pid
 
       sm => pgroup%sm
       sq => pgroup%sq
@@ -1777,7 +1777,7 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
      &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 endif
-                call getextrapolatedparticles(ipmin,ip,pgroup,npidmax,
+                call getextrapolatedparticles(ipmin,ip,pgroup,pgroup%npidmax,
      &                                        halfdt_s,uxpo,uypo,uzpo,
      &                                        isid,time,zbeam)
               endif
@@ -1920,7 +1920,7 @@ c=============================================================================
       use GlobalVars
       use InGen
       use InPart
-      use Particles,Only: pgroup,npidmax
+      use Particles,Only: pgroup
       use Picglb
 
       integer(ISZ):: is,ip,ipmin
@@ -1937,7 +1937,7 @@ c  Also include time step size scaling for steady-state and slice modes.
 
         ipmin = pgroup%ins(is)
         call getextrapolatedparticles(pgroup%ins(is),pgroup%nps(is),pgroup,
-     &             npidmax,halfdt_s,
+     &             pgroup%npidmax,halfdt_s,
      &             pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &             pgroup%sid(is-1)+1,time,zbeam)
        enddo
@@ -3451,7 +3451,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: pgroup,npmax,npidmax
+      use Particles,Only: pgroup,npmax
       use Picglb
       use Picglb3d
 #ifdef MPIPARALLEL
@@ -4096,7 +4096,7 @@ c            --- put velocity into particle arrays
      &                   vty*uyt(ii) + vzt(ii)*ypct(ii)
              pgroup%uzp(ip+i) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni) +
      &                   vtzt(ii)*uzt(ii)
-             if (npidmax > 0) pgroup%pid(ip+i,:) = 0.
+             if (pgroup%npidmax > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -4228,7 +4228,7 @@ c                  2nd term: centroid component
 c            --- set longitudinal particle gamma*velocity 
              pgroup%uzp(ip+i) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
-             if (npidmax > 0) pgroup%pid(ip+i,:) = 0.
+             if (pgroup%npidmax > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
