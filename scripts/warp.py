@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.104 2006/03/09 00:56:12 dave Exp $"
+warp_version = "$Id: warp.py,v 1.105 2006/03/18 00:32:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -752,7 +752,6 @@ def fixrestoreswitholdparticlearrays(filename):
   top.pgroup.ns = top.ns
   # --- Only these needs to be read in.
   top.pgroup.ipmax_s = ff.read('npmax_s@top')
-  top.pgroup.npmaxi = ff.read('npmaxi@top')
   ff.close()
   # --- Everything else has already been read in.
   top.pgroup.npmax = top.npmax

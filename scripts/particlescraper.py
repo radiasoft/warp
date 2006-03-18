@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.37 2006/02/10 20:02:16 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.38 2006/03/18 00:32:03 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -71,11 +71,10 @@ conductors are an argument.
     if self.lsavecondid:
       top.lsavelostpart = true
     if self.lsaveintercept:
-      self.xoldpid=top.npid
-      self.yoldpid=top.npid+1
-      self.zoldpid=top.npid+2
-      top.npid+=3
-      top.npidmax+=3
+      # --- Note that nextpid returns numbers based on 1 based indexing
+      self.xoldpid=nextpid() - 1
+      self.yoldpid=nextpid() - 1
+      self.zoldpid=nextpid() - 1
       gchangeparticles()
       installbeforestep(self.saveoldpos)
     self.l_print_timing=0

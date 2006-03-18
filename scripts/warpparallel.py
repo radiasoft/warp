@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.63 2006/03/15 17:42:47 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.64 2006/03/18 00:32:03 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -297,7 +297,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           elif p == 'top' and vname == 'pid':
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
-            if top.npid > 0 and sum(sum(nps_p)) > 0:
+            if top.npidmax > 0 and sum(sum(nps_p)) > 0:
               ff.defent(pdbname,v,(sum(sum(nps_p)),top.npidmax))
           elif vname == 'npmaxlost_s' and p == 'top':
             # --- This is set to be correct globally
@@ -425,7 +425,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
                        indx=(ipmin,))
         elif p == 'top' and vname == 'pid':
-          if top.npid > 0:
+          if top.npidmax > 0:
             # --- Write out each species seperately.
             for js in range(top.ns):
               if top.nps[js] > 0:
@@ -644,7 +644,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- Read in each species seperately.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
-        if top.npid > 0:
+        if top.npidmax > 0:
           for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])

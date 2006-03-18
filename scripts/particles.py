@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.36 2006/03/16 19:02:00 dave Exp $"
+particles_version = "$Id: particles.py,v 1.37 2006/03/18 00:32:03 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -674,8 +674,8 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
     npidlostmax = getattrwithsuffix(object,'npidlostmax')
     dopid = (npidlostmax > 0)
   else:
-    npid = getattrwithsuffix(object,'npid',suffix)
-    dopid = (npid > 0)
+    npidmax = getattrwithsuffix(object,'npidmax',suffix)
+    dopid = (npidmax > 0)
   if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
     if len(ii) > 0:
@@ -948,7 +948,7 @@ Adds particles to the simulation
   vy = array(vy)*ones(maxlen,'d')
   vz = array(vz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
-  pid = array(pid)*ones([maxlen,top.npid],'d')
+  pid = array(pid)*ones([maxlen,top.npidmax],'d')
 
   # --- Set time of creation and ssn
   if top.tpid>0: pid[:,top.tpid-1]=top.time
@@ -973,7 +973,7 @@ Adds particles to the simulation
     else:                     lallindomain = false
 
   # --- Now data can be passed into the fortran addparticles routine.
-  addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
+  addpart(maxlen,top.npidmax,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp()

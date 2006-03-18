@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.47 2006/02/11 01:59:39 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.48 2006/03/18 00:32:04 dave Exp $"
 
 
 ##############################################################################
@@ -410,7 +410,6 @@ set when a current is specified"""
 
           # --- save data of just injected particles
           pgroup.npmax = len(ii)
-          pgroup.npmaxi = pgroup.npmax
           pgroup.npidmax = top.npidmax
           pgroup.npid = top.npid
           pgroup.ins = 1
@@ -476,7 +475,6 @@ set when a current is specified"""
 
             # --- save data of just injected particles
             pgroup.npmax = len(ii)
-            pgroup.npmaxi = pgroup.npmax
             pgroup.npidmax = top.npidmax
             pgroup.npid = top.npid
             pgroup.ins = 1
