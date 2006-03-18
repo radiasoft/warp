@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.159 $, $Date: 2006/03/16 02:01:06 $
+#@(#) File TOP.V, version $Revision: 3.160 $, $Date: 2006/03/18 01:51:01 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.159 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.160 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1911,9 +1911,8 @@ gchangeparticles() subroutine
 # Dynamic particle arrays, and related data
 ns     integer    /1/  # Number of species
 npmax  integer    /0/  # Size of data arrays
-npmaxi integer    /1/  # Maximum no. of particles for pid.
 npid   integer    /0/  # number of columns for pid.
-npidmax integer   /1/  # Maximum number of columns for pid.
+npidmax integer   /0/  # Maximum number of columns for pid.
                        # This is used so that the pid array is always allocated
 ipmax_s(0:ns)  _integer [1] /0/
    # Maximum index of particles of each species
@@ -1941,7 +1940,7 @@ zp(npmax)       _real [m]       # Z-positions of particles
 uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
 uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
-pid(npmaxi,npidmax) _real [1]       # Particle ID - used for various purposes
+pid(npmax,npidmax) _real [1]    # Particle ID - used for various purposes
 
 *********** Scraped_Particles dump:
 # Arrays for scraped particles
