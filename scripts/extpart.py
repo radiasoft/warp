@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.50 2006/03/02 19:29:39 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.51 2006/03/18 00:16:30 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -344,8 +344,8 @@ routines (such as ppxxp).
     # --- were saved.
     for js in range(top.ns):
       # --- Check if npidepmax has changed. Update pidep appropriately
-      if self.pidep[js].unitshape()[0] != top.npidepmax:
-        if self.laccumulate and not self.dumptofile:
+      if self.laccumulate and not self.dumptofile:
+        if self.pidep[js].unitshape()[0] != top.npidepmax:
           self.pidep[js].reshape((top.npidepmax,))
       # --- Gather the data.
       # --- In parallel, the data is gathered in PE0, return empty arrays
