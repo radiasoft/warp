@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.169 $, $Date: 2006/03/18 01:51:00 $
+c@(#) File TOP.F, version $Revision: 3.170 $, $Date: 2006/03/18 02:03:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -190,7 +190,6 @@ c=============================================================================
       use InPart
       use Constant
       use Beam_acc
-      use Particles,Only: ns
 
 c Sets up species related quantities which were not set by the user, based
 c on the rest of the user's input.    
@@ -415,7 +414,6 @@ c=============================================================================
       use InPart
       use Constant
       use Beam_acc
-      use Particles,Only: ns
 
 c  Sets globally derived quantities that need computation.
 
@@ -6690,7 +6688,7 @@ c=============================================================================
       subroutine alotpart
       use Subtimerstop
       use InPart
-      use Particles,Only: ns,pgroup,npmax,np,npid,npidmax
+      use Particles,Only: pgroup,npmax,np,npid,npidmax
 
 c Allocate space for particles and set up associated arrays.
 
@@ -7225,7 +7223,7 @@ c=============================================================================
       use Beam_acc
       use InPart
       use InDiag
-      use Particles,Only: pgroup,ns,wpid
+      use Particles,Only: pgroup,wpid
       use LostParticles
       use Z_arrays
       integer(ISZ):: is,clearlostpart
@@ -7529,7 +7527,6 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use LostParticles
-      use Particles,Only: ns
       integer(ISZ):: is,ishift
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
