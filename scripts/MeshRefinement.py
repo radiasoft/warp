@@ -620,25 +620,25 @@ the top level grid.
       for child in self.children:
         child.initrhospecies(op,js)
 
-  def pointrhotorhospecies(self,js,lrootonly=0):
+  def pointrhotorhospecies(self,js,lselfonly=0):
     # make rhocopy point to rho, rho point to rhospecies[js] 
     self.rhocopy  = self.rho
     self.rho      = self.rhospecies[js]
-    if not lrootonly:
+    if not lselfonly:
       for child in self.children:
         child.pointrhotorhospecies(js)
 
-  def addrhospecies(self,js,lrootonly=0):
+  def addrhospecies(self,js,lselfonly=0):
     # add rhospecies[js] to rho
     self.rho    += self.rhospecies[js]
-    if not lrootonly:
+    if not lselfonly:
       for child in self.children:
         child.addrhospecies(js)
 
-  def pointrhotorhocopy(self,lrootonly=0):
+  def pointrhotorhocopy(self,lselfonly=0):
     # make rho point to rhocopy 
     self.rho     = self.rhocopy
-    if not lrootonly:
+    if not lselfonly:
       for child in self.children:
         child.pointrhotorhocopy()
 
@@ -662,10 +662,10 @@ the top level grid.
       for child in self.children:
         child.addrhospecies(js,op)
 
-  def zerorho(self,lrootonly=0):
+  def zerorho(self,lselfonly=0):
     if not self.isfirstcall(): return
     self.rho[...] = 0.
-    if not lrootonly:
+    if not lselfonly:
       for child in self.children:
         child.zerorho()
 
@@ -1298,9 +1298,9 @@ Sets phi on the boundaries, using the values from the parent grid
 Fetches the E field. This should only be called at the root level grid.
     """
     if w3d.api_xlf2:
-      w3d.xfsapi=top.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.yfsapi=top.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.zfsapi=top.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                      w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
     #self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
