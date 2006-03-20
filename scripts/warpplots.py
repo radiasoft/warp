@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.170 2006/03/02 19:20:23 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.171 2006/03/20 23:11:29 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1141,9 +1141,15 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- Though of course they must be the correct length.
     if xmesh is None:
       xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d') + xcoffset
+    else:
+      if rank(xmesh) == 1:
+        xmesh = xmesh[:,NewAxis]*ones(ny+1,'d')
     if ymesh is None:
       ymesh = (ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis] +
                transpose([ycoffset]))
+    else:
+      if rank(ymesh) == 1:
+        ymesh = ymesh*ones(nx+1,'d')[:,NewAxis]
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
