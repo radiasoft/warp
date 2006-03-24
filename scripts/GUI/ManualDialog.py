@@ -72,6 +72,8 @@ class panel(wxPanel):
           cpos = string.find(warp_path,'cygdrive')
           if cpos>=0:
             warp_path = string.upper(warp_path[cpos+9])+':'+warp_path[cpos+10:]
+          else:
+            warp_path = warp_path[1]+':'+warp_path[3:]
         if warp_path <> '':warp_path+='/'
         self.html.LoadPage(warp_path+'doc/html/'+self.which+'.html')
 
