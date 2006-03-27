@@ -4399,7 +4399,7 @@ select case (izlbnd)
     case (neumann)
       f(:,0) = f(:,2)
     case (periodic)
-      f(:,0) = f(:,izmax-2)
+      f(:,0) = f(:,izmax-3)
     case default
 end select
 select case (izrbnd)
@@ -4408,7 +4408,7 @@ select case (izrbnd)
     case (neumann)
       f(:,izmax-1) = f(:,izmax-3)
     case (periodic)
-      f(:,izmax-1) = f(:,1)
+      f(:,izmax-1) = f(:,2)
     case default
 end select
 
