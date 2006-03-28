@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.33 $, $Date: 2006/02/10 19:50:35 $
+c W3DSLAVE.M, version $Revision: 1.34 $, $Date: 2006/03/28 02:08:55 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -897,7 +897,7 @@ c will be done. This assumes that each processor "owns" rho from
 c iz=0 to either iz=nz-1 or nz-2 depending on the overlap. Each is
 c only responsible for sending out the rho is owns.
 
-      integer(4  ):: i,right_nz
+      integer(4  ):: i,right_nz,onz
       integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
       integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
@@ -964,8 +964,12 @@ c     --- Copy any data locally as well.
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
             if (loc(rho) .ne. loc(rhop)) then
-              rho(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
-     &          rhop(:,:,izsend(i):izsend(i)+nzsend(i)-1)
+c             --- should be izrecv(i)+nzrecv(i)-1?
+c             --- should be fixed so no unnecessary data is sent!!!
+              onz = 1
+              if (my_index == nslaves-1) onz = 0
+              rho(:,:,izrecv(i):izrecv(i)+nzrecv(i) - onz) =
+     &          rhop(:,:,izsend(i):izsend(i)+nzsend(i) - onz)
             endif
           endif
         endif
