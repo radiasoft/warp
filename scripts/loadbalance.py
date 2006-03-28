@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.45 2006/03/09 00:58:12 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.46 2006/03/28 02:06:14 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -38,7 +38,7 @@ Creation arguments:
 Note, if particles on cover a few grid cells, then distribution is
 recalculated on a finer mesh to give better balancing.
   """
-  def __init__(self,padright=None,padleft=0.,when=None,doitnow=0,
+  def __init__(self,padright=None,padleft=None,when=None,doitnow=0,
                doloadrho=0,dofs=0,verbose=0,nzguard=0):
     if not lparallel: return
     if when is None:
@@ -115,6 +115,14 @@ recalculated on a finer mesh to give better balancing.
         if self.verbose:
           print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,zmaxp,top.zpslmax[-1]-2*w3d.dz
 
+    # --- Check if leftmost particle is close to edge of last processor
+    # --- If so, then force a reloadbalance.
+    if top.zpslmin[0] > w3d.zmminglobal+0.5*w3d.dz:
+      if zminp < top.zpslmin[0]+2*w3d.dz + top.zbeam:
+        lforce = true
+        if self.verbose:
+          print "Load balancing since particles near left end of mesh ",top.zpslmin[0],w3d.zmminglobal,zminp,top.zpslmin[0]+2*w3d.dz
+
     # --- Find frequency of load balancing
     ii = max(self.when.values())
     for key,value in self.when.items():
@@ -157,23 +165,39 @@ recalculated on a finer mesh to give better balancing.
       dz = w3d.dz
 
     # --- Calculate the right hand side padding.
+    vz = None
     if self.padright is None:
       if not top.lmoments:
         vz = getvz(jslist=-1,gather=0)
         if len(vz) > 0: vzmaxp = max(vz)
         else:           vzmaxp = -largepos
-        del vz
         vzmaxp = globalmax(vzmaxp)
       else:
-        vzmaxp = top.vzmaxp
+        vzmaxp = max(top.vzmaxp)
       if vzmaxp > 0.: padright = vzmaxp*top.dt*ii*2
       else:           padright = ii*w3d.dz
     else:             padright = self.padright
     if self.verbose:
       print "Load balancing padright = ",padright
 
+    # --- Calculate the left hand side padding.
+    if self.padleft is None:
+      if not top.lmoments:
+        if vz is None: vz = getvz(jslist=-1,gather=0)
+        if len(vz) > 0: vzminp = min(vz)
+        else:           vzminp = largepos
+        vzminp = globalmin(vzminp)
+      else:
+        vzminp = min(top.vzminp)
+      if vzminp < 0.: padleft = -vzminp*top.dt*ii*2
+      else:           padleft = ii*w3d.dz
+    else:             padleft = self.padleft
+    if self.verbose:
+      print "Load balancing padleft = ",padleft
+    del vz
+
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
-                         padright=padright,padleft=self.padleft,
+                         padright=padright,padleft=padleft,
                          reorg=reorg,pnumz=pnumz,zmin=zmin,dz=dz,
                          zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
                          nzguard=self.nzguard)
