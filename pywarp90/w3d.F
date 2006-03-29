@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.235 $, $Date: 2006/03/18 01:51:53 $
+c@(#) File W3D.F, version $Revision: 3.236 $, $Date: 2006/03/29 23:18:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4299,9 +4299,8 @@ c     --- calculate values for sm, sq, and sw for each species.
         if (vbeam_s(isid) /= 0. .and. pgroup%nps(js+1) /= 0) then
           pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
      &                   (vbeam_s(isid)*echarge*zion_s(isid)*pgroup%nps(js+1))
-        else
-          pgroup%sw(js+1) = 0.
         endif
+c       --- Don't zero out sw in case the user has set it.
 
 c       --- Adjust weighting of particles since cigar() makes beam more dense
         if (cigarld) then
