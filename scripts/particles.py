@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.38 2006/03/31 21:24:31 dave Exp $"
+particles_version = "$Id: particles.py,v 1.39 2006/03/31 22:13:27 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -959,13 +959,11 @@ Adds particles to the simulation
   vy = array(vy)*ones(maxlen,'d')
   vz = array(vz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
-  pid = array(pid)*ones([maxlen,top.npidmax],'d')
+  pid = array(pid)*ones([maxlen,top.npid],'d')
 
-  # --- Set time of creation and ssn
+  # --- Set time of creation
   if top.tpid>0: pid[:,top.tpid-1]=top.time
-  if top.spid>0: 
-    pid[:,top.spid-1]=top.ssn+arange(maxlen)
-    top.ssn += maxlen
+  # --- Note that ssn is set in addpart
 
   # --- Set extent of domain
   if not lparallel:
@@ -984,7 +982,7 @@ Adds particles to the simulation
     else:                     lallindomain = false
 
   # --- Now data can be passed into the fortran addparticles routine.
-  addpart(maxlen,top.npidmax,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
+  addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp()
