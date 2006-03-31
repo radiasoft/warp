@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.37 2006/03/18 00:32:03 dave Exp $"
+particles_version = "$Id: particles.py,v 1.38 2006/03/31 21:24:31 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -197,6 +197,8 @@ Multiple selection criteria are now supported.
   - zc=None: When specified, picks particles within zc+-wz*dz
   - xc=None: When specified, picks particles within xc+-wx*dx
   - yc=None: When specified, picks particles within yc+-wy*dy
+  - ssn=None: When specified, returns the particle with the given ssn
+              Raises and error if ssn's are not saved.
   - ii=None: If ii is supplied, it is just returned.
   - lost=false: When true, returns indices to the lost particles rather than
                 the live particles
@@ -208,7 +210,8 @@ Multiple selection criteria are now supported.
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,"ii":None,
+                "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,
+                "ssn":None,"ii":None,
                 "lost":false,"suffix":'',"object":top,"w3dobject":None,
                 'checkargs':0,'allowbadargs':0}
 
@@ -269,7 +272,15 @@ Multiple selection criteria are now supported.
   indices = arrayrange(ir1,ir2)
   islice = slice(ir1,ir2)
 
-  if zl is not None or zu is not None:
+  if ssn is not None:
+    assert top.spid > 0,"ssn's are not used"
+    id = getattrwithsuffix(object,'pid',suffixparticle)[:,top.spid-1]
+    if ii is not None:
+      id = take(id,ii)
+      islice = slice(len(ii))
+      indices = ii
+    ii = compress(id[islice]==ssn,indices)
+  elif zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(object,'zp',suffixparticle)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
