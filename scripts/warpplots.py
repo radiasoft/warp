@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.171 2006/03/20 23:11:29 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.172 2006/04/01 01:22:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2900,7 +2900,7 @@ to all three.
       pe = convertizfstope(iz)
       if pe is None: return None
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
-      else:        ppp = zeros(shape(ppp[...,0]),'d')
+#     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = broadcast(ppp)
     return ppp
@@ -3012,7 +3012,7 @@ be from none to all three.
       pe = convertizfstope(iz)
       if pe is None: return None
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
-      else:        ppp = zeros(shape(ppp[...,0]),'d')
+#     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = broadcast(ppp)
     return ppp
