@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.170 $, $Date: 2006/03/18 02:03:55 $
+c@(#) File TOP.F, version $Revision: 3.171 $, $Date: 2006/04/01 00:00:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7062,8 +7062,13 @@ c     --- Now, copy data into arrays
       pgroup%gaminv(i1:i2) = gi(1:n1)
       if (nnpidmax > 0) pgroup%pid(i1:i2,1:nnpidmax) = ppid(1:n1,:)
       if (spid > 0) then
-        pgroup%pid(i1:i2,spid) = (/(ssn+i,i=0,n1-1)/)
-        ssn = ssn + n1
+c       --- Only set the ssn if it is not already set.
+        do ip=i1,i2
+          if (pgroup%pid(ip,spid) == 0) then
+            pgroup%pid(ip,spid) = ssn
+            ssn = ssn + 1
+          endif
+        enddo
       end if
       pgroup%nps(is) = pgroup%nps(is) + n1
 
