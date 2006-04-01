@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.13 $, $Date: 2006/02/18 01:53:58 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.14 $, $Date: 2006/04/01 00:01:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -935,7 +935,8 @@ c     --- and vx = vr, and vy = vtheta.
 
       real(kind=8),pointer,dimension(:,:,:,:):: j
       integer(ISZ):: ipmin,nptmp,ix,iy,iz,ind0,m,ir
-      real(kind=8):: g,gw,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: g,gw,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxf,gyf
+      real(kind=8):: vv(0:2)
       real(kind=8):: xsign,ysign
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -992,7 +993,7 @@ c         --- transverse boundaries.
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
 ! I don't know why it works, but it does.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
-!$OMP&                 gyfact,gxfact,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
+!$OMP&                 gyf,gxf,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
 !$OMP&FIRSTPRIVATE(np)
 
       if (bfield%lcylindrical) then
@@ -1059,15 +1060,15 @@ c       --- transverse boundaries.
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           gyfact = 1.
-           if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+           gyf = 1.
+           if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
-           s(0,ir) = u0 * v0 * w0 * gw*gyfact
-           s(1,ir) = u1 * v0 * w0 * gw*gyfact
+           s(0,ir) = u0 * v0 * w0 * gw*gyf
+           s(1,ir) = u1 * v0 * w0 * gw*gyf
            s(2,ir) = u0 * v1 * w0 * gw
            s(3,ir) = u1 * v1 * w0 * gw
-           s(4,ir) = u0 * v0 * w1 * gw*gyfact
-           s(5,ir) = u1 * v0 * w1 * gw*gyfact
+           s(4,ir) = u0 * v0 * w1 * gw*gyf
+           s(5,ir) = u1 * v0 * w1 * gw*gyf
            s(6,ir) = u0 * v1 * w1 * gw
            s(7,ir) = u1 * v1 * w1 * gw
            ysign = 1.
@@ -1099,18 +1100,18 @@ c       --- transverse boundaries.
            indx(5,ir) = ind0 + moff(5)
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
-           gxfact = 1.
-           gyfact = 1.
-           if (ix == 0 .and. bfield%xmmin == 0.) gxfact = 2.
-           if (iy == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+           gxf = 1.
+           gyf = 1.
+           if (ix == 0 .and. bfield%xmmin == 0.) gxf = 2.
+           if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
-           s(0,ir) = u0 * v0 * w0 * gw*gxfact*gyfact
-           s(1,ir) = u1 * v0 * w0 * gw*gyfact
-           s(2,ir) = u0 * v1 * w0 * gw*gxfact
+           s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
+           s(1,ir) = u1 * v0 * w0 * gw*gyf
+           s(2,ir) = u0 * v1 * w0 * gw*gxf
            s(3,ir) = u1 * v1 * w0 * gw
-           s(4,ir) = u0 * v0 * w1 * gw*gxfact*gyfact
-           s(5,ir) = u1 * v0 * w1 * gw*gyfact
-           s(6,ir) = u0 * v1 * w1 * gw*gxfact
+           s(4,ir) = u0 * v0 * w1 * gw*gxf*gyf
+           s(5,ir) = u1 * v0 * w1 * gw*gyf
+           s(6,ir) = u0 * v1 * w1 * gw*gxf
            s(7,ir) = u1 * v1 * w1 * gw
            xsign = 1.
            ysign = 1.
@@ -1189,15 +1190,15 @@ c     --- vectorized loop to compute indices, weights
           kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
           w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
-          gyfact = 1.
-          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+          gyf = 1.
+          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
-          s(0,ir) = u0 * v0 * w0 * gw*gyfact
-          s(1,ir) = u1 * v0 * w0 * gw*gyfact
+          s(0,ir) = u0 * v0 * w0 * gw*gyf
+          s(1,ir) = u1 * v0 * w0 * gw*gyf
           s(2,ir) = u0 * v1 * w0 * gw
           s(3,ir) = u1 * v1 * w0 * gw
-          s(4,ir) = u0 * v0 * w1 * gw*gyfact
-          s(5,ir) = u1 * v0 * w1 * gw*gyfact
+          s(4,ir) = u0 * v0 * w1 * gw*gyf
+          s(5,ir) = u1 * v0 * w1 * gw*gyf
           s(6,ir) = u0 * v1 * w1 * gw
           s(7,ir) = u1 * v1 * w1 * gw
           ysign = 1.
@@ -1217,18 +1218,18 @@ c     --- vectorized loop to compute indices, weights
           kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
           w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
           w0     = 1. - w1
-          gxfact = 1.
-          gyfact = 1.
-          if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxfact = 2.
-          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyfact = 2.
+          gxf = 1.
+          gyf = 1.
+          if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxf = 2.
+          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
-          s(0,ir) = u0 * v0 * w0 * gw*gxfact*gyfact
-          s(1,ir) = u1 * v0 * w0 * gw*gyfact
-          s(2,ir) = u0 * v1 * w0 * gw*gxfact
+          s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
+          s(1,ir) = u1 * v0 * w0 * gw*gyf
+          s(2,ir) = u0 * v1 * w0 * gw*gxf
           s(3,ir) = u1 * v1 * w0 * gw
-          s(4,ir) = u0 * v0 * w1 * gw*gxfact*gyfact
-          s(5,ir) = u1 * v0 * w1 * gw*gyfact
-          s(6,ir) = u0 * v1 * w1 * gw*gxfact
+          s(4,ir) = u0 * v0 * w1 * gw*gxf*gyf
+          s(5,ir) = u1 * v0 * w1 * gw*gyf
+          s(6,ir) = u0 * v1 * w1 * gw*gxf
           s(7,ir) = u1 * v1 * w1 * gw
           xsign = 1.
           ysign = 1.
@@ -1299,6 +1300,152 @@ c     --- scalar loop does the actual deposition
         endif
       enddo
 !$OMP END CRITICAL (CRITICAL_SETJ3D2)
+
+c--------------------------------------
+c  Begin direct deposition loop
+c--------------------------------------
+      elseif (depos == "direct1") then
+
+c  Begin main loop over species
+      j => bfield%j
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .and. .not. bfield%lcylindrical) then
+        do ir = 1,nptmp
+          ix = int((x(ir) - bfield%xmmin) * dxi)
+          iy = int((abs(y(ir)) - bfield%ymmin)*dyi)
+          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          u1 =     (x(ir) - bfield%xmmin) * dxi - ix
+          u0 = 1. - u1
+          v1 =     (abs(y(ir)) - bfield%ymmin)*dyi - iy
+          v0 = 1. - v1
+          w1 =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w0 = 1. - w1
+          gyf = 1.
+          if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (nw == np) gw = g*wght(ir)
+          ysign = 1.
+          if (y(ir) < 0.) ysign = -1.
+          vv(0) = ux(ir)*gi(ir)*ysign
+          vv(1) = uy(ir)*gi(ir)
+          vv(2) = uz(ir)*gi(ir)
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)*gyf
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)*gyf
+          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)
+          j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)*gyf
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)*gyf
+          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)
+          j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)*gyf
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)*gyf
+          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)
+          j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)*gyf
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)*gyf
+          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)
+          j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)*gyf
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)*gyf
+          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)
+          j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)*gyf
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)*gyf
+          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
+          j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
+        enddo
+      elseif (l4symtry .and. .not. bfield%lcylindrical) then
+        do ir = 1,nptmp
+          ix = int((abs(x(ir)) - bfield%xmmin)*dxi)
+          iy = int((abs(y(ir)) - bfield%ymmin)*dyi)
+          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          u1 =     (abs(x(ir)) - bfield%xmmin)*dxi - ix
+          u0 = 1. - u1
+          v1 =     (abs(y(ir)) - bfield%ymmin)*dyi - iy
+          v0 = 1. - v1
+          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w0     = 1. - w1
+          gxf = 1.
+          gyf = 1.
+          if (ix == 0 .and. bfield%xmmin == 0.) gxf = 2.
+          if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (nw == np) gw = g*wght(ir)
+          xsign = 1.
+          ysign = 1.
+          if (x(ir) < 0.) xsign = -1.
+          if (y(ir) < 0.) ysign = -1.
+          vv(0) = ux(ir)*gi(ir)*ysign
+          vv(1) = uy(ir)*gi(ir)*xsign
+          vv(2) = uz(ir)*gi(ir)
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)*gxf*gyf
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)*gyf
+          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)*gxf
+          j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)*gxf*gyf
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)*gyf
+          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)*gxf
+          j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)*gxf*gyf
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)*gyf
+          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)*gxf
+          j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)*gxf*gyf
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)*gyf
+          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)*gxf
+          j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)*gxf*gyf
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)*gyf
+          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)*gxf
+          j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)*gxf*gyf
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)*gyf
+          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)*gxf
+          j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
+        enddo
+      else
+c       --- normal loop
+        do ir = 1,nptmp
+          ix = int((x(ir) - bfield%xmmin) * dxi)
+          iy = int((y(ir) - bfield%ymmin) * dyi)
+          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
+          u1 =     (x(ir) - bfield%xmmin) * dxi - ix
+          u0 = 1. - u1
+          v1 =     (y(ir) - bfield%ymmin) * dyi - iy
+          v0 = 1. - v1
+          w1 =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w0 = 1. - w1
+          if (nw == np) cdensw(ix:ix+1)=cdens(ix:ix+1)*wght(ir)
+          u0 = u0*cdensw(ix  )
+          u1 = u1*cdensw(ix+1)
+          vv(0) = ux(ir)*gi(ir)
+          vv(1) = uy(ir)*gi(ir)
+          vv(2) = uz(ir)*gi(ir)
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)
+          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)
+          j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)
+          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)
+          j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)
+          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)
+          j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)
+          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)
+          j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)
+          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)
+          j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)
+          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
+          j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
+        enddo
+      endif
 
       endif
 
