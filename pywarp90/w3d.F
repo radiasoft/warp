@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.236 $, $Date: 2006/03/29 23:18:43 $
+c@(#) File W3D.F, version $Revision: 3.237 $, $Date: 2006/04/06 23:32:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5284,8 +5284,9 @@ c       --- there'd be a hazard if we interchanged the loops.
       end
 c=============================================================================
       subroutine setrho3ddirectspline2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                   nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
+      use InGen,Only: pbound0,pboundnz,pboundxy
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
@@ -5298,13 +5299,20 @@ c=============================================================================
 c  Sets charge density
 c  Uses a second order spline with direct deposition (no particle blocks)
 
-      integer(ISZ):: ip,ii,jj,kk,iim1,jjm1
+      integer(ISZ):: ip,ii,jj,kk
       integer(ISZ):: iinext,jjnext,kknext
       real(kind=8):: g,dxi,dyi,dzi
       real(kind=8):: wx,wy,wz
       real(kind=8):: wxnext,wynext,wznext
       real(kind=8):: u0,u1,u2,v0,v1,v2,w0,w1,w2
       real(kind=8):: gxf,gyf,gxfm1,gyfm1
+      real(kind=8),allocatable:: rhotemp(:,:,:)
+
+      if (np == 0) return
+
+c     --- This is very memory inefficient, but make dealing with boundary
+c     --- conditions much easier.
+      allocate(rhotemp(-1:nx+1,-1:ny+1,-1:nz+1))
 
       g = wght*q/(dx*dy*dz)
       dxi = 1./dx
@@ -5352,9 +5360,7 @@ c     --- vectorized loop to compute indices, weights
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
           if (uzp(ip) == 0.) cycle
-          if (ii-1 < 0 .or. ii+1 > nx .or.
-     &                      jj+1 > ny .or.
-     &        kk-1 < 0 .or. kk+1 > nz) cycle
+
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
           u2 = 0.5*(0.5 + wx)**2
@@ -5365,42 +5371,35 @@ c     --- vectorized loop to compute indices, weights
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          jjm1 = abs(jj - 1)
+          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          gyf = 1.
-          gyfm1 = 1.
-          if (jj == 0 .and. ymmin == 0.) gyf = 2.
-          if (jjm1 == 0 .and. ymmin == 0.) gyfm1 = 2.
+          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rho(ii-1,jjm1,kk-1) = rho(ii-1,jjm1,kk-1) + u0*v0*w0*g*gyfm1
-          rho(ii  ,jjm1,kk-1) = rho(ii  ,jjm1,kk-1) + u1*v0*w0*g*gyfm1
-          rho(ii+1,jjm1,kk-1) = rho(ii+1,jjm1,kk-1) + u2*v0*w0*g*gyfm1
-          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g*gyf
-          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g*gyf
-          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g*gyf
-          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
-          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
-          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
-
-          rho(ii-1,jjm1,kk  ) = rho(ii-1,jjm1,kk  ) + u0*v0*w1*g*gyfm1
-          rho(ii  ,jjm1,kk  ) = rho(ii  ,jjm1,kk  ) + u1*v0*w1*g*gyfm1
-          rho(ii+1,jjm1,kk  ) = rho(ii+1,jjm1,kk  ) + u2*v0*w1*g*gyfm1
-          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g*gyf
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g*gyf
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g*gyf
-          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
-
-          rho(ii-1,jjm1,kk+1) = rho(ii-1,jjm1,kk+1) + u0*v0*w2*g*gyfm1
-          rho(ii  ,jjm1,kk+1) = rho(ii  ,jjm1,kk+1) + u1*v0*w2*g*gyfm1
-          rho(ii+1,jjm1,kk+1) = rho(ii+1,jjm1,kk+1) + u2*v0*w2*g*gyfm1
-          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g*gyf
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g*gyf
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g*gyf
-          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
@@ -5428,9 +5427,7 @@ c     --- vectorized loop to compute indices, weights
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
           if (uzp(ip) == 0.) cycle
-          if (              ii+1 > nx .or.
-     &                      jj+1 > ny .or.
-     &        kk-1 < 0 .or. kk+1 > nz) cycle
+
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
           u2 = 0.5*(0.5 + wx)**2
@@ -5441,47 +5438,35 @@ c     --- vectorized loop to compute indices, weights
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          iim1 = abs(ii - 1)
-          jjm1 = abs(jj - 1)
+          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          gxf = 1.
-          gyf = 1.
-          gxfm1 = 1.
-          gyfm1 = 1.
-          if (ii == 0 .and. xmmin == 0.) gxf = 2.
-          if (jj == 0 .and. ymmin == 0.) gyf = 2.
-          if (iim1 == 0 .and. xmmin == 0.) gxfm1 = 2.
-          if (jjm1 == 0 .and. ymmin == 0.) gyfm1 = 2.
+          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rho(iim1,jjm1,kk-1) = rho(iim1,jjm1,kk-1) + u0*v0*w0*g*gxfm1*gyfm1
-          rho(ii  ,jjm1,kk-1) = rho(ii  ,jjm1,kk-1) + u1*v0*w0*g*gxf*gyfm1
-          rho(ii+1,jjm1,kk-1) = rho(ii+1,jjm1,kk-1) + u2*v0*w0*g*gyfm1
-          rho(iim1,jj  ,kk-1) = rho(iim1,jj  ,kk-1) + u0*v1*w0*g*gxfm1*gyf
-          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g*gxf*gyf
-          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g*gyf
-          rho(iim1,jj+1,kk-1) = rho(iim1,jj+1,kk-1) + u0*v2*w0*g*gxfm1
-          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g*gxf
-          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
-
-          rho(iim1,jjm1,kk  ) = rho(iim1,jjm1,kk  ) + u0*v0*w1*g*gxfm1*gyfm1
-          rho(ii  ,jjm1,kk  ) = rho(ii  ,jjm1,kk  ) + u1*v0*w1*g*gxf*gyfm1
-          rho(ii+1,jjm1,kk  ) = rho(ii+1,jjm1,kk  ) + u2*v0*w1*g*gyfm1
-          rho(iim1,jj  ,kk  ) = rho(iim1,jj  ,kk  ) + u0*v1*w1*g*gxfm1*gyf
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g*gxf*gyf
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g*gyf
-          rho(iim1,jj+1,kk  ) = rho(iim1,jj+1,kk  ) + u0*v2*w1*g*gxfm1
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g*gxf
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
-
-          rho(iim1,jjm1,kk+1) = rho(iim1,jjm1,kk+1) + u0*v0*w2*g*gxfm1*gyfm1
-          rho(ii  ,jjm1,kk+1) = rho(ii  ,jjm1,kk+1) + u1*v0*w2*g*gxf*gyfm1
-          rho(ii+1,jjm1,kk+1) = rho(ii+1,jjm1,kk+1) + u2*v0*w2*g*gyfm1
-          rho(iim1,jj  ,kk+1) = rho(iim1,jj  ,kk+1) + u0*v1*w2*g*gxfm1*gyf
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g*gxf*gyf
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g*gyf
-          rho(iim1,jj+1,kk+1) = rho(iim1,jj+1,kk+1) + u0*v2*w2*g*gxfm1
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g*gxf
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
@@ -5510,9 +5495,7 @@ c       --- normal loop
             wznext = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
           if (uzp(ip) == 0.) cycle
-          if (ii-1 < 0 .or. ii+1 > nx .or.
-     &        jj-1 < 0 .or. jj+1 > ny .or.
-     &        kk-1 < 0 .or. kk+1 > nz) cycle
+
           u0 = 0.5*(0.5 - wx)**2
           u1 = (0.75 - wx**2)
           u2 = 0.5*(0.5 + wx)**2
@@ -5523,41 +5506,91 @@ c       --- normal loop
           w1 = (0.75 - wz**2)
           w2 = 0.5*(0.5 + wz)**2
 
-          rho(ii-1,jj-1,kk-1) = rho(ii-1,jj-1,kk-1) + u0*v0*w0*g
-          rho(ii  ,jj-1,kk-1) = rho(ii  ,jj-1,kk-1) + u1*v0*w0*g
-          rho(ii+1,jj-1,kk-1) = rho(ii+1,jj-1,kk-1) + u2*v0*w0*g
-          rho(ii-1,jj  ,kk-1) = rho(ii-1,jj  ,kk-1) + u0*v1*w0*g
-          rho(ii  ,jj  ,kk-1) = rho(ii  ,jj  ,kk-1) + u1*v1*w0*g
-          rho(ii+1,jj  ,kk-1) = rho(ii+1,jj  ,kk-1) + u2*v1*w0*g
-          rho(ii-1,jj+1,kk-1) = rho(ii-1,jj+1,kk-1) + u0*v2*w0*g
-          rho(ii  ,jj+1,kk-1) = rho(ii  ,jj+1,kk-1) + u1*v2*w0*g
-          rho(ii+1,jj+1,kk-1) = rho(ii+1,jj+1,kk-1) + u2*v2*w0*g
+          rhotemp(ii-1,jj-1,kk-1) = rhotemp(ii-1,jj-1,kk-1) + u0*v0*w0*g
+          rhotemp(ii  ,jj-1,kk-1) = rhotemp(ii  ,jj-1,kk-1) + u1*v0*w0*g
+          rhotemp(ii+1,jj-1,kk-1) = rhotemp(ii+1,jj-1,kk-1) + u2*v0*w0*g
+          rhotemp(ii-1,jj  ,kk-1) = rhotemp(ii-1,jj  ,kk-1) + u0*v1*w0*g
+          rhotemp(ii  ,jj  ,kk-1) = rhotemp(ii  ,jj  ,kk-1) + u1*v1*w0*g
+          rhotemp(ii+1,jj  ,kk-1) = rhotemp(ii+1,jj  ,kk-1) + u2*v1*w0*g
+          rhotemp(ii-1,jj+1,kk-1) = rhotemp(ii-1,jj+1,kk-1) + u0*v2*w0*g
+          rhotemp(ii  ,jj+1,kk-1) = rhotemp(ii  ,jj+1,kk-1) + u1*v2*w0*g
+          rhotemp(ii+1,jj+1,kk-1) = rhotemp(ii+1,jj+1,kk-1) + u2*v2*w0*g
 
-          rho(ii-1,jj-1,kk  ) = rho(ii-1,jj-1,kk  ) + u0*v0*w1*g
-          rho(ii  ,jj-1,kk  ) = rho(ii  ,jj-1,kk  ) + u1*v0*w1*g
-          rho(ii+1,jj-1,kk  ) = rho(ii+1,jj-1,kk  ) + u2*v0*w1*g
-          rho(ii-1,jj  ,kk  ) = rho(ii-1,jj  ,kk  ) + u0*v1*w1*g
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u1*v1*w1*g
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u2*v1*w1*g
-          rho(ii-1,jj+1,kk  ) = rho(ii-1,jj+1,kk  ) + u0*v2*w1*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u1*v2*w1*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u2*v2*w1*g
+          rhotemp(ii-1,jj-1,kk  ) = rhotemp(ii-1,jj-1,kk  ) + u0*v0*w1*g
+          rhotemp(ii  ,jj-1,kk  ) = rhotemp(ii  ,jj-1,kk  ) + u1*v0*w1*g
+          rhotemp(ii+1,jj-1,kk  ) = rhotemp(ii+1,jj-1,kk  ) + u2*v0*w1*g
+          rhotemp(ii-1,jj  ,kk  ) = rhotemp(ii-1,jj  ,kk  ) + u0*v1*w1*g
+          rhotemp(ii  ,jj  ,kk  ) = rhotemp(ii  ,jj  ,kk  ) + u1*v1*w1*g
+          rhotemp(ii+1,jj  ,kk  ) = rhotemp(ii+1,jj  ,kk  ) + u2*v1*w1*g
+          rhotemp(ii-1,jj+1,kk  ) = rhotemp(ii-1,jj+1,kk  ) + u0*v2*w1*g
+          rhotemp(ii  ,jj+1,kk  ) = rhotemp(ii  ,jj+1,kk  ) + u1*v2*w1*g
+          rhotemp(ii+1,jj+1,kk  ) = rhotemp(ii+1,jj+1,kk  ) + u2*v2*w1*g
 
-          rho(ii-1,jj-1,kk+1) = rho(ii-1,jj-1,kk+1) + u0*v0*w2*g
-          rho(ii  ,jj-1,kk+1) = rho(ii  ,jj-1,kk+1) + u1*v0*w2*g
-          rho(ii+1,jj-1,kk+1) = rho(ii+1,jj-1,kk+1) + u2*v0*w2*g
-          rho(ii-1,jj  ,kk+1) = rho(ii-1,jj  ,kk+1) + u0*v1*w2*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u1*v1*w2*g
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u2*v1*w2*g
-          rho(ii-1,jj+1,kk+1) = rho(ii-1,jj+1,kk+1) + u0*v2*w2*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u1*v2*w2*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u2*v2*w2*g
+          rhotemp(ii-1,jj-1,kk+1) = rhotemp(ii-1,jj-1,kk+1) + u0*v0*w2*g
+          rhotemp(ii  ,jj-1,kk+1) = rhotemp(ii  ,jj-1,kk+1) + u1*v0*w2*g
+          rhotemp(ii+1,jj-1,kk+1) = rhotemp(ii+1,jj-1,kk+1) + u2*v0*w2*g
+          rhotemp(ii-1,jj  ,kk+1) = rhotemp(ii-1,jj  ,kk+1) + u0*v1*w2*g
+          rhotemp(ii  ,jj  ,kk+1) = rhotemp(ii  ,jj  ,kk+1) + u1*v1*w2*g
+          rhotemp(ii+1,jj  ,kk+1) = rhotemp(ii+1,jj  ,kk+1) + u2*v1*w2*g
+          rhotemp(ii-1,jj+1,kk+1) = rhotemp(ii-1,jj+1,kk+1) + u0*v2*w2*g
+          rhotemp(ii  ,jj+1,kk+1) = rhotemp(ii  ,jj+1,kk+1) + u1*v2*w2*g
+          rhotemp(ii+1,jj+1,kk+1) = rhotemp(ii+1,jj+1,kk+1) + u2*v2*w2*g
 
         enddo
 !$OMP END DO
       endif
 
 !$OMP END PARALLEL
+
+      rho(0:nx,0:ny,0:nz) = rhotemp(0:nx,0:ny,0:nz)
+
+c     --- Note that the commented out lines below are taken care of during
+c     --- the call to perrho3d, but are listed here for completeness.
+      if (l4symtry .or. pboundxy == neumann) then
+        rho(0,:,:) = 2.*rho(0,:,:)
+        rho(1,:,:) = rho(1,:,:) + rhotemp(-1,0:ny,0:nz)
+        if (pboundxy == neumann) then
+          rho(nx,:,:) = 2.*rho(nx,:,:)
+          rho(nx-1,:,:) = rho(nx-1,:,:) + rhotemp(nx+1,0:ny,0:nz)
+        endif
+      else if (pboundxy == periodic) then
+c       rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
+c       rho(nx,:,:) = rho(0,:,:)
+        rho(1,:,:) = rho(1,:,:) + rhotemp(nx+1,0:ny,0:nz)
+        rho(nx-1,:,:) = rho(nx-1,:,:) + rhotemp(-1,0:ny,0:nz)
+      endif
+
+      if (l4symtry .or. l2symtry .or. pboundxy == neumann) then
+        rho(:,0,:) = 2.*rho(:,0,:)
+        rho(:,1,:) = rho(:,1,:) + rhotemp(0:nx,-1,0:nz)
+        if (pboundxy == neumann) then
+          rho(:,ny,:) = 2.*rho(:,ny,:)
+          rho(:,ny-1,:) = rho(:,ny-1,:) + rhotemp(0:nx,ny+1,0:nz)
+        endif
+      else if (pboundxy == periodic) then
+c       rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
+c       rho(:,ny,:) = rho(:,0,:)
+        rho(:,1,:) = rho(:,1,:) + rhotemp(0:nx,ny+1,0:nz)
+        rho(:,ny-1,:) = rho(:,ny-1,:) + rhotemp(0:nx,-1,0:nz)
+      endif
+
+      if (pbound0 == periodic .or. pboundnz == periodic) then
+c       rho(:,:,0) = rho(:,:,0) + rho(:,:,nz)
+c       rho(:,:,nz) = rho(:,:,0)
+        rho(:,:,1) = rho(:,:,1) + rhotemp(0:nx,0:ny,nz+1)
+        rho(:,:,nz-1) = rho(:,:,nz-1) + rhotemp(0:nx,0:ny,-1)
+      else
+        if (pbound0 == neumann) then
+          rho(:,:,0) = 2.*rho(:,:,0)
+          rho(:,:,1) = rho(:,:,1) + rhotemp(0:nx,0:ny,-1)
+        endif
+        if (pboundnz == neumann) then
+          rho(:,:,nz) = 2.*rho(:,:,nz)
+          rho(:,:,nz-1) = rho(:,:,nz-1) + rhotemp(0:nx,0:ny,nz+1)
+        endif
+      endif
+
+      deallocate(rhotemp)
 
       return
       end
