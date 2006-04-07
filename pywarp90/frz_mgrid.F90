@@ -5269,7 +5269,6 @@ subroutine multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
 USE InGen
 USE InPart
 USE InMesh3d
-USE Particles,Only: nps
 USE InjectVars
 USE InjectVars3d
 USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a
@@ -5282,7 +5281,7 @@ REAL(8), INTENT(IN) :: accuracy
 
 REAL(8) :: phi0, phiv, phiref, phirho, wtot
 REAL(8), ALLOCATABLE, DIMENSION(:) :: weights
-INTEGER(ISZ) :: i, j, max_j, nps_tmp(ns)
+INTEGER(ISZ) :: i, j, max_j
 INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,border=4
 
   IF(mgridrz_ncmax==0) return
@@ -5315,10 +5314,9 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
   phiref = inj_phi_eq
 
   vinject = v_max
-  nps_tmp = nps
-  nps = 0
+  l_inj_use_rho_with_mr = .false.
   call getinj_phi()
-  nps = nps_tmp
+  l_inj_use_rho_with_mr = .true.
   select case (calc_a)
     case (center)
       phiv = inj_phi(0,0,1)
