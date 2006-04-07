@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.237 $, $Date: 2006/04/06 23:32:29 $
+c@(#) File W3D.F, version $Revision: 3.238 $, $Date: 2006/04/07 02:22:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6283,14 +6283,17 @@ c     --- Find any new time step sizes which havn't been included and add
 c     --- space to the rhopndts array.
       newndts = 0
       do js = 0, ns-1
-        if (ndtstorho(ndts(js)) == -1) newndts = newndts + 1
+        if (ndtstorho(ndts(js)) == -1) then
+          ndtstorho(ndts(js)) = -2
+          newndts = newndts + 1
+        endif
       enddo
       if (newndts > 0) then
         nsndtstemp = nsndts
         nsndts = nsndts + newndts
         call gchange("Fields3dParticles",0)
         do js = 0, ns-1
-          if (ndtstorho(ndts(js)) == -1) then
+          if (ndtstorho(ndts(js)) == -2) then
             ndtstorho(ndts(js)) = nsndtstemp
             rhotondts(nsndtstemp) = ndts(js)
             nsndtstemp = nsndtstemp + 1
