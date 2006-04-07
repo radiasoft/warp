@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.45 $, $Date: 2006/03/01 01:26:30 $
+c@(#) File w3d_injection.F, version $Revision: 1.46 $, $Date: 2006/04/07 23:15:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -19,7 +19,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles
+      use Particles,Only: pgroup,spid,wpid,tpid,rpid,ssn
       use Picglb
       use InjectVars
       use InjectVars3d
@@ -36,7 +36,7 @@ c first cleans up the particle arrays and makes sure that there is enough room
 c for the new particles.  The second is the coding for constant current
 c injection.  The third part is for space-charge limited injection.
 
-      integer(ISZ):: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
+      integer(ISZ):: is,isid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz,i1,i2
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
@@ -52,7 +52,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: i2x,i2y,i2z
       real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
-      real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
+      real(kind=8):: cl_const(pgroup%ns),jton(pgroup%ns),vzconst(pgroup%ns)
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       integer(ISZ):: spreadx, spready
       integer(ISZ):: ixmin,ixmax,iymin,iymax
@@ -153,10 +153,11 @@ c         --- loop over injection sources
             ypinj = ypinject(ij)
 
 c         --- Loop over species.
-          do is=1,ns
-            vzinj = vzinject(ij,is)
-            if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)*dtscale(is)
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            vzinj = vzinject(ij,isid)
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
 
             if (l_inj_user_particles) then
 
@@ -170,7 +171,7 @@ c             --- Check if there is enough room for the new injected particles.
 
             else
 
-              rnn = rnpinje_s(is)*finject(ij,is)
+              rnn = rnpinje_s(isid)*finject(ij,isid)
 c             --- Add a random number to the number of particles injected
 c             --- so that the average number of particles injected is
 c             --- correct.  For example, if rnn < 1., without the
@@ -277,7 +278,7 @@ c                 --- Convert r**2 into r and tt into a random angle
 c           --- Precalculate larmor frequency if needed. The code assumes
 c           --- that the beam was injected in a field free region.
             if (linj_includebz0) then
-              larmorfreq = -0.5*sq(is)*bz0/sm(is)/gammabar
+              larmorfreq = -0.5*pgroup%sq(is)*bz0/pgroup%sm(is)/gammabar
             endif
 
             spreadx = 1
@@ -303,81 +304,86 @@ c             --- The absolute values are needed for the cases of symmetry.
      &             inj_grid(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (inj_zmmin <= zs+zinj .and. zs+zinj < inj_zmmax) then
-                ii = ins(is) - 1 - npinjtmp(is,ij)
+                ii = pgroup%ins(is) - 1 - npinjtmp(is,ij)
 c               --- Clear out any old data from pid
-                pid(ii,:) = 0.
+                pgroup%pid(ii,:) = 0.
 c               --- Save the particle data
-                xp(ii) = xt(ip)
-                yp(ii) = yt(ip)
-                zp(ii) = zs
-                vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
-                vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
-                uxp(ii) = vzinj*(apinj*xp(ii)*ainji + xpinj) + vtx*uxt(ip)
-                uyp(ii) = vzinj*(bpinj*yp(ii)*binji + ypinj) + vty*uyt(ip)
+                pgroup%xp(ii) = xt(ip)
+                pgroup%yp(ii) = yt(ip)
+                pgroup%zp(ii) = zs
+                vtx = vzinj*0.5*emitx_s(isid)*ainji + vthperp_s(isid)
+                vty = vzinj*0.5*emity_s(isid)*binji + vthperp_s(isid)
+                pgroup%uxp(ii) = vzinj*(apinj*pgroup%xp(ii)*ainji + xpinj) + vtx*uxt(ip)
+                pgroup%uyp(ii) = vzinj*(bpinj*pgroup%yp(ii)*binji + ypinj) + vty*uyt(ip)
                 if(l_inj_addtempz_abs) then
-                  uzp(ii) = vzinj + abs(0.5*vthz_s(is)*uzt(ip))
+                  pgroup%uzp(ii) = vzinj + abs(0.5*vthz_s(isid)*uzt(ip))
                 else
-                  uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
+                  pgroup%uzp(ii) = vzinj + 0.5*vthz_s(isid)*uzt(ip)
                 endif
 c               --- Save the particle weight
-                if (l_inj_rz) pid(ii,wpid) = 2.*rt(ip)
+                if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)
                 if (linj_includebz0) then
-                  rt(ip) = sqrt((xp(ii)+xinject(ij))**2 + (yp(ii)+yinject(ij))**2)
-                  tt(ip) = atan2(yp(ii)+yinject(ij),xp(ii)+xinject(ij))
-                  uxp(ii) = uxp(ii) - larmorfreq*rt(ip)*sin(tt(ip))
-                  uyp(ii) = uyp(ii) + larmorfreq*rt(ip)*cos(tt(ip))
+                  rt(ip) = sqrt((pgroup%xp(ii)+xinject(ij))**2 + (pgroup%yp(ii)+yinject(ij))**2)
+                  tt(ip) = atan2(pgroup%yp(ii)+yinject(ij),pgroup%xp(ii)+xinject(ij))
+                  pgroup%uxp(ii) = pgroup%uxp(ii) - larmorfreq*rt(ip)*sin(tt(ip))
+                  pgroup%uyp(ii) = pgroup%uyp(ii) + larmorfreq*rt(ip)*cos(tt(ip))
                 endif
                 if (lrelativ) then
-                  gaminv(ii) = sqrt(1.-
-     &                           (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
-                  gamma = 1./gaminv(ii)
-                  uxp(ii) = uxp(ii)*gamma
-                  uyp(ii) = uyp(ii)*gamma
-                  uzp(ii) = uzp(ii)*gamma
+                  pgroup%gaminv(ii) = sqrt(1.-
+     &     (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                  gamma = 1./pgroup%gaminv(ii)
+                  pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
+                  pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
+                  pgroup%uzp(ii) = pgroup%uzp(ii)*gamma
                 else
-                  gaminv(ii) = 1.
+                  pgroup%gaminv(ii) = 1.
                 endif
 c               --- Save the ID of the injection source.
-                pid(ii,injpid) = ij
+                pgroup%pid(ii,injpid) = ij
 c               --- Save SSN 
                 if (spid>0) then
-                  pid(ii,spid) = ssn
+                  pgroup%pid(ii,spid) = ssn
                   ssn = ssn+1
                 end if
 c               --- save time of creation if tpid > 0
-                if(tpid>0) pid(ii,tpid) = time + fulldt_s
+                if(tpid>0) pgroup%pid(ii,tpid) = time + fulldt_s
 c               --- increment particle counter
-                npinjtmp(is,ij) = npinjtmp(is,ij) + 1
+                npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
               endif
             enddo
 
 c           --- Get actual number of particles injected and ipmin
-            nn = npinjtmp(is,ij)
+            nn = npinjtmp(isid,ij)
 
 c           --- Sum npinje_s to get the total number of particles injected.
-            npinje_s(is) = npinje_s(is) + nn
+            npinje_s(isid) = npinje_s(isid) + nn
             npinject     = npinject     + nn
 
 c           --- make injected particles live particles
-            ins(is) = ins(is) - nn
-            nps(is) = nps(is) + nn
+            pgroup%ins(is) = pgroup%ins(is) - nn
+            pgroup%nps(is) = pgroup%nps(is) + nn
 
 c           --- Transform particles to lab frame
-            ii = ins(is)
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is) + nn - 1
             if (nn > 0) then
 c             --- The check if nn > 0 is needed since if npmax was zero
 c             --- and no particles were injected then npmax stays zero
 c             --- and the particle arrays are unallocated.
-              call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,1)
-              call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
+              call inj_transform(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                           pgroup%zp(i1:i2),1,ij,1,1)
+              call inj_transform(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                           pgroup%uzp(i1:i2),1,ij,1,0)
             endif
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,nn,xp(ins(is)),yp(ins(is)),
-     &                                   zp(ins(is)),at,bt,apt)
-              call fetchb3dfrompositions(is,nn,xp(ins(is)),yp(ins(is)),
-     &                                   zp(ins(is)),xt,yt,zt)
+              call fetche3dfrompositions(is,nn,pgroup%xp(i1:i2),
+     &                                   pgroup%yp(i1:i2),
+     &                                   pgroup%zp(i1:i2),at,bt,apt)
+              call fetchb3dfrompositions(is,nn,pgroup%xp(i1:i2),
+     &                                   pgroup%yp(i1:i2),
+     &                                   pgroup%zp(i1:i2),xt,yt,zt)
             else
               at = 0.
               bt = 0.
@@ -386,8 +392,9 @@ c           --- get E self-field at initial positions
               yt = 0.
               zt = 0.
             endif
-            call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
+            call inj_sete3d(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                      pgroup%zp(i1:i2),
+     &                      pgroup%pid(i1:i2,injpid),inj_dz,at,bt,apt)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -396,13 +403,15 @@ c           --- The reusing of variable makes for very confusing naming!
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
-            do ipmin = ins(is),ins(is)+nn-1,nparpgrp
-              ip = min(nparpgrp, ins(is)+nn-ipmin)
-              ii = ipmin - ins(is) + 1
-              call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),0.,fulldt_s*0.5,
+            do ipmin = pgroup%ins(is),pgroup%ins(is)+nn-1,nparpgrp
+              ip = min(nparpgrp, pgroup%ins(is)+nn-ipmin)
+              ii = ipmin - pgroup%ins(is) + 1
+              call exteb3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                     pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                     pgroup%gaminv(ipmin),0.,fulldt_s*0.5,
      &                     xt(ii),yt(ii),zt(ii),at(ii),bt(ii),apt(ii),
-     &                     sm(is),sq(is),uxt(ii),uyt(ii),1.,fulldt_s)
+     &                     pgroup%sm(is),pgroup%sq(is),uxt(ii),uyt(ii),
+     &                     1.,fulldt_s)
             enddo
 
 c           --- Set fractional time to advance particles
@@ -413,38 +422,45 @@ c           --- Set fractional time to advance particles
 
 c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
-            zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*fulldt_s*(it+1)
-            zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
+            zmid = 0.5*(zimax_s(isid) - zimin_s(isid)) - vzinj*fulldt_s*(it+1)
+            zleni = 1./dvnz(zimax_s(isid) - zimin_s(isid))
             do ip=1,nn
-              ii = ins(is) - 1 + ip
+              ii = pgroup%ins(is) - 1 + ip
               ztilt = bpt(ip)*vzinj
-              uzp(ii) = uzp(ii)-vzinj*vtilt_s(is)*(zmid+ztilt)*zleni
+              pgroup%uzp(ii) = pgroup%uzp(ii) -
+     &                         vzinj*vtilt_s(isid)*(zmid+ztilt)*zleni
             enddo
 
 c           --- do half velocity advance with E fields
-            call epusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
+            call epusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                    pgroup%uzp(i1:i2),
+     &             at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),bpt(1),0.5)
 
 c           --- Advance relativistic Gamma factor
-            call gammaadv(nn,gaminv(ins(is)),uxp(ins(is)),uyp(ins(is)),
-     &                    uzp(ins(is)),
+            call gammaadv(nn,pgroup%gaminv(i1:i2),pgroup%uxp(i1:i2),
+     &                    pgroup%uyp(i1:i2),
+     &                    pgroup%uzp(i1:i2),
      &                    gamadv,lrelativ)
 
 c           --- do half velocity advance with B fields
-            call bpusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
+            call bpusht3d(nn,pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                    pgroup%uzp(i1:i2),
+     &                    pgroup%gaminv(i1:i2),xt(1),yt(1),zt(1),
+     &                    pgroup%sq(is),pgroup%sm(is),
      &                    bpt(1),0.5,ibpush)
 
 c           --- do full position advance
-            call xpusht3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                    uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),bpt(1))
+            call xpusht3d(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
+     &                    pgroup%zp(i1:i2),
+     &                    pgroup%uxp(i1:i2),pgroup%uyp(i1:i2),
+     &                    pgroup%uzp(i1:i2),
+     &                    pgroup%gaminv(i1:i2),bpt(1))
 
 c           --- Calculate Gamma inverse
 c           if (lrelativ) then
-c             do ip=ins(is),ins(is)+nn-1
-c               gaminv(ip) = 1./sqrt(1. +
-c    &                            (uxp(ip)**2+uyp(ip)**2+uzp(ip)**2)*clightsqi)
+c             do ip=pgroup%ins(is),pgroup%ins(is)+nn-1
+c               pgroup%gaminv(ip) = 1./sqrt(1. +
+c    & (pgroup%uxp(ip)**2+pgroup%uyp(ip)**2+pgroup%uzp(ip)**2)*clightsqi)
 c             enddo
 c           else
 c             do ip=ins(is),ins(is)+nn-1
@@ -467,16 +483,17 @@ c with position, and then move velocity one half timestep back to match time
 c level of rest of particles.
 
 c         loop over species and injection sources
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)*dtscale(is)
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
 
-            ipmin = ins(is)
+            ipmin = pgroup%ins(is)
             nn = 0
             do ij=1,inject
               ipmin = ipmin + nn
 c             --- Get number of particles injected
-              nn = npinjtmp(is,ij)
+              nn = npinjtmp(isid,ij)
               if(nn==0) cycle
 
 c             --- Make sure there is enough temp space
@@ -487,9 +504,11 @@ c             --- Make sure there is enough temp space
 
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
-                call fetche3dfrompositions(is,nn,xp(ipmin),yp(ipmin),zp(ipmin),
+                call fetche3dfrompositions(is,nn,pgroup%xp(ipmin),
+     &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     at,bt,apt)
-                call fetchb3dfrompositions(is,nn,xp(ipmin),yp(ipmin),zp(ipmin),
+                call fetchb3dfrompositions(is,nn,pgroup%xp(ipmin),
+     &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     xt,yt,zt)
               else
                 at = 0.
@@ -499,7 +518,8 @@ c             --- calculate new E self-fields
                 yt = 0.
                 zt = 0.
               endif
-              call inj_sete3d(nn,xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,injpid),
+              call inj_sete3d(nn,pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                        pgroup%zp(ipmin),pgroup%pid(ipmin,injpid),
      &                        inj_dz,at,bt,apt)
 
 c             --- get external fields at current positions
@@ -509,11 +529,13 @@ c             --- get external fields at current positions
               enddo
               do ip = 1,nn,nparpgrp
                 ii = min(nparpgrp, nn+1-ip)
-                call exteb3d(ii,xp(ip+ipmin-1),yp(ip+ipmin-1),zp(ip+ipmin-1),
-     &                       uzp(ip+ipmin-1),gaminv(ip+ipmin-1),
+                call exteb3d(ii,pgroup%xp(ip+ipmin-1),pgroup%yp(ip+ipmin-1),
+     &                       pgroup%zp(ip+ipmin-1),
+     &                       pgroup%uzp(ip+ipmin-1),pgroup%gaminv(ip+ipmin-1),
      &                       -fulldt_s*0.5,0.,
      &                       xt(ip),yt(ip),zt(ip),at(ip),bt(ip),apt(ip),
-     &                       sm(is),sq(is),uxt(ip),uyt(ip),1.,fulldt_s)
+     &                       pgroup%sm(is),pgroup%sq(is),uxt(ip),uyt(ip),
+     &                       1.,fulldt_s)
               enddo
 
 c             --- Set fractional time to advance particles
@@ -523,30 +545,39 @@ c             --- Set fractional time to advance particles
               enddo
 
 c             --- complete B advance
-              call bpusht3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                      gaminv(ipmin),xt(1),yt(1),zt(1),sq(is),sm(is),
+              call bpusht3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
+     &                      pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &                      xt(1),yt(1),zt(1),pgroup%sq(is),pgroup%sm(is),
      &                      bpt(1),0.5,ibpush)
 
 c             --- complete the E advance
-              call epusht3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                      at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
+              call epusht3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
+     &                      pgroup%uzp(ipmin),
+     &                      at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
+     &                      bpt(1),0.5)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+              call gammaadv(nn,pgroup%gaminv(ipmin),pgroup%uxp(ipmin),
+     &                      pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                      gamadv,lrelativ)
 
 c             --- Now, move velocites back one half a step
 c             --- first half of a backward B advance
-              call bpush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),xt(1),yt(1),zt(1),sq(is),sm(is),
+              call bpush3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
+     &                     pgroup%uzp(ipmin),
+     &                     pgroup%gaminv(ipmin),xt(1),yt(1),zt(1),
+     &                     pgroup%sq(is),pgroup%sm(is),
      &                     -0.5*fulldt_s,ibpush)
 
 c             --- then half of a backward E advance
-              call epush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                     at(1),bt(1),apt(1),sq(is),sm(is),-0.5*fulldt_s)
+              call epush3d(nn,pgroup%uxp(ipmin),pgroup%uyp(ipmin),
+     &                     pgroup%uzp(ipmin),
+     &                     at(1),bt(1),apt(1),pgroup%sq(is),pgroup%sm(is),
+     &                     -0.5*fulldt_s)
 
 c             --- Advance relativistic Gamma factor
-              call gammaadv(nn,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+              call gammaadv(nn,pgroup%gaminv(ipmin),pgroup%uxp(ipmin),
+     &                      pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                      gamadv,lrelativ)
 
 c           --- end of loop over species and injection sources
@@ -602,13 +633,13 @@ c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
             if (solvergeom==XYZgeom .or. solvergeom==XYZgeomMR .or.
      &          solvergeom==AMRgeom) then
-              call inj_setrho3d(inj_dz,l2symtry,l4symtry)
+              call inj_setrho3d(pgroup,inj_dz,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
 c             --- When using the RZ solver, inj_rho is forced to be
 c             --- four-fold symmetric.
-              call inj_setrho3d(inj_dz,.false.,.true.)
+              call inj_setrho3d(pgroup,inj_dz,.false.,.true.)
             elseif(solvergeom==Zgeom) then
-              call inj_setrho3d_z(inj_dz,nz)
+              call inj_setrho3d_z(pgroup,inj_dz,nz)
             endif
           endif
 
@@ -632,20 +663,23 @@ c           --- Set some temporaries.
 c           --- The potential drop in front of the surface is now
 c           --- calculated by a call to getinj_phi from padvnc3d.
 
-            do is=1,ns
-              vzinj = vzinject(ij,is)
+            do is=1,pgroup%ns
+              isid = pgroup%sid(is-1) + 1
+              vzinj = vzinject(ij,isid)
 
 c             --- Don't bother doing anything if finject is 0.
-              if (mod(it,ndts(is))/=0 .or. finject(ij,is) == 0.) cycle
-              fulldt_s    = dt*ndts(is)*dtscale(is)
+              if (mod(it,pgroup%ndts(is))/=0 .or. finject(ij,isid) == 0.) cycle
+              fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
 
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
               if(l_inj_rz) then
-                jton(is) = pi*ainj*inj_dx*fulldt_s/abs(sq(is))/sw(is)
+                jton(isid) = pi*ainj*inj_dx*fulldt_s/
+     &                     abs(pgroup%sq(is))/pgroup%sw(is)
               else
-                jton(is) = inj_dx*inj_dy*fulldt_s/abs(sq(is))/sw(is)
+                jton(isid) = inj_dx*inj_dy*fulldt_s/
+     &                     abs(pgroup%sq(is))/pgroup%sw(is)
               end if
 
 c             --- This constant terms includes corrections for injection off
@@ -659,14 +693,16 @@ c             --- Concentric Spheres", PhysRev, 1924.
                 else
                   sphericalcorrection = 1.
                 endif
-                cl_const(is) = 4./9.*eps0*(2.*abs(sq(is))/sm(is))**.5/
-     &                    ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(is)
+                cl_const(isid) = 4./9.*eps0*
+     &                   (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
+     &                   ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(isid)
               endif
 
 c             --- The constant terms in the expression for the normal
 c             --- velocity from the Child-Langmuir solution. Note that this
 c             --- is only strictly correct for planar emission.
-              vzconst(is) = 2./9.*sqrt(2.)*(abs(sq(is))/sm(is))**1.5/
+              vzconst(isid) = 2./9.*sqrt(2.)*
+     &                      (abs(pgroup%sq(is))/pgroup%sm(is))**1.5/
      &                      (inj_dz*inj_d(ij))**2
 
             enddo
@@ -700,23 +736,24 @@ c               --- rectangular.
      &                                     + zinj)
                 if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) cycle
 c               --- Loop over the species
-                do is=1,ns
-                  inj_is = min(is,inj_ns)
+                do is=1,pgroup%ns
+                  isid = pgroup%sid(is-1) + 1
+                  inj_is = min(isid,inj_ns)
 
 c                 --- Skip this species if the fraction is zero.
-                  if (finject(ij,is) == 0.) cycle
+                  if (finject(ij,isid) == 0.) cycle
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
 c                   --- Child-Langmuir
-                    rnn = cl_const(is)*abs(inj_phi(ix,iy,ij))**1.5/
+                    rnn = cl_const(isid)*abs(inj_phi(ix,iy,ij))**1.5/
      &                    cos(inj_angl(ix,iy,ij))
-                    rnn = sign(rnn,sq(is)*inj_phi(ix,iy,ij))
+                    rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                   elseif (inject == 3) then
 c                   --- Gauss's law
                     rnn = (eps0*inj_phi(ix,iy,ij)/
-     &                    (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,ij)*inj_dz)*
-     &                  inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy,ij))
+     &     (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,ij)*inj_dz)*
+     &     inj_dx*inj_dy/pgroup%sq(is)/pgroup%sw(is)/cos(inj_angl(ix,iy,ij))
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -739,12 +776,12 @@ c                 --- Force injected current to be between the range
 c                 --- jmininj to jmaxinj.  The absolute values are used
 c                 --- so that this works with either positive ions
 c                 --- and electron.
-                  rnn = min(rnn,jmaxinj(ij)*jton(is))
-                  rnn = max(rnn,jmininj(ij)*jton(is))
+                  rnn = min(rnn,jmaxinj(ij)*jton(isid))
+                  rnn = max(rnn,jmininj(ij)*jton(isid))
 
 c                 --- Scale the number of particles by the fraction of the
 c                 --- total for this species.
-                  rnn = rnn*finject(ij,is)
+                  rnn = rnn*finject(ij,isid)
 
 c                 --- Save the number of particles injected
                   inj_np(ix,iy,ij,inj_is) = inj_np(ix,iy,ij,inj_is) + rnn
@@ -757,7 +794,8 @@ c                 --- be injected.  With the random number, particles will be
 c                 --- injected and but the average number will be less than 1.
                  if(.not. l_inj_regular) then
                    rnn = rnn + wranf()
-c                  --- divide number of particles injected by two on axis when using radial injection
+c                  --- divide number of particles injected by two on axis
+c                  --- when using radial injection
                    if(l_inj_rz .and. ix==0) rnn = 0.5*rnn
                  else
                    rnn = rnn * inj_area(ix,iy,ij)
@@ -780,105 +818,115 @@ c                 --- that there is enough room available in case the
 c                 --- first estimate is wrong.
                   if(.not.l_inj_regular) then
                     if(.not.l_inj_rz) then
-                      call chckpart(is,max(nn+npinje_s(is),int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
+                      call chckpart(is,max(nn+npinje_s(isid),
+     &                              int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
                     else
-                      call chckpart(is,max(nn+npinje_s(is),int(nn*ainj*dxi)),0,.true.)
+                      call chckpart(is,max(nn+npinje_s(isid),
+     &                              int(nn*ainj*dxi)),0,.true.)
                     end if
                   else
-                    call chckpart(is,max(nn+npinje_s(is),int((inj_nx+1)*(inj_ny+1))),0,.true.)
+                    call chckpart(is,max(nn+npinje_s(isid),
+     &                            int((inj_nx+1)*(inj_ny+1))),0,.true.)
                   end if
 
 c                 --- loop to load new particles
                   do ip=1,nn
-                    ii = ins(is) - npinje_s(is) - 1
+                    ii = pgroup%ins(is) - npinje_s(isid) - 1
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
 
 c                   --- calculate x, y and z of new particle
 c                   --- if within injection source load it, else skip it
                     if(.not.l_inj_regular) then
-                      xp(ii) = wrandom(xrandom,injctcnt,dig1,1,1)
-                      xp(ii) = xm + spreadx*(xp(ii) - .5)*inj_dx*inj_xwide
+                      pgroup%xp(ii) = wrandom(xrandom,injctcnt,dig1,1,1)
+                      pgroup%xp(ii) = xm +
+     &                           spreadx*(pgroup%xp(ii) - .5)*inj_dx*inj_xwide
                       if(.not. l_inj_rz) then
-                        yp(ii) = wrandom(xrandom,injctcnt,dig2,1,1)
-                        yp(ii) = ym + spready*(yp(ii) - .5)*inj_dy*inj_ywide
+                        pgroup%yp(ii) = wrandom(xrandom,injctcnt,dig2,1,1)
+                        pgroup%yp(ii) = ym +
+     &                           spready*(pgroup%yp(ii) - .5)*inj_dy*inj_ywide
                       else
-                        yp(ii)=0.
+                        pgroup%yp(ii)=0.
                       endif
                     else
-                      xp(ii)=xm
-                      yp(ii)=ym
+                      pgroup%xp(ii)=xm
+                      pgroup%yp(ii)=ym
                     end if
 c                   --- Check if particle is within the rectangular or
 c                   --- elliptical annulus with outer major and minor
 c                   --- size of ainject and binject and inner size of
 c                   --- ainjmin and binjmin.
                     if(linj_rectangle) then
-                      if (abs(xp(ii)) > ainj .or. abs(yp(ii)) > binj) cycle
-                      if (abs(xp(ii)) < ainjmin(ij) .or.
-     &                    abs(yp(ii)) < binjmin(ij)) cycle
+                      if (abs(pgroup%xp(ii)) > ainj .or.
+     &                    abs(pgroup%yp(ii)) > binj) cycle
+                      if (abs(pgroup%xp(ii)) < ainjmin(ij) .or.
+     &                    abs(pgroup%yp(ii)) < binjmin(ij)) cycle
                     else
-                      if ((xp(ii)*ainji)**2 + (yp(ii)*binji)**2 > 1.) cycle
-                      if ((xp(ii)*binjmin(ij))**2 + (yp(ii)*ainjmin(ij))**2 <
+                      if ((pgroup%xp(ii)*ainji)**2 +
+     &                    (pgroup%yp(ii)*binji)**2 > 1.) cycle
+                      if ((pgroup%xp(ii)*binjmin(ij))**2 +
+     &                    (pgroup%yp(ii)*ainjmin(ij))**2 <
      &                    ainjmin(ij)*binjmin(ij)) cycle
                     endif
 
 c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
-                    pid(ii,:) = 0.
+                    pgroup%pid(ii,:) = 0.
 
                     if(l_inj_regular) then
                       if(l_inj_rz) then
-                        r_tmp=abs(xp(ii))
+                        r_tmp=abs(pgroup%xp(ii))
                         theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
                         theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
-                        xp(ii) = r_tmp*cos(theta_tmp)
-                        yp(ii) = r_tmp*sin(theta_tmp)
+                        pgroup%xp(ii) = r_tmp*cos(theta_tmp)
+                        pgroup%yp(ii) = r_tmp*sin(theta_tmp)
                         if(ix==0) then
-                          pid(ii,wpid) = 0.25*inj_dx*ainji
+                          pgroup%pid(ii,wpid) = 0.25*inj_dx*ainji
                         else
-                          pid(ii,wpid) = 2.*r_tmp*ainji
+                          pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                         end if
-                        pid(ii,wpid) = pid(ii,wpid)*rnn
+                        pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*rnn
                       else
-                        pid(ii,wpid) = rnn
+                        pgroup%pid(ii,wpid) = rnn
                       endif
                     else
-c                     --- if inject only radially, use variable weights and assign pid
+c                     --- if inject only radially, use variable weights and
+c                     --- assign pid
                       if(l_inj_rz) then
-                        r_tmp=abs(xp(ii))
+                        r_tmp=abs(pgroup%xp(ii))
                         theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
                         theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
-                        xp(ii) = r_tmp*cos(theta_tmp)
-                        yp(ii) = r_tmp*sin(theta_tmp)
-                        pid(ii,wpid) = 2.*r_tmp*ainji
+                        pgroup%xp(ii) = r_tmp*cos(theta_tmp)
+                        pgroup%yp(ii) = r_tmp*sin(theta_tmp)
+                        pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                       end if
                     end if
 
 c                   --- Find location of particle relative to source
 c                   --- grid. This is needed for zp and az, as well as
 c                   --- for vnorm below.
-                    ixx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi)
-                    iyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi)
-                    wxx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi - ixx)
-                    wyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi - iyy)
+                    ixx = spreadx*(abs(pgroup%xp(ii) - inj_xmmin(ij))*dxi)
+                    iyy = spready*(abs(pgroup%yp(ii) - inj_ymmin(ij))*dyi)
+                    wxx = spreadx*(abs(pgroup%xp(ii) - inj_xmmin(ij))*dxi - ixx)
+                    wyy = spready*(abs(pgroup%yp(ii) - inj_ymmin(ij))*dyi - iyy)
 
                     if(l_inj_exact .or. l_inj_rz) then
 c                     --- calculate injection surface axial location exactly
-                      zm = (xp(ii)**2+yp(ii)**2)/(abs(rinject(ij)) +
-     &                   sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
+                      zm = (pgroup%xp(ii)**2+pgroup%yp(ii)**2)/
+     &                     (abs(rinject(ij)) +
+     &    sqrt(max(0.,rinject(ij)**2 - pgroup%xp(ii)**2 - pgroup%yp(ii)**2)))
                       if (rinject(ij) < 0.) zm = -zm
-                      if ((xp(ii)**2+yp(ii)**2) > rinject(ij)**2)
+                      if ((pgroup%xp(ii)**2+pgroup%yp(ii)**2) > rinject(ij)**2)
      &                  zm = rinject(ij)
-                      zp(ii) = zm + inj_addfdz*inj_dz
-                      az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
+                      pgroup%zp(ii) = zm + inj_addfdz*inj_dz
+                      az = asin(sqrt(pgroup%xp(ii)**2 + pgroup%yp(ii)**2)/rinject(ij))
                     else
 c                     --- find injection surface axial location by interpolation
-                      zp(ii) = inj_grid(ixx        ,iyy        ,ij)*(1.-wxx)*(1.-wyy) +
-     &                         inj_grid(ixx+spreadx,iyy        ,ij)*    wxx *(1.-wyy) +
-     &                         inj_grid(ixx        ,iyy+spready,ij)*(1.-wxx)*    wyy  +
-     &                         inj_grid(ixx+spreadx,iyy+spready,ij)*    wxx *    wyy  +
-     &                         inj_zstart(ij)
+                      pgroup%zp(ii)=inj_grid(ixx        ,iyy        ,ij)*(1.-wxx)*(1.-wyy) +
+     &                              inj_grid(ixx+spreadx,iyy        ,ij)*    wxx *(1.-wyy) +
+     &                              inj_grid(ixx        ,iyy+spready,ij)*(1.-wxx)*    wyy  +
+     &                              inj_grid(ixx+spreadx,iyy+spready,ij)*    wxx *    wyy  +
+     &                              inj_zstart(ij)
 
 c                     --- find injection angle due to curvature by interpolation
                       az = inj_angl(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
@@ -888,10 +936,10 @@ c                     --- find injection angle due to curvature by interpolation
                     end if
 
 c                   --- Only inject particles within the injection region.
-                    if (zp(ii)+zinj < inj_zmmin .or. zp(ii)+zinj >= inj_zmmax) cycle
+                    if (pgroup%zp(ii)+zinj < inj_zmmin .or. pgroup%zp(ii)+zinj >= inj_zmmax) cycle
 
 c                   --- Calculate transverse angle
-                    aa = atan2(yp(ii),xp(ii))
+                    aa = atan2(pgroup%yp(ii),pgroup%xp(ii))
 
 c                   --- Calculate and save the fraction of time step this
 c                   --- particle is to be advanced. Also equal to dt minus
@@ -905,20 +953,27 @@ c                   --- The fractions are chosen using the digit reversed
 c                   --- number generator and not particle number since they
 c                   --- are correlated with transverse position.
                     if(.not. l_inj_regular) then
-                      pid(ii,injpid) = rnrev(injctcnt,dig5)
+                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig5)
                     else
-                      pid(ii,injpid) = rnrev(injctcnt,dig1)
+                      pgroup%pid(ii,injpid) = rnrev(injctcnt,dig1)
                     end if
 
 c                   --- save time of creation if tpid > 0
-                    if(tpid>0) pid(ii,tpid) = time + fulldt_s
+                    if(tpid>0) pgroup%pid(ii,tpid) = time + fulldt_s
 
-c                   --- reverse sign of pid(ii,tpid) if temperature added after delay.
-c                   --- negative pid is then used to track particles on which to add temperature.
-                    if(l_inj_delay_temp) pid(ii,tpid) = -pid(ii,tpid)
+c                   --- reverse sign of pid(ii,tpid) if temperature added
+c                   --- after delay.
+c                   --- negative pid is then used to track particles on which
+c                   --- to add temperature.
+                    if(l_inj_delay_temp) then
+                      pgroup%pid(ii,tpid) = -pgroup%pid(ii,tpid)
+                    endif
 
 c                   --- save radius of creation if rpid > 0
-                    if(rpid>0) pid(ii,rpid) = sqrt(xp(ii)**2+yp(ii)**2)
+                    if(rpid>0) then
+                      pgroup%pid(ii,rpid) =
+     &                            sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
+                    endif
 
 c                   --- Get the normal velocity for this particle. This is
 c                   --- based on the Child-Langmuir solution, given a
@@ -928,7 +983,8 @@ c                   --- pid(ii,injpid)*dt.
      &                      inj_phi(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
      &                      inj_phi(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
      &                      inj_phi(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
-                    vznorm = vzconst(is)*abs(vnorm)**1.5*(pid(ii,injpid)*fulldt_s)**2
+                    vznorm = vzconst(isid)*abs(vnorm)**1.5*
+     &                       (pgroup%pid(ii,injpid)*fulldt_s)**2
                     if (inj_d(ij) < 0.) vznorm = -vznorm
 
 c                   --- Set transverse coordinates. The emittance term
@@ -939,16 +995,18 @@ c                   --- component of the normal velocity and the specified
 c                   --- vbeam (which is also taken to be normal).
 c                   --- Like the emittance term, the term with ap (and bp)
 c                   --- are probably not correct.
-                    uxp(ii) = spreadx*(vzinj*(apinj*xp(ii)*ainji + xpinj)
+                    pgroup%uxp(ii) = spreadx*(vzinj*
+     &                               (apinj*pgroup%xp(ii)*ainji + xpinj)
      &                      - (vznorm + vzinj)*sin(az)*cos(aa))
-                    uyp(ii) = spready*(vzinj*(bpinj*yp(ii)*binji + ypinj)
+                    pgroup%uyp(ii) = spready*(vzinj*
+     &                               (bpinj*pgroup%yp(ii)*binji + ypinj)
      &                      - (vznorm + vzinj)*sin(az)*sin(aa))
                     if(.not. l_inj_delay_temp) then
-                      vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
-                      vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
-                      uxp(ii) = uxp(ii) + spreadx*vtx*
+                      vtx = vzinj*0.5*emitx_s(isid)*ainji + vthperp_s(isid)
+                      vty = vzinj*0.5*emity_s(isid)*binji + vthperp_s(isid)
+                      pgroup%uxp(ii) = pgroup%uxp(ii) + spreadx*vtx*
      &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
-                      uyp(ii) = uyp(ii) + spready*vty*
+                      pgroup%uyp(ii) = pgroup%uyp(ii) + spready*vty*
      &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                     end if
 c                   --- Include the user specified vbeam (assumed to be a
@@ -957,13 +1015,13 @@ c                   --- the Child-Langmuir solution.
 c                   --- SMALLPOS is also added so that the field gathering
 c                   --- routines don't treat the newly injected particles
 c                   --- as lost particles when the other terms are zero.
-                    uzp(ii) = vzinj*cos(az) + vznorm*cos(az) + SMALLPOS
+                    pgroup%uzp(ii) = vzinj*cos(az) + vznorm*cos(az) + SMALLPOS
                     if(.not. l_inj_delay_temp) then
                       if(l_inj_addtempz_abs) then
-                        uzp(ii) = uzp(ii) + abs(vthz_s(is)*
+                        pgroup%uzp(ii) = pgroup%uzp(ii) + abs(vthz_s(isid)*
      &                   wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.))
                       else
-                        uzp(ii) = uzp(ii) + vthz_s(is)*
+                        pgroup%uzp(ii) = pgroup%uzp(ii) + vthz_s(isid)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                       end if
                     end if
@@ -971,31 +1029,31 @@ c                   --- as lost particles when the other terms are zero.
 c                   --- Calculate gamma inverse and reset the particle
 c                   --- massless momentums properly.
                     if (lrelativ) then
-                      gaminv(ii) = sqrt(1.-
-     &                        (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
-                      gamma = 1./gaminv(ii)
-                      uxp(ii) = uxp(ii)*gamma
-                      uyp(ii) = uyp(ii)*gamma
-                      uzp(ii) = uzp(ii)*gamma
+                      pgroup%gaminv(ii) = sqrt(1.-
+     &      (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                      gamma = 1./pgroup%gaminv(ii)
+                      pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
+                      pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
+                      pgroup%uzp(ii) = pgroup%uzp(ii)*gamma
                     else
-                      gaminv(ii) = 1.
+                      pgroup%gaminv(ii) = 1.
                     endif
 
 c                   --- Save the ID of the injection source. Note that pid
 c                   --- is doing double duty, saving the injection source
 c                   --- number and the fraction of the timestep the
 c                   --- particle is advanced.
-                    pid(ii,injpid) = pid(ii,injpid) + ij
+                    pgroup%pid(ii,injpid) = pgroup%pid(ii,injpid) + ij
 
 c                   --- Save SSN 
                     if (spid>0) then
-                      pid(ii,spid) = ssn
+                      pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
                     end if
 
 c                   --- increment particle counter
-                    npinje_s(is) = npinje_s(is) + 1
-                    npinjtmp(is,ij) = npinjtmp(is,ij) + 1
+                    npinje_s(isid) = npinje_s(isid) + 1
+                    npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
                     inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) + 1.
 
                   enddo
@@ -1008,15 +1066,18 @@ c             --- end loop over ix
 c           --- end loop over iy
 
 c           --- Transform particles to lab frame
-            do is=1,ns
-              ii = ins(is) - npinje_s(is)
-              nn = npinjtmp(is,ij)
+            do is=1,pgroup%ns
+              isid = pgroup%sid(is-1) + 1
+              ii = pgroup%ins(is) - npinje_s(is)
+              nn = npinjtmp(isid,ij)
               if (nn > 0) then
 c               --- The check if nn > 0 is needed since if npmax was zero
 c               --- and no particles were injected then npmax stays zero
 c               --- and the particle arrays are unallocated.
-                call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,1)
-                call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,0)
+                call inj_transform(nn,pgroup%xp(ii),pgroup%yp(ii),
+     &                             pgroup%zp(ii),1,ij,1,1)
+                call inj_transform(nn,pgroup%uxp(ii),pgroup%uyp(ii),
+     &                             pgroup%uzp(ii),1,ij,1,0)
               endif
             enddo
 
@@ -1025,40 +1086,44 @@ c         --- end of loop over injection sources
 
 c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
-            ii = ins(is) - npinje_s(is)
-            if (npinje_s(is) > 0) then
-              call stckxy3d(npinje_s(is),xp(ii),xmmax,xmmin,dx,yp(ii),ymmax,
-     &                      ymmin,dy,zp(ii),zmmin,dz,uxp(ii),
-     &                      uyp(ii),uzp(ii),gaminv(ii),
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            ii = pgroup%ins(is) - npinje_s(isid)
+            if (npinje_s(isid) > 0) then
+              call stckxy3d(npinje_s(isid),pgroup%xp(ii),xmmax,xmmin,dx,
+     &                      pgroup%yp(ii),ymmax,
+     &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
+     &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
               call processlostpart(is,clearlostpart,time,zbeam)
             endif
           enddo
 
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
 c           --- Sum npinje_s to get the total number of particles injected.
-            npinject = npinject + npinje_s(is)
+            npinject = npinject + npinje_s(isid)
 
 c           --- make injected particles live particles
-            ins(is) = ins(is) - npinje_s(is)
-            nps(is) = nps(is) + npinje_s(is)
+            pgroup%ins(is) = pgroup%ins(is) - npinje_s(isid)
+            pgroup%nps(is) = pgroup%nps(is) + npinje_s(isid)
           enddo
 
 c         --- Now, advance the particles off of the emitting surface using
 c         --- isochronous leapfrog.  Each particle has it's own time step
 c         --- size, uniformly distributed between 0 and dt.
-          do is=1,ns
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
 c           --- Skip this if no particles of this species were injected.
-            if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)*dtscale(is)
-            if(npinje_s(is)==0) cycle
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            if(npinje_s(isid)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
-            if (npinje_s(is) > npgrp) then
-              npgrp = npinje_s(is)
+            if (npinje_s(isid) > npgrp) then
+              npgrp = npinje_s(isid)
               call gchange("Setpwork3d",0)
             endif
 
@@ -1087,15 +1152,17 @@ c           --- Assume that injection will never be done inside a bend.
 c           --- Create equivalences
 c           --- In this section of code, this is purely for convenience
 c           --- and to make the following code look cleaner.
-            nn = npinje_s(is)
-            xx => xp(ins(is):ins(is)+npinje_s(is)-1)
-            yy => yp(ins(is):ins(is)+npinje_s(is)-1)
-            zz => zp(ins(is):ins(is)+npinje_s(is)-1)
-            ux => uxp(ins(is):ins(is)+npinje_s(is)-1)
-            uy => uyp(ins(is):ins(is)+npinje_s(is)-1)
-            uz => uzp(ins(is):ins(is)+npinje_s(is)-1)
-            gg => gaminv(ins(is):ins(is)+npinje_s(is)-1)
-            id => pid(ins(is):ins(is)+npinje_s(is)-1,injpid)
+            nn = npinje_s(isid)
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+npinje_s(isid)-1
+            xx => pgroup%xp(i1:i2)
+            yy => pgroup%yp(i1:i2)
+            zz => pgroup%zp(i1:i2)
+            ux => pgroup%uxp(i1:i2)
+            uy => pgroup%uyp(i1:i2)
+            uz => pgroup%uzp(i1:i2)
+            gg => pgroup%gaminv(i1:i2)
+            id => pgroup%pid(i1:i2,injpid)
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
@@ -1106,19 +1173,20 @@ c           --- get E self-field at initial positions
 
 c           --- get external fields at initial positions
             call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
-     &                   sm(is),sq(is),bendres,bendradi,1.,fulldt_s)
+     &                   pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
 
 c           --- Fetch the time step size
             tt(1:nn) = fulldt_s*(id - int(id))
 
 c           --- do half velocity advance with E fields
-            call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),tt,0.5)
 
 c           --- Advance relativistic Gamma factor
             call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 c           --- do half velocity advance with B fields
-            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),tt,0.5,ibpush)
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5,ibpush)
 
 c           --- do full position advance
             call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,tt)
@@ -1137,26 +1205,29 @@ c done after field solve including injected particles), synchronize velocity
 c with position, and then move velocity one half timestep back to match time
 c level of rest of particles.
 c         --- loop over species
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)*dtscale(is)
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
-            if(npinje_s(is)==0) cycle
-            nn = npinje_s(is)
+            if(npinje_s(isid)==0) cycle
+            nn = npinje_s(isid)
 #else
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
-            allocate(mask(nps(is)),stat=allocerror)
+            allocate(mask(pgroup%nps(is)),stat=allocerror)
             if (allocerror /= 0) then
               print*,"inject3d: allocation error ",allocerror,
-     &               ": could not allocate mask to shape ",nps(is)
+     &               ": could not allocate mask to shape ",pgroup%nps(is)
               stop
             endif
 
-            mask = ((pid(ins(is):ins(is)+nps(is)-1,injpid) -
-     &           int(pid(ins(is):ins(is)+nps(is)-1,injpid))))
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            mask = ((pgroup%pid(i1:i2,injpid) -
+     &           int(pgroup%pid(i1:i2,injpid))))
             nn = COUNT(mask > 0.)
 #endif
 
@@ -1190,17 +1261,19 @@ c           --- Assume that injection will never be done inside a bend.
 
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
-            tt(1:nn) = fulldt_s*(pid(ins(is):ins(is)+npinje_s(is)-1,injpid) -
-     &           int(pid(ins(is):ins(is)+npinje_s(is)-1,injpid)))
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+npinje_s(isid)-1
+            tt(1:nn) = fulldt_s*(pgroup%pid(i1:i2,injpid) -
+     &                       int(pgroup%pid(i1:i2,injpid)))
 c           --- Create equivalences
-            xx => xp(ins(is):ins(is)+npinje_s(is)-1)
-            yy => yp(ins(is):ins(is)+npinje_s(is)-1)
-            zz => zp(ins(is):ins(is)+npinje_s(is)-1)
-            ux => uxp(ins(is):ins(is)+npinje_s(is)-1)
-            uy => uyp(ins(is):ins(is)+npinje_s(is)-1)
-            uz => uzp(ins(is):ins(is)+npinje_s(is)-1)
-            gg => gaminv(ins(is):ins(is)+npinje_s(is)-1)
-            id => pid(ins(is):ins(is)+npinje_s(is)-1,injpid)
+            xx => pgroup%xp(i1:i2)
+            yy => pgroup%yp(i1:i2)
+            zz => pgroup%zp(i1:i2)
+            ux => pgroup%uxp(i1:i2)
+            uy => pgroup%uyp(i1:i2)
+            uz => pgroup%uzp(i1:i2)
+            gg => pgroup%gaminv(i1:i2)
+            id => pgroup%pid(i1:i2,injpid)
 #else
 c           --- Create equivalences
             xx => xt(1:nn)
@@ -1215,14 +1288,16 @@ c           --- Fetch time step size
             tt(1:nn) = fulldt_s*PACK(mask,mask > 0.)
 c           --- Copy particle data into temporary arrays, collecting
 c           --- only particles that have been injected this time step.
-            xx = PACK(xp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            yy = PACK(yp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            zz = PACK(zp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            ux = PACK(uxp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            uy = PACK(uyp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            uz = PACK(uzp(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            gg = PACK(gaminv(ins(is):ins(is)+nps(is)-1),mask > 0.)
-            id = PACK(pid(ins(is):ins(is)+nps(is)-1,injpid),mask > 0.)
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            xx = PACK(pgroup%xp(i1:i2),mask > 0.)
+            yy = PACK(pgroup%yp(i1:i2),mask > 0.)
+            zz = PACK(pgroup%zp(i1:i2),mask > 0.)
+            ux = PACK(pgroup%uxp(i1:i2),mask > 0.)
+            uy = PACK(pgroup%uyp(i1:i2),mask > 0.)
+            uz = PACK(pgroup%uzp(i1:i2),mask > 0.)
+            gg = PACK(pgroup%gaminv(i1:i2),mask > 0.)
+            id = PACK(pgroup%pid(i1:i2,injpid),mask > 0.)
 #endif
 
 c           --- calculate new E self-fields
@@ -1234,36 +1309,42 @@ c           --- calculate new E self-fields
 
 c           --- Get external fields at current positions.
             call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
-     &                   sm(is),sq(is),bendres,bendradi,1.,fulldt_s)
+     &                pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
 
 c           --- complete B advance
-            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),tt,0.5,ibpush)
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5,ibpush)
 
 c           --- complete the E advance
-            call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5)
 
 c           --- Advance relativistic Gamma factor
             call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 c           --- Now, move velocites back one half a step
 c           --- first half of a backward B advance
-            call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),-0.5*fulldt_s,ibpush)
+            call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    -0.5*fulldt_s,ibpush)
 
 c           --- then half of a backward E advance
-            call epush3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),-0.5*fulldt_s)
+            call epush3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),
+     &                    -0.5*fulldt_s)
 
 c           --- Advance relativistic Gamma factor
             call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
 
 #ifdef MPIPARALLEL
 c           --- Copy data back into the particle arrays
-            xp(ins(is):ins(is)+nps(is)-1) = UNPACK(xx,mask>0.,xp(ins(is):ins(is)+nps(is)-1))
-            yp(ins(is):ins(is)+nps(is)-1) = UNPACK(yy,mask>0.,yp(ins(is):ins(is)+nps(is)-1))
-            zp(ins(is):ins(is)+nps(is)-1) = UNPACK(zz,mask>0.,zp(ins(is):ins(is)+nps(is)-1))
-            uxp(ins(is):ins(is)+nps(is)-1) = UNPACK(ux,mask>0.,uxp(ins(is):ins(is)+nps(is)-1))
-            uyp(ins(is):ins(is)+nps(is)-1) = UNPACK(uy,mask>0.,uyp(ins(is):ins(is)+nps(is)-1))
-            uzp(ins(is):ins(is)+nps(is)-1) = UNPACK(uz,mask>0.,uzp(ins(is):ins(is)+nps(is)-1))
-            pid(ins(is):ins(is)+nps(is)-1,injpid) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            xp(i1:i2) = UNPACK(xx,mask>0.,xp(i1:i2))
+            yp(i1:i2) = UNPACK(yy,mask>0.,yp(i1:i2))
+            zp(i1:i2) = UNPACK(zz,mask>0.,zp(i1:i2))
+            uxp(i1:i2) = UNPACK(ux,mask>0.,uxp(i1:i2))
+            uyp(i1:i2) = UNPACK(uy,mask>0.,uyp(i1:i2))
+            uzp(i1:i2) = UNPACK(uz,mask>0.,uzp(i1:i2))
+            pid(i1:i2,injpid) = int(pid(i1:i2,injpid))
             deallocate(mask)
 #endif
 
@@ -1291,9 +1372,10 @@ c the variable 'inject'.
 
 c         --- zero ntinject for inject = 2 or 3
           if (inject == 2 .or. inject == 3) then
-            do is=1,ns
-              if (mod(it,ndts(is))/=0) cycle
-              ntinject(is) = 0
+            do is=1,pgroup%ns
+              isid = pgroup%sid(is-1) + 1
+              if (mod(it,pgroup%ndts(is))/=0) cycle
+              ntinject(isid) = 0
             enddo
           endif
 
@@ -1301,11 +1383,12 @@ c         --- Loop over injection sources
           do ij=1,ntinj
 
 c           --- loop over species
-            do is=1,ns
-              if (mod(it,ndts(is))/=0) cycle
-              fulldt_s    = dt*ndts(is)*dtscale(is)
+            do is=1,pgroup%ns
+              isid = pgroup%sid(is-1) + 1
+              if (mod(it,pgroup%ndts(is))/=0) cycle
+              fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
               nti = 0
-              qoverm = sq(is)/sm(is)
+              qoverm = pgroup%sq(is)/pgroup%sm(is)
 
 c             --- Load particles one azimuthal section at a time,
 c             --- only if there is a positive number of injected particles.
@@ -1326,7 +1409,7 @@ c               --- K. Blodgett, "Currents Limited by Space Charge Between
 c               --- Concentric Spheres", PhysRev, 1924.
                 if (inject == 2) then
                   const = 4./9.*eps0*(2.*abs(qoverm))**.5*dxi**2*
-     &             fulldt_s*area/echarge/sw(is)/
+     &             fulldt_s*area/echarge/pgroup%sw(is)/
      &             (1. + 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
                 endif
 
@@ -1375,10 +1458,10 @@ c                 --- Find coordinates of the point.
 
 c                 --- number of particles injected in grid cell
                   if (inject == 1) then
-                    rnn = ntinject(is)*ftinject(is,ij)/
+                    rnn = ntinject(isid)*ftinject(isid,ij)/
      &                    real(nttinj(ij)*(nztinjmx(ij) - nztinjmn(ij)))
                   elseif (inject == 2) then
-                    tinjprev(ith,ijz,ij) = ftinject(is,ij)*(
+                    tinjprev(ith,ijz,ij) = ftinject(isid,ij)*(
      &                                    inj_param*const*abs(ehalf*inj_dx)**1.5 +
      &                                    (1. - inj_param)*tinjprev(ith,ijz,ij))
                     rnn = tinjprev(ith,ijz,ij)
@@ -1388,57 +1471,59 @@ c                   --- get charge density at injection point
      &                   rhop(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  +
      &                   rhop(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) +
      &                   rhop(i2x+1,i2y+1,iz)*    w2x *    w2y
-                    rnn=(eps0*ehalf - rr*inj_dx)*area/sq(is)/sw(is)*ftinject(is,ij)
+                    rnn=(eps0*ehalf - rr*inj_dx)*area/
+     &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(isid,ij)
                   endif
                   rnn = min(rnn,
-     &                 abs(jmaxtinj(ij)*area*fulldt_s/sq(is)/sw(is)*ftinject(is,ij)))
+     &                      abs(jmaxtinj(ij)*area*fulldt_s/pgroup%sq(is)/
+     &                      pgroup%sw(is)*ftinject(isid,ij)))
                   nn = int(rnn + wranf())
 
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
-                  call chckpart(is,npinje_s(is) +
+                  call chckpart(is,npinje_s(isid) +
      &                             nn*nttinj(ij)*(nztinjmx(ij)-nztinjmn(ij)),
      &                          0,.true.)
                   call chckpart(is,nn,0,.true.)
 
                   do ip=1,nn
-                    ii = ins(is) - npinje_s(is) - nti - 1
+                    ii = pgroup%ins(is) - npinje_s(isid) - nti - 1
 c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
-                    zp(ii) = zm + wz*inj_dz
+                    pgroup%zp(ii) = zm + wz*inj_dz
                     rr = wrandom(xrandom,injctcnt,dig2,1,1)
                     rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*rrr
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
-                    xp(ii) = xtinject(ij) + rp*cos(t)
-                    yp(ii) = ytinject(ij) + rp*sin(t)
-                    vtx = 0.5*vztinject(ij)*emitx_s(is)*rinji + vthperp_s(is)
-                    vty = 0.5*vztinject(ij)*emity_s(is)*rinji + vthperp_s(is)
-                    uxp(ii) = vnorm*cos(t) + vtx*
+                    pgroup%xp(ii) = xtinject(ij) + rp*cos(t)
+                    pgroup%yp(ii) = ytinject(ij) + rp*sin(t)
+                    vtx = 0.5*vztinject(ij)*emitx_s(isid)*rinji+vthperp_s(isid)
+                    vty = 0.5*vztinject(ij)*emity_s(isid)*rinji+vthperp_s(isid)
+                    pgroup%uxp(ii) = vnorm*cos(t) + vtx*
      &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
-                    uyp(ii) = vnorm*sin(t) + vty*
+                    pgroup%uyp(ii) = vnorm*sin(t) + vty*
      &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
-                    uzp(ii) = vznorm*rr + vthz_s(is)*
+                    pgroup%uzp(ii) = vznorm*rr + vthz_s(isid)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                     if (lrelativ) then
-                      gaminv(ii) = sqrt(1.-
-     &                        (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
-                      gamma = 1./gaminv(ii)
-                      uxp(ii) = uxp(ii)*gamma
-                      uyp(ii) = uyp(ii)*gamma
-                      uzp(ii) = uzp(ii)*gamma
+                      pgroup%gaminv(ii) = sqrt(1.-
+     &     (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
+                      gamma = 1./pgroup%gaminv(ii)
+                      pgroup%uxp(ii) = pgroup%uxp(ii)*gamma
+                      pgroup%uyp(ii) = pgroup%uyp(ii)*gamma
+                      pgroup%uzp(ii) = pgroup%uzp(ii)*gamma
                     else
-                      gaminv(ii) = 1.
+                      pgroup%gaminv(ii) = 1.
                     endif
 c                   --- increment particle counter
                     nti = nti + 1
 c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
-                    pid(ii,:) = 0.
+                    pgroup%pid(ii,:) = 0.
 c                   --- Save SSN 
                     if (spid>0) then
-                      pid(ii,spid) = ssn
+                      pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
                     end if
 c                   --- increment random number counter
@@ -1449,7 +1534,7 @@ c                   --- increment random number counter
 
 c             --- Set number of particles that were injected for inject = 2 or 3
               if (inject == 2 .or. inject == 3) then
-                ntinject(is) = ntinject(is) + nti
+                ntinject(isid) = ntinject(isid) + nti
               endif
 
 c           --- end loop over species
@@ -1459,9 +1544,10 @@ c         --- end loop over transverse injection sources
           enddo
 
 c         --- Sum ntinject to get total number of particles injected.
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
-            npinject = npinject + ntinject(is)
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            npinject = npinject + ntinject(isid)
           enddo
 
 
@@ -1473,10 +1559,11 @@ c         --- print warning if no particles were injected
 c         --- load new particles into rho
 c         --- This must be done after all of the particles for this timestep
 c         --- are injected.
-          do is=1,ns
-            if (mod(it,ndts(is))/=0) cycle
-            call loadrho3d(ins(is)-npinje_s(is)-ntinject(is),
-     &                     ins(is)-npinje_s(is)-1,is,.false.)
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (mod(it,pgroup%ndts(is))/=0) cycle
+            call loadrho3d(pgroup%ins(is)-npinje_s(isid)-ntinject(isid),
+     &                     pgroup%ins(is)-npinje_s(isid)-1,is,.false.)
           enddo
 c         if(solvergeom==RZgeom) then
 c           call distribute_rho_rz()
@@ -1490,10 +1577,11 @@ c         --- level.
 
 c         --- make injected particles live particles
           if (ntinj > 0) then
-            do is=1,ns
-              if (mod(it,ndts(is))/=0) cycle
-              ins(is) = ins(is) - ntinject(is)
-              nps(is) = nps(is) + ntinject(is)
+            do is=1,pgroup%ns
+              isid = pgroup%sid(is-1) + 1
+              if (mod(it,pgroup%ndts(is))/=0) cycle
+              pgroup%ins(is) = pgroup%ins(is) - ntinject(isid)
+              pgroup%nps(is) = pgroup%nps(is) + ntinject(isid)
             enddo
           endif
 
@@ -1516,7 +1604,7 @@ c=============================================================================
       use InGen3d
       use InPart
       use InMesh3d
-      use Particles
+      use Particles,Only: pgroup,npmax
       use InjectVars
       use InjectVars3d
       use Setpwork3d
@@ -1527,7 +1615,7 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: ixmin,ixmax,iymin,iymax
       integer(ISZ):: inx,iny
-      integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
+      integer(ISZ):: is,isid,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
       integer(ISZ), external :: oneiftrue, nextpid
@@ -1643,17 +1731,20 @@ c and at zimin, but can be set by user.
 c       --- Find the total number particles within the injection zone.
 c       --- This gives the number of particles that will be injected
 c       --- at each time step.
-        do is=1,ns
-          if (npinje_s(is) == 0) then
-            do ip=ins(is),ins(is)+nps(is)-1
-              if (zinject(1) < zp(ip) .and. zp(ip) < zinject(1) + leninjct)
-     &          npinje_s(is) = npinje_s(is) + 1
+        do is=1,pgroup%ns
+          isid = pgroup%sid(is-1) + 1
+          if (npinje_s(isid) == 0) then
+            do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+              if (zinject(1) < pgroup%zp(ip) .and.
+     &            pgroup%zp(ip) < zinject(1) + leninjct) then
+                npinje_s(isid) = npinje_s(isid) + 1
+              endif
             enddo
           endif
-          if (rnpinje_s(is) == 0.) then
-            rnpinje_s(is) = npinje_s(is)
+          if (rnpinje_s(isid) == 0.) then
+            rnpinje_s(isid) = npinje_s(isid)
           endif
-          npinject = npinject + npinje_s(is)
+          npinject = npinject + npinje_s(isid)
         enddo
       else
 c       --- Calculate number of particles to inject for each species if
@@ -1682,21 +1773,23 @@ c If there are no particles yet, then reallocate the arrays to the correct
 c size. This is much faster when there are multiple species.
 c Also set particle parameters: charge, mass and weight
       total_frac = sum(sp_fract)
-      if (maxval(nps) == 0) then
+      if (maxval(pgroup%nps) == 0) then
         npmax = max(injctspc,npmax)
         np_s = 0
         sp_fract = sp_fract/total_frac
         call alotpart()
         sp_fract = sp_fract*total_frac
       endif
-      do is=1,ns
-        if (maxval(nps) /= 0) then
-          call chckpart(is,int(injctspc*sp_fract(is)/total_frac+1),0,.true.)
+      do is=1,pgroup%ns
+        isid = pgroup%sid(is-1) + 1
+        if (maxval(pgroup%nps) /= 0) then
+          call chckpart(is,int(injctspc*sp_fract(isid)/total_frac+1),0,.true.)
         endif
-        if (sq(is) == 0.) sq(is) = zion_s(is)*echarge
-        if (sw(is) == 0.)
-     &    sw(is)=(ibeam_s(is)*dt*ndts(is)/sq(is))/npinje_s(is)
-        if (sm(is) == 0.) sm(is) = aion_s(is)*amu
+        if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(isid)*echarge
+        if (pgroup%sw(is) == 0.)
+     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
+     &                    pgroup%sq(is))/npinje_s(isid)
+        if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(isid)*amu
       enddo
 
 c Set up finject array if not set by the user (if sum of finject = 0).
@@ -1718,7 +1811,7 @@ c Give each injection source the same distribution of species.
 c Set the variable INJCTCNT
 c This is used for loading the injection particles.  It ensures that the
 c injected particles have new random numbers.
-      injctcnt = nps(1) + 1 + randoffset
+      injctcnt = sum(pgroup%nps) + 1 + randoffset
 
 c Set up Setpwork3d arrays
 c --- Estimate number of particles injected
@@ -2418,7 +2511,7 @@ c     --- the emitting surface.
         
       if(inj_nz>1) then
         inj_dz = inj_dz_tmp
-        call inj_setq_3darray_and_solvephi(nn,xx(1),yy(1),zz(1),xi(1),yi(1))
+        call getinj_phi_mr(nn,xx(1),yy(1),zz(1),xi(1),yi(1))
       end if
 
 #ifdef MPIPARALLEL
@@ -2776,14 +2869,16 @@ c     --- For particles not near the source, the temp arrays are zero.
       return
       end
 c=============================================================================
-      subroutine inj_addtemp3d(npart,ipmin,dz)
+      subroutine inj_addtemp3d(pgroup,npart,ipmin,dz)
+      use ParticleGroupmodule
       use Subtimers3d
       use InGen3d
       use InPart
       use InPart3d
       use InjectVars
       use InjectVars3d
-      use Particles
+      use Particles,Only: tpid
+      type(ParticleGroup):: pgroup
       integer(ISZ):: npart,ipmin
       real(kind=8):: dz
 
@@ -2806,17 +2901,17 @@ c     real(kind=8):: wrandomgauss
       dzi = 1./dz
 
 c     --- Transform the particles into the frame of the injection source
-      xx = xp(ipmin:ipmin+npart-1)
-      yy = yp(ipmin:ipmin+npart-1)
-      zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
+      xx = pgroup%xp(ipmin:ipmin+npart-1)
+      yy = pgroup%yp(ipmin:ipmin+npart-1)
+      zz = pgroup%zp(ipmin:ipmin+npart-1)
+      ijp = int(pgroup%pid(ipmin:ipmin+npart-1,injpid))
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,1)
 
 c     --- Loop over particles
       do ip=1,npart
 
 c       --- if pid(pi,tpid)>0., temperature has already been added
-        if(pid(ip+ipmin-1,tpid)>0.) cycle
+        if(pgroup%pid(ip+ipmin-1,tpid)>0.) cycle
 
 c       --- Get number of injection source of particle.  The particle id
 c       --- has the number of the injection source the particle was
@@ -2885,16 +2980,16 @@ c         wrandomgauss(vzrandom,ii,dig7,dig8,1,1,.false.)
           vz(ip) = + tz*cos(az)         + tx*sin(atx) + ty*sin(aty)
 
 c         --- reverse sign of pid(,tpid) indicating that temperature has been added
-          pid(ip+ipmin-1,tpid) = -pid(ip+ipmin-1,tpid)
+          pgroup%pid(ip+ipmin-1,tpid) = -pgroup%pid(ip+ipmin-1,tpid)
 
         endif
       enddo
 
 c     --- Transform thermal velocities to lab frame
       call inj_transform(npart,vx,vy,vz,npart,ijp,1,0)
-      uxp(ipmin:ipmin+npart-1) = uxp(ipmin:ipmin+npart-1) + vx
-      uyp(ipmin:ipmin+npart-1) = uyp(ipmin:ipmin+npart-1) + vy
-      uzp(ipmin:ipmin+npart-1) = uzp(ipmin:ipmin+npart-1) + vz
+      pgroup%uxp(ipmin:ipmin+npart-1) = pgroup%uxp(ipmin:ipmin+npart-1) + vx
+      pgroup%uyp(ipmin:ipmin+npart-1) = pgroup%uyp(ipmin:ipmin+npart-1) + vy
+      pgroup%uzp(ipmin:ipmin+npart-1) = pgroup%uzp(ipmin:ipmin+npart-1) + vz
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_addtemp3d = timeinj_addtemp3d + wtime() - substarttime
@@ -2902,12 +2997,27 @@ c     --- Transform thermal velocities to lab frame
       return
       end
 c=============================================================================
-      subroutine inj_setrho3d(dz,l2symtry,l4symtry)
+      subroutine loadrho_inject(pgroup)
+      use ParticleGroupmodule
+      use InjectVars
+      use InjectVars3d,Only: inj_nz
+      use InGen3d
+
+      type(ParticleGroup):: pgroup
+      if (inject == 0) return
+
+      if(inj_nz>1) call inj_setrhomr(pgroup)
+
+      return
+      end
+c=============================================================================
+      subroutine inj_setrho3d(pgroup,dz,l2symtry,l4symtry)
+      use ParticleGroupmodule
       use Subtimers3d
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
+      type(ParticleGroup):: pgroup
       real(kind=8):: dz
       logical(ISZ):: l2symtry,l4symtry
 
@@ -2922,7 +3032,7 @@ c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
       integer(ISZ):: ijp(pgroup%npmax)
-      integer(ISZ):: is,ip,ix,iy,ij,ij1
+      integer(ISZ):: is,ip,ix,iy,ij,ij1,i1,i2
       real(kind=8):: rinj,rinji,rr2,dd
       real(kind=8):: aa,az,px,py,wx1,wy1,wx0,wy0,ww
       real(kind=8):: dxi,dyi,dzi
@@ -2938,56 +3048,60 @@ c     --- zero out the array
 
 c     --- Loop over species and particles
       do is=1,ns
+        i1 = pgroup%ins(is)
+        i2 = pgroup%ins(is)+pgroup%nps(is)-1
 
 c       --- Transform the particles into the frame of the injection source
-        if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,1)
+        if (pgroup%nps(is) > 0) then
+          ijp(i1:i2) = int(pgroup%pid(i1:i2,injpid))
+          call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),-1,1)
         endif
 
-        ww = sq(is)*sw(is)*dxi*dyi*dzi
-        do ip=ins(is),ins(is)+nps(is)-1
+        ww = pgroup%sq(is)*pgroup%sw(is)*dxi*dyi*dzi
+        do ip=i1,i2
+          if (pgroup%uzp(ip) == 0.) cycle
 
 c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,injpid))
+          ij = int(pgroup%pid(ip,injpid))
 
-          ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
-          iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
+          ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
+          iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
 
 c         --- set temporaries
           rinji = 1./rinject(ij)
           rinj = rinject(ij)
 
 c         --- Calculate distance of particle from the emitting surface
-          rr2 = xp(ip)**2 + yp(ip)**2
-          if (abs(zp(ip)) < abs(rinj)) then
+          rr2 = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
+          if (abs(pgroup%zp(ip)) < abs(rinj)) then
 c           --- The expression below for zp(ip)<rinj is mathematically identical
 c           --- to the commented out expression below.  That form is
 c           --- used so that for large values of rinj, i.e. a flat emitting
 c           --- surface, the correct value of the distance is calculated,
 c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
-            dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
-     &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+            dd = (2.*pgroup%zp(ip) - (pgroup%zp(ip)**2 + rr2)*rinji)/
+     &           (1. + sqrt(rr2*rinji**2 + (1. - pgroup%zp(ip)*rinji)**2))
             if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
+            dd = abs(rinj) + sqrt(rr2 + (pgroup%zp(ip) - rinj)**2)
           endif
           dd = dd*dzi
 
 c         --- Only deposit charge of particles close to emitting surface.
-          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
+          if (abs(dd) < 1. .and. pgroup%uzp(ip) /= 0.) then
 
 c           --- angle of point in transverse plane
-            aa = atan2(yp(ip),dvnz(xp(ip)))
+            aa = atan2(pgroup%yp(ip),dvnz(pgroup%xp(ip)))
 
 c           --- angle relative to z axis
-            az = atan2(sqrt(rr2),rinj-zp(ip))
+            az = atan2(sqrt(rr2),rinj-pgroup%zp(ip))
 
 c           --- Map the particle position onto the emitting surface.
             px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
@@ -3010,9 +3124,10 @@ c           --- Deposit the particle's charge onto the emitting surface.
         enddo
 
 c       --- Transform the particles back into the lab frame
-        if (nps(is) > 0) then
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,1)
+        if (pgroup%nps(is) > 0) then
+          call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),1,1)
         endif
 
       enddo
@@ -3036,13 +3151,14 @@ c       --- rho only on the right side of the emitting surface.
       return
       end
 c=============================================================================
-      subroutine inj_setrho3d_z(dz,nz)
+      subroutine inj_setrho3d_z(pgroup,dz,nz)
+      use ParticleGroupmodule
       use Subtimers3d
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
       use Constant
+      type(ParticleGroup):: pgroup
       integer(ISZ):: nz
       real(kind=8):: dz
 
@@ -3057,7 +3173,7 @@ c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
       integer(ISZ):: ijp(pgroup%npmax)
-      integer(ISZ):: is,ip,ij,j,ij1
+      integer(ISZ):: is,ip,ij,j,ij1,i1,i2
       real(kind=8):: dd
       real(kind=8):: ww
       real(kind=8):: dzi
@@ -3071,30 +3187,34 @@ c     --- zero out the array
 
 c     --- Loop over species and particles
       do is=1,ns
+        i1 = pgroup%ins(is)
+        i2 = pgroup%ins(is)+pgroup%nps(is)-1
 
 c       --- Transform the particles into the frame of the injection source
 c       --- This is only really here to be consistent with the other routines.
 c       --- All that this should do is add zinject to zp.
-        if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,1)
+        if (pgroup%nps(is) > 0) then
+          ijp(i1:i2) = int(pgroup%pid(i1:i2,injpid))
+          call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),-1,1)
         endif
 
-        ww = 2.*sq(is)*sw(is)*dzi
-        do ip=ins(is),ins(is)+nps(is)-1
+        ww = 2.*pgroup%sq(is)*pgroup%sw(is)*dzi
+        do ip=i1,i2
+          if (pgroup%uzp(ip) == 0.) cycle
 
 c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,injpid))
+          ij = int(pgroup%pid(ip,injpid))
 
 c         --- Calculate distance of particle from the emitting surface
-          dd = zp(ip)*dzi
+          dd = pgroup%zp(ip)*dzi
 
 c         --- Only deposit charge of particles close to emitting surface.
-          if (dd < 1. .and. uzp(ip) /= 0.) then
+          if (dd < 1.) then
 
 c           --- Deposit the particle's charge onto the emitting surface.
             ij1 = min(ij,inj_ninj)
@@ -3104,9 +3224,10 @@ c           --- Deposit the particle's charge onto the emitting surface.
         enddo
 
 c       --- Transform the particles back into the lab frame
-        if (nps(is) > 0) then
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,1)
+        if (pgroup%nps(is) > 0) then
+          call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),1,1)
         endif
 
       enddo
@@ -3269,50 +3390,32 @@ c     --- The result calculated on each processor is gathered on all
       return
       end
 c=============================================================================
-      subroutine inj_setq_3darray_and_solvephi(nn,xxp,yyp,zzp,xi,yi)
+      subroutine inj_setrhomr(pgroup)
+      use ParticleGroupmodule
       use Subtimers3d
-      use InPart
-      use InGen
+      use Constant,Only: pi
+      use InPart,Only: ns
+      use Particles,Only: wpid
       use InGen3d
-      use InjectVars
+      use InjectVars,Only: ninject,inj_d,injpid,rinject
       use InjectVars3d
-      use InMesh3d
-      use Particles
-      use Constant
-      use Fields3d
-      use Fields3dParticles
-      use Efields3d
-      use Picglb
-      use Picglb3d
-      integer(ISZ), intent(in) :: nn
-      real(kind=8), dimension(nn), intent(in) :: xxp, yyp, zzp
-      integer(ISZ), dimension(nn), intent(in) :: xi, yi
+      type(ParticleGroup):: pgroup
 
-c Calculate the charge density on the emitting surface.  The particles are
-c mapped onto the surface assuming a spherical emitter.  The charge density
-c scale to account for symmetries and to account for the fraction of the
-c grid cell within emitting surface.
-c The scaling is done so that the charge density accurately represents
-c the charge divided by the volume filled by that charge.  This only
-c affects the edge of the emitting surface where only part of a grid cell
-c will have charge in it, but the charge is divided by the area of all of
-c the grid cell.
+c Calculate the charge density in the region of the injector mesh refinement.
 
       integer(ISZ), allocatable:: ijp(:)
-      integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,nrhs,irhs,kd,ldab,ldb,n,info
-      real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
-      real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,wws,dz0,dz1,zinj_grid
-      real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
-      real(kind=8), allocatable, dimension(:,:) :: rhs, ab
-      real(kind=8), allocatable, dimension(:) :: ex_tmp, ey_tmp, ez_tmp
+      integer(ISZ):: i1,i2
       real(kind=8), allocatable, dimension(:) :: dz_local
       integer(ISZ):: sx,sy
-      integer(ISZ):: allocerror
+      real(kind=8):: dxi,dyi,dzmin,dz0,dz1,zinj_grid,onethird,rinj,rinji
+      real(kind=8):: px,py,wx0,wx1,wy0,wy1,wz0,wz1,rr2,dd,aa,az
+      real(kind=8):: deltaz(ninject)
+      integer(ISZ):: ix,iy,iz,is,ij,ij1,ip
+      real(kind=8):: wws,ww
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       allocate(ijp(pgroup%npmax))
-      allocate(ex_tmp(nn),ey_tmp(nn),ez_tmp(nn))
       allocate(dz_local(0:inj_nz))
 
       if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
@@ -3336,7 +3439,6 @@ c the grid cell.
       onethird = 1./3.
 
       dzmin = 1./(real(inj_nz-1)*2.**onethird+2.-real(inj_nz))**3
-c      dzmin = 1./(2.**(inj_nz-1))
       deltaz = inj_d*inj_dz0
 
       dxi = 1./inj_dx
@@ -3350,7 +3452,6 @@ c      dzmin = 1./(2.**(inj_nz-1))
           zinj_grid = dz0
         else
           dz0 = dz1
-c         dz1 = 2.*dz1
           zinj_grid = zinj_grid+dz0
           dz1 = (1.-(real(inj_nz-iz-1)/real(inj_nz-1))*(1.-dzmin**onethird))**3
      &        - zinj_grid
@@ -3362,236 +3463,312 @@ c         dz1 = 2.*dz1
 c     --- zero out the array
       inj_q = 0.
 
-c     --- initialize inj_phi_3d
-      call getinj_phi_3d()
-
 c     --- Loop over species and particles
       if(.not. l_inj_rz) then
-       do is=1,ns
+        do is=1,ns
+          i1 = pgroup%ins(is)
+          i2 = pgroup%ins(is)+pgroup%nps(is)-1
 
-c       --- Transform the particles into the frame of the injection source
-        if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,1)
-        endif
-        wws = sq(is)*sw(is)*dxi*dyi
-        do ip=ins(is),ins(is)+nps(is)-1
-          if(wpid>0) then
-            ww=wws*pid(ip,wpid)
-          else
-            ww=wws
-          end if
-
-c         --- Get number of injection source of particle.  The particle id
-c         --- has the number of the injection source the particle was
-c         --- emitted from. The int is needed since it is doing double
-c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,injpid))
-
-          ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
-          iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
-
-c         --- set temporaries
-          rinji = 1./rinject(ij)
-          rinj = rinject(ij)
-
-c         --- Calculate distance of particle from the emitting surface
-          rr2 = xp(ip)**2 + yp(ip)**2
-          if (abs(zp(ip)) < abs(rinj)) then
-c           --- The expression below for zp(ip)<rinj is mathematically identical
-c           --- to the commented out expression below.  That form is
-c           --- used so that for large values of rinj, i.e. a flat emitting
-c           --- surface, the correct value of the distance is calculated,
-c           --- namely zp(ip).
-c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
-            dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
-     &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
-            if (rinj < 0.) dd = -dd
-          else
-c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
+c         --- Transform the particles into the frame of the injection source
+          if (pgroup%nps(is) > 0) then
+            ijp(i1:i2) = int(pgroup%pid(i1:i2,injpid))
+            call inj_transform(pgroup%nps(is),
+     &                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                   pgroup%nps(is),ijp(i1:i2),-1,1)
           endif
-          dd = dd/deltaz(ij)
-
-c         --- Only deposit charge of particles in emitting area
-          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
-
-c           --- angle of point in transverse plane
-            aa = atan2(yp(ip),dvnz(xp(ip)))
-
-c           --- angle relative to z axis
-            az = atan2(sqrt(rr2),rinj-zp(ip))
-
-c           --- Map the particle position onto the emitting surface.
-            px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
-            py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
-            ix = int(px)
-            iy = int(py)
-            wx1 = px - ix
-            wy1 = py - iy
-            wx0 = 1. - wx1
-            wy0 = 1. - wy1
-            if(dd>dzmin) then
-              iz  = 1+int(real(inj_nz-1)*(1.-(1.-dd**onethird)/(1.-dzmin**onethird)))
-              wz1 = (dd-(1.-((real(inj_nz-iz))/real(inj_nz-1))*(1.-dzmin**onethird))**3)/dz_local(iz)
-c              iz  = int(real(inj_nz) - log(1./dd)/log(2.))
-c              wz1 = dd*2.**(inj_nz-iz)-1.
+          wws = pgroup%sq(is)*pgroup%sw(is)*dxi*dyi
+          do ip=i1,i2
+            if (pgroup%uzp(ip) == 0.) cycle
+            if(wpid>0) then
+              ww=wws*pgroup%pid(ip,wpid)
             else
-c             prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
-              IF(l_inj_no_rho_on_emit) cycle
-              iz  = 0
-              wz1 = dd/dzmin
+              ww=wws
             end if
-            wz0 = 1.-wz1
 
-c           --- Deposit the particle's charge onto the emitting region.
-            ij1 = min(ij,inj_ninj)
-            inj_q(ix   ,iy   ,iz  , ij1) = inj_q(ix   ,iy   ,iz  ,ij1) + ww*wx0*wy0*wz0
-            inj_q(ix+sx,iy   ,iz  , ij1) = inj_q(ix+sx,iy   ,iz  ,ij1) + ww*wx1*wy0*wz0
-            inj_q(ix   ,iy+sy,iz  , ij1) = inj_q(ix   ,iy+sy,iz  ,ij1) + ww*wx0*wy1*wz0
-            inj_q(ix+sx,iy+sy,iz  , ij1) = inj_q(ix+sx,iy+sy,iz  ,ij1) + ww*wx1*wy1*wz0
-            inj_q(ix   ,iy   ,iz+1, ij1) = inj_q(ix   ,iy   ,iz+1,ij1) + ww*wx0*wy0*wz1
-            inj_q(ix+sx,iy   ,iz+1, ij1) = inj_q(ix+sx,iy   ,iz+1,ij1) + ww*wx1*wy0*wz1
-            inj_q(ix   ,iy+sy,iz+1, ij1) = inj_q(ix   ,iy+sy,iz+1,ij1) + ww*wx0*wy1*wz1
-            inj_q(ix+sx,iy+sy,iz+1, ij1) = inj_q(ix+sx,iy+sy,iz+1,ij1) + ww*wx1*wy1*wz1
+c           --- Get number of injection source of particle.  The particle id
+c           --- has the number of the injection source the particle was
+c           --- emitted from. The int is needed since it is doing double
+c           --- duty and has other information stored in the fractional part.
+            ij = int(pgroup%pid(ip,injpid))
 
+            ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
+            iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
+
+c           --- set temporaries
+            rinji = 1./rinject(ij)
+            rinj = rinject(ij)
+
+c           --- Calculate distance of particle from the emitting surface
+            rr2 = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
+            if (abs(pgroup%zp(ip)) < abs(rinj)) then
+c             --- The expression below for zp(ip)<rinj is mathematically identical
+c             --- to the commented out expression below.  That form is
+c             --- used so that for large values of rinj, i.e. a flat emitting
+c             --- surface, the correct value of the distance is calculated,
+c             --- namely zp(ip).
+c             dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
+              dd = (2.*pgroup%zp(ip) - (pgroup%zp(ip)**2 + rr2)*rinji)/
+     &             (1. + sqrt(rr2*rinji**2 + (1. - pgroup%zp(ip)*rinji)**2))
+              if (rinj < 0.) dd = -dd
+            else
+c             --- When zp(ip)>rinj, a seperate equation is needed.
+              dd = abs(rinj) + sqrt(rr2 + (pgroup%zp(ip) - rinj)**2)
+            endif
+            dd = dd/deltaz(ij)
+
+c           --- Only deposit charge of particles in emitting area
+            if (abs(dd) < 1.) then
+
+c             --- angle of point in transverse plane
+              aa = atan2(pgroup%yp(ip),dvnz(pgroup%xp(ip)))
+
+c             --- angle relative to z axis
+              az = atan2(sqrt(rr2),rinj-pgroup%zp(ip))
+
+c             --- Map the particle position onto the emitting surface.
+              px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
+              py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
+              ix = int(px)
+              iy = int(py)
+              wx1 = px - ix
+              wy1 = py - iy
+              wx0 = 1. - wx1
+              wy0 = 1. - wy1
+              if(dd>dzmin) then
+                iz  = 1+int(real(inj_nz-1)*(1.-(1.-dd**onethird)/(1.-dzmin**onethird)))
+                wz1 = (dd-(1.-((real(inj_nz-iz))/real(inj_nz-1))*(1.-dzmin**onethird))**3)/dz_local(iz)
+              else
+c               prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
+                IF(l_inj_no_rho_on_emit) cycle
+                iz  = 0
+                wz1 = dd/dzmin
+              end if
+              wz0 = 1.-wz1
+
+c             --- Deposit the particle's charge onto the emitting region.
+              ij1 = min(ij,inj_ninj)
+              inj_q(ix   ,iy   ,iz  , ij1) = inj_q(ix   ,iy   ,iz  ,ij1) + ww*wx0*wy0*wz0
+              inj_q(ix+sx,iy   ,iz  , ij1) = inj_q(ix+sx,iy   ,iz  ,ij1) + ww*wx1*wy0*wz0
+              inj_q(ix   ,iy+sy,iz  , ij1) = inj_q(ix   ,iy+sy,iz  ,ij1) + ww*wx0*wy1*wz0
+              inj_q(ix+sx,iy+sy,iz  , ij1) = inj_q(ix+sx,iy+sy,iz  ,ij1) + ww*wx1*wy1*wz0
+              inj_q(ix   ,iy   ,iz+1, ij1) = inj_q(ix   ,iy   ,iz+1,ij1) + ww*wx0*wy0*wz1
+              inj_q(ix+sx,iy   ,iz+1, ij1) = inj_q(ix+sx,iy   ,iz+1,ij1) + ww*wx1*wy0*wz1
+              inj_q(ix   ,iy+sy,iz+1, ij1) = inj_q(ix   ,iy+sy,iz+1,ij1) + ww*wx0*wy1*wz1
+              inj_q(ix+sx,iy+sy,iz+1, ij1) = inj_q(ix+sx,iy+sy,iz+1,ij1) + ww*wx1*wy1*wz1
+
+            endif
+          enddo
+
+c         --- Transform the particles back into the lab frame
+          if (pgroup%nps(is) > 0) then
+            call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),1,1)
           endif
+
         enddo
 
-c       --- Transform the particles back into the lab frame
-        if (nps(is) > 0) then
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,1)
-        endif
+        if (solvergeom/=Zgeom) then
+c         --- Loop over unique injection sources
+         do ij1 = 1,inj_ninj
 
-      enddo
-
-      if (solvergeom/=Zgeom) then
-c     --- Loop over unique injection sources
-       do ij1 = 1,inj_ninj
-
-c       --- Scale the charge density by the inverse of the fraction of the/
-c       --- contributing area which is within the emitting surface.
-          do iy=0,inj_ny
-            do ix=0,inj_nx
-              if (inj_area(ix,iy,ij1) > 0.)
-     &          inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)/inj_area(ix,iy,ij1)
+c         --- Scale the charge density by the inverse of the fraction of the/
+c         --- contributing area which is within the emitting surface.
+            do iy=0,inj_ny
+              do ix=0,inj_nx
+                if (inj_area(ix,iy,ij1) > 0.)
+     &            inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)/inj_area(ix,iy,ij1)
+              enddo
             enddo
           enddo
-        enddo
-       end if
+        end if
+
       else !l_inj_rz=.true.
-       do is=1,ns
-c       --- Transform the particles into the frame of the injection source
-        if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,1)
-        endif
-        wws = sq(is)*sw(is)
-        do ip=ins(is),ins(is)+nps(is)-1
-          if(wpid>0) then
-            ww=wws*pid(ip,wpid)
-          else
-            ww=wws
-          end if
-          rr2 = xp(ip)**2 + yp(ip)**2
-          ix = int(sqrt(rr2)*dxi)
-
-c         --- Get number of injection source of particle.  The particle id
-c         --- has the number of the injection source the particle was
-c         --- emitted from. The int is needed since it is doing double
-c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,injpid))
-
-c         --- set temporaries
-          rinji = 1./rinject(ij)
-          rinj = rinject(ij)
-
-c         --- Calculate distance of particle from the emitting surface
-          if (abs(zp(ip)) < abs(rinj)) then
-c           --- The expression below for zp(ip)<rinj is mathematically identical
-c           --- to the commented out expression below.  That form is
-c           --- used so that for large values of rinj, i.e. a flat emitting
-c           --- surface, the correct value of the distance is calculated,
-c           --- namely zp(ip).
-c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
-            dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
-     &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
-          else
-c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
+        do is=1,ns
+          i1 = pgroup%ins(is)
+          i2 = pgroup%ins(is)+pgroup%nps(is)-1
+c         --- Transform the particles into the frame of the injection source
+          if (pgroup%nps(is) > 0) then
+            ijp(i1:i2) = int(pgroup%pid(i1:i2,injpid))
+            call inj_transform(pgroup%nps(is),
+     &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                    pgroup%nps(is),ijp(i1:i2),-1,1)
           endif
-          dd = dd/deltaz(ij)
-
-c         --- Only deposit charge of particles in emitting area
-          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
-
-c           --- angle relative to z axis
-            az = atan2(sqrt(rr2),rinj-zp(ip))
-
-c           --- Map the particle position onto the emitting surface.
-            px = abs(rinj*sin(az))*dxi
-            ix = int(px)
-            wx1 = px - ix
-            wx0 = 1. - wx1
-            if(dd>dzmin) then
-              iz  = 1+int(real(inj_nz-1)*(1.-(1.-dd**onethird)/(1.-dzmin**onethird)))
-              wz1 = (dd-(1.-((real(inj_nz-iz))/real(inj_nz-1))*(1.-dzmin**onethird))**3)/dz_local(iz)
-c              iz  = int(real(inj_nz) - log(1./dd)/log(2.))
-c              wz1 = dd*2.**(inj_nz-iz)-1.
+          wws = pgroup%sq(is)*pgroup%sw(is)
+          do ip=i1,i2
+            if (pgroup%uzp(ip) == 0.) cycle
+            if(wpid>0) then
+              ww=wws*pgroup%pid(ip,wpid)
             else
-c             prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
-              IF(l_inj_no_rho_on_emit) cycle
-              iz  = 0
-              wz1 = dd/dzmin
+              ww=wws
             end if
-            wz0 = 1.-wz1
+            rr2 = pgroup%xp(ip)**2 + pgroup%yp(ip)**2
+            ix = int(sqrt(rr2)*dxi)
 
-c           --- Deposit the particle's charge onto the emitting region.
-            ij1 = min(ij,inj_ninj)
-            inj_q(ix   ,0   ,iz  , ij1) = inj_q(ix   ,0   ,iz  ,ij1) + ww*wx0*wz0
-            inj_q(ix+sx,0   ,iz  , ij1) = inj_q(ix+sx,0   ,iz  ,ij1) + ww*wx1*wz0
-            inj_q(ix   ,0   ,iz+1, ij1) = inj_q(ix   ,0   ,iz+1,ij1) + ww*wx0*wz1
-            inj_q(ix+sx,0   ,iz+1, ij1) = inj_q(ix+sx,0   ,iz+1,ij1) + ww*wx1*wz1
+c           --- Get number of injection source of particle.  The particle id
+c           --- has the number of the injection source the particle was
+c           --- emitted from. The int is needed since it is doing double
+c           --- duty and has other information stored in the fractional part.
+            ij = int(pgroup%pid(ip,injpid))
 
+c           --- set temporaries
+            rinji = 1./rinject(ij)
+            rinj = rinject(ij)
+
+c           --- Calculate distance of particle from the emitting surface
+            if (abs(pgroup%zp(ip)) < abs(rinj)) then
+c             --- The expression below for zp(ip)<rinj is mathematically identical
+c             --- to the commented out expression below.  That form is
+c             --- used so that for large values of rinj, i.e. a flat emitting
+c             --- surface, the correct value of the distance is calculated,
+c             --- namely zp(ip).
+c             dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
+              dd = (2.*pgroup%zp(ip) - (pgroup%zp(ip)**2 + rr2)*rinji)/
+     &             (1. + sqrt(rr2*rinji**2 + (1. - pgroup%zp(ip)*rinji)**2))
+            else
+c             --- When zp(ip)>rinj, a seperate equation is needed.
+              dd = abs(rinj) + sqrt(rr2 + (pgroup%zp(ip) - rinj)**2)
+            endif
+            dd = dd/deltaz(ij)
+
+c           --- Only deposit charge of particles in emitting area
+            if (abs(dd) < 1.) then
+
+c             --- angle relative to z axis
+              az = atan2(sqrt(rr2),rinj-pgroup%zp(ip))
+
+c             --- Map the particle position onto the emitting surface.
+              px = abs(rinj*sin(az))*dxi
+              ix = int(px)
+              wx1 = px - ix
+              wx0 = 1. - wx1
+              if(dd>dzmin) then
+                iz  = 1+int(real(inj_nz-1)*(1.-(1.-dd**onethird)/(1.-dzmin**onethird)))
+                wz1 = (dd-(1.-((real(inj_nz-iz))/real(inj_nz-1))*(1.-dzmin**onethird))**3)/dz_local(iz)
+              else
+c               prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
+                IF(l_inj_no_rho_on_emit) cycle
+                iz  = 0
+                wz1 = dd/dzmin
+              end if
+              wz0 = 1.-wz1
+
+c             --- Deposit the particle's charge onto the emitting region.
+              ij1 = min(ij,inj_ninj)
+              inj_q(ix   ,0   ,iz  , ij1) = inj_q(ix   ,0   ,iz  ,ij1) + ww*wx0*wz0
+              inj_q(ix+sx,0   ,iz  , ij1) = inj_q(ix+sx,0   ,iz  ,ij1) + ww*wx1*wz0
+              inj_q(ix   ,0   ,iz+1, ij1) = inj_q(ix   ,0   ,iz+1,ij1) + ww*wx0*wz1
+              inj_q(ix+sx,0   ,iz+1, ij1) = inj_q(ix+sx,0   ,iz+1,ij1) + ww*wx1*wz1
+
+            endif
+          enddo
+
+c         --- Transform the particles back into the lab frame
+          if (pgroup%nps(is) > 0) then
+            call inj_transform(pgroup%nps(is),
+     &                      pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
+     &                      pgroup%nps(is),ijp(i1:i2),1,1)
           endif
         enddo
-c       --- Transform the particles back into the lab frame
-        if (nps(is) > 0) then
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,1)
-        endif
-       enddo
-c     --- Loop over unique injection sources
-        do ij1 = 1,inj_ninj
-c       --- Scale the charge density by the inverse of the fraction of the
-c       --- contributing area which is within the emitting surface.
-         do ix=0,inj_nx
-          if (inj_area(ix,0,ij1) > 0.)
-     &      inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / inj_area(ix,0,ij1)
-          if(ix==0) then
-            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (pi*0.25*inj_dx**2)
-          else
-            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (2.*pi*ix*inj_dx**2)
-          end if
-         enddo
-        enddo
-      end if
 
-      allocate(rhs(1:inj_nz-1,nn),ab(2,1:inj_nz-1),stat=allocerror)
-      if (allocerror /= 0) then
-        print*,"inj_setq_3darray_and_solvephi: allocation error ",allocerror,
-     &         ": could not allocate rhs and ab to shape ",inj_nz,nn
-        stop
-      endif
+c       --- Loop over unique injection sources
+        do ij1 = 1,inj_ninj
+c         --- Scale the charge density by the inverse of the fraction of the
+c         --- contributing area which is within the emitting surface.
+          do ix=0,inj_nx
+            if (inj_area(ix,0,ij1) > 0.)
+     &        inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / inj_area(ix,0,ij1)
+            if(ix==0) then
+              inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (pi*0.25*inj_dx**2)
+            else
+              inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1) / (2.*pi*ix*inj_dx**2)
+            end if
+          enddo
+        enddo
+
+      end if
 
 c     --- assign charge deposited on emitter surface (slice 0) to slice 1
       IF(.not. l_inj_no_rho_on_emit) then
         inj_q(:,:,1,:) = inj_q(:,:,1,:) + inj_q(:,:,0,:)
         inj_q(:,:,0,:) = 0.
       end if
+
+!$OMP MASTER
+      if (lw3dtimesubs) timeinj_setrhomr = timeinj_setrhomr + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine getinj_phi_mr(nn,xxp,yyp,zzp,xi,yi)
+      use Subtimers3d
+      use InPart
+      use InGen
+      use InGen3d
+      use InjectVars
+      use InjectVars3d
+      use InMesh3d
+      use Constant
+      use Fields3d
+      use Fields3dParticles
+      use Efields3d
+      use Picglb
+      use Picglb3d
+      integer(ISZ), intent(in) :: nn
+      real(kind=8), dimension(nn), intent(in) :: xxp, yyp, zzp
+      integer(ISZ), dimension(nn), intent(in) :: xi, yi
+
+c Calculate the phi in the emitting region by doing 1-d tridiagonal solves
+c of Poisson's equation along lines normal to the emitting surface.
+
+      integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,nrhs,irhs,kd,ldab,ldb,n,info
+      real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
+      real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,wws,dz0,dz1,zinj_grid
+      real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq,onethird,ext,eyt,ezt,atx,aty
+      real(kind=8), allocatable, dimension(:,:) :: rhs, ab
+      real(kind=8), allocatable, dimension(:) :: ex_tmp, ey_tmp, ez_tmp
+      real(kind=8), allocatable, dimension(:) :: dz_local
+      integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(ex_tmp(nn),ey_tmp(nn),ez_tmp(nn))
+      allocate(dz_local(0:inj_nz))
+
+      onethird = 1./3.
+
+      dzmin = 1./(real(inj_nz-1)*2.**onethird+2.-real(inj_nz))**3
+      deltaz = inj_d*inj_dz0
+
+      dxi = 1./inj_dx
+      dyi = 1./inj_dy
+
+      dz_local(0) = dzmin
+      do iz = 1, inj_nz-1
+        if(iz==1) then
+          dz0 = dzmin
+          dz1 = dzmin
+          zinj_grid = dz0
+        else
+          dz0 = dz1
+          zinj_grid = zinj_grid+dz0
+          dz1 = (1.-(real(inj_nz-iz-1)/real(inj_nz-1))*(1.-dzmin**onethird))**3
+     &        - zinj_grid
+        end if
+        dz_local(iz) = dz1
+      end do
+      dz_local(inj_nz) = dz_local(inj_nz-1)
+
+c     --- initialize inj_phi_3d
+      call getinj_phi_3d()
+
+      allocate(rhs(1:inj_nz-1,nn),ab(2,1:inj_nz-1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"getinj_phi_mr: allocation error ",allocerror,
+     &         ": could not allocate rhs and ab to shape ",inj_nz,nn
+        stop
+      endif
+
       do ij = 1, inj_ninj
         nrhs = nn
 c       --- set temporaries
@@ -3604,7 +3781,6 @@ c       --- set temporaries
             zinj_grid = dz0
           else
             dz0 = dz1
-c            dz1 = 2.*dz1
             zinj_grid = zinj_grid+dz0
             dz1 = deltaz(ij)*(1.-(real(inj_nz-iz-1)/real(inj_nz-1))*(1.-dzmin**onethird))**3
      &          - zinj_grid
@@ -3614,7 +3790,11 @@ c            dz1 = 2.*dz1
           do irhs = 1, nrhs
             ix = xi(irhs)
             iy = yi(irhs)
-            rhs(iz,irhs) = inj_q(ix,iy,iz,ij)/eps0
+            if (l_inj_use_rho_with_mr) then
+              rhs(iz,irhs) = inj_q(ix,iy,iz,ij)/eps0
+            else
+              rhs(iz,irhs) = 0.
+            endif
           end do
           if(iz==1) then
             do irhs = 1, nrhs
@@ -3643,7 +3823,7 @@ c            dz1 = 2.*dz1
         call dpbsv('u',n,kd,nrhs,ab,ldab,rhs,ldb,info)
 #endif
         if(info/=0) then
-          write(0,*) 'ERROR in subroutine inj_setq_3darray_and_solvephi at exit of call to LAPACK routine dpbsv'
+          write(0,*) 'ERROR in subroutine getinj_phi_mr at exit of call to LAPACK routine dpbsv'
           write(0,*) 'Info /= 0, info = ',info
           write(0,*) 'Stop'
           stop
@@ -3664,7 +3844,6 @@ c            dz1 = 2.*dz1
             zinj_grid = dz0
           else
             dz0 = dz1
-c            dz1 = 2.*dz1
             zinj_grid = zinj_grid+dz0
             dz1 = deltaz(ij)*(1.-(real(inj_nz-iz-1)/real(inj_nz-1))*(1.-dzmin**onethird))**3
      &          - zinj_grid
@@ -3732,7 +3911,6 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
       end do
 
       deallocate(rhs,ab)
-      deallocate(ijp)
       deallocate(ex_tmp,ey_tmp,ez_tmp)
       deallocate(dz_local)
 
@@ -3741,7 +3919,6 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
 !$OMP END MASTER
       return
       end
-
 c=============================================================================
       subroutine inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
       use Subtimers3d
