@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.209 $, $Date: 2006/03/01 01:26:30 $
+#@(#) File W3D.V, version $Revision: 3.210 $, $Date: 2006/04/07 23:16:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.209 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.210 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -437,6 +437,9 @@ l_inj_rec_initradius logical /.false./ # if true, radius of creation is recorded
 l_inj_exact          logical /.false./ # if true, position and angle of injected particle computed analytically rather than interpolated
 l_inj_area           logical /.true./  # if false, when l_inj_rz=true, adjust inj_dx so that inj_area is not used (no effect if l_inj_rz=false)
 l_inj_no_rho_on_emit logical /.false./ # If true, no rho deposited on emitter
+l_inj_use_rho_with_mr logical /.true./ # When true, use the deposited rho
+                                       # in the mr calculation of phi
+                                       # in the emitting region.
 l_inj_user_particles logical /.false./ # When true, user specified particles
                                        # will be injected using arrays from
                                        # Setpwork3d. Only works with
@@ -990,6 +993,7 @@ timegetinj_phi real /0./
 timeinj_sete3d real /0./
 timeinj_addtemp3d real /0./
 timeinj_setrho3d real /0./
+timeinj_setrhomr real /0./
 timesete3d_aperture real /0./
 timeset_aperture_e real /0./
 timefieldsol3d real /0./
