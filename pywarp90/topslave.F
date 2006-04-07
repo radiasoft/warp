@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.36 $, $Date: 2006/03/17 21:59:24 $
+c TOPSLAVE.M, version $Revision: 1.37 $, $Date: 2006/04/07 23:44:33 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -10,7 +10,7 @@ c===========================================================================
       use GlobalVars
       use InGen
       use InPart
-      use Particles
+      use Particles,Only: pgroup
       use Parallel
       use Databuffers
       real(kind=8):: zmmax,zmmin,dz,zgrid
@@ -22,8 +22,9 @@ c  track of how many left and sends to the appropriate processor.
       logical(ISZ):: ldoagain
       real(kind=8):: temp,pidtemp(npidmax),syslen
       integer(4  ):: is,ip,idest,ipid,ii,nn
-      integer(4  ):: ins_init(ns),nps_init(ns)
-      integer(4  ):: nsendleft(ns),nsendright(ns),nrecvleft(ns),nrecvright(ns)
+      integer(4  ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
+      integer(4  ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
+      integer(4  ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
       integer(4  ):: nsendleftsum,nsendrightsum,nrecvleftsum,nrecvrightsum
       integer(4  ):: left_pe,right_pe
       integer(4  ):: nquant,ierr
@@ -71,83 +72,83 @@ c     --- wrapping around at the ends.
         ldoagain = .false.
 
 c       --- Loop over species
-        do is=1,ns
+        do is=1,pgroup%ns
 
 c         --- initialize counter and save particle's start and number
-          ip = ins(is)
-          ins_init(is) = ins(is)
-          nps_init(is) = nps(is)
+          ip = pgroup%ins(is)
+          ins_init(is) = pgroup%ins(is)
+          nps_init(is) = pgroup%nps(is)
 
 c         --- Loop over particles and pick out the ones which have ventured
 c         --- into the regions of neighboring processors.
-          do while (ip < ins(is) + nps(is))
+          do while (ip < pgroup%ins(is) + pgroup%nps(is))
 
 c           --- If particle exited to the left, switch with lowest particle
 c           --- in the arrays.
-            if (zp(ip)-zgrid < zpslmin(my_index)) then
-              idest = ins(is)
-              ins(is) = ins(is) + 1
-              nps(is) = nps(is) - 1
+            if (pgroup%zp(ip)-zgrid < zpslmin(my_index)) then
+              idest = pgroup%ins(is)
+              pgroup%ins(is) = pgroup%ins(is) + 1
+              pgroup%nps(is) = pgroup%nps(is) - 1
 
-              temp = xp(ip)
-              xp(ip) = xp(idest)
-              xp(idest) = temp
-              temp = yp(ip)
-              yp(ip) = yp(idest)
-              yp(idest) = temp
-              temp = zp(ip)
-              zp(ip) = zp(idest)
-              zp(idest) = temp
-              temp = uxp(ip)
-              uxp(ip) = uxp(idest)
-              uxp(idest) = temp
-              temp = uyp(ip)
-              uyp(ip) = uyp(idest)
-              uyp(idest) = temp
-              temp = uzp(ip)
-              uzp(ip) = uzp(idest)
-              uzp(idest) = temp
-              temp = gaminv(ip)
-              gaminv(ip) = gaminv(idest)
-              gaminv(idest) = temp
+              temp = pgroup%xp(ip)
+              pgroup%xp(ip) = pgroup%xp(idest)
+              pgroup%xp(idest) = temp
+              temp = pgroup%yp(ip)
+              pgroup%yp(ip) = pgroup%yp(idest)
+              pgroup%yp(idest) = temp
+              temp = pgroup%zp(ip)
+              pgroup%zp(ip) = pgroup%zp(idest)
+              pgroup%zp(idest) = temp
+              temp = pgroup%uxp(ip)
+              pgroup%uxp(ip) = pgroup%uxp(idest)
+              pgroup%uxp(idest) = temp
+              temp = pgroup%uyp(ip)
+              pgroup%uyp(ip) = pgroup%uyp(idest)
+              pgroup%uyp(idest) = temp
+              temp = pgroup%uzp(ip)
+              pgroup%uzp(ip) = pgroup%uzp(idest)
+              pgroup%uzp(idest) = temp
+              temp = pgroup%gaminv(ip)
+              pgroup%gaminv(ip) = pgroup%gaminv(idest)
+              pgroup%gaminv(idest) = temp
               if (npidmax > 0) then
-                pidtemp = pid(ip,:)
-                pid(ip,:) = pid(idest,:)
-                pid(idest,:) = pidtemp
+                pidtemp = pgroup%pid(ip,:)
+                pgroup%pid(ip,:) = pgroup%pid(idest,:)
+                pgroup%pid(idest,:) = pidtemp
               endif
 c           endif
 
 c           --- If particle exited to the right, switch with highest particle
 c           --- in the arrays.
-            elseif (zp(ip)-zgrid >= zpslmax(my_index)) then
-              idest = ins(is) + nps(is) - 1
-              nps(is) = nps(is) - 1
+            elseif (pgroup%zp(ip)-zgrid >= zpslmax(my_index)) then
+              idest = pgroup%ins(is) + pgroup%nps(is) - 1
+              pgroup%nps(is) = pgroup%nps(is) - 1
 
-              temp = xp(ip)
-              xp(ip) = xp(idest)
-              xp(idest) = temp
-              temp = yp(ip)
-              yp(ip) = yp(idest)
-              yp(idest) = temp
-              temp = zp(ip)
-              zp(ip) = zp(idest)
-              zp(idest) = temp
-              temp = uxp(ip)
-              uxp(ip) = uxp(idest)
-              uxp(idest) = temp
-              temp = uyp(ip)
-              uyp(ip) = uyp(idest)
-              uyp(idest) = temp
-              temp = uzp(ip)
-              uzp(ip) = uzp(idest)
-              uzp(idest) = temp
-              temp = gaminv(ip)
-              gaminv(ip) = gaminv(idest)
-              gaminv(idest) = temp
+              temp = pgroup%xp(ip)
+              pgroup%xp(ip) = pgroup%xp(idest)
+              pgroup%xp(idest) = temp
+              temp = pgroup%yp(ip)
+              pgroup%yp(ip) = pgroup%yp(idest)
+              pgroup%yp(idest) = temp
+              temp = pgroup%zp(ip)
+              pgroup%zp(ip) = pgroup%zp(idest)
+              pgroup%zp(idest) = temp
+              temp = pgroup%uxp(ip)
+              pgroup%uxp(ip) = pgroup%uxp(idest)
+              pgroup%uxp(idest) = temp
+              temp = pgroup%uyp(ip)
+              pgroup%uyp(ip) = pgroup%uyp(idest)
+              pgroup%uyp(idest) = temp
+              temp = pgroup%uzp(ip)
+              pgroup%uzp(ip) = pgroup%uzp(idest)
+              pgroup%uzp(idest) = temp
+              temp = pgroup%gaminv(ip)
+              pgroup%gaminv(ip) = pgroup%gaminv(idest)
+              pgroup%gaminv(idest) = temp
               if (npidmax > 0) then
-                pidtemp = pid(ip,:)
-                pid(ip,:) = pid(idest,:)
-                pid(idest,:) = pidtemp
+                pidtemp = pgroup%pid(ip,:)
+                pgroup%pid(ip,:) = pgroup%pid(idest,:)
+                pgroup%pid(idest,:) = pidtemp
               endif
               ip = ip - 1
             endif
@@ -164,27 +165,27 @@ c         --- their z adjusted.
           if (my_index == 0 .and. pbound0==periodic) then
             syslen = zpslmax(nslaves-1) - zpslmin(0)
 !$OMP PARALLEL DO
-            do ip=ins_init(is),ins(is)-1
-              zp(ip) = zp(ip) + syslen
+            do ip=ins_init(is),pgroup%ins(is)-1
+              pgroup%zp(ip) = pgroup%zp(ip) + syslen
             enddo
 !$OMP END PARALLEL DO
           elseif (my_index == nslaves-1 .and. pboundnz==periodic) then
             syslen = zpslmax(nslaves-1) - zpslmin(0)
 !$OMP PARALLEL DO
-            do ip=ins(is)+nps(is),ins_init(is)+nps_init(is)-1
-              zp(ip) = zp(ip) - syslen
+            do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
+              pgroup%zp(ip) = pgroup%zp(ip) - syslen
             enddo
 !$OMP END PARALLEL DO
 c         --- Sticky boundary condition: particles picked out are not passed.
 c         --- Instead, they are marked as lost particles and ins and nps are
 c         --- reset to include them.
           elseif (my_index == 0 .and. pbound0==absorb) then
-            gaminv(ins_init(is):ins(is)-1) = 0.
-            nps(is) = nps(is) + (ins(is) - ins_init(is))
-            ins(is) = ins_init(is)
+            gaminv(ins_init(is):pgroup%ins(is)-1) = 0.
+            pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
+            pgroup%ins(is) = ins_init(is)
           elseif (my_index == nslaves-1 .and. pboundnz==absorb) then
-            gaminv(ins(is)+nps(is):ins_init(is)+nps_init(is)-1) = 0.
-            nps(is) = ins_init(is) + nps_init(is) - ins(is)
+            gaminv(pgroup%ins(is)+pgroup%nps(is):ins_init(is)+nps_init(is)-1)=0.
+            pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
           endif
 c       --- End of loop over species
         enddo
@@ -217,7 +218,7 @@ c       --- but when npidmax>0, then it is more since pid is also exchanged.
 
 c       --- Copy particles being sent to the left to buffer1.
         if (pbound0==periodic .or. my_index > 0) then
-          nsendleft = ins - ins_init
+          nsendleft = pgroup%ins - ins_init
           nsendleftsum = sum(nsendleft)
           if (nquant*nsendleftsum > b1size) then
             b1size = nquant*nsendleftsum
@@ -225,19 +226,19 @@ c       --- Copy particles being sent to the left to buffer1.
           endif
           if (nsendleftsum > 0) then
             ii = 1
-            do is=1,ns
+            do is=1,pgroup%ns
               ip = ins_init(is)
               nn = nsendleft(is)
               if (nn > 0) then
-                buffer1(ii     :ii+  nn-1) = xp(ip:ip+nn-1)
-                buffer1(ii+  nn:ii+2*nn-1) = yp(ip:ip+nn-1)
-                buffer1(ii+2*nn:ii+3*nn-1) = zp(ip:ip+nn-1)
-                buffer1(ii+3*nn:ii+4*nn-1) = uxp(ip:ip+nn-1)
-                buffer1(ii+4*nn:ii+5*nn-1) = uyp(ip:ip+nn-1)
-                buffer1(ii+5*nn:ii+6*nn-1) = uzp(ip:ip+nn-1)
-                buffer1(ii+6*nn:ii+7*nn-1) = gaminv(ip:ip+nn-1)
+                buffer1(ii     :ii+  nn-1) = pgroup%xp(ip:ip+nn-1)
+                buffer1(ii+  nn:ii+2*nn-1) = pgroup%yp(ip:ip+nn-1)
+                buffer1(ii+2*nn:ii+3*nn-1) = pgroup%zp(ip:ip+nn-1)
+                buffer1(ii+3*nn:ii+4*nn-1) = pgroup%uxp(ip:ip+nn-1)
+                buffer1(ii+4*nn:ii+5*nn-1) = pgroup%uyp(ip:ip+nn-1)
+                buffer1(ii+5*nn:ii+6*nn-1) = pgroup%uzp(ip:ip+nn-1)
+                buffer1(ii+6*nn:ii+7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
                 do ipid=1,npidmax
-                  buffer1(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pid(ip:ip+nn-1,ipid)
+                  buffer1(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -247,7 +248,7 @@ c       --- Copy particles being sent to the left to buffer1.
 
 c       --- Copy particles being sent to the right to buffer2.
         if (pboundnz==periodic .or. my_index < nslaves-1) then
-          nsendright = ins_init + nps_init - ins - nps
+          nsendright = ins_init + nps_init - pgroup%ins - pgroup%nps
           nsendrightsum = sum(nsendright)
           if (nquant*nsendrightsum > b2size) then
             b2size = nquant*nsendrightsum
@@ -255,19 +256,19 @@ c       --- Copy particles being sent to the right to buffer2.
           endif
           if (nsendrightsum > 0) then
             ii = 1
-            do is=1,ns
-              ip = ins(is) + nps(is)
+            do is=1,pgroup%ns
+              ip = pgroup%ins(is) + pgroup%nps(is)
               nn = nsendright(is)
               if (nn > 0) then
-                buffer2(ii     :ii+  nn-1) = xp(ip:ip+nn-1)
-                buffer2(ii+  nn:ii+2*nn-1) = yp(ip:ip+nn-1)
-                buffer2(ii+2*nn:ii+3*nn-1) = zp(ip:ip+nn-1)
-                buffer2(ii+3*nn:ii+4*nn-1) = uxp(ip:ip+nn-1)
-                buffer2(ii+4*nn:ii+5*nn-1) = uyp(ip:ip+nn-1)
-                buffer2(ii+5*nn:ii+6*nn-1) = uzp(ip:ip+nn-1)
-                buffer2(ii+6*nn:ii+7*nn-1) = gaminv(ip:ip+nn-1)
+                buffer2(ii     :ii+  nn-1) = pgroup%xp(ip:ip+nn-1)
+                buffer2(ii+  nn:ii+2*nn-1) = pgroup%yp(ip:ip+nn-1)
+                buffer2(ii+2*nn:ii+3*nn-1) = pgroup%zp(ip:ip+nn-1)
+                buffer2(ii+3*nn:ii+4*nn-1) = pgroup%uxp(ip:ip+nn-1)
+                buffer2(ii+4*nn:ii+5*nn-1) = pgroup%uyp(ip:ip+nn-1)
+                buffer2(ii+5*nn:ii+6*nn-1) = pgroup%uzp(ip:ip+nn-1)
+                buffer2(ii+6*nn:ii+7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
                 do ipid=1,npidmax
-                  buffer2(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pid(ip:ip+nn-1,ipid)
+                  buffer2(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -282,11 +283,11 @@ c     call VTBEGIN(30,IERR)
 c       --- Now send the data.
 
 c       --- First send the number of particles to be sent
-        call MPI_SENDRECV(nsendleft,int(ns,4),MPI_INTEGER,left_pe,messid,
-     &                    nrecvright,int(ns,4),MPI_INTEGER,right_pe,messid,
+        call MPI_SENDRECV(nsendleft,int(pgroup%ns,4),MPI_INTEGER,left_pe,messid,
+     &                    nrecvright,int(pgroup%ns,4),MPI_INTEGER,right_pe,messid,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
-        call MPI_SENDRECV(nsendright,int(ns,4),MPI_INTEGER,right_pe,messid,
-     &                    nrecvleft,int(ns,4),MPI_INTEGER,left_pe,messid,
+        call MPI_SENDRECV(nsendright,int(pgroup%ns,4),MPI_INTEGER,right_pe,messid,
+     &                    nrecvleft,int(pgroup%ns,4),MPI_INTEGER,left_pe,messid,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
 #ifdef VAMPIR
@@ -335,21 +336,21 @@ c     call VTBEGIN(60,IERR)
           do is=1,ns
             nn = nrecvleft(is)
             if (nn > 0) then
-              ip = ins(is) - nn
-              xp(ip:ip+nn-1)  = buffer3(ii     :ii+  nn-1)
-              yp(ip:ip+nn-1)  = buffer3(ii+  nn:ii+2*nn-1)
-              zp(ip:ip+nn-1)  = buffer3(ii+2*nn:ii+3*nn-1)
-              uxp(ip:ip+nn-1) = buffer3(ii+3*nn:ii+4*nn-1)
-              uyp(ip:ip+nn-1) = buffer3(ii+4*nn:ii+5*nn-1)
-              uzp(ip:ip+nn-1) = buffer3(ii+5*nn:ii+6*nn-1)
-              gaminv(ip:ip+nn-1) = buffer3(ii+6*nn:ii+7*nn-1)
+              ip = pgroup%ins(is) - nn
+              pgroup%xp(ip:ip+nn-1)  = buffer3(ii     :ii+  nn-1)
+              pgroup%yp(ip:ip+nn-1)  = buffer3(ii+  nn:ii+2*nn-1)
+              pgroup%zp(ip:ip+nn-1)  = buffer3(ii+2*nn:ii+3*nn-1)
+              pgroup%uxp(ip:ip+nn-1) = buffer3(ii+3*nn:ii+4*nn-1)
+              pgroup%uyp(ip:ip+nn-1) = buffer3(ii+4*nn:ii+5*nn-1)
+              pgroup%uzp(ip:ip+nn-1) = buffer3(ii+5*nn:ii+6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer3(ii+6*nn:ii+7*nn-1)
               do ipid=1,npidmax
-                pid(ip:ip+nn-1,ipid) = buffer3(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
-              ins(is) = ins(is) - nn
-              nps(is) = nps(is) + nn
-              if (maxval(zp(ip:ip+nn-1))-zgrid > zpslmax(my_index)) then
+              pgroup%ins(is) = pgroup%ins(is) - nn
+              pgroup%nps(is) = pgroup%nps(is) + nn
+              if (maxval(pgroup%zp(ip:ip+nn-1))-zgrid > zpslmax(my_index)) then
                 ldoagain = .true.
               endif
             endif
@@ -361,20 +362,20 @@ c     call VTBEGIN(60,IERR)
           do is=1,ns
             nn = nrecvright(is)
             if (nn > 0) then
-              ip = ins(is) + nps(is)
-              xp(ip:ip+nn-1)  = buffer4(ii     :ii+1*nn-1)
-              yp(ip:ip+nn-1)  = buffer4(ii+  nn:ii+2*nn-1)
-              zp(ip:ip+nn-1)  = buffer4(ii+2*nn:ii+3*nn-1)
-              uxp(ip:ip+nn-1) = buffer4(ii+3*nn:ii+4*nn-1)
-              uyp(ip:ip+nn-1) = buffer4(ii+4*nn:ii+5*nn-1)
-              uzp(ip:ip+nn-1) = buffer4(ii+5*nn:ii+6*nn-1)
-              gaminv(ip:ip+nn-1) = buffer4(ii+6*nn:ii+7*nn-1)
+              ip = pgroup%ins(is) + pgroup%nps(is)
+              pgroup%xp(ip:ip+nn-1)  = buffer4(ii     :ii+1*nn-1)
+              pgroup%yp(ip:ip+nn-1)  = buffer4(ii+  nn:ii+2*nn-1)
+              pgroup%zp(ip:ip+nn-1)  = buffer4(ii+2*nn:ii+3*nn-1)
+              pgroup%uxp(ip:ip+nn-1) = buffer4(ii+3*nn:ii+4*nn-1)
+              pgroup%uyp(ip:ip+nn-1) = buffer4(ii+4*nn:ii+5*nn-1)
+              pgroup%uzp(ip:ip+nn-1) = buffer4(ii+5*nn:ii+6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer4(ii+6*nn:ii+7*nn-1)
               do ipid=1,npidmax
-                pid(ip:ip+nn-1,ipid) = buffer4(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
-              nps(is) = nps(is) + nn
-              if (minval(zp(ip:ip+nn-1))-zgrid < zpslmin(my_index)) then
+              pgroup%nps(is) = pgroup%nps(is) + nn
+              if (minval(pgroup%zp(ip:ip+nn-1))-zgrid < zpslmin(my_index)) then
                 ldoagain = .true.
               endif
             endif
@@ -399,16 +400,16 @@ c       --- Create new type for receiving particles from left
 c       do ii=1,nquant
 c         blocklengths(ii) = nrecvleft
 c       enddo
-c       ip = ins(is) - nrecvleft
-c       call MPI_ADDRESS(xp(ip),displacements(1),mpierror)
-c       call MPI_ADDRESS(yp(ip),displacements(2),mpierror)
-c       call MPI_ADDRESS(zp(ip),displacements(3),mpierror)
-c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
-c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
-c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
-c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
+c       ip = pgroup%ins(is) - nrecvleft
+c       call MPI_ADDRESS(pgroup%xp(ip),displacements(1),mpierror)
+c       call MPI_ADDRESS(pgroup%yp(ip),displacements(2),mpierror)
+c       call MPI_ADDRESS(pgroup%zp(ip),displacements(3),mpierror)
+c       call MPI_ADDRESS(pgroup%uxp(ip),displacements(4),mpierror)
+c       call MPI_ADDRESS(pgroup%uyp(ip),displacements(5),mpierror)
+c       call MPI_ADDRESS(pgroup%uzp(ip),displacements(6),mpierror)
+c       call MPI_ADDRESS(pgroup%gaminv(ip),displacements(7),mpierror)
 c       do ipid=1,npidmax
-c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(7+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
@@ -418,24 +419,24 @@ c       --- Pass particle data to the right
 c       call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,left_pe,0,
 c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
-c       ins(is) = ins(is) - nrecvleft
-c       nps(is) = nps(is) + nrecvleft
+c       pgroup%ins(is) = pgroup%ins(is) - nrecvleft
+c       pgroup%nps(is) = pgroup%nps(is) + nrecvleft
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
 c       --- Create new type for receiving particles from right
 c       do ii=1,nquant
 c         blocklengths(ii) = nrecvright
 c       enddo
-c       ip = ins(is) + nps(is)
-c       call MPI_ADDRESS(xp(ip),displacements(1),mpierror)
-c       call MPI_ADDRESS(yp(ip),displacements(2),mpierror)
-c       call MPI_ADDRESS(zp(ip),displacements(3),mpierror)
-c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
-c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
-c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
-c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
+c       ip = pgroup%ins(is) + pgroup%nps(is)
+c       call MPI_ADDRESS(pgroup%xp(ip),displacements(1),mpierror)
+c       call MPI_ADDRESS(pgroup%yp(ip),displacements(2),mpierror)
+c       call MPI_ADDRESS(pgroup%zp(ip),displacements(3),mpierror)
+c       call MPI_ADDRESS(pgroup%uxp(ip),displacements(4),mpierror)
+c       call MPI_ADDRESS(pgroup%uyp(ip),displacements(5),mpierror)
+c       call MPI_ADDRESS(pgroup%uzp(ip),displacements(6),mpierror)
+c       call MPI_ADDRESS(pgroup%gaminv(ip),displacements(7),mpierror)
 c       do ipid=1,npidmax
-c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(7+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
@@ -445,7 +446,7 @@ c       --- Pass particle data to the left
 c       call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,right_pe,0,
 c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
-c       nps(is) = nps(is) + nrecvright
+c       pgroup%nps(is) = pgroup%nps(is) + nrecvright
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
 !$OMP MASTER
@@ -460,7 +461,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use Picglb
-      use Particles
+      use Particles,Only: pgroup
       use Parallel
 
 c Do all to all communication to pass particles to where they belong. This
@@ -472,9 +473,11 @@ c at once.
       real(kind=8):: wzp,dzp,zpmin,zpmax
       real(kind=8),allocatable:: ptemp(:,:),precv(:,:)
       integer(4  ),allocatable:: pprocs(:)
-      integer(4  ):: pins(0:ns-1,0:nslaves-1),pnps(0:ns-1,0:nslaves-1)
-      integer(4  ):: piii(0:ns-1,0:nslaves-1)
-      integer(4  ):: inrecv(0:ns-1,0:nslaves-1),nprecv(0:ns-1,0:nslaves-1)
+      integer(4  ):: pins(0:pgroup%ns-1,0:nslaves-1)
+      integer(4  ):: pnps(0:pgroup%ns-1,0:nslaves-1)
+      integer(4  ):: piii(0:pgroup%ns-1,0:nslaves-1)
+      integer(4  ):: inrecv(0:pgroup%ns-1,0:nslaves-1)
+      integer(4  ):: nprecv(0:pgroup%ns-1,0:nslaves-1)
       integer(4  ):: pnp,pnpmax,ncoords,ii,is,pip,ip1,ip2,iitemp,ii1,ii2
       real(kind=8):: zz
       integer(4  ):: mpierror
@@ -509,7 +512,7 @@ c     --- over every processor to find which one the particle is in.
       zprocs(nzp) = nslaves-1
 
 c     --- Next, create temporary arrays to hold the sorted particles.
-      pnp = sum(nps)
+      pnp = sum(pgroup%nps)
       ncoords = 7 + npidmax
       pnpmax = max(1_4,pnp)
       allocate(ptemp(0:ncoords-1,pnpmax),pprocs(pnpmax),stat=allocerror)
@@ -523,9 +526,9 @@ c     --- Loop through the particles, finding to which processor each particle
 c     --- belongs.
       pip = 0
       pnps = 0
-      do is=0,ns-1
-        do ii=ins(is+1),ins(is+1)+nps(is+1)-1
-          zz = zp(ii) - zbeam
+      do is=0,pgroup%ns-1
+        do ii=pgroup%ins(is+1),pgroup%ins(is+1)+pgroup%nps(is+1)-1
+          zz = pgroup%zp(ii) - zbeam
           izp = int((zz - zpmin)/dzp)
           ip1 = zprocs(izp)
           ip2 = zprocs(izp+1)
@@ -544,7 +547,7 @@ c     --- Calculate starting index of particle groups for each species and
 c     --- processor
       pins(0,0) = 1
       do ip=0,nslaves-1
-        do is=0,ns-1
+        do is=0,pgroup%ns-1
           if (is == 0) then
             if (ip == 0) then
               pins(is,ip) = 1
@@ -560,21 +563,21 @@ c     --- processor
 c     --- Copy sorted particle data into the temporary array
       pip = 0
       piii = pins
-      do is=0,ns-1
-        do ii=ins(is+1),ins(is+1)+nps(is+1)-1
+      do is=0,pgroup%ns-1
+        do ii=pgroup%ins(is+1),pgroup%ins(is+1)+pgroup%nps(is+1)-1
           pip = pip + 1
           ip = pprocs(pip)
           iitemp = piii(is,ip)
           piii(is,ip) = piii(is,ip) + 1
-          ptemp(0,iitemp) = xp(ii)
-          ptemp(1,iitemp) = yp(ii)
-          ptemp(2,iitemp) = zp(ii)
-          ptemp(3,iitemp) = uxp(ii)
-          ptemp(4,iitemp) = uyp(ii)
-          ptemp(5,iitemp) = uzp(ii)
-          ptemp(6,iitemp) = gaminv(ii)
+          ptemp(0,iitemp) = pgroup%xp(ii)
+          ptemp(1,iitemp) = pgroup%yp(ii)
+          ptemp(2,iitemp) = pgroup%zp(ii)
+          ptemp(3,iitemp) = pgroup%uxp(ii)
+          ptemp(4,iitemp) = pgroup%uyp(ii)
+          ptemp(5,iitemp) = pgroup%uzp(ii)
+          ptemp(6,iitemp) = pgroup%gaminv(ii)
           if (npidmax > 0) then
-            ptemp(7:,iitemp) = pid(ii,:)
+            ptemp(7:,iitemp) = pgroup%pid(ii,:)
           endif
         enddo
       enddo
@@ -586,9 +589,9 @@ c     --- Calculate pins for data set sent to each processor relative to 0
 
 c     --- Exchange the number of particles which are to be sent to each
 c     --- processor
-      call MPI_ALLTOALL(pins,int(ns,4),MPI_INTEGER,inrecv,int(ns,4),MPI_INTEGER,
+      call MPI_ALLTOALL(pins,int(pgroup%ns,4),MPI_INTEGER,inrecv,int(pgroup%ns,4),MPI_INTEGER,
      &                  MPI_COMM_WORLD,mpierror)
-      call MPI_ALLTOALL(pnps,int(ns,4),MPI_INTEGER,nprecv,int(ns,4),MPI_INTEGER,
+      call MPI_ALLTOALL(pnps,int(pgroup%ns,4),MPI_INTEGER,nprecv,int(pgroup%ns,4),MPI_INTEGER,
      &                  MPI_COMM_WORLD,mpierror)
 
 c     --- Resize particle arrays if neccesary. If there is more room available
@@ -638,24 +641,24 @@ c     --- to rdispls
       enddo
 
 c     --- Now copy the data into the particle arrays
-      nps = 0
-      do is=0,ns-1
+      pgroup%nps = 0
+      do is=0,pgroup%ns-1
         do ip=0,nslaves-1
           if (nprecv(is,ip) > 0) then
             ip1 = inrecv(is,ip)
             ip2 = ip1 + nprecv(is,ip) - 1
-            ii1 = ins(is+1) + nps(is+1)
+            ii1 = pgroup%ins(is+1) + pgroup%nps(is+1)
             ii2 = ii1 + nprecv(is,ip) - 1
-            nps(is+1) = nps(is+1) + nprecv(is,ip)
-            xp(ii1:ii2) = precv(0,ip1:ip2)
-            yp(ii1:ii2) = precv(1,ip1:ip2)
-            zp(ii1:ii2) = precv(2,ip1:ip2)
-            uxp(ii1:ii2) = precv(3,ip1:ip2)
-            uyp(ii1:ii2) = precv(4,ip1:ip2)
-            uzp(ii1:ii2) = precv(5,ip1:ip2)
-            gaminv(ii1:ii2) = precv(6,ip1:ip2)
+            pgroup%nps(is+1) = pgroup%nps(is+1) + nprecv(is,ip)
+            pgroup%xp(ii1:ii2) = precv(0,ip1:ip2)
+            pgroup%yp(ii1:ii2) = precv(1,ip1:ip2)
+            pgroup%zp(ii1:ii2) = precv(2,ip1:ip2)
+            pgroup%uxp(ii1:ii2) = precv(3,ip1:ip2)
+            pgroup%uyp(ii1:ii2) = precv(4,ip1:ip2)
+            pgroup%uzp(ii1:ii2) = precv(5,ip1:ip2)
+            pgroup%gaminv(ii1:ii2) = precv(6,ip1:ip2)
             do ii=1,npidmax
-              pid(ii1:ii2,ii) = precv(6+ii,ip1:ip2)
+              pgroup%pid(ii1:ii2,ii) = precv(6+ii,ip1:ip2)
             enddo
           endif
         enddo
@@ -677,7 +680,7 @@ c=============================================================================
       integer(ISZ) function checkzpartbnd(zgrid)
       use Subtimerstop
       use InPart
-      use Particles
+      use Particles,Only: pgroup
       use Parallel
       real(kind=8):: zgrid
 c Check if all particles are within the mesh.  Returns number of particles
@@ -687,11 +690,11 @@ c outside the mesh.
       if (ltoptimesubs) substarttime = wtime()
 
       nout = 0
-      do is=1,ns
+      do is=1,pgroup%ns
 !$OMP PARALLEL DO REDUCTION(+:nout)
-        do ip=ins(is),ins(is)+nps(is)-1
-          if (zp(ip)-zgrid < zpslmin(my_index) .or.
-     &        zp(ip)-zgrid >= zpslmax(my_index)) then
+        do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          if (pgroup%zp(ip)-zgrid < zpslmin(my_index) .or.
+     &        pgroup%zp(ip)-zgrid >= zpslmax(my_index)) then
             nout = nout + 1
           endif
         enddo
