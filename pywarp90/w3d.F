@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.238 $, $Date: 2006/04/07 02:22:25 $
+c@(#) File W3D.F, version $Revision: 3.239 $, $Date: 2006/04/07 23:17:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1508,7 +1508,7 @@ c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
              call inj_sete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                       pid(ipmin,injpid),inj_dz,ex,ey,ez)
-             if(l_inj_delay_temp) call inj_addtemp3d(ip,ipmin,dz)
+             if(l_inj_delay_temp) call inj_addtemp3d(pgroup,ip,ipmin,dz)
             endif
 c           --- Get transverse E field for particles near any defined apertures.
             if (napertures > 0) then
@@ -6147,6 +6147,9 @@ c     --- will not cover the full axial extent of the system, so
 c     --- periodicity can over be enforced on rho which does cover the full
 c     --- system.
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
+
+c     --- Do any loading that is needed for injection
+      call loadrho_inject(pgroup)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
