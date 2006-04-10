@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.18 $, $Date: 2006/02/17 23:49:13 $
+c@(#) File WRZ.M, version $Revision: 3.19 $, $Date: 2006/04/10 18:23:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -41,7 +41,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use Io
-      use Particles
+      use Particles,Only: pgroup,npmax,wpid,nplive
       use OutParams
       use Z_arrays
       use Z_Moments
@@ -57,7 +57,7 @@ c  Invoked by the GENERATE command, it sets up the problem
 
 c  declare scratch space for getzmmnt
        
-       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma
+       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma,ismax
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
        real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
@@ -168,12 +168,12 @@ c     call zeroarry(curr,nz+1)
 
       call wtimeon 
       do is=1,ns
-         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
-     &                     uzp(ipmin),sq(is),sw(is),depos)
-            call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                   sq(is),sw(is),zbeam,dz,zmmin)
+         do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+            call setrhorz (rho,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
+     &                     pgroup%uzp(ipmin),pgroup%sq(is),pgroup%sw(is),depos)
+            call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &                   pgroup%sq(is),pgroup%sw(is),zbeam,dz,zmmin)
          enddo
       enddo
       time1 = wtimeoff()
@@ -191,9 +191,9 @@ c     call zeroarry(currv,nz+1)
       currv = 0.
       call wtimeon 
         do is = 1,ns
-          call psort(nps(is),zbeam,dz)
-          call vstrhorz(rhov,zbeam,sq(is),sw(is),rmesh)
-          call vstcurr (currv,zbeam,sq(is),sw(is))
+          call psort(pgroup%nps(is),zbeam,dz)
+          call vstrhorz(rhov,zbeam,pgroup%sq(is),pgroup%sw(is),rmesh)
+          call vstcurr (currv,zbeam,pgroup%sq(is),pgroup%sw(is))
         enddo
       time2 =  wtimeoff()
       call perrhorz(rhov,nr,nz)
@@ -221,16 +221,16 @@ c  Create the dynamic arrays for particle moments; calculate moments
       enddo
       call gallot ("Win_Moments", 0)
       call gallot ("Moments", 0)
-c     call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(1),sw(1),1,nplive)
+c     call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),1,nplive)
 c     do is=1,ns
-c        do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-c           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+c        do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+c           ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
 c           nplive = ip
-c           call getemits(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-c    &                    uxp(ipmin),uyp(ipmin),uzp(ipmin),
-c    &                    gaminv(ipmin),sm(1),sw(1),2,nplive)
+c           call getemits(ip,xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+c    &                    pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+c    &                    pgroup%gaminv(ipmin),pgroup%sm(1),pgroup%sw(1),2,nplive)
 c        enddo
-c        call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(1),sw(1),3,nplive)
+c        call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),3,nplive)
  
 c     enddo
 c  Create the dynamic arrays for z moments; calculate moments
@@ -243,28 +243,34 @@ c  Create the dynamic arrays for z moments; calculate moments
         do k=0,nzmmnt
            zmntmesh(k) = zmmntmin + k*(zmmntmax-zmmntmin)/nzmmnt
         enddo
-        call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt/2.,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns)
+        ismax = maxval(pgroup%sid)+1
+        call getzmmnt(1,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,
+     &                0.,0.,1,
+     &                nplive,0.,0.,0.,1,1,ismax,
+     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         do is=1,ns
-           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-              num = min(nparpgrp, ins(is)+nps(is)-ipmin)
+           do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+              num = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
 c             --- Use t=0 u data also as "old" data for extraps
-              call copyarry (uxp(ipmin),uxpo,num)
-              call copyarry (uyp(ipmin),uypo,num)
-              call copyarry (uzp(ipmin),uzpo,num)
+              call copyarry (pgroup%uxp(ipmin),uxpo,num)
+              call copyarry (pgroup%uyp(ipmin),uypo,num)
+              call copyarry (pgroup%uzp(ipmin),uzpo,num)
               if(wpid==0) then
-                call getzmmnt(num,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                        uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                        gaminv(ipmin),sq(1),sm(1),sw(1),dt/2.,2,nplive,
+                call getzmmnt(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     & pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,2,nplive,
      &                        uxpo,uypo,uzpo,is,ns)
               else
-                call getzmmnt_weights(num,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                        uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                        gaminv(ipmin),pid(ipmin,wpid),sq(1),sm(1),sw(1),dt/2.,2,nplive,
+                call getzmmnt_weights(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     & pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,2,nplive,
      &                        uxpo,uypo,uzpo,is,ns)
               endif
            enddo
-           call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt/2.,
+           call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,
+     &                   pgroup%uyp,pgroup%uzp,
+     &                   pgroup%gaminv,pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,
      &                   3,nplive,uxpo,uypo,uzpo,1,ns)
          enddo
       endif
@@ -306,7 +312,7 @@ c  Call the field solver so  we can plot phi on axis at t=0
       if (periinz) call perphirz(phi(0,-1),nr,nz)
 
 c  Call seterz to fill E_z and E_r arrays
-         call seterz (-1,phi,force,1,xp(1),zp(1),zbeam,
+         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
          call setexte(it,dt,dz,vbeam,nr,nz)
@@ -324,7 +330,7 @@ c  Set up Eears of z
       if (ifeears .eq. 1) then
 c       --- set to be linear in z (eears is actually slope of Eears)
         eears = eears*(- 2*ibeam/(vbeam*zm**2)*gfactor/(2.*Pi*eps0)
-     &                  - sm(1)*vbeam**2*emitlong**2/(sq(1)*zm**4))
+     &                  - pgroup%sm(1)*vbeam**2*emitlong**2/(pgroup%sq(1)*zm**4))
       elseif (ifeears .eq. 2) then
 c       --- set to initial field on axis (with the center part zero)
 c       --- the '5' is just a guestimate, it should be nz dependent
@@ -339,7 +345,7 @@ c       --- the '5' is just a guestimate, it should be nz dependent
         enddo
 c       --- Add on linear pressure term
         if (emitlong .ne. 0.) then
-          eearsprs = - sm(1)*vbeam**2*emitlong**2/(sq(1)*zm**4)
+          eearsprs = - pgroup%sm(1)*vbeam**2*emitlong**2/(pgroup%sq(1)*zm**4)
           do iz=0,nzma
             eearsofz(iz) = eearsofz(iz) + eearsprs*(zmesh(iz) + zs)
           enddo
@@ -388,7 +394,7 @@ c=============================================================================
       use Ctl_to_pic
       use Beam_acc
       use InMeshrz
-      use Particles
+      use Particles,Only: pgroup,nplive
       use Picglbrz
       use Fieldsrz
  
@@ -408,10 +414,10 @@ c  conditions in Python after we generate.
 c        call zeroarry(rho,nrz)
          rho = 0.
          do is=1,ns
-            do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-               ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-               call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
-     &                        uzp(ipmin),sq(is),sw(is),depos)
+            do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+               ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+               call setrhorz (rho,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
+     &                        pgroup%uzp(ipmin),pgroup%sq(is),pgroup%sw(is),depos)
             enddo
          enddo
          if (periinz) call perrhorz(rho,nr,nz)
@@ -421,8 +427,8 @@ c        call zeroarry(rho,nrz)
 c           call zeroarry(rhov,nrz)
             rhov = 0.
             do is = 1,ns
-              call psort(nps(is),zbeam,dz)
-              call vstrhorz(rhov,zbeam,sq(is),sw(is),rmesh)
+              call psort(pgroup%nps(is),zbeam,dz)
+              call vstrhorz(rhov,zbeam,pgroup%sq(is),pgroup%sw(is),rmesh)
             enddo
             call perrhorz(rhov,nr,nz)
          endif
@@ -477,7 +483,7 @@ c=============================================================================
       use Z_Moments
       use Hist
       use Io
-      use Particles
+      use Particles,Only: pgroup
       use Picglb
  
 c  Finish up at end of RUN, or on receipt of FIN
@@ -516,7 +522,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use Io
-      use Particles
+      use Particles,Only: pgroup
       use Picglb
       use Moments
       use Z_arrays
@@ -605,7 +611,7 @@ c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
       endif
       if ((caller .eq. "wrzgen").and.(ifeears .eq. 3)) then
 c  Call seterz to fill E_z and E_r arrays
-         call seterz (-1,phi,force,1,xp(1),zp(1),zbeam,
+         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
          call getforce
@@ -861,7 +867,7 @@ c=============================================================================
       use Constant
       use InPart
       use Beam_acc
-      use Particles
+      use Particles,Only: pgroup
       use InMeshrz
       use Picglbrz
       use Fieldsrz
@@ -895,7 +901,7 @@ c  for finding force
          density = rho(0,nz/2)
         endif
  
-         dedr = -sq(1)*density*0.5/eps0
+         dedr = -pgroup%sq(1)*density*0.5/eps0
          do iz = 0,nz
          do ir = 0,nr
             force(ir,iz) = dedr * rmesh(ir)
@@ -933,7 +939,7 @@ c           if (rhalf(ir).lt.a0) then
          enddo
 
          do ir = 0,irz
-            force(ir,iz) = sq(1)*(phi(ir,iz) - phi(ir+1,iz))/dr
+            force(ir,iz) = pgroup%sq(1)*(phi(ir,iz) - phi(ir+1,iz))/dr
          enddo
  
          do ir = 0,irz
@@ -973,7 +979,7 @@ c  If forcetype is dedr, then external force is added via exterz
       if (ifeears .eq. 3) then
          do iz = 0,nz
          do ir = 0,nr
-            force(ir,iz) = -sq(1)*erfld(ir,iz)
+            force(ir,iz) = -pgroup%sq(1)*erfld(ir,iz)
          enddo
          enddo
       endif
@@ -1016,7 +1022,7 @@ c=============================================================================
       use InGenrz
       use InMeshrz
       use InGaps
-      use Particles
+      use Particles,Only: pgroup,nplive,wpid
       use Picglbrz
       use Picglb
       use Fieldsrz
@@ -1044,8 +1050,10 @@ c     call zeroarry(curr,nz+1)
  
 c  Zero the moments if center is synchv
       if (center .eq. "synchv") then
-c       call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(1),sw(1),1,nplive)
-        call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt/2.,1,
+c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),1,nplive)
+        call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,pgroup%uyp,
+     &                pgroup%uzp,pgroup%gaminv,pgroup%sq(1),pgroup%sm(1),
+     &                pgroup%sw(1),dt/2.,1,
      &                nplive,uxpo,uypo,uzpo,1,ns)
       endif
  
@@ -1053,94 +1061,97 @@ c  Loop over species
       do is=1,ns
 c  Call seterz to fill E_z and E_r arrays
          if (it .le. 1) then
-         call seterz (-1,phi,force,1,xp(1),zp(1),zbeam,
+         call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
          else
-         call seterz (0,phi,force,1,xp(1),zp(1),zbeam,
+         call seterz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
          endif
          call setexte(it,dt,dz,vbeam,nr,nz)
  
 c  Loop over particle block, and move each block seperately
-         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            call seterz (1,phi,force,ip,xp(ipmin),zp(ipmin),zbeam,
+         do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+            call seterz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                   efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
-            call othererz(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+            call othererz(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
      &                    eearsofz,dr,dz,nr,nz,zmmin,er,et,ez,
      &                    eearsrz,rmmin,ezext)
-            call exterz (ip,zp(ipmin),uzp(ipmin),zbeam,xp(ipmin),
+            call exterz (ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),zbeam,pgroup%xp(ipmin),
      &                   ez0,er,et,ez,dedr)
-            call extbrz (ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                   uzp(ipmin),gaminv(ipmin),br,bt,bz)
-            call pushrz (center, ip, xp(ipmin), yp(ipmin), zp(ipmin),
-     &                   uxp(ipmin), uyp(ipmin), uzp(ipmin), gaminv(ipmin),
-     &                   er, et, ez, br, bt, bz, frext, sq(is), sm(is),
+            call extbrz (ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),br,bt,bz)
+            call pushrz (center, ip, pgroup%xp(ipmin), pgroup%yp(ipmin), pgroup%zp(ipmin),
+     &                   pgroup%uxp(ipmin), pgroup%uyp(ipmin), pgroup%uzp(ipmin), pgroup%gaminv(ipmin),
+     &                   er, et, ez, br, bt, bz, frext, pgroup%sq(is), pgroup%sm(is),
      &                   dt, gamadv)
             if (center .eq. "synchv") then
 c             --- copy 'old' velocity into temp array uxpo,uypo, and uzpo for
 c             --- z moments
                do i=1,ip
-                 uxpo(i) = uxp(ipmin+i-1)
-                 uypo(i) = uyp(ipmin+i-1)
-                 uzpo(i) = uzp(ipmin+i-1)
+                 uxpo(i) = pgroup%uxp(ipmin+i-1)
+                 uypo(i) = pgroup%uyp(ipmin+i-1)
+                 uzpo(i) = pgroup%uzp(ipmin+i-1)
                enddo
-c              call getemits(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-c    &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),
-c    &                       gaminv(ipmin),sm(is),sw(is),2,nplive)
+c              call getemits(ip,xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+c    &                       pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+c    &                       pgroup%gaminv(ipmin),pgroup%sm(is),pgroup%sw(is),2,nplive)
                if(wpid==0) then
-                 call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                         gaminv(ipmin),sq(1),sm(is),sw(is),dt/2.,2,nplive,
+                 call getzmmnt(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     & pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(is),pgroup%sw(is),dt/2.,2,nplive,
      &                         uxpo,uypo,uzpo,is,ns)
                else
-                 call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                         gaminv(ipmin),pid(ipmin,wpid),
-     &                         sq(1),sm(is),sw(is),dt/2.,2,nplive,
+                 call getzmmnt_weights(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     &                         pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),
+     &                         pgroup%sq(1),pgroup%sm(is),pgroup%sw(is),dt/2.,2,nplive,
      &                         uxpo,uypo,uzpo,is,ns)
                endif
-               call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      sq(is),sw(is),zgrid,dz,zmmin)
+               call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             endif
          enddo
          if (center .eq. "fullv" .or. center .eq. "halfv") then
-            if (periinz) call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
+            if (periinz) call periz(pgroup%nps(is),pgroup%zp(pgroup%ins(is)),zgrid,zmmax,zmmin)
             if (stickyz)
-     &         call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),zgrid)
-            if (stickyxy) call stckyrz(nps(is),xp(ins(is)),rmmax,rmmin,dr,
-     &                                 zp(ins(is)),zmmin,dz,
-     &                                 uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                                 gaminv(ins(is)),
-     &                                 zgrid,ins(is),it)
+     &         call stckyz(pgroup%nps(is),pgroup%zp(pgroup%ins(is)),zmmax,zmmin,dz,pgroup%uxp(pgroup%ins(is)),
+     & pgroup%uyp(pgroup%ins(is)),pgroup%uzp(pgroup%ins(is)),pgroup%gaminv(pgroup%ins(is)),zgrid)
+            if (stickyxy) call stckyrz(pgroup%nps(is),
+     &                                pgroup%xp(pgroup%ins(is)),rmmax,rmmin,dr,
+     &                                 pgroup%zp(pgroup%ins(is)),zmmin,dz,
+     & pgroup%uxp(pgroup%ins(is)),pgroup%uyp(pgroup%ins(is)),pgroup%uzp(pgroup%ins(is)),
+     &                                 pgroup%gaminv(pgroup%ins(is)),
+     &                                 zgrid,pgroup%ins(is),it)
             call processlostpart(is,clearlostpart,time,zbeam)
-            do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-               ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-               call setrhorz (rho, ip, xp(ipmin), zp(ipmin), zgrid,
-     &                        uzp(ipmin), sq(is), sw(is), depos)
+            do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
+               ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
+               call setrhorz (rho, ip, pgroup%xp(ipmin), pgroup%zp(ipmin), zgrid,
+     &                        pgroup%uzp(ipmin), pgroup%sq(is), pgroup%sw(is), depos)
               if (ifgap) 
-     &         call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      sq(is),sw(is),zgrid,dz,zmmin)
+     &         call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
+     &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
             enddo
          endif
 
          if (vecrho) then
 c          call zeroarry(rhov,nrz)
            rhov = 0.
-           call psort(nps(is),zgrid,dz)
-           call vstrhorz(rhov,zgrid,sq(is),sw(is),rmesh)
+           call psort(pgroup%nps(is),zgrid,dz)
+           call vstrhorz(rhov,zgrid,pgroup%sq(is),pgroup%sw(is),rmesh)
            call perrhorz(rhov,nr,nz)
          endif
 
 c        ---  Do final stuff for moments calculation
          if (center .eq. "synchv") then
-c         call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(is),sw(is),3,nplive)
-          call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(is),sw(is),dt/2.,
+c         call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(is),pgroup%sw(is),3,nplive)
+          call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,pgroup%uyp,
+     &                  pgroup%uzp,pgroup%gaminv,pgroup%sq(1),pgroup%sm(is),
+     &                  pgroup%sw(is),dt/2.,
      &                  3,nplive,uxpo,uypo,uzpo,1,ns)
          endif
  
@@ -1529,7 +1540,7 @@ c=============================================================================
       use InGenrz
       use Picglbrz
       use Fieldsrz
-      use Particles
+      use Particles,Only: pgroup,npmax,np
       use Setpworkrz
       integer(ISZ):: envxport
       character(72):: errline
@@ -1814,20 +1825,20 @@ c          --- the same as in the uniform beam
 c          --- unnormalize everything and load into particle arrays
            do i=1,j
              ii = indx(i)
-             xp(ip+i) = at(ii)*xt(ii)*perpscal(ii)
-             yp(ip+i) = bt(ii)*yt(ii)*perpscal(ii)
-             zp(ip+i) = zt(ii)
+             pgroup%xp(ip+i) = at(ii)*xt(ii)*perpscal(ii)
+             pgroup%yp(ip+i) = bt(ii)*yt(ii)*perpscal(ii)
+             pgroup%zp(ip+i) = zt(ii)
              vtx = .5*vbeam*emit/at(ii)*perpscal(ii)**2
              vty = .5*vbeam*emit/bt(ii)*perpscal(ii)**2
-             uxp(ip+i) = vbeam*apt(ii)*xt(ii)*perpscal(ii) + vtx*uxt(ii)
-             uyp(ip+i) = vbeam*bpt(ii)*yt(ii)*perpscal(ii) + vty*uyt(ii)
-             uzp(ip+i) = vbeam*(1. + vtilt*(zmid - zt(ii))/zlen) + vtz*uzt(ii)
+             pgroup%uxp(ip+i) = vbeam*apt(ii)*xt(ii)*perpscal(ii) + vtx*uxt(ii)
+             pgroup%uyp(ip+i) = vbeam*bpt(ii)*yt(ii)*perpscal(ii) + vty*uyt(ii)
+             pgroup%uzp(ip+i) = vbeam*(1. + vtilt*(zmid - zt(ii))/zlen) + vtz*uzt(ii)
            enddo
 
-c          --- add sinusoidal perturbation to uzp
+c          --- add sinusoidal perturbation to pgroup%uzp
            if (vzperamp .ne. 0.) then
              do i=ip+1,ip+j
-               uzp(i) = uzp(i) + vzperamp*cos(2.*pi*zp(i)/vzperlam + vzperphs)
+               pgroup%uzp(i) = pgroup%uzp(i) + vzperamp*cos(2.*pi*pgroup%zp(i)/vzperlam + vzperphs)
              enddo
            endif
 
@@ -1869,21 +1880,21 @@ c          --- load x,y,ux, and uy evenly onto a 4-D ellipsoid
              rr = sqrt(xt(i))
              phi1 = 2.*Pi*yt(i)
              phi2 = 2.*Pi*uxt(i)
-             xp(ip+i) = rr*cos(phi1)*at(i)*perpscal(i)
-             yp(ip+i) = rr*sin(phi1)*bt(i)*perpscal(i)
-             zp(ip+i) = zt(i)
+             pgroup%xp(ip+i) = rr*cos(phi1)*at(i)*perpscal(i)
+             pgroup%yp(ip+i) = rr*sin(phi1)*bt(i)*perpscal(i)
+             pgroup%zp(ip+i) = zt(i)
              rr = sqrt(1.-rr*rr)
-             uxp(ip+i) = vbeam*(emit*rr*cos(phi2)*perpscal(i)**2 +
-     &                          xp(ip+i)*apt(i))/at(i)
-             uyp(ip+i) = vbeam*(emit*rr*sin(phi2)*perpscal(i)**2 +
-     &                          yp(ip+i)*bpt(i))/bt(i)
-             uzp(ip+i) = vbeam*(1. + vtilt*(zmid - zt(i))/zlen) + vtz*uzt(i)
+             pgroup%uxp(ip+i) = vbeam*(emit*rr*cos(phi2)*perpscal(i)**2 +
+     &                          pgroup%xp(ip+i)*apt(i))/at(i)
+             pgroup%uyp(ip+i) = vbeam*(emit*rr*sin(phi2)*perpscal(i)**2 +
+     &                          pgroup%yp(ip+i)*bpt(i))/bt(i)
+             pgroup%uzp(ip+i) = vbeam*(1. + vtilt*(zmid - zt(i))/zlen) + vtz*uzt(i)
            enddo
 
-c          --- add sinusoidal perturbation to uzp
+c          --- add sinusoidal perturbation to pgroup%uzp
            if (vzperamp .ne. 0.) then
              do i=ip+1,ip+i1-k+1
-               uzp(i) = uzp(i) + vzperamp*cos(2.*pi*zp(i)/vzperlam + vzperphs)
+               pgroup%uzp(i) = pgroup%uzp(i) + vzperamp*cos(2.*pi*pgroup%zp(i)/vzperlam + vzperphs)
              enddo
            endif
 
@@ -1916,51 +1927,51 @@ c
 c
 c  Set particle number, indices, etc.
  
-      ins(is) = np + 1
-      nps(is) = ip - np
+      pgroup%ins(is) = np + 1
+      pgroup%nps(is) = ip - np
       np = ip
       npmax = np
       if (is .eq. 1) then
-         sq(is) = zion * echarge
-         sm(is) = aion * amu
+         pgroup%sq(is) = zion * echarge
+         pgroup%sm(is) = aion * amu
          if (vbeam .ne. 0.)
-     &    sw(is) = ibeam * (zimax-zimin) / (vbeam * echarge * zion * np)
+     &    pgroup%sw(is) = ibeam * (zimax-zimin) / (vbeam * echarge * zion * np)
       endif
  
 c     Adjust weighting of particles since cigar() makes beam more dense,
 c     also adjust for removal of particles used in perturbation.
       if (cigarld) then
-        sw(is) = sw(is)*(straight + (1. - straight)*2./3.)
+        pgroup%sw(is) = pgroup%sw(is)*(straight + (1. - straight)*2./3.)
      .      *float(np)/float(np_main)
       endif
 
       do ipart = 1,np
-         r = sqrt(xp(ipart)**2 + yp(ipart)**2)
+         r = sqrt(pgroup%xp(ipart)**2 + pgroup%yp(ipart)**2)
          if (r .ne. 0.) then
-             vr = ( uxp(ipart)*xp(ipart) + uyp(ipart)*yp(ipart))/r
-             vt = (-uxp(ipart)*yp(ipart) + uyp(ipart)*xp(ipart))/r
-             uxp(ipart) = vr
-             uyp(ipart) = vt
+             vr = ( pgroup%uxp(ipart)*pgroup%xp(ipart) + pgroup%uyp(ipart)*pgroup%yp(ipart))/r
+             vt = (-pgroup%uxp(ipart)*pgroup%yp(ipart) + pgroup%uyp(ipart)*pgroup%xp(ipart))/r
+             pgroup%uxp(ipart) = vr
+             pgroup%uyp(ipart) = vt
          endif
-c        yp(ipart) = atan(yp(ipart)/xp(ipart))
-         yp(ipart) = 0.
-         xp(ipart) = r
+c        pgroup%yp(ipart) = atan(pgroup%yp(ipart)/pgroup%xp(ipart))
+         pgroup%yp(ipart) = 0.
+         pgroup%xp(ipart) = r
       enddo
 c   Add perturbation in velocity 
       if (vzpert .gt. 0.) then
          gfact = log(rmmax/a0)/(2.*pi*eps0)
-         vphase = sqrt(gfact*sq(1)*ibeam/(vbeam*sm(1)))
+         vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
          do ipmin = 1,np,nparpgrp
             ipt = min(nparpgrp,np - ipmin + 1)
             do ipart=0,ipt-1
-            uxpert(ipart) = 0.5*xp(ipart+ipmin)*vzpert*kzpert*
-     &                   sin(kzpert*zp(ipart+ipmin))
-            uzpert(ipart) = vzpert*cos(kzpert*zp(ipart+ipmin))
+            uxpert(ipart) = 0.5*pgroup%xp(ipart+ipmin)*vzpert*kzpert*
+     &                   sin(kzpert*pgroup%zp(ipart+ipmin))
+            uzpert(ipart) = vzpert*cos(kzpert*pgroup%zp(ipart+ipmin))
             enddo
 
             do ipart=0,ipt-1
-               uxp(ipart+ipmin) = uxp(ipart+ipmin) + uxpert(ipart)
-               uzp(ipart+ipmin) = uzp(ipart+ipmin) + uzpert(ipart)
+               pgroup%uxp(ipart+ipmin) = pgroup%uxp(ipart+ipmin) + uxpert(ipart)
+               pgroup%uzp(ipart+ipmin) = pgroup%uzp(ipart+ipmin) + uzpert(ipart)
             enddo
          enddo
       endif
@@ -1968,12 +1979,12 @@ c   Add perturbation in velocity
       if (vzpert .lt. 0.) then
 
          gfact = log(rmmax/a0)/(2.*pi*eps0)
-         vphase = sqrt(gfact*sq(1)*ibeam/(vbeam*sm(1)))
+         vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
          z0 = 1./kzpert
          
          do ipart = 1,np
-            uzp(ipart) = uzp(ipart) + (vzpert*vphase)/
-     &                   (1.+(zp(ipart)/z0)**2)
+            pgroup%uzp(ipart) = pgroup%uzp(ipart) + (vzpert*vphase)/
+     &                   (1.+(pgroup%zp(ipart)/z0)**2)
          enddo
       endif
             
@@ -1981,16 +1992,16 @@ c   Add perturbation in velocity
 c  If particle has left the region, put it back using periodic bc's
 
         do ipart = 1,np
-          if (zp(ipart) .gt. zmmax) then
-              zp(ipart) = zp(ipart) + zmmin - zmmax
+          if (pgroup%zp(ipart) .gt. zmmax) then
+              pgroup%zp(ipart) = pgroup%zp(ipart) + zmmin - zmmax
           endif
 
-          if (zp(ipart) .lt. zmmin) then
-              zp(ipart) = zp(ipart) + zmmax - zmmin
+          if (pgroup%zp(ipart) .lt. zmmin) then
+              pgroup%zp(ipart) = pgroup%zp(ipart) + zmmax - zmmin
           endif
 
-          if (xp(ipart) .lt. 0.) then
-             xp(ipart) = -xp(ipart)
+          if (pgroup%xp(ipart) .lt. 0.) then
+             pgroup%xp(ipart) = -pgroup%xp(ipart)
           endif
         enddo
 
@@ -2281,7 +2292,7 @@ c     lamkimag = ximag(indxk)
 c=============================================================================
        subroutine psort(npart,zbeam,dz)
       use InPart
-      use Particles
+      use Particles,Only: pgroup
       use InMeshrz
       use Sortrz
        integer(ISZ):: npart
@@ -2295,7 +2306,7 @@ c   Put each particle in a group.  The particles in odd cells go into
 c   ``positive'' groups while the particles in even cells go into
 c   ``negative'' groups.  nig is number of particles per cell here.
        do n=1,npart
-          ic = (zp(n) - zbeam - zmmin)/dz
+          ic = (pgroup%zp(n) - zbeam - zmmin)/dz
           npic(ic) = npic(ic) + 1
           isgn = mod(ic,2)
           isgn = 2*isgn - 1
@@ -2356,7 +2367,7 @@ c=============================================================================
       use InPart
       use InMeshrz
       use Picglbrz
-      use Particles
+      use Particles,Only: pgroup
       use Sortrz
       real(kind=8):: zbeam,q,wght
       real(kind=8):: curr(0:*)
@@ -2378,15 +2389,15 @@ c     --- vectorized loop to compute indices, weights
        ioffset = ipnt(ign) - 1
        do m = 1,npart
          ip = ipgrp(m+ioffset)
-         index(0,m) =  (zp(ip) - zbeam - zmmin) * dzi
-         w1 = (zp(ip) - zbeam - zmmin) * dzi  - index(0,m)
+         index(0,m) =  (pgroup%zp(ip) - zbeam - zmmin) * dzi
+         w1 = (pgroup%zp(ip) - zbeam - zmmin) * dzi  - index(0,m)
          w0 = 1. - w1
-         s(0,m) = g * w0 * gaminv(m) * uzp(m)
-         s(1,m) = g * w1 * gaminv(m) * uzp(m)
+         s(0,m) = g * w0 * pgroup%gaminv(m) * pgroup%uzp(m)
+         s(1,m) = g * w1 * pgroup%gaminv(m) * pgroup%uzp(m)
        enddo
 
        do m = 1,npart
-         if (uzp(ipgrp(m+ioffset)) /= 0.) then
+         if (pgroup%uzp(ipgrp(m+ioffset)) /= 0.) then
          curr(index(0,m))  =curr(index(0,m))   + s(0,m)
          curr(index(0,m)+1)=curr(index(0,m)+1) + s(1,m)
          endif
@@ -2402,7 +2413,7 @@ c=============================================================================
       use InPart
       use InMeshrz
       use Picglbrz
-      use Particles
+      use Particles,Only: pgroup
       use Sortrz
       real(kind=8):: zbeam,q,wght
       real(kind=8):: rho1d(0:*)
@@ -2433,11 +2444,11 @@ c     --- vectorized loop to compute indices, weights
        ioffset = ipnt(ign) - 1
        do m = 1,npart
          ip = ipgrp(m+ioffset)
-         i =  (xp(ip) - rmmin) / dr
-         r1 = (xp(ip) - rmmin)      - i*dr
+         i =  (pgroup%xp(ip) - rmmin) / dr
+         r1 = (pgroup%xp(ip) - rmmin)      - i*dr
          r2 = dr - r1
-         k =  (zp(ip) - zbeam - zmmin) / dz
-         w1 = (zp(ip) - zbeam - zmmin)     - k*dz
+         k =  (pgroup%zp(ip) - zbeam - zmmin) / dz
+         w1 = (pgroup%zp(ip) - zbeam - zmmin)     - k*dz
          w2 = dz - w1
          ind0 = i + k*(nr+1)
          index(0,m) = ind0 + moff(0)
@@ -2451,7 +2462,7 @@ c     --- vectorized loop to compute indices, weights
        enddo
          
        do m = 1,npart
-         if (uzp(ipgrp(m+ioffset)) /= 0.) then
+         if (pgroup%uzp(ipgrp(m+ioffset)) /= 0.) then
          rho1d(index(0,m))=rho1d(index(0,m)) + s(0,m)
          rho1d(index(1,m))=rho1d(index(1,m)) + s(1,m)
          rho1d(index(2,m))=rho1d(index(2,m)) + s(2,m)
@@ -2476,60 +2487,60 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use InGenrz
-      use Particles
+      use Particles,Only: pgroup,np
 
        integer(ISZ):: is,iz
        real(kind=8):: zlen,gfact,z0
 
        zlen = zimax - zimin
-       np = npmax
-       do is = 1,ns
-          sq(is) = zion * echarge
-          sm(is) = aion * amu
+       np = pgroup%npmax
+       do is = 1,pgroup%ns
+          pgroup%sq(is) = zion * echarge
+          pgroup%sm(is) = aion * amu
           if (vbeam .ne. 0.)
-     &     sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
+     &     pgroup%sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
        enddo
        gfact = log(rmmax/(a0+dr))/(2.*pi*eps0)
-       vphase = sqrt(gfact*sq(1)*ibeam/(vbeam*sm(1)))
+       vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
 
 c  Load particles in a shell, one particle per cell
        
        if (vzpert .lt. 0.) then
        z0 = 1./kzpert
        do iz = 1,nz
-          zp(iz) = zimin + dz*(iz-1) + dz/2.
-          xp(iz) = a0 + dr/2. 
-          uzp(iz) = vbeam + vzpert*vphase/(1. + (zp(iz)/z0)**2)
-          uxp(iz) = 0.
-          uyp(iz) = 0.
-          yp(iz) = 0.
+          pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
+          pgroup%xp(iz) = a0 + dr/2. 
+          pgroup%uzp(iz) = vbeam + vzpert*vphase/(1. + (pgroup%zp(iz)/z0)**2)
+          pgroup%uxp(iz) = 0.
+          pgroup%uyp(iz) = 0.
+          pgroup%yp(iz) = 0.
        enddo
        elseif (vzpert .gt. 0.) then
        do iz = 1,nz
-          zp(iz) = zimin + dz*(iz-1) + dz/2.
-          xp(iz) = a0 + dr/2. 
-          uzp(iz) = vbeam + vzpert*vphase*cos(kzpert*zp(iz))
-          uxp(iz) = 0.
-          uyp(iz) = 0.
-          yp(iz) = 0.
+          pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
+          pgroup%xp(iz) = a0 + dr/2. 
+          pgroup%uzp(iz) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(iz))
+          pgroup%uxp(iz) = 0.
+          pgroup%uyp(iz) = 0.
+          pgroup%yp(iz) = 0.
        enddo
 
        do iz = 1,nz
-          zp(iz) = zp(iz)  + vzpert * sin(kzpert*zp(iz))/(kzpert)
+          pgroup%zp(iz) = pgroup%zp(iz)  + vzpert * sin(kzpert*pgroup%zp(iz))/(kzpert)
        enddo
        else
        do iz = 1,nz
-          zp(iz) = zimin + dz*(iz-1) + dz/2.
-          xp(iz) = a0 + dr/2. 
-          uzp(iz) = vbeam 
-          uxp(iz) = 0.
-          uyp(iz) = 0.
-          yp(iz) = 0.
+          pgroup%zp(iz) = zimin + dz*(iz-1) + dz/2.
+          pgroup%xp(iz) = a0 + dr/2. 
+          pgroup%uzp(iz) = vbeam 
+          pgroup%uxp(iz) = 0.
+          pgroup%uyp(iz) = 0.
+          pgroup%yp(iz) = 0.
        enddo
        endif
 
 
-       nps(1) = nz
+       pgroup%nps(1) = nz
 
        return
        end
@@ -2543,7 +2554,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use InGenrz
-      use Particles
+      use Particles,Only: pgroup,np
 
 
        integer(ISZ):: izso2,izendo2,ia,ipart,iz,isame,ir,ip,is
@@ -2573,68 +2584,68 @@ c  Load the particles in the straight section
        do iz = nz/2, nz/2 + izso2
           do isame = 1,5
             ipart = ipart + 1
-            zp(ipart) = (iz + 0.5)*dz + zmmin
-c           xp(ipart) = 0.
-            xp(ipart) = .8 * dr
-            yp(ipart) = 0.
-            uxp(ipart) = 0.
-            uyp(ipart) = 0.
+            pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
+c           pgroup%xp(ipart) = 0.
+            pgroup%xp(ipart) = .8 * dr
+            pgroup%yp(ipart) = 0.
+            pgroup%uxp(ipart) = 0.
+            pgroup%uyp(ipart) = 0.
             if (vzpert .lt. 0.) then
-              uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c             uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c             uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                     (zp(ipart)-zmid)/z02 * xp(ipart)
-              uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                     (z0 *(1. + (zp(ipart)/z0)**2))**2
+              pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c             pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c             pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                     (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+              pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                     (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
             else
-            uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
-            uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
-     &                   0.5*sin(kzpert*zp(ipart))
+            pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
+            pgroup%uxp(ipart) = pgroup%xp(ipart)*vzpert*vphase*kzpert*
+     &                   0.5*sin(kzpert*pgroup%zp(ipart))
             endif
           enddo
        do ir = 1,ia-1
 c        do isame = 1,8*ir
          do isame = 1,(8*ir+4)
            ipart = ipart + 1
-           zp(ipart) = (iz + 0.5)*dz + zmmin
-c          xp(ipart) = ir*dr 
-           xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
-           yp(ipart) = 0.
-           uxp(ipart) = 0.
-           uyp(ipart) = 0.
+           pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
+c          pgroup%xp(ipart) = ir*dr 
+           pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
+           pgroup%yp(ipart) = 0.
+           pgroup%uxp(ipart) = 0.
+           pgroup%uyp(ipart) = 0.
            if (vzpert .lt. 0.) then
-             uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c          uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c          uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                  (zp(ipart)-zmid)/z02 * xp(ipart)
-           uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                  (z0 *(1. + (zp(ipart)/z0)**2))**2
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c          pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c          pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                  (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+           pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                  (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
            else
-           uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
-           uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
-     &                  0.5*sin(kzpert*zp(ipart))
+           pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
+           pgroup%uxp(ipart) = pgroup%xp(ipart)*vzpert*vphase*kzpert*
+     &                  0.5*sin(kzpert*pgroup%zp(ipart))
            endif
          enddo
        enddo
          do isame = 1,12*ia+8
            ipart = ipart + 1
-           zp(ipart) = (iz + 0.5)*dz + zmmin
-c          xp(ipart) = ir*dr 
-           xp(ipart) = dr * (ia + (8.*ia+8.)/(12.*ia+8.))
-           yp(ipart) = 0.
-           uxp(ipart) = 0.
-           uyp(ipart) = 0.
+           pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
+c          pgroup%xp(ipart) = ir*dr 
+           pgroup%xp(ipart) = dr * (ia + (8.*ia+8.)/(12.*ia+8.))
+           pgroup%yp(ipart) = 0.
+           pgroup%uxp(ipart) = 0.
+           pgroup%uyp(ipart) = 0.
            if (vzpert .lt. 0.) then
-             uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c          uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c          uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                  (zp(ipart)-zmid)/z02 * xp(ipart)
-           uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                  (z0 *(1. + (zp(ipart)/z0)**2))**2
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c          pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c          pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                  (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+           pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                  (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
            else
-           uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
-           uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
-     &                  0.5*sin(kzpert*zp(ipart))
+           pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
+           pgroup%uxp(ipart) = pgroup%xp(ipart)*vzpert*vphase*kzpert*
+     &                  0.5*sin(kzpert*pgroup%zp(ipart))
            endif
          enddo
 
@@ -2647,93 +2658,93 @@ c  Load the particles in the tapered ends
          ia = int(aend/dr)
          do isame = 1,5
            ipart = ipart + 1
-           zp(ipart) = zt
-c          xp(ipart) = 0.
-           xp(ipart) = .8 * dr
-           yp(ipart) = 0.
-           uxp(ipart) = 0.
-           uyp(ipart) = 0.
+           pgroup%zp(ipart) = zt
+c          pgroup%xp(ipart) = 0.
+           pgroup%xp(ipart) = .8 * dr
+           pgroup%yp(ipart) = 0.
+           pgroup%uxp(ipart) = 0.
+           pgroup%uyp(ipart) = 0.
            if (vzpert .lt. 0.) then
-             uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c            uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c            uxp(ipart) = uzp(ipart)*(zp(ipart)-zmid)/z02 * xp(ipart)
-c            uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                    (zp(ipart)-zmid)/z02 * xp(ipart)
-             uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                    (z0 *(1. + (zp(ipart)/z0)**2))**2
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c            pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c            pgroup%uxp(ipart) = pgroup%uzp(ipart)*(pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+c            pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                    (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+             pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                    (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
            else
-             uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
-             uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
-     &                    0.5*sin(kzpert*zp(ipart))
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
+             pgroup%uxp(ipart) = pgroup%xp(ipart)*vzpert*vphase*kzpert*
+     &                    0.5*sin(kzpert*pgroup%zp(ipart))
            endif
          enddo
          do ir = 1, ia-1
 c          do isame = 1,8*ir
            do isame = 1,(8*ir+4)
              ipart = ipart + 1
-             zp(ipart) = zt
-c            xp(ipart) = ir*dr 
-             xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
-             yp(ipart) = 0.
-             uxp(ipart) = 0.
-             uyp(ipart) = 0.
+             pgroup%zp(ipart) = zt
+c            pgroup%xp(ipart) = ir*dr 
+             pgroup%xp(ipart) = dr * (ir + 0.5*(1. + (1./(2.*ir+1.)))) 
+             pgroup%yp(ipart) = 0.
+             pgroup%uxp(ipart) = 0.
+             pgroup%uyp(ipart) = 0.
              if (vzpert .lt. 0.) then
-               uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c              uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c              uxp(ipart) = uzp(ipart)*(zp(ipart)-zmid)/z02 * xp(ipart)
-c              uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                      (zp(ipart)-zmid)/z02 * xp(ipart)
-               uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                      (z0 *(1. + (zp(ipart)/z0)**2))**2
+               pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c              pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c              pgroup%uxp(ipart) = pgroup%uzp(ipart)*(pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+c              pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                      (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+               pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                      (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
              else
-               uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
+               pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
              endif
            enddo
          enddo
          do isame = 1,12*ia+8
            ipart = ipart + 1
-           zp(ipart) = (iz + 0.5)*dz + zmmin
-c          xp(ipart) = ir*dr 
-           xp(ipart) = dr * (ir + (8.*ia+8.)/(12.*ia+8.))
-           yp(ipart) = 0.
-           uxp(ipart) = 0.
-           uyp(ipart) = 0.
+           pgroup%zp(ipart) = (iz + 0.5)*dz + zmmin
+c          pgroup%xp(ipart) = ir*dr 
+           pgroup%xp(ipart) = dr * (ir + (8.*ia+8.)/(12.*ia+8.))
+           pgroup%yp(ipart) = 0.
+           pgroup%uxp(ipart) = 0.
+           pgroup%uyp(ipart) = 0.
            if (vzpert .lt. 0.) then
-             uzp(ipart) = vbeam + vzpert*vphase/(1. + (zp(ipart)/z0)**2)
-c            uzp(ipart) = vbeam + vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)
-c            uxp(ipart) = uzp(ipart)*(zp(ipart)-zmid)/z02 * xp(ipart)
-c            uxp(ipart) = vzpert*vphase*exp(-(zp(ipart)-zmid)**2/z02)*
-c    &                    (zp(ipart)-zmid)/z02 * xp(ipart)
-             uxp(ipart) = vzpert*vphase*xp(ipart)*zp(ipart)/
-     &                    (z0 *(1. + (zp(ipart)/z0)**2))**2
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase/(1. + (pgroup%zp(ipart)/z0)**2)
+c            pgroup%uzp(ipart) = vbeam + vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)
+c            pgroup%uxp(ipart) = pgroup%uzp(ipart)*(pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+c            pgroup%uxp(ipart) = vzpert*vphase*exp(-(pgroup%zp(ipart)-zmid)**2/z02)*
+c    &                    (pgroup%zp(ipart)-zmid)/z02 * xp(ipart)
+             pgroup%uxp(ipart) = vzpert*vphase*pgroup%xp(ipart)*pgroup%zp(ipart)/
+     &                    (z0 *(1. + (pgroup%zp(ipart)/z0)**2))**2
            else
-             uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*zp(ipart))
-c            uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
-c    &                    0.5*sin(kzpert*zp(ipart))
-             uxp(ipart) = 0.
+             pgroup%uzp(ipart) = vbeam + vzpert*vphase*cos(kzpert*pgroup%zp(ipart))
+c            pgroup%uxp(ipart) = xp(ipart)*vzpert*vphase*kzpert*
+c    &                    0.5*sin(kzpert*pgroup%zp(ipart))
+             pgroup%uxp(ipart) = 0.
            endif
          enddo
        enddo
       endif
 
       do ip = ipart+1, 2*ipart
-        zp(ip) = -zp(ip-ipart)
-        xp(ip) = xp(ip-ipart)
-        yp(ip) = 0.
-        uxp(ip) = -uxp(ip-ipart)
-c       uxp(ip) = 0.
-        uyp(ip) = 0.
-        uzp(ip) = uzp(ip-ipart)
+        pgroup%zp(ip) = -pgroup%zp(ip-ipart)
+        pgroup%xp(ip) = pgroup%xp(ip-ipart)
+        pgroup%yp(ip) = 0.
+        pgroup%uxp(ip) = -pgroup%uxp(ip-ipart)
+c       pgroup%uxp(ip) = 0.
+        pgroup%uyp(ip) = 0.
+        pgroup%uzp(ip) = pgroup%uzp(ip-ipart)
       enddo
-      npmax = 2*ipart
-      np = npmax
-      nps(1) = npmax
+      pgroup%npmax = 2*ipart
+      np = pgroup%npmax
+      pgroup%nps(1) = pgroup%npmax
 
       do is = 1,ns
-         sq(is) = zion * echarge
-         sm(is) = aion * amu
+         pgroup%sq(is) = zion * echarge
+         pgroup%sm(is) = aion * amu
          if (vbeam .ne. 0.)
-     &     sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
+     &     pgroup%sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
       enddo
       return
       end
@@ -2748,9 +2759,9 @@ c--------------------------------------------------------------------
       use InGen
       use InGenrz
       use Beam_acc
-      use Particles
+      use Particles,Only: pgroup
       integer(ISZ):: nstep
-      call fluidrz(dt,nstep,vbeam,ibeam,sq(1),sm(1),a0)
+      call fluidrz(dt,nstep,vbeam,ibeam,pgroup%sq(1),pgroup%sm(1),a0)
       nfrstrz = nstep + nfrstrz
       return
       end
