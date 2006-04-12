@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.210 $, $Date: 2006/04/07 23:16:20 $
+#@(#) File W3D.V, version $Revision: 3.211 $, $Date: 2006/04/12 23:45:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.210 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.211 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -790,7 +790,7 @@ stckxy3d(np,xp(np):real,xmmax:real,xmmin:real,dx:real,
          gaminv(np):real,zgrid:real,zbeam:real,
          l2symtry:logical,l4symtry:logical,pboundxy:real,lcountaslost:logical)
              subroutine # Enforces sticky x and y walls
-stptcl3d()   subroutine # Particle initializer
+stptcl3d(pgroup:ParticleGroup)   subroutine # Particle initializer
 setrstar(rstar(-1:nz+1):real,nz:integer,dz:real,zmmin:real,zgrid:real)
              subroutine # Loads radius of reference orbit into rstar array 
 fieldsol3d(iwhich) subroutine # Bent-self-field iterative solver
