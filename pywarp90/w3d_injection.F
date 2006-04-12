@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.46 $, $Date: 2006/04/07 23:15:04 $
+c@(#) File w3d_injection.F, version $Revision: 1.47 $, $Date: 2006/04/12 23:44:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1562,7 +1562,7 @@ c         --- are injected.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (mod(it,pgroup%ndts(is))/=0) cycle
-            call loadrho3d(pgroup%ins(is)-npinje_s(isid)-ntinject(isid),
+            call loadrho3d(pgroup,pgroup%ins(is)-npinje_s(isid)-ntinject(isid),
      &                     pgroup%ins(is)-npinje_s(isid)-1,is,.false.)
           enddo
 c         if(solvergeom==RZgeom) then
