@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.172 2006/04/01 01:22:50 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.173 2006/04/12 23:46:44 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2887,9 +2887,9 @@ to all three.
       iz2 = top.izfsslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
-    ppp = solver.rho[:,:,iz1:iz2]
+    ppp = solver.rho[...,iz1:iz2]
     if ix is not None and iy is None:
-      ppp = ppp[ix,:,:]
+      ppp = ppp[ix,...]
     elif ix is None and iy is not None:
       ppp = ppp[:,iy,:]
     elif ix is not None and iy is not None:
