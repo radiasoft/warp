@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.62 $, $Date: 2006/03/01 01:26:30 $
+c@(#) File WXY.M, version $Revision: 3.63 $, $Date: 2006/04/12 23:44:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -50,7 +50,7 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles, Only: npmax
+      use Particles, Only: pgroup,npmax
       use Particlesxy
       use Picglb
       use Picglb3d
@@ -262,7 +262,7 @@ c  Load the particles, calculate the charge density
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
-      call loadrhoxy(-1,-1,-1,.true.)
+      call loadrhoxy(pgroup,-1,-1,-1,.true.)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -1385,7 +1385,7 @@ c         --- Apply particle boundary conditions
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
-        call loadrhoxy(-1,-1,-1,.true.)
+        call loadrhoxy(pgroup,-1,-1,-1,.true.)
 
         if (ifgap) then
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -2214,7 +2214,8 @@ c     --- End of slice version
       return
       end
 c=============================================================================
-      subroutine loadrhoxy(ins_i,nps_i,is_i,lzero)
+      subroutine loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+      use ParticleGroupmodule
       use Subtimersxy
       use GlobalVars
       use InGen
@@ -2222,10 +2223,11 @@ c=============================================================================
       use InGen3d
       use Picglb
       use Picglb3d
-      use Particles,Only: pgroup,wpid
+      use Particles,Only: wpid
       use Particlesxy
       use InMesh3d
       use Fields3d
+      type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
