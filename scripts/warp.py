@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.105 2006/03/18 00:32:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.106 2006/04/12 23:45:49 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -333,9 +333,9 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
     return result
 
 #=============================================================================
-def loadrho(ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """
-loadrho(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
 This routine provides a simple call from the interpreter to load the
 rho array.  All of the arguments are optional.
 If the species is not specified, all species are loaded, except
@@ -343,6 +343,9 @@ when ins or nps are specified, then only species 1 is loaded.
 lzero is used to set whether or not rho is zeroed before the load.
 The default is to zero out rho.
   """
+
+  # --- Use top.pgroup as the default
+  if pgroup is None: pgroup = top.pgroup
 
   # --- if particle location is specified but species is not, set so
   # --- only species number 1 is included
@@ -362,9 +365,9 @@ The default is to zero out rho.
   # --- current package
   currpkg = package()[0]
   if (currpkg == "w3d"):
-    loadrho3d(ins_i,nps_i,is_i,lzero)
+    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
   elif (currpkg == "wxy"):
-    loadrhoxy(ins_i,nps_i,is_i,lzero)
+    loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
 #=============================================================================
 def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
   """
