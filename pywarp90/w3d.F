@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.239 $, $Date: 2006/04/07 23:17:02 $
+c@(#) File W3D.F, version $Revision: 3.240 $, $Date: 2006/04/12 23:43:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -405,10 +405,10 @@ c  use a user-set npmax directly)
 c  Load the particles, calculate the charge density
 
       call remark(" ---  Loading particles")
-      call stptcl3d
+      call stptcl3d(pgroup)
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
-      call loadrho3d(-1,-1,-1,.true.)
+      call loadrho3d(pgroup,-1,-1,-1,.true.)
       if (bfstype >= 0) call loadj3d(-1,-1,-1,.true.,pgroup)
       call remark(" ---  done")
 
@@ -1890,7 +1890,7 @@ c        if (any((mod(it,ndts)==0) .and. (nps>0))) then
         call particleboundaries3d()
  
 c       --- Collect charge density (3d)
-        call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
+        call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
         if (bfstype >= 0) call loadj3d(-1,-1,-1,.not. laccumulate_rho,pgroup)
 
         if (lbeamcom) then
@@ -3441,7 +3441,8 @@ c     --- Axial self field does not depend on the transverse boundary condition
       return
       end
 c=============================================================================
-      subroutine stptcl3d
+      subroutine stptcl3d(pgroup)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
       use Beam_acc
@@ -3451,12 +3452,13 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: pgroup,npmax
+      use Particles,Only: npmax
       use Picglb
       use Picglb3d
 #ifdef MPIPARALLEL
       use Parallel
 #endif
+      type(ParticleGroup):: pgroup
 
 c  Loads particles.
 c  At end, particle boundary conditions are enforced.
@@ -5927,7 +5929,8 @@ c     --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
-      subroutine loadrho3d(ins_i,nps_i,is_i,lzero)
+      subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
       use InGen
@@ -5936,10 +5939,11 @@ c=============================================================================
       use InMesh3d
       use Picglb
       use Picglb3d
-      use Particles,Only: pgroup,wpid
+      use Particles,Only: wpid
       use Fields3d
       use Fields3dParticles
       use GridBoundary3d
+      type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -6828,6 +6832,7 @@ c=============================================================================
 c Fetch phi at points.
 
       integer(ISZ):: ix,iy,iz,ii
+      integer(ISZ):: ixp1,iyp1,izp1
       real(kind=8):: wx,wy,wz
       real(kind=8):: dxi,dyi,dzi
 
@@ -6843,17 +6848,23 @@ c Fetch phi at points.
           wx = (abs(x(ii)) - xmmin)*dxi - ix
           wy = (abs(y(ii)) - ymmin)*dyi - iy
           wz =     (z(ii)  - zmminp)*dzi - iz
-          if (xmmin <= abs(x(ii)) .and. abs(x(ii)) < xmmax .and.
-     &        ymmin <= abs(y(ii)) .and. abs(y(ii)) < ymmax .and.
-     &        zmminp <= z(ii) .and. z(ii) < zmmaxp) then
+          ixp1 = ix + 1
+          iyp1 = iy + 1
+          izp1 = iz + 1
+          if (abs(x(ii)) == xmmax) ixp1 = ix
+          if (abs(y(ii)) == ymmax) iyp1 = iy
+          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (xmmin  <= abs(x(ii)) .and. abs(x(ii)) <= xmmax .and.
+     &        ymmin  <= abs(y(ii)) .and. abs(y(ii)) <= ymmax .and.
+     &        zmminp <=     z(ii)  .and.     z(ii)  <= zmmaxp) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
-     &              phip(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
-     &              phip(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
-     &              phip(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
-     &              phip(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
-     &              phip(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
-     &              phip(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
-     &              phip(ix+1,iy+1,iz+1)*    wx *    wy *    wz
+     &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
+     &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
+     &              phip(ixp1,iyp1,iz  )*    wx *    wy *(1.-wz) +
+     &              phip(ix  ,iy,  izp1)*(1.-wx)*(1.-wy)*    wz  +
+     &              phip(ixp1,iy,  izp1)*    wx *(1.-wy)*    wz  +
+     &              phip(ix  ,iyp1,izp1)*(1.-wx)*    wy *    wz  +
+     &              phip(ixp1,iyp1,izp1)*    wx *    wy *    wz
           endif
         enddo
       else if (l2symtry) then
@@ -6864,17 +6875,23 @@ c Fetch phi at points.
           wx =     (x(ii)  - xmmin)*dxi - ix
           wy = (abs(y(ii)) - ymmin)*dyi - iy
           wz =     (z(ii)  - zmminp)*dzi - iz
-          if (xmmin <= x(ii) .and. x(ii) < xmmax .and.
-     &        ymmin <= abs(y(ii)) .and. abs(y(ii)) < ymmax .and.
-     &        zmminp <= z(ii) .and. z(ii) < zmmaxp) then
+          ixp1 = ix + 1
+          iyp1 = iy + 1
+          izp1 = iz + 1
+          if (abs(x(ii)) == xmmax) ixp1 = ix
+          if (abs(y(ii)) == ymmax) iyp1 = iy
+          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (xmmin  <=     x(ii)  .and.     x(ii)  <= xmmax .and.
+     &        ymmin  <= abs(y(ii)) .and. abs(y(ii)) <= ymmax .and.
+     &        zmminp <=     z(ii)  .and.     z(ii)  <= zmmaxp) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
-     &              phip(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
-     &              phip(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
-     &              phip(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
-     &              phip(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
-     &              phip(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
-     &              phip(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
-     &              phip(ix+1,iy+1,iz+1)*    wx *    wy *    wz
+     &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
+     &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
+     &              phip(ixp1,iyp1,iz  )*    wx *    wy *(1.-wz) +
+     &              phip(ix  ,iy,  izp1)*(1.-wx)*(1.-wy)*    wz  +
+     &              phip(ixp1,iy,  izp1)*    wx *(1.-wy)*    wz  +
+     &              phip(ix  ,iyp1,izp1)*(1.-wx)*    wy *    wz  +
+     &              phip(ixp1,iyp1,izp1)*    wx *    wy *    wz
           endif
         enddo
       else
@@ -6885,17 +6902,23 @@ c Fetch phi at points.
           wx = (x(ii) - xmmin)*dxi - ix
           wy = (y(ii) - ymmin)*dyi - iy
           wz = (z(ii) - zmminp)*dzi - iz
-          if (xmmin  <= x(ii) .and. x(ii) < xmmax .and.
-     &        ymmin  <= y(ii) .and. y(ii) < ymmax .and.
-     &        zmminp <= z(ii) .and. z(ii) < zmmaxp) then
+          ixp1 = ix + 1
+          iyp1 = iy + 1
+          izp1 = iz + 1
+          if (abs(x(ii)) == xmmax) ixp1 = ix
+          if (abs(y(ii)) == ymmax) iyp1 = iy
+          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (xmmin  <= x(ii) .and. x(ii) <= xmmax .and.
+     &        ymmin  <= y(ii) .and. y(ii) <= ymmax .and.
+     &        zmminp <= z(ii) .and. z(ii) <= zmmaxp) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
-     &              phip(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
-     &              phip(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
-     &              phip(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
-     &              phip(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
-     &              phip(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
-     &              phip(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
-     &              phip(ix+1,iy+1,iz+1)*    wx *    wy *    wz
+     &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
+     &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
+     &              phip(ixp1,iyp1,iz  )*    wx *    wy *(1.-wz) +
+     &              phip(ix  ,iy,  izp1)*(1.-wx)*(1.-wy)*    wz  +
+     &              phip(ixp1,iy,  izp1)*    wx *(1.-wy)*    wz  +
+     &              phip(ix  ,iyp1,izp1)*(1.-wx)*    wy *    wz  +
+     &              phip(ixp1,iyp1,izp1)*    wx *    wy *    wz
           endif
         enddo
       endif
