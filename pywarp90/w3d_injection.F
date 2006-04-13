@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.47 $, $Date: 2006/04/12 23:44:52 $
+c@(#) File w3d_injection.F, version $Revision: 1.48 $, $Date: 2006/04/13 20:57:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1338,13 +1338,13 @@ c           --- Advance relativistic Gamma factor
 c           --- Copy data back into the particle arrays
             i1 = pgroup%ins(is)
             i2 = pgroup%ins(is)+pgroup%nps(is)-1
-            xp(i1:i2) = UNPACK(xx,mask>0.,xp(i1:i2))
-            yp(i1:i2) = UNPACK(yy,mask>0.,yp(i1:i2))
-            zp(i1:i2) = UNPACK(zz,mask>0.,zp(i1:i2))
-            uxp(i1:i2) = UNPACK(ux,mask>0.,uxp(i1:i2))
-            uyp(i1:i2) = UNPACK(uy,mask>0.,uyp(i1:i2))
-            uzp(i1:i2) = UNPACK(uz,mask>0.,uzp(i1:i2))
-            pid(i1:i2,injpid) = int(pid(i1:i2,injpid))
+            pgroup%xp(i1:i2) = UNPACK(xx,mask>0.,pgroup%xp(i1:i2))
+            pgroup%yp(i1:i2) = UNPACK(yy,mask>0.,pgroup%yp(i1:i2))
+            pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
+            pgroup%uxp(i1:i2) = UNPACK(ux,mask>0.,pgroup%uxp(i1:i2))
+            pgroup%uyp(i1:i2) = UNPACK(uy,mask>0.,pgroup%uyp(i1:i2))
+            pgroup%uzp(i1:i2) = UNPACK(uz,mask>0.,pgroup%uzp(i1:i2))
+            pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
             deallocate(mask)
 #endif
 
