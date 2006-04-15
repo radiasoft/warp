@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.14 $, $Date: 2006/04/01 00:01:23 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.15 $, $Date: 2006/04/15 00:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -120,7 +120,7 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine loadj3d(ins_i,nps_i,is_i,lzero,pgroup)
+      subroutine loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
       use ParticleGroupmodule
       use GlobalVars
       use Subtimersf3d
@@ -185,7 +185,7 @@ c     --- loop over species
 
 c       --- For the AMR/Chombo version, all of the lost particles must be
 c       --- cleared out.
-c       if (solvergeom == AMRgeom) call clearpart(is,1)
+c       if (solvergeom == AMRgeom) call clearpart(pgroup,is,1)
 
 c       --- get loop limits for particles if needed
         if (ins_i == -1) ins_u = pgroup%ins(is)

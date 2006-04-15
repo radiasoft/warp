@@ -1,18 +1,19 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.38 $, $Date: 2006/04/10 18:19:49 $
+c TOPSLAVE.M, version $Revision: 1.39 $, $Date: 2006/04/15 00:09:46 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
 c===========================================================================
-      subroutine zpartbnd_slave(zmmax,zmmin,dz,zgrid)
+      subroutine zpartbnd_slave(pgroup,zmmax,zmmin,dz,zgrid)
+      use ParticleGroupmodule
       use Subtimerstop
       use GlobalVars
       use InGen
       use InPart
-      use Particles,Only: pgroup
       use Parallel
       use Databuffers
+      type(ParticleGroup):: pgroup
       real(kind=8):: zmmax,zmmin,dz,zgrid
 
 c  Impose boundary conditions on zp.  Puts particles that exit to the left
@@ -296,7 +297,7 @@ c     call VTBEGIN(40,IERR)
 #endif
 c       --- Make sure that there is space for the incoming data.
         do is=1,ns
-          call chckpart(int(is,ISZ),
+          call chckpart(pgroup,int(is,ISZ),
      &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ),
      &                  .false._isz)
         enddo
@@ -457,12 +458,13 @@ c       call MPI_TYPE_FREE(mpinewtype,mpierror)
       end
 c=============================================================================
 c=============================================================================
-      subroutine reorgparticles_parallel()
+      subroutine reorgparticles_parallel(pgroup)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
       use Picglb
-      use Particles,Only: pgroup
       use Parallel
+      type(ParticleGroup):: pgroup
 
 c Do all to all communication to pass particles to where they belong. This
 c sorts through all of the particles first, then does all of the communication
@@ -677,11 +679,12 @@ c     --- Done!
       end
 c=============================================================================
 c=============================================================================
-      integer(ISZ) function checkzpartbnd(zgrid)
+      integer(ISZ) function checkzpartbnd(pgroup,zgrid)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup
       use Parallel
+      type(ParticleGroup):: pgroup
       real(kind=8):: zgrid
 c Check if all particles are within the mesh.  Returns number of particles
 c outside the mesh.

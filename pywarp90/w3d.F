@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.240 $, $Date: 2006/04/12 23:43:50 $
+c@(#) File W3D.F, version $Revision: 3.241 $, $Date: 2006/04/15 00:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -406,14 +406,14 @@ c  Load the particles, calculate the charge density
 
       call remark(" ---  Loading particles")
       call stptcl3d(pgroup)
-      call setgamma(lrelativ)
+      call setgamma(pgroup,lrelativ)
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
-      if (bfstype >= 0) call loadj3d(-1,-1,-1,.true.,pgroup)
+      if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.true.)
       call remark(" ---  done")
 
 c  Set up for injection
-      if (inject > 0) call injctint
+      if (inject > 0) call injctint(pgroup)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -484,7 +484,7 @@ c       --- setup_hst is in bas.wrp
 
 c  Print interesting things to plot file and teletype
 
-      call prntpara(dx,dy,dz,lprntpara)
+      call prntpara(dx,dy,dz,lprntpara,pgroup)
       call prntpa3d(lprntpara)
 
 c  Initial fieldsolve, diagnostics
@@ -508,7 +508,6 @@ c=============================================================================
       use InPart
       use Picglb3d
       use Ctl_to_pic
-c     use Particles, Only: nplive
 
 c  Takes a time step.
 c  This routine advances the mesh in the lab frame, sets the logicals
@@ -677,14 +676,13 @@ c=============================================================================
       use GridBoundary3d
       use Timers
       character(*):: caller
-      logical(ISZ):: thisstep,thiszbeam,dolabwn
 
 c  When called by W3DEXE, step3d advances the system forward in time one 
 c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes 
 c  a step of zero size, to compute fields, and gather diagnostics at start 
 c  of run.
 
-
+      logical(ISZ):: thisstep,thiszbeam,dolabwn
       real(kind=8):: zbeaml,zbeamr
       integer(ISZ):: k
       real(kind=8):: substarttime,wtime
@@ -819,7 +817,7 @@ c  Set the potential near the emitting surface.
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
       if (inject > 0 .and. caller == "w3dexe")
-     &  call inject3d(2)
+     &  call inject3d(2,pgroup)
 
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
@@ -834,7 +832,7 @@ c  Finish transverse space-charge limited injection: change ins and nps.
 c  This is done here so the newly injected particles don't go through
 c  the 'synchv' advance.
       if (inject > 0 .and. caller == "w3dexe") then
-         call inject3d(3)
+         call inject3d(3,pgroup)
       end if
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
@@ -1498,7 +1496,7 @@ c             is 0
             endif
 
 c           --- Obtain the self-field from the electrostatic potential
-            call fetche3d(ipmin,ip,is)
+            call fetche3d(pgroup,ipmin,ip,is)
             if (lcallfetchb) then
               call fetchb3dfrompositions(is,ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                                   bx,by,bz)
@@ -1573,11 +1571,12 @@ c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction before and half after Bpush
                if (interpdk(isid) .ne. 0) then
 c                  call setptrs(bx,by,bz,ex,ey,ez)
-                  call mugrdbpush(ip,is,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,1)
                endif
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), fulldt_s, ibpush)
-               if (interpdk(isid) .ne. 0) call mugrdbpush(ip,is,ipmin,halfdt_s,0)
+               if (interpdk(isid) .ne. 0)
+     &           call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,0)
 c              --- Final half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
@@ -1586,7 +1585,7 @@ c              --- Advance relativistic Gamma factor
      &                       gamadv,lrelativ)
 c              --- Position advance
                if (interpdk(isid) .ne. 0) then
-                 call xpush3dintrp(ip,is,ipmin)
+                 call xpush3dintrp(pgroup,ip,is,ipmin)
                else
                  call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),fulldt_s)
@@ -1643,7 +1642,7 @@ c              --- If interpolating with drift kinetics, must do
 c              ---  a mu grad B correction.  Since may be calling
 c              ---  this on first timestep, must make sure grad B's are
 c              ---  calculated, so last arg = 1.
-                  call mugrdbpush(ip,is,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,1)
                else
                   call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), halfdt_s, ibpush)
@@ -1658,7 +1657,7 @@ c              --- Position advance
                if (center .ne. "hbor2") then
 c              hbor2 just does a v advance, no x push
                  if (interpdk(isid) .ne. 0) then
-                   call xpush3dintrp(ip,is,ipmin)
+                   call xpush3dintrp(pgroup,ip,is,ipmin)
                  else
                    call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),fulldt_s)
@@ -1732,7 +1731,7 @@ c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction
 c              --- Half magnetic field increment to momenta
                if (interpdk(isid) .ne. 0) then
-                  call mugrdbpush(ip,is,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,1)
                   call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), fulldt_s, -1)
 c                 Half a Boris push
@@ -1882,20 +1881,20 @@ c----------------------------------------------------------------------------
 c       --- Inject more particles. This adds particles and alters ins and nps.
 
         if (inject > 0) then
-           call inject3d(1)
+           call inject3d(1,pgroup)
         end if
 
 c       --- Treat particles at boundaries
 c        if (any((mod(it,ndts)==0) .and. (nps>0))) then
-        call particleboundaries3d()
+        call particleboundaries3d(pgroup)
  
 c       --- Collect charge density (3d)
         call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-        if (bfstype >= 0) call loadj3d(-1,-1,-1,.not. laccumulate_rho,pgroup)
+        if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
-          zbeam = getbeamcom() - zbeamcomoffset
+          zbeam = getbeamcom(pgroup) - zbeamcomoffset
 
         else
 c         --- Advance beam frame location using the nominal beam frame velocity.
@@ -1916,13 +1915,13 @@ c----------------------------------------------------------------------------
       return
       end
 c=============================================================================
-      subroutine getextpart()
+      subroutine getextpart(pgroup)
+      use ParticleGroupmodule
       use GlobalVars
       use InGen
       use InPart
-      use Particles,Only: pgroup
       use Picglb
-
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,ip,ipmin
       real(kind=8):: fulldt_s,halfdt_s
 
@@ -3713,7 +3712,7 @@ c       --- domain decomposition is allowed.
 
 !$OMP MASTER
 c       --- Make sure there is space allocated for the new particles.
-        call chckpart(js+1,0,npm,.false.)
+        call chckpart(pgroup,js+1,0,npm,.false.)
 !$OMP END MASTER
 
         ip = pgroup%ins(js+1) - 1
@@ -4339,7 +4338,7 @@ c     --- Apply particle boundary conditions
      &                   pgroup%uyp(ip),pgroup%uzp(ip),pgroup%gaminv(ip),
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         endif
-        call processlostpart(js+1,clearlostpart,time,zbeam)
+        call processlostpart(pgroup,js+1,clearlostpart,time,zbeam)
       enddo
 
 !$OMP MASTER
@@ -6007,7 +6006,7 @@ c     --- loop over species
 
 c        --- For the AMR/Chombo version, all of the lost particles must be
 c        --- cleared out.
-         if (solvergeom == AMRgeom) call clearpart(is,1)
+         if (solvergeom == AMRgeom) call clearpart(pgroup,is,1)
 
 c        --- get loop limits for particles if needed
          if (ins_i == -1) ins_u = pgroup%ins(is)
@@ -6318,7 +6317,8 @@ c     --- rhop is expensive.
       return
       end
 c=============================================================================
-      subroutine fetche3d(ipmin,ip,is)
+      subroutine fetche3d(pgroup,ipmin,ip,is)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -6326,12 +6326,12 @@ c=============================================================================
       use InGen
       use InGen3d
       use InMesh3d
-      use Particles,Only: pgroup
       use Fields3d
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
       use DKInterptmp
+      type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
 
 c     --- Obtain the self-field from the electrostatic potential
@@ -6489,7 +6489,8 @@ c     --- particles group.
       return
       end
 c=============================================================================
-      subroutine particleboundaries3d()
+      subroutine particleboundaries3d(pgroup)
+      use ParticleGroupmodule
       use Subtimers3d
       use InGen
       use InGen3d
@@ -6497,7 +6498,7 @@ c=============================================================================
       use InMesh3d
       use Picglb
       use Picglb3d
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
 
 c Does everything needed to apply particle boundary conditions.
 
@@ -6506,10 +6507,10 @@ c Does everything needed to apply particle boundary conditions.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(zmmax,zmmin,dz,zgrid)
+      call zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
 
 c     --- absorb particles passing through semitransparent disc
-      call semitransparent_disc(dz)
+      call semitransparent_disc(pgroup,dz)
 
       do is=1,pgroup%ns
         if (mod(it,pgroup%ndts(is))==0 .and. pgroup%nps(is) > 0) then
@@ -6529,7 +6530,8 @@ c     --- absorb particles passing through semitransparent disc
       do is=1,ns
 c       --- do it only if species was advanced on this time step
         if (mod(it,pgroup%ndts(is))/=0) cycle
-        call processlostpart(is,clearlostpart,time+dt*pgroup%ndts(is),zbeam)
+        call processlostpart(pgroup,is,clearlostpart,time+dt*pgroup%ndts(is),
+     &                       zbeam)
       enddo
 
 !$OMP MASTER

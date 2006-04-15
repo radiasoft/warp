@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.153 $, $Date: 2006/02/27 23:40:36 $
+c@(#) File DW3D.F, version $Revision: 3.154 $, $Date: 2006/04/15 00:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -390,15 +390,16 @@ c=============================================================================
 c=============================================================================
 c============== Additional phase space diagnostic routines ===================
 c=============================================================================
-      subroutine divxy(iz,ndiv,divx,divy,divvx,divvx2,divvy,divvy2,wnpx,wnpy,
-     &                 itask)
+      subroutine divxy(pgroup,iz,ndiv,divx,divy,divvx,divvx2,divvy,divvy2,
+     &                 wnpx,wnpy,itask)
+      use ParticleGroupmodule
       use InMesh3d
       use InDiag
       use InPart
-      use Particles,Only: pgroup
       use Picglb
       use Picglb3d
       use Fields3d
+      type(ParticleGroup):: pgroup
       integer(ISZ):: iz,ndiv,itask
       real(kind=8):: divx(0:ndiv), divy(0:ndiv)
       real(kind=8):: divvx(0:ndiv), divvx2(0:ndiv)

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.160 $, $Date: 2006/03/18 01:51:01 $
+#@(#) File TOP.V, version $Revision: 3.161 $, $Date: 2006/04/15 00:09:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.160 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.161 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2160,7 +2160,8 @@ getpsgrd(np,xp(np):real,uxp(np):real,nw,nh,psgrd(0:nw,0:nh):real,
          wmin:real,wmax:real,hmin:real,
          hmax:real,zl:real,zr:real,zp(np):real,uzp(np):real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space
-emitthresh(n:integer,threshold(n):real,js:integer,iw:integer,
+emitthresh(pgroup:ParticleGroup,n:integer,threshold(n):real,js:integer,
+           iw:integer,
            ngridw:integer,ngridh:integer,tepsx(n):real,tepsy(n):real)
               subroutine # Calculates the emittance with thesholding.
         # --- Input:
@@ -2234,19 +2235,21 @@ dolabwn() logical function
 alotpart()   subroutine # Allocate space for particles and setup associated data
 chckpart(is:integer,nlower:integer,nhigher:integer,lfullshft:logical)
              subroutine # Makes sure there is enough space for nn particles.
-addpart(nn:integer,npid:integer,x(nn):real,y(nn):real,z(nn):real,
-        vx(nn):real,vy(nn):real,vz(nn):real,
+addpart(pgroup:ParticleGroup,nn:integer,npid:integer,
+        x(nn):real,y(nn):real,z(nn):real,vx(nn):real,vy(nn):real,vz(nn):real,
         gi(nn):real,pid(nn,npid):real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
-clearpart(js:integer,fillmethod:integer)
+clearpart(pgroup:ParticleGroup,js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
-shrinkpart() subroutine # Removes unused space in the particle arrays
+shrinkpart(pgroup:ParticleGroup)
+             subroutine # Removes unused space in the particle arrays
 particlesortyzwithcopy(pgroup:ParticleGroup,dy:real,dz:real,
                        ymmin:real,zmmin:real,ny:integer,nz:integer)
              subroutine # Sorts particles via a full copy
-processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
+processlostpart(pgroup:ParticleGroup,is:integer,clearlostpart:integer,
+                time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
 alotlostpart() subroutine # Allocate space for saving lost particles
@@ -2254,19 +2257,15 @@ checkparticlegroup(pgroup:ParticleGroup,is:integer,
                    nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles in
                         # the given particle group.
-copyparttogroup(nn:integer,ii:integer,istart:integer,
-                pgroup:ParticleGroup,it:integer)
-             subroutine # Copies particle data from base particle arrays into
-                        # the specified group.
-copygrouptopart(nn:integer,ii:integer,istart:integer,
-                pgroup:ParticleGroup,it:integer)
-             subroutine # Copies particle data from the specified group into
-                        # the base particle arrays
+copygrouptogroup(pgroupin:ParticleGroup,nn:integer,ii:integer,istart:integer,
+                pgroupout:ParticleGroup,it:integer)
+             subroutine # Copies particle data between groups
 load2d(np,x(np):real,y(np):real,nx,ny,n(0:nx,0:ny):real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
-shftpart(is:integer,ishft:integer) subroutine
+shftpart(pgroup:ParticleGroup,is:integer,ishft:integer) subroutine
                         # Moves particle data to end of species group.
-copypart(it:integer,nn:integer,ii:integer;istart:integer) subroutine
+copypart(pgroup:ParticleGroup,it:integer,nn:integer,ii:integer;istart:integer)
+             subroutine
                         # Copies particle data from one location to another
 wrandom(method:string,ii:integer,idig:integer,ifib1:integer,ifib2:integer)
           real function # Returns random number using the given method
@@ -2315,10 +2314,11 @@ wtimeon()  subroutine # turns timer on
 wtimeoff() real function # returns time since last call to wtimeon or wtimeoff
 wtremain() real function # returns the time remaining for the running job
                          # (T3E only, otherwise returns large number)
-getbeamcom() real function
+getbeamcom(pgroup:ParticleGroup) real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
-zpartbnd(zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
+zpartbnd(pgroup:ParticleGroup,zmmax:real,zmmin:real,dz:real,zgrid:real)
+       subroutine
        # Enforces axial particle boundary conditions
 reorgparticles() subroutine
        # Reorganizes particles for the parallel version

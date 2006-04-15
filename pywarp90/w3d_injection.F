@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.48 $, $Date: 2006/04/13 20:57:17 $
+c@(#) File w3d_injection.F, version $Revision: 1.49 $, $Date: 2006/04/15 00:09:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9,7 +9,8 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
 c=============================================================================
-      subroutine inject3d(itask)
+      subroutine inject3d(itask,pgroup)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimers3d
       use Constant
@@ -19,7 +20,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: pgroup,spid,wpid,tpid,rpid,ssn
+      use Particles,Only: spid,wpid,tpid,rpid,ssn
       use Picglb
       use InjectVars
       use InjectVars3d
@@ -30,6 +31,7 @@ c=============================================================================
       use Parallel
 #endif
       integer(ISZ):: itask
+      type(ParticleGroup):: pgroup
 
 c This routine does the injection of particles.  It has three main parts, the
 c first cleans up the particle arrays and makes sure that there is enough room
@@ -76,7 +78,7 @@ c Print warning if vbeamfrm is not zero
       endif
 
 c Clear out the lost particles.
-      if (itask == 1) call clearpart(-1,2)
+      if (itask == 1) call clearpart(pgroup,-1,2)
 
 c Set inject z min and max.
       call updateinj_zmminmax()
@@ -167,7 +169,7 @@ c         --- Loop over species.
               if (nn == 0) cycle
 
 c             --- Check if there is enough room for the new injected particles.
-              call chckpart(is,nn,0,.true.)
+              call chckpart(pgroup,is,nn,0,.true.)
 
             else
 
@@ -183,7 +185,7 @@ c             --- injected and but the average number will be less than 1.
               if(nn==0) cycle
 
 c             --- Check if there is enough room for the new injected particles.
-              call chckpart(is,nn,0,.true.)
+              call chckpart(pgroup,is,nn,0,.true.)
 
 c             --- Make sure there is enough temp space
               if (nn > npgrp) then
@@ -818,14 +820,14 @@ c                 --- that there is enough room available in case the
 c                 --- first estimate is wrong.
                   if(.not.l_inj_regular) then
                     if(.not.l_inj_rz) then
-                      call chckpart(is,max(nn+npinje_s(isid),
+                      call chckpart(pgroup,is,max(nn+npinje_s(isid),
      &                              int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
                     else
-                      call chckpart(is,max(nn+npinje_s(isid),
+                      call chckpart(pgroup,is,max(nn+npinje_s(isid),
      &                              int(nn*ainj*dxi)),0,.true.)
                     end if
                   else
-                    call chckpart(is,max(nn+npinje_s(isid),
+                    call chckpart(pgroup,is,max(nn+npinje_s(isid),
      &                            int((inj_nx+1)*(inj_ny+1))),0,.true.)
                   end if
 
@@ -1096,7 +1098,7 @@ c         --- removal of particles outside the grid.
      &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
      &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
-              call processlostpart(is,clearlostpart,time,zbeam)
+              call processlostpart(pgroup,is,clearlostpart,time,zbeam)
             endif
           enddo
 
@@ -1482,10 +1484,10 @@ c                   --- get charge density at injection point
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
-                  call chckpart(is,npinje_s(isid) +
+                  call chckpart(pgroup,is,npinje_s(isid) +
      &                             nn*nttinj(ij)*(nztinjmx(ij)-nztinjmn(ij)),
      &                          0,.true.)
-                  call chckpart(is,nn,0,.true.)
+                  call chckpart(pgroup,is,nn,0,.true.)
 
                   do ip=1,nn
                     ii = pgroup%ins(is) - npinje_s(isid) - nti - 1
@@ -1596,7 +1598,8 @@ c     --- End of transverse injection
       return
       end
 c=============================================================================
-      subroutine injctint()
+      subroutine injctint(pgroup)
+      use ParticleGroupmodule
       use Subtimers3d
       use Constant
       use Beam_acc
@@ -1604,13 +1607,14 @@ c=============================================================================
       use InGen3d
       use InPart
       use InMesh3d
-      use Particles,Only: pgroup,npmax
+      use Particles,Only: npmax
       use InjectVars
       use InjectVars3d
       use Setpwork3d
       use Picglb3d
       use Parallel
       use Obsolete3d,obs_inj_d=>inj_d,obs_inj_f=>inj_f
+      type(ParticleGroup):: pgroup
 
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: ixmin,ixmax,iymin,iymax
@@ -1783,7 +1787,8 @@ c Also set particle parameters: charge, mass and weight
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
         if (maxval(pgroup%nps) /= 0) then
-          call chckpart(is,int(injctspc*sp_fract(isid)/total_frac+1),0,.true.)
+          call chckpart(pgroup,is,int(injctspc*sp_fract(isid)/total_frac+1),
+     &                  0,.true.)
         endif
         if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(isid)*echarge
         if (pgroup%sw(is) == 0.)

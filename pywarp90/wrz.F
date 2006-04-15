@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.19 $, $Date: 2006/04/10 18:23:20 $
+c@(#) File WRZ.M, version $Revision: 3.20 $, $Date: 2006/04/15 00:09:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -160,7 +160,7 @@ c     else
 c        call ldshell
 c     endif
 
-      call setgamma(lrelativ)
+      call setgamma(pgroup,lrelativ)
 c     call zeroarry(rho,nrz)
 c     call zeroarry(curr,nz+1)
       rho = 0.
@@ -299,7 +299,7 @@ c  a quantity as a diagnostic
       call gallot ("FFTDiagrz", 0)
  
 c  Print interesting things to plot file and teletype
-      call prntpara(dr,dr,dz,lprntpara)
+      call prntpara(dr,dr,dz,lprntpara,pgroup)
       call prntparz(lprntpara)
  
 c  Initial call to fieldsolver in order to initialize attz, kzsq, etc.
@@ -1127,7 +1127,7 @@ c    &                       pgroup%gaminv(ipmin),pgroup%sm(is),pgroup%sw(is),2,
      & pgroup%uxp(pgroup%ins(is)),pgroup%uyp(pgroup%ins(is)),pgroup%uzp(pgroup%ins(is)),
      &                                 pgroup%gaminv(pgroup%ins(is)),
      &                                 zgrid,pgroup%ins(is),it)
-            call processlostpart(is,clearlostpart,time,zbeam)
+            call processlostpart(pgroup,is,clearlostpart,time,zbeam)
             do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
                ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
                call setrhorz (rho, ip, pgroup%xp(ipmin), pgroup%zp(ipmin), zgrid,

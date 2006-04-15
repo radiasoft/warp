@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.63 $, $Date: 2006/04/12 23:44:24 $
+c@(#) File WXY.M, version $Revision: 3.64 $, $Date: 2006/04/15 00:09:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -255,10 +255,10 @@ c  Load the particles, calculate the charge density
       call remark(" ---  Loading particles")
       cigarld = .false.
       cylinder = .true.
-      call stptcl3d
-      call setgamma(lrelativ)
-      call initdtp
-      call initzpxy
+      call stptcl3d(pgroup)
+      call setgamma(pgroup,lrelativ)
+      call initdtp(pgroup)
+      call initzpxy(pgroup)
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
@@ -334,7 +334,7 @@ c       --- setup_hst is in bas.wrp
 
 c  Print interesting things to plot file and teletype
 
-      call prntpara(dx,dy,dz,lprntpara)
+      call prntpara(dx,dy,dz,lprntpara,pgroup)
       call prntpa3d(lprntpara)
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
       call vpxy (1)
@@ -856,7 +856,8 @@ c     --- azimuthal magnetic field
       return
       end
 c=============================================================================
-      subroutine fetchexy(ipmin,ip,is,ex,ey,ez)
+      subroutine fetchexy(pgroup,ipmin,ip,is,ex,ey,ez)
+      use ParticleGroupmodule
       use GlobalVars
       use Subtimersxy
       use Picglb
@@ -865,11 +866,11 @@ c=============================================================================
       use InGenxy
       use InGen3d
       use InMesh3d
-      use Particles,Only: pgroup
       use Fields3d
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
+      type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
       real(kind=8), dimension(ip) :: ex,ey,ez,zpo
             
@@ -1047,7 +1048,7 @@ c  Loop over particle blocks; move each block separately
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
-          call fetchexy(ipmin,ip,is,ex,ey,ez)
+          call fetchexy(pgroup,ipmin,ip,is,ex,ey,ez)
 
 c           --- Scale the self E-field to get the lowest order relativistic
 c           --- correction.
@@ -1381,7 +1382,7 @@ c         --- Apply particle boundary conditions
         if (lcallscraper) call execuser("callscraper")
 
         do is=1,ns
-          call processlostpart(is,clearlostpart,time,zbeam)
+          call processlostpart(pgroup,is,clearlostpart,time,zbeam)
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
@@ -1650,11 +1651,12 @@ c  Advance particle positions
       return
       end      
 c============================================================================ 
-      subroutine initzpxy()
+      subroutine initzpxy(pgroup)
+      use ParticleGroupmodule
       use InPart
       use Picglb
       use InGenxy
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
 
 c If requested to, this routine sets the z value of all of the particles to
 c zbeam.
@@ -1670,13 +1672,14 @@ c zbeam.
       return
       end
 c============================================================================ 
-      subroutine initdtp()
+      subroutine initdtp(pgroup)
+      use ParticleGroupmodule
       use Subtimersxy
       use Beam_acc
       use InGen
       use InGenxy
-      use Particles,Only: pgroup
       use Particlesxy
+      type(ParticleGroup):: pgroup
 c Initializes dtp
       integer(ISZ):: is,i1,i2
       real(kind=8):: substarttime,wtime

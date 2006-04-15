@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.141 $, $Date: 2006/02/27 23:38:11 $
+c@(#) File DTOP.F, version $Revision: 3.142 $, $Date: 2006/04/15 00:09:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -299,18 +299,20 @@ c     --- return if line is not requested
       return
       end
 c=============================================================================
-      subroutine prntpara(dxperp,dyperp,dz,lprntpara)
+      subroutine prntpara(dxperp,dyperp,dz,lprntpara,pgroup)
+      use ParticleGroupmodule
       use InGen
       use InPart
       use Io
       use Ch_var
       use Constant
-      use Particles,Only: pgroup,npmax
+      use Particles,Only: npmax
       use Picglb
       use OutParams
       use Beam_acc
       real(kind=8):: dxperp,dyperp,dz
       logical(ISZ):: lprntpara
+      type(ParticleGroup):: pgroup
 
 c  Calculates various parameters and optionally prints them out to a plot
 c  frame and an output file or tty
@@ -627,7 +629,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.141 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.142 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1951,14 +1953,15 @@ c=============================================================================
 
       return
       end
-c=============================================================================
-c===========================================================================
-      subroutine emitthresh(n,threshold,is,iw,ngridw,ngridh,tepsx,tepsy)
+c============================================================================
+c============================================================================
+      subroutine emitthresh(pgroup,n,threshold,is,iw,ngridw,ngridh,tepsx,tepsy)
+      use ParticleGroupmodule
       use InPart
       use InDiag
       use Picglb
       use Win_Moments
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       integer(ISZ):: n
       real(kind=8):: threshold(n)
       integer(ISZ):: is,iw,ngridw,ngridh

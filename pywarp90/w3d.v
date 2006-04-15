@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.211 $, $Date: 2006/04/12 23:45:15 $
+#@(#) File W3D.V, version $Revision: 3.212 $, $Date: 2006/04/15 00:09:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.211 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.212 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -671,7 +671,8 @@ geteb(np,is,ipmin,x:real,y:real,z:real)
 w3dgen() subroutine
 w3dexe() subroutine
 w3dfin() subroutine
-divxy(iz,ndiv,divx(0:ndiv):real,divy(0:ndiv):real,divvx(0:ndiv):real,
+divxy(pgroup:ParticleGroup,iz,ndiv,
+      divx(0:ndiv):real,divy(0:ndiv):real,divvx(0:ndiv):real,
       divvx2(0:ndiv):real,divvy(0:ndiv):real,
       divvy2(0:ndiv):real,wnpx(0:ndiv):real,wnpy(0:ndiv):real,itask)
              subroutine # calculates RMS vx and vy versus x and y
@@ -693,7 +694,7 @@ getese3d()   subroutine # Computes electrostatic energy
 gtlchg3d()   subroutine # Computes line charge density
 inject3d(itask:integer)
              subroutine # Injection routine
-injctint()   subroutine # Initialization for injection
+injctint(pgroup:ParticleGroup) subroutine # Initialization for injection
 fill_inj()   subroutine # Initializes arrays describing the geometry of the
                         # emitting surface. Automatically called.
 inj_sete3d(np:integer,xp(np):real,yp(np):real,zp(np):real,pid(np):real,dz:real,
@@ -705,7 +706,8 @@ inj_transform(np:integer,x(np):real,y(np):real,z(np):real,
               tsign:integer,lshift:logical)
              subroutine # Transforms coordinates into and out of frame
                         # of injection sources
-loadrho3d(ins:integer,nps:integer,is:integer,lzero:logical) 
+loadrho3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
+          lzero:logical) 
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
 fetchphi(n:integer,x(n):real,y(n):real,z(n):real,p(n):real)
@@ -812,7 +814,7 @@ getinj_phi_3d() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
 fetche3dfrompositions(is:integer,n:integer,x(n):real,y(n):real,z(n):real,
                       ex(n):real,ey(n):real,ez(n):real) subroutine
-particleboundaries3d() subroutine
+particleboundaries3d(pgroup:ParticleGroup) subroutine
 loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
               rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
               epsx(np):real,epsy(np):real) subroutine
@@ -870,7 +872,7 @@ putsortedefield(n:integer,isort(0:n-1):integer,
                 tex(0:n-1):real,tey(0:n-1):real,tez(0:n-1):real,
                 ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
-getextpart()  subroutine
+getextpart(pgroup:ParticleGroup)  subroutine
 
 
 *********** W3Dload:

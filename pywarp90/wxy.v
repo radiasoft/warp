@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.46 $, $Date: 2006/04/12 23:44:24 $
+#@(#) File WXY.V, version $Revision: 3.47 $, $Date: 2006/04/15 00:09:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.46 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.47 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 dtpid      integer # ID in the pid array where the time step size for each
@@ -38,8 +38,8 @@ lzstepcorrection logical /.false./
 # Subroutines in package XY
 wxygen() subroutine
 wxyexe() subroutine
-initdtp() subroutine # Initializes dtp
-initzpxy() subroutine # Optionally sets all z values to zbeam.
+initdtp(pgroup:ParticleGroup) subroutine # Initializes dtp
+initzpxy(pgroup:ParticleGroup) subroutine # Optionally sets all z values to zbeam.
 extebxy(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
         bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
         m:real,q:real,bendres:real,bendradi:real,lexbend:logical,gammabar:real,
@@ -78,7 +78,8 @@ vpxy(iwhich:integer)
 loadrhoxy(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,
           lzero:logical)
              subroutine # Simple interface to setrhoxy
-fetchexy(ipmin:integer,ip:integer,is:integer,ex:real,ey:real,ez:real)
+fetchexy(pgroup:ParticleGroup,ipmin:integer,ip:integer,is:integer,
+         ex:real,ey:real,ez:real)
 	     subroutine # Returns electric field on particles from phi
 
 *********** Subtimersxy:

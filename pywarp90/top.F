@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.171 $, $Date: 2006/04/01 00:00:53 $
+c@(#) File TOP.F, version $Revision: 3.172 $, $Date: 2006/04/15 00:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6348,10 +6348,11 @@ c          if (kk < 0 .or. kk+1 > nzzarr) cycle
       return
       end
 c=============================================================================
-      subroutine setgamma(lrelativ)
+      subroutine setgamma(pgroup,lrelativ)
+      use ParticleGroupmodule
       use Constant
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       logical(ISZ):: lrelativ
 c  Converts v to u, sets inverse gamma factor for all particles
 
@@ -6382,12 +6383,13 @@ c  Converts v to u, sets inverse gamma factor for all particles
       return
       end
 c=============================================================================
-      subroutine zpartbnd(zmmax,zmmin,dz,zgrid)
+      subroutine zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
+      use ParticleGroupmodule
       use Picglb, only: it
       use GlobalVars
       use InGen
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       real(kind=8):: zmmax,zmmin,dz,zgrid
 
 c  Impose boundary conditions on zp
@@ -6397,7 +6399,7 @@ c  Impose boundary conditions on zp
 
 c Parallel version makes call to special routine zpartbnd_slave
 #ifdef MPIPARALLEL
-      call zpartbnd_slave(zmmax,zmmin,dz,zgrid)
+      call zpartbnd_slave(pgroup,zmmax,zmmin,dz,zgrid)
 #else
 
       if (pbound0==periodic) then
@@ -6492,26 +6494,30 @@ c     --- other boundary condition (particles absorbed or reflected)
       return
       end
 c=============================================================================
-      subroutine reorgparticles()
+      subroutine reorgparticles(pgroup)
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
 #ifdef MPIPARALLEL
-      call reorgparticles_parallel()
+      call reorgparticles_parallel(pgroup)
 #endif
       return
       end
 c=============================================================================
-      subroutine semitransparent_disc(dz)
+      subroutine semitransparent_disc(pgroup,dz)
+      use ParticleGroupmodule
       use Picglb, only: it
-      use Particles, Only: pgroup
       use InGen
       use Moments
       use InPart
       use SemiTransparentDisc
+      type(ParticleGroup):: pgroup
+      real(kind=8), intent(in) :: dz 
+
 c Random absorption of particles passing through a semitranparent disc.
 c This assumes that no particle travels more than dz in one time step.
 c dz is used only for efficiency purpose: only particles within dz 
 c of semi-transparent disc location are checked for disc crossing.
 
-      real(kind=8), intent(in) :: dz 
       integer(ISZ) :: is, ip, izd, idisc
       real(kind=8) :: zpold, dtcross, xpatdisc, ypatdisc, r, wranf
      &              , zmind(n_STdiscs),zmaxd(n_STdiscs)
@@ -6611,9 +6617,10 @@ c  Particles stick at the extreme edges of the grid.
       end
 c=============================================================================
 c=============================================================================
-      real(kind=8) function getbeamcom()
+      real(kind=8) function getbeamcom(pgroup)
+      use ParticleGroupmodule
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
 
 c Calculate the center of mass of the beam along the z axis from the particles
 
@@ -6732,10 +6739,11 @@ c     --- setup ipmax_s array
       return
       end
 c=============================================================================
-      subroutine chckpart(is,nlower,nhigher,lfullshft)
+      subroutine chckpart(pgroup,is,nlower,nhigher,lfullshft)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,nlower,nhigher
       logical(ISZ):: lfullshft
 
@@ -6784,7 +6792,7 @@ c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
         do i=pgroup%ns,is+1,-1
           pgroup%ipmax_s(i) = pgroup%ipmax_s(i) + nadd
-          call shftpart(i,nadd)
+          call shftpart(pgroup,i,nadd)
         enddo
 
 c       --- Increase size of the block for species 'is'.
@@ -6805,7 +6813,7 @@ c     --- ishift is zero.
      &           min(0,(pgroup%ipmax_s(is)-pgroup%ins(is)-pgroup%nps(is)+1) -
      &                 nhigher)
       endif
-      call shftpart(is,ishift)
+      call shftpart(pgroup,is,ishift)
 
 !$OMP MASTER
       if (ltoptimesubs) timechckpart = timechckpart + wtime() - substarttime
@@ -6814,9 +6822,10 @@ c     --- ishift is zero.
       return
       end
 c=============================================================================
-      subroutine shftpart(is,ishift)
+      subroutine shftpart(pgroup,is,ishift)
+      use ParticleGroupmodule
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,ishift
       if (pgroup%npidmax > 0) then
       call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
@@ -6931,10 +6940,11 @@ c         --- change lower bound only
       return
       end
 c=============================================================================
-      subroutine copypart(it,nn,ii,istart)
+      subroutine copypart(pgroup,it,nn,ii,istart)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
 
@@ -6985,12 +6995,14 @@ c starting at 'istart' to locations starting at 'it'.
       return
       end
 c=============================================================================
-      subroutine addpart(nn,nnpidmax,x,y,z,vx,vy,vz,gi,ppid,is,
+      subroutine addpart(pgroup,nn,nnpidmax,x,y,z,vx,vy,vz,gi,ppid,is,
      &                   lallindomain,zmmin,zmmax,lmomentum)
+      use ParticleGroupmodule
       use Subtimerstop
       use Constant
-      use Particles,Only: pgroup,spid,ssn
+      use Particles,Only: spid,ssn
       use Beam_acc
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,nn,nnpidmax
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
       real(kind=8):: ppid(nn,nnpidmax)
@@ -7048,7 +7060,7 @@ c     --- momentum.
 
 c     --- Make room for the particles
       pgroup%npidmax = max(pgroup%npidmax,nnpidmax)
-      call chckpart(is,0,n1,.false.)
+      call chckpart(pgroup,is,0,n1,.false.)
 
 c     --- Now, copy data into arrays
       i1 = pgroup%ins(is) + pgroup%nps(is)
@@ -7079,10 +7091,12 @@ c       --- Only set the ssn if it is not already set.
       return
       end
 c=============================================================================
-      subroutine clearpart(js,fillmethod)
+      subroutine clearpart(pgroup,js,fillmethod)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup,wpid
+      use Particles,Only: wpid
+      type(ParticleGroup):: pgroup
       integer(ISZ):: js,fillmethod
 
 c Clears out all of the lost particles. If js < 0, the clears out all
@@ -7183,10 +7197,11 @@ c       --- Live particles are shifted downward to fill in the empty spaces
       return
       end
 c=============================================================================
-      subroutine shrinkpart()
+      subroutine shrinkpart(pgroup)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup
+      type(ParticleGroup):: pgroup
 
 c Removes all unused space from the particle arrays. Particles are shifted
 c down and then gchange is called to free the left over space.
@@ -7197,12 +7212,12 @@ c down and then gchange is called to free the left over space.
 
       oldnpmax = pgroup%npmax
 
-      call shftpart(1,1-pgroup%ins(1))
+      call shftpart(pgroup,1,1-pgroup%ins(1))
       pgroup%ins(1) = 1
       pgroup%ipmax_s(1) = pgroup%ins(1) + pgroup%nps(1) - 1
 
       do is=2,pgroup%ns
-        call shftpart(is,pgroup%ins(is-1)+pgroup%nps(is-1)-pgroup%ins(is))
+        call shftpart(pgroup,is,pgroup%ins(is-1)+pgroup%nps(is-1)-pgroup%ins(is))
         pgroup%ins(is) = pgroup%ins(is-1)+pgroup%nps(is-1)
         pgroup%ipmax_s(is) = pgroup%ins(is) + pgroup%nps(is) - 1
       enddo
@@ -7222,15 +7237,17 @@ c     --- reallocated.
       return
       end
 c=============================================================================
-      subroutine processlostpart(is,clearlostpart,time,zbeam)
+      subroutine processlostpart(pgroup,is,clearlostpart,time,zbeam)
+      use ParticleGroupmodule
       use Subtimerstop
       use Constant
       use Beam_acc
       use InPart
       use InDiag
-      use Particles,Only: pgroup,wpid
+      use Particles,Only: wpid
       use LostParticles
       use Z_arrays
+      type(ParticleGroup):: pgroup
       integer(ISZ):: is,clearlostpart
       real(kind=8):: time,zbeam
 
@@ -7325,7 +7342,7 @@ c         --- Zero out the velocity, the flag for a lost particle.
         endif
       enddo
 
-      call clearpart(is,clearlostpart)
+      call clearpart(pgroup,is,clearlostpart)
 
 !$OMP MASTER
       if (ltoptimesubs) timeprocesslostpart = timeprocesslostpart + wtime() - substarttime
@@ -7730,14 +7747,13 @@ c         --- change lower bound only
       return
       end
 c=============================================================================
-      subroutine copyparttogroup(nn,ii,istart,pgroupout,it)
+      subroutine copygrouptogroup(pgroupin,nn,ii,istart,pgroupout,it)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup
-      use ParticleGroupmodule
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
-      type(ParticleGroup):: pgroupout
+      type(ParticleGroup):: pgroupin,pgroupout
 
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
@@ -7751,92 +7767,36 @@ c starting at 'istart' to locations starting at 'it'.
         do i=0,nn-1
           ij = istart + i
           in = it + i
-          pgroupout%xp(in) = pgroup%xp(ij)
-          pgroupout%yp(in) = pgroup%yp(ij)
-          pgroupout%zp(in) = pgroup%zp(ij)
-          pgroupout%uxp(in) = pgroup%uxp(ij)
-          pgroupout%uyp(in) = pgroup%uyp(ij)
-          pgroupout%uzp(in) = pgroup%uzp(ij)
-          pgroupout%gaminv(in) = pgroup%gaminv(ij)
-          if (pgroup%npidmax > 0) then
-            pgroupout%pid(in,:) = pgroup%pid(ij,:)
+          pgroupout%xp(in) = pgroupin%xp(ij)
+          pgroupout%yp(in) = pgroupin%yp(ij)
+          pgroupout%zp(in) = pgroupin%zp(ij)
+          pgroupout%uxp(in) = pgroupin%uxp(ij)
+          pgroupout%uyp(in) = pgroupin%uyp(ij)
+          pgroupout%uzp(in) = pgroupin%uzp(ij)
+          pgroupout%gaminv(in) = pgroupin%gaminv(ij)
+          if (pgroupin%npidmax > 0) then
+            pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
       else
         do i=0,nn-1
           ij = ii(i)
           in = it + i
-          pgroupout%xp(in) = pgroup%xp(ij)
-          pgroupout%yp(in) = pgroup%yp(ij)
-          pgroupout%zp(in) = pgroup%zp(ij)
-          pgroupout%uxp(in) = pgroup%uxp(ij)
-          pgroupout%uyp(in) = pgroup%uyp(ij)
-          pgroupout%uzp(in) = pgroup%uzp(ij)
-          pgroupout%gaminv(in) = pgroup%gaminv(ij)
-          if (pgroup%npidmax > 0) then
-            pgroupout%pid(in,:) = pgroup%pid(ij,:)
+          pgroupout%xp(in) = pgroupin%xp(ij)
+          pgroupout%yp(in) = pgroupin%yp(ij)
+          pgroupout%zp(in) = pgroupin%zp(ij)
+          pgroupout%uxp(in) = pgroupin%uxp(ij)
+          pgroupout%uyp(in) = pgroupin%uyp(ij)
+          pgroupout%uzp(in) = pgroupin%uzp(ij)
+          pgroupout%gaminv(in) = pgroupin%gaminv(ij)
+          if (pgroupin%npidmax > 0) then
+            pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
       endif
 
 !$OMP MASTER
       if (ltoptimesubs) timecopyparttogroup = timecopyparttogroup + wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine copygrouptopart(nn,ii,istart,pgroupin,it)
-      use Subtimerstop
-      use InPart
-      use Particles,Only: pgroup
-      use ParticleGroupmodule
-      integer(ISZ):: it,nn,istart
-      integer(ISZ):: ii(0:nn-1)
-      type(ParticleGroup):: pgroupin
-
-c Copies particle data from locations given by ii to the locations starting
-c at 'it', or if istart > 0, copy sequential particles from locations
-c starting at 'istart' to locations starting at 'it'.
-
-      integer(ISZ):: i,in,ij
-      real(kind=8):: substarttime,wtime
-      if (ltoptimesubs) substarttime = wtime()
-
-      if (istart > 0) then
-        do i=0,nn-1
-          ij = istart + i
-          in = it + i
-          pgroup%xp(in) = pgroupin%xp(ij)
-          pgroup%yp(in) = pgroupin%yp(ij)
-          pgroup%zp(in) = pgroupin%zp(ij)
-          pgroup%uxp(in) = pgroupin%uxp(ij)
-          pgroup%uyp(in) = pgroupin%uyp(ij)
-          pgroup%uzp(in) = pgroupin%uzp(ij)
-          pgroup%gaminv(in) = pgroupin%gaminv(ij)
-          if (pgroup%npidmax > 0) then
-            pgroup%pid(in,:) = pgroupin%pid(ij,:)
-          endif
-        enddo
-      else
-        do i=0,nn-1
-          ij = ii(i)
-          in = it + i
-          pgroup%xp(in) = pgroupin%xp(ij)
-          pgroup%yp(in) = pgroupin%yp(ij)
-          pgroup%zp(in) = pgroupin%zp(ij)
-          pgroup%uxp(in) = pgroupin%uxp(ij)
-          pgroup%uyp(in) = pgroupin%uyp(ij)
-          pgroup%uzp(in) = pgroupin%uzp(ij)
-          pgroup%gaminv(in) = pgroupin%gaminv(ij)
-          if (pgroup%npidmax > 0) then
-            pgroup%pid(in,:) = pgroupin%pid(ij,:)
-          endif
-        enddo
-      endif
-
-!$OMP MASTER
-      if (ltoptimesubs) timecopygrouptopart = timecopygrouptopart + wtime() - substarttime
 !$OMP END MASTER
 
       return
@@ -8950,7 +8910,7 @@ c           conductor generate new particles.
         nbpt = int(nbp+wranf())
         i1 = pgroup%ins(is2) + pgroup%nps(is2)
         i2 = i1 + nbpt - 1
-        call chckpart(is2,0,nbpt,.false.)
+        call chckpart(pgroup,is2,0,nbpt,.false.)
         do ir = 1, nbpt
           pgroup%xp(i1+ir-1) = xplost(ip)+shiftx+(wranf()-0.5)*deltax
           pgroup%yp(i1+ir-1) = yplost(ip)+shifty+(wranf()-0.5)*deltay
