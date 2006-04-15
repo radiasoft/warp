@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.48 2006/03/18 00:32:04 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.49 2006/04/15 00:13:36 dave Exp $"
 
 
 ##############################################################################
@@ -381,7 +381,7 @@ set when a current is specified"""
     if (i == iter-1 and _ipstep > 0):
 
       # --- Shrink down the live particles just injected.
-      shrinkpart()
+      shrinkpart(top.pgroup)
 
       # --- Save initial number of particles
       nps_save = top.pgroup.nps.copy()
@@ -416,7 +416,7 @@ set when a current is specified"""
           pgroup.nps = len(ii)
           if (len(ii) > 0):
             pgroup.gchange()
-            copyparttogroup(len(ii),ii,-1,pgroup,1)
+            copygrouptogroup(top.pgroup,len(ii),ii,-1,pgroup,1)
 
     # --- Turn injection off for remaing time steps. inject is set to a value
     # --- greater than zero so that inject3d subroutine is called so it can
@@ -485,7 +485,7 @@ set when a current is specified"""
                 ip2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
                 top.pgroup.pid[ip1:ip2,top.tpid-1]=top.pgroup.pid[ip1:ip2,top.tpid-1]-top.dt
               pgroup.gchange()
-              copyparttogroup(len(ii),ii,-1,pgroup,1)
+              copygrouptogroup(top.pgroup,len(ii),ii,-1,pgroup,1)
 
       npssum = sum(parallelsum(top.pgroup.nps))
       maxvz = parallelmax(top.vzmaxp)
@@ -570,7 +570,7 @@ set when a current is specified"""
         for it in range(len(allpgroups)):
           pgroup = allpgroups[it][js]
           if pgroup.nps[0] > 0:
-            copygrouptopart(pgroup.nps[0],0,1,pgroup,ii)
+            copygrouptogroup(pgroup,pgroup.nps[0],0,1,top.pgroup,ii)
             ii = ii + pgroup.nps[0]
 
     # --- Print out warning message if needed.

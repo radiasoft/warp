@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.106 2006/04/12 23:45:49 dave Exp $"
+warp_version = "$Id: warp.py,v 1.107 2006/04/15 00:13:37 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -405,7 +405,7 @@ package. Only w3d and wxy have field solves defined.
 
 
 #=============================================================================
-def loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=true,pgroup=None):
+def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """
 loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
 This routine provides a simple call from the interpreter to load the

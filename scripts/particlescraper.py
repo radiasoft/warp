@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.38 2006/03/18 00:32:03 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.39 2006/04/15 00:13:37 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -165,7 +165,7 @@ after load balancing."""
         if self.l_print_timing:print js,'scrape',t.milli()
         if self.l_print_timing:t.start()
         if clear or self.lsavecondid:
-          processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
+          processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'processlosspart',t.milli()
         if self.l_print_timing:t.start()

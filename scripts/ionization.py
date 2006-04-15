@@ -4,7 +4,7 @@ Ionization: class for generating particles from impact ionization.
 from warp import *
 import time
 
-ionization_version = "$Id: ionization.py,v 1.2 2005/12/08 23:36:45 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.3 2006/04/15 00:13:37 dave Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -277,7 +277,7 @@ Class for generating particles from impact ionization.
     # make sure that all particles are added and cleared 
     for js in self.x.keys():
       self.flushpart(js)
-      processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
+      processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
                        
     if self.l_timing:print 'time ionization = ',time.clock()-t1,'s'
 

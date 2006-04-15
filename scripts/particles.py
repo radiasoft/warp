@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.39 2006/03/31 22:13:27 dave Exp $"
+particles_version = "$Id: particles.py,v 1.40 2006/04/15 00:13:37 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -900,7 +900,8 @@ def getvzrange(kwdict={}):
 #-------------------------------------------------------------------------
 def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=1.,js=0,
                  lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
-                 resetrho=false,dofieldsol=false,resetmoments=false):
+                 resetrho=false,dofieldsol=false,resetmoments=false,
+                 pgroup=None):
   """
 Adds particles to the simulation
   x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be a arrays or
@@ -920,6 +921,7 @@ Adds particles to the simulation
   lmomentum=false: Set to false when velocities are input as velocities, true
                    when input as massless momentum (as WARP stores them).
                    Only used when top.lrelativ is true.
+  pgroup=top.pgroup: Particle group to add particles too
   """
 
   # --- Get length of arrays, set to one for scalars
@@ -981,11 +983,14 @@ Adds particles to the simulation
     if getcurrpkg() == 'wxy': lallindomain = true
     else:                     lallindomain = false
 
+  if pgroup is None: pgroup = top.pgroup
+
   # --- Now data can be passed into the fortran addparticles routine.
-  addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
+  addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,
+          lallindomain,zmmin,zmmax,lmomentum)
  
   # --- If the slice code is active, then call initdtp
-  if package()[0] == 'wxy': initdtp()
+  if package()[0] == 'wxy': initdtp(top.pgroup)
 
   # --- Do followup work if requested
   if resetrho:

@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.22 2006/03/31 22:23:50 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.23 2006/04/15 00:13:37 dave Exp $"
 
 class TraceParticle:
   """
@@ -185,7 +185,7 @@ Available methods...
       # --- Set uzp to zero, signal of dead particles
       top.pgroup.uzp[ii] = 0.
     # --- Clear out the tracer particles
-    clearpart(self.js+1,1)
+    clearpart(top.pgroup,self.js+1,1)
     # --- remove routine from after step
     uninstallafterstep(self.spsavedata)
 
@@ -642,7 +642,7 @@ initial data.
     self.enabled = 1
     self.startit = top.it
     # --- make sure there is space
-    chckpart(self.js+1,0,self.nn,false)
+    chckpart(top.pgroup,self.js+1,0,self.nn,false)
     # --- load the data
     ip1 = top.pgroup.ins[self.js] - 1 + top.pgroup.nps[self.js]
     top.pgroup.nps[self.js] = top.pgroup.nps[self.js] + self.nn
@@ -657,7 +657,7 @@ initial data.
     top.pgroup.uzp[ip1:ip2] = self.vz
     top.pgroup.gaminv[ip1:ip2] = self.gi
     # --- Enforce the particle boundary conditions
-    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
     stckxy3d(self.nn,top.pgroup.xp[ip1:ip2],w3d.xmmax,w3d.xmmin,w3d.dx,
              top.pgroup.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
              w3d.dy,top.pgroup.zp[ip1:ip2],w3d.zmmin,w3d.dz,
