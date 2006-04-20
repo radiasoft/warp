@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.107 2006/04/15 00:13:37 dave Exp $"
+warp_version = "$Id: warp.py,v 1.108 2006/04/20 18:13:32 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -579,6 +579,7 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
 
   ex,ey,ez = zeros((3,n),'d')
   bx,by,bz = zeros((3,n),'d')
+
   zmin = min(z)
   zmax = max(z)
 
@@ -601,7 +602,6 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
     
   # --- Make sure that the lattice is set up. If it is already, this won't
   # --- change anything (maybe).
-  resetlat()
   setlatt()
 
   # --- Create other temporaries
