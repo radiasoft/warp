@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.23 2006/04/15 00:13:37 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.24 2006/04/20 01:30:23 dave Exp $"
 
 class TraceParticle:
   """
@@ -402,7 +402,6 @@ Available methods...
       top.pgroup.sq[self.js] = top.zion*top.echarge
       top.pgroup.sm[self.js] = top.aion*top.amu
       top.pgroup.sw[self.js] = 0.
-      _first_instance = 0
     TraceParticle.__init__(self,x,y,z,vx,vy,vz,maxsteps,savedata,js)
     # --- Do some initialization
     self.spsetup(zerophi)
@@ -510,21 +509,24 @@ Available methods...
  - enable(): Re-enables particles which have been disabled. They will
              continue from the place they were disabled.
   """
+  # --- Class attribute to keep track of species instances
+  # --- Needed so that ins and nps can be set properly the first
+  # --- time a species is used.
+  _instance_dict = {}
 
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
                     maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0):
-    global _first_instance
     # --- Do some global initialization
     top.allspecl = true
     self.js = js
-    if _first_instance:
+    if self.js not in SingleParticle._instance_dict:
+      SingleParticle._instance_dict[js] = 1
       top.pgroup.ins[self.js] = top.pgroup.ipmax_s[self.js] + 1
       top.pgroup.nps[self.js] = 0
       top.pgroup.sq[self.js] = top.zion*top.echarge
       top.pgroup.sm[self.js] = top.aion*top.amu
       top.pgroup.sw[self.js] = 0.
-      _first_instance = 0
     self.savedata = savedata
     self.enabled = 0
     # --- Do some initialization
