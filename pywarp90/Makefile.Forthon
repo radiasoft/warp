@@ -1,17 +1,12 @@
-DEBUG = -g #--fargs "-CB -traceback"
+DEBUG = # -g #--fargs "-CB -traceback"
 FCOMP =
 SO = so
-PUBLICHOME = /workife3/dave/pub /workife4/dave/pub /workife2/dave/pub
+PUBLICHOME = 
 
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
 	rm -f warpC.so
 	python setup.py build --build-platlib .
-	#cp warpC.so /home/dave/scriptsnew
-	#mv warpC.so /home/dave/scriptsnew
-	#cp warpC.so /workife2/dave/scripts
-	#cp warpC.so /workife3/dave/scripts
-	cp warpC.so /workife5/dave/scripts
 
 toppy.$(SO): top.F top_lattice.F dtop.F top.v
 	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F dtop.F
