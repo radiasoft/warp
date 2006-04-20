@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.163 $, $Date: 2006/04/20 01:28:23 $
+#@(#) File TOP.V, version $Revision: 3.164 $, $Date: 2006/04/20 18:05:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.163 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.164 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2063,6 +2063,18 @@ gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
          gamadv:string,lrelativ)
             subroutine # Advances gamma
 resetlat()  subroutine # Resizes lattice arrays to their true lengths
+resetlatdrft() subroutine # Resizes drft lattice arrays to their true lengths
+resetlatbend() subroutine # Resizes bend lattice arrays to their true lengths
+resetlatdipo() subroutine # Resizes dipo lattice arrays to their true lengths
+resetlatquad() subroutine # Resizes quad lattice arrays to their true lengths
+resetlatsext() subroutine # Resizes sext lattice arrays to their true lengths
+resetlathele() subroutine # Resizes hele lattice arrays to their true lengths
+resetlataccl() subroutine # Resizes accl lattice arrays to their true lengths
+resetlatemlt() subroutine # Resizes emlt lattice arrays to their true lengths
+resetlatmmlt() subroutine # Resizes mmlt lattice arrays to their true lengths
+resetlatbgrd() subroutine # Resizes bgrd lattice arrays to their true lengths
+resetlatpgrd() subroutine # Resizes pgrd lattice arrays to their true lengths
+resetlatbsqgrad() subroutine # Resizes bsqgrad lattice arrays to their true lengths
 setlatt()   subroutine # Sets lattice pointers for the current beam location
 setlattzt(zbeam:real,time:real,fstype:integer)
             subroutine # Sets lattice pointers at zbeam and time
