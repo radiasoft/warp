@@ -54,7 +54,7 @@ Surfaces of revolution:
  YSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 
 Note that all take the following additional arguments:
-voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
+voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,name=None
 
 installconductors(a,...): generates the data needed for the fieldsolve
                           See its documentation for the additional arguments.
@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.130 2006/03/06 20:25:21 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.131 2006/04/20 18:15:50 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
