@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.48 2006/01/27 21:42:52 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.49 2006/04/20 18:15:00 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2450,7 +2450,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 def addnewbsqgrad(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                   ph=0.,sp=0.,cp=0.,
                   sf=0.,sc=1.,sy=0,dx=None,dy=None,
-                  bsqgrad=None,
+                  bsqgrad=None,getbsqgrad=None,
                   nx=None,ny=None,nz=None,nc=3):
   """
 Adds a new bsqgrad element to the lattice. The element will be placed at the
@@ -2463,6 +2463,8 @@ takes precedence):
 Or, the 4-D field array may be specified
   - bsqgrad
   - dx,dy: transverse grid cell size must also be specified
+Or, bsqgrad is calculated from all of the applied B fields
+  - getbsqgrad=1
 The following are all optional and have the same meaning and default as the
 bsqgrad arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy,nc
@@ -2471,10 +2473,11 @@ bsqgrad arrays with the same suffices:
   assert (id is not None) or \
          ((bsqgrad is not None) and \
           (dx is not None and dy is not None)) or \
+         (getbsqgrad is not None) or \
          (dx is not None and dy is not None and
           nx is not None and ny is not None and nz is not None),\
-         """either an 'id' or a dataset, bx, by, or bz, with dx and dy, or all
-of dx, dy, nx, ny, nz, must be passed in"""
+         """either an 'id' or bsqgrad, or a way to calculate it, with dx and dy, or all of dx, dy, nx, ny, nz, must be passed in"""
+
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
@@ -2531,11 +2534,11 @@ of dx, dy, nx, ny, nz, must be passed in"""
     # --- If an 'id' was passed in, then just use that.
     top.bsqgradid[ie] = id
   else:
+
     # --- Otherwise, create a new dataset.
     top.bsqgradns = top.bsqgradns + 1
     top.bsqgradid[ie] = top.bsqgradns
-    # --- Get array size
-    if bsqgrad is not None: nc,nx,ny,nz=array(shape(bsqgrad))-array([0,1,1,1])
+
     # --- Make sure that the arrays are big enough
     top.bsqgradnx = max(nx,top.bsqgradnx)
     top.bsqgradny = max(ny,top.bsqgradny)
@@ -2546,11 +2549,79 @@ of dx, dy, nx, ny, nz, must be passed in"""
     top.bsqgraddx[-1] = dx
     top.bsqgraddy[-1] = dy
     top.bsqgraddz[-1] = (ze - zs)/nz
-    if bsqgrad is not None: top.bsqgrad[:nx+1,:ny+1,:nz+1,-1] = bsqgrad
+
+    if bsqgrad is not None:
+      # --- Get array size
+      nc,nx,ny,nz=array(shape(bsqgrad))-array([0,1,1,1])
+
+    elif getbsqgrad:
+      ex,ey,ez,bx,by,bz = getappliedfieldsongrid(nx,ny,nz,
+                                                 xs,xs+nx*dx,ys,ys+ny*dy,zs,ze)
+      dz = (ze - zs)/nz
+      bsqgrad = calculatebsqgrad(bx,by,bz,dx,dy,dz,symmetry=sy,zonly=(nc==1))
+
+    if bsqgrad is not None: top.bsqgrad[:,:nx+1,:ny+1,:nz+1,-1] = bsqgrad
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
   return ie,top.bsqgradid[ie]
+
+def calculatebsqgrad(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
+  """
+#  Calculates grad B^2 from Bfield data on grid and loads into top.brgd
+  """
+  # --- number of grid points
+  nx1 = shape(bx)[0]
+  ny1 = shape(bx)[1]
+  nz1 = shape(bx)[2]
+  # --- number of cells:
+  nx = nx1 - 1
+  ny = ny1 - 1
+  nz = nz1 - 1
+  # --- check to see that top.bsqgrad has appropriate dimensions; if
+  # --- not, print warnings
+  if zonly == false:
+    nc = 3
+  else:
+    nc = 1
+  bsqgrad = fzeros((nc,nx1,ny1,nz1),'d')
+  dxi = 1./dx
+  dyi = 1./dy
+  dzi = 1./dz
+  twodxi = .5*dxi
+  twodyi = .5*dyi
+  twodzi = .5*dzi
+  bsq = bx*bx + by*by + bz*bz
+  # --- equivalence dbsqdx to the first entry in bsqgrad, and similarly
+  # --- for dbsqdy, dbsqdz
+  dbsqdz = bsqgrad[0,:,:,:]
+  if zonly == false:
+    dbsqdx = bsqgrad[1,:,:,:]
+    dbsqdy = bsqgrad[2,:,:,:]
+    dbsqdx[1:nx,:,:]=(bsq[2:nx1,:,:]-bsq[0:nx-1,:,:])*twodxi
+    dbsqdy[:,1:ny,:]=(bsq[:,2:ny1,:]-bsq[:,0:ny-1,:])*twodyi
+  dbsqdz[:,:,1:nz]=(bsq[:,:,2:nz1]-bsq[:,:,0:nz-1])*twodzi
+  # --- This takes care of interior points.  Now take care of boundaries
+  # --- First upper boundaries, one-sided differences
+  dbsqdz[:,:,nz]=(bsq[:,:,nz]-bsq[:,:,nz-1])*dzi
+  if zonly == false:
+    dbsqdx[nx,:,:]=(bsq[nx,:,:]-bsq[nx-1,:,:])*dxi
+    dbsqdy[:,ny,:]=(bsq[:,ny,:]-bsq[:,ny-1,:])*dyi
+    # --- now lower boundaries.  Treat differently depending on if symmetry.
+    # --- NOTE this is still within the "if zonly == false" and so indented
+    if symmetry == 0:
+      # --- no symmetry
+      dbsqdx[0,:,:]=(bsq[1,:,:]-bsq[0,:,:])*dxi
+      dbsqdy[:,0,:]=(bsq[:,1,:]-bsq[:,0,:])*dyi
+    else:
+      if symmetry == 2:
+        # --- quadrupole symmetry
+        dbsqdx[0,:,:]=0.
+        dbsqdy[:,0,:]=0.
+      else:
+        raise("Unimplemented data symmetry parameter")
+  dbsqdz[:,:,0]=(bsq[:,:,1]-bsq[:,:,0])*dzi
+  return bsqgrad
 
 # ----------------------------------------------------------------------------
 # --- PGRD --- XXX
