@@ -8,8 +8,8 @@ all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrz
 	python setup.py --parallel build --build-platlib .
 	#mv warpC.so /home/dave/scriptsnew
 
-toppy.$(SO): top.F dtop.F top.v topslave.F
-	Forthon -a $(FCOMP) $(DEBUG) top dtop.F topslave.F
+toppy.$(SO): top.F top_lattice.F dtop.F top.v topslave.F
+	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F dtop.F topslave.F
 
 envpy.$(SO): toppy.$(SO) env.F env.v
 	Forthon -a $(FCOMP) $(DEBUG) env
@@ -46,6 +46,7 @@ ranffortran.c: ranffortran.m
 
 public: all
 	publishpywarp90.py $(PUBLICHOME)
+	chmod -R go+rX $(HOME)/scripts
 
 update:
 	for dir in $(PUBLICHOME); do \
