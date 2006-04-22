@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.164 $, $Date: 2006/04/20 18:05:41 $
+#@(#) File TOP.V, version $Revision: 3.165 $, $Date: 2006/04/22 00:22:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.164 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.165 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -541,6 +541,8 @@ bsqgradny integer /0/ # Number of Y cells
 bsqgradnz integer /0/ # Number of Z cells
 bsqgradns integer /0/ # Number of data sets
 bsqgradnc integer /0/ # Number of components stored in bsqgrad
+bsqgradntemp integer /0/ # Number of temporary components stored for
+                         # automatic calculation of grad B dot B
 bsqgraddx(bsqgradns)                      _real [m]   # X cell size
 bsqgraddy(bsqgradns)                      _real [m]   # Y cell size
 bsqgraddz(bsqgradns)                      _real [m]   # Z cell size
@@ -550,6 +552,8 @@ bsqgraddzi(bsqgradns)                     _real [1/m] # 1 over Z cell size (auto
 bsqgrad(bsqgradnc,0:bsqgradnx,0:bsqgradny,0:bsqgradnz,bsqgradns) _real
   # B field stored in interleaved array. First dimension is changable,
   # allowing option of storing additional data.
+bsqgradtemp(0:bsqgradnx,0:bsqgradny,0:bsqgradnz,0:bsqgradntemp-1,bsqgradns) _real
+calculatebsqgrad() subroutine # Calculates bsqgrad from the current B fields
 
 ******** PGRDdata dump:
 # Data for the 3-D potential lattice element
@@ -2481,6 +2485,7 @@ impact_ion(is1:integer,is2:integer,nbp:real,w:real,
 
 ******** Subtimerstop:
 ltoptimesubs logical /.false./
+timecalculatebsqgrad           real /0./
 timealotpart                   real /0./
 timechckpart                   real /0./
 timeshftpartwork               real /0./

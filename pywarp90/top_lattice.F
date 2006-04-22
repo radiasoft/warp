@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.1 $, $Date: 2006/04/20 17:53:33 $
+c@(#) File top_lattice.F, version $Revision: 3.2 $, $Date: 2006/04/22 00:25:52 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -770,7 +770,9 @@ c============================================================================
       use Lattice
       use BSQGRADdata
 
-      integer(ISZ):: im,i
+      integer(ISZ):: ib,id,i
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: xx,yy,zz,temp
 
       if (zlatperi > 0.) then
         if (nbsqgrad >= 0) then
@@ -794,8 +796,8 @@ c============================================================================
 c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       bsqgrads = .false.
-      do im = 0, nbsqgrad
-         if (bsqgradid(im) > 0) bsqgrads = .true.
+      do ib = 0, nbsqgrad
+         if (bsqgradid(ib) > 0) bsqgrads = .true.
       enddo
 
 c     --- Calculate 1/bsqgraddx etc. for efficiency (minimizes divides)
@@ -811,6 +813,213 @@ c     --- Calculate sines and cosines of bsqgradph for efficiency
         bsqgradsp(i) = sin(bsqgradph(i)) 
         bsqgradcp(i) = cos(bsqgradph(i)) 
       enddo 
+
+      return
+      end
+c============================================================================ 
+      subroutine calculatebsqgrad()
+      use Subtimerstop
+      use Lattice
+      use BSQGRADdata
+
+      integer(ISZ):: nn,ib,id
+      integer(ISZ):: ix,iy,iz,nx,ny,nz
+      real(kind=8):: xx,yy,zz,temp,dxi,dyi,dzi
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+      
+c     --- If bsqgrad is calculated, then setup the position
+c     --- arrays. XXX This assumes that there is a one to one correspondence
+c     --- betweeen bsqgrad elements and datasets, i.e. that the same id is
+c     --- not used for multiple element instances.
+c     --- The data is put into the bsqgradtemp array to avoid the
+c     --- proliforation of multiple arrays.
+c     --- The 11 is for 3 position, vz, gaminv, 3 B and 3 E.
+c     --- The E is just wasted space since some of the field gathering
+c     --- routines also gather E.
+      if (bsqgradntemp == 0) then
+        bsqgradntemp = 11
+        call gchange("BSQGRADdata",0)
+
+        do ib = 0, nbsqgrad
+          id = bsqgradid(ib)
+          do iz=0,bsqgradnz
+            do iy=0,bsqgradny
+              do ix=0,bsqgradnx
+
+                xx = bsqgradxs(ib) + bsqgraddx(id)*ix
+                yy = bsqgradys(ib) + bsqgraddy(id)*iy
+                zz = bsqgradzs(ib) + bsqgraddz(id)*iz
+
+c               --- Transverse rotation to take into account for a rotation 
+c               --- of the field element.
+                if ( bsqgradph(ib) .ne. 0. ) then
+                  temp = xx  
+                  xx =  temp*bsqgradcp(ib) - yy*bsqgradsp(ib) 
+                  yy = +temp*bsqgradsp(ib) + yy*bsqgradcp(ib) 
+                endif 
+
+c               --- Add in any offsets
+                xx = xx - bsqgradox(ib)
+                yy = yy - bsqgradoy(ib)
+
+                bsqgradtemp(ix,iy,iz,0,id) = xx
+                bsqgradtemp(ix,iy,iz,1,id) = yy
+                bsqgradtemp(ix,iy,iz,2,id) = zz
+                bsqgradtemp(ix,iy,iz,3,id) = 0.
+                bsqgradtemp(ix,iy,iz,4,id) = 1.
+
+              enddo
+            enddo
+          enddo
+        enddo
+      endif
+
+c     --- Now fetch the B fields
+      nz = bsqgradnz
+      nx = bsqgradnx
+      ny = bsqgradny
+      nn = (1+bsqgradnx)*(1+bsqgradny)*(1+bsqgradnz)
+      do ib = 0, nbsqgrad
+        id = bsqgradid(ib)
+
+        bsqgradtemp(0:nx,0:ny,0:nz, 5,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz, 6,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz, 7,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz, 8,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz, 9,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz,10,id) = 0.
+
+c       --- handle uniform fields
+        call applyuniformfields(nn,bsqgradtemp(0:nx,0:ny,0:nz, 7,id),
+     &                               bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+
+c       --- Note that the uz and the time step sizes are all zero. This
+c       --- has the effect for the residence corrected elements to find
+c       --- the field at the given location without any correction.
+
+c       --- handle quads
+        call applyquad(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),
+     &                 0.,0.,0.,.false.,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+
+c       --- handle dipos 
+        call applydipo(nn,nn,bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),
+     &                 0.,0.,0.,.false.,bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+
+c       --- handle sexts
+        call applysext(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+
+c       --- handle hard-edge electric and magnetic multipoles
+        call applyhele(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 7,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+
+c       --- handle magnetostatic multipole components
+        call applymmlt(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+
+c       --- handle magnetic fields from 3-D grid
+        call applybgrd(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),.false.,
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
+     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+
+
+c       --- Calculate B dot B
+        do iz=0,bsqgradnz
+          do iy=0,bsqgradny
+            do ix=0,bsqgradnx
+              bsqgradtemp(ix,iy,iz,5,id) =
+     &                        bsqgradtemp(ix,iy,iz,8,id)**2 +
+     &                        bsqgradtemp(ix,iy,iz,9,id)**2 +
+     &                        bsqgradtemp(ix,iy,iz,10,id)**2
+            enddo
+          enddo
+        enddo
+
+c       --- Calculate the gradient
+c       --- First, do the interior points
+        dxi = bsqgraddxi(id)
+        dyi = bsqgraddyi(id)
+        dzi = bsqgraddzi(id)
+        bsqgrad(1,:,:,1:nz-1,id) = (bsqgradtemp(:,:,2:nz,5,id) -
+     &                              bsqgradtemp(:,:,0:nz-2,5,id))*0.5*dzi
+        if (bsqgradnc == 3) then
+          bsqgrad(2,1:nx-1,:,:,id) = (bsqgradtemp(2:nx,:,:,5,id) -
+     &                                bsqgradtemp(0:nx-2,:,:,5,id))*0.5*dxi
+          bsqgrad(3,:,1:ny-1,:,id) = (bsqgradtemp(:,2:ny,:,5,id) -
+     &                                bsqgradtemp(:,0:ny-2,:,5,id))*0.5*dyi
+        endif
+
+c       --- Now do the boundaries
+c       --- First upper boundaries, one-sided differences
+        bsqgrad(1,:,:,0,id) = (bsqgradtemp(:,:,1,5,id) -
+     &                         bsqgradtemp(:,:,0,5,id))*dzi
+        bsqgrad(1,:,:,nz,id) = (bsqgradtemp(:,:,nz,5,id) -
+     &                          bsqgradtemp(:,:,nz-1,5,id))*dzi
+        if (bsqgradnc == 3) then
+          bsqgrad(2,nx,:,:,id) = (bsqgradtemp(nx,:,:,5,id) -
+     &                            bsqgradtemp(nx-1,:,:,5,id))*dxi
+          bsqgrad(3,:,ny,:,id) = (bsqgradtemp(:,ny,:,5,id) -
+     &                            bsqgradtemp(:,ny-1,:,5,id))*dyi
+c         --- now lower boundaries. Treat differently depending on symmetry.
+          if (bsqgradsy(ib) == 0) then
+c           --- no symmetry
+            bsqgrad(2,0,:,:,id) = (bsqgradtemp(1,:,:,5,id) -
+     &                             bsqgradtemp(0,:,:,5,id))*dxi
+            bsqgrad(3,:,0,:,id) = (bsqgradtemp(:,1,:,5,id) -
+     &                             bsqgradtemp(:,0,:,5,id))*dyi
+          else if (bsqgradsy(ib) == 2) then
+c           --- quadrupole symmetry
+            bsqgrad(2,0,:,:,id) = 0.
+            bsqgrad(3,:,0,:,id) = 0.
+          else
+            print*,"bsqgrad symmetry value not supported"
+            stop
+          endif
+        endif
+
+      enddo
+
+!$OMP MASTER
+      if (ltoptimesubs) timecalculatebsqgrad = timecalculatebsqgrad +
+     &                                         wtime() - substarttime
+!$OMP END MASTER
 
       return
       end
