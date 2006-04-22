@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.2 $, $Date: 2006/04/22 00:25:52 $
+c@(#) File top_lattice.F, version $Revision: 3.3 $, $Date: 2006/04/22 01:03:01 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -821,6 +821,7 @@ c============================================================================
       use Subtimerstop
       use Lattice
       use BSQGRADdata
+      use InGen
 
       integer(ISZ):: nn,ib,id
       integer(ISZ):: ix,iy,iz,nx,ny,nz
@@ -883,16 +884,16 @@ c     --- Now fetch the B fields
       do ib = 0, nbsqgrad
         id = bsqgradid(ib)
 
-        bsqgradtemp(0:nx,0:ny,0:nz, 5,id) = 0.
-        bsqgradtemp(0:nx,0:ny,0:nz, 6,id) = 0.
-        bsqgradtemp(0:nx,0:ny,0:nz, 7,id) = 0.
+c       bsqgradtemp(0:nx,0:ny,0:nz, 5,id) = 0.
+c       bsqgradtemp(0:nx,0:ny,0:nz, 6,id) = 0.
+c       bsqgradtemp(0:nx,0:ny,0:nz, 7,id) = 0.
         bsqgradtemp(0:nx,0:ny,0:nz, 8,id) = 0.
         bsqgradtemp(0:nx,0:ny,0:nz, 9,id) = 0.
-        bsqgradtemp(0:nx,0:ny,0:nz,10,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz,10,id) = bz0
 
 c       --- handle uniform fields
-        call applyuniformfields(nn,bsqgradtemp(0:nx,0:ny,0:nz, 7,id),
-     &                               bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+c       call applyuniformfields(nn,bsqgradtemp(0:nx,0:ny,0:nz, 7,id),
+c    &                               bsqgradtemp(0:nx,0:ny,0:nz,10,id))
 
 c       --- Note that the uz and the time step sizes are all zero. This
 c       --- has the effect for the residence corrected elements to find
