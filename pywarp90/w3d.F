@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.241 $, $Date: 2006/04/15 00:09:46 $
+c@(#) File W3D.F, version $Revision: 3.242 $, $Date: 2006/04/24 17:20:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4327,7 +4327,7 @@ c     --- if slave, recalculate sw
 #endif
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(zmmax,zmmin,dz,zgrid)
+      call zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
       do js=0,pgroup%ns-1
         if (pgroup%nps(js+1) > 0) then
            ip = pgroup%ins(js+1)
