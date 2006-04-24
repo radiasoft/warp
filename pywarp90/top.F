@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.173 $, $Date: 2006/04/20 17:53:32 $
+c@(#) File TOP.F, version $Revision: 3.174 $, $Date: 2006/04/24 22:51:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -679,6 +679,12 @@ c        --- the work arrays to be thread private when called with itask==2.
 
         allocate(pp(0:17,np),iz(np))
 
+c       --- Save the mass and weight
+c       --- Note that the charge is not needed and should be removed from the
+c       --- arugment list.
+        zmmntsm(js) = m
+        zmmntsw(js) = w
+
 c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so lost particles don't contribute
         do ip = 1, np
@@ -1264,18 +1270,20 @@ c         --- Compute generalized emittances
           epsnh(0,js) = epsh(0,js)*gamma*vzbar(0,js)*clighti*1.e6
 
 c         ---  Axial z momentum in vbeam frame (classical)
-          pz(js) = m*w*pnum(0,js) * (vzbar(0,js)-vbeam)
+          pz(js) = zmmntsm(js)*zmmntsw(js)*pnum(0,js) * (vzbar(0,js)-vbeam)
 
-c         ---  Total Z kinetic energy in lab frame minus beam energy (classical)
-c         ---  using <vz^2>-vbeam^2;
-          ekzmbe(js) = 0.5*m*w*pnum(0,js) * (vzsqbar(0,js) - vbeam**2)
+c         ---  Total Z kinetic energy in lab frame minus beam energy
+c         ---  (classical) using <vz^2>-vbeam^2;
+          ekzmbe(js) = 0.5*zmmntsm(js)*zmmntsw(js)*pnum(0,js)*(vzsqbar(0,js) -
+     &                 vbeam**2)
 
 c         ---  Z kinetic energy in beam frame (classical), using <(vz-vbeam)^2>;
-          ekzbeam(js) = 0.5*m*w*pnum(0,js)*
+          ekzbeam(js) = 0.5*zmmntsm(js)*zmmntsw(js)*pnum(0,js)*
      &                  (vzsqbar(0,js) - 2.*vzbar(0,js)*vbeam + vbeam**2)
 
 c         ---  Perp kinetic energy 
-          ekperp(js) =  0.5*m*w*pnum(0,js) * (vxsqbar(0,js) + vysqbar(0,js))
+          ekperp(js) =  0.5*zmmntsm(js)*zmmntsw(js)*pnum(0,js)*(vxsqbar(0,js)+
+     &                  vysqbar(0,js))
 
 c         --- Total kinetic energy in beam frame
           ek(js) = ekzbeam(js) + ekperp(js)
@@ -2212,86 +2220,79 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       return
       end
 c=============================================================================
-      subroutine setcurr(nzzarr,nszarr,curr,np,zp,uzp,gaminv,q,wght,is,
-     &                   zbeam,dzz,zzmin,ns,lspeciesmoments)
-      integer(ISZ):: nzzarr,nszarr,np,is,ns
-      real(kind=8):: q,wght,zbeam,dzz,zzmin
-      real(kind=8):: curr(0:nzzarr,0:nszarr), zp(np), uzp(np), gaminv(np)
-      logical(ISZ):: lspeciesmoments
+      subroutine checkz_arrays(ns)
+      use Z_arrays
+      use InDiag,Only: lspeciesmoments
+      integer(ISZ):: ns
 
-c  Sets 1d beam current as a function of z, directly from particle data
-
-      real(kind=8):: s0(np), s1(np)
-      integer(ISZ):: kk(np)
-      real(kind=8):: g,w1,w0,dzzi
-      integer(ISZ):: js,ip
-
+c     --- Set nszarr and update array allocation if needed
       if (lspeciesmoments) then
-        js = is - 1
+c       --- Check if the moments are to be calculated separately for
+c       --- each species. If so, check if nszarr already has been set
+c       --- appropriately. If not, set it and allocate the arrays.
+c       --- If only one species, then don't have separate species data.
+        if (nszarr < ns .and. ns > 1) then
+          nszarr = ns
+          call gchange("Z_arrays",0)
+        endif
       else
-        js = 0
+        if (nszarr /= 0) then
+          nszarr = 0
+          call gchange("Z_arrays",0)
+        endif
       endif
-
-      g = wght * q / dzz
-      dzzi = 1. / dzz
-c     --- vector loop
-      do ip = 1,np
-        kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
-        w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
-        w0 = 1. - w1
-        s0(ip) = w0 * g * gaminv(ip) * uzp(ip)
-        s1(ip) = w1 * g * gaminv(ip) * uzp(ip)
-      enddo
-c     --- scalar loop
-!$OMP CRITICAL (CRITICAL_SETCURR1)
-      do ip = 1,np
-        if (uzp(ip) == 0 .or. kk(ip) < 0 .or. kk(ip)+1 > nzzarr) cycle
-        curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
-        curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
-      enddo
-!$OMP END CRITICAL (CRITICAL_SETCURR1)
 
       return
       end
 c=============================================================================
-      subroutine setcurr_weights(nzzarr,nszarr,curr,np,zp,uzp,w,gaminv,q,wght,
-     &                           is,zbeam,dzz,zzmin,ns,lspeciesmoments)
-      integer(ISZ):: nzzarr,nszarr,np,is,ns
-      real(kind=8):: q,wght,zbeam,dzz,zzmin
-      real(kind=8):: curr(0:nzzarr,0:nszarr), zp(np), uzp(np), gaminv(np), w(np)
-      logical(ISZ):: lspeciesmoments
+      subroutine setcurr(pgroup,zbeam,ns,wpid,lspeciesmoments,lzero,bound0)
+      use ParticleGroupmodule
+      use Z_arrays
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: ns,wpid,bound0
+      real(kind=8):: zbeam
+      logical(ISZ):: lspeciesmoments,lzero
 
 c  Sets 1d beam current as a function of z, directly from particle data
 
-      real(kind=8):: s0(np), s1(np)
-      integer(ISZ):: kk(np)
-      real(kind=8):: g,w1,w0,dzzi
-      integer(ISZ):: js,ip
+      integer(ISZ):: kk
+      real(kind=8):: g,gw,w1,w0
+      integer(ISZ):: is,js,ip,isid
 
-      if (lspeciesmoments) then
-        js = is - 1
-      else
-        js = 0
-      endif
+      call checkz_arrays(ns)
 
-      g = wght * q / dzz
+      if (lzero) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
+
       dzzi = 1. / dzz
-c     --- vector loop
-      do ip = 1,np
-        kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
-        w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
-        w0 = 1. - w1
-        s0(ip) = w0 * g * gaminv(ip) * uzp(ip) * w(ip)
-        s1(ip) = w1 * g * gaminv(ip) * uzp(ip) * w(ip)
+
+!$OMP PARALLEL PRIVATE(ip,js,g,gw,kk,w1,w0)
+      do is=1,pgroup%ns
+
+        if (lspeciesmoments) then
+          js = pgroup%sid(is-1)+1
+        else
+          js = 0
+        endif
+
+        g = pgroup%sw(is)*pgroup%dtscale(is)*pgroup%sq(is)*dzzi
+        gw = g
+
+!$OMP DO
+        do ip = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          kk = (pgroup%zp(ip) - zbeam - zzmin)*dzzi
+          if (pgroup%uzp(ip) == 0 .or. kk < 0 .or. kk+1 > nzzarr) cycle
+          w1 = (pgroup%zp(ip) - zbeam - zzmin)*dzzi - kk
+          w0 = 1. - w1
+          if (wpid > 0) gw = g*pgroup%pid(ip,wpid)
+          curr(kk  ,js) = curr(kk  ,js)+w0*gw*pgroup%gaminv(ip)*pgroup%uzp(ip)
+          curr(kk+1,js) = curr(kk+1,js)+w1*gw*pgroup%gaminv(ip)*pgroup%uzp(ip)
+        enddo
+
+!$OMP END DO
       enddo
-c     --- scalar loop
-!$OMP CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
-      do ip = 1,np
-        if (uzp(ip) == 0 .or. kk(ip) < 0 .or. kk(ip)+1 > nzzarr) cycle
-        curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
-        curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
-      enddo
-!$OMP END CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
+!$OMP END PARALLEL
+
+      if (lzero) call percurr(curr,nzzarr,nszarr,bound0)
 
       return
       end
@@ -3327,18 +3328,10 @@ c       --- enough space to save them in the LostParticles arrays.
       endif
 
 c     --- Check lspeciesmoments, since it affects lostpars
-c       --- If only one species, then don't have separate species data.
+      call checkz_arrays(ns)
       if (lspeciesmoments) then
-        if (nszarr /= ns .and. ns > 1) then
-          nszarr = ns
-          call gchange("Z_arrays",0)
-        endif
         js = is - 1
       else
-        if (nszarr /= 0) then
-          nszarr = 0
-          call gchange("Z_arrays",0)
-        endif
         js = 0
       endif
 

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.165 $, $Date: 2006/04/22 00:22:51 $
+#@(#) File TOP.V, version $Revision: 3.166 $, $Date: 2006/04/24 22:51:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.165 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.166 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1375,7 +1375,11 @@ dzmi             real         # Moments grid cell size inverse
 numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
                                  # particles, in units of top.dt.
-zmntmesh(0:nzmmnt)  _real [m]     # Z mesh associated with Z moments
+zmntmesh(0:nzmmnt)  _real [m]    # Z mesh associated with Z moments
+zmmntsm(0:nszmmnt)  _real [kg]   # Particle mass of species associated with
+                                 # the moments
+zmmntsw(0:nszmmnt)  _real [kg]   # Particle weight of species associated with
+                                 # the moments
 pnumz(0:nzmmnt,0:nszmmnt)    _real [1]     # No. of (physical) ions at grid point
 xbarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean X coordinate at grid point
 ybarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean Y coordinate at grid point
