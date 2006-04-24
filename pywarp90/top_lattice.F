@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.3 $, $Date: 2006/04/22 01:03:01 $
+c@(#) File top_lattice.F, version $Revision: 3.4 $, $Date: 2006/04/24 17:23:48 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -900,65 +900,65 @@ c       --- has the effect for the residence corrected elements to find
 c       --- the field at the given location without any correction.
 
 c       --- handle quads
-        call applyquad(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),
+        call applyquad(nn,bsqgradtemp(0,0,0, 0,id),
+     &                 bsqgradtemp(0,0,0, 1,id),nn,
+     &                 bsqgradtemp(0,0,0, 2,id),
+     &                 bsqgradtemp(0,0,0, 3,id),
+     &                 bsqgradtemp(0,0,0, 4,id),
      &                 0.,0.,0.,.false.,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+     &                 bsqgradtemp(0,0,0, 5,id),
+     &                 bsqgradtemp(0,0,0, 6,id),
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id))
 
 c       --- handle dipos 
-        call applydipo(nn,nn,bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),
-     &                 0.,0.,0.,.false.,bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+        call applydipo(nn,nn,bsqgradtemp(0,0,0, 2,id),
+     &                 bsqgradtemp(0,0,0, 3,id),
+     &                 bsqgradtemp(0,0,0, 4,id),
+     &                 0.,0.,0.,.false.,bsqgradtemp(0,0,0, 5,id),
+     &                 bsqgradtemp(0,0,0, 6,id),
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id))
 
 c       --- handle sexts
-        call applysext(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id))
+        call applysext(nn,bsqgradtemp(0,0,0, 0,id),
+     &                 bsqgradtemp(0,0,0, 1,id),nn,
+     &                 bsqgradtemp(0,0,0, 2,id),
+     &                 bsqgradtemp(0,0,0, 3,id),
+     &                 bsqgradtemp(0,0,0, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0,0,0, 5,id),
+     &                 bsqgradtemp(0,0,0, 6,id),
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id))
 
 c       --- handle hard-edge electric and magnetic multipoles
-        call applyhele(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 3,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 4,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 5,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 6,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 7,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+        call applyhele(nn,bsqgradtemp(0,0,0, 0,id),
+     &                 bsqgradtemp(0,0,0, 1,id),nn,
+     &                 bsqgradtemp(0,0,0, 2,id),
+     &                 bsqgradtemp(0,0,0, 3,id),
+     &                 bsqgradtemp(0,0,0, 4,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0,0,0, 5,id),
+     &                 bsqgradtemp(0,0,0, 6,id),
+     &                 bsqgradtemp(0,0,0, 7,id),
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id),
+     &                 bsqgradtemp(0,0,0,10,id))
 
 c       --- handle magnetostatic multipole components
-        call applymmlt(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),0.,0.,0.,.false.,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+        call applymmlt(nn,bsqgradtemp(0,0,0, 0,id),
+     &                 bsqgradtemp(0,0,0, 1,id),nn,
+     &                 bsqgradtemp(0,0,0, 2,id),0.,0.,0.,.false.,
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id),
+     &                 bsqgradtemp(0,0,0,10,id))
 
 c       --- handle magnetic fields from 3-D grid
-        call applybgrd(nn,bsqgradtemp(0:nx,0:ny,0:nz, 0,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 1,id),nn,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 2,id),.false.,
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 8,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz, 9,id),
-     &                 bsqgradtemp(0:nx,0:ny,0:nz,10,id))
+        call applybgrd(nn,bsqgradtemp(0,0,0, 0,id),
+     &                 bsqgradtemp(0,0,0, 1,id),nn,
+     &                 bsqgradtemp(0,0,0, 2,id),.false.,
+     &                 bsqgradtemp(0,0,0, 8,id),
+     &                 bsqgradtemp(0,0,0, 9,id),
+     &                 bsqgradtemp(0,0,0,10,id))
 
 
 c       --- Calculate B dot B
@@ -1014,7 +1014,6 @@ c           --- quadrupole symmetry
             stop
           endif
         endif
-
       enddo
 
 !$OMP MASTER
