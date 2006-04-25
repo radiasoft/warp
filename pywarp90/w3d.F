@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.242 $, $Date: 2006/04/24 17:20:07 $
+c@(#) File W3D.F, version $Revision: 3.243 $, $Date: 2006/04/25 00:15:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -67,8 +67,6 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
-      use InjectVars
-      use InjectVars3d
       use DKInterp
       use InDiag3d
       use ExtPart
@@ -122,26 +120,6 @@ c  Put ny to zero for RZ geometry and setup a few flags
 c  If a B field solver is being used, then turn on the fetching of the B field
 
       if (bfstype >= 0) lcallfetchb = .true.
-
-c Set wpid if needed and not set by user
-      if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
-        wpid = nextpid()
-      endif
-
-c If delay on setting temperature of injected particles, then
-c time of particle creation is recorded initially with a negative value
-c switched to positive when temperature has been added.
-      if(l_inj_delay_temp) l_inj_rec_inittime = .true.
-
-c Set tpid if needed and not set by user
-      if(l_inj_rec_inittime .and. tpid==0) then
-        tpid = nextpid()
-      end if
-
-c Set rpid if needed and not set by user
-      if(l_inj_rec_initradius .and. rpid==0) then
-        rpid = nextpid()
-      end if
 
 c Set epflagpid if needed
       if (lepsaveonce) then
@@ -413,7 +391,7 @@ c  Load the particles, calculate the charge density
       call remark(" ---  done")
 
 c  Set up for injection
-      if (inject > 0) call injctint(pgroup)
+      call injctint(pgroup)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -668,12 +646,12 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use Io
-      use Particles, Only: pgroup
+      use Particles, Only: pgroup,nplive
       use Picglb
       use Picglb3d
-      use InjectVars
       use LatticeInternal
       use GridBoundary3d
+      use Z_Moments,Only: tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Timers
       character(*):: caller
 
@@ -682,6 +660,7 @@ c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes
 c  a step of zero size, to compute fields, and gather diagnostics at start 
 c  of run.
 
+      real(kind=8):: getbeamcom
       logical(ISZ):: thisstep,thiszbeam,dolabwn
       real(kind=8):: zbeaml,zbeamr
       integer(ISZ):: k
@@ -710,6 +689,7 @@ c --- erroneaous results.
         enddo
       endif
       call setlatt()
+
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
 c  Half-step in v from t.l. it-1   if last step was "special"
 c  Full-step in v from t.l. it-3/2 if last step not "special"
@@ -717,10 +697,28 @@ c  No step at all if generating.
 
       if (caller == "w3dexe") then
         if (lspecial) then
-            call padvnc3d ("halfv",pgroup)
-         else
-            call padvnc3d ("fullv",pgroup)
-         endif
+          call padvnc3d ("halfv",pgroup)
+        else
+          call padvnc3d ("fullv",pgroup)
+        endif
+
+c       --- This is done here in case padvnc3d is called for multiple
+c       --- pgroups
+        if (lbeamcom) then
+c         --- Set zbeam so that it follows the center of mass of the beam.
+          zbeam = getbeamcom(pgroup) - zbeamcomoffset
+
+        else
+c         --- Advance beam frame location using the nominal beam frame velocity.
+          zbeam = zgrid
+        endif
+
+c       --- zgridprv needs to be updated for the "synchv" step
+c       --- Note that zgridprv is also set at the beginning of w3dexe
+        zgridprv = zgrid
+
+        time = time + dt
+
       endif
 
 c  The next two variables are the left and right ends of the range centered
@@ -810,14 +808,25 @@ c  after the call to afterfs in case some manipulation is done to phi.
       endif
 
 c  Set the potential near the emitting surface.
-      if (inject > 0 .and. inject < 4) then
-        call getinj_phi()
-      endif
+      call getinj_phi()
+
+c  Set the transverse E fields near any defined apertures.
+      call set_aperture_e()
 
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
-      if (inject > 0 .and. caller == "w3dexe")
-     &  call inject3d(2,pgroup)
+      if (caller == "w3dexe") then
+        call inject3d(2,pgroup)
+      end if
+
+c  Initialize the moments arrays which are calculated during the synchv and
+c  gen phases.
+c  0. is passed in as a dummy for all of the particles coordinates
+c  which are not used at this time.
+      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &              0.,0.,0.,0.,1,
+     &              nplive,0.,0.,0.,1,1,ns,
+     &              tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
@@ -828,10 +837,17 @@ c  do a half-advance to bring v to t.l. it
          call padvnc3d ("gen",pgroup)
       endif
 
+c  Finalize the moments calculation and do other diagnostics.
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+        call getlabwn()
+        call rhodia3d
+
 c  Finish transverse space-charge limited injection: change ins and nps.
 c  This is done here so the newly injected particles don't go through
 c  the 'synchv' advance.
-      if (inject > 0 .and. caller == "w3dexe") then
+      if (caller == "w3dexe") then
          call inject3d(3,pgroup)
       end if
 
@@ -1322,8 +1338,6 @@ c=============================================================================
       use Z_arrays
       use Z_Moments, only: nzmmnt,nszmmnt,tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Damped_eom
-      use InjectVars
-      use InjectVars3d
       use Apertures
       use GridBoundary3d
       use DKInterp
@@ -1362,7 +1376,6 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
-      real(kind=8):: getbeamcom,zbeamcom
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -1397,14 +1410,9 @@ c     call zeroarry (bendradi,nparpgrp)
       bendres = 0.
       bendradi = 0.
 
-c  Zero the moments if center is synchv
+c  Setup the moments if center is synchv or gen
+c  If OPENMP, copies data to arrays which will be threadprivate
       if (center == "synchv" .or. center == "gen") then
-c       --- 0. is passed in as a dummy for all of the particles coordinates
-c       --- which are not used at this time.
-        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,1,
-     &                nplive,0.,0.,0.,1,1,ismax,
-     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
      &           zmmnts0(NUMZMMNT,0:nszmmnt),
@@ -1414,10 +1422,10 @@ c       --- which are not used at this time.
      &           ": could not allocate temp arrays to shape ",nszmmnt
           stop
         endif
-        maxp = -LARGEPOS
-        minp = +LARGEPOS
-        zmmnts0 = 0.
-        zmmnts = 0.
+        maxp = tempmaxp
+        minp = tempminp
+        zmmnts0 = tempzmmnts0
+        zmmnts = tempzmmnts
 #else
         maxp => tempmaxp
         minp => tempminp
@@ -1425,8 +1433,6 @@ c       --- which are not used at this time.
         zmmnts => tempzmmnts
 #endif
       endif
-c  Set the transverse E fields near any defined apertures.
-      if (napertures > 0) call set_aperture_e()
 
 !$OMP PARALLEL
 !$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
@@ -1503,17 +1509,15 @@ c           --- Obtain the self-field from the electrostatic potential
             endif
 
 c           --- Get E field for particles near the  injection surface.
-            if (inject > 0) then
-             call inj_sete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                       pid(ipmin,injpid),inj_dz,ex,ey,ez)
-             if(l_inj_delay_temp) call inj_addtemp3d(pgroup,ip,ipmin,dz)
-            endif
-c           --- Get transverse E field for particles near any defined apertures.
-            if (napertures > 0) then
-              call sete3d_aperture(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                             zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
-     &                             nxp,nyp,nzp,ex,ey,l2symtry,l4symtry)
-            end if
+            call inj_sete(pgroup,ipmin,ip,ex,ey,ez)
+            call inj_addtemp3d(pgroup,ip,ipmin,dz)
+
+c           --- Get transverse E field for particles near any defined
+c           --- apertures.
+            call sete3d_aperture(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                           zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
+     &                           nxp,nyp,nzp,ex,ey,l2symtry,l4symtry)
+
 c           --- Scale the self E-field to get the lowest order relativistic
 c           --- correction.
             if (relativity == 1) then
@@ -1822,90 +1826,28 @@ c     ---  Do final stuff for moments calculation
         tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
         deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
-        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                sq(1),sm(1),sw(1),halfdt,3,nplive,uxpo,uypo,uzpo,
-     &                1,1,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-        call getlabwn()
-c       --- load rho diagnostic quantities
-        call rhodia3d
       endif
 
       if (center == "synchv" .or. center == "gen" .or. ifgap) then
 
 c       --- Calculate current
+        call setcurr(pgroup,zbeam,ismax,wpid,lspeciesmoments,
+     &               .not. laccumulate_rho,bound0)
 
-c       --- First set nszarr and update array allocation if needed
-        if (lspeciesmoments) then
-c         --- Check if the moments are to be calculated separately for
-c         --- each species. If so, check if nszarr already has been set
-c         --- appropriately. If not, set it and allocate the arrays.
-c         --- If only one species, then don't have separate species data.
-          if (nszarr < ismax .and. ismax > 1) then
-            nszarr = ismax
-            call gchange("Z_arrays",0)
-          endif
-        else
-          if (nszarr /= 0) then
-            nszarr = 0
-            call gchange("Z_arrays",0)
-          endif
-        endif
-
-        if (.not. laccumulate_rho) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
-
-!$OMP PARALLEL PRIVATE(ip)
-        do is=1,pgroup%ns
-!$OMP DO
-          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            if(wpid==0) then
-              call setcurr(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),sq(is),sw(is)*dtscale(is),
-     &                     pgroup%sid(is-1)+1,
-     &                     zbeam,dzz,zzmin,ismax,lspeciesmoments)
-            else
-              call setcurr_weights(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
-     &                             pid(ipmin,wpid),gaminv(ipmin),
-     &                             sq(is),sw(is)*dtscale(is),
-     &                             pgroup%sid(is-1)+1,zbeam,dzz,zzmin,
-     &                             ismax,lspeciesmoments)
-            end if
-          enddo
-!$OMP END DO
-        enddo
-!$OMP END PARALLEL
-        if (.not. laccumulate_rho) call percurr(curr,nzzarr,nszarr,bound0)
       endif
 c----------------------------------------------------------------------------
       if (center == "fullv" .or. center == "halfv") then
-c       --- Inject more particles. This adds particles and alters ins and nps.
 
-        if (inject > 0) then
-           call inject3d(1,pgroup)
-        end if
+c       --- Inject more particles. This adds particles and alters ins and nps.
+        call inject3d(1,pgroup)
 
 c       --- Treat particles at boundaries
-c        if (any((mod(it,ndts)==0) .and. (nps>0))) then
         call particleboundaries3d(pgroup)
  
 c       --- Collect charge density (3d)
         call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
         if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 
-        if (lbeamcom) then
-c         --- Set zbeam so that it follows the center of mass of the beam.
-          zbeam = getbeamcom(pgroup) - zbeamcomoffset
-
-        else
-c         --- Advance beam frame location using the nominal beam frame velocity.
-          zbeam = zgrid
-        endif
-
-c       --- zgridprv needs to be updated for the "synchv" step
-c       --- Note that zgridprv is also set at the beginning of w3dexe
-        zgridprv = zgrid
-
-        time = time + dt
       endif
 c----------------------------------------------------------------------------
 
@@ -6950,6 +6892,8 @@ c set_aperture_e being called to fill the aper_ex and aper_ey arrays.
       real(kind=8):: sx,sy
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (napertures == 0) return
 
 c  Evaluation of E, vectorized over particles
 

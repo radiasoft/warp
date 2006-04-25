@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.49 $, $Date: 2006/04/15 00:09:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.50 $, $Date: 2006/04/25 00:15:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -65,6 +65,8 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (inject <= 0) return
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -396,7 +398,7 @@ c           --- get E self-field at initial positions
             endif
             call inj_sete3d(nn,pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                      pgroup%zp(i1:i2),
-     &                      pgroup%pid(i1:i2,injpid),inj_dz,at,bt,apt)
+     &                      pgroup%pid(i1:i2,injpid),at,bt,apt)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -522,7 +524,7 @@ c             --- calculate new E self-fields
               endif
               call inj_sete3d(nn,pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                        pgroup%zp(ipmin),pgroup%pid(ipmin,injpid),
-     &                        inj_dz,at,bt,apt)
+     &                        at,bt,apt)
 
 c             --- get external fields at current positions
               do ip=1,nn
@@ -1171,7 +1173,7 @@ c           --- get E self-field at initial positions
               call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
-            call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
+            call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- get external fields at initial positions
             call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
@@ -1307,7 +1309,7 @@ c           --- calculate new E self-fields
               call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
-            call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
+            call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
 c           --- Get external fields at current positions.
             call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
@@ -1607,7 +1609,7 @@ c=============================================================================
       use InGen3d
       use InPart
       use InMesh3d
-      use Particles,Only: npmax
+      use Particles,Only: npmax,wpid,tpid,rpid
       use InjectVars
       use InjectVars3d
       use Setpwork3d
@@ -1625,6 +1627,26 @@ c=============================================================================
       integer(ISZ), external :: oneiftrue, nextpid
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+c Set wpid if needed and not set by user
+      if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
+        wpid = nextpid()
+      endif
+
+c If delay on setting temperature of injected particles, then
+c time of particle creation is recorded initially with a negative value
+c switched to positive when temperature has been added.
+      if(l_inj_delay_temp) l_inj_rec_inittime = .true.
+
+c Set tpid if needed and not set by user
+      if(l_inj_rec_inittime .and. tpid==0) then
+        tpid = nextpid()
+      end if
+
+c Set rpid if needed and not set by user
+      if(l_inj_rec_initradius .and. rpid==0) then
+        rpid = nextpid()
+      end if
 
 c Make sure that space has been allocated for the arrays. This is needed
 c in case the user changes ninject or ns but doesn't explicitly allocate
@@ -2419,6 +2441,8 @@ c to get zp.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      if (inject < 1 .or. inject > 3) return
+
       call updateinj_zmminmax()
 
       dxi = 1./inj_dx
@@ -2659,7 +2683,22 @@ c     --- Do the smoothing.
       return
       end
 c=============================================================================
-      subroutine inj_sete3d(npart,xp,yp,zp,pid,dz,ex,ey,ez)
+      subroutine inj_sete(pgroup,ipmin,np,ex,ey,ez)
+      use ParticleGroupmodule
+      use InjectVars
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: ipmin,np
+      real(kind=8):: ex(np),ey(np),ez(np)
+
+      if (inject <= 0) return
+
+      call inj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                pgroup%pid(ipmin,injpid),ex,ey,ez)
+
+      return
+      end
+c=============================================================================
+      subroutine inj_sete3d(npart,xp,yp,zp,pid,ex,ey,ez)
       use Subtimers3d
       use InGen3d
       use InPart
@@ -2668,7 +2707,6 @@ c=============================================================================
       integer(ISZ):: npart
       real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
       real(kind=8):: ex(npart),ey(npart),ez(npart)
-      real(kind=8):: dz
 
 c Calculate the electric field from the grid for particles near the emitting
 c surface.  The normal electric field is calculated from the potential drop
@@ -2699,7 +2737,7 @@ c     --- E fields for particles behind the virtual surface.
       allocate(tex(npart),tey(npart),tez(npart))
       allocate(ijp(npart))
 
-      if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
+      if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,inj_dz,ex,ey,ez)
 
       if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or.
      &   solvergeom==RZgeom) then
@@ -2724,7 +2762,7 @@ c     --- E fields for particles behind the virtual surface.
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
-      dzi = 1./dz
+      dzi = 1./inj_dz
       fourthirds = 4./3.
       onethird = 1./3.
 
@@ -2745,7 +2783,7 @@ c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = ijp(ip)
         if(ij==0) cycle
-        zii = 1./(dz*inj_d(ij))
+        zii = 1./(inj_dz*inj_d(ij))
         inj_di = 1./inj_d(ij)
 
 c       --- set temporaries
@@ -2795,7 +2833,7 @@ c         --- angle relative to z axis
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
-          wr = 1./(1. - dz*dd*rinji)
+          wr = 1./(1. - inj_dz*dd*rinji)
           px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
           py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
           ix = spreadx*int(px)
@@ -2902,6 +2940,9 @@ c is used to flag particles that not have had temperature added yet.
 c     real(kind=8):: wrandomgauss
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (inject <= 0) return
+      if (.not. l_inj_delay_temp) return
 
       dzi = 1./dz
 
