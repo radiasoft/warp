@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.243 $, $Date: 2006/04/25 00:15:12 $
+c@(#) File W3D.F, version $Revision: 3.244 $, $Date: 2006/04/26 21:41:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7059,6 +7059,8 @@ c     E-field.
       real(kind=8):: tdxi,tdyi,dzi
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (napertures == 0) return
 
       tdxi = 0.5/dx
       tdyi = 0.5/dy
