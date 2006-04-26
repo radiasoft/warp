@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.174 $, $Date: 2006/04/24 22:51:36 $
+c@(#) File TOP.F, version $Revision: 3.175 $, $Date: 2006/04/26 21:40:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2269,14 +2269,13 @@ c  Sets 1d beam current as a function of z, directly from particle data
       do is=1,pgroup%ns
 
         if (lspeciesmoments) then
-          js = pgroup%sid(is-1)+1
+          js = pgroup%sid(is-1)
         else
           js = 0
         endif
 
         g = pgroup%sw(is)*pgroup%dtscale(is)*pgroup%sq(is)*dzzi
         gw = g
-
 !$OMP DO
         do ip = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           kk = (pgroup%zp(ip) - zbeam - zzmin)*dzzi
