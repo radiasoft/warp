@@ -2,9 +2,15 @@
 Ionization: class for generating particles from impact ionization.
 """
 from warp import *
+from species import *
 import time
+try:
+  import txphysics
+  l_txphysics=1
+except:
+  l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.3 2006/04/15 00:13:37 dave Exp $"
+ionization_version = "$Id: ionization.py,v 1.4 2006/04/27 17:14:47 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -27,9 +33,9 @@ Class for generating particles from impact ionization.
     self.ymax = float(where(ymax is None,w3d.ymmax,ymax))
     self.zmin = float(where(zmin is None,w3d.zmmin,zmin))
     self.zmax = float(where(zmax is None,w3d.zmmax,zmax))   
-    self.dx=(self.xmax-self.xmin)/w3d.nx
-    self.dy=(self.ymax-self.ymin)/w3d.ny
-    self.dz=(self.zmax-self.zmin)/w3d.nz
+    self.dx=(self.xmax-self.xmin)/self.nx
+    self.dy=(self.ymax-self.ymin)/self.ny
+    self.dz=(self.zmax-self.zmin)/self.nz
     self.ndensc=fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
     self.invvol=1./(self.dx*self.dy*self.dz)
     self.l_verbose=l_verbose
@@ -45,9 +51,31 @@ Class for generating particles from impact ionization.
     self.vy={}
     self.vz={}
     self.l_timing=l_timing
+    if l_txphysics:
+            # Initialize the kinds of gases
+            # 
+            # 0 is H (protons only)
+            # 1 is H2
+            # 2 is He
+            # 3 is CO2
+            # 4 is CO  
+            # 5 is O2
+            # 6 is N2
+            # 7-8 for electrons only
+            # 7 is Ar
+            # 8 is Ne
+      self.txphysics_targets={Hydrogen:0, \
+                              Dihydrogen:1, \
+                              Helium:2, \
+                              Carbon_Dioxide:3, \
+                              Carbon_Monoxide:4, \
+                              Dioxygen:5, \
+                              Dinitrogen:6, \
+                              Argon:7, \
+                              Neon:8}
     self.install()
     
-  def add(self,incident_species,emitted_species,cross_section,target_species=None,ndens=None):
+  def add(self,incident_species,emitted_species,cross_section=None,target_species=None,ndens=None):
     if not self.inter.has_key(incident_species):
         self.inter[incident_species]={}
         for key in ['target_species','emitted_species','cross_section','ndens']:
@@ -65,7 +93,6 @@ Class for generating particles from impact ionization.
         self.target_dens[target_species]['ndens']           =fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
         self.target_dens[target_species]['ndens_updated']   =0
       
-    self.inter[incident_species]['cross_section']   +=[cross_section]
     for e in emitted_species:
       js=e.jslist[0]
       if not self.x.has_key(js):
@@ -82,21 +109,46 @@ Class for generating particles from impact ionization.
       installafterfs(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js):
-    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    ilf=0
+    while self.nps[js]+nn>self.npmax:
+      il=self.nps[js]
+      iu=min(il+nn,self.npmax)
+      nf=iu-il
+      self.x [js][il:iu]= x[ilf:ilf+nf]
+      self.y [js][il:iu]= y[ilf:ilf+nf]
+      self.z [js][il:iu]= z[ilf:ilf+nf]
+      self.vx[js][il:iu]=vx[ilf:ilf+nf]
+      self.vy[js][il:iu]=vy[ilf:ilf+nf]
+      self.vz[js][il:iu]=vz[ilf:ilf+nf]
+      self.nps[js]+=nf
+      self.flushpart(js)
+      ilf+=nf
+      nn-=nf
     il=self.nps[js]
     iu=il+nn
-    xx=ones(nn,'d')
-    self.x[js][il:iu]=x*xx
-    self.y[js][il:iu]=y*xx
-    self.z[js][il:iu]=z*xx
-    self.vx[js][il:iu]=vx
-    self.vy[js][il:iu]=vy
-    self.vz[js][il:iu]=vz
+    self.x [js][il:iu]=x [ilf:]
+    self.y [js][il:iu]=y [ilf:]
+    self.z [js][il:iu]=z [ilf:]
+    self.vx[js][il:iu]=vx[ilf:]
+    self.vy[js][il:iu]=vy[ilf:]
+    self.vz[js][il:iu]=vz[ilf:]
     self.nps[js]+=nn
       
   def flushpart(self,js):
       if self.nps[js]>0:
          nn=self.nps[js]
+         condition = (self.x[js][:nn]>w3d.xmmin) & (self.x[js][:nn]<w3d.xmmax) & \
+                     (self.y[js][:nn]>w3d.ymmin) & (self.y[js][:nn]<w3d.ymmax) & \
+                     (self.z[js][:nn]>w3d.zmmin) & (self.z[js][:nn]<w3d.zmmax)
+         if sum(condition)<nn:
+           ic = compress(condition==0,arange(nn))
+           print 'ioniz: out of bound: ',js,self.x[js][ic],self.y[js][ic],self.z[js][ic]
+           f=PW.PW('pos.pdb')
+           f.x=self.x[js][:nn]
+           f.y=self.y[js][:nn]
+           f.z=self.z[js][:nn]
+           f.close()
+           raise('') 
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
                       z=self.z[js][:nn],
@@ -139,13 +191,16 @@ Class for generating particles from impact ionization.
           tname=ft%'background gas'[:twidth]
         else:
           tname=ft%target_species.name[:twidth]
-        cname='CS=%g'%(self.inter[incident_species]['cross_section'][it])
+        if self.inter[incident_species]['cross_section'][it] is None:
+          cname = ''
+        else:
+          cname='(CS=%g)'%(self.inter[incident_species]['cross_section'][it])
         for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][it]):
           if ie==0:
             ename=fe[ie]%emitted_species.name[:ewidth[ie]]
           else:
             ename+=' + '+fe[ie]%emitted_species.name[:ewidth[ie]]
-        textblock += sname+' + '+tname+' => '+ename+' ('+cname+')\n'
+        textblock += sname+' + '+tname+' => '+ename+' '+cname+'\n'
     if l_cgm:
       plt(title,0.20,0.905,justify="LT",height=14)
       plt(textblock,0.13,0.88,justify="LT",height=9,font='courier')
@@ -168,7 +223,6 @@ Class for generating particles from impact ionization.
         if top.it%top.ndts[js]==0:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
-        cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
         ndens=self.inter[incident_species]['ndens'][it]
         if ndens is not None:
           continue
@@ -212,7 +266,6 @@ Class for generating particles from impact ionization.
         if top.it%top.ndts[js]==0:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
-        cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
         ndens=self.inter[incident_species]['ndens'][it]
         for js in incident_species.jslist:
           i1 = top.ins[js] - 1 + top.it%self.stride
@@ -225,6 +278,9 @@ Class for generating particles from impact ionization.
           vxi=top.uxp[i1:i2:self.stride]*gaminvi#.copy()
           vyi=top.uyp[i1:i2:self.stride]*gaminvi#.copy()
           vzi=top.uzp[i1:i2:self.stride]*gaminvi#.copy()
+          # compute the relative velocity
+          # NOTE that at this point, the target species is assumed to have a negligible velocity.
+          # this needs to be modified if this approximation is not valid.
           vi=sqrt(vxi*vxi+vyi*vyi+vzi*vzi)
           if ndens is not None:
             dp=ndens
@@ -235,6 +291,37 @@ Class for generating particles from impact ionization.
                         self.nx,self.ny,self.nz,ndens, \
                         self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax, 
                         w3d.l2symtry,w3d.l4symtry)    
+          # if no cross-section is provided, then attempt to get it from txphysics
+          cross_section = self.inter[incident_species]['cross_section'][it] # cross-section
+          if cross_section is None:
+            # The number of gases for which 
+            # we will calculate cross sections
+            newnumEls = txphysics.intp()
+            newnumEls.assign(1)
+            newinames = txphysics.intArray(newnumEls.value())
+            print incident_species.name+' on '+target_species.name+':'
+            print self.txphysics_targets[target_species.type]
+            try:
+              newinames[0] = self.txphysics_targets[target_species.type]
+            except:                    
+              raise('Error in ionization: cross section of '+incident_species.name+' on '+target_species.name+' is not available. Please provide.')
+            # This is an integer flag to specify electron (0) or ion (1)
+            newincident = txphysics.intp()
+            if incident_species.type in (Electron,Positron):
+              newincident.assign(0)
+            else:
+              newincident.assign(1)
+            # These are output variables
+            # First, a temporary variable for getting cross-section
+            this_crosssec = txphysics.doublep()
+            this_vel = txphysics.doublep()
+            cross_section = zeros(ni,'d')
+            for iv in range(ni):
+              this_vel.assign(vi[iv])
+              # This is the call to the ionization package
+              txphysics.get_sigma_impact(this_crosssec,this_vel,newinames, newincident)
+              cross_section[iv] = this_crosssec.value()
+
           # probability
           ncol = dp*cross_section*vi*top.dt*top.ndts[js]*self.stride
           l_ionization_projectile=0
@@ -256,16 +343,17 @@ Class for generating particles from impact ionization.
           xnew = xi
           ynew = yi
           znew = zi
+          print nnew
           while(nnew>0):
             xnewp = take(xnew,io)
             ynewp = take(ynew,io)
             znewp = take(znew,io)
             vnew = zeros(nnew,Float)+1.e-10
-            xnew = xnewp+ranf(vnew)*0.25*self.dx
-            ynew = ynewp+ranf(vnew)*0.25*self.dy
-            znew = znewp+ranf(vnew)*0.25*self.dz
-#          print 'add ',nnew, 'particles by impact ionization'
+            xnew = xnewp+(ranf(vnew)-0.5)*1.e-10*self.dx
+            ynew = ynewp+(ranf(vnew)-0.5)*1.e-10*self.dy
+            znew = znewp+(ranf(vnew)-0.5)*1.e-10*self.dz
             for emitted_species in self.inter[incident_species]['emitted_species'][it]:
+              if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',target_species.name 
               if emitted_species.type is incident_species.type:
                 self.addpart(nnew,xnewp,ynewp,znewp,vxnew,vynew,vznew,emitted_species.jslist[0])
               else:
