@@ -7,7 +7,8 @@ from warp import *
 import RandomArray
 
 class Particle:
-  def __init__(self,mass=None,charge=None):
+  def __init__(self,mass=None,charge=None,Symbol=None):
+    self.Symbol=Symbol
     if mass is not None:
       self.mass=mass
       self.M=self.mass
@@ -130,8 +131,10 @@ for k in periodic_table.keys():
   exec(k+"=Atom(S,A,Z,G,P)")
 #  exec(k+"=periodic_table['"+k+"']")
 
-Electron=Particle(charge=-echarge,mass=emass)
-Positron=Particle(charge= echarge,mass=emass)
+Electron=Particle(charge=-echarge,mass=emass,Symbol='e-')
+Positron=Particle(charge= echarge,mass=emass,Symbol='e+')
+
+Proton = Particle(mass=  amu, Symbol='P')
 
 Dihydrogen = Molecule(mass=  2.*amu, Symbol='H2')
 Dinitrogen = Molecule(mass=28.*amu, Symbol='N2')
@@ -230,10 +233,10 @@ class Species:
     density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
     if dens is None:return density
   
-  def addpart(self,x,y,z,vx,vy,vz,js=None):
+  def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false):
       if js is None:
         js=self.jslist[0]
-      addparticles(x,y,z,vx,vy,vz,js=js)
+      addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum)
       
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None):
     x=xmin+(xmax-xmin)*RandomArray.random(np)
