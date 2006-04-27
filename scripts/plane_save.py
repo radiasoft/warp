@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.12 2006/03/18 00:32:03 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.13 2006/04/27 23:47:04 dave Exp $"
 
 class PlaneSave:
   """
@@ -116,9 +116,9 @@ Input:
 
       # --- Write out particle quantities for each species
       for js in self.jslist:
-        self.f.write('sq_%d'%js,top.sq[js])
-        self.f.write('sm_%d'%js,top.sm[js])
-        self.f.write('sw_%d'%js,top.sw[js])
+        self.f.write('sq_%d'%js,top.pgroup.sq[js])
+        self.f.write('sm_%d'%js,top.pgroup.sm[js])
+        self.f.write('sw_%d'%js,top.pgroup.sw[js])
 
       self.f.set_verbosity(0)
       self.f.close()
@@ -133,7 +133,7 @@ Input:
 
     # --- save for each species
     for js in self.jslist:
-        self.saveplanespecies(js)
+      self.saveplanespecies(js)
 
     # --- phi is saved every time step whether or not there are particles saved
     # --- but only after saving has started.

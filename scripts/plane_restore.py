@@ -23,7 +23,7 @@ The two simulations are linked together.
 ###########################################################################
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.7 2003/10/30 01:14:18 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.8 2006/04/27 23:47:04 dave Exp $"
 
 class PlaneRestore:
   """
@@ -90,9 +90,9 @@ Input:
 
     # restore particle charge, mass, weight
     for js in self.jslist:
-      top.sq[js] = self.f.read('sq_%d'%js)
-      top.sm[js] = self.f.read('sm_%d'%js)
-      top.sw[js] = self.f.read('sw_%d'%js)
+      top.pgroup.sq[js] = self.f.read('sq_%d'%js)
+      top.pgroup.sm[js] = self.f.read('sm_%d'%js)
+      top.pgroup.sw[js] = self.f.read('sw_%d'%js)
 
     # make sure that pid will be allocated
     top.npid = self.f.npid
