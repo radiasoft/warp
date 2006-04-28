@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.176 $, $Date: 2006/04/28 00:21:03 $
+c@(#) File TOP.F, version $Revision: 3.177 $, $Date: 2006/04/28 22:20:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -567,7 +567,8 @@ c     --- ears calculation
       end
 c============================================================================ 
 c=============================================================================
-      subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
+      subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,dtscale,
+     &                    itask,nplive,
      &                    uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
@@ -578,12 +579,13 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
-      use Particles, only: wpid,dtscale
+      use Particles, only: wpid
       integer(ISZ):: np,itask,nplive,is,isid,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+      real(kind=8):: dtscale(np)
       real(kind=8):: maxp(6,0:nszmmnt),minp(6,0:nszmmnt)
       real(kind=8):: zmmnts0(NUMZMMNT,0:nszmmnt)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt)
@@ -1457,7 +1459,8 @@ c           --- anything.
       return
       end
 c=============================================================================
-      subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,itask,nplive,
+      subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,
+     &                            dtscale,itask,nplive,
      &                    uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
@@ -1468,12 +1471,12 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
-      use Particles, only: dtscale
       integer(ISZ):: np,itask,nplive,is,isid,ismax
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+      real(kind=8):: dtscale(np)
       real(kind=8):: maxp(6,0:nszmmnt),minp(6,0:nszmmnt)
       real(kind=8):: zmmnts0(NUMZMMNT,0:nszmmnt)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt)
@@ -2705,32 +2708,32 @@ c=============================================================================
 c     call gchange("Particles",0)
       call ParticleGroupchange(pgroup)
 
-      if (pgroup%ns > 0) then
-        sm => pgroup%sm
-        sq => pgroup%sq
-        sw => pgroup%sw
+c     if (pgroup%ns > 0) then
+c       sm => pgroup%sm
+c       sq => pgroup%sq
+c       sw => pgroup%sw
 
-        ins => pgroup%ins
-        nps => pgroup%nps
-        ndts => pgroup%ndts
-        ldts => pgroup%ldts
-        dtscale => pgroup%dtscale
-        lselfb => pgroup%lselfb
-        fselfb => pgroup%fselfb
-      endif
+c       ins => pgroup%ins
+c       nps => pgroup%nps
+c       ndts => pgroup%ndts
+c       ldts => pgroup%ldts
+c       dtscale => pgroup%dtscale
+c       lselfb => pgroup%lselfb
+c       fselfb => pgroup%fselfb
+c     endif
 
-      if (pgroup%npmax > 0) then
-        xp => pgroup%xp
-        yp => pgroup%yp
-        zp => pgroup%zp
-        uxp => pgroup%uxp
-        uyp => pgroup%uyp
-        uzp => pgroup%uzp
-        gaminv => pgroup%gaminv
-      endif
-      if (pgroup%npidmax > 0) then
-        pid => pgroup%pid
-      endif
+c     if (pgroup%npmax > 0) then
+c       xp => pgroup%xp
+c       yp => pgroup%yp
+c       zp => pgroup%zp
+c       uxp => pgroup%uxp
+c       uyp => pgroup%uyp
+c       uzp => pgroup%uzp
+c       gaminv => pgroup%gaminv
+c     endif
+c     if (pgroup%npidmax > 0) then
+c       pid => pgroup%pid
+c     endif
 
       do js=0,pgroup%ns-1
         pgroup%sid(js) = js

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.244 $, $Date: 2006/04/26 21:41:35 $
+c@(#) File W3D.F, version $Revision: 3.245 $, $Date: 2006/04/28 22:20:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -824,7 +824,7 @@ c  gen phases.
 c  0. is passed in as a dummy for all of the particles coordinates
 c  which are not used at this time.
       call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &              0.,0.,0.,0.,1,
+     &              0.,0.,0.,0.,0.,1,
      &              nplive,0.,0.,0.,1,1,ns,
      &              tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 
@@ -839,7 +839,7 @@ c  do a half-advance to bring v to t.l. it
 
 c  Finalize the moments calculation and do other diagnostics.
         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
      &                1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         call getlabwn()
         call rhodia3d
@@ -1768,15 +1768,15 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(is),sm(is),sw(is),
-     &                         halfdt_s,2,nplive,uxpo,uypo,uzpo,
+     &                         halfdt_s,dtscale(is),2,nplive,uxpo,uypo,uzpo,
      &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
-     &                         sq(is),sm(is),sw(is),halfdt_s,2,nplive,
-     &                         uxpo,uypo,uzpo,
+     &                         sq(is),sm(is),sw(is),halfdt_s,dtscale(is),
+     &                         2,nplive,uxpo,uypo,uzpo,
      &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 endif

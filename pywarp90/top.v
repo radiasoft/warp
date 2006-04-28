@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.166 $, $Date: 2006/04/24 22:51:36 $
+#@(#) File TOP.V, version $Revision: 3.167 $, $Date: 2006/04/28 22:20:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.166 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.167 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2054,14 +2054,14 @@ pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID
 derivqty()  subroutine # Calculates global derived qtys.
 getzmmnt(np,xp(np):real,yp(np):real,zp(np):real,
          uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
-         q:real,m:real,w:real,dt:real,itask,nplive,
+         q:real,m:real,w:real,dt:real,dtscale:real,itask,nplive,
          uxpo(np):real,uypo(np):real,uzpo(np):real,
          is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1
 getzmmnt_weights(np,xp(np):real,yp(np):real,zp(np):real,
          uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
-         wp(np):real,q:real,m:real,w:real,dt:real,itask,nplive,
+         wp(np):real,q:real,m:real,w:real,dt:real,dtscale:real,itask,nplive,
          uxpo:real,uypo:real,uzpo:real,is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
