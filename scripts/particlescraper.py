@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.39 2006/04/15 00:13:37 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.40 2006/04/28 00:29:02 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -149,15 +149,15 @@ after load balancing."""
       if top.nps[js]>0:
         i1 = top.ins[js] - 1
         i2 = top.ins[js] + top.nps[js] - 1
-        top.pid[i1:i2,self.xoldpid]=top.xp[i1:i2].copy()
-        top.pid[i1:i2,self.yoldpid]=top.yp[i1:i2].copy()
-        top.pid[i1:i2,self.zoldpid]=top.zp[i1:i2].copy()
+        top.pgroup.pid[i1:i2,self.xoldpid]=top.pgroup.xp[i1:i2].copy()
+        top.pgroup.pid[i1:i2,self.yoldpid]=top.pgroup.yp[i1:i2].copy()
+        top.pgroup.pid[i1:i2,self.zoldpid]=top.pgroup.zp[i1:i2].copy()
       
   def scrapeall(self,clear=0):
-    if len(self.conductors)==0 or parallelsum(sum(top.nps))==0: return
+    if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
-    for js in xrange(top.ns):
-      if top.it%top.ndts[js]==0:
+    for js in xrange(top.pgroup.ns):
+      if top.it%top.pgroup.ndts[js]==0:
         if self.l_print_timing:tt=0.
         if self.l_print_timing:t.start()
         self.scrape(js)
@@ -179,7 +179,7 @@ after load balancing."""
 
   def scrape2(self,js):
     t.start()
-    if top.nps[js] == 0: return
+    if top.pgroup.nps[js] == 0: return
     dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
@@ -190,25 +190,28 @@ after load balancing."""
     isinside = self.grid.isinside
 
     # --- First, find any particles near a conductor
-    i1 = top.ins[js] - 1
-    i2 = top.ins[js] + top.nps[js] - 1
-    xx = top.xp[i1:i2]
-    yy = top.yp[i1:i2]
-#    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
-    zz = top.zp[i1:i2]
-    pp = zeros(top.nps[js],'d')
+    i1 = top.pgroup.ins[js] - 1
+    i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+    xx = top.pgroup.xp[i1:i2]
+    yy = top.pgroup.yp[i1:i2]
+#    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
+    zz = top.pgroup.zp[i1:i2]
+    pp = zeros(top.pgroup.nps[js],'d')
     if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
-      getgrid3d(top.nps[js],xx,yy,zz,pp,
+      getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom:
       xx = sqrt(xx**2 + yy**2)
       yy = zeros(len(xx),'d')
-      getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
+      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
+                xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XZgeom:
-      getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
+      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
+                xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
-      getgrid2d(top.nps[js],xx,yy,pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
+      getgrid2d(top.pgroup.nps[js],xx,yy,pp,nx,ny,isinside[:,:,0],
+                xmin,xmax,ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ, XY and RZ geometry"
 
@@ -254,9 +257,11 @@ after load balancing."""
                      nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                      w3d.l2symtry,w3d.l4symtry)
       elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
+        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,isinside[:,0,:],
+                     xmin,xmax,zmin,zmax)
       elif w3d.solvergeom == w3d.XYgeom:
-        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
+        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,isinside[:,:,0],
+                     xmin,xmax,ymin,ymax)
 
       # --- Loop over the conductors, removing particles inside of each.
       for c in self.conductors:
@@ -275,9 +280,9 @@ after load balancing."""
         if len(iic) == 0: continue
         # get indices (in lost particles arrays) of particles inside c
         ic = take(iscrape,iic)
-        # --- For particles which are inside, set gaminv to 0, the lost particle
-        # --- flag
-        put(top.gaminv,ic,0.)
+        # --- For particles which are inside, set gaminv to 0, the lost
+        # --- particle flag
+        put(top.pgroup.gaminv,ic,0.)
         # remove scraped particles from list of lost particles
         put(iscrape,iic,-1)
         iscrape = compress(iscrape>=0,iscrape)        
@@ -297,7 +302,7 @@ after load balancing."""
 
   def scrape1(self,js):
     t.start()
-    if top.nps[js] == 0: return
+    if top.pgroup.nps[js] == 0: return
     dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
@@ -308,23 +313,25 @@ after load balancing."""
     isinside = self.grid.isinside
 
     # --- First, find any particles near a conductor
-    i1 = top.ins[js] - 1
-    i2 = top.ins[js] + top.nps[js] - 1
-    xx = top.xp[i1:i2]
-    yy = top.yp[i1:i2]
-#    if js==1:print js,i1,i2,top.zp[i1:i2],top.zbeam
-    zz = top.zp[i1:i2]
-    pp = zeros(top.nps[js],'d')
+    i1 = top.pgroup.ins[js] - 1
+    i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+    xx = top.pgroup.xp[i1:i2]
+    yy = top.pgroup.yp[i1:i2]
+#    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
+    zz = top.pgroup.zp[i1:i2]
+    pp = zeros(top.pgroup.nps[js],'d')
     if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
-      getgrid3d(top.nps[js],xx,yy,zz,pp,
+      getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom:
       xx = sqrt(xx**2 + yy**2)
       yy = zeros(len(xx),'d')
-      getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
+      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
+                xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
-      getgrid2d(top.nps[js],xx,yy,pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
+      getgrid2d(top.pgroup.nps[js],xx,yy,pp,nx,ny,isinside[:,:,0],
+                xmin,xmax,ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ and RZ geometry"
 
@@ -363,20 +370,21 @@ after load balancing."""
       ic = compress(c.isinside(xc,yc,zc).isinside,ic)
       # --- For particles which are inside, set gaminv to 0, the lost particle
       # --- flag
-      put(top.gaminv,ic,0.)
+      put(top.pgroup.gaminv,ic,0.)
 
   def savecondid(self,js):
+    jsid = top.pgroup.sid[js]
 
     # --- Just return if there are no lost particles.
-    if top.npslost[js] == 0: 
+    if top.npslost[jsid] == 0: 
       if self.lcollectlpdata:
         for c in self.conductors:
           w=parallelsum(0.)
           if me==0 and w<>0.:
             c.lostparticles_data += [[top.time, 
-                                      w*top.sq[js]*top.sw[js],
+                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                       top.dt,
-                                      js]]
+                                      jsid]]
       return
 
     # --- First make sure there is extra space in the pidlost array.
@@ -397,8 +405,8 @@ after load balancing."""
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
 
-    i1 = top.inslost[js] - 1
-    i2 = top.inslost[js] + top.npslost[js] - 1
+    i1 = top.inslost[jsid] - 1
+    i2 = top.inslost[jsid] + top.npslost[jsid] - 1
     xx = top.xplost[i1:i2]
     yy = top.yplost[i1:i2]
     zz = top.zplost[i1:i2]
@@ -498,7 +506,7 @@ after load balancing."""
         w=parallelsum(w)
         if me==0:
           c.lostparticles_data += [[top.time, 
-                                    w*top.sq[js]*top.sw[js],
+                                    w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                     top.dt,
-                                    js]]
+                                    jsid]]
 
