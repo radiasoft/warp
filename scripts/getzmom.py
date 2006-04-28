@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.20 2006/04/28 17:44:18 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.21 2006/04/28 22:20:53 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -41,7 +41,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
 
   # Zero out the moments arrays
   if (itask == 0 or itask == 1):
-    getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,0,0.,0.,0.,1,1,top.ns,
+    getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,0,0.,0.,0.,1,1,top.ns,
              top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Calculate the moments
@@ -69,20 +69,21 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
          if(not weighted):
            getzmmnt(ip,x,y,z,ux,uy,uz,gaminv,
                     top.pgroup.sq[js],top.pgroup.sm[js],top.pgroup.sw[js],
-                    top.dt,2,top.nplive,ux,uy,uz,js+1,isid,ismax,
+                    top.dt,top.pgroup.dtscale[js],2,top.nplive,ux,uy,uz,
+                    js+1,isid,ismax,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
          else:
            pid = top.pgroup.pid[ipmin:ipmin+ip,top.wpid-1]
            getzmmnt_weights(ip,x,y,z,ux,uy,uz,gaminv,pid,
                     top.pgroup.sq[js],top.pgroup.sm[js],top.pgroup.sw[js],
-                    top.dt,2,top.nplive,
+                    top.dt,top.pgroup.dtscale[js],2,top.nplive,
                     ux,uy,uz,js+1,isid,ismax,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Do final summing and averaging of the moments
   if (itask == 0 or itask == 3):
     getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,
-             0.,0.,0.,0.,3,top.nplive,0.,0.,0.,1,1,top.ns,
+             0.,0.,0.,0.,0.,3,top.nplive,0.,0.,0.,1,1,top.ns,
              top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Restore the value of laccumulate_zmoments
