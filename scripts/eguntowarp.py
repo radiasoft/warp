@@ -3,7 +3,7 @@
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.3 2006/04/15 00:13:37 dave Exp $'
+eguntowarp_version = '$Id: eguntowarp.py,v 1.4 2006/04/28 17:32:50 dave Exp $'
 def eguntowarpdoc():
   import eguntowarp
   print eguntowarp.__doc__
@@ -40,11 +40,11 @@ EgunToWarp
     # --- Allocate space for the particles
     if top.npmax == 0: top.npmax = npmax
     alotpart()
-    top.ins[0] = top.npmax+1
+    top.pgroup.ins[0] = top.npmax+1
     # --- Set the basic particle parameters
-    top.sq[0] = top.zion*echarge
-    top.sw[0] = (top.ibeam*top.dt/(echarge*top.zion))/top.npinject
-    top.sm[0] = top.aion*amu
+    top.pgroup.sq[0] = top.zion*echarge
+    top.pgroup.sw[0] = (top.ibeam*top.dt/(echarge*top.zion))/top.npinject
+    top.pgroup.sm[0] = top.aion*amu
     # --- Now save the input egun data
     s.reset(r,vr,vz,ibeam,slice,seed1,seed2)
     # --- Install the routines in the proper places
@@ -67,7 +67,7 @@ EgunToWarp
     RandomArray.seed(seed1,seed2)
     # --- Derived quantities
     s.nn = len(s.r)
-    s.ninject = s.ibeam/s.vz/top.sq[0]*s.vz*top.dt/top.sw[0]
+    s.ninject = s.ibeam/s.vz/top.pgroup.sq[0]*s.vz*top.dt/top.pgroup.sw[0]
     s.totalninject = sum(s.ninject)
     # --- If only loading a slice, do it now.
     # --- Also redo field solve and save new moments in the history arrays
@@ -105,10 +105,10 @@ EgunToWarp
   def getparticles(s):
     # --- Make sure there is enough space
     chckpart(top.pgroup,1,int(s.totalninject+1),0,true)
-    print top.ins,top.npmax,int(s.totalninject+1)
+    print top.pgroup.ins,top.pgroup.npmax,int(s.totalninject+1)
     # --- Loop over the egun trajectories, load a ring of particles for each.
     injectedsofar = 0
-    tempins = top.ins[0] - 1
+    tempins = top.pgroup.ins[0] - 1
     for i in range(s.nn):
       # --- Get number of particles to inject in this ring. Make sure that
       # --- on the last ring, enough particles are injected to get exactly
@@ -132,22 +132,22 @@ EgunToWarp
       vy = vr*sin(theta) - vtheta*cos(theta)
       # --- Load the data into the WARP arrays
       print tempins,ip
-      print shape(top.xp[tempins-ip:tempins]),shape(xx)
+      print shape(top.pgroup.xp[tempins-ip:tempins]),shape(xx)
       print xx,zz
-      top.xp[tempins-ip:tempins] = xx
-      top.yp[tempins-ip:tempins] = yy
-      top.zp[tempins-ip:tempins] = zz
-      top.uxp[tempins-ip:tempins] = vx
-      top.uyp[tempins-ip:tempins] = vy
-      top.uzp[tempins-ip:tempins] = vz
-      top.gaminv[tempins-ip:tempins] = 1.
+      top.pgroup.xp[tempins-ip:tempins] = xx
+      top.pgroup.yp[tempins-ip:tempins] = yy
+      top.pgroup.zp[tempins-ip:tempins] = zz
+      top.pgroup.uxp[tempins-ip:tempins] = vx
+      top.pgroup.uyp[tempins-ip:tempins] = vy
+      top.pgroup.uzp[tempins-ip:tempins] = vz
+      top.pgroup.gaminv[tempins-ip:tempins] = 1.
       tempins = tempins - ip
     # --- Now add in the new particles contribution to the charge density
     loadrho(tempins+1,s.totalninject,1,0)
 
   def makeparticleslive(s):
     # --- Adjust WARP's particle indices to include new particles
-    top.ins[0] = top.ins[0] - s.totalninject
-    top.nps[0] = top.nps[0] + s.totalninject
-    print "makeparticleslive",top.ins,top.nps
+    top.pgroup.ins[0] = top.pgroup.ins[0] - s.totalninject
+    top.pgroup.nps[0] = top.pgroup.nps[0] + s.totalninject
+    print "makeparticleslive",top.pgroup.ins,top.pgroup.nps
 
