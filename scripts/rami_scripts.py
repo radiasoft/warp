@@ -73,7 +73,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.6 2006/02/18 01:57:00 dave Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.7 2006/04/28 21:25:57 dave Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
@@ -123,10 +123,10 @@ def accelerate_beam(accelv):
     # --- Apply acceleration to beam and beam frame.
     # --- This replaces the accl elements and models a zero-length gap.
     """
-    accelv2 = abs(2.*top.sq[0]/top.sm[0])*accelv
+    accelv2 = abs(2.*top.pgroup.sq[0]/top.pgroup.sm[0])*accelv
     top.vbeamfrm = sqrt(top.vbeamfrm**2 + accelv2)
     top.vbeam = top.vbeamfrm
-    top.uzp = sqrt(top.uzp**2 + accelv2)
+    top.pgroup.uzp = sqrt(top.pgroup.uzp**2 + accelv2)
 
 #===========
 
@@ -136,7 +136,8 @@ def change_t_step(step_size):
     """
     wxy.ds = step_size
     top.dt = wxy.ds/top.vbeam
-    top.pid[:,wxy.dtpid-1] = wxy.ds/where( greater(top.uzp,0.), top.uzp, top.vbeam )
+    top.pgroup.pid[:,wxy.dtpid-1] = wxy.ds/where( greater(top.pgroup.uzp,0.),
+                                                  top.pgroup.uzp, top.vbeam )
 
 #===========
 
