@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.175 $, $Date: 2006/04/26 21:40:38 $
+c@(#) File TOP.F, version $Revision: 3.176 $, $Date: 2006/04/28 00:21:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3302,7 +3302,7 @@ c Processes lost particles, which are flagged by having gaminv set to zero.
 c The particle data is optionally saved. The velocities are set to zero and
 c the routine which clears out the lost particles is called.
 
-      integer(ISZ):: nlost,i1,i2,js
+      integer(ISZ):: nlost,i1,i2,js,isid
       integer(ISZ):: ip,iz
       real(kind=8):: usq
       real(kind=8):: substarttime,wtime
@@ -3326,10 +3326,13 @@ c       --- enough space to save them in the LostParticles arrays.
 
       endif
 
+c     --- Get global species number
+      isid = pgroup%sid(is-1) + 1
+
 c     --- Check lspeciesmoments, since it affects lostpars
       call checkz_arrays(ns)
       if (lspeciesmoments) then
-        js = is - 1
+        js = isid - 1
       else
         js = 0
       endif
@@ -3351,7 +3354,7 @@ c         --- If requested to save lost particles, do it. Particle data is
 c         --- only save if uzp /= 0, since if uzp is 0, the particle was
 c         --- lost on a previous step but wasn't cleared out of the array.
           if (lsavelostpart .and. pgroup%uzp(ip) /= 0.) then
-            i1 = inslost(is) + npslost(is)
+            i1 = inslost(isid) + npslost(isid)
             xplost(i1) = pgroup%xp(ip)
             yplost(i1) = pgroup%yp(ip)
             zplost(i1) = pgroup%zp(ip)
@@ -3369,7 +3372,7 @@ c         --- lost on a previous step but wasn't cleared out of the array.
               pidlost(i1,1:pgroup%npidmax) = pgroup%pid(ip,:)
             endif
             if (npidlostmax > pgroup%npidmax) pidlost(i1,pgroup%npidmax+1:)=0.
-            npslost(is) = npslost(is) + 1
+            npslost(isid) = npslost(isid) + 1
           endif
 
 c         --- Zero out the velocity, the flag for a lost particle.
