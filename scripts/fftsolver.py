@@ -195,13 +195,15 @@ class FieldSolver3dBase(object):
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
     getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
-              self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
-              self.l2symtry,self.l4symtry)
+            self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
+            self.l2symtry,self.l4symtry)
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
-    for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
-      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+    for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
+                       top.pgroup.sq,top.pgroup.sw):
+      self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
+                  top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
 
@@ -233,9 +235,9 @@ class FieldSolver3dBase(object):
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
       getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nx,self.ny,self.nz,self.rhop,
-                            me,self.nslaves,
-                          top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
+                        self.nx,self.ny,self.nz,self.rhop,
+                        me,self.nslaves,
+                        top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
 
   def makerhoperiodic_parallel(self):
     tag = 70
@@ -467,19 +469,28 @@ Transverse 2-D field solver, ignores self Ez and Bz.
         self.backgroundsolver.rho[...] = 0.
 
     js = self.beamspecies
-    i,n,q,w = top.ins[js]-1,top.nps[js],top.sq[js],top.sw[js]
+    i = top.pgroup.ins[js]-1
+    n = top.pgroup.nps[js]
+    q = top.pgroup.sq[js]
+    w = top.pgroup.sw[js]
     if n > 0:
-      self.beamsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],
-                             top.uzp[i:i+n],q,w)
+      self.beamsolver.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
+                             top.pgroup.zp[i:i+n],
+                             top.pgroup.uzp[i:i+n],q,w)
     self.beamsolver.makerhoperiodic()
     self.beamsolver.getrhoforfieldsolve()
 
     if len(self.backgroundspecies) > 0:
       for js in self.backgroundspecies:
-        i,n,q,w = top.ins[js]-1,top.nps[js],top.sq[js],top.sw[js]
+        i = top.pgroup.ins[js]-1
+        n = top.pgroup.nps[js]
+        q = top.pgroup.sq[js]
+        w = top.pgroup.sw[js]
         if n > 0:
-          self.backgroundsolver.setrho(top.xp[i:i+n],top.yp[i:i+n],
-                                       top.zp[i:i+n],top.uzp[i:i+n],q,w)
+          self.backgroundsolver.setrho(top.pgroup.xp[i:i+n],
+                                       top.pgroup.yp[i:i+n],
+                                       top.pgroup.zp[i:i+n],
+                                       top.pgroup.uzp[i:i+n],q,w)
       self.backgroundsolver.makerhoperiodic()
       self.backgroundsolver.getrhoforfieldsolve()
 
@@ -595,7 +606,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     if w3d.isfsapi-1 == self.beamspecies:
       if self.useselfb:
         self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                                            w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+                                          w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
       else:
         w3d.bxfsapi = 0.
         w3d.byfsapi = 0.
@@ -603,7 +614,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     else:
       if self.usebeamb or self.useselfb:
         self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                                            w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+                                          w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
       else:
         w3d.bxfsapi = 0.
         w3d.byfsapi = 0.
