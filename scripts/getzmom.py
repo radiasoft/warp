@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.19 2006/03/03 23:44:57 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.20 2006/04/28 17:44:18 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -28,6 +28,8 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
 
   # If changed, fix Win_Moments arrays
   if (len(top.pnumz) != top.nzmmnt+1): gchange ("Z_Moments")
+
+  ismax = maxval(top.pgroup.sid)+1
   
   # --- This is bad idea and so is commented out.
   # If itask is greater than zero, assume that the intent was to do the
@@ -45,40 +47,42 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   # Calculate the moments
   if jslist is None:
     if js is None:
-      jslist = xrange(top.ns)
+      jslist = xrange(top.pgroup.ns)
     else:
       jslist = [js]
   if (itask == 0 or itask == 2):
     for js in jslist:
-      for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,groupsize):
-         ip = min(groupsize, top.ins[js]+top.nps[js]-ipmin-1)
+      isid = top.pgroup.sid(js) + 1
+      for ipmin in xrange(top.pgroup.ins[js]-1,top.pgroup.ins[js]+top.pgroup.nps[js]-1,groupsize):
+         ip = min(groupsize, top.pgroup.ins[js]+top.pgroup.nps[js]-ipmin-1)
          try:
            weighted = top.wpid
          except AttributeError:
            weighted = 0
-         x = top.xp[ipmin:ipmin+ip]
-         y = top.yp[ipmin:ipmin+ip]
-         z = top.zp[ipmin:ipmin+ip]
-         ux = top.uxp[ipmin:ipmin+ip]
-         uy = top.uyp[ipmin:ipmin+ip]
-         uz = top.uzp[ipmin:ipmin+ip]
-         gaminv = top.gaminv[ipmin:ipmin+ip]
+         x = top.pgroup.xp[ipmin:ipmin+ip]
+         y = top.pgroup.yp[ipmin:ipmin+ip]
+         z = top.pgroup.zp[ipmin:ipmin+ip]
+         ux = top.pgroup.uxp[ipmin:ipmin+ip]
+         uy = top.pgroup.uyp[ipmin:ipmin+ip]
+         uz = top.pgroup.uzp[ipmin:ipmin+ip]
+         gaminv = top.pgroup.gaminv[ipmin:ipmin+ip]
          if(not weighted):
-           getzmmnt(ip,x,y,z,ux,uy,uz,gaminv,top.sq[js],top.sm[js],top.sw[js],
-                    top.dt,2,top.nplive,ux,uy,uz,js+1,js+1,top.ns,
+           getzmmnt(ip,x,y,z,ux,uy,uz,gaminv,
+                    top.pgroup.sq[js],top.pgroup.sm[js],top.pgroup.sw[js],
+                    top.dt,2,top.nplive,ux,uy,uz,js+1,isid,ismax,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
          else:
-           pid = top.pid[ipmin:ipmin+ip,top.wpid-1]
+           pid = top.pgroup.pid[ipmin:ipmin+ip,top.wpid-1]
            getzmmnt_weights(ip,x,y,z,ux,uy,uz,gaminv,pid,
-                    top.sq[js],top.sm[js],top.sw[js],top.dt,2,top.nplive,
-                    ux,uy,uz,js+1,js+1,top.ns,
+                    top.pgroup.sq[js],top.pgroup.sm[js],top.pgroup.sw[js],
+                    top.dt,2,top.nplive,
+                    ux,uy,uz,js+1,isid,ismax,
                     top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Do final summing and averaging of the moments
   if (itask == 0 or itask == 3):
     getzmmnt(0,0.,0.,0.,0.,0.,0.,0.,
-             top.sq,top.sm,top.sw,top.dt/2.,3,
-             top.nplive,0.,0.,0.,1,1,top.ns,
+             0.,0.,0.,0.,3,top.nplive,0.,0.,0.,1,1,top.ns,
              top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
 
   # Restore the value of laccumulate_zmoments
