@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.108 2006/04/20 18:13:32 dave Exp $"
+warp_version = "$Id: warp.py,v 1.109 2006/04/28 22:06:29 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -355,7 +355,7 @@ The default is to zero out rho.
   if (ins_i != -1 and nps_i == -1):
     # --- if particle number is omitted but particle location is specified,
     # --- set nps to get rest of active particles of species
-    nps_i = top.nps[is_i] + top.ins[is_i] - ins_i
+    nps_i = pgroup.nps[is_i] + pgroup.ins[is_i] - ins_i
 
   # --- if particle number is specified but species is not, set so
   # --- only species number 1 is included
@@ -424,7 +424,7 @@ The default is to zero out rho.
   if (ins_i != -1 and nps_i == -1):
     # --- if particle number is omitted but particle location is specified,
     # --- set nps to get rest of active particles of species
-    nps_i = top.nps[is_i] + top.ins[is_i] - ins_i
+    nps_i = pgroup.nps[is_i] + pgroup.ins[is_i] - ins_i
 
   # --- if particle number is specified but species is not, set so
   # --- only species number 1 is included
