@@ -32,7 +32,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.26 2006/03/02 21:46:38 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.27 2006/04/28 17:59:14 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -41,21 +41,25 @@ def pyOpenDXdoc():
 def ppxxpy(iw = 0,labels=1,display=1,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
+  pgroup = kw.get('pgroup',top.pgroup)
   ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X',"X'",'Y']
-  return viewparticles(take(top.xp,ii),(take(top.uxp,ii)/take(top.uzp,ii)),
-                       take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
+  return viewparticles(take(pgroup.xp,ii),
+                       (take(pgroup.uxp,ii)/take(pgroup.uzp,ii)),
+                       take(pgroup.yp,ii),
+                       (take(pgroup.uyp,ii)/take(pgroup.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
 def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,ratio=1.,stride=1,type='speedy',scale=None,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
+  pgroup = kw.get('pgroup',top.pgroup)
   ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  xx = take(top.xp,ii)
-  yy = take(top.yp,ii)
-  zz = take(top.zp,ii)
-  if cc is None: cc = top.uxp
+  xx = take(pgroup.xp,ii)
+  yy = take(pgroup.yp,ii)
+  zz = take(pgroup.zp,ii)
+  if cc is None: cc = pgroup.uxp
   cc = take(cc,ii)
   if rscale is not None:
     xx = xx*rscale
@@ -68,15 +72,16 @@ def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,rati
 def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=0.,stride=1,type='standard',scale=None,**kw):
   """Vector Plot X-Y-Z-Vx-Vy-Vz"""
   checkparticleplotarguments(kw)
+  pgroup = kw.get('pgroup',top.pgroup)
   ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  xx = take(top.xp,ii)
-  yy = take(top.yp,ii)
-  zz = take(top.zp,ii)
-  vx = take(top.uxp,ii)
-  vy = take(top.uyp,ii)
-  vz = take(top.uzp,ii)
-  gg = take(top.gaminv,ii)
+  xx = take(pgroup.xp,ii)
+  yy = take(pgroup.yp,ii)
+  zz = take(pgroup.zp,ii)
+  vx = take(pgroup.uxp,ii)
+  vy = take(pgroup.uyp,ii)
+  vz = take(pgroup.uzp,ii)
+  gg = take(pgroup.gaminv,ii)
   vx=vx*gg
   vy=vy*gg
   vz=vz*gg
