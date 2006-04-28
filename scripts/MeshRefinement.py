@@ -533,45 +533,51 @@ the top level grid.
     """
     # check if subcycling or selfb is turned on for at least one species
     # and create rhospecies if not done already
-    if len(compress(top.ndts>1,top.ndts))>0 or sum(top.lselfb)>0:
+    if (len(compress(top.pgroup.ndts>1,top.pgroup.ndts))>0 or
+        sum(top.pgroup.lselfb)>0):
       if not self.__dict__.has_key('rhospecies'):
-        self.idts  =compress(top.ndts>1,arange(top.ns))
-        self.iselfb=compress(top.lselfb,arange(top.ns))
+        self.idts  =compress(top.pgroup.ndts>1,arange(top.pgroup.ns))
+        self.iselfb=compress(top.pgroup.lselfb,arange(top.pgroup.ns))
         self.createrhospecies(lrootonly)
-        for js in range(top.ns):
-         if top.ndts[js]>1 or top.lselfb[js]:
-          self.initrhospecies(1,js,lrootonly)
-          x=top.xp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
-          y=top.yp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
-          z=top.zp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
-          uz=top.uzp[top.ins[js]-1:top.ins[js]+top.nps[js]-1]
-          self.setrho(x,y,z,uz,top.sq[js],top.sw[js],
-                      depositallparticles,lrootonly)
-          self.initrhospecies(2,js,lrootonly)
+        for js in range(top.pgroup.ns):
+          if top.pgroup.ndts[js]>1 or top.pgroup.lselfb[js]:
+            self.initrhospecies(1,js,lrootonly)
+            i1 = top.pgroup.ins[js]-1
+            i2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
+            x=top.pgroup.xp[i1:i2]
+            y=top.pgroup.yp[i1:i2]
+            z=top.pgroup.zp[i1:i2]
+            uz=top.pgroup.uzp[i1:i2]
+            self.setrho(x,y,z,uz,top.pgroup.sq[js],top.pgroup.sw[js],
+                        depositallparticles,lrootonly)
+            self.initrhospecies(2,js,lrootonly)
     
     # zeros arrays if needed   
     if lzero: self.zerorho(lrootonly)
 
     # deposit charge
-    for js,i,n,q,w in zip(arange(top.ns),top.ins-1,top.nps,top.sq,top.sw):
+    for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,
+                          top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
       if n == 0: continue
       # deposit species according to subcycling rule governed by ndts.
-      if top.ndts[js]>1 or top.lselfb[js]:
-        if (top.it+1)%top.ndts[js]==0: 
+      if top.pgroup.ndts[js]>1 or top.pgroup.lselfb[js]:
+        if (top.it+1)%top.pgroup.ndts[js]==0: 
           self.pointrhotorhospecies(js,lrootonly)
           self.zerorho(lrootonly)
         else:
           self.addrhospecies(js,lrootonly)
           continue      
-      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w,
+      self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
+                  top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w,
                   depositallparticles,lrootonly)
-      if (top.ndts[js]>1 or top.lselfb[js]) and ((top.it+1)%top.ndts[js]==0):
+      if ((top.pgroup.ndts[js]>1 or top.pgroup.lselfb[js]) and
+          ((top.it+1)%top.pgroup.ndts[js]==0)):
         self.pointrhotorhocopy(lrootonly)
         self.addrhospecies(js,lrootonly)
     # distribute charge density among blocks
     if not lrootonly and lzero:
       self.propagaterhobetweenpatches(depositallparticles)
-      if sum(top.lselfb)>0:
+      if sum(top.pgroup.lselfb)>0:
         for js in self.iselfb:
           self.pointrhotorhospecies(js,lrootonly)
           self.propagaterhobetweenpatches(depositallparticles)
@@ -1155,16 +1161,16 @@ from gatherrhofromchildren.
 
     # check if selfb is turned on for at least one species
     # and create phispecies if not done already
-    if (self is self.root) and sum(top.lselfb)>0:
+    if (self is self.root) and sum(top.pgroup.lselfb)>0:
       if not self.__dict__.has_key('phispecies'):
-        self.iselfb=compress(top.lselfb,arange(top.ns))
+        self.iselfb=compress(top.pgroup.lselfb,arange(top.pgroup.ns))
         self.createphispecies()
 
     # solve on phi
     self.setphifromparents()
     MultiGrid.solve(self,iwhich)
     # solve on phispecies as needed
-    if sum(top.lselfb)>0:
+    if sum(top.pgroup.lselfb)>0:
       for js in self.iselfb:
         self.pointphitophispecies(js,lselfonly=1)
         self.pointrhotorhospecies(js,lselfonly=1)
@@ -1173,7 +1179,7 @@ from gatherrhofromchildren.
         self.pointphitophicopy(lselfonly=1)
         self.pointrhotorhocopy(lselfonly=1)
         # scale phispecies by -(1-1/gamma*2) store into top.fselfb
-        self.phispecies[js]*=top.fselfb[js]
+        self.phispecies[js]*=top.pgroup.fselfb[js]
     # solve for children
     for child in self.children:
       child.solve(iwhich)
@@ -1308,7 +1314,7 @@ Fetches the E field. This should only be called at the root level grid.
 
     # add E transverse from phispecies as needed
     js=w3d.jsapi
-    if top.lselfb[js]:
+    if top.pgroup.lselfb[js]:
       exfsapispecies=zeros(shape(w3d.exfsapi),'d')
       eyfsapispecies=zeros(shape(w3d.eyfsapi),'d')
       ezfsapispecies=zeros(shape(w3d.ezfsapi),'d')
