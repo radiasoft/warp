@@ -223,8 +223,8 @@ class MultiGrid(object):
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
-    for i,n,q,w in
-    zip(top.pgroup.ins-1,top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
+    for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
+                       top.pgroup.sq,top.pgroup.sw):
       self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
                   top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w)
     self.makerhoperiodic()
