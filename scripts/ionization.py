@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.4 2006/04/27 17:14:47 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.5 2006/04/28 17:51:40 dave Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -219,8 +219,8 @@ Class for generating particles from impact ionization.
       npinc = 0
       ispushed=0
       for js in incident_species.jslist:
-        npinc+=top.nps[js]
-        if top.it%top.ndts[js]==0:ispushed=1
+        npinc+=top.pgroup.nps[js]
+        if top.it%top.pgroup.ndts[js]==0:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
@@ -234,16 +234,16 @@ Class for generating particles from impact ionization.
           ndens = self.target_dens[target_species]['ndens']
           nptarget=0
           for jstarget in target_species.jslist:
-            nptarget+=top.nps[jstarget]
+            nptarget+=top.pgroup.nps[jstarget]
           if nptarget==0:continue
           self.ndensc[...]=0.
           ndens[...]=0.
           for jstarget in target_species.jslist:
-            i1 = top.ins[jstarget] - 1
-            i2 = top.ins[jstarget] + top.nps[jstarget] - 1
-            xt=top.xp[i1:i2]
-            yt=top.yp[i1:i2]
-            zt=top.zp[i1:i2]
+            i1 = top.pgroup.ins[jstarget] - 1
+            i2 = top.pgroup.ins[jstarget] + top.pgroup.nps[jstarget] - 1
+            xt=top.pgroup.xp[i1:i2]
+            yt=top.pgroup.yp[i1:i2]
+            zt=top.pgroup.zp[i1:i2]
             fact=1.
             if w3d.l4symtry:
               xt=abs(xt)
@@ -251,9 +251,11 @@ Class for generating particles from impact ionization.
             elif w3d.l2symtry:
               fact=0.5
             if w3d.l2symtry or w3d.l4symtry:yt=abs(yt)
-            deposgrid3d(1,top.nps[jstarget],xt,yt,zt,top.sw[jstarget]*self.invvol*fact*ones(top.nps[jstarget],'d'), \
-                        self.nx,self.ny,self.nz,ndens,self.ndensc, \
-                        self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)    
+            deposgrid3d(1,top.pgroup.nps[jstarget],xt,yt,zt,
+                        top.pgroup.sw[jstarget]*self.invvol*fact*ones(top.pgroup.nps[jstarget],'d'),
+                        self.nx,self.ny,self.nz,ndens,self.ndensc,
+                        self.xmin,self.xmax,self.ymin,self.ymax,
+                        self.zmin,self.zmax)    
 
 #          if w3d.l2symtry or w3d.l4symtry:self.ndens[:,0,:]*=2.
 #          if w3d.l4symtry:self.ndens[0,:,:]*=2.
@@ -262,22 +264,22 @@ Class for generating particles from impact ionization.
       npinc = 0
       ispushed=0
       for js in incident_species.jslist:
-        npinc+=top.nps[js]
-        if top.it%top.ndts[js]==0:ispushed=1
+        npinc+=top.pgroup.nps[js]
+        if top.it%top.pgroup.ndts[js]==0:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
         for js in incident_species.jslist:
-          i1 = top.ins[js] - 1 + top.it%self.stride
-          i2 = top.ins[js] + top.nps[js] - 1
-          xi=top.xp[i1:i2:self.stride]#.copy()
-          yi=top.yp[i1:i2:self.stride]#.copy()
-          zi=top.zp[i1:i2:self.stride]#.copy()
+          i1 = top.pgroup.ins[js] - 1 + top.it%self.stride
+          i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+          xi=top.pgroup.xp[i1:i2:self.stride]#.copy()
+          yi=top.pgroup.yp[i1:i2:self.stride]#.copy()
+          zi=top.pgroup.zp[i1:i2:self.stride]#.copy()
           ni = shape(xi)[0]
-          gaminvi=top.gaminv[i1:i2:self.stride]#.copy()
-          vxi=top.uxp[i1:i2:self.stride]*gaminvi#.copy()
-          vyi=top.uyp[i1:i2:self.stride]*gaminvi#.copy()
-          vzi=top.uzp[i1:i2:self.stride]*gaminvi#.copy()
+          gaminvi=top.pgroup.gaminv[i1:i2:self.stride]#.copy()
+          vxi=top.pgroup.uxp[i1:i2:self.stride]*gaminvi#.copy()
+          vyi=top.pgroup.uyp[i1:i2:self.stride]*gaminvi#.copy()
+          vzi=top.pgroup.uzp[i1:i2:self.stride]*gaminvi#.copy()
           # compute the relative velocity
           # NOTE that at this point, the target species is assumed to have a negligible velocity.
           # this needs to be modified if this approximation is not valid.
@@ -323,7 +325,7 @@ Class for generating particles from impact ionization.
               cross_section[iv] = this_crosssec.value()
 
           # probability
-          ncol = dp*cross_section*vi*top.dt*top.ndts[js]*self.stride
+          ncol = dp*cross_section*vi*top.dt*top.pgroup.ndts[js]*self.stride
           l_ionization_projectile=0
           for emitted_species in self.inter[incident_species]['emitted_species'][it]:
             if emitted_species.type is incident_species.type:l_ionization_projectile=1           
@@ -339,7 +341,7 @@ Class for generating particles from impact ionization.
             vxnew = take(vxi,io)
             vynew = take(vyi,io)
             vznew = take(vzi,io)
-            put(top.gaminv[i1:i2],io,0.)
+            put(top.pgroup.gaminv[i1:i2],io,0.)
           xnew = xi
           ynew = yi
           znew = zi
