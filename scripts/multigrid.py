@@ -223,8 +223,10 @@ class MultiGrid(object):
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
-    for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
-      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+    for i,n,q,w in
+    zip(top.pgroup.ins-1,top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
+      self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
+                  top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w)
     self.makerhoperiodic()
     self.getrhoforfieldsolve()
     if self.lzerorhointerior:
@@ -271,9 +273,9 @@ class MultiGrid(object):
 
   def fetche(self):
     if w3d.api_xlf2:
-      w3d.xfsapi=top.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.yfsapi=top.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.zfsapi=top.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 

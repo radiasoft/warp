@@ -41,7 +41,7 @@
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.4 2005/05/13 06:05:20 ramiak Exp $"
+ParaKV_version = "$Id: ParaKV.py,v 1.5 2006/04/28 16:28:45 dave Exp $"
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__
@@ -84,12 +84,14 @@ def para_temp(delta_hp=0.3, delta_h=None):
     # --- Adjust particle velocities after first subtracting flow term
     #     i.e., scale only the thermal part of the velocities.
 
-    top.uxp = top.uzp*(top.ap0/top.a0)*top.xp + (top.uxp -
-                top.uzp*(top.ap0/top.a0)*top.xp)*parabolic(
-                    rad(top.xp/top.a0, top.yp/top.b0), delta_hp, delta_h)
-    top.uyp = top.uzp*(top.bp0/top.b0)*top.yp + (top.uyp -
-                top.uzp*(top.bp0/top.b0)*top.yp)*parabolic(
-                    rad(top.xp/top.a0, top.yp/top.b0), delta_hp, delta_h)
+    top.pgroup.uxp = top.pgroup.uzp*(top.ap0/top.a0)*top.pgroup.xp +
+          (top.pgroup.uxp - top.pgroup.uzp*(top.ap0/top.a0)*top.pgroup.xp)*
+          parabolic(rad(top.pgroup.xp/top.a0, top.pgroup.yp/top.b0),
+                    delta_hp, delta_h)
+    top.pgroup.uyp = top.pgroup.uzp*(top.bp0/top.b0)*top.pgroup.yp +
+          (top.pgroup.uyp - top.pgroup.uzp*(top.bp0/top.b0)*top.pgroup.yp)*
+          parabolic(rad(top.pgroup.xp/top.a0, top.pgroup.yp/top.b0),
+                    delta_hp, delta_h)
 
 
 def thermal_kv():
@@ -132,12 +134,12 @@ def loadvels(func=dualgauss, vm=0.02, vs=0.006, cut=0.038, npts=1000):
     F = cumsum(2*pi*v*f)        # Calculate the c.d.f.
     F = F/F[-1];  f = f/F[-1]   # Normalize
     # -- Generate random arrays for creating velocities
-    temp = ranf(top.uxp);  rvang = 2*pi*ranf(top.uxp)
+    temp = ranf(top.pgroup.uxp);  rvang = 2*pi*ranf(top.pgroup.uxp)
     # -- Interpolate 'temp' in F to find total velocities
     rvt = interp(temp, F, v)
     # -- Set Particle Velocities
-    top.uxp = top.uzp*rvt*cos(rvang)
-    top.uyp = top.uzp*rvt*sin(rvang)
+    top.pgroup.uxp = top.pgroup.uzp*rvt*cos(rvang)
+    top.pgroup.uyp = top.pgroup.uzp*rvt*sin(rvang)
 
 
 def test_T_prof(ncpb=2):
