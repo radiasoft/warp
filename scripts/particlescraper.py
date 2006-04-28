@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.40 2006/04/28 00:29:02 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.41 2006/04/28 22:06:56 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -146,9 +146,9 @@ after load balancing."""
 
   def saveoldpos(self):
     for js in xrange(top.ns):
-      if top.nps[js]>0:
-        i1 = top.ins[js] - 1
-        i2 = top.ins[js] + top.nps[js] - 1
+      if top.pgroup.nps[js]>0:
+        i1 = top.pgroup.ins[js] - 1
+        i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.pid[i1:i2,self.xoldpid]=top.pgroup.xp[i1:i2].copy()
         top.pgroup.pid[i1:i2,self.yoldpid]=top.pgroup.yp[i1:i2].copy()
         top.pgroup.pid[i1:i2,self.zoldpid]=top.pgroup.zp[i1:i2].copy()
