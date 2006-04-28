@@ -1,16 +1,17 @@
 from warp import *
-interepolate_version = "$Id: interpolate.py,v 1.2 2001/07/09 20:39:40 dave Exp $"
+interepolate_version = "$Id: interpolate.py,v 1.3 2006/04/28 17:51:58 dave Exp $"
 
 def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
-                serial=1):
+                serial=1,pgroup=None):
+  if pgroup is None: pgroup = top.pgroup
   ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
-  xx = take(top.xp,ii)
-  yy = take(top.yp,ii)
-  zz = take(top.zp,ii)
-  gg = take(top.gaminv,ii)
-  vx = take(top.uxp,ii)*gg
-  vy = take(top.uyp,ii)*gg
-  vz = take(top.uzp,ii)*gg
+  xx = take(pgroup.xp,ii)
+  yy = take(pgroup.yp,ii)
+  zz = take(pgroup.zp,ii)
+  gg = take(pgroup.gaminv,ii)
+  vx = take(pgroup.uxp,ii)*gg
+  vy = take(pgroup.uyp,ii)*gg
+  vz = take(pgroup.uzp,ii)*gg
   if zl and zu:
     zcent = 0.5*(zl + zu)
   elif iz:
