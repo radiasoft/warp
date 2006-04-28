@@ -1,7 +1,7 @@
 from warp import *
 import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.6 2005/01/12 17:17:40 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.7 2006/04/28 16:23:19 dave Exp $"
 
 def wxy_matchdoc():
   print """
@@ -160,17 +160,19 @@ def matchx(xf=0.,xpf=0.,yf=0.,ypf=0.,zs=None,ze=None,s=None,
     step(s)
 
     for ip in xrange(4):
-      mat[0,ip]=(top.xp[ip+1]  - top.xp[0])/((xx-xi)/xs*vary)
-      mat[1,ip]=(top.uxp[ip+1] - top.uxp[0])/((vx-xpi*top.vbeam)/xps*vary)
-      mat[2,ip]=(top.yp[ip+1]  - top.yp[0])/((yy-yi)/ys*vary)
-      mat[3,ip]=(top.uyp[ip+1] - top.uyp[0])/((vy-ypi*top.vbeam)/yps*vary)
+      mat[0,ip]=(top.pgroup.xp[ip+1]  - top.pgroup.xp[0])/((xx-xi)/xs*vary)
+      mat[1,ip]=((top.pgroup.uxp[ip+1] - top.pgroup.uxp[0])/
+                 ((vx-xpi*top.vbeam)/xps*vary))
+      mat[2,ip]=(top.pgroup.yp[ip+1]  - top.pgroup.yp[0])/((yy-yi)/ys*vary)
+      mat[3,ip]=((top.pgroup.uyp[ip+1] - top.pgroup.uyp[0])/
+                 ((vy-ypi*top.vbeam)/yps*vary))
 
     # --- Invert the matrix
     mati = LinearAlgebra.inverse(mat)
 
     # --- Get next starting point
-    dsp[:] = [xf - top.xp[0],xpf - top.uxp[0]/top.uzp[0],
-              yf - top.yp[0],ypf - top.uyp[0]/top.uzp[0]]
+    dsp[:] = [xf - top.pgroup.xp[0],xpf - top.pgroup.uxp[0]/top.pgroup.uzp[0],
+              yf - top.pgroup.yp[0],ypf - top.pgroup.uyp[0]/top.pgroup.uzp[0]]
     top.x0 = top.x0 + sum(mati[0,:]*dsp)*xs
     top.xp0 = top.xp0 + sum(mati[1,:]*dsp)*xps
     top.y0 = top.y0 + sum(mati[2,:]*dsp)*ys
