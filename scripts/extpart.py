@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.51 2006/03/18 00:16:30 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.52 2006/04/28 21:20:04 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -67,6 +67,7 @@ routines (such as ppxxp).
   def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
                name=None,lautodump=1,dumptofile=0):
     # --- Save input values, getting default values when needed
+    assert type(iz) is IntType,"iz must be an integer"
     assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
     self.iz = iz
     self.zz = zz
@@ -80,7 +81,7 @@ routines (such as ppxxp).
     if nepmax is None:
       self.nepmax = 10000
       if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
-        if top.pnumz[self.getiz()] > 0:
+        if top.pnumz[self.getiz(),-1] > 0:
           if top.nszmmnt > 1:
             self.nepmax = nint(max(top.pnumz[self.getiz(),:-1])*3)
           else:
