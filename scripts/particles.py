@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.41 2006/04/27 23:40:41 dave Exp $"
+particles_version = "$Id: particles.py,v 1.42 2006/04/28 17:55:53 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -221,13 +221,15 @@ Multiple selection criteria are now supported.
                  used rather than the arrays from top.
   - object=top: Object to get particle data from. Besides top, this can be an
                 open PDB file, or a dictionary.
+  - pgroup=top.pgroup: Particle group to get particles from 
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,
                 "ssn":None,"ii":None,
-                "lost":false,"suffix":'',"object":top,"w3dobject":None,
+                "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
+                "w3dobject":None,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
