@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.21 2006/04/28 22:20:53 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.22 2006/05/01 23:46:31 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -29,7 +29,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   # If changed, fix Win_Moments arrays
   if (len(top.pnumz) != top.nzmmnt+1): gchange ("Z_Moments")
 
-  ismax = maxval(top.pgroup.sid)+1
+  ismax = max(top.pgroup.sid)+1
   
   # --- This is bad idea and so is commented out.
   # If itask is greater than zero, assume that the intent was to do the
