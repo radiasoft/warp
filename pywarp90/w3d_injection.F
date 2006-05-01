@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.51 $, $Date: 2006/04/26 20:58:53 $
+c@(#) File w3d_injection.F, version $Revision: 1.52 $, $Date: 2006/05/01 23:50:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -67,6 +67,8 @@ c injection.  The third part is for space-charge limited injection.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (inject <= 0) return
+
+      call setuppgroup(pgroup,pgroup%ns)
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -158,6 +160,7 @@ c         --- loop over injection sources
 
 c         --- Loop over species.
           do is=1,pgroup%ns
+            if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
             isid = pgroup%sid(is-1) + 1
             vzinj = vzinject(ij,isid)
             if (mod(it,pgroup%ndts(is))/=0) cycle
@@ -1650,6 +1653,9 @@ c Set rpid if needed and not set by user
         rpid = nextpid()
       end if
 
+c Set pid index for injection information for particles
+      injpid = nextpid()
+
 c Make sure that space has been allocated for the arrays. This is needed
 c in case the user changes ninject or ns but doesn't explicitly allocate
 c the additional needed space.
@@ -1755,38 +1761,17 @@ c Set the injection length and start, normally the length of one time step
 c and at zimin, but can be set by user.
       if (leninjct == 0) leninjct = vbeam*dt
 
-      if (inject == 1 .and. npinject == 0) then
-c       --- Find the total number particles within the injection zone.
-c       --- This gives the number of particles that will be injected
-c       --- at each time step.
-        do is=1,pgroup%ns
-          isid = pgroup%sid(is-1) + 1
-          if (npinje_s(isid) == 0) then
-            do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-              if (zinject(1) < pgroup%zp(ip) .and.
-     &            pgroup%zp(ip) < zinject(1) + leninjct) then
-                npinje_s(isid) = npinje_s(isid) + 1
-              endif
-            enddo
-          endif
-          if (rnpinje_s(isid) == 0.) then
-            rnpinje_s(isid) = npinje_s(isid)
-          endif
-          npinject = npinject + npinje_s(isid)
-        enddo
-      else
-c       --- Calculate number of particles to inject for each species if
-c       --- not set by the user.
-c       --- npinje_s was being multiplied by sp_fract, but it is also being
-c       --- multiplied by finject in inject3d, so the fraction was being
-c       --- applied twice. The one here was removed since the finject is
-c       --- still needed to control npinje_s per injection source.
-c       --- The sp_fract was then also removed from the calculation of sw below.
-        do is=1,ns
-          if (npinje_s(is) == 0) npinje_s(is) = npinject
-          if (rnpinje_s(is) == 0.) rnpinje_s(is) = npinje_s(is)
-        enddo
-      endif
+c     --- Calculate number of particles to inject for each species if
+c     --- not set by the user.
+c     --- npinje_s was being multiplied by sp_fract, but it is also being
+c     --- multiplied by finject in inject3d, so the fraction was being
+c     --- applied twice. The one here was removed since the finject is
+c     --- still needed to control npinje_s per injection source.
+c     --- The sp_fract was then also removed from the calculation of sw below.
+      do is=1,ns
+        if (npinje_s(is) == 0) npinje_s(is) = npinject
+        if (rnpinje_s(is) == 0.) rnpinje_s(is) = npinje_s(is)
+      enddo
 
 c     --- Print warning if npinject=0
       if (npinject == 0) then
@@ -1805,7 +1790,7 @@ c Also set particle parameters: charge, mass and weight
         npmax = max(injctspc,npmax)
         np_s = 0
         sp_fract = sp_fract/total_frac
-        call alotpart()
+        call alotpart(pgroup)
         sp_fract = sp_fract*total_frac
       endif
       do is=1,pgroup%ns
@@ -1948,14 +1933,6 @@ c control of injection.
       else
         call fill_inj()
       end if
-
-c Set pid index for injection information for particles
-      injpid = nextpid()
-
-c Allocate the particle index. The index keeps track of which source the
-c particles are injected from.  It is also used to store the fractional
-c timestep for each particle upon emission.
-      call gchangeparticles()
 
 c Check if the voltages were specified.  If so, set so conductor will be
 c set up for source.
