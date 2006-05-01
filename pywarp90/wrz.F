@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.20 $, $Date: 2006/04/15 00:09:47 $
+c@(#) File WRZ.M, version $Revision: 3.21 $, $Date: 2006/05/01 23:48:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -143,7 +143,7 @@ c  use a user-set npmax directly)
 c          npmax = 8*ia/2*(ia+1)*izb
           npmax = (4*(ia+1)*(ia+2)+1)*izb
       endif
-      call gchangeparticles()
+      call alotpart(pgroup)
 
 c  Load the particles, calculate the charge density and current
  
@@ -209,7 +209,7 @@ c  Initialize the surface charge if we are including resistivity
  
 c  Change the size of the dynamic arrays for particles to true length
  
-      call gchangeparticles()
+      call ParticleGroupchange(pgroup)
 
 c  Create the dynamic arrays for particle moments; calculate moments
  
@@ -1540,7 +1540,7 @@ c=============================================================================
       use InGenrz
       use Picglbrz
       use Fieldsrz
-      use Particles,Only: pgroup,npmax,np
+      use Particles,Only: pgroup,npmax
       use Setpworkrz
       integer(ISZ):: envxport
       character(72):: errline
@@ -1551,6 +1551,7 @@ c  its charge, mass, etc. from global quantities such as aion, zion.
  
       integer(ISZ):: npm,ip,np_main,is,k_outer,i1_outer,k,i1,i,izstripe,icheck
       integer(ISZ):: nfib2,nfib3,nfib4,j,ii,ipart,ipmin,ipt
+      integer(ISZ):: np
       real(kind=8):: rnpmi,strgt,zmid,zlen,zleft,vtz,rr,th,r0,rp,rpp,vtx,vty
       real(kind=8):: phi1,phi2,r,vr,vt,gfact,z0
       real(kind=8):: uxpert(0:nparpgrp),uzpert(0:nparpgrp)
@@ -2487,18 +2488,17 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use InGenrz
-      use Particles,Only: pgroup,np
+      use Particles,Only: pgroup
 
        integer(ISZ):: is,iz
        real(kind=8):: zlen,gfact,z0
 
        zlen = zimax - zimin
-       np = pgroup%npmax
        do is = 1,pgroup%ns
           pgroup%sq(is) = zion * echarge
           pgroup%sm(is) = aion * amu
           if (vbeam .ne. 0.)
-     &     pgroup%sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
+     &     pgroup%sw(is) = ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax)
        enddo
        gfact = log(rmmax/(a0+dr))/(2.*pi*eps0)
        vphase = sqrt(gfact*pgroup%sq(1)*ibeam/(vbeam*pgroup%sm(1)))
@@ -2554,7 +2554,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
       use InGenrz
-      use Particles,Only: pgroup,np
+      use Particles,Only: pgroup
 
 
        integer(ISZ):: izso2,izendo2,ia,ipart,iz,isame,ir,ip,is
@@ -2737,14 +2737,13 @@ c       pgroup%uxp(ip) = 0.
         pgroup%uzp(ip) = pgroup%uzp(ip-ipart)
       enddo
       pgroup%npmax = 2*ipart
-      np = pgroup%npmax
       pgroup%nps(1) = pgroup%npmax
 
       do is = 1,ns
          pgroup%sq(is) = zion * echarge
          pgroup%sm(is) = aion * amu
          if (vbeam .ne. 0.)
-     &     pgroup%sw(is) = ibeam * zlen / (vbeam * echarge * zion * np)
+     &     pgroup%sw(is) = ibeam*zlen/(vbeam*echarge*zion*pgroup%npmax)
       enddo
       return
       end
