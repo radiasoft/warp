@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.49 2006/04/15 00:13:36 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.50 2006/05/01 23:47:25 dave Exp $"
 
 
 ##############################################################################
@@ -410,7 +410,6 @@ set when a current is specified"""
 
           # --- save data of just injected particles
           pgroup.npmax = len(ii)
-          pgroup.npidmax = top.npidmax
           pgroup.npid = top.npid
           pgroup.ins = 1
           pgroup.nps = len(ii)
@@ -475,7 +474,6 @@ set when a current is specified"""
 
             # --- save data of just injected particles
             pgroup.npmax = len(ii)
-            pgroup.npidmax = top.npidmax
             pgroup.npid = top.npid
             pgroup.ins = 1
             pgroup.nps = len(ii)
@@ -562,7 +560,7 @@ set when a current is specified"""
       top.pgroup.npmax = sum([sum([b.nps[0] for b in bs]) for bs in allpgroups])
       top.np_s[:] = [sum([allpgroups[i][j].nps[0] for i in range(len(allpgroups))])
                      for j in range(top.pgroup.ns)]
-      alotpart()
+      alotpart(top.pgroup)
       top.pgroup.ins[:] = [1] + list(cumsum(top.np_s)+1)[:-1]
       top.pgroup.nps[:] = top.np_s
       for js in range(top.pgroup.ns):
