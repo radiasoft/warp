@@ -160,7 +160,7 @@ class Species:
         top.ns+=1
         top.pgroup.ns+=1
         gchange('*')
-        gchangeparticles()
+        setuppgroup(top.pgroup)
       js=top.ns-1
       top.pgroup.sid[js] = js
     self.jslist.append(js)
