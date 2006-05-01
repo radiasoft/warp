@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.177 $, $Date: 2006/04/28 22:20:30 $
+c@(#) File TOP.F, version $Revision: 3.178 $, $Date: 2006/05/01 23:56:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -933,7 +933,7 @@ c            if (nep(iw,is)+np > nepmax) then
 c              nepmax = nep(iw,is)+np
 c              call gchange("ExtPart",0)
 c            endif
-c            if (npidepmax .ne. npidmax) then
+c            if (npidepmax .ne. npid) then
 c              call gchange("ExtPart",0)
 c            endif
 
@@ -1751,7 +1751,7 @@ c            if (nep(iw,is)+np > nepmax) then
 c              nepmax = nep(iw,is)+np
 c              call gchange("ExtPart",0)
 c            endif
-c            if (npidepmax .ne. npidmax) then
+c            if (npidepmax .ne. npid) then
 c              call gchange("ExtPart",0)
 c            endif
 
@@ -1961,13 +1961,13 @@ c         --- End of Z moments accumulation
       return
       end
 c=============================================================================
-      subroutine getextrapolatedparticles(ipmin,np,pgroup,npidmax,
+      subroutine getextrapolatedparticles(ipmin,np,pgroup,npid,
      &                                    dt,uxpo,uypo,uzpo,isid,time,zbeam)
       use ParticleGroupmodule
       use Z_Moments
       use ExtPart
       use Timers
-      integer(ISZ):: ipmin,np,npidmax,isid
+      integer(ISZ):: ipmin,np,npid,isid
       type(ParticleGroup):: pgroup
       real(kind=8):: dt,time,zbeam
       real(kind=8):: uxpo(np),uypo(np),uzpo(np)
@@ -1992,8 +1992,8 @@ c --- X extrapolated using constant V and estimated A
 
       oneondt = 1./dt
 
-      if (npidepmax .ne. npidmax) then
-        npidepmax = npidmax
+      if (npidepmax .ne. npid) then
+        npidepmax = npid
         call gchange("ExtPart",0)
       endif
 
@@ -2070,7 +2070,7 @@ c           --- dtstarnp1 is way off.
           uxep(nn,iw,isid) = vx + ax*dtstar
           uyep(nn,iw,isid) = vy + ay*dtstar
           uzep(nn,iw,isid) = vz + az*dtstar
-          if (npidmax > 0) pidep(nn,:,iw,isid) = pgroup%pid(ip,:)
+          if (npid > 0) pidep(nn,:,iw,isid) = pgroup%pid(ip,:)
 
         enddo
       enddo
@@ -2694,62 +2694,27 @@ c Calculate the center of mass of the beam along the z axis from the particles
       end
 c=============================================================================
 c=============================================================================
-      subroutine gchangeparticles()
-      use InPart
-      use Particles
+      subroutine setuppgroup(pgroup)
+      use ParticleGroupmodule
+      use Particles,Only: npid
+      type(ParticleGroup):: pgroup
 
-      integer(ISZ):: js
-
-      pgroup%ns = ns
       pgroup%npid = npid
-      pgroup%npidmax = max(pgroup%npid,pgroup%npidmax)
-      npidmax = pgroup%npidmax
-
-c     call gchange("Particles",0)
       call ParticleGroupchange(pgroup)
-
-c     if (pgroup%ns > 0) then
-c       sm => pgroup%sm
-c       sq => pgroup%sq
-c       sw => pgroup%sw
-
-c       ins => pgroup%ins
-c       nps => pgroup%nps
-c       ndts => pgroup%ndts
-c       ldts => pgroup%ldts
-c       dtscale => pgroup%dtscale
-c       lselfb => pgroup%lselfb
-c       fselfb => pgroup%fselfb
-c     endif
-
-c     if (pgroup%npmax > 0) then
-c       xp => pgroup%xp
-c       yp => pgroup%yp
-c       zp => pgroup%zp
-c       uxp => pgroup%uxp
-c       uyp => pgroup%uyp
-c       uzp => pgroup%uzp
-c       gaminv => pgroup%gaminv
-c     endif
-c     if (pgroup%npidmax > 0) then
-c       pid => pgroup%pid
-c     endif
-
-      do js=0,pgroup%ns-1
-        pgroup%sid(js) = js
-      enddo
 
       return
       end
 c=============================================================================
-      subroutine alotpart
+      subroutine alotpart(pgroup)
+      use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: pgroup,npmax,np,npid,npidmax
+      use Particles,Only: npmax,npid
+      type(ParticleGroup):: pgroup
 
 c Allocate space for particles and set up associated arrays.
 
-      integer(ISZ):: is
+      integer(ISZ):: is,sid(0:ns)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
@@ -2765,14 +2730,10 @@ c     --- Force pgroup%npmax to be large enough to hold all of the particles
 c     --- to be loaded.
       pgroup%npmax = sum(np_s)
 
-c     --- This code will eventually be deleted once Warp goes completely
-c     --- over to particle blocks.
-      np = npmax
-      npidmax = max(1,npid)
-
 c     --- Allocate space. A gchange is done primarily so that any data
 c     --- in ipmax_s is preserved.
-      call gchangeparticles()
+      pgroup%ns = ns
+      call setuppgroup(pgroup)
 
 c     --- setup ipmax_s array
       pgroup%ipmax_s(0) = 0
@@ -2780,6 +2741,7 @@ c     --- setup ipmax_s array
         pgroup%ipmax_s(is) = pgroup%ipmax_s(is-1) + np_s(is)
         pgroup%ins(is) = pgroup%ipmax_s(is-1) + 1
         pgroup%nps(is) = 0
+        if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
       enddo
 
 !$OMP MASTER
@@ -2811,7 +2773,7 @@ c appropriately.
       if (ltoptimesubs) substarttime = wtime()
 
 c     --- Call this here in case chckpart has been called before alotpart.
-      call gchangeparticles()
+      call setuppgroup(pgroup)
 
 c     --- Make sure that ins has a sensible value
       if (pgroup%ins(is) == 0 .and. pgroup%ipmax_s(is) == 0) pgroup%ins(is) = 1
@@ -2836,7 +2798,7 @@ c       --- 10000, add the amount of space needed.
 
 c       --- change the particle array dimension variables and allot space
         pgroup%npmax = pgroup%npmax + nadd
-        call gchangeparticles()
+        call ParticleGroupchange(pgroup)
 
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
@@ -2877,15 +2839,15 @@ c=============================================================================
       use InPart
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,ishift
-      if (pgroup%npidmax > 0) then
+      if (pgroup%npid > 0) then
       call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
-     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npidmax,
+     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
      &                  pgroup%xp,pgroup%yp,pgroup%zp,
      &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
      &                  pgroup%pid)
       else
       call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
-     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npidmax,
+     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
      &                  pgroup%xp,pgroup%yp,pgroup%zp,
      &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
      &                  0.)
@@ -2894,13 +2856,13 @@ c=============================================================================
       end
 c=============================================================================
       subroutine shftpartwork(is,ishift,npmax,ns,ipmax_s,ins,nps,
-     &                        npidmax,xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
+     &                        npid,xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
       use Subtimerstop
       integer(ISZ):: is,ishift
-      integer(ISZ):: npmax,ns,ipmax_s(0:ns),ins(ns),nps(ns),npidmax
+      integer(ISZ):: npmax,ns,ipmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
-      real(kind=8):: gaminv(npmax),pid(npmax,npidmax)
+      real(kind=8):: gaminv(npmax),pid(npmax,npid)
 
 c Shift particles by 'ishift'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
@@ -2930,7 +2892,7 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
-          if (npidmax > 0) then
+          if (npid > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
@@ -2938,7 +2900,7 @@ c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ipmax_s(is-1)+1,ipmax_s(is-1)+1+ishift-1
           uzp(ip) = 0.
-          if (npidmax > 0) pid(ip,:) = 0
+          if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change lower bound of live particles
@@ -2961,7 +2923,7 @@ c       --- (ins(is) - ipmax_s(is-1)) < -ishift
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
-          if (npidmax > 0) then
+          if (npid > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
         enddo
@@ -2969,7 +2931,7 @@ c       --- Move this into a seperate loop since some compilers were screwing
 c       --- up. This will also be slightly faster too, maybe.
         do ip=ins(is)+nps(is)-1,ins(is)+nps(is)-1+ishift+1,-1
           uzp(ip) = 0.
-          if (npidmax > 0) pid(ip,:) = 0
+          if (npid > 0) pid(ip,:) = 0
         enddo
 
 c       --- change number of particles if data is lost
@@ -3017,7 +2979,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroup%uyp(in) = pgroup%uyp(ij)
           pgroup%uzp(in) = pgroup%uzp(ij)
           pgroup%gaminv(in) = pgroup%gaminv(ij)
-          if (pgroup%npidmax > 0) then
+          if (pgroup%npid > 0) then
             pgroup%pid(in,:) = pgroup%pid(ij,:)
           endif
         enddo
@@ -3032,7 +2994,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroup%uyp(in) = pgroup%uyp(ij)
           pgroup%uzp(in) = pgroup%uzp(ij)
           pgroup%gaminv(in) = pgroup%gaminv(ij)
-          if (pgroup%npidmax > 0) then
+          if (pgroup%npid > 0) then
             pgroup%pid(in,:) = pgroup%pid(ij,:)
           endif
         enddo
@@ -3045,7 +3007,7 @@ c starting at 'istart' to locations starting at 'it'.
       return
       end
 c=============================================================================
-      subroutine addpart(pgroup,nn,nnpidmax,x,y,z,vx,vy,vz,gi,ppid,is,
+      subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,ppid,is,
      &                   lallindomain,zmmin,zmmax,lmomentum)
       use ParticleGroupmodule
       use Subtimerstop
@@ -3053,9 +3015,9 @@ c=============================================================================
       use Particles,Only: spid,ssn
       use Beam_acc
       type(ParticleGroup):: pgroup
-      integer(ISZ):: is,nn,nnpidmax
+      integer(ISZ):: is,nn,nnpid
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
-      real(kind=8):: ppid(nn,nnpidmax)
+      real(kind=8):: ppid(nn,nnpid)
       logical(ISZ):: lallindomain,lmomentum
       real(kind=8):: zmmin,zmmax
 
@@ -3074,6 +3036,8 @@ c              true.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
+      call setuppgroup(pgroup)
+
 c     --- Make sure that the particles are within the z extent of the domain,
 c     --- unless the input declares this to be so. Note that no check is made
 c     --- transversely.
@@ -3090,7 +3054,7 @@ c     --- transversely.
               vy(n1) = vy(ip)
               vz(n1) = vz(ip)
               gi(n1) = gi(ip)
-              if (nnpidmax > 0) ppid(n1,:) = ppid(ip,:)
+              if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
             endif
           endif
         enddo
@@ -3109,7 +3073,7 @@ c     --- momentum.
       endif
 
 c     --- Make room for the particles
-      pgroup%npidmax = max(pgroup%npidmax,nnpidmax)
+c     pgroup%npid = max(pgroup%npid,nnpid)
       call chckpart(pgroup,is,0,n1,.false.)
 
 c     --- Now, copy data into arrays
@@ -3122,7 +3086,7 @@ c     --- Now, copy data into arrays
       pgroup%uyp(i1:i2) = vy(1:n1)
       pgroup%uzp(i1:i2) = vz(1:n1)
       pgroup%gaminv(i1:i2) = gi(1:n1)
-      if (nnpidmax > 0) pgroup%pid(i1:i2,1:nnpidmax) = ppid(1:n1,:)
+      if (nnpid > 0) pgroup%pid(i1:i2,1:nnpid) = ppid(1:n1,:)
       if (spid > 0) then
 c       --- Only set the ssn if it is not already set.
         do ip=i1,i2
@@ -3190,7 +3154,7 @@ c       --- to fill in the empty spaces.
                 pgroup%uyp(ip) = pgroup%uyp(ips)
                 pgroup%uzp(ip) = pgroup%uzp(ips)
                 pgroup%gaminv(ip) = pgroup%gaminv(ips)
-                if (pgroup%npidmax > 0) then
+                if (pgroup%npid > 0) then
                   pgroup%pid(ip,:) = pgroup%pid(ips,:)
                   pgroup%pid(ips,:) = 0
                 endif
@@ -3224,7 +3188,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 pgroup%uyp(ip) = pgroup%uyp(ips)
                 pgroup%uzp(ip) = pgroup%uzp(ips)
                 pgroup%gaminv(ip) = pgroup%gaminv(ips)
-                if (pgroup%npidmax > 0) then
+                if (pgroup%npid > 0) then
                   pgroup%pid(ip,:) = pgroup%pid(ips,:)
                   pgroup%pid(ips,:) = 0
                 endif
@@ -3278,7 +3242,7 @@ c     --- Force npmax to change to ensure that the particles arrays are
 c     --- reallocated.
       if (pgroup%npmax == oldnpmax) pgroup%npmax = pgroup%npmax + 1
 
-      call gchangeparticles()
+      call ParticleGroupchange(pgroup)
 
 !$OMP MASTER
       if (ltoptimesubs) timeshrinkpart = timeshrinkpart + wtime() - substarttime
@@ -3313,10 +3277,10 @@ c the routine which clears out the lost particles is called.
 
       if (lsavelostpart) then
 
-c       --- Make sure that if npidmax has changed, then npidlostmax is also
+c       --- Make sure that if npid has changed, then npidlost is also
 c       --- changed.
-        if (pgroup%npidmax > npidlostmax) then
-          npidlostmax = pgroup%npidmax
+        if (pgroup%npid > npidlost) then
+          npidlost = pgroup%npid
           call gchange("LostParticles",0)
         endif
 
@@ -3371,10 +3335,10 @@ c         --- lost on a previous step but wasn't cleared out of the array.
               gaminvlost(i1) = 1.
             endif
             tplost(i1) = time
-            if (pgroup%npidmax > 0) then
-              pidlost(i1,1:pgroup%npidmax) = pgroup%pid(ip,:)
+            if (pgroup%npid > 0) then
+              pidlost(i1,1:pgroup%npid) = pgroup%pid(ip,:)
             endif
-            if (npidlostmax > pgroup%npidmax) pidlost(i1,pgroup%npidmax+1:)=0.
+            if (npidlost > pgroup%npid) pidlost(i1,pgroup%npid+1:)=0.
             npslost(isid) = npslost(isid) + 1
           endif
 
@@ -3457,7 +3421,7 @@ c     --- pindex is setup for all species. Now do the moving of data.
         call particlecopysorteddata(pgroup%npmax,pgroup%gaminv,pdata,pindex)
       endif
 
-      do ipid=1,pgroup%npidmax
+      do ipid=1,pgroup%npid
         call particlecopysorteddata(pgroup%npmax,pgroup%pid(:,ipid),pdata,
      &                                pindex)
       enddo
@@ -3494,7 +3458,7 @@ c=============================================================================
       subroutine alotlostpart
       use Subtimerstop
       use InPart
-      use Particles,Only: npid,npidmax
+      use Particles,Only: npid
       use LostParticles
 
 c Allocate space for lost particles and set up associated arrays.
@@ -3503,8 +3467,7 @@ c Allocate space for lost particles and set up associated arrays.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      npidlostmax = max(npidmax,npidlostmax)
-      npidlostmax = max(npid,npidlostmax)
+      npidlost = max(npid,npidlost)
       call gchange("LostParticles",0)
 
       npmaxlost_s(0) = 0
@@ -3525,7 +3488,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use LostParticles
-      use Particles,Only: npid,npidmax
+      use Particles,Only: npid
       integer(ISZ):: is,nlower,nhigher
 
 c Make sure that there is enough space in the lost particle arrays for nlower
@@ -3539,9 +3502,9 @@ c Particle data is shifted appropriately.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-c     --- Make sure that npidlostmax is up to date.
-      if (npid > npidlostmax .or. npidmax > npidlostmax) then
-        npidlostmax = max(npid,npidmax)
+c     --- Make sure that npidlost is up to date.
+      if (npid > npidlost) then
+        npidlost = npid
         call gchange("LostParticles",0)
       endif
 
@@ -3598,16 +3561,16 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (npidlostmax > 0) then
-      call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
-     &                  inslost,npslost,npidlostmax,
-     &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
-     &                  gaminvlost,pidlost)
+      if (npidlost > 0) then
+        call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
+     &                    inslost,npslost,npidlost,
+     &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
+     &                    gaminvlost,pidlost)
       else
-      call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
-     &                  inslost,npslost,npidlostmax,
-     &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
-     &                  gaminvlost,0.)
+        call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
+     &                    inslost,npslost,npidlost,
+     &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
+     &                    gaminvlost,0.)
       endif
 
 !$OMP MASTER
@@ -3736,7 +3699,7 @@ c       --- Loop only over live particles
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
-          if (pgroup%npidmax > 0) then
+          if (pgroup%npid > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
@@ -3767,7 +3730,7 @@ c       --- Note that particles will be clobbered if shifted onto species below.
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
-          if (pgroup%npidmax > 0) then
+          if (pgroup%npid > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
           endif
@@ -3808,6 +3771,9 @@ c starting at 'istart' to locations starting at 'it'.
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
+      call setuppgroup(pgroupin)
+      call setuppgroup(pgroupout)
+
       if (istart > 0) then
         do i=0,nn-1
           ij = istart + i
@@ -3819,7 +3785,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = pgroupin%uyp(ij)
           pgroupout%uzp(in) = pgroupin%uzp(ij)
           pgroupout%gaminv(in) = pgroupin%gaminv(ij)
-          if (pgroupin%npidmax > 0) then
+          if (pgroupin%npid > 0) then
             pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
@@ -3834,7 +3800,7 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = pgroupin%uyp(ij)
           pgroupout%uzp(in) = pgroupin%uzp(ij)
           pgroupout%gaminv(in) = pgroupin%gaminv(ij)
-          if (pgroupin%npidmax > 0) then
+          if (pgroupin%npid > 0) then
             pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
         enddo
@@ -4951,7 +4917,7 @@ c           conductor generate new particles.
       END if
 
       do ip = inslost(is1), inslost(is1)+npslost(is1)-1
-        if (condid > 0 .and. pidlost(ip,npidlostmax) .ne. condid) cycle
+        if (condid > 0 .and. pidlost(ip,npidlost) .ne. condid) cycle
         nbpt = int(nbp+wranf())
         i1 = pgroup%ins(is2) + pgroup%nps(is2)
         i2 = i1 + nbpt - 1
