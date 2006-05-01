@@ -46,7 +46,7 @@ def printparameters():
       f20%("   over c     = ",top.vbeamoc," ") + \
       f20%("Kinetic energy = ",top.ekin," eV") + \
       f20%("Weight of simulation particles = ",top.pgroup.sw[0]," ") + \
-      f30%("Number of simulation particles = ",top.np," ") + \
+      f30%("Number of simulation particles = ",top.npmax," ") + \
       f20%("Number of real particles = ",top.npreal," ") + \
       f20%("Total mass = ",top.totmass," kg") + \
       f20%("Total charge = ",top.totchrg," Coul") + \
