@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.15 $, $Date: 2006/04/15 00:09:46 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.16 $, $Date: 2006/05/01 18:07:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1420,30 +1420,30 @@ c       --- normal loop
           vv(0) = ux(ir)*gi(ir)
           vv(1) = uy(ir)*gi(ir)
           vv(2) = uz(ir)*gi(ir)
-          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(0)
-          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(0)
-          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(0)
-          j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(0)
-          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(0)
-          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(0)
-          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(0)
-          j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(0)
-          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(1)
-          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(1)
-          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(1)
-          j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(1)
-          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(1)
-          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(1)
-          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(1)
-          j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(1)
-          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*gw*vv(2)
-          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*gw*vv(2)
-          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*gw*vv(2)
-          j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*gw*vv(2)
-          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*gw*vv(2)
-          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*gw*vv(2)
-          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
-          j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
+          j(0,ix  ,iy  ,iz  ) = j(0,ix  ,iy  ,iz  ) + u0*v0*w0*vv(0)
+          j(0,ix+1,iy  ,iz  ) = j(0,ix+1,iy  ,iz  ) + u1*v0*w0*vv(0)
+          j(0,ix  ,iy+1,iz  ) = j(0,ix  ,iy+1,iz  ) + u0*v1*w0*vv(0)
+          j(0,ix+1,iy+1,iz  ) = j(0,ix+1,iy+1,iz  ) + u1*v1*w0*vv(0)
+          j(0,ix  ,iy  ,iz+1) = j(0,ix  ,iy  ,iz+1) + u0*v0*w1*vv(0)
+          j(0,ix+1,iy  ,iz+1) = j(0,ix+1,iy  ,iz+1) + u1*v0*w1*vv(0)
+          j(0,ix  ,iy+1,iz+1) = j(0,ix  ,iy+1,iz+1) + u0*v1*w1*vv(0)
+          j(0,ix+1,iy+1,iz+1) = j(0,ix+1,iy+1,iz+1) + u1*v1*w1*vv(0)
+          j(1,ix  ,iy  ,iz  ) = j(1,ix  ,iy  ,iz  ) + u0*v0*w0*vv(1)
+          j(1,ix+1,iy  ,iz  ) = j(1,ix+1,iy  ,iz  ) + u1*v0*w0*vv(1)
+          j(1,ix  ,iy+1,iz  ) = j(1,ix  ,iy+1,iz  ) + u0*v1*w0*vv(1)
+          j(1,ix+1,iy+1,iz  ) = j(1,ix+1,iy+1,iz  ) + u1*v1*w0*vv(1)
+          j(1,ix  ,iy  ,iz+1) = j(1,ix  ,iy  ,iz+1) + u0*v0*w1*vv(1)
+          j(1,ix+1,iy  ,iz+1) = j(1,ix+1,iy  ,iz+1) + u1*v0*w1*vv(1)
+          j(1,ix  ,iy+1,iz+1) = j(1,ix  ,iy+1,iz+1) + u0*v1*w1*vv(1)
+          j(1,ix+1,iy+1,iz+1) = j(1,ix+1,iy+1,iz+1) + u1*v1*w1*vv(1)
+          j(2,ix  ,iy  ,iz  ) = j(2,ix  ,iy  ,iz  ) + u0*v0*w0*vv(2)
+          j(2,ix+1,iy  ,iz  ) = j(2,ix+1,iy  ,iz  ) + u1*v0*w0*vv(2)
+          j(2,ix  ,iy+1,iz  ) = j(2,ix  ,iy+1,iz  ) + u0*v1*w0*vv(2)
+          j(2,ix+1,iy+1,iz  ) = j(2,ix+1,iy+1,iz  ) + u1*v1*w0*vv(2)
+          j(2,ix  ,iy  ,iz+1) = j(2,ix  ,iy  ,iz+1) + u0*v0*w1*vv(2)
+          j(2,ix+1,iy  ,iz+1) = j(2,ix+1,iy  ,iz+1) + u1*v0*w1*vv(2)
+          j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*vv(2)
+          j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*vv(2)
         enddo
       endif
 
