@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.109 2006/04/28 22:06:29 dave Exp $"
+warp_version = "$Id: warp.py,v 1.110 2006/05/01 18:03:02 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -437,7 +437,7 @@ The default is to zero out rho.
   # --- current package
   currpkg = package()[0]
   if (currpkg == "w3d"):
-    loadj3d(ins_i,nps_i,is_i,lzero,pgroup)
+    loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
   elif (currpkg == "wxy"):
     #loadrhoxy(ins_i,nps_i,is_i,lzero)
     print "loadj  not support in wxy yet"
