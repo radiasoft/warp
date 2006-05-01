@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.13 2006/04/27 23:47:04 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.14 2006/05/01 23:44:06 dave Exp $"
 
 class PlaneSave:
   """
@@ -188,9 +188,9 @@ Input:
       uy = getuy(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
       uz = getuz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
       gi = getgaminv(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
-      if top.npidmax > 0:
+      if top.npid > 0:
         id = []
-        for i in range(top.npidmax):
+        for i in range(top.npid):
           id.append(getpid(js=js,id=i,zl=self.zplane,zu=self.zplane+self.maxvzdt))
         id = transpose(array(id))
 
