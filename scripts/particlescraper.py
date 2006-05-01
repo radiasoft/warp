@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.41 2006/04/28 22:06:56 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.42 2006/05/01 23:45:15 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -75,7 +75,7 @@ conductors are an argument.
       self.xoldpid=nextpid() - 1
       self.yoldpid=nextpid() - 1
       self.zoldpid=nextpid() - 1
-      gchangeparticles()
+      setuppgroup(top.pgroup)
       installbeforestep(self.saveoldpos)
     self.l_print_timing=0
     # --- Install the call to scrape particles if requested
@@ -390,8 +390,8 @@ after load balancing."""
     # --- First make sure there is extra space in the pidlost array.
     pidspace = 1
     if self.lsaveintercept: pidspace = 4
-    if top.npidlostmax < top.npidmax+pidspace:
-      top.npidlostmax = top.npidmax + pidspace
+    if top.npidlost < top.npid+pidspace:
+      top.npidlost = top.npid + pidspace
       gchange("LostParticles")
 
     # --- Much of this code is duplicated from scrape above so if it changes,
