@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.39 $, $Date: 2006/04/15 00:09:46 $
+c TOPSLAVE.M, version $Revision: 1.40 $, $Date: 2006/05/01 23:52:44 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -612,7 +612,7 @@ c     --- done.
         np_s = pgroup%npmax/ns
       endif
       np_s(ns) = pgroup%npmax - sum(np_s(1:ns-1))
-      call alotpart()
+      call alotpart(pgroup)
       
 c     --- Create space for incoming data
       pnpmax = max(1_4,pnp)
