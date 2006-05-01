@@ -23,7 +23,7 @@ The two simulations are linked together.
 ###########################################################################
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.8 2006/04/27 23:47:04 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.9 2006/05/01 23:44:24 dave Exp $"
 
 class PlaneRestore:
   """
@@ -96,7 +96,7 @@ Input:
 
     # make sure that pid will be allocated
     top.npid = self.f.npid
-    alotpart()
+    alotpart(top.pgroup)
 
     # restore solver geometry of the saved data
     try:

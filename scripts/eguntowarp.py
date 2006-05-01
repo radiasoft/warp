@@ -3,7 +3,7 @@
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.4 2006/04/28 17:32:50 dave Exp $'
+eguntowarp_version = '$Id: eguntowarp.py,v 1.5 2006/05/01 23:46:52 dave Exp $'
 def eguntowarpdoc():
   import eguntowarp
   print eguntowarp.__doc__
@@ -39,7 +39,7 @@ EgunToWarp
                  seed1=1341392,seed2=9823748):
     # --- Allocate space for the particles
     if top.npmax == 0: top.npmax = npmax
-    alotpart()
+    alotpart(top.pgroup)
     top.pgroup.ins[0] = top.npmax+1
     # --- Set the basic particle parameters
     top.pgroup.sq[0] = top.zion*echarge
