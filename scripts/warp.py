@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.110 2006/05/01 18:03:02 dave Exp $"
+warp_version = "$Id: warp.py,v 1.111 2006/05/01 23:42:32 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -333,6 +333,28 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
     return result
 
 #=============================================================================
+def addspecies(newns=1):
+  """Adds one or more new speices. This only allocates the needed arrays."""
+  top.ns = top.ns + newns
+  gchange("InPart")
+  gchange("InjectVars")
+  gchange("LostParticles")
+  gchange("ExtPart")
+  if top.lspeciesmoments:
+    top.nszarr = top.ns
+    gchange("Z_arrays")
+    top.nswind = top.ns
+    gchange("Win_Moments")
+    top.nszmmnt = top.ns
+    gchange("Z_Moments")
+    top.nslabwn = top.ns
+    gchange("Lab_Moments")
+    top.nsmmnt = top.ns
+    gchange("Moments")
+    top.nshist = top.ns
+    gchange("Hist")
+
+#=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """
 loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
@@ -368,6 +390,7 @@ The default is to zero out rho.
     loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
   elif (currpkg == "wxy"):
     loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+
 #=============================================================================
 def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
   """
@@ -402,7 +425,6 @@ package. Only w3d and wxy have field solves defined.
         getinj_phi()
       except NameError:
         pass
-
 
 #=============================================================================
 def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -759,7 +781,6 @@ def fixrestoreswitholdparticlearrays(filename):
   # --- Everything else has already been read in.
   top.pgroup.npmax = top.npmax
   top.pgroup.npid = top.npid
-  top.pgroup.npidmax = top.npidmax
   top.pgroup.sm = top.sm
   top.pgroup.sq = top.sq
   top.pgroup.sw = top.sw
@@ -888,7 +909,6 @@ Reads in data from file, redeposits charge density and does field solve
   package(__main__.__dict__["currpkg"])
   # --- Allocate all arrays appropriately
   gchange("*")
-  gchangeparticles()
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
