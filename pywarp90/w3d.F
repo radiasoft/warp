@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.245 $, $Date: 2006/04/28 22:20:29 $
+c@(#) File W3D.F, version $Revision: 3.246 $, $Date: 2006/05/01 23:52:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -182,10 +182,6 @@ c  Set global values of zmmin and zmmax before the decomposition is done
 c  for the parallel code.
       zmminglobal = zmmin
       zmmaxglobal = zmmax
-
-c     --- Make sure the arrays are setup OK
-c     --- This won't be needed once the pointers in Particles are removed
-      call gchangeparticles()
 
 c------- Parallel only -----------------------------------------------------
 #ifdef MPIPARALLEL
@@ -383,6 +379,8 @@ c  use a user-set npmax directly)
 c  Load the particles, calculate the charge density
 
       call remark(" ---  Loading particles")
+      pgroup.ns = ns
+      call setuppgroup(pgroup)
       call stptcl3d(pgroup)
       call setgamma(pgroup,lrelativ)
       call remark(" ---  Setting charge density")
@@ -1380,6 +1378,8 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
 
       if (lw3dtimesubs) substarttime = wtime()
 
+      call setuppgroup(pgroup)
+
 c     --- Create local pointers to the arrays in pgroup.
       xp => pgroup%xp
       yp => pgroup%yp
@@ -1388,7 +1388,7 @@ c     --- Create local pointers to the arrays in pgroup.
       uyp => pgroup%uyp
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
-      if (pgroup%npidmax > 0) pid => pgroup%pid
+      if (pgroup%npid > 0) pid => pgroup%pid
 
       sm => pgroup%sm
       sq => pgroup%sq
@@ -1780,7 +1780,7 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
      &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                 endif
-                call getextrapolatedparticles(ipmin,ip,pgroup,pgroup%npidmax,
+                call getextrapolatedparticles(ipmin,ip,pgroup,pgroup%npid,
      &                                        halfdt_s,uxpo,uypo,uzpo,
      &                                        isid,time,zbeam)
               endif
@@ -1878,7 +1878,7 @@ c  Also include time step size scaling for steady-state and slice modes.
 
         ipmin = pgroup%ins(is)
         call getextrapolatedparticles(pgroup%ins(is),pgroup%nps(is),pgroup,
-     &             pgroup%npidmax,halfdt_s,
+     &             pgroup%npid,halfdt_s,
      &             pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &             pgroup%sid(is-1)+1,time,zbeam)
        enddo
@@ -3411,7 +3411,6 @@ c  appropriately.
 c
 c  Picglb is included only to use zbeam
 
-
       integer(ISZ):: npm,ip,js,isid,i,j,k,i1
       integer(ISZ):: nxstri_s,nystri_s,nzstri_s,izstripe,icheck
       integer(ISZ):: nfib2,nfib3,nfib4,ii,ioff
@@ -3478,6 +3477,8 @@ c  Set npm to be greater than zero if any particles are to be loaded.
 c  If not loading any particles, skip the next big section, but still calculate
 c  values for sq and sm. For parallel version, also update the value for sw.
       if (npm > 0 .and. distrbtn .ne. "preload") then
+
+      call setuppgroup(pgroup)
 
 c  Prepare for arbitrary particle distribution in z.  This coding will only
 c  load a beam approximately matching the distribution.  A gathering of
@@ -3586,7 +3587,7 @@ c  Allocate scratch space for load. Must be done in the parallel block
       endif
 
       do js=0,pgroup%ns-1
-        pgroup%sid(js) = js
+        if (pgroup%sid(js) == -1) pgroup%sid(js) = js
         isid = pgroup%sid(js)+1
 
 c       --- Get number of particles to be loaded for this species.
@@ -4039,7 +4040,7 @@ c            --- put velocity into particle arrays
      &                   vty*uyt(ii) + vzt(ii)*ypct(ii)
              pgroup%uzp(ip+i) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni) +
      &                   vtzt(ii)*uzt(ii)
-             if (pgroup%npidmax > 0) pgroup%pid(ip+i,:) = 0.
+             if (pgroup%npid > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -4171,7 +4172,7 @@ c                  2nd term: centroid component
 c            --- set longitudinal particle gamma*velocity 
              pgroup%uzp(ip+i) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
-             if (pgroup%npidmax > 0) pgroup%pid(ip+i,:) = 0.
+             if (pgroup%npid > 0) pgroup%pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
