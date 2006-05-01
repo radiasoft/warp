@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.65 2006/04/15 00:13:37 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.66 2006/05/01 23:41:36 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -297,8 +297,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           elif p == 'top' and vname == 'pid':
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
-            if top.npidmax > 0 and sum(sum(nps_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(nps_p)),top.npidmax))
+            if top.npid > 0 and sum(sum(nps_p)) > 0:
+              ff.defent(pdbname,v,(sum(sum(nps_p)),top.npid))
           elif vname == 'npmaxlost_s' and p == 'top':
             # --- This is set to be correct globally
             ff.write(pdbname,array([0]+list(cumsum(sum(npslost_p[:,:])))))
@@ -325,7 +325,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
             if sum(sum(npslost_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(npslost_p)),top.npidlostmax))
+              ff.defent(pdbname,v,(sum(sum(npslost_p)),top.npidlost))
           elif p == 'f3d' and vname == 'conductors':
             # --- This is written out below
             pass
@@ -425,7 +425,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
                        indx=(ipmin,))
         elif p == 'top' and vname == 'pid':
-          if top.npidmax > 0:
+          if top.npid > 0:
             # --- Write out each species seperately.
             for js in range(top.ns):
               if top.nps[js] > 0:
@@ -529,7 +529,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
     itriple = array([me,me,1])
     top.npmax = ff.read_part('npmax@top@parallel',itriple)[0]
     top.pgroup.npmax = top.npmax
-    gchangeparticles()
+    setuppgroup(top.pgroup
   if 'nps_p' in vlistparallel:
     nps_p = ff.read('nps_p@parallel')
     nps_p0 = zeros((top.nslaves+1,top.ns+1))
@@ -644,11 +644,11 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- Read in each species seperately.
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
-        if top.npidmax > 0:
+        if top.npid > 0:
           for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-              itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npidmax-1,1])
+              itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npid-1,1])
               lhs = getattr(pkg,vname)
               rhs = ff.read_part(v,itriple)
               lhs[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:] = rhs
@@ -677,7 +677,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
           if top.npslost[js] > 0:
             ipmin = sum(sum(npslost_p0[:,0:js+1]))+sum(npslost_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.npslost[js]-1,1,
-                             0,top.npidlostmax-1,1])
+                             0,top.npidlost-1,1])
             lhs = getattr(pkg,vname)
             rhs = ff.read_part(v,itriple)
             lhs[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:] = rhs
