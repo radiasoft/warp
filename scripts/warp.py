@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.112 2006/05/04 19:58:50 dave Exp $"
+warp_version = "$Id: warp.py,v 1.113 2006/05/04 22:07:32 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -336,10 +336,14 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
 def addspecies(newns=1,pgroup=None):
   """Adds one or more new speices. This only allocates the needed arrays."""
   top.ns = top.ns + newns
+  assert top.ns >= 0,"The total number of species cannot be negative"
   gchange("InPart")
   gchange("InjectVars")
   gchange("LostParticles")
   gchange("ExtPart")
+  # --- top.pgroup is special since it always has top.ns species.
+  top.pgroup.ns = top.ns
+  setuppgroup(top.pgroup)
   if pgroup is not None:
     pgroup.ns = top.ns
     setuppgroup(pgroup)
@@ -356,6 +360,11 @@ def addspecies(newns=1,pgroup=None):
     gchange("Moments")
     top.nshist = top.ns
     gchange("Hist")
+#=============================================================================
+def setnspecies(ns):
+  """Set the total number of species."""
+  assert ns >= 0,"The total number of species cannot be negative"
+  addspecies(ns-top.ns)
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
