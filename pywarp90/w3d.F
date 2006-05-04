@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.246 $, $Date: 2006/05/01 23:52:21 $
+c@(#) File W3D.F, version $Revision: 3.247 $, $Date: 2006/05/04 01:39:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -379,7 +379,7 @@ c  use a user-set npmax directly)
 c  Load the particles, calculate the charge density
 
       call remark(" ---  Loading particles")
-      pgroup.ns = ns
+      pgroup%ns = ns
       call setuppgroup(pgroup)
       call stptcl3d(pgroup)
       call setgamma(pgroup,lrelativ)
