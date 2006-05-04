@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.247 $, $Date: 2006/05/04 01:39:35 $
+c@(#) File W3D.F, version $Revision: 3.248 $, $Date: 2006/05/04 22:32:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4225,6 +4225,11 @@ c--------------------------------
 
 c     --- end of if checking for positive npm and distrbtn is not preload
       endif
+
+c     --- Make sure that sid is set if it is not set by the user.
+      do js=0,pgroup%ns-1
+        if (pgroup%sid(js) == -1) pgroup%sid(js) = js
+      enddo
 
 c     --- Find maximum of zdist, which is used to scale sw.  See below.
       if (nzdist > 0) then
