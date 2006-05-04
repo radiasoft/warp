@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.111 2006/05/01 23:42:32 dave Exp $"
+warp_version = "$Id: warp.py,v 1.112 2006/05/04 19:58:50 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -333,13 +333,16 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
     return result
 
 #=============================================================================
-def addspecies(newns=1):
+def addspecies(newns=1,pgroup=None):
   """Adds one or more new speices. This only allocates the needed arrays."""
   top.ns = top.ns + newns
   gchange("InPart")
   gchange("InjectVars")
   gchange("LostParticles")
   gchange("ExtPart")
+  if pgroup is not None:
+    pgroup.ns = top.ns
+    setuppgroup(pgroup)
   if top.lspeciesmoments:
     top.nszarr = top.ns
     gchange("Z_arrays")
