@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.168 $, $Date: 2006/05/01 23:54:07 $
+#@(#) File TOP.V, version $Revision: 3.169 $, $Date: 2006/05/04 19:40:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.168 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.169 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2229,7 +2229,7 @@ nextpid() integer function
                         # changing npid.
 dolabwn() logical function
                         # Checks if lab window is in beam frame
-setuppgroup(pgroup:ParticleGroup,ns:integer) subroutine
+setuppgroup(pgroup:ParticleGroup) subroutine
                         # Does basis setup of pgroup data, setting ns and npid
 alotpart(pgroup:ParticleGroup)
              subroutine # Allocate space for particles and setup 
