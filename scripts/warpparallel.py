@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.66 2006/05/01 23:41:36 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.67 2006/05/04 19:34:58 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -529,7 +529,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
     itriple = array([me,me,1])
     top.npmax = ff.read_part('npmax@top@parallel',itriple)[0]
     top.pgroup.npmax = top.npmax
-    setuppgroup(top.pgroup
+    setuppgroup(top.pgroup)
   if 'nps_p' in vlistparallel:
     nps_p = ff.read('nps_p@parallel')
     nps_p0 = zeros((top.nslaves+1,top.ns+1))
