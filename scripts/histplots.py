@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.29 2006/05/04 23:07:13 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.30 2006/05/04 23:12:54 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -116,14 +116,14 @@ returned.
     except: result = None
     if result is not None: return result
     if attr is not None:
-      return getattr(packageobject(pkg).packageobject(attr),name)
+      return getattr(getattr(packageobject(pkg),attr),name)
     else:
       return getattr(packageobject(pkg),name)
   else:
     return name
 
-def _extractvarkw(name,kw,pkg='top',attr=''):
-  return _extractvar(name,kw.get('varsuffix',None),pkg=pkg,
+def _extractvarkw(name,kw,pkg='top',attr=None):
+  return _extractvar(name,kw.get('varsuffix',None),pkg=pkg,attr=attr,
                      ff=kw.get('ff',None))
 
 ###########################################################################
