@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.28 2006/01/24 17:53:04 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.29 2006/05/04 23:07:13 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -90,7 +90,7 @@ plotting routines, along with their default values.
   """ + hpbasictext
 
 ###########################################################################
-def _extractvar(name,varsuffix=None,pkg='top',ff=None):
+def _extractvar(name,varsuffix=None,pkg='top',attr=None,ff=None):
   """
 Helper function which, given a name, returns the appropriate data. Note that
 name could actually be the variable itself, in which case, it is just
@@ -108,14 +108,21 @@ returned.
       try:    result = __main__.__dict__[vname]
       except: result = None
       if result is not None: return result
-    try:    result = ff.read(name+'@'+pkg)
+    try:   
+      if attr is not None:
+        result = ff.read(name+'@'+attr+'@'+pkg)
+      else:
+        result = ff.read(name+'@'+pkg)
     except: result = None
     if result is not None: return result
-    return getattr(packageobject(pkg),name)
+    if attr is not None:
+      return getattr(packageobject(pkg).packageobject(attr),name)
+    else:
+      return getattr(packageobject(pkg),name)
   else:
     return name
 
-def _extractvarkw(name,kw,pkg='top'):
+def _extractvarkw(name,kw,pkg='top',attr=''):
   return _extractvar(name,kw.get('varsuffix',None),pkg=pkg,
                      ff=kw.get('ff',None))
 
@@ -1373,8 +1380,8 @@ def hpthermale(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Z Thermal Energy"
   kw['titlel']="(J)"
-  sm = _extractvarkw('sm',kw)
-  sw = _extractvarkw('sw',kw)
+  sm = _extractvarkw('sm',kw,attr='pgroup')
+  sw = _extractvarkw('sw',kw,attr='pgroup')
   sp_fract = _extractvarkw('sp_fract',kw)
   hpnum = _extractvarkw('hpnum',kw)
   hvzrms = _extractvarkw('hvzrms',kw)
