@@ -54,6 +54,8 @@ Creates helix with constant Ez in the pulse.
  - inductance=None: required for model=2
  - capacitance=None: required for model=2
  - resistance=None: required for model=2
+ - terminductance=None: required for model=2
+ - termcapacitance=None: required for model=2
  - termresistance=None: required for model=2
  - pitch=None: pitch of helix, now only used in calculation of the B field.
                Default to dzwave.
@@ -76,6 +78,7 @@ Creates helix with constant Ez in the pulse.
                     vvfunc=None,
                     startgaptype=0,model=0,condid=None,
                     inductance=None,capacitance=None,resistance=None,
+                    terminductance=None,termcapacitance=None,
                     termresistance=None,pitch=None,
                     lbeamloading=1,ncircuit=10,nspirals=None,lsavehist=0,
                     lcalcunloaded=0,lcalcnowave=0,lcalcbfield=0):
@@ -105,6 +108,10 @@ Creates helix with constant Ez in the pulse.
     self.inductance = inductance
     self.capacitance = capacitance
     self.resistance = resistance
+    self.termcapacitance = where(termcapacitance is None,capacitance,
+                                 termcapacitance)
+    self.terminductance = where(terminductance is None,inductance,
+                                terminductance)
     self.termresistance = termresistance
     self.pitch = pitch
     self.lbeamloading = lbeamloading
@@ -459,9 +466,9 @@ Creates helix with constant Ez in the pulse.
     Cw = self.capacitance*tfacw
     Rw = self.resistance #*tfacw
 
-    tfact = self.dzterm/sqrt(self.inductance*self.capacitance)/self.vz
-    Lt = self.inductance*tfact
-    Ct = self.capacitance*tfact
+    tfact = self.dzterm/sqrt(self.terminductance*self.termcapacitance)/self.vz
+    Lt = self.terminductance*tfact
+    Ct = self.termcapacitance*tfact
     #Rt = self.termresistance*(arange(self.nzterm)/(self.nzterm-1.))**1
     Rt = self.termresistance #*tfact
 
@@ -765,6 +772,8 @@ Creates helix with constant Ez in the pulse.
       self.ifnone('inductance = %e\n',self.inductance) +
       self.ifnone('capacitance = %e\n',self.capacitance) +
       self.ifnone('resistance = %e\n',self.resistance) +
+      self.ifnone('terminductance = %e\n',self.terminductance) +
+      self.ifnone('termcapacitance = %e\n',self.termcapacitance) +
       self.ifnone('termresistance = %e\n',self.termresistance) +
       self.ifnone('lbeamloading = %d\n',self.lbeamloading) +
       self.ifnone('ncircuit = %d\n',self.ncircuit) +
