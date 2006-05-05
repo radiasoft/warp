@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.67 2006/05/04 19:34:58 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.68 2006/05/05 21:38:30 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -155,10 +155,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   if not (type(attr) == type([])): attr = [attr]
 
   # --- Gather nps from all processors
-  nps_p = gatherarray(top.nps,bcast=1)
+  nps_p = gatherarray(top.pgroup.nps,bcast=1)
   nps_p.shape = (top.nslaves,top.ns)
-  nps_p0 = zeros((top.nslaves+1,top.ns+1))
-  nps_p0[1:,1:] = nps_p
   top.npmax = top.pgroup.npmax
 
   # --- Same for npslost
@@ -187,8 +185,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
     # --- Might as well write out *_p data right now while I'm thinking of it.
     # --- But only if they have the attribute attr.
     for a in attr:
-      if re.search(a,top.getvarattr("nps")):
-        ff.write('nps_p@parallel',nps_p)
       if re.search(a,top.getvarattr("npslost")):
         ff.write('npslost_p@parallel',npslost_p)
 
@@ -273,33 +269,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           # --- the file big enough to fit the data from all of the
           # --- processors. Other arrays have special requirements.
           # --- First deal with the exceptions
-          if vname == 'ipmax_s' and p == 'top':
-            # --- This is set to be correct globally
-            ff.write(pdbname,array([0]+list(cumsum(sum(nps_p[:,:])))))
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns+1))
-          elif vname == 'ins' and p == 'top':
-            # --- This is set to be correct globally
-            iii = array([1])
-            if top.ns > 1:
-              iii = array([1]+list(cumsum(sum(nps_p[:,:-1]))+array([1])))
-            ff.write(pdbname,iii)
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns))
-          elif vname == 'nps' and p == 'top':
-            # --- This is set to be correct globally
-            ff.write(pdbname,sum(nps_p))
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns))
-          elif p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                        'gaminv']:
-            # --- For the particle data, a space big enough to hold
-            # --- all of the data is created.
-            if sum(sum(nps_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(nps_p)),))
-          elif p == 'top' and vname == 'pid':
-            # --- For the particle data, a space big enough to hold
-            # --- all of the data is created.
-            if top.npid > 0 and sum(sum(nps_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(nps_p)),top.npid))
-          elif vname == 'npmaxlost_s' and p == 'top':
+          if vname == 'npmaxlost_s' and p == 'top':
             # --- This is set to be correct globally
             ff.write(pdbname,array([0]+list(cumsum(sum(npslost_p[:,:])))))
             ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns+1))
@@ -329,6 +299,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           elif p == 'f3d' and vname == 'conductors':
             # --- This is written out below
             pass
+          elif p == 'top' and vname == 'pgroup':
+            # --- This is written out below
+            pass
           elif p == 'w3d' and vname in ['rho']:
             # --- Be prepared to dump out rho in case it is needed.
             # --- For example the egun script wants rho saved.
@@ -355,17 +328,24 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   # --- out now.
 
   # --- This is ugly...
-  # --- Each processor makes space for its conductors data.
-  # --- First check if f3d.conductors is being written out.
+  # --- Each processor makes space for its conductors and pgroup data.
+  # --- First check if f3d.conductors or top.pgroup is being written out.
   cattr = f3d.getvarattr('conductors')
-  if max(map(lambda a:re.search(a,cattr),attr)):
+  pattr = top.getvarattr('pgroup')
+  if (max(map(lambda a:re.search(a,cattr),attr)) or
+      max(map(lambda a:re.search(a,pattr),attr))):
     if me > 0: mpirecv(me-1)
-    if verbose: print "Writing out the conductors"
     ff = PW.PW(fname,'a')
-#   ff.write('conductors%d@parallel'%me,f3d.conductors)
-    pydumpforthonobject(ff,[''],'conductors',f3d.conductors,
-                        '@conductors%d@parallel'%me,[],[],0,
-                        verbose=verbose,lonlymakespace=1)
+    if max(map(lambda a:re.search(a,cattr),attr)):
+      if verbose: print "Writing out the conductors"
+      pydumpforthonobject(ff,[''],'conductors',f3d.conductors,
+                          '@conductors%d@parallel'%me,[],[],0,
+                          verbose=verbose,lonlymakespace=1)
+    if max(map(lambda a:re.search(a,pattr),attr)):
+      if verbose: print "Writing out the pgroups"
+      pydumpforthonobject(ff,[''],'pgroup',top.pgroup,
+                          '@pgroup%d@parallel'%me,[],[],0,
+                          verbose=verbose,lonlymakespace=1)
     ff.close()
     if me < npes-1: mpi.send(1,me+1)
     mpi.barrier()
@@ -403,6 +383,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           vs = '@conductors%d@parallel'%me
           pydumpforthonobject(ff,[''],'conductors',v,vs,[],[],0,verbose,0)
 
+        elif p == 'top' and vname == 'pgroup':
+          # --- Each process writes out its pgroup object with the
+          # --- process number and '@parallel' appended.
+          vs = '@pgroup%d@parallel'%me
+          pydumpforthonobject(ff,[''],'pgroup',v,vs,[],[],0,verbose,0)
+
         else:
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,))
           # --- That was easy.
@@ -416,22 +402,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                                     'npmaxlost_s','inslost','npslost']:
           # --- Write out to parallel space
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
-        elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                      'gaminv']):
-          # --- Write out each species seperately.
-          for js in range(top.ns):
-            if top.nps[js] > 0:
-              ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-              ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
-                       indx=(ipmin,))
-        elif p == 'top' and vname == 'pid':
-          if top.npid > 0:
-            # --- Write out each species seperately.
-            for js in range(top.ns):
-              if top.nps[js] > 0:
-                ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-                ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
-                         indx=(ipmin,0))
         elif p == 'top' and vname in ['xplost','yplost','zplost',
                                       'uxplost','uyplost','uzplost',
                                       'gaminvlost','tplost']:
@@ -494,7 +464,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 
   # --- Long list of parallel variables that are to be skipped in the serial
   # --- restore.
-  skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','pid',
+  skipparallel = ['pgroup',
     'xplost','yplost','zplost','uxplost','uyplost','uzplost','gaminvlost',
     'tplost','pidlost','conductors','rho','phi']
 
@@ -528,19 +498,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   if 'npmax@top' in vlistparallel:
     itriple = array([me,me,1])
     top.npmax = ff.read_part('npmax@top@parallel',itriple)[0]
-    top.pgroup.npmax = top.npmax
-    setuppgroup(top.pgroup)
-  if 'nps_p' in vlistparallel:
-    nps_p = ff.read('nps_p@parallel')
-    nps_p0 = zeros((top.nslaves+1,top.ns+1))
-    nps_p0[1:,1:] = nps_p
-  itriple = array([me,me,1,0,top.ns-1,1])
-  if 'ins@top' in vlistparallel:
-    top.ins[:] = ff.read_part('ins@top@parallel',itriple)[0,...]
-  if 'nps@top' in vlistparallel:
-    top.nps[:] = ff.read_part('nps@top@parallel',itriple)[0,...]
-  top.pgroup.ipmax_s[1:-1] = top.ins[1:] - 1
-  top.pgroup.ipmax_s[-1] = top.npmax
 
   if 'npslost_p' in vlistparallel:
     npslost_p = ff.read('npslost_p@parallel')
@@ -595,6 +552,15 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                            varsuffix,verbose,doarrays=1,
                            gpdbname='conductors%d@parallel'%me)
 
+  if 'pgroup%d'%me in groups.keys():
+    vlistpgroup = groups['pgroup%d'%me]
+    pyrestoreforthonobject(ff,'top.pgroup',vlistpgroup,fobjdict,
+                           varsuffix,verbose,doarrays=0,
+                           gpdbname='pgroup%d@parallel'%me)
+    pyrestoreforthonobject(ff,'top.pgroup',vlistpgroup,fobjdict,
+                           varsuffix,verbose,doarrays=1,
+                           gpdbname='pgroup%d@parallel'%me)
+
   # --- Allocate any groups with parallel arrays
   gchange("LostParticles")
 
@@ -629,29 +595,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- These have already been restored above since they are
         # --- needed to read in the particles.
         continue
-      elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp','gaminv']):
-        # --- Read in each species seperately.
-        # --- The command is exec'ed here since a different command
-        # --- is needed for each species.  Errors are not caught.
-        for js in range(top.ns):
-          if top.nps[js] > 0:
-            ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-            itriple = array([ipmin,ipmin+top.nps[js]-1,1])
-            lhs = getattr(pkg,vname)
-            rhs = ff.read_part(v,itriple)
-            lhs[top.ins[js]-1:top.ins[js]+top.nps[js]-1] = rhs
-      elif p == 'top' and vname == 'pid':
-        # --- Read in each species seperately.
-        # --- The command is exec'ed here since a different command
-        # --- is needed for each species.  Errors are not caught.
-        if top.npid > 0:
-          for js in range(top.ns):
-            if top.nps[js] > 0:
-              ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-              itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npid-1,1])
-              lhs = getattr(pkg,vname)
-              rhs = ff.read_part(v,itriple)
-              lhs[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:] = rhs
       elif vname == 'npmaxlost_s' and p == 'top':
         itriple = array([me,me,1,0,top.ns,1])
         data = ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...]
