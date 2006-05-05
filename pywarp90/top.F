@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.178 $, $Date: 2006/05/01 23:56:23 $
+c@(#) File TOP.F, version $Revision: 3.179 $, $Date: 2006/05/05 00:30:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -581,11 +581,10 @@ c=============================================================================
       use Timers
       use Particles, only: wpid
       integer(ISZ):: np,itask,nplive,is,isid,ismax
-      real(kind=8):: q,m,w,dt
+      real(kind=8):: q,m,w,dt,dtscale
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
-      real(kind=8):: dtscale(np)
       real(kind=8):: maxp(6,0:nszmmnt),minp(6,0:nszmmnt)
       real(kind=8):: zmmnts0(NUMZMMNT,0:nszmmnt)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt)
@@ -704,7 +703,7 @@ c       --- set multiplier so lost particles don't contribute
             maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
             minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
 
-            pp(0,ip) = dtscale(is)
+            pp(0,ip) = dtscale
             if (ifzmmnt == 1) then
               if ((zp(ip) - zbeam) < zmmntmin .or.
      &            (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
@@ -740,7 +739,7 @@ c       endif
 c       --- Accumate global moments first.
 
 c       --- Used to add in dtscale factor below.
-        if (dtscale(is) /= 1.) zmmntscopy = zmmnts0(:,js)
+        if (dtscale /= 1.) zmmntscopy = zmmnts0(:,js)
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -865,8 +864,8 @@ c-------------------------------------------------------------------------
 #endif
 
 c       --- Adds in dtscale factor efficiently. Somewhat kludgy though.
-        if (dtscale(is) /= 1.)
-     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale(is)
+        if (dtscale /= 1.)
+     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale
 
 
 c       --- Now, accumulate moments onto Z grid.
@@ -1472,11 +1471,10 @@ c=============================================================================
       use ExtPart
       use Timers
       integer(ISZ):: np,itask,nplive,is,isid,ismax
-      real(kind=8):: q,m,w,dt
+      real(kind=8):: q,m,w,dt,dtscale
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
-      real(kind=8):: dtscale(np)
       real(kind=8):: maxp(6,0:nszmmnt),minp(6,0:nszmmnt)
       real(kind=8):: zmmnts0(NUMZMMNT,0:nszmmnt)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt)
@@ -1564,7 +1562,7 @@ c       --- Set maximum and minimum particle coordinate variables
 c       --- Accumate global moments first.
 
 c       --- Used to add in dtscale factor below.
-        if (dtscale(is) /= 1.) zmmntscopy = zmmnts0(:,js)
+        if (dtscale /= 1.) zmmntscopy = zmmnts0(:,js)
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -1689,8 +1687,8 @@ c-------------------------------------------------------------------------
 #endif
 
 c       --- Adds in dtscale factor efficiently. Somewhat kludgy though.
-        if (dtscale(is) /= 1.)
-     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale(is)
+        if (dtscale /= 1.)
+     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale
 
 
 c       --- Now, accumulate moments onto Z grid.
@@ -1732,9 +1730,9 @@ c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 
             pp(13,ip) = gaminv(ip)
             pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)*
-     &                  dtscale(is)
+     &                  dtscale
             pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)*
-     &                  dtscale(is)
+     &                  dtscale
             pp(16,ip) = dti
             pp(17,ip) = dtip1
           enddo
