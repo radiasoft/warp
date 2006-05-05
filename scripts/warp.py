@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.113 2006/05/04 22:07:32 dave Exp $"
+warp_version = "$Id: warp.py,v 1.114 2006/05/05 16:10:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -789,34 +789,34 @@ def fixrestoreswitholdparticlearrays(filename):
   top.pgroup.ns = top.ns
   # --- Only these needs to be read in.
   top.pgroup.ipmax_s = ff.read('npmax_s@top')
-  ff.close()
-  # --- Everything else has already been read in.
-  top.pgroup.npmax = top.npmax
-  top.pgroup.npid = top.npid
-  top.pgroup.sm = top.sm
-  top.pgroup.sq = top.sq
-  top.pgroup.sw = top.sw
-  top.pgroup.ins = top.ins
-  top.pgroup.nps = top.nps
-  top.pgroup.ndts = top.ndts
-  top.pgroup.ldts = top.ldts
-  top.pgroup.dtscale = top.dtscale
-  top.pgroup.lselfb = top.lselfb
-  top.pgroup.fselfb = top.fselfb
+  top.pgroup.npmax = ff.read("npmax@top")
+  top.pgroup.npid = ff.read("npid@top")
+  top.pgroup.sm = ff.read("sm@top")
+  top.pgroup.sq = ff.read("sq@top")
+  top.pgroup.sw = ff.read("sw@top")
+  top.pgroup.ins = ff.read("ins@top")
+  top.pgroup.nps = ff.read("nps@top")
+  top.pgroup.ndts = ff.read("ndts@top")
+  top.pgroup.ldts = ff.read("ldts@top")
+  top.pgroup.dtscale = ff.read("dtscale@top")
+  top.pgroup.lselfb = ff.read("lselfb@top")
+  top.pgroup.fselfb = ff.read("fselfb@top")
 
   try:
     top.pgroup.sid = arange(top.ns)
   except:
     top.pgroup.js = arange(top.ns)
 
-  top.pgroup.gaminv = top.gaminv
-  top.pgroup.xp = top.xp
-  top.pgroup.yp = top.yp
-  top.pgroup.zp = top.zp
-  top.pgroup.uxp = top.uxp
-  top.pgroup.uyp = top.uyp
-  top.pgroup.uzp = top.uzp
-  top.pgroup.pid = top.pid
+  top.pgroup.gaminv = ff.read("gaminv@top")
+  top.pgroup.xp = ff.read("xp@top")
+  top.pgroup.yp = ff.read("yp@top")
+  top.pgroup.zp = ff.read("zp@top")
+  top.pgroup.uxp = ff.read("uxp@top")
+  top.pgroup.uyp = ff.read("uyp@top")
+  top.pgroup.uzp = ff.read("uzp@top")
+  top.pgroup.pid = ff.read("pid@top")
+
+  ff.close()
 
 
 def restoreolddump(filename):
