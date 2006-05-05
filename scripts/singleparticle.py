@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.25 2006/04/22 01:11:16 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.26 2006/05/05 23:10:50 dave Exp $"
 
 class TraceParticle:
   """
@@ -25,9 +25,11 @@ Available methods...
  - getvy(i=0): returns history of vy for i'th particle
  - getvz(i=0): returns history of vz for i'th particle
  - getgi(i=0): returns history of gamma inverse for i'th particle
+ - getr(i=0):  returns history of r for i'th particle
 
- - pxt(i=0), pyt(i=0), pzt(i=0), pvxt(i=0), pvyt(i=0), pvzt(i=0), pgit(i=0)
-   pxy(i=0), pzx(i=0), pzy(i=0), pzvx(i=0), pzvy(i=0), pzvz(i=0)
+ - pxt(i=0), pyt(i=0), prt(i=0), pzt(i=0)
+   pvxt(i=0), pvyt(i=0), pvzt(i=0), pgit(i=0)
+   pxy(i=0), pzx(i=0), pzy(i=0), pzr(i=0), pzvx(i=0), pzvy(i=0), pzvz(i=0)
    plots pairs of quantities for the i'th particle. All of these also
    take the same optional arguments as the plg command.
 
@@ -300,6 +302,7 @@ is not alive."""
   def getvz(self,i=0): return self.spvz[i].data()*self.spgi[i].data()
   def getgi(self,i=0): return self.spgi[i].data()
   def getdt(self,i=0): return self.spdt[i].data()
+  def getr(self,i=0):  return sqrt(self.getx(i)**2 + self.gety(i)**2)
 
   #----------------------------------------------------------------------
   def pxt(self,i=0,**kw):
@@ -310,6 +313,10 @@ is not alive."""
     if kw.get("titles",1): ptitles("Trace particle","time (s)","y (m)")
     if kw.has_key("titles"): del kw["titles"]
     apply(plg,(self.gety(i),self.gett(i)),kw)
+  def prt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Trace particle","time (s)","r (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getr(i),self.gett(i)),kw)
   def pzt(self,i=0,**kw):
     if kw.get("titles",1): ptitles("Trace particle","time (s)","z (m)")
     if kw.has_key("titles"): del kw["titles"]
@@ -342,6 +349,10 @@ is not alive."""
     if kw.get("titles",1): ptitles("Trace particle","z (m)","y (m)")
     if kw.has_key("titles"): del kw["titles"]
     apply(plg,(self.gety(i),self.getz(i)),kw)
+  def pzr(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Trace particle","z (m)","r (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getr(i),self.getz(i)),kw)
   def pzvx(self,i=0,**kw):
     if kw.get("titles",1): ptitles("Trace particle","z (m)","Vx (m/s)")
     if kw.has_key("titles"): del kw["titles"]
@@ -811,6 +822,7 @@ is not alive."""
   def getvz(self,i=0): return self.spvz[i].data()*self.spgi[i].data()
   def getgi(self,i=0): return self.spgi[i].data()
   def getdt(self,i=0): return self.spdt[i].data()
+  def getr(self,i=0):  return sqrt(self.getx(i)**2 + self.gety(i)**2)
 
   #----------------------------------------------------------------------
   def pxt(self,i=0,**kw):
@@ -821,6 +833,10 @@ is not alive."""
     if kw.get("titles",1): ptitles("Single particle","time (s)","y (m)")
     if kw.has_key("titles"): del kw["titles"]
     apply(plg,(self.gety(i),self.gett(i)),kw)
+  def prt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","r (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getr(i),self.gett(i)),kw)
   def pzt(self,i=0,**kw):
     if kw.get("titles",1): ptitles("Single particle","time (s)","z (m)")
     if kw.has_key("titles"): del kw["titles"]
@@ -853,6 +869,10 @@ is not alive."""
     if kw.get("titles",1): ptitles("Single particle","z (m)","y (m)")
     if kw.has_key("titles"): del kw["titles"]
     apply(plg,(self.gety(i),self.getz(i)),kw)
+  def pzr(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","r (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getr(i),self.getz(i)),kw)
   def pzvx(self,i=0,**kw):
     if kw.get("titles",1): ptitles("Single particle","z (m)","Vx (m/s)")
     if kw.has_key("titles"): del kw["titles"]
