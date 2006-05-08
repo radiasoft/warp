@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.6 2006/04/27 17:15:53 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.7 2006/05/08 21:51:37 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -52,6 +52,7 @@ Class for generating secondaries
       self.set_params_user=self.set_params
     else:
       self.set_params_user=set_params_user
+    self.set_params_user(pos.maxsec,pos.mat_number)
     self.min_age=min_age
     if self.min_age is not None:
       w3d.l_inj_rec_inittime=true
@@ -264,8 +265,8 @@ Class for generating secondaries
      for js in incident_species.jslist:
       if self.l_verbose:print 'js',js
       if top.npslost[js]==0:continue
-#      if top.npslost[js]==0 or top.it%top.ndts[js]<>0:continue
-      stride=top.ndts[js]
+#      if top.npslost[js]==0 or top.it%top.pgroup.ndts[js]<>0:continue
+      stride=top.pgroup.ndts[js]
       i1 = top.inslost[js] - 1 
       i2 = top.inslost[js] + top.npslost[js] - 1
       for ics,cond in enumerate(self.inter[js]['conductors']):
@@ -314,9 +315,10 @@ Class for generating secondaries
         vxplost=uxplost*gaminvlost
         vyplost=uyplost*gaminvlost
         vzplost=uzplost*gaminvlost
+        # set energy of incident particle in eV
         e0 = where(gaminvlost==1., \
-                   0.5*top.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
-                   (1./gaminvlost-1.)*top.sm[js]*clight**2/top.echarge)
+                   0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
+                   (1./gaminvlost-1.)*top.pgroup.sm[js]*clight**2/top.echarge)
 #        print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
         v = array([vxplost,vyplost,vzplost])
 #        u = array([uxplost,uyplost,uzplost])
@@ -441,6 +443,7 @@ Class for generating secondaries
             else: # incidents are atoms or ions
              if incident_species.type.__class__ is Atom:
               try:
+
                if self.inter[js]['material'][ics]=='SS':target_num=10025
                ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
                                           max(0.04,coseta[i]),
@@ -451,6 +454,18 @@ Class for generating secondaries
                                           self.emitted_bn,
                                           self.emitted_bt,
                                           self.emitted_bz)
+#               ion_ind_e0 = txphysics.doubleArray(1)
+#               ion_ind_ct = txphysics.doubleArray(1)
+#               ion_ind_e0[0] = e0[i]/(1.e6*incident_species.type.A)
+#               ion_ind_ct[0] = max(0.04,coseta[i])
+#               ns,self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
+#               txphysics.ion_ind_elecs(1, # size of input array
+#                                       ion_ind_e0,
+#                                       ion_ind_ct,
+#                                       float(incident_species.type.Z),
+#                                       incident_species.type.A,
+#                                       target_num,
+#                                       0.)
                ns = min(ns,self.npmax)
                self.coseta=coseta[i]
                itype=None
@@ -483,7 +498,7 @@ Class for generating secondaries
               tgen+=t.micro()
               t.start()
             if ns>0:
-             self.inter[js]['emitted'][ics][ie] += ns*top.sq[js_new]*top.sw[js_new]
+             self.inter[js]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
              if costheta[i]<1.-1.e-10:
               z_unit0 = array([-sinphi[i],cosphi[i],0.])
 #              z       = -array([uzplost[i]*n_unit0[1][i]-uyplost[i]*n_unit0[2][i],
@@ -546,8 +561,8 @@ Class for generating secondaries
             vznew = zeros(ns,'d')
 
             #compute the desorbed neutrals
-            # note that the gamma0 (1.) and rel_weight (top.sw[js_new]/top.sw[js]) are actually not used
-            desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1.,0.4,top.sm[js],top.sw[js_new]/top.sw[js],vx,vy,vz)
+            # note that the gamma0 (1.) and rel_weight (top.pgroup.sw[js_new]/top.pgroup.sw[js]) are actually not used
+            desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1.,0.4,top.pgroup.sm[js],top.pgroup.sw[js_new]/top.pgroup.sw[js],vx,vy,vz)
             for ivnew in range(ns):
               vxnew[ivnew]=vx[ivnew]
               vynew[ivnew]=vy[ivnew]
@@ -558,15 +573,22 @@ Class for generating secondaries
 #            pid[:,self.xoldpid]=xnew-vxnew*top.dt
 #            pid[:,self.yoldpid]=ynew-vynew*top.dt
 #            pid[:,self.zoldpid]=znew-vznew*top.dt
-            if xnew<=xmin or xnew>=xmax or ynew<=ymin or ynew>=ymax or znew<=zmin or znew>=zmax:
+            if w3d.solvergeom==w3d.RZgeom:
+               condition = (sqrt(xnew**2+ynew**2)>xmax) or \
+                           (znew<zmin) or (znew>zmax)
+            else:
+               condition = (xnew<xmin) & (xnew>xmax) & \
+                           (ynew<ymin) & (ynew>ymax) & \
+                           (znew<zmin) & (znew>zmax)
+            if condition:
               print 'WARNING: new particle outside boundaries',xnew,ynew,znew
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
               if top.wpid==0:
-                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=itype)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=None)
               else:
-                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],itype)
+                self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],None)
             
           if self.l_record_timing:
             t.finish()
@@ -620,41 +642,41 @@ Class for generating secondaries
 #       pos.ielswitch =1
 #       pos.iredswitch =1
 #       pos.itrueswitch =1
-       pos.irelk =0
+#       pos.irelk =0
 #       pos.pmax =0.77939
 #       pos.range = 0.
 #       pos.freepath = 0.
        pos.iprob = 4
-       pos.ndelerm =0
-       pos.ndeltspm =0
-       pos.np0lt0 =0
-       pos.np1gt1 =0
-       pos.totsec1 =0.
-       pos.totsec2 =0.
+#       pos.ndelerm =0
+#       pos.ndeltspm =0
+#       pos.np0lt0 =0
+#       pos.np1gt1 =0
+#       pos.totsec1 =0.
+#       pos.totsec2 =0.
 
 # Here we set material-dependent parameters...Cu (mat_num=1) is default
 
-       self.enpar[0] = 1.5
-       self.enpar[1] = 1.75
-       self.enpar[2] = 1.
-       self.enpar[3] = 3.75
-       self.enpar[4] = 8.5
-       self.enpar[5] = 11.5
-       self.enpar[6] = 2.5
-       self.enpar[7] = 3.0
-       self.enpar[8] = 2.5
-       self.enpar[9] = 3.0
+       pos.enpar[0] = 1.5
+       pos.enpar[1] = 1.75
+       pos.enpar[2] = 1.
+       pos.enpar[3] = 3.75
+       pos.enpar[4] = 8.5
+       pos.enpar[5] = 11.5
+       pos.enpar[6] = 2.5
+       pos.enpar[7] = 3.0
+       pos.enpar[8] = 2.5
+       pos.enpar[9] = 3.0
 
-       self.pnpar[0] = 2.5
-       self.pnpar[1] = 3.3
-       self.pnpar[2] = 2.5
-       self.pnpar[3] = 2.5
-       self.pnpar[4] = 2.8
-       self.pnpar[5] = 1.3
-       self.pnpar[6] = 1.5
-       self.pnpar[7] = 1.5
-       self.pnpar[8] = 1.5
-       self.pnpar[9] = 1.5
+       pos.pnpar[0] = 2.5
+       pos.pnpar[1] = 3.3
+       pos.pnpar[2] = 2.5
+       pos.pnpar[3] = 2.5
+       pos.pnpar[4] = 2.8
+       pos.pnpar[5] = 1.3
+       pos.pnpar[6] = 1.5
+       pos.pnpar[7] = 1.5
+       pos.pnpar[8] = 1.5
+       pos.pnpar[9] = 1.5
 
        pos.dtspk = 1.8848
        pos.dtotpk = 2.1
@@ -686,27 +708,27 @@ Class for generating secondaries
 # Now check for Stainless Steel
        if (mat_num == 2):
 
-         self.enpar[0] = 3.9
-         self.enpar[1] = 6.2
-         self.enpar[2] = 13.
-         self.enpar[3] = 8.8
-         self.enpar[4] = 6.25
-         self.enpar[5] = 2.25
-         self.enpar[6] = 9.2
-         self.enpar[7] = 5.3
-         self.enpar[8] = 17.8
-         self.enpar[9] = 10.
+         pos.enpar[0] = 3.9
+         pos.enpar[1] = 6.2
+         pos.enpar[2] = 13.
+         pos.enpar[3] = 8.8
+         pos.enpar[4] = 6.25
+         pos.enpar[5] = 2.25
+         pos.enpar[6] = 9.2
+         pos.enpar[7] = 5.3
+         pos.enpar[8] = 17.8
+         pos.enpar[9] = 10.
   
-         self.pnpar[0] = 1.6
-         self.pnpar[1] = 2.
-         self.pnpar[2] = 1.8
-         self.pnpar[3] = 4.7
-         self.pnpar[4] = 1.8
-         self.pnpar[5] = 2.4
-         self.pnpar[6] = 1.8
-         self.pnpar[7] = 1.8
-         self.pnpar[8] = 2.3
-         self.pnpar[9] = 1.8
+         pos.pnpar[0] = 1.6
+         pos.pnpar[1] = 2.
+         pos.pnpar[2] = 1.8
+         pos.pnpar[3] = 4.7
+         pos.pnpar[4] = 1.8
+         pos.pnpar[5] = 2.4
+         pos.pnpar[6] = 1.8
+         pos.pnpar[7] = 1.8
+         pos.pnpar[8] = 2.3
+         pos.pnpar[9] = 1.8
   
          pos.pangsec =1.
          pos.pr =0.4
@@ -739,27 +761,27 @@ Class for generating secondaries
 # 
 # First we take H ion (data from Eder, Rev Sci Inst 68 1(1997))
        if (mat_num == 3):
-         self.enpar[0] = 3.9
-         self.enpar[1] = 6.2
-         self.enpar[2] = 13.
-         self.enpar[3] = 8.8
-         self.enpar[4] = 6.25
-         self.enpar[5] = 2.25
-         self.enpar[6] = 9.2
-         self.enpar[7] = 5.3
-         self.enpar[8] = 17.8
-         self.enpar[9] = 10.
+         pos.enpar[0] = 3.9
+         pos.enpar[1] = 6.2
+         pos.enpar[2] = 13.
+         pos.enpar[3] = 8.8
+         pos.enpar[4] = 6.25
+         pos.enpar[5] = 2.25
+         pos.enpar[6] = 9.2
+         pos.enpar[7] = 5.3
+         pos.enpar[8] = 17.8
+         pos.enpar[9] = 10.
   
-         self.pnpar[0] = 1.6
-         self.pnpar[1] = 2.
-         self.pnpar[2] = 1.8
-         self.pnpar[3] = 4.7
-         self.pnpar[4] = 1.8
-         self.pnpar[5] = 2.4
-         self.pnpar[6] = 1.8
-         self.pnpar[7] = 1.8
-         self.pnpar[8] = 2.3
-         self.pnpar[9] = 1.8
+         pos.pnpar[0] = 1.6
+         pos.pnpar[1] = 2.
+         pos.pnpar[2] = 1.8
+         pos.pnpar[3] = 4.7
+         pos.pnpar[4] = 1.8
+         pos.pnpar[5] = 2.4
+         pos.pnpar[6] = 1.8
+         pos.pnpar[7] = 1.8
+         pos.pnpar[8] = 2.3
+         pos.pnpar[9] = 1.8
   
          pos.pangsec =1.
 
@@ -792,27 +814,27 @@ Class for generating secondaries
 
 # Now we take He ion (data from Eder, Rev Sci Inst 68 1(1997))
        if (mat_num == 4):
-         self.enpar[0] = 3.9
-         self.enpar[1] = 6.2
-         self.enpar[2] = 13.
-         self.enpar[3] = 8.8
-         self.enpar[4] = 6.25
-         self.enpar[5] = 2.25
-         self.enpar[6] = 9.2
-         self.enpar[7] = 5.3
-         self.enpar[8] = 17.8
-         self.enpar[9] = 10.
+         pos.enpar[0] = 3.9
+         pos.enpar[1] = 6.2
+         pos.enpar[2] = 13.
+         pos.enpar[3] = 8.8
+         pos.enpar[4] = 6.25
+         pos.enpar[5] = 2.25
+         pos.enpar[6] = 9.2
+         pos.enpar[7] = 5.3
+         pos.enpar[8] = 17.8
+         pos.enpar[9] = 10.
   
-         self.pnpar[0] = 1.6
-         self.pnpar[1] = 2.
-         self.pnpar[2] = 1.8
-         self.pnpar[3] = 4.7
-         self.pnpar[4] = 1.8
-         self.pnpar[5] = 2.4
-         self.pnpar[6] = 1.8
-         self.pnpar[7] = 1.8
-         self.pnpar[8] = 2.3
-         self.pnpar[9] = 1.8
+         pos.pnpar[0] = 1.6
+         pos.pnpar[1] = 2.
+         pos.pnpar[2] = 1.8
+         pos.pnpar[3] = 4.7
+         pos.pnpar[4] = 1.8
+         pos.pnpar[5] = 2.4
+         pos.pnpar[6] = 1.8
+         pos.pnpar[7] = 1.8
+         pos.pnpar[8] = 2.3
+         pos.pnpar[9] = 1.8
   
          pos.pangsec =1.
 
@@ -845,31 +867,31 @@ Class for generating secondaries
 
          # This is K -> SS (see Phys. Rev. ST Accel. Beams 6, 054701 [2003])
        if (mat_num == 5):
-         self.enpar[0] = 3.9
-         self.enpar[1] = 6.2
-         self.enpar[2] = 13.
-         self.enpar[3] = 8.8
-         self.enpar[4] = 6.25
-         self.enpar[5] = 2.25
-         self.enpar[6] = 9.2
-         self.enpar[7] = 5.3
-         self.enpar[8] = 17.8
-         self.enpar[9] = 10.
+         pos.enpar[0] = 3.9
+         pos.enpar[1] = 6.2
+         pos.enpar[2] = 13.
+         pos.enpar[3] = 8.8
+         pos.enpar[4] = 6.25
+         pos.enpar[5] = 2.25
+         pos.enpar[6] = 9.2
+         pos.enpar[7] = 5.3
+         pos.enpar[8] = 17.8
+         pos.enpar[9] = 10.
          if (maxsec > 10):
-                self.enpar[10:] = 5.
+                pos.enpar[10:] = 5.
  
-         self.pnpar[0] = 1.6
-         self.pnpar[1] = 2.
-         self.pnpar[2] = 1.8
-         self.pnpar[3] = 4.7
-         self.pnpar[4] = 1.8
-         self.pnpar[5] = 2.4
-         self.pnpar[6] = 1.8
-         self.pnpar[7] = 1.8
-         self.pnpar[8] = 2.3
-         self.pnpar[9] = 1.8
+         pos.pnpar[0] = 1.6
+         pos.pnpar[1] = 2.
+         pos.pnpar[2] = 1.8
+         pos.pnpar[3] = 4.7
+         pos.pnpar[4] = 1.8
+         pos.pnpar[5] = 2.4
+         pos.pnpar[6] = 1.8
+         pos.pnpar[7] = 1.8
+         pos.pnpar[8] = 2.3
+         pos.pnpar[9] = 1.8
          if (maxsec > 10):
-                self.pnpar[10:] = 2.
+                pos.pnpar[10:] = 2.
  
          pos.pangsec =1.
 
@@ -946,7 +968,7 @@ components of the secondaries (dimensionless).
    pos.secelec(Ek0,costheta,weight, #in
           self.secelec_ns,self.secelec_un,self.secelec_ut,self.secelec_uz,self.secelec_ityps,
           self.secelec_ekstot,self.secelec_dele,self.secelec_delr,self.secelec_delts,
-          maxsec,self.enpar,self.pnpar,pos.matsurf,
+          maxsec,pos.enpar,pos.pnpar,pos.matsurf,
           pos.pangsec,pos.pmax,pos.pr,pos.sige,
           pos.iprob,ndelerm,ndeltspm,np0lt0,np1gt1,
           pos.dtspk,pos.Ecr,pos.E0tspk,pos.E0epk,pos.E0w,
@@ -987,8 +1009,8 @@ components of the secondaries (dimensionless).
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
   
-    self.enpar = zeros(maxsec,Float)
-    self.pnpar = zeros(maxsec,Float)
+#    pos.enpar = zeros(maxsec,Float)
+#    pos.pnpar = zeros(maxsec,Float)
 
  # Initialize all parameters  #
   # 1 = Cu (default)
@@ -1035,8 +1057,8 @@ components of the secondaries (dimensionless).
       pos.gchange("bincoeff")
       init_pascal_triangle(pos.nbc,pos.maxsec)
   
-    self.enpar = zeros(maxsec,Float)
-    self.pnpar = zeros(maxsec,Float)
+#    pos.enpar = zeros(maxsec,Float)
+#    pos.pnpar = zeros(maxsec,Float)
     n=shape(energy)[0]
     s1=zeros(n,Float)
     s2=zeros(n,Float)
