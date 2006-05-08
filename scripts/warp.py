@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.115 2006/05/05 16:15:59 dave Exp $"
+warp_version = "$Id: warp.py,v 1.116 2006/05/08 17:43:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -643,8 +643,8 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   gaminv = ones(n,'d')
   dtl = -0.5*top.dt
   dtr = +0.5*top.dt
-  m = top.sm[js]
-  q = top.sq[js]
+  m = top.pgroup.sm[js]
+  q = top.pgroup.sq[js]
   bendres = ones(n,'d')
   bendradi = ones(n,'d')
   gammabar = 1.
@@ -776,12 +776,12 @@ def fixrestoreswithmomentswithoutspecies(filename):
       a = getattr(top,v)
       a[...,-1] = d
 
-def fixrestoreswitholdparticlearrays(filename):
+def fixrestoreswithoriginalparticlearrays(filename):
   # --- Open the file
   ff = PR.PR(filename,verbose=0)
   # --- Check if it is an old file
   # --- An old file would have top.npmaxb save in it
-  if ('xp@top' not in ff.inquire_names() or
+  if ('xp@top' in ff.inquire_names() and
       'npmaxb@top' not in ff.inquire_names()):
     ff.close()
     return
@@ -819,11 +819,18 @@ def fixrestoreswitholdparticlearrays(filename):
 
   ff.close()
 
+def fixrestoreswitholdparticlearrays(filename):
+  # --- Open the file
+  ff = PR.PR(filename,verbose=0)
+  # --- Check if it is an old file
+  if 'xp@top' not in ff.inquire_names():
+    ff.close()
+    return
 
 def restoreolddump(filename):
   fixrestoresfrombeforeelementoverlaps(filename)
   fixrestoreswithmomentswithoutspecies(filename)
-  fixrestoreswitholdparticlearrays(filename)
+  fixrestoreswithoriginalparticlearrays(filename)
 
 ##############################################################################
 ##############################################################################
