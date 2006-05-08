@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.116 2006/05/08 17:43:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.117 2006/05/08 22:14:58 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -827,10 +827,55 @@ def fixrestoreswitholdparticlearrays(filename):
     ff.close()
     return
 
+  top.pgroup.ns = top.ns
+  top.pgroup.npid = ff.read("npid@top")
+  top.pgroup.sm = ff.read("sm@top")
+  top.pgroup.sq = ff.read("sq@top")
+  top.pgroup.sw = ff.read("sw@top")
+  top.pgroup.nps = 0
+  top.pgroup.ndts = ff.read("ndts@top")
+  top.pgroup.ldts = ff.read("ldts@top")
+  top.pgroup.dtscale = ff.read("dtscale@top")
+  top.pgroup.lselfb = ff.read("lselfb@top")
+  top.pgroup.fselfb = ff.read("fselfb@top")
+
+  gaminv = ff.read("gaminv@top")
+  xp = ff.read("xp@top")
+  yp = ff.read("yp@top")
+  zp = ff.read("zp@top")
+  uxp = ff.read("uxp@top")
+  uyp = ff.read("uyp@top")
+  uzp = ff.read("uzp@top")
+  if top.pgroup.npid > 0:
+    pid = ff.read("pid@top")
+  else:
+    pid = None
+
+  ins = ff.read("ins@top")
+  nps = ff.read("nps@top")
+  for js in range(top.pgroup.ns):
+    i1 = ins[0] - 1
+    i2 = ins[0] + nps[0] - 1
+    if pid is None:
+      addparticles(x=xp[i1:i2],y=yp[i1:i2],z=zp[i1:i2],
+                   vx=uxp[i1:i2],vy=uyp[i1:i2],vz=uzp[i1:i2],
+                   gi=gaminv[i1:i2],pid=0.,js=js,
+                   lallindomain=false,
+                   zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
+                   resetrho=false,dofieldsol=false,resetmoments=false)
+    else:
+      addparticles(x=xp[i1:i2],y=yp[i1:i2],z=zp[i1:i2],
+                   vx=uxp[i1:i2],vy=uyp[i1:i2],vz=uzp[i1:i2],
+                   gi=gaminv[i1:i2],pid=pid[:,i1:i2],js=js,
+                   lallindomain=false,
+                   zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
+                   resetrho=false,dofieldsol=false,resetmoments=false)
+
 def restoreolddump(filename):
   fixrestoresfrombeforeelementoverlaps(filename)
   fixrestoreswithmomentswithoutspecies(filename)
   fixrestoreswithoriginalparticlearrays(filename)
+  fixrestoreswitholdparticlearrays(filename)
 
 ##############################################################################
 ##############################################################################
