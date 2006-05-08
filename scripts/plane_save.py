@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.14 2006/05/01 23:44:06 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.15 2006/05/08 16:05:52 dave Exp $"
 
 class PlaneSave:
   """
@@ -219,7 +219,7 @@ Input:
           self.f.write('uyp'+suffix,   take(uy,ii))
           self.f.write('uzp'+suffix,   take(uz,ii))
           self.f.write('gaminv'+suffix,take(gi,ii))
-          if top.npidmax > 0:
+          if top.npid > 0:
             self.f.write('pid'+suffix,   take(id,ii))
         except:
           print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
