@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.117 2006/05/08 22:14:58 dave Exp $"
+warp_version = "$Id: warp.py,v 1.118 2006/05/08 22:49:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -781,8 +781,7 @@ def fixrestoreswithoriginalparticlearrays(filename):
   ff = PR.PR(filename,verbose=0)
   # --- Check if it is an old file
   # --- An old file would have top.npmaxb save in it
-  if ('xp@top' in ff.inquire_names() and
-      'npmaxb@top' not in ff.inquire_names()):
+  if 'xp@pgroup@top' in ff.inquire_names():
     ff.close()
     return
   # --- Setup top.pgroup
