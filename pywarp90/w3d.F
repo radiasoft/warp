@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.249 $, $Date: 2006/05/09 23:45:53 $
+c@(#) File W3D.F, version $Revision: 3.250 $, $Date: 2006/05/09 23:48:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7747,13 +7747,13 @@ c   3  3d SOR field solve
 c   4  2d fft in transverse plane, tridiag solve in z
 
       if (fstype .ne. -1) then
-       if(solvergeom==RZgeom .or.
-     &    solvergeom==XZgeom .or.
-     &    solvergeom==XYgeom .or.
-     &    solvergeom==Rgeom  .or.
-     &    solvergeom==Zgeom) fstype=10
-       if(solvergeom==AMRgeom) fstype = 11
-       if (solvergeom == XYZgeomMR) fstype = 12
+        if(solvergeom==RZgeom .or.
+     &     solvergeom==XZgeom .or.
+     &     solvergeom==XYgeom .or.
+     &     solvergeom==Rgeom  .or.
+     &     solvergeom==Zgeom) fstype=10
+        if(solvergeom==AMRgeom) fstype = 11
+        if (solvergeom == XYZgeomMR) fstype = 12
       endif
 
       if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
