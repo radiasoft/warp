@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.179 $, $Date: 2006/05/05 00:30:34 $
+c@(#) File TOP.F, version $Revision: 3.180 $, $Date: 2006/05/10 17:22:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1535,7 +1535,8 @@ c     --- done afterwards. Otherwise, only calculate the combined moments.
       endif
 
       if (itask == 1 .and. .not. laccumulate_zmoments) then
-        call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
+        call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,dtscale,
+     &                itask,nplive,
      &                uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
@@ -1949,7 +1950,8 @@ c         --- End of Z moments accumulation
       endif
 
       if (itask == 3 .and. .not. laccumulate_zmoments) then
-        call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
+        call getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,dtscale,
+     &                itask,nplive,
      &                uxpo,uypo,uzpo,is,isid,ismax,maxp,minp,zmmnts0,zmmnts)
       endif
 
