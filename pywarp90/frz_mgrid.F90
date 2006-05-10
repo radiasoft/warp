@@ -8831,6 +8831,84 @@ END if
   return
 end subroutine setphirz
 
+subroutine setphixz(np,xp,yp,zp,p,zgrid)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
+REAL(8), INTENT(IN) :: zgrid
+
+REAL(8) :: x, xpos, zpos, ddx, ddz, oddx, oddz
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid, igridold
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+
+! Collect phi using linear interpolation
+
+IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
+
+  do i = 1, np
+    igrid = 1
+    g => basegrid
+    x = xp(i)
+    IF(x<g%rmin.or.x>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) cycle
+    ingrid=.false.
+    xpos = (x-g%rmin)*g%invdr
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+    jn = 1+INT(xpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igridold=igrid
+        igrid = g%loc_part(jn,ln)
+        g=>grids_ptr(igrid)%grid
+        IF(x<g%rmin.or.x>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) then
+          ingrid=.true.
+          igrid=igridold
+        else
+          xpos = (x-g%rmin)*g%invdr
+          zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+          jn = 1+INT(xpos)
+          ln = 1+INT(zpos)
+        end if
+      END if
+    end do
+    ddx = xpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddx = 1._8-ddx
+    oddz = 1._8-ddz
+    p(i) = oddx * oddz * g%phi(jn,  ln  )  &
+         + ddx  * oddz * g%phi(jn+1,ln  )  &
+         + oddx * ddz  * g%phi(jn,  ln+1)  &
+         + ddx  * ddz  * g%phi(jn+1,ln+1)
+  END do
+else
+  do i = 1, np
+    xpos = xp(i)
+    IF(xpos<basegrid%rmin.or.xpos>=basegrid%rmax.or.zp(i)<basegrid%zmin+zgrid.or.zp(i)>=basegrid%zmax+zgrid) cycle
+    ingrid=.false.
+    xpos = (xpos-basegrid%rmin)*basegrid%invdr
+    zpos = (zp(i)-basegrid%zmin-zgrid)*basegrid%invdz
+    jn = 1+INT(xpos)
+    ln = 1+INT(zpos)
+    ddx = xpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddx = 1._8-ddx
+    oddz = 1._8-ddz
+    p(i) = oddx * oddz * basegrid%phi(jn,  ln  )  &
+         + ddx  * oddz * basegrid%phi(jn+1,ln  )  &
+         + oddx * ddz  * basegrid%phi(jn,  ln+1)  &
+         + ddx  * ddz  * basegrid%phi(jn+1,ln+1)
+  END do
+END if
+
+  return
+end subroutine setphixz
+
 subroutine setphiz(np,zp,p,zgrid)
 USE multigridrz
 implicit none
