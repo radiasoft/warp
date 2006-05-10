@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.250 $, $Date: 2006/05/09 23:48:17 $
+c@(#) File W3D.F, version $Revision: 3.251 $, $Date: 2006/05/10 00:59:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5975,24 +5975,13 @@ c                 --- deposit its rho into rhopndts.
 #if defined XLF || defined XLF2
                   allocate(rhopcopy(0:nxp,0:nyp,0:nzp))                   
                   rhopcopy = rhop
+                  rhop = rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
 #else
                   rhopcopy => rhop
                   rhop => rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
 #endif
-               else
-c                 --- If this species is not being advanced this step, then
-c                 --- just add its saved rhopndts into rhop.
-                  indts = ndtstorho(pgroup%ndts(is))
-                  do iz=0,nz
-                    do iy=0,ny
-                      do ix=0,nx
-                        rhop(ix,iy,iz)=rhop(ix,iy,iz)+rhopndts(ix,iy,iz,indts)
-                      enddo
-                    enddo
-                  enddo
-c                 --- This line causes problems for unknown reasons so the
-c                 --- loops are explicitly written out above and below.
-c                 rhop = rhop + rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
+                else
+c                 --- Skip the species not being advanced this step
                   cycle
                 end if
              end if
@@ -6003,21 +5992,12 @@ c                 rhop = rhop + rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
      &                     l2symtry,l4symtry)
              if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
 c               --- If this species is being advanced this step, then restore
-c               --- rhop and copy its rho into rhop.
+c               --- rhop
 #if defined XLF || defined XLF2
-                rhopndts(:,:,:,ndtstorho(pgroup%ndts(is))) = rhop
-                rhop = rhop + rhopcopy
+                rhop = rhopcopy
                 deallocate(rhopcopy)
 #else
                 rhop => rhopcopy
-                indts = ndtstorho(pgroup%ndts(is))
-                do iz=0,nz
-                  do iy=0,ny
-                    do ix=0,nx
-                      rhop(ix,iy,iz) = rhop(ix,iy,iz)+rhopndts(ix,iy,iz,indts)
-                    enddo
-                  enddo
-                enddo
 #endif
              end if
            endif
@@ -6080,6 +6060,20 @@ c          --- loop over particle blocks
            enddo
          end if
       enddo
+
+c     --- Add together the rhop from the species with different time steps
+c     --- This must be done after all of the species has been deposited.
+      if(solvergeom==XYZgeom) then
+        do indts = 0,nsndts-1
+          do iz=0,nz
+            do iy=0,ny
+              do ix=0,nx
+                rhop(ix,iy,iz)=rhop(ix,iy,iz)+rhopndts(ix,iy,iz,indts)
+              enddo
+            enddo
+          enddo
+        enddo
+      endif
 
       if (solvergeom == XYZgeomMR) then
         call execuser("loadrhoMR")
@@ -6744,8 +6738,10 @@ c=============================================================================
 c     --- Call the appropriate routine to get the phi
       if(solvergeom==XYZgeom) then
         call fetchphi3d(n,x,y,z,p)
-      elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+      elseif(solvergeom==RZgeom) then
         call setphirz(n,x,y,z,p,zgrid)
+      elseif(solvergeom==XZgeom) then
+        call setphixz(n,x,y,z,p,zgrid)
       elseif(solvergeom==XYgeom) then
         call remark("fetchphi not implemented in XY.")
         stop
