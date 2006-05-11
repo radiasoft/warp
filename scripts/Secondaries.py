@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.7 2006/05/08 21:51:37 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.8 2006/05/11 21:34:48 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -928,7 +928,7 @@ Class for generating secondaries
          pos.tpar4 = 0.
 
 
-  def generate_secondaries(self,Ek0,costheta,weight,itype,maxsec=10,set_params_user=None):
+  def generate_secondaries(self,Ek0,costheta,weight,itype,maxsec=10):
    """
 Wrapper to secondary electrons routine secelec.
  - Ek0      # energy in eV
@@ -959,7 +959,7 @@ components of the secondaries (dimensionless).
  
    if  itype<>pos.mat_number:
     pos.mat_number=itype
-    set_params_user(maxsec,pos.mat_number)
+    self.set_params_user(maxsec,pos.mat_number)
 
    ndelerm=0
    ndeltspm=0
