@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.5 2006/04/28 17:51:40 dave Exp $"
+ionization_version = "$Id: ionization.py,v 1.6 2006/05/11 21:38:49 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -137,18 +137,18 @@ Class for generating particles from impact ionization.
   def flushpart(self,js):
       if self.nps[js]>0:
          nn=self.nps[js]
-         condition = (self.x[js][:nn]>w3d.xmmin) & (self.x[js][:nn]<w3d.xmmax) & \
-                     (self.y[js][:nn]>w3d.ymmin) & (self.y[js][:nn]<w3d.ymmax) & \
-                     (self.z[js][:nn]>w3d.zmmin) & (self.z[js][:nn]<w3d.zmmax)
-         if sum(condition)<nn:
-           ic = compress(condition==0,arange(nn))
-           print 'ioniz: out of bound: ',js,self.x[js][ic],self.y[js][ic],self.z[js][ic]
-           f=PW.PW('pos.pdb')
-           f.x=self.x[js][:nn]
-           f.y=self.y[js][:nn]
-           f.z=self.z[js][:nn]
-           f.close()
-           raise('') 
+#         condition = (self.x[js][:nn]>w3d.xmmin) & (self.x[js][:nn]<w3d.xmmax) & \
+#                     (self.y[js][:nn]>w3d.ymmin) & (self.y[js][:nn]<w3d.ymmax) & \
+#                     (self.z[js][:nn]>w3d.zmmin) & (self.z[js][:nn]<w3d.zmmax)
+#         if sum(condition)<nn:
+#           ic = compress(condition==0,arange(nn))
+#           print 'ioniz: out of bound: ',js,self.x[js][ic],self.y[js][ic],self.z[js][ic]
+#           f=PW.PW('pos.pdb')
+#           f.x=self.x[js][:nn]
+#           f.y=self.y[js][:nn]
+#           f.z=self.z[js][:nn]
+#           f.close()
+#           raise('') 
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
                       z=self.z[js][:nn],
@@ -333,20 +333,20 @@ Class for generating particles from impact ionization.
             ncol = where(ncol>=1.,1.-1.e-10,ncol)
           ncoli=int(ncol)
           ncol=ncol-ncoli
-          ncoli+=1
           r=ranf(ncol)
-          io=compress(r<ncol,arange(ni))
+          ncoli=where(r<ncol,ncoli+1,ncoli)
+          io=compress(ncoli>0,arange(ni))
           nnew = len(io)
           if l_ionization_projectile:
-            vxnew = take(vxi,io)
-            vynew = take(vyi,io)
-            vznew = take(vzi,io)
+            vxnew = vxi
+            vynew = vyi
+            vznew = vzi
             put(top.pgroup.gaminv[i1:i2],io,0.)
           xnew = xi
           ynew = yi
           znew = zi
-          print nnew
           while(nnew>0):
+            print nnew
             xnewp = take(xnew,io)
             ynewp = take(ynew,io)
             znewp = take(znew,io)
@@ -354,6 +354,10 @@ Class for generating particles from impact ionization.
             xnew = xnewp+(ranf(vnew)-0.5)*1.e-10*self.dx
             ynew = ynewp+(ranf(vnew)-0.5)*1.e-10*self.dy
             znew = znewp+(ranf(vnew)-0.5)*1.e-10*self.dz
+            if l_ionization_projectile:
+              vxnew = take(vxnew,io)
+              vynew = take(vynew,io)
+              vznew = take(vznew,io)
             for emitted_species in self.inter[incident_species]['emitted_species'][it]:
               if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',target_species.name 
               if emitted_species.type is incident_species.type:
