@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.26 2006/05/05 23:10:50 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.27 2006/05/17 23:21:46 dave Exp $"
 
 class TraceParticle:
   """
@@ -441,8 +441,9 @@ initial data.
     w3d.lrhodia3d = false
     w3d.lgetese3d = false
     w3d.lgtlchg3d = false
-    # --- Turn off the field solver
+    # --- Turn off the field solvers
     top.fstype = -1
+    top.bfstype = -1
     # --- Zero out phi if requested.
     if zerophi: w3d.phi = 0.
     # --- Turn off charge deposition. The laccumulate_rho is set to true
@@ -580,8 +581,9 @@ initial data.
     w3d.lrhodia3d = false
     w3d.lgetese3d = false
     w3d.lgtlchg3d = false
-    # --- Turn off the field solver
+    # --- Turn off the field solvers
     top.fstype = -1
+    top.bfstype = -1
     # --- Zero out phi if requested.
     if zerophi: w3d.phi = 0.
     # --- Turn off charge deposition. The laccumulate_rho is set to true
