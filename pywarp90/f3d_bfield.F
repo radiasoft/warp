@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.16 $, $Date: 2006/05/01 18:07:35 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.17 $, $Date: 2006/05/17 23:20:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1876,14 +1876,16 @@ c=============================================================================
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
       real(kind=8),pointer:: j(:,:,:,:),curlj(:,:,:,:)
 
-      if (bfstype >= 0) then
-        if (solvergeom == RZgeom) then
-          bfstype = 10
-          call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
-     &                        bfield%xmmin,bfield%zmmin,bfield%bounds,
-     &                        bfield%a,bfield%j)
+      if (bfstype .ne. -1) then
+        if (bfstype >= 0) then
+          if (solvergeom == RZgeom) then
+            bfstype = 10
+            call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
+     &                          bfield%xmmin,bfield%zmmin,bfield%bounds,
+     &                          bfield%a,bfield%j)
+          endif
+          if (solvergeom == XYZgeomMR) bfstype = 12
         endif
-        if (solvergeom == XYZgeomMR) bfstype = 12
       endif
 
       if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
