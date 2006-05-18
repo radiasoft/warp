@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.118 2006/05/08 22:49:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.119 2006/05/18 22:59:45 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -477,7 +477,7 @@ The default is to zero out rho.
     print "loadj  not support in wxy yet"
 
 #=============================================================================
-# --- Setup routines which give access to the fortran any field solver
+# --- Setup routines which give access to fortran any field solver
 _fieldsolver = [None]
 def registersolver(solver):
   """
@@ -523,6 +523,47 @@ __main__.__dict__['fetcheMR'] = fetcheMR
 __main__.__dict__['fetchbMR'] = fetchbMR
 __main__.__dict__['fetchphiMR'] = fetchphiMR
 __main__.__dict__['initfieldsolver'] = initfieldsolver
+
+#=============================================================================
+# --- Setup routines which give access to fortran any B field solver
+_bfieldsolver = [None]
+def registerbsolver(bsolver):
+  """
+Registers the B field solver to be used in the particle simulation.
+ - bsolver: is the solver object. It must have the methods loadj, solve, and
+            fetchb defined. fetcha and fetchj will also be needed in some
+            cases.
+
+  """
+  _bfieldsolver[0] = bsolver
+  top.bfstype = 12
+def getregisteredbsolver():
+  return _bfieldsolver[0]
+def bloadjUSER():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].loadj(lzero=not top.laccumulate_rho)
+def bfieldsolUSER():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].solve()
+def bfetchbUSER():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].fetchb()
+def bfetchaUSER():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].fetcha()
+def initbfieldsolver():
+   pass
+#  if w3d.AMRlevels>0:
+#    if 'AMRtree' not in __main__.__dict__:
+#      import AMR
+#      AMRtree=AMR.AMRTree()
+#      __main__.__dict__['AMRtree'] = AMRtree
+#      gchange('AMR')
+__main__.__dict__['bloadjUSER'] = bloadjUSER
+__main__.__dict__['bfieldsolUSER'] = bfieldsolUSER
+__main__.__dict__['bfetchbUSER'] = bfetchbUSER
+__main__.__dict__['bfetchaUSER'] = bfetchaUSER
+__main__.__dict__['initbfieldsolver'] = initbfieldsolver
 
 ##############################################################################
 def getappliedfieldsongrid(nx=None,ny=None,nz=None,
