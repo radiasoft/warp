@@ -207,33 +207,33 @@ class magnetostaticMG(object):
     self.bfield.conductors = ConductorType()
 
     # --- Delete the names from the dictionary so there is no confusion
-    del self.nx
-    del self.ny
-    del self.nz
-    del self.nzfull
-    del self.dx
-    del self.dy
-    del self.dz
-    del self.xmmin
-    del self.xmmax
-    del self.ymmin
-    del self.ymmax
-    del self.zmmin
-    del self.zmmax
-    del self.zmminglobal
-    del self.zmmaxglobal
-    del self.lcndbndy
-    del self.icndbndy
-    del self.laddconductor
-    del self.mgparam
-    del self.mgmaxiters
-    del self.mgmaxlevels
-    del self.mgtol
-    del self.mgform
-    del self.downpasses
-    del self.uppasses
-    del self.bounds
-    del self.lcylindrical
+#   del self.nx
+#   del self.ny
+#   del self.nz
+#   del self.nzfull
+#   del self.dx
+#   del self.dy
+#   del self.dz
+#   del self.xmmin
+#   del self.xmmax
+#   del self.ymmin
+#   del self.ymmax
+#   del self.zmmin
+#   del self.zmmax
+#   del self.zmminglobal
+#   del self.zmmaxglobal
+#   del self.lcndbndy
+#   del self.icndbndy
+#   del self.laddconductor
+#   del self.mgparam
+#   del self.mgmaxiters
+#   del self.mgmaxlevels
+#   del self.mgtol
+#   del self.mgform
+#   del self.downpasses
+#   del self.uppasses
+#   del self.bounds
+#   del self.lcylindrical
 
   def setj(self,x,y,z,ux,uy,uz,gaminv,wght,q,w):
     n = len(x)
@@ -244,7 +244,7 @@ class magnetostaticMG(object):
       nw = 0.
       wght = 0.
     setj3d(self.bfield,self.bfield.j,n,x,y,z,top.zgrid,ux,uy,uz,gaminv,
-           q,nw,wght,top.depos,self.l2symtry,self.l4symtry)
+           q*w,nw,wght,top.depos,self.l2symtry,self.l4symtry)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)
@@ -371,12 +371,10 @@ class magnetostaticMG(object):
     # --- though they should never be needed during initialization.
     idmax = 2
     if iwhich == 1: idmax = 0
-    atemp = fzeros((1+bfield.nx,1+bfield.ny,3+bfield.nz),'d')
     for id in range(idmax+1):
-      atemp[:,:,:] = bfield.a[id,1:-1,1:-1,:]
       multigrid3dsolve(iwhich,bfield.nx,bfield.ny,bfield.nz,bfield.nzfull,
                        bfield.dx,bfield.dy,bfield.dz,
-                       atemp,
+                       bfield.a[id,1:-1,1:-1,:],
                        bfield.j[id,:,:,:],
                        bfield.rstar,self.linbend,bfield.bounds,
                        bfield.xmmin,bfield.ymmin,bfield.zmmin,
@@ -390,7 +388,6 @@ class magnetostaticMG(object):
                        bfield.icndbndy,false,
                        self.gridmode,bfield.conductors,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
-      bfield.a[id,1:-1,1:-1,:] = atemp[:,:,:]
 
     # --- This is slightly inefficient in some cases, since for example, the
     # --- MG solver already takes care of the longitudinal BC's.
@@ -405,15 +402,15 @@ class magnetostaticMG(object):
   def genericpf(self,kw,pffunc):
     kw['solver'] = self
     pffunc(**kw)
-  def pcjzy(self,**kw): self.self.genericpf(kw,pcjzy)
-  def pcjzx(self,**kw): self.self.genericpf(kw,pcjzx)
-  def pcjxy(self,**kw): self.self.genericpf(kw,pcjxy)
-  def pcbzy(self,**kw): self.self.genericpf(kw,pcbzy)
-  def pcbzx(self,**kw): self.self.genericpf(kw,pcbzx)
-  def pcbxy(self,**kw): self.self.genericpf(kw,pcbxy)
-  def pcazy(self,**kw): self.self.genericpf(kw,pcazy)
-  def pcazx(self,**kw): self.self.genericpf(kw,pcazx)
-  def pcaxy(self,**kw): self.self.genericpf(kw,pcaxy)
+  def pcjzy(self,**kw): self.genericpf(kw,pcjzy)
+  def pcjzx(self,**kw): self.genericpf(kw,pcjzx)
+  def pcjxy(self,**kw): self.genericpf(kw,pcjxy)
+  def pcbzy(self,**kw): self.genericpf(kw,pcbzy)
+  def pcbzx(self,**kw): self.genericpf(kw,pcbzx)
+  def pcbxy(self,**kw): self.genericpf(kw,pcbxy)
+  def pcazy(self,**kw): self.genericpf(kw,pcazy)
+  def pcazx(self,**kw): self.genericpf(kw,pcazx)
+  def pcaxy(self,**kw): self.genericpf(kw,pcaxy)
 
 # --- This can only be done after magnetostaticMG is defined.
 try:
