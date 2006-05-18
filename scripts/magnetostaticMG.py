@@ -12,7 +12,7 @@ except ImportError:
   pass
 
 ##############################################################################
-class magnetostaticMG(object):
+class MagnetostaticMG(object):
   
   __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
@@ -39,27 +39,27 @@ class magnetostaticMG(object):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in magnetostaticMG.__w3dinputs__:
+    for name in MagnetostaticMG.__w3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
       if kw.has_key(name): del kw[name]
-    for name in magnetostaticMG.__bfieldinputs__:
+    for name in MagnetostaticMG.__bfieldinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d.bfield,name))#Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d.bfield,name))
       if kw.has_key(name): del kw[name]
-    for name in magnetostaticMG.__f3dinputs__:
+    for name in MagnetostaticMG.__f3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
       if kw.has_key(name): del kw[name]
-    for name in magnetostaticMG.__topinputs__:
+    for name in MagnetostaticMG.__topinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(top,name))
       if kw.has_key(name): del kw[name]
-    for name,defvalue in magnetostaticMG.__flaginputs__.iteritems():
+    for name,defvalue in MagnetostaticMG.__flaginputs__.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
@@ -412,9 +412,9 @@ class magnetostaticMG(object):
   def pcazx(self,**kw): self.genericpf(kw,pcazx)
   def pcaxy(self,**kw): self.genericpf(kw,pcaxy)
 
-# --- This can only be done after magnetostaticMG is defined.
+# --- This can only be done after MagnetostaticMG is defined.
 try:
-  psyco.bind(magnetostaticMG)
+  psyco.bind(MagnetostaticMG)
 except NameError:
   pass
 
