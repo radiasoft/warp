@@ -48,6 +48,7 @@ Implements adaptive mesh refinement in 3d
       # --- So clear out the global block list and count.
       self.totalnumberofblocks = 0
       self.listofblocks = []
+      self.finalized = 0
     else:
       # --- Save the parent and the index number. These are saved in lists
       # --- since a block can have multiple parents.
@@ -349,12 +350,13 @@ Given a block instance, installs it as a child.
 
   def finalize(self):
     # --- This should only be called at the top level.
-    assert self.root == self,"finalize must only be called on the root block"
+    if self != self.root or self.finalized: return
     blocklists = self.generateblocklevellists()
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
     self.initializechilddomains()
     self.findoverlappingsiblings(blocklists[1:])
+    self.finalized = 1
 
   def generateblocklevellists(self,blocklists=None):
     if blocklists is None:
@@ -531,6 +533,8 @@ not be fetched from there (it is set negative).
 Loads the charge density from the particles. This should only be called for
 the top level grid.
     """
+    # --- Make sure that the final setup was done.
+    self.finalize()
     # check if subcycling or selfb is turned on for at least one species
     # and create rhospecies if not done already
     if (len(compress(top.pgroup.ndts>1,top.pgroup.ndts))>0 or
@@ -1154,6 +1158,10 @@ from gatherrhofromchildren.
   #--------------------------------------------------------------------------
 
   def solve(self,iwhich=0):
+
+    # --- Make sure that the final setup was done.
+    self.finalize()
+
     # --- Wait until all of the parents have called here until actually
     # --- doing the solve. This ensures that the phi in all of the parents
     # --- which is needed on the boundaries will be up to date.
