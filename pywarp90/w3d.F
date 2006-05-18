@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.251 $, $Date: 2006/05/10 00:59:26 $
+c@(#) File W3D.F, version $Revision: 3.252 $, $Date: 2006/05/18 17:26:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3428,7 +3428,7 @@ c  Picglb is included only to use zbeam
 
       logical(ISZ):: firstk
       integer(ISZ):: npgrp,iptotal
-      integer(ISZ),allocatable,dimension(:):: indx
+      integer(ISZ),allocatable,dimension(:):: indx,nptot
       real(kind=8),allocatable,dimension(:):: xt,yt,zt,rt,tt,uxt,uyt,uzt
       real(kind=8),allocatable,dimension(:):: perpscal,at,apt,bt,bpt
       real(kind=8),allocatable,dimension(:):: epsxt,epsyt,vzt,vtzt,ibeamt
@@ -4239,15 +4239,23 @@ c     --- Find maximum of zdist, which is used to scale sw.  See below.
         enddo
       endif
 
+c     --- Get the global number of particles
+      allocate(nptot(0:pgroup%ns-1))
+      nptot = pgroup%nps
+#ifdef MPIPARALLEL
+      call parallelsumintegerarray(nptot,pgroup%ns)
+#endif
+
 c     --- calculate values for sm, sq, and sw for each species.
       do js = 0,pgroup%ns-1
         isid = pgroup%sid(js) + 1
-        pgroup%sq(js+1) = zion_s(isid) * echarge
-        pgroup%sm(js+1) = aion_s(isid) * amu
-        zlen = zimax_s(isid) - zimin_s(isid)
-        if (vbeam_s(isid) /= 0. .and. pgroup%nps(js+1) /= 0) then
+        if (pgroup%sq(js+1) == 0) pgroup%sq(js+1) = zion_s(isid) * echarge
+        if (pgroup%sm(js+1) == 0) pgroup%sm(js+1) = aion_s(isid) * amu
+        if (vbeam_s(isid) /= 0. .and. nptot(js) /= 0 .and.
+     &      zion_s(isid) /= 0.  .and. pgroup%sw(js+1) == 0) then
+          zlen = zimax_s(isid) - zimin_s(isid)
           pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
-     &                   (vbeam_s(isid)*echarge*zion_s(isid)*pgroup%nps(js+1))
+     &                   (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js))
         endif
 c       --- Don't zero out sw in case the user has set it.
 
@@ -4269,10 +4277,14 @@ c       --- distribution.
 
       enddo
 
+      deallocate(nptot)
+
+c     --- This is not needed since the global number of particles is used
+c     --- above to calculate sw.
 c     --- if slave, recalculate sw
-#ifdef MPIPARALLEL
-      call sw_globalsum(pgroup%ns,pgroup%sw)
-#endif
+c#ifdef MPIPARALLEL
+c      call sw_globalsum(pgroup%ns,pgroup%sw)
+c#endif
 
 c     --- Apply particle boundary conditions
       call zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
