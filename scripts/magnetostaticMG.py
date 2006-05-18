@@ -12,7 +12,7 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGrid(object):
+class magnetostaticMG(object):
   
   __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
@@ -39,27 +39,27 @@ class MultiGrid(object):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGrid.__w3dinputs__:
+    for name in magnetostaticMG.__w3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__bfieldinputs__:
+    for name in magnetostaticMG.__bfieldinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d.bfield,name))#Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d.bfield,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__f3dinputs__:
+    for name in magnetostaticMG.__f3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__topinputs__:
+    for name in magnetostaticMG.__topinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(top,name))
       if kw.has_key(name): del kw[name]
-    for name,defvalue in MultiGrid.__flaginputs__.iteritems():
+    for name,defvalue in magnetostaticMG.__flaginputs__.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
@@ -201,7 +201,7 @@ class MultiGrid(object):
     self.bfield.lusevectorpotential = true
     self.bfield.lanalyticbtheta = false
     self.bfield.j = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
-    self.bfield.b = fzeros((3,1+self.nx,1+self.ny,3+self.nz),'d')
+    self.bfield.b = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
     self.bfield.a = fzeros((3,3+self.nx,3+self.ny,3+self.nz),'d')
     self.bfield.rstar = fzeros(3+self.nz,'d')
     self.bfield.conductors = ConductorType()
@@ -371,12 +371,14 @@ class MultiGrid(object):
     # --- though they should never be needed during initialization.
     idmax = 2
     if iwhich == 1: idmax = 0
+    atemp = fzeros((1+bfield.nx,1+bfield.ny,3+bfield.nz),'d')
     for id in range(idmax+1):
+      atemp[:,:,:] = bfield.a[id,1:-1,1:-1,:]
       multigrid3dsolve(iwhich,bfield.nx,bfield.ny,bfield.nz,bfield.nzfull,
                        bfield.dx,bfield.dy,bfield.dz,
-                       bfield.a[id,0:bfield.nx,0:bfield.ny,:],
+                       atemp,
                        bfield.j[id,:,:,:],
-                       bfield.rstar,linbend,bfield.bounds,
+                       bfield.rstar,self.linbend,bfield.bounds,
                        bfield.xmmin,bfield.ymmin,bfield.zmmin,
                        top.zbeam,top.zgrid,
                        bfield.mgparam[id],bfield.mgform[id],
@@ -388,6 +390,7 @@ class MultiGrid(object):
                        bfield.icndbndy,false,
                        self.gridmode,bfield.conductors,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+      bfield.a[id,1:-1,1:-1,:] = atemp[:,:,:]
 
     # --- This is slightly inefficient in some cases, since for example, the
     # --- MG solver already takes care of the longitudinal BC's.
@@ -412,9 +415,9 @@ class MultiGrid(object):
   def pcazx(self,**kw): self.self.genericpf(kw,pcazx)
   def pcaxy(self,**kw): self.self.genericpf(kw,pcaxy)
 
-# --- This can only be done after MultiGrid is defined.
+# --- This can only be done after magnetostaticMG is defined.
 try:
-  psyco.bind(MultiGrid)
+  psyco.bind(magnetostaticMG)
 except NameError:
   pass
 
