@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.181 $, $Date: 2006/05/19 21:32:26 $
+c@(#) File TOP.F, version $Revision: 3.182 $, $Date: 2006/05/19 23:15:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -200,101 +200,51 @@ c     First, set parameters for whole beam (for envelope solver).  If
 c     they are unset, set to parameters of species 1.
 
 c     --- Beam size in X
-      if (a0 == 0.) then
-        a0 = a0_s(1)
-      endif
+      if (a0 == 0. .and. a0_s(1) /= LARGEPOS) a0 = a0_s(1)
 c     --- Beam divergence in X
-      if (ap0 == 0.) then
-        ap0 = ap0_s(1)
-      endif
+      if (ap0 == 0. .and. ap0_s(1) /= LARGEPOS) ap0 = ap0_s(1)
 c     --- Beam size in Y
-      if (b0 == 0.) then
-        b0 = b0_s(1)
-      endif
+      if (b0 == 0. .and. b0_s(1) /= LARGEPOS) b0 = b0_s(1)
 c     --- Beam divergence in Y
-      if (bp0 == 0.) then
-        bp0 = bp0_s(1)
-      endif
+      if (bp0 == 0. .and. bp0_s(1) /= LARGEPOS) bp0 = bp0_s(1)
 c     --- Beam centroid in X
-      if (x0 == 0.) then
-        x0 = x0_s(1)
-      endif
+      if (x0 == 0. .and. x0_s(1) /= LARGEPOS) x0 = x0_s(1)
 c     --- Beam centroid angle in X
-      if (xp0 == 0.) then
-        xp0 = xp0_s(1)
-      endif
+      if (xp0 == 0. .and. xp0_s(1) /= LARGEPOS) xp0 = xp0_s(1)
 c     --- Beam centroid in Y
-      if (y0 == 0.) then
-        y0 = y0_s(1)
-      endif
+      if (y0 == 0. .and. y0_s(1) /= LARGEPOS) y0 = y0_s(1)
 c     --- Beam centroid angle in Y
-      if (yp0 == 0.) then
-        yp0 = yp0_s(1)
-      endif
+      if (yp0 == 0. .and. yp0_s(1) /= LARGEPOS) yp0 = yp0_s(1)
 c     --- Atomic number
-      if (aion == 0.) then
-        aion = aion_s(1)
-      endif
+      if (aion == 0. .and. aion_s(1) /= LARGEPOS) aion = aion_s(1)
 c     --- Particle energy
-      if (ekin == 0.) then
-        ekin = ekin_s(1)
-      endif
-c     --- Emittance
-      if (emit == 0.) then
-        emit = emit_s(1)
-      endif
-      if (emitx == 0.) then
-        emitx = emitx_s(1)
-      endif
-      if (emity == 0.) then
-        emity = emity_s(1)
-      endif
-c     --- Normalized emittance
-      if (emitn == 0.) then
-        emitn = emitn_s(1)
-      endif
-      if (emitnx == 0.) then
-        emitnx = emitnx_s(1)
-      endif
-      if (emitny == 0.) then
-        emitny = emitny_s(1)
-      endif
+      if (ekin == 0. .and. ekin_s(1) /= LARGEPOS) ekin = ekin_s(1)
+c     --- Emittances
+      if (emit == 0. .and. emit_s(1) /= LARGEPOS) emit = emit_s(1)
+      if (emitx == 0. .and. emitx_s(1) /= LARGEPOS) emitx = emitx_s(1)
+      if (emity == 0. .and. emity_s(1) /= LARGEPOS) emity = emity_s(1)
+c     --- Normalized emittances
+      if (emitn == 0. .and. emitn_s(1) /= LARGEPOS) emitn = emitn_s(1)
+      if (emitnx == 0. .and. emitnx_s(1) /= LARGEPOS) emitnx = emitnx_s(1)
+      if (emitny == 0. .and. emitny_s(1) /= LARGEPOS) emitny = emitny_s(1)
 c     --- Current
-      if (ibeam == 0.) then
-        ibeam = ibeam_s(1)
-      endif
+      if (ibeam == 0. .and. ibeam_s(1) /= LARGEPOS) ibeam = ibeam_s(1)
 c     --- Charge state
-      if (zion == 0.) then
-        zion = zion_s(1)
-      endif
+      if (zion == 0. .and. zion_s(1) /= LARGEPOS) zion = zion_s(1)
 c     --- Axial velocity
-      if (vbeam == 0.) then
-        vbeam = vbeam_s(1)
-      endif
+      if (vbeam == 0. .and. vbeam_s(1) /= LARGEPOS) vbeam = vbeam_s(1)
 c     --- Axial velocity tilt
-      if (vtilt == 0.) then
-        vtilt = vtilt_s(1)
-      endif
+      if (vtilt == 0. .and. vtilt_s(1) /= LARGEPOS) vtilt = vtilt_s(1)
 c     --- Transverse thermal spread
-      if (vthperp == 0.) then
-        vthperp = vthperp_s(1)
-      endif
+      if (vthperp == 0. .and. vthperp_s(1) /= LARGEPOS) vthperp = vthperp_s(1)
 c     --- Axial thermal spread
-      if (vthz == 0.) then
-        vthz = vthz_s(1)
-      endif
+      if (vthz == 0. .and. vthz_s(1) /= LARGEPOS) vthz = vthz_s(1)
 c     --- Minimum initial z of beam
-      if (zimin == 0.) then
-        zimin = zimin_s(1)
-      endif
+      if (zimin == 0. .and. zimin_s(1) /= LARGEPOS) zimin = zimin_s(1)
 c     --- Maximum initial z of beam
-      if (zimax == 0.) then
-        zimax = zimax_s(1)
-      endif
+      if (zimax == 0. .and. zimax_s(1) /= LARGEPOS) zimax = zimax_s(1)
 c     --- Fractional length of uniform part of beam
-      if (straight == 0.) then
-        straight = straight_s(1)
-      endif
+      if (straight == 0. .and. straight_s(1) /= LARGEPOS) straight = straight_s(1)
 
 c     Now, set parameters for species.  If they are unset, set to the whole
 c     beam parameters. Also, always reset the values of species number one
@@ -309,99 +259,99 @@ c     --- Make sure that space has been allocated for the arrays.
 
       do is=1,ns
 c       --- Beam size in X
-        if (a0_s(is) == 0. .or. is == 1) then
+        if (a0_s(is) == LARGEPOS .or. is == 1) then
           a0_s(is) = a0
         endif
 c       --- Beam divergence in X
-        if (ap0_s(is) == 0. .or. is == 1) then
+        if (ap0_s(is) == LARGEPOS .or. is == 1) then
           ap0_s(is) = ap0
         endif
 c       --- Beam size in Y
-        if (b0_s(is) == 0. .or. is == 1) then
+        if (b0_s(is) == LARGEPOS .or. is == 1) then
           b0_s(is) = b0
         endif
 c       --- Beam divergence in Y
-        if (bp0_s(is) == 0. .or. is == 1) then
+        if (bp0_s(is) == LARGEPOS .or. is == 1) then
           bp0_s(is) = bp0
         endif
 c       --- Beam centroid in X
-        if (x0_s(is) == 0. .or. is == 1) then
+        if (x0_s(is) == LARGEPOS .or. is == 1) then
           x0_s(is) = x0
         endif
 c       --- Beam centroid angle in X
-        if (xp0_s(is) == 0. .or. is == 1) then
+        if (xp0_s(is) == LARGEPOS .or. is == 1) then
           xp0_s(is) = xp0
         endif
 c       --- Beam centroid in Y
-        if (y0_s(is) == 0. .or. is == 1) then
+        if (y0_s(is) == LARGEPOS .or. is == 1) then
           y0_s(is) = y0
         endif
 c       --- Beam centroid angle in Y
-        if (yp0_s(is) == 0. .or. is == 1) then
+        if (yp0_s(is) == LARGEPOS .or. is == 1) then
           yp0_s(is) = yp0
         endif
 c       --- Atomic number
-        if (aion_s(is) == 0 .or. is == 1) then
+        if (aion_s(is) == LARGEPOS .or. is == 1) then
           aion_s(is) = aion
         endif
 c       --- Particle energy
-        if (ekin_s(is) == 0 .or. is == 1) then
+        if (ekin_s(is) == LARGEPOS .or. is == 1) then
           ekin_s(is) = ekin
         endif
 c       --- Emittance
-        if (emit_s(is) == 0 .or. is == 1) then
+        if (emit_s(is) == LARGEPOS .or. is == 1) then
           emit_s(is) = emit
         endif
-        if (emitx_s(is) == 0 .or. is == 1) then
+        if (emitx_s(is) == LARGEPOS .or. is == 1) then
           emitx_s(is) = emitx
         endif
-        if (emity_s(is) == 0 .or. is == 1) then
+        if (emity_s(is) == LARGEPOS .or. is == 1) then
           emity_s(is) = emity
         endif
 c       --- Normalized emittance
-        if (emitn_s(is) == 0 .or. is == 1) then
+        if (emitn_s(is) == LARGEPOS .or. is == 1) then
           emitn_s(is) = emitn
         endif
-        if (emitnx_s(is) == 0 .or. is == 1) then
+        if (emitnx_s(is) == LARGEPOS .or. is == 1) then
           emitnx_s(is) = emitnx
         endif
-        if (emitny_s(is) == 0 .or. is == 1) then
+        if (emitny_s(is) == LARGEPOS .or. is == 1) then
           emitny_s(is) = emitny
         endif
 c       --- Current
-        if (ibeam_s(is) == 0 .or. is == 1) then
+        if (ibeam_s(is) == LARGEPOS .or. is == 1) then
           ibeam_s(is) = ibeam
         endif
 c       --- Charge state
-        if (zion_s(is) == 0 .or. is == 1) then
+        if (zion_s(is) == LARGEPOS .or. is == 1) then
           zion_s(is) = zion
         endif
 c       --- Axial velocity
-        if (vbeam_s(is) == 0 .or. is == 1) then
+        if (vbeam_s(is) == LARGEPOS .or. is == 1) then
           vbeam_s(is) = vbeam
         endif
 c       --- Axial velocity tilt
-        if (vtilt_s(is) == 0 .or. is == 1) then
+        if (vtilt_s(is) == LARGEPOS .or. is == 1) then
           vtilt_s(is) = vtilt
         endif
 c       --- Transverse thermal spread
-        if (vthperp_s(is) == 0 .or. is == 1) then
+        if (vthperp_s(is) == LARGEPOS .or. is == 1) then
           vthperp_s(is) = vthperp
         endif
 c       --- Axial thermal spread
-        if (vthz_s(is) == 0 .or. is == 1) then
+        if (vthz_s(is) == LARGEPOS .or. is == 1) then
           vthz_s(is) = vthz
         endif
 c       --- Minimum initial z of beam
-        if (zimin_s(is) == 0. .or. is == 1) then
+        if (zimin_s(is) == LARGEPOS .or. is == 1) then
           zimin_s(is) = zimin
         endif
 c       --- Maximum initial z of beam
-        if (zimax_s(is) == 0. .or. is == 1) then
+        if (zimax_s(is) == LARGEPOS .or. is == 1) then
           zimax_s(is) = zimax
         endif
 c       --- Fractional length of uniform part of beam
-        if (straight_s(is) == 0. .or. is == 1) then
+        if (straight_s(is) == LARGEPOS .or. is == 1) then
           straight_s(is) = straight
         endif
       enddo

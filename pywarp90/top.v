@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.171 $, $Date: 2006/05/19 21:32:26 $
+#@(#) File TOP.V, version $Revision: 3.172 $, $Date: 2006/05/19 23:15:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.171 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.172 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -975,81 +975,81 @@ np_s(ns)       _integer [1]     /0/
 idkinterp(ns)  _integer        /0/ 
    # drift-kinetic interpolation parameter.  0 for full particle
    # dynamics.  1 for interpolation.  2 for pure drift kinetics
-a0_s(ns)       _real    [m]     /0./
-   # Initial beam width in x by species: if zero, set to a0; if a0 is zero,
-   # it is set to a0_s(1)
-ap0_s(ns)      _real    [rad]   /0./
-   # Initial beam envelope vx/vz by species: if zero, set to ap0;if ap0 is zero,
-   # it is set to ap0_s(1)
-b0_s(ns)       _real    [m]     /0./
-   # Initial beam width in y by species: if zero, set to b0; if b0 is zero,
-   # it is set to b0_s(1)
-bp0_s(ns)      _real    [rad]   /0./
-   # Initial beam envelope vy/vz by species: if zero, set to bp0;if bp0 is zero,
-   # it is set to bp0_s(1)
-x0_s(ns)       _real    [m]     /0./
-   # Initial beam centroid in x by species: if zero, set to x0; if x0 is zero,
-   # it is set to x0_s(1)
-xp0_s(ns)      _real    [rad]   /0./
-   # Initial beam centroid vx/vz by species: if zero, set to xp0;if xp0 is zero,
-   # it is set to xp0_s(1)
-y0_s(ns)       _real    [m]     /0./
-   # Initial beam centroid in y by species: if zero, set to y0; if y0 is zero,
-   # it is set to y0_s(1)
-yp0_s(ns)      _real    [rad]   /0./
-   # Initial beam centroid vy/vz by species: if zero, set to yp0;if yp0 is zero,
-   # it is set to yp0_s(1)
-aion_s(ns)     _real    [1]     /0./
-   # Atomic number by species: if zero, set to aion; if aion is zero,
-   # it is set to aion_s(1)
-ekin_s(ns)     _real    [V]     /0./
-   # Particle energy by species: if zero, set to ekin; if ekin is zero,
-   # it is set to ekin_s(1)
-emit_s(ns)     _real    [m-rad] /0./
-   # Emittance by species: if zero, set to emit; if emit is zero,
-   # it is set to emit_s(1)
-emitx_s(ns)    _real    [m-rad] /0./
-   # X-Emittance by species: if zero, set to xemit; if emitx is zero,
-   # it is set to emitx_s(1)
-emity_s(ns)    _real    [m-rad] /0./
-   # Y-Emittance by species: if zero, set to yemit; if emit is zero,
-   # it is set to emity_s(1)
-emitn_s(ns)    _real    [m-rad] /0./
-   # Normalized emittance by species: if zero, set to emitn; if emitn is zero,
-   # it is set to emitn_s(1)
-emitnx_s(ns)   _real    [m-rad] /0./
-   # Normalized X-emittance by species: if zero, set to emitnx; 
-   # if emitnx is zero, it is set to emitnx_s(1)
-emitny_s(ns)   _real    [m-rad] /0./
-   # Normalized Y-emittance by species: if zero, set to emitny; 
-   # if emitny is zero, it is set to emitny_s(1)
-ibeam_s(ns)    _real    [A]     /0./
-   # Beam current by species: if zero, set to ibeam; if ibeam is zero,
-   # it is set to ibeam_s(1)
-zion_s(ns)     _real    [1]     /0./
-   # Charge state by species: if zero, set to zion; if zion is zero,
-   # it is set to zion_s(1)
-straight_s(ns) _real    [1]     /0./
-   # Percent of beam that isn't cigar: if zero, set to straight; if straight
-   # is zero, it is set to straight_s
-vbeam_s(ns)    _real    [m/s]   /0./
-   # Particle axial velocity by species: if zero, set to vbeam; if vbeam is
-   # zero, it is set to vbeam_s(1)
-vtilt_s(ns)    _real    [1]     /0./
-   # Axial velocity tilt by species: if zero, set to vtilt; if vtilt is zero,
-   # it is set to vtilt_s(1)
-vthperp_s(ns)  _real    [m/s]   /0./
-   # Transverse thermal spread by species: if zero, set to vthperp; if vthperp
-   # is zero, it is set to vthperp_s(1)
-vthz_s(ns)     _real    [m/s]   /0./
-   # Axial thermal spread by species: if zero, set to vthz; if vthz is zero,
-   # it is set to vthz_s(1)
-zimin_s(ns)    _real    [m]     /0./
-   # Minimum initial z of beam by species: if zero, set to zimin; if zimin is
-   # zero, it is set to zimin_s(1)
-zimax_s(ns)    _real    [m]     /0./
-   # Maximum initial z of beam by species: if zero, set to zimax; if zimax is
-   # zero, it is set to zimax_s(1)
+a0_s(ns)       _real    [m]     /LARGEPOS/
+   # Initial beam width in x by species: if LARGEPOS, set to a0
+   # ;if a0 is zero, it is set to a0_s(1)
+ap0_s(ns)      _real    [rad]   /LARGEPOS/
+   # Initial beam envelope vx/vz by species: if LARGEPOS, set to ap0
+   # ;if ap0 is zero, it is set to ap0_s(1)
+b0_s(ns)       _real    [m]     /LARGEPOS/
+   # Initial beam width in y by species: if LARGEPOS, set to b0
+   # ;if b0 is zero, it is set to b0_s(1)
+bp0_s(ns)      _real    [rad]   /LARGEPOS/
+   # Initial beam envelope vy/vz by species: if LARGEPOS, set to bp0
+   # ;if bp0 is zero, it is set to bp0_s(1)
+x0_s(ns)       _real    [m]     /LARGEPOS/
+   # Initial beam centroid in x by species: if LARGEPOS, set to x0
+   # ;if x0 is zero, it is set to x0_s(1)
+xp0_s(ns)      _real    [rad]   /LARGEPOS/
+   # Initial beam centroid vx/vz by species: if LARGEPOS, set to xp0
+   # ;if xp0 is zero, it is set to xp0_s(1)
+y0_s(ns)       _real    [m]     /LARGEPOS/
+   # Initial beam centroid in y by species: if LARGEPOS, set to y0
+   # ;if y0 is zero, it is set to y0_s(1)
+yp0_s(ns)      _real    [rad]   /LARGEPOS/
+   # Initial beam centroid vy/vz by species: if LARGEPOS, set to yp0
+   # ;if yp0 is zero, it is set to yp0_s(1)
+aion_s(ns)     _real    [1]     /LARGEPOS/
+   # Atomic number by species: if LARGEPOS, set to aion
+   # ;if aion is zero, it is set to aion_s(1)
+ekin_s(ns)     _real    [V]     /LARGEPOS/
+   # Particle energy by species: if LARGEPOS, set to ekin
+   # ;if ekin is zero, it is set to ekin_s(1)
+emit_s(ns)     _real    [m-rad] /LARGEPOS/
+   # Emittance by species: if LARGEPOS, set to emit
+   # ;if emit is zero, it is set to emit_s(1)
+emitx_s(ns)    _real    [m-rad] /LARGEPOS/
+   # X-Emittance by species: if LARGEPOS, set to xemit
+   # ;if emitx is zero, it is set to emitx_s(1)
+emity_s(ns)    _real    [m-rad] /LARGEPOS/
+   # Y-Emittance by species: if LARGEPOS, set to yemit
+   # ;if emit is zero, it is set to emity_s(1)
+emitn_s(ns)    _real    [m-rad] /LARGEPOS/
+   # Normalized emittance by species: if LARGEPOS, set to emitn
+   # ;if emitn is zero, it is set to emitn_s(1)
+emitnx_s(ns)   _real    [m-rad] /LARGEPOS/
+   # Normalized X-emittance by species: if LARGEPOS, set to emitnx
+   # ; if emitnx is zero, it is set to emitnx_s(1)
+emitny_s(ns)   _real    [m-rad] /LARGEPOS/
+   # Normalized Y-emittance by species: if LARGEPOS, set to emitny
+   # ; if emitny is zero, it is set to emitny_s(1)
+ibeam_s(ns)    _real    [A]     /LARGEPOS/
+   # Beam current by species: if LARGEPOS, set to ibeam
+   # ;if ibeam is zero, it is set to ibeam_s(1)
+zion_s(ns)     _real    [1]     /LARGEPOS/
+   # Charge state by species: if LARGEPOS, set to zion
+   # ;if zion is zero, it is set to zion_s(1)
+straight_s(ns) _real    [1]     /LARGEPOS/
+   # Percent of beam that isn't cigar: if LARGEPOS, set to straight
+   # ;if straight is zero, it is set to straight_s
+vbeam_s(ns)    _real    [m/s]   /LARGEPOS/
+   # Particle axial velocity by species: if LARGEPOS, set to vbeam
+   # ;if vbeam is zero, it is set to vbeam_s(1)
+vtilt_s(ns)    _real    [1]     /LARGEPOS/
+   # Axial velocity tilt by species: if LARGEPOS, set to vtilt
+   # ;if vtilt is zero, it is set to vtilt_s(1)
+vthperp_s(ns)  _real    [m/s]   /LARGEPOS/
+   # Transverse thermal spread by species: if LARGEPOS, set to vthperp
+   # ;if vthperp is zero, it is set to vthperp_s(1)
+vthz_s(ns)     _real    [m/s]   /LARGEPOS/
+   # Axial thermal spread by species: if LARGEPOS, set to vthz
+   # ;if vthz is zero, it is set to vthz_s(1)
+zimin_s(ns)    _real    [m]     /LARGEPOS/
+   # Minimum initial z of beam by species: if LARGEPOS, set to zimin
+   # ;if zimin is zero, it is set to zimin_s(1)
+zimax_s(ns)    _real    [m]     /LARGEPOS/
+   # Maximum initial z of beam by species: if LARGEPOS, set to zimax
+   # ;if zimax is zero, it is set to zimax_s(1)
 sp_fract(ns)   _real    [1]     /1./
    # For each species, fraction of current that particles will make up.
 xcent_s(ns)    _real    [m]     /0./
