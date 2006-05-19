@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.180 $, $Date: 2006/05/10 17:22:49 $
+c@(#) File TOP.F, version $Revision: 3.181 $, $Date: 2006/05/19 21:32:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2091,7 +2091,7 @@ c Initialize the lab window moments
       nl = nlabwn
       nlabwn = 0
       do iwin = 1, nl
-         if (zlw(iwin) /= 0.) nlabwn = iwin
+         if (zlw(iwin) < LARGEPOS) nlabwn = iwin
       enddo
 
       if (nlabwn > 0) then

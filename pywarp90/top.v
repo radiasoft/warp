@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.170 $, $Date: 2006/05/08 16:26:33 $
+#@(#) File TOP.V, version $Revision: 3.171 $, $Date: 2006/05/19 21:32:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.170 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.171 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1441,7 +1441,7 @@ nslabwn integer   /0/  # Number of species lab moments data is
                        # calculated for. Defaults to zero, unless
                        # lspeciesmoments is true, then it defaults to top.ns.
                        # Should always be same as nszmmnt.
-zlw(nlabwn) _real [m] /0./ # z for lab windows
+zlw(nlabwn) _real [m] /LARGEPOS/ # z for lab windows
 iflabwn integer /1/ # turns on lab window moments (0 off; 1 on)
 itlabwn integer /0/ # Sets how often the lab moments are calculated
 ntlabwn integer     # Maximum number of times lab frame moments are calculated
