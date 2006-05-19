@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.52 $, $Date: 2006/05/01 23:50:52 $
+c@(#) File w3d_injection.F, version $Revision: 1.53 $, $Date: 2006/05/19 16:54:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3094,6 +3094,13 @@ c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
           ij = int(pgroup%pid(ip,injpid))
 
+c         --- Skip particles that did not come from an injection source.
+c         --- This is not necessarily the correct thing to do, but at least
+c         --- for now, it avoids memory problems and seg faults.
+c         --- Ultimately, a particle should be able to check if its near
+c         --- any conductor and do special coding for the field near it.
+          if (ij == 0) cycle
+
           ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
           iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
 
@@ -3234,6 +3241,13 @@ c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
           ij = int(pgroup%pid(ip,injpid))
+
+c           --- Skip particles that did not come from an injection source.
+c           --- This is not necessarily the correct thing to do, but at least
+c           --- for now, it avoids memory problems and seg faults.
+c           --- Ultimately, a particle should be able to check if its near
+c           --- any conductor and do special coding for the field near it.
+            if (ij == 0) cycle
 
 c         --- Calculate distance of particle from the emitting surface
           dd = pgroup%zp(ip)*dzi
@@ -3516,6 +3530,13 @@ c           --- emitted from. The int is needed since it is doing double
 c           --- duty and has other information stored in the fractional part.
             ij = int(pgroup%pid(ip,injpid))
 
+c           --- Skip particles that did not come from an injection source.
+c           --- This is not necessarily the correct thing to do, but at least
+c           --- for now, it avoids memory problems and seg faults.
+c           --- Ultimately, a particle should be able to check if its near
+c           --- any conductor and do special coding for the field near it.
+            if (ij == 0) cycle
+
             ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
             iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
 
@@ -3635,6 +3656,13 @@ c           --- has the number of the injection source the particle was
 c           --- emitted from. The int is needed since it is doing double
 c           --- duty and has other information stored in the fractional part.
             ij = int(pgroup%pid(ip,injpid))
+
+c           --- Skip particles that did not come from an injection source.
+c           --- This is not necessarily the correct thing to do, but at least
+c           --- for now, it avoids memory problems and seg faults.
+c           --- Ultimately, a particle should be able to check if its near
+c           --- any conductor and do special coding for the field near it.
+            if (ij == 0) cycle
 
 c           --- set temporaries
             rinji = 1./rinject(ij)
