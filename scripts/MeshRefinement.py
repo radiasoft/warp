@@ -608,6 +608,7 @@ the top level grid.
 
   def createrhospecies(self,lrootonly=0):
     self.rhospecies = {}
+    self.rhospecies[None] = self.rho
     for i in self.idts:
       self.rhospecies[i] = fzeros(shape(self.rho),'d')
     for i in self.iselfb:
@@ -1180,20 +1181,22 @@ from gatherrhofromchildren.
     # solve on phispecies as needed
     if sum(top.pgroup.lselfb)>0:
       for js in self.iselfb:
+        self.setphifromparents(js=js)
         self.pointphitophispecies(js,lselfonly=1)
         self.pointrhotorhospecies(js,lselfonly=1)
-        self.setphifromparents()
         MultiGrid.solve(self,iwhich)
-        self.pointphitophicopy(lselfonly=1)
-        self.pointrhotorhocopy(lselfonly=1)
+        self.pointphitophispecies(None,lselfonly=1)
+        self.pointrhotorhospecies(None,lselfonly=1)
         # scale phispecies by -(1-1/gamma*2) store into top.fselfb
         self.phispecies[js]*=top.pgroup.fselfb[js]
+
     # solve for children
     for child in self.children:
       child.solve(iwhich)
 
   def createphispecies(self,lrootonly=0):
     self.phispecies = {}
+    self.phispecies[None] = self.phi
     for i in self.iselfb:
       if i not in self.phispecies.keys():
         self.phispecies[i] = fzeros(shape(self.phi),'d')
@@ -1203,26 +1206,20 @@ from gatherrhofromchildren.
 
   def pointphitophispecies(self,js,lselfonly=0):
     # make phicopy point to phi, phi point to phispecies[js] 
-    self.phicopy  = self.phi
-    self.phi      = self.phispecies[js]
+    self.phi = self.phispecies[js]
     if not lselfonly:
       for child in self.children:
         child.pointphitophispecies(js)
 
-  def pointphitophicopy(self,lselfonly=0):
-    # make phi point to phicopy 
-    self.phi     = self.phicopy
-    if not lselfonly:
-      for child in self.children:
-        child.pointphitophicopy()
-
-  def setphifromparents(self):
+  def setphifromparents(self,js=None):
     """
 Sets phi, using the values from the parent grid. Setting the full phi array
 gives a better initial guess for the field solver.
     """
+    phi = self.phispecies[js]
     for parentnumber in self.parents:
       parent = self.getblockfromnumber(parentnumber)
+      phiparent = parent.phispecies[js]
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
@@ -1230,8 +1227,8 @@ gives a better initial guess for the field solver.
       u = minimum(parent.fullupper*self.refinement,self.fullupper)
       # --- The full phi arrays are passed in to avoid copying the subsets
       # --- since the fortran needs contiguous arrays.
-      gatherphifromparents(self.phi,self.dims,l,u,self.fulllower,
-                           parent.phi,parent.dims,parent.fulllower,
+      gatherphifromparents(phi,self.dims,l,u,self.fulllower,
+                           phiparent,parent.dims,parent.fulllower,
                            self.refinement)
 
   def setphiboundaries(self):
@@ -1331,7 +1328,7 @@ Fetches the E field. This should only be called at the root level grid.
                                        exfsapispecies,eyfsapispecies,ezfsapispecies)
       w3d.exfsapi+=exfsapispecies
       w3d.eyfsapi+=eyfsapispecies
-      self.pointphitophicopy(js)
+      self.pointphitophispecies(None)
 
   def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
