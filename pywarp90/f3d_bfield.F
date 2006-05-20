@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.17 $, $Date: 2006/05/17 23:20:37 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.18 $, $Date: 2006/05/20 00:20:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -60,6 +60,8 @@ c=============================================================================
 
       integer(ISZ):: bfstype
 
+      if (bfstype == 12) return
+
       if (bfield%xmmin == 0) bfield%xmmin = xmmin
       if (bfield%xmmax == 0) bfield%xmmax = xmmax
       if (bfield%ymmin == 0) bfield%ymmin = ymmin
@@ -81,7 +83,9 @@ c=============================================================================
       bfield%mgparam = mgparam
       bfield%mgmaxiters = mgmaxiters
       bfield%mgmaxlevels = mgmaxlevels
-      bfield%mgtol = mgtol
+      if (bfield%mgtol(0) == 0) bfield%mgtol(0) = mgtol
+      if (bfield%mgtol(1) == 0) bfield%mgtol(1) = mgtol
+      if (bfield%mgtol(2) == 0) bfield%mgtol(2) = mgtol
       bfield%mgform = mgform
       bfield%downpasses = downpasses
       bfield%uppasses = uppasses
@@ -112,9 +116,6 @@ c=============================================================================
         bfield%bounds(3) = dirichlet
       endif
 
-      call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
-     &                    bfield%xmmin,bfield%zmmin,bfield%bounds,
-     &                    bfield%a,bfield%j)
       call bvp3d(1,bfstype)
 
       return
@@ -151,6 +152,14 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lf3dtimesubs) substarttime = wtime()
 
+      if (bfstype == 12 .and. depos /= 'none') then
+        call execuser("bloadjUSER")
+!$OMP MASTER
+        if (lf3dtimesubs) timeloadj3d = timeloadj3d + wtime() - substarttime
+!$OMP END MASTER
+        return
+      endif
+
 c     --- Ensure that the jp array is setup properly
       if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
@@ -182,10 +191,6 @@ c     --- (will be changed if necessary in the loop)
 
 c     --- loop over species
       do is=is1,is2
-
-c       --- For the AMR/Chombo version, all of the lost particles must be
-c       --- cleared out.
-c       if (solvergeom == AMRgeom) call clearpart(pgroup,is,1)
 
 c       --- get loop limits for particles if needed
         if (ins_i == -1) ins_u = pgroup%ins(is)
@@ -260,10 +265,6 @@ c             --- jp and copy its j into jp.
           print*,"Error: Self magnetic field not support with solvergeom=AMRgeom"
         end if
       enddo
-
-      if (solvergeom == XYZgeomMR) then
-        call execuser("loadjMR")
-      endif
 
       endif
 
@@ -1685,11 +1686,7 @@ c     --- Obtain the magnetic field
         return
       endif
 
-      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        if (bfstype >= 0) then
-          call setb3d(bfieldp,n,x,y,z,zgrid,bx,by,bz,l2symtry,l4symtry)
-        endif
-      elseif(solvergeom==XYZgeomMR) then
+      if (bfstype == 12) then
         isfsapi = is
         xfsapi => x
         yfsapi => y
@@ -1697,7 +1694,7 @@ c     --- Obtain the magnetic field
         bxfsapi => bx
         byfsapi => by
         bzfsapi => bz
-        call execuser("fetchbMR")
+        call execuser("bfetchbUSER")
         isfsapi = -1
         nullify(xfsapi)
         nullify(yfsapi)
@@ -1705,6 +1702,10 @@ c     --- Obtain the magnetic field
         nullify(bxfsapi)
         nullify(byfsapi)
         nullify(bzfsapi)
+      elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+        if (bfstype >= 0) then
+          call setb3d(bfieldp,n,x,y,z,zgrid,bx,by,bz,l2symtry,l4symtry)
+        endif
       else
         bx = 0.
         by = 0.
@@ -1719,6 +1720,7 @@ c     --- Obtain the magnetic field
 c=============================================================================
       subroutine fetcha(n,x,y,z,a)
       use BFieldGrid
+      use InGen,Only: bfstype
       use InGen3d
       use Picglb
       use FieldSolveAPI
@@ -1727,7 +1729,17 @@ c=============================================================================
       real(kind=8),target:: x(n),y(n),z(n),a(0:2,n)
 
 c     --- Call the appropriate routine to get the A
-      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+      if (bfstype == 12) then
+        xfsapi => x
+        yfsapi => y
+        zfsapi => z
+        afsapi => a
+        call execuser("bfetchaUSER")
+        nullify(xfsapi)
+        nullify(yfsapi)
+        nullify(zfsapi)
+        nullify(afsapi)
+      else if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         call fetchafrompositions3d(n,x,y,z,a,zgrid,bfield,l2symtry,l4symtry)
 c     elseif(solvergeom==XZgeom) then
 c       call setarz(n,x,y,z,p,zgrid)
@@ -1735,16 +1747,6 @@ c     elseif(solvergeom==Zgeom) then
 c       call setaz(n,z,p,zgrid)
 c     elseif(solvergeom==AMRgeom) then
 c       call cho_geta3d(n,x,y,z,0.,p,-1,-1)
-      elseif(solvergeom==XYZgeomMR) then
-        xfsapi => x
-        yfsapi => y
-        zfsapi => z
-        afsapi => a
-        call execuser("fetchaMR")
-        nullify(xfsapi)
-        nullify(yfsapi)
-        nullify(zfsapi)
-        nullify(afsapi)
       endif
 
       return
@@ -1756,7 +1758,7 @@ c=============================================================================
       use BFieldGrid
 
 c     --- Ensure that the Bp array is setup properly
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+      if(solvergeom==XYZgeom) then
 c       --- Note the -1 is passed in for ns as a flag to skip the
 c       --- setting up of jptmp.
         call setupbfieldsforparticles3d(-1,0,0,bfield,bfieldp)
@@ -1764,7 +1766,7 @@ c       --- setting up of jptmp.
 
 #ifndef MPIPARALLEL
 
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR .or.
+      if(solvergeom==XYZgeom .or.
      &   solvergeom==RZgeom) then
 c       --- If Bp is not associated with B, then copy the data.
         if (.not. associated(bfield%b,bfieldp%b)) then
@@ -1869,26 +1871,30 @@ c=============================================================================
       subroutine bvp3d(iwhich,bfstype)
       use Constant
       use BFieldGrid
-      use InGen3d, only: filt,solvergeom,XYZgeomMR,RZgeom
+      use InGen3d, only: filt,solvergeom,RZgeom
       integer(ISZ):: iwhich,bfstype
 
       integer(ISZ):: id,idmax
       real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
       real(kind=8),pointer:: j(:,:,:,:),curlj(:,:,:,:)
 
-      if (bfstype .ne. -1) then
-        if (bfstype >= 0) then
-          if (solvergeom == RZgeom) then
-            bfstype = 10
-            call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
-     &                          bfield%xmmin,bfield%zmmin,bfield%bounds,
-     &                          bfield%a,bfield%j)
-          endif
-          if (solvergeom == XYZgeomMR) bfstype = 12
+      if (bfstype < 0) return
+
+      if (iwhich==0 .or. iwhich==1) call execuser('initbfieldsolver')
+
+      if (bfstype == 12) then
+        if (iwhich <= 0) then
+          call execuser('bfieldsolUSER')
+          return
         endif
       endif
 
-      if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
+      if (solvergeom == RZgeom) then
+        bfstype = 10
+        call init_bworkgrid(bfield%nx,bfield%nz,bfield%dx,bfield%dz,
+     &                      bfield%xmmin,bfield%zmmin,bfield%bounds,
+     &                      bfield%a,bfield%j)
+      endif
 
       if (bfield%lusevectorpotential) then
         j => bfield%j
@@ -2051,10 +2057,6 @@ c fits and so was replaced with if statements.
       elseif (bfstype == 10) then
         call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),
      &                    j(:,0,:),bfield%nx,bfield%nz,bfield%mgtol(iaxis))
-      elseif (bfstype == 12) then
-        if (iwhich <= 0) then
-          call execuser('fieldsolMR')
-        endif
 
       endif
 
