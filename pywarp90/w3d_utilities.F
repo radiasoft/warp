@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.5 $, $Date: 2006/01/25 01:09:13 $
+c@(#) File w3d_utilities.F, version $Revision: 1.6 $, $Date: 2006/05/20 01:13:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -444,6 +444,63 @@ c=============================================================================
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetabsgrad = timegetabsgrad + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c --- Routines used by the mesh refined B field solver
+c=============================================================================
+      subroutine sortposandvelbyindex(n,indx,x,y,z,ux,uy,uz,gaminv,nblocks,
+     &                                xout,yout,zout,uxout,uyout,uzout,gout,
+     &                                pcounts)
+      use Subtimers3d
+      integer(ISZ):: n,nblocks
+      integer(ISZ):: indx(n)
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n)
+      real(kind=8):: xout(n),yout(n),zout(n),uxout(n),uyout(n),uzout(n),gout(n)
+      integer(ISZ):: pcounts(0:nblocks-1)
+
+c Given particle data and an index array, the routine sorts the particles
+c based on the index. It returns the sorted particles and a list of the
+c number of particles for each index.
+
+      integer(ISZ):: ip,ii,ib
+      integer(ISZ):: tcounts(0:nblocks-1)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- First, count how many in each block there are.
+c     --- Note that the blocks numbers start at zero.
+      pcounts = 0
+      do ip=1,n
+        ib = indx(ip)
+        pcounts(ib) = pcounts(ib) + 1
+      enddo
+
+c     --- Generate partial sum of pcounts
+      tcounts(0) = 1
+      do ib=0,nblocks-2
+        tcounts(ib+1) = tcounts(ib) + pcounts(ib)
+      enddo
+
+c     --- Rearrange the particles
+      do ip=1,n
+        ib = indx(ip)
+        ii = tcounts(ib)
+        xout(ii) = x(ip)
+        yout(ii) = y(ip)
+        zout(ii) = z(ip)
+        uxout(ii) = ux(ip)
+        uyout(ii) = uy(ip)
+        uzout(ii) = uz(ip)
+        tcounts(ib) = tcounts(ib) + 1
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
+     &                                             wtime() - substarttime
 !$OMP END MASTER
 
       return

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.150 $, $Date: 2006/05/18 17:23:42 $
+#@(#) File F3D.V, version $Revision: 3.151 $, $Date: 2006/05/20 01:13:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.150 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.151 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -404,7 +404,7 @@ mgparam(0:2)     real    /1.2/ # Acceleration parameter for multigrid solver
 mgmaxiters(0:2)  integer /100/ # Maximum number of multigrid iterations
 mgmaxlevels(0:2) integer /101/ # Minimum grid size in x-y to coarsen to
 mgiters(0:2)     integer       # Actual number of multigrid iterations
-mgtol(0:2)       real  /1.e-6/ # Absolute tolerance in change in last iteration
+mgtol(0:2)       real    /0./  # Absolute tolerance in change in last iteration
 mgerror(0:2)     real          # Maximum error after convergence
 mgform(0:2)      integer /1/   # When 1, MG operates on phi (and rho),
                           # when 2, MG operates on error (and residual)
@@ -509,6 +509,15 @@ gatherrhofromchild(rho:real,nn:integer,childrho:real,cnn:integer,
       subroutine
 gatherphifromparents(phi:real,nn:integer,l:integer,u:integer,fulllower:integer,
                      parentphi:real,pnn:integer,parentlower:integer,r:integer)
+      subroutine
+gatherafromparents(a:real,nn:integer,l:integer,u:integer,fulllower:integer,
+                     parenta:real,pnn:integer,parentlower:integer,r:integer)
+      subroutine
+gatherjfromchild(j:real,nn:integer,childj:real,cnn:integer,
+                   l:integer,u:integer,fulllower:integer,
+                   childlower:integer,childupper:integer,
+                   r:integer,weights:real,
+                   dobounds:integer,bounds:integer,rootdims:integer)
       subroutine
 
 *********** Surface_of_Rev dump:
@@ -896,6 +905,8 @@ lf3dtimesubs logical /.false./
 timemultigrid3dsolve real /0./
 timegatherrhofromchild real /0./
 timegatherphifromparents real /0./
+timegatherafromparents real /0./
+timegatherjfromchild real /0./
 
 timeexchange_phi           real /0./
 timetranspose              real /0./

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.103 $, $Date: 2006/01/21 01:56:15 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.104 $, $Date: 2006/05/20 01:13:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3771,6 +3771,157 @@ c     - - - - -
 
       if (lf3dtimesubs) timegatherphifromparents = timegatherphifromparents +
      &                                             wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine gatherafromparents(a,nn,l,u,fulllower,
+     &                              parenta,pnn,parentfulllower,r)
+      use Subtimersf3d
+      integer(ISZ):: nn(0:2),pnn(0:2)
+      integer(ISZ):: r(0:2)
+      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
+      integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
+      real(kind=8):: a(0:2,-1:nn(0)+1,-1:nn(1)+1,-1:nn(2)+1)
+      real(kind=8):: parenta(0:2,-1:pnn(0)+1,-1:pnn(1)+1,-1:pnn(2)+1)
+
+      integer(ISZ):: ix0,iy0,iz0
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
+      integer(ISZ):: ixp,iyp,izp
+      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      do iz0=l(2),u(2)
+        iz = iz0 - fulllower(2)
+        izp1 = int(iz0/r(2) - parentfulllower(2))
+        wz(1) = 1.*mod(iz0,r(2))/r(2)
+        wz(0) = 1. - wz(1)
+        if (wz(1) == 0.) then
+          izp2 = izp1
+        else
+          izp2 = izp1 + 1
+        endif
+
+        do iy0=l(1),u(1)
+          iy = iy0 - fulllower(1)
+          iyp1 = int(iy0/r(1) - parentfulllower(1))
+          wy(1) = 1.*mod(iy0,r(1))/r(1)
+          wy(0) = 1. - wy(1)
+          if (wy(1) == 0.) then
+            iyp2 = iyp1
+          else
+            iyp2 = iyp1 + 1
+          endif
+
+          do ix0=l(0),u(0)
+            ix = ix0 - fulllower(0)
+            ixp1 = int(ix0/r(0) - parentfulllower(0))
+            wx(1) = 1.*mod(ix0,r(0))/r(0)
+            wx(0) = 1. - wx(1)
+            if (wx(1) == 0.) then
+              ixp2 = ixp1
+            else
+              ixp2 = ixp1 + 1
+            endif
+
+            a(:,ix,iy,iz) = 0.
+
+            do izp=izp1,izp2
+              do iyp=iyp1,iyp2
+                do ixp=ixp1,ixp2
+
+                  a(:,ix,iy,iz) = a(:,ix,iy,iz) + 
+     &              wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
+     &              parenta(:,ixp,iyp,izp)
+
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+
+      if (lf3dtimesubs) timegatherafromparents = timegatherafromparents +
+     &                                             wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine gatherjfromchild(j,nn,childj,cnn,
+     &                            l,u,fulllower,childlower,childupper,
+     &                            r,weights,dopbounds,pbounds,rootdims)
+      use Subtimersf3d
+      integer(ISZ):: nn(0:2),cnn(0:2)
+      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
+      integer(ISZ):: childlower(0:2),childupper(0:2)
+      integer(ISZ):: r(0:2)
+      integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
+      real(kind=8):: j(0:2,0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: childj(0:2,0:cnn(0),0:cnn(1),0:cnn(2))
+      real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
+
+      integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
+      integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
+      integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
+      real(kind=8):: wj(0:2)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      do iz=l(2),u(2)
+        iz0 = iz - fulllower(2)
+        iz1 = max(iz*r(2) - r(2) + 1,childlower(2))
+        iz2 = min(iz*r(2) + r(2) - 1,childupper(2))
+        iwz1 = iz1 - iz*r(2)
+        iwz2 = iz2 - iz*r(2)
+        icz = iz*r(2) - childlower(2)
+        do iy=l(1),u(1)
+          iy0 = iy - fulllower(1)
+          iy1 = max(iy*r(1) - r(1) + 1,childlower(1))
+          iy2 = min(iy*r(1) + r(1) - 1,childupper(1))
+          iwy1 = iy1 - iy*r(1)
+          iwy2 = iy2 - iy*r(1)
+          icy = iy*r(1) - childlower(1)
+          do ix=l(0),u(0)
+            ix0 = ix - fulllower(0)
+            ix1 = max(ix*r(0) - r(0) + 1,childlower(0))
+            ix2 = min(ix*r(0) + r(0) - 1,childupper(0))
+            iwx1 = ix1 - ix*r(0)
+            iwx2 = ix2 - ix*r(0)
+            icx = ix*r(0) - childlower(0)
+
+            do iwz=iwz1,iwz2
+              do iwy=iwy1,iwy2
+                do iwx=iwx1,iwx2
+                  wj=weights(iwx,iwy,iwz)*childj(:,icx+iwx,icy+iwy,icz+iwz)
+
+c                   --- Adjust for symmetries
+                    if (dopbounds == 1) then
+                    if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+     &                wj = 2*wj
+                    if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+     &                wj = 2*wj
+                    if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+     &                wj = 2*wj
+                    if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+     &                wj = 2*wj
+                    if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+     &                wj = 2*wj
+                    if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+     &                wj = 2*wj
+                  endif
+                  j(:,ix0,iy0,iz0) = j(:,ix0,iy0,iz0) + wj
+
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+
+      if (lf3dtimesubs) timegatherjfromchild = timegatherjfromchild +
+     &                                           wtime() - substarttime
 
       return
       end

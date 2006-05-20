@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.213 $, $Date: 2006/04/25 00:10:46 $
+#@(#) File W3D.V, version $Revision: 3.214 $, $Date: 2006/05/20 01:13:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.213 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.214 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -877,6 +877,14 @@ putsortedefield(n:integer,isort(0:n-1):integer,
                 ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
 getextpart(pgroup:ParticleGroup)  subroutine
+sortposandvelbyindex(n:integer,indx:integer,x(n):real,y(n):real,z(n):real,
+                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
+                     nblocks:integer,
+                     xout(n):real,yout(n):real,zout(n):real,
+                     uxout(n):real,uyout(n):real,uzout(n):real,gout(n):real,
+                     pcounts:integer)
+      subroutine
+
 
 
 *********** W3Dload:
