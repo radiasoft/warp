@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.53 $, $Date: 2006/05/19 16:54:25 $
+c@(#) File w3d_injection.F, version $Revision: 1.54 $, $Date: 2006/05/23 07:08:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2908,9 +2908,9 @@ c Add temperature to injected particles when they cross virtual surface
 c at distance inj_dtemp from emitter. The time of creation array pid(:,tpid)
 c is used to flag particles that not have had temperature added yet.
 
-      real(kind=8):: xx(npart),yy(npart),zz(npart)
-      real(kind=8):: vx(npart),vy(npart),vz(npart)
-      integer(ISZ):: ijp(npart)
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:)
+      real(kind=8),allocatable:: vx(:),vy(:),vz(:)
+      integer(ISZ),allocatable:: ijp(:)
       integer(ISZ):: ip,ij
       real(kind=8):: rinj,rinji,rr2,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,tx,ty,tz
@@ -2922,6 +2922,10 @@ c     real(kind=8):: wrandomgauss
 
       if (inject <= 0) return
       if (.not. l_inj_delay_temp) return
+
+      allocate(xx(npart),yy(npart),zz(npart))
+      allocate(vx(npart),vy(npart),vz(npart))
+      allocate(ijp(npart))
 
       dzi = 1./dz
 
@@ -3016,6 +3020,10 @@ c     --- Transform thermal velocities to lab frame
       pgroup%uyp(ipmin:ipmin+npart-1) = pgroup%uyp(ipmin:ipmin+npart-1) + vy
       pgroup%uzp(ipmin:ipmin+npart-1) = pgroup%uzp(ipmin:ipmin+npart-1) + vz
 
+      deallocate(xx,yy,zz)
+      deallocate(vx,vy,vz)
+      deallocate(ijp)
+
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_addtemp3d = timeinj_addtemp3d + wtime() - substarttime
 !$OMP END MASTER
@@ -3056,13 +3064,15 @@ c affects the edge of the emitting surface where only part of a grid cell
 c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
-      integer(ISZ):: ijp(pgroup%npmax)
+      integer(ISZ),allocatable:: ijp(:)
       integer(ISZ):: is,ip,ix,iy,ij,ij1,i1,i2
       real(kind=8):: rinj,rinji,rr2,dd
       real(kind=8):: aa,az,px,py,wx1,wy1,wx0,wy0,ww
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(ijp(pgroup%npmax))
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -3177,6 +3187,8 @@ c       --- rho only on the right side of the emitting surface.
 
       enddo
 
+      deallocate(ijp)
+
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
 !$OMP END MASTER
@@ -3204,13 +3216,15 @@ c affects the edge of the emitting surface where only part of a grid cell
 c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
-      integer(ISZ):: ijp(pgroup%npmax)
+      integer(ISZ),allocatable:: ijp(:)
       integer(ISZ):: is,ip,ij,j,ij1,i1,i2
       real(kind=8):: dd
       real(kind=8):: ww
       real(kind=8):: dzi
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      allocate(ijp(pgroup%npmax))
 
       dzi = 1./dz
 
@@ -3270,6 +3284,8 @@ c       --- Transform the particles back into the lab frame
         endif
 
       enddo
+
+      deallocate(ijp)
 
 !$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
