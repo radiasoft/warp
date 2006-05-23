@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.6 $, $Date: 2006/05/20 01:13:46 $
+c@(#) File w3d_utilities.F, version $Revision: 1.7 $, $Date: 2006/05/23 07:07:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -495,6 +495,7 @@ c     --- Rearrange the particles
         uxout(ii) = ux(ip)
         uyout(ii) = uy(ip)
         uzout(ii) = uz(ip)
+        gout(ii) = gaminv(ip)
         tcounts(ib) = tcounts(ib) + 1
       enddo
 
