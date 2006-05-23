@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.252 $, $Date: 2006/05/18 17:26:08 $
+c@(#) File W3D.F, version $Revision: 3.253 $, $Date: 2006/05/23 07:09:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1358,13 +1358,13 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ):: isid,is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
       real(kind=8):: fulldt_s,halfdt_s
-      real(kind=8):: zpo(nparpgrp)
+      real(kind=8),allocatable:: zpo(:)
 c RHC: moved ex, ey, ez, bx, by, bz to DKInterptmp in w3d.v  3/11/04
-c      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
-c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
-      real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
-      real(kind=8):: gaminvo(nparpgrp)
-      real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
+c      real(kind=8),allocatable:: ex(:), ey(:), ez(:)
+c      real(kind=8),allocatable:: bx(:), by(:), bz(:)
+      real(kind=8),allocatable:: uxpo(:), uypo(:), uzpo(:)
+      real(kind=8),allocatable:: gaminvo(:)
+      real(kind=8),allocatable:: bendres(:), bendradi(:)
 #ifdef _OPENMP
       real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
       real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
@@ -1438,6 +1438,11 @@ c  If OPENMP, copies data to arrays which will be threadprivate
 !$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
 !$OMP&        uxpadv,uypadv,uzpadv)
 !$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
+
+      allocate(zpo(nparpgrp))
+      allocate(uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp))
+      allocate(gaminvo(nparpgrp))
+      allocate(bendres(nparpgrp), bendradi(nparpgrp))
 
 c  Set storage for field arrays if not adequate already
       if (npfield < nparpgrp) then
@@ -1813,6 +1818,11 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
         deallocate(maxp,minp,zmmnts0,zmmnts)
       endif
 #endif
+
+      deallocate(zpo)
+      deallocate(uxpo, uypo, uzpo)
+      deallocate(gaminvo)
+      deallocate(bendres, bendradi)
 
 !$OMP END PARALLEL
 
