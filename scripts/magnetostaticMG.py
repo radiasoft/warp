@@ -393,6 +393,9 @@ class MagnetostaticMG(object):
     # --- MG solver already takes care of the longitudinal BC's.
     setaboundaries3d(bfield)
 
+    # --- Now take the curl of A to get B.
+    getbfroma3d(bfield)
+
     # --- Unscale the current density
     bfield.j[...] = bfield.j/(mu0*eps0)
 
