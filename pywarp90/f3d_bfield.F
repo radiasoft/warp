@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.18 $, $Date: 2006/05/20 00:20:37 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.19 $, $Date: 2006/05/23 07:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -917,11 +917,12 @@ c  j is not zeroed here (to allow handling of blocks of particles
 c  at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,nparpgrp)
+      integer(ISZ):: moff(0:7)
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: s(:,:),v(:,:)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(nparpgrp), jj(nparpgrp), kk(nparpgrp)
+      integer(ISZ),allocatable:: ii(:), jj(:), kk(:)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,nparpgrp),v(0:2,nparpgrp)
 c     --- Work array holding q/cell volume, the charge density per
 c     --- real particle. This is primarily needed for the RZ version
 c     --- since the cell volume there has radial dependence.
@@ -1036,6 +1037,10 @@ c--------------------------------------
 c  Begin vectorized deposition loop
 c--------------------------------------
       if (depos == "vector") then
+
+      allocate(indx(0:7,0:nparpgrp-1))
+      allocate(s(0:7,0:nparpgrp-1))
+      allocate(v(0:7,0:nparpgrp-1))
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. bfield%lcylindrical) then
@@ -1172,12 +1177,17 @@ c     --- there'd be a hazard if we interchanged the loops.
       enddo
 !$OMP END CRITICAL (CRITICAL_SETJ3D1)
 
+      deallocate(indx,s,v)
+
 c--------------------------------------
 c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
 c  Begin main loop over species
+      allocate(ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1))
+      allocate(s(0:7,0:nparpgrp-1))
+
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. bfield%lcylindrical) then
@@ -1301,6 +1311,9 @@ c     --- scalar loop does the actual deposition
         endif
       enddo
 !$OMP END CRITICAL (CRITICAL_SETJ3D2)
+
+      deallocate(ii, jj, kk)
+      deallocate(s)
 
 c--------------------------------------
 c  Begin direct deposition loop
