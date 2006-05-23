@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.174 2006/05/18 23:01:47 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.175 2006/05/23 07:05:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3662,14 +3662,16 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
     kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
                     solver.ymmin,solver.ymmax)
   settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  if fullplane and (solver.l2symtry or solver.l4symtry):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    eee = getselfe(comp=comp,ix=ix,solver=solver,local=local)
     ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      ppgeneric(grid=transpose(eee),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      kw['ymin'] = - kw['ymax']
     ey = getselfe(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ez = getselfe(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw,local=1)
@@ -3699,14 +3701,16 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
     kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    eee = getselfe(comp=comp,iy=iy,solver=solver,local=local)
     ppgeneric(grid=transpose(eee),kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=transpose(eee),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      kw['ymin'] = - kw['ymax']
     ex = getselfe(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ez = getselfe(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw,local=1)
@@ -3732,17 +3736,23 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Electrostatic E%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  if fullplane and solver.l4symtry:
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
-  elif fullplane and solver.l2symtry:
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    eee = getselfe(comp=comp,iz=iz,solver=solver,local=local)
     ppgeneric(grid=eee,kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+      ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+      ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
+    elif fullplane and solver.l2symtry:
+      ppgeneric(grid=eee,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
   else:
+    if fullplane and solver.l4symtry:
+      kw['ymin'] = - kw['ymax']
+      kw['xmin'] = - kw['xmax']
+    elif fullplane and solver.l2symtry:
+      kw['ymin'] = - kw['ymax']
     ex = getselfe(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ey = getselfe(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw,local=1)
@@ -3772,14 +3782,16 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
     kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
                     solver.ymmin,solver.ymmax)
   settitles("Current Density J%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  if fullplane and (solver.l2symtry or solver.l4symtry):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    j = getj(comp=comp,ix=ix,solver=solver,local=local)
     ppgeneric(grid=transpose(j),kwdict=kw,local=1)
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      ppgeneric(grid=transpose(j),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      kw['ymin'] = - kw['ymax']
     jy = getj(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     jz = getj(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(jy[::sy,::sz]),transpose(jz[::sy,::sz]),kwdict=kw,local=1)
@@ -3809,14 +3821,16 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
     kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Current Density J%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    j = getj(comp=comp,iy=iy,solver=solver,local=local)
     ppgeneric(grid=transpose(j),kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=transpose(j),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      kw['ymin'] = - kw['ymax']
     jx = getj(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     jz = getj(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(jx[::sx,::sz]),transpose(jz[::sx,::sz]),kwdict=kw,local=1)
@@ -3842,17 +3856,23 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Current Density J%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  if fullplane and solver.l4symtry:
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
-  elif fullplane and solver.l2symtry:
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    j = getj(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    j = getj(comp=comp,iz=iz,solver=solver,local=local)
     ppgeneric(grid=j,kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+      ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+      ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
+    elif fullplane and solver.l2symtry:
+      ppgeneric(grid=j,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
   else:
+    if fullplane and solver.l4symtry:
+      kw['ymin'] = - kw['ymax']
+      kw['xmin'] = - kw['xmax']
+    elif fullplane and solver.l2symtry:
+      kw['ymin'] = - kw['ymax']
     jx = getj(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     jy = getj(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(jy[::sx,::sy],jx[::sx,::sy],kwdict=kw,local=1)
@@ -3882,14 +3902,16 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
     kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
                     solver.ymmin,solver.ymmax)
   settitles("Magnetic Field B%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  if fullplane and (solver.l2symtry or solver.l4symtry):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    b = getb(comp=comp,ix=ix,solver=solver,local=local)
     ppgeneric(grid=transpose(b),kwdict=kw,local=1)
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      ppgeneric(grid=transpose(b),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      kw['ymin'] = - kw['ymax']
     by = getb(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     bz = getb(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(by[::sy,::sz]),transpose(bz[::sy,::sz]),kwdict=kw,local=1)
@@ -3919,14 +3941,16 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
     kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Magnetic Field B%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    b = getb(comp=comp,iy=iy,solver=solver,local=local)
     ppgeneric(grid=transpose(b),kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=transpose(b),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      kw['ymin'] = - kw['ymax']
     bx = getb(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     bz = getb(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(bx[::sx,::sz]),transpose(bz[::sx,::sz]),kwdict=kw,local=1)
@@ -3952,17 +3976,23 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Magnetic Field B%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  if fullplane and solver.l4symtry:
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
-  elif fullplane and solver.l2symtry:
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    b = getb(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    b = getb(comp=comp,iz=iz,solver=solver,local=local)
     ppgeneric(grid=b,kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+      ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+      ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
+    elif fullplane and solver.l2symtry:
+      ppgeneric(grid=b,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
   else:
+    if fullplane and solver.l4symtry:
+      kw['ymin'] = - kw['ymax']
+      kw['xmin'] = - kw['xmax']
+    elif fullplane and solver.l2symtry:
+      kw['ymin'] = - kw['ymax']
     bx = getb(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     by = getb(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(by[::sx,::sy],bx[::sx,::sy],kwdict=kw,local=1)
@@ -3992,14 +4022,16 @@ def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
     kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
                     solver.ymmin,solver.ymmax)
   settitles("Magnetic Vector Potential A%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  if fullplane and (solver.l2symtry or solver.l4symtry):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,ix=ix,fullplane=fullplane,solver=solver,local=local)
+    a = geta(comp=comp,ix=ix,solver=solver,local=local)
     ppgeneric(grid=transpose(a),kwdict=kw,local=1)
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      ppgeneric(grid=transpose(a),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l2symtry or solver.l4symtry):
+      kw['ymin'] = - kw['ymax']
     ay = geta(comp='y',ix=ix,fullplane=fullplane,solver=solver,local=local)
     az = geta(comp='z',ix=ix,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ay[::sy,::sz]),transpose(az[::sy,::sz]),kwdict=kw,local=1)
@@ -4029,14 +4061,17 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
     kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
                       solver.xmmin,solver.xmmax)
   settitles("Magnetic Vector Potential A%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,iy=iy,fullplane=fullplane,solver=solver,local=local)
+    a = geta(comp=comp,iy=iy,solver=solver,local=local)
+    print shape(transpose(a))
     ppgeneric(grid=transpose(a),kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=transpose(a),kwdict=kw,local=1,flipyaxis=1)
   else:
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
+      kw['ymin'] = - kw['ymax']
     ax = geta(comp='x',iy=iy,fullplane=fullplane,solver=solver,local=local)
     az = geta(comp='z',iy=iy,fullplane=fullplane,solver=solver,local=local)
     ppvector(transpose(ax[::sx,::sz]),transpose(az[::sx,::sz]),kwdict=kw,local=1)
@@ -4062,17 +4097,23 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   else:
     kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Magnetic Vector Potential A%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  if fullplane and solver.l4symtry:
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
-  elif fullplane and solver.l2symtry:
-    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    a = geta(comp=comp,iz=iz,fullplane=fullplane,solver=solver,local=local)
+    a = geta(comp=comp,iz=iz,solver=solver,local=local)
     ppgeneric(grid=a,kwdict=kw,local=1)
+    if fullplane and solver.l4symtry:
+      ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=1,flipyaxis=0)
+      ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
+      ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=1,flipyaxis=1)
+    elif fullplane and solver.l2symtry:
+      ppgeneric(grid=a,kwdict=kw,local=1,flipxaxis=0,flipyaxis=1)
   else:
+    if fullplane and solver.l4symtry:
+      kw['ymin'] = - kw['ymax']
+      kw['xmin'] = - kw['xmax']
+    elif fullplane and solver.l2symtry:
+      kw['ymin'] = - kw['ymax']
     ax = geta(comp='x',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ay = geta(comp='y',iz=iz,fullplane=fullplane,solver=solver,local=local)
     ppvector(ay[::sx,::sy],ax[::sx,::sy],kwdict=kw,local=1)
