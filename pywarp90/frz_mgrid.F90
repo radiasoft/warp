@@ -4380,7 +4380,7 @@ IF(PRESENT(ixlbnd)) then
     case (neumann)
       f(0,:) = f(2,:)
     case (periodic)
-      f(0,:) = f(ixmax-2,:)
+      f(0,:) = f(ixmax-3,:)
     case default
   end select
 END if
@@ -4390,7 +4390,7 @@ select case (ixrbnd)
     case (neumann)
       f(ixmax-1,:) = f(ixmax-3,:)
     case (periodic)
-      f(ixmax-1,:) = f(1,:) 
+      f(ixmax-1,:) = f(2,:) 
     case default
 end select
 select case (izlbnd)
