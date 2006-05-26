@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.27 2006/05/17 23:21:46 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.28 2006/05/26 16:43:20 dave Exp $"
 
 class TraceParticle:
   """
@@ -69,6 +69,7 @@ Available methods...
 
     # --- Use the particle's ssn to keep track of them
     if top.spid == 0: top.spid = nextpid()
+    setuppgroup(top.pgroup)
 
     # --- Setup particles
     self.spinit(x,y,z,vx,vy,vz)
