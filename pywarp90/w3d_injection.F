@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.54 $, $Date: 2006/05/23 07:08:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.55 $, $Date: 2006/05/26 05:35:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -748,7 +748,8 @@ c               --- Loop over the species
                   inj_is = min(isid,inj_ns)
 
 c                 --- Skip this species if the fraction is zero.
-                  if (finject(ij,isid) == 0.) cycle
+c                 if (finject(ij,isid) == 0.) cycle
+                  if (mod(it,pgroup%ndts(is))/=0 .or. finject(ij,isid) == 0.) cycle
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
