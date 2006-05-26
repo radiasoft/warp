@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.28 2006/05/26 16:43:20 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.29 2006/05/26 17:32:46 dave Exp $"
 
 class TraceParticle:
   """
@@ -260,9 +260,6 @@ is not alive."""
     if (top.it - self.startit) % self.savedata != 0: return
     for i in xrange(self.nn):
       ii = selectparticles(ssn=self.ssn[i])
-      if len(ii) == 0:
-        self.live[i] = 0
-        continue
       self.spt[i].append(top.time)
       self.spx[i].append(getx(ii=ii))
       self.spy[i].append(gety(ii=ii))
