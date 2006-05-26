@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.253 $, $Date: 2006/05/23 07:09:05 $
+c@(#) File W3D.F, version $Revision: 3.254 $, $Date: 2006/05/26 19:07:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1404,12 +1404,6 @@ c     --- Create local pointers to the arrays in pgroup.
       halfdt = 0.5*dt
       center = center_in
 
-c  Zero the bend radius and residence arrays
-c     call zeroarry (bendres,nparpgrp)
-c     call zeroarry (bendradi,nparpgrp)
-      bendres = 0.
-      bendradi = 0.
-
 c  Setup the moments if center is synchv or gen
 c  If OPENMP, copies data to arrays which will be threadprivate
       if (center == "synchv" .or. center == "gen") then
@@ -1443,6 +1437,12 @@ c  If OPENMP, copies data to arrays which will be threadprivate
       allocate(uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp))
       allocate(gaminvo(nparpgrp))
       allocate(bendres(nparpgrp), bendradi(nparpgrp))
+
+c  Zero the bend radius and residence arrays
+c     call zeroarry (bendres,nparpgrp)
+c     call zeroarry (bendradi,nparpgrp)
+      bendres = 0.
+      bendradi = 0.
 
 c  Set storage for field arrays if not adequate already
       if (npfield < nparpgrp) then
