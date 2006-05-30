@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.6 2006/05/11 21:38:49 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.7 2006/05/30 13:37:24 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -341,7 +341,8 @@ Class for generating particles from impact ionization.
             vxnew = vxi
             vynew = vyi
             vznew = vzi
-            put(top.pgroup.gaminv[i1:i2],io,0.)
+            # if projectile is modified, then need to delete it
+            put(top.pgroup.gaminv,array(io)*self.stride+i1,0.)
           xnew = xi
           ynew = yi
           znew = zi
