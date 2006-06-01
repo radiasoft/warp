@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.8 2006/05/11 21:34:48 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.9 2006/06/01 19:06:10 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -36,7 +36,7 @@ Class for generating secondaries
                     Default is None: default set_params routine is used.
  - l_verbose: sets verbosity (default=0). 
   """
-  def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material='SS',
+  def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,l_verbose=0):
     self.inter={}
     self.outparts=[]
@@ -105,9 +105,12 @@ Class for generating secondaries
     if isinc is None:return
     for iis,js in enumerate(isinc):
       for ics,cond in enumerate(conductors[iis]):
-        self.add(js,cond,issec[iis][ics],material[iis][ics])
+        if material is None: m = None
+        else:                m = material[iis][ics]
+        self.add(js,cond,issec[iis][ics],m)
     
-  def add(self,incident_species=None,conductor=None,emitted_species=None,material='SS',interaction_type=None):
+  def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None):
+    if material is None: material = conductor.material
     if interaction_type is None:
       if material=='Cu' and incident_species.type is Electron: interaction_type=1
       if material=='SS' and incident_species.type is Electron: interaction_type=2
