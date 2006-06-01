@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.64 $, $Date: 2006/04/15 00:09:47 $
+c@(#) File WXY.M, version $Revision: 3.65 $, $Date: 2006/06/01 01:45:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -499,19 +499,21 @@ c  Reset the step size if extra substep was taken.
 
 c  Have we reached the end of the run ?
 
-      if ( lfinishd ) then
-         call remark("wxyexe: problem completed.")
-         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
-         return
-      elseif (nplive <= 0) then
-           call remark(" *** WXYEXE: stopping, nplive = 0")
-         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
-           return
-      else
-         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
-         return
-      endif
+c     if ( lfinishd ) then
+c        call remark("wxyexe: problem completed.")
+c        if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
+c        return
+c     elseif (nplive <= 0) then
+c          call remark(" *** WXYEXE: stopping, nplive = 0")
+c        if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
+c          return
+c     else
+c        if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
+c        return
+c     endif
 
+      if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
+      return
       end
 c=============================================================================
       subroutine wxyfin()
@@ -937,7 +939,7 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
       logical(ISZ),pointer:: ldts(:)
 
-      integer(ISZ):: is,ismax,ip,ipmin,i
+      integer(ISZ):: isid,is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
       real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp), ezo(nparpgrp)
       real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
@@ -1004,8 +1006,8 @@ c         --- If only one species, then don't have separate species data.
 c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,1,
-     &                nplive,0.,0.,0.,1,ismax,
+     &                0.,0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1041,7 +1043,8 @@ c  Zero the bend radius and residence fraction
       if(solvergeom==XYgeom) ez=0.
 
 c  Loop over species
-      do is=1,ns
+      do is=1,pgroup%ns
+        isid = pgroup%sid(is-1) + 1
 
 c  Loop over particle blocks; move each block separately
 !$OMP DO
@@ -1310,15 +1313,17 @@ c            --- Calculate moments over particles, now that we're sync'd
                if(wpid==0) then
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                         gaminv(ipmin),sq(1),sm(is),sw(is),dt*0.5,2,
-     &                         nplive,uxpo,uypo,uzpo,is,ns,
+     &                         gaminv(ipmin),sq(is),sm(is),sw(is),
+     &                         dt*0.5,dtscale(is),2,nplive,uxpo,uypo,uzpo,
+     &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
-     &                         sq(1),sm(is),sw(is),dt*0.5,2,
-     &                         nplive,uxpo,uypo,uzpo,is,ns,
+     &                         sq(1),sm(is),sw(is),dt*0.5,dtscale(is),
+     &                         2,nplive,uxpo,uypo,uzpo,
+     &                         is,isid,ismax,
      &                         maxp,minp,zmmnts0,zmmnts)
                endif
              endif
@@ -1418,9 +1423,10 @@ c     ---  Do final stuff for moments calculation and fix current
           tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
           deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
-          call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
-     &                  sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns,
-     &                  tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+          call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                  0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                  1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+
           call getlabwn()
 c         --- load rho diagnostic qtys
           call rhodia3d()
@@ -2177,10 +2183,10 @@ c     --- vectorized loop to compute indices, weights
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
           if (vbeamfrm .ne. 0.) then
-             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
-           else
-             f = 1.
-           endif
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
           ir = ip - ipmin
           ii(ir) = (xp(ip) - xmmin) * dxi
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
@@ -2205,6 +2211,80 @@ c     --- scalar loop does the actual deposition
         endif
       enddo
 !$OMP END CRITICAL (CRITICAL_SETRHOXY2)
+
+c--------------------------------------
+c  Direct deposition loop with precalculated integer conversions
+c--------------------------------------
+      elseif (depos == "direct1") then
+
+c  Begin main loop over species, groups of nparpgrp particles
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        do ip = ipmin,ipmin+nptmp-1
+          if (uzp(ip) == 0) cycle
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          i      = (xp(ip) - xmmin) * dxi
+          u1     = (xp(ip) - xmmin) * dxi - i
+          u0     = 1. - u1
+          j      = abs(yp(ip))*dyi
+          v1     = abs(yp(ip))*dyi - j
+          v0     = 1. - v1
+          gyfact = 1.
+          if (j == 0) gyfact = 2.
+          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f*gyfact
+          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f*gyfact
+          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
+          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+        enddo
+      elseif (l4symtry) then
+        do ip = ipmin,ipmin+nptmp-1
+          if (uzp(ip) == 0) cycle
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          i      = abs(xp(ip))*dxi
+          u1     = abs(xp(ip))*dxi - i
+          u0     = 1. - u1
+          j      = abs(yp(ip))*dyi
+          v1     = abs(yp(ip))*dyi - j
+          v0     = 1. - v1
+          gxfact = 1.
+          gyfact = 1.
+          if (i == 0) gxfact = 2.
+          if (j == 0) gyfact = 2.
+          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f*gxfact*gyfact
+          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f*gyfact
+          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f*gxfact
+          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+        enddo
+      else
+c       --- normal loop
+        do ip = ipmin,ipmin+nptmp-1
+          if (uzp(ip) == 0) cycle
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
+          i      = (xp(ip) - xmmin) * dxi
+          u1     = (xp(ip) - xmmin) * dxi - i
+          u0     = 1. - u1
+          j      = (yp(ip) - ymmin) * dyi
+          v1     = (yp(ip) - ymmin) * dyi - j
+          v0     = 1. - v1
+          rho(i  ,j  ,0) = rho(i  ,j  ,0) + u0 * v0 * f
+          rho(i+1,j  ,0) = rho(i+1,j  ,0) + u1 * v0 * f
+          rho(i  ,j+1,0) = rho(i  ,j+1,0) + u0 * v1 * f
+          rho(i+1,j+1,0) = rho(i+1,j+1,0) + u1 * v1 * f
+        enddo
+      endif
 
       endif
 
