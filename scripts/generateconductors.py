@@ -54,7 +54,8 @@ Surfaces of revolution:
  YSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 
 Note that all take the following additional arguments:
-voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,name=None
+voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+name=None,material='SS',laccuimagecharge=0
 
 installconductors(a,...): generates the data needed for the fieldsolve
                           See its documentation for the additional arguments.
@@ -101,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.131 2006/04/20 18:15:50 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.132 2006/06/01 19:00:44 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -171,6 +172,8 @@ Should never be directly created by the user.
  - generatord=None: function which generates the smallest distance between the
                     points and the conductor surface.
  - name=None: conductor name (string)
+ - material='SS': conductor material
+ - laccuimagecharge=0: Flags accumulation of image charges
   """
 
   voltage = 0.
@@ -179,8 +182,10 @@ Should never be directly created by the user.
   zcent = 0.
   nextcondid = 1
 
+  __inputs__ = {'name':None,'material':'SS','laccuimagecharge':0}
+
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None,name=None):
+                    generatorf=None,generatord=None,generatori=None,kw={}):
     self.voltage = v
     self.xcent = x
     self.ycent = y
@@ -194,7 +199,17 @@ Should never be directly created by the user.
     self.generatorf = generatorf
     self.generatord = generatord
     self.generatori = generatori
-    self.name = name
+
+    while 'kw' in kw:
+      kwtemp = kw['kw']
+      del kw['kw']
+      kw.update(kwtemp)
+
+    for name,default in Assembly.__inputs__.items():
+      self.__dict__[name] = kw.get(name,default)
+      if name in kw: del kw[name]
+    assert len(kw) == 0,"Invalid keyword arguments "+str(kw.keys())
+
     self.lostparticles_data  = []
     self.emitparticles_data  = []
     self.imageparticles_data = []
@@ -206,6 +221,9 @@ Should never be directly created by the user.
     self.emitparticles_energies  = {}
     self.emitparticles_minenergy = {}
     self.emitparticles_maxenergy = {}
+
+    self.accuimagechargeenabled = 0
+    if self.laccuimagecharge: self.enable_accuimagecharge()
     
   def getkwlist(self):
     kwlist = []
@@ -354,10 +372,14 @@ Should never be directly created by the user.
     ptitles('Current history at '+self.name,'time (s)','I (A)')
 
   def enable_accuimagecharge(self): 
+    if self.accuimagechargeenabled: return
+    self.accuimagechargeenabled = 1
     if not isinstalledafterfs(self.accuimagecharge):
       installafterfs(self.accuimagecharge)
 
   def disable_accuimagecharge(self): 
+    if not self.accuimagechargeenabled: return
+    self.accuimagechargeenabled = 0
     if isinstalledafterfs(self.accuimagecharge):
       uninstallafterfs(self.accuimagecharge)
 
@@ -508,7 +530,8 @@ class AssemblyNot(Assembly):
 AssemblyNot class.  Represents 'not' of assemblies.
   """
   def __init__(self,l):
-    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
+    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
+                           kw={'material':l.material})
     self.left = l
   def getextent(self):
     return (-self.left.getextent())
@@ -532,7 +555,8 @@ class AssemblyAnd(Assembly):
 AssemblyAnd class.  Represents 'and' of assemblies.
   """
   def __init__(self,l,r):
-    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
+    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
+                           kw={'material':l.material})
     self.left = l
     self.right = r
   def getextent(self):
@@ -564,7 +588,8 @@ class AssemblyPlus(Assembly):
 AssemblyPlus class.  Represents 'or' of assemblies.
   """
   def __init__(self,l,r):
-    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
+    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
+                           kw={'material':l.material})
     self.left = l
     self.right = r
   def getextent(self):
@@ -596,7 +621,8 @@ class AssemblyMinus(Assembly):
 AssemblyMinus class.
   """
   def __init__(self,l,r):
-    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
+    Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
+                           kw={'material':l.material})
     self.left = l
     self.right = r
   def getextent(self):
@@ -628,10 +654,11 @@ class EllipticAssembly(Assembly):
 Elliptic assembly
   """
   def __init__(self,ellipticity,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None):
+                    generatorf=None,generatord=None,generatori=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.ellipseconductorf,self.ellipseconductord,
-                           self.ellipseintercept)
+                           self.ellipseintercept,
+                           kw=kw)
     self.ellipticity = ellipticity
     self.circlegeneratorf = generatorf
     self.circlegeneratord = generatord
@@ -710,10 +737,11 @@ class XAssembly(Assembly):
 Assembly aligned along X axis
   """
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None):
+                    generatorf=None,generatord=None,generatori=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.xconductorf,self.xconductord,
-                           self.xintercept)
+                           self.xintercept,
+                           kw=kw)
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
@@ -804,10 +832,11 @@ class YAssembly(Assembly):
 Assembly aligned along Y axis
   """
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None):
+                    generatorf=None,generatord=None,generatori=None,**kw):
     Assembly.__init__(self,v,x,y,z,condid,kwlist,
                            self.yconductorf,self.yconductord,
-                           self.yintercept)
+                           self.yintercept,
+                           kw=kw)
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
@@ -1868,10 +1897,11 @@ Plane class
   """
   def __init__(self,z0=0.,zsign=1.,theta=0.,phi=0.,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     kwlist=['z0','zsign','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           planeconductorf,planeconductord,planeintercept)
+                           planeconductorf,planeconductord,planeintercept,
+                           kw=kw)
     self.z0 = z0
     self.zsign = zsign
     self.theta = theta
@@ -1891,10 +1921,11 @@ Box class
               case a unique ID is chosen
   """
   def __init__(self,xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     kwlist=['xsize','ysize','zsize']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           boxconductorf,boxconductord,boxintercept)
+                           boxconductorf,boxconductord,boxintercept,
+                           kw=kw)
     self.xsize = xsize
     self.ysize = ysize
     self.zsize = zsize
@@ -1927,11 +1958,12 @@ Cylinder class
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            cylinderconductorf,cylinderconductord,
-                           cylinderintercept)
+                           cylinderintercept,
+                           kw=kw)
     self.radius = radius
     self.length = length
     self.theta  = theta
@@ -1955,11 +1987,12 @@ Cylinders class for a list of cylinders
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,theta=0.,phi=0.,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['ncylinders','radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            cylindersconductorf,cylindersconductord,
-                           cylindersintercept)
+                           cylindersintercept,
+                           kw=kw)
     self.ncylinders = 0
     self.radius = radius
     self.length = length
@@ -2007,11 +2040,12 @@ Cylinder aligned with z-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            zcylinderconductorf,zcylinderconductord,
-                           zcylinderintercept)
+                           zcylinderintercept,
+                           kw=kw)
     self.radius = radius
     self.length = length
     self.createextent([-self.radius,-self.radius,-self.length/2.],
@@ -2054,12 +2088,14 @@ Cylinder with rounded corners aligned with z-axis
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
   """
-  def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+  def __init__(self,radius,length,radius2,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderconductorf,zroundedcylinderconductord,
-                      zroundedcylinderintercept)
+                      zroundedcylinderintercept,
+                      kw=kw)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -2100,11 +2136,12 @@ Outside of a cylinder aligned with z-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zcylinderoutconductorf,zcylinderoutconductord,
-                      zcylinderoutintercept)
+                      zcylinderoutintercept,
+                      kw=kw)
     self.radius = radius
     self.length = length
     self.createextent([-largepos,-largepos,-self.length/2.],
@@ -2149,13 +2186,15 @@ Outside of a cylinder with rounded corners aligned with z-axis
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
   """
-  def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+  def __init__(self,radius,length,radius2,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,**kw):
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderoutconductorf,
                       zroundedcylinderoutconductord,
-                      zroundedcylinderoutintercept)
+                      zroundedcylinderoutintercept,
+                      kw=kw)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -2201,11 +2240,12 @@ Cylinder aligned with X-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class XCylinderOut(ZCylinderOut,XAssembly):
@@ -2218,11 +2258,12 @@ Cylinder aligned with X-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class YCylinder(ZCylinder,YAssembly):
@@ -2235,11 +2276,12 @@ Cylinder aligned with Y-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class YCylinderOut(ZCylinderOut,YAssembly):
@@ -2252,11 +2294,12 @@ Cylinder aligned with Y-axis
               which case a unique ID is chosen
   """
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class ZCylinderElliptic(ZCylinder,EllipticAssembly):
@@ -2270,12 +2313,13 @@ Elliptical cylinder aligned with z-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage,xcent,ycent,zcent,condid=1):
+                    voltage,xcent,ycent,zcent,condid=1,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
@@ -2303,12 +2347,13 @@ Outside an elliptical cylinder aligned with z-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
   def createdxobject(self,rend=1.,kwdict={},**kw):
     kw.update(kwdict)
@@ -2336,7 +2381,7 @@ Elliptical cylinder aligned with x-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2344,7 +2389,8 @@ Elliptical cylinder aligned with x-axis
                               self.generatorf,self.generatord,self.generatori)
     XAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
-                       self.generatorf,self.generatord,self.generatori)
+                       self.generatorf,self.generatord,self.generatori,
+                       kw=kw)
 
 #============================================================================
 class XCylinderEllipticOut(ZCylinderOut,EllipticAssembly,XAssembly):
@@ -2358,7 +2404,7 @@ Outside of an elliptical cylinder aligned with x-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2366,7 +2412,8 @@ Outside of an elliptical cylinder aligned with x-axis
                               self.generatorf,self.generatord,self.generatori)
     XAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
-                       self.generatorf,self.generatord,self.generatori)
+                       self.generatorf,self.generatord,self.generatori,
+                       kw=kw)
 
 #============================================================================
 class YCylinderElliptic(ZCylinder,EllipticAssembly,YAssembly):
@@ -2380,7 +2427,7 @@ Elliptical cylinder aligned with y-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2388,7 +2435,8 @@ Elliptical cylinder aligned with y-axis
                               self.generatorf,self.generatord,self.generatori)
     YAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
-                       self.generatorf,self.generatord,self.generatori)
+                       self.generatorf,self.generatord,self.generatori,
+                       kw=kw)
 
 #============================================================================
 class YCylinderEllipticOut(ZCylinderOut,EllipticAssembly,YAssembly):
@@ -2402,7 +2450,7 @@ Outside of an elliptical cylinder aligned with y-axis
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2410,7 +2458,8 @@ Outside of an elliptical cylinder aligned with y-axis
                               self.generatorf,self.generatord,self.generatori)
     YAssembly.__init__(self,
                        voltage,xcent,ycent,zcent,condid,self.kwlist,
-                       self.generatorf,self.generatord,self.generatori)
+                       self.generatorf,self.generatord,self.generatori,
+                       kw=kw)
 
 #============================================================================
 class Sphere(Assembly):
@@ -2423,10 +2472,11 @@ Sphere
               which case a unique ID is chosen
   """
   def __init__(self,radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
+                    condid=1,**kw):
     kwlist = ['radius']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      sphereconductorf,sphereconductord,sphereintercept)
+                      sphereconductorf,sphereconductord,sphereintercept,
+                      kw=kw)
     self.radius = radius
     self.createextent([-self.radius,-self.radius,-self.radius],
                       [+self.radius,+self.radius,+self.radius])
@@ -2462,12 +2512,13 @@ Elliptoidal sphere
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,radius,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     Sphere.__init__(self,radius,
                          voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
 #============================================================================
 class Cone(Assembly):
@@ -2485,10 +2536,11 @@ Cone
               which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      coneconductorf,coneconductord,coneintercept)
+                      coneconductorf,coneconductord,coneintercept,
+                      kw=kw)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.theta = theta
@@ -2518,10 +2570,11 @@ Cone
               which case a unique ID is chosen
   """
   def __init__(self,slope,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      coneconductorf,coneconductord,coneintercept)
+                      coneconductorf,coneconductord,coneintercept,
+                      kw=kw)
     self.slope = slope
     self.intercept = intercept
     self.theta = theta
@@ -2556,10 +2609,11 @@ Cones
               which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['ncones','r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      conesconductorf,conesconductord,conesintercept)
+                      conesconductorf,conesconductord,conesintercept,
+                      kw=kw)
     self.ncones = 0
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -2610,10 +2664,11 @@ Torus
   - condid=1: conductor id of torus, must be integer, or can be 'next' in
               which case a unique ID is chosen
   """
-  def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+  def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['r1','r2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      ztorusconductorf,ztorusconductord,ztorusintercept)
+                      ztorusconductorf,ztorusconductord,ztorusintercept,
+                      kw=kw)
     self.r1 = r1
     self.r2 = r2
 
@@ -2655,11 +2710,12 @@ Plate from beamlet pre-accelerator
               in which case a unique ID is chosen
   """
   def __init__(self,za,zb,z0,thickness,voltage=0.,
-               xcent=0.,ycent=0.,zcent=0.,condid=1):
+               xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
     kwlist = ['za','zb','z0','thickness']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       beamletplateconductorf,beamletplateconductord,
-                      beamletplateintercept)
+                      beamletplateintercept,
+                      kw=kw)
     self.za = za
     self.zb = zb
     self.z0 = z0
@@ -2886,11 +2942,12 @@ Methods:
   def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
-                    zcdata=None,rcdata=None):
+                    zcdata=None,rcdata=None,**kw):
     kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvoutconductorf,zsrfrvoutconductord,
-                      zsrfrvoutintercept)
+                      zsrfrvoutintercept,
+                      kw=kw)
     self.rofzfunc = rofzfunc
     self.rmax = rmax
 
@@ -3022,11 +3079,12 @@ Methods:
   def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
-                    zcdata=None,rcdata=None):
+                    zcdata=None,rcdata=None,**kw):
     kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinconductorf,zsrfrvinconductord,
-                      zsrfrvinintercept)
+                      zsrfrvinintercept,
+                      kw=kw)
     self.rofzfunc = rofzfunc
     self.rmin = rmin
 
@@ -3157,11 +3215,12 @@ Methods:
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
                     rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
-                    rcmaxdata=None,zcmaxdata=None):
+                    rcmaxdata=None,zcmaxdata=None,**kw):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinoutconductorf,zsrfrvinoutconductord,
-                      zsrfrvinoutintercept)
+                      zsrfrvinoutintercept,
+                      kw=kw)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
 
@@ -3395,14 +3454,15 @@ Outside of an elliptical surface of revolution
   def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
-                    zcdata=None,rcdata=None):
+                    zcdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofzfunc,zmin,zmax,rmax,
                        voltage,xcent,ycent,zcent,condid,
                        rofzdata,zdata,raddata,
                        zcdata,rcdata)
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
 #============================================================================
 class ZSrfrvEllipticIn(ZSrfrvIn,EllipticAssembly):
@@ -3432,14 +3492,15 @@ Inside of an elliptical surface of revolution
   def __init__(self,ellipticity,rofzfunc,zmin,zmax,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
-                    zcdata=None,rcdata=None):
+                    zcdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofzfunc,zmin,zmax,rmin,
                       voltage,xcent,ycent,zcent,condid,
                       rofzdata,zdata,raddata,
                       zcdata,rcdata)
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
 #============================================================================
 class ZSrfrvEllipticInOut(ZSrfrvInOut,EllipticAssembly):
@@ -3470,7 +3531,7 @@ Between elliptical surfaces of revolution
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
                     rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
-                    rcmaxdata=None,zcmaxdata=None):
+                    rcmaxdata=None,zcmaxdata=None,**kw):
     ZSrfrvInOut.__init__(self,rminofz,rmaxofz,zmin,zmax,
                          voltage,xcent,ycent,zcent,condid,
                          rminofzdata,zmindata,radmindata,
@@ -3479,7 +3540,8 @@ Between elliptical surfaces of revolution
                          rcmaxdata,zcmaxdata)
     EllipticAssembly.__init__(self,ellipticity,voltage,xcent,ycent,zcent,
                               condid,self.kwlist,
-                              self.generatorf,self.generatord,self.generatori)
+                              self.generatorf,self.generatord,self.generatori,
+                              kw=kw)
 
 #============================================================================
 class XSrfrvOut(ZSrfrvOut,XAssembly):
@@ -3508,14 +3570,15 @@ Outside of an surface of revolution aligned along to X axis
   def __init__(self,rofxfunc,xmin,xmax,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofxdata=None,xdata=None,raddata=None,
-                    xcdata=None,rcdata=None):
+                    xcdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofxfunc,xmin,xmax,rmax,
                        voltage,xcent,ycent,zcent,condid,
                        rofxdata,xdata,raddata,
                        xcdata,rcdata)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class XSrfrvIn(ZSrfrvIn,XAssembly):
@@ -3544,13 +3607,14 @@ Inside of a surface of revolution aligned along the X axis
   def __init__(self,rofxfunc,xmin,xmax,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofxdata=None,xdata=None,raddata=None,
-                    xcdata=None,rcdata=None):
+                    xcdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofxfunc,xmin,xmax,rmin,
                       voltage,xcent,ycent,zcent,condid,
                       rofxdata,xdata,raddata,
                       xcdata,rcdata)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class XSrfrvInOut(ZSrfrvInOut,XAssembly):
@@ -3580,7 +3644,7 @@ Between surfaces of revolution aligned along the X axis
                     rminofxdata=None,xmindata=None,radmindata=None,
                     rcmindata=None,xcmindata=None,
                     rmaxofxdata=None,xmaxdata=None,radmaxdata=None,
-                    rcmaxdata=None,xcmaxdata=None):
+                    rcmaxdata=None,xcmaxdata=None,**kw):
     ZSrfrvInOut.__init__(self,rminofx,rmaxofx,xmin,xmax,
                          voltage,xcent,ycent,zcent,condid,
                          rminofxdata,xmindata,radmindata,
@@ -3589,7 +3653,8 @@ Between surfaces of revolution aligned along the X axis
                          rcmaxdata,xcmaxdata)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class YSrfrvOut(ZSrfrvOut,YAssembly):
@@ -3618,14 +3683,15 @@ Outside of an surface of revolution aligned along to Y axis
   def __init__(self,rofyfunc,ymin,ymax,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofydata=None,ydata=None,raddata=None,
-                    ycdata=None,rcdata=None):
+                    ycdata=None,rcdata=None,**kw):
     ZSrfrvOut.__init__(self,rofyfunc,ymin,ymax,rmax,
                        voltage,xcent,ycent,zcent,condid,
                        rofydata,ydata,raddata,
                        ycdata,rcdata)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class YSrfrvIn(ZSrfrvIn,YAssembly):
@@ -3654,13 +3720,14 @@ Inside of a surface of revolution aligned along the Y axis
   def __init__(self,rofyfunc,ymin,ymax,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofydata=None,ydata=None,raddata=None,
-                    ycdata=None,rcdata=None):
+                    ycdata=None,rcdata=None,**kw):
     ZSrfrvIn.__init__(self,rofyfunc,ymin,ymax,rmin,
                       voltage,xcent,ycent,zcent,condid,
                       rofydata,ydata,raddata,
                       ycdata,rcdata)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class YSrfrvInOut(ZSrfrvInOut,YAssembly):
@@ -3690,7 +3757,7 @@ Between surfaces of revolution aligned along the Y axis
                     rminofydata=None,ymindata=None,radmindata=None,
                     rcmindata=None,ycmindata=None,
                     rmaxofydata=None,ymaxdata=None,radmaxdata=None,
-                    rcmaxdata=None,ycmaxdata=None):
+                    rcmaxdata=None,ycmaxdata=None,**kw):
     ZSrfrvInOut.__init__(self,rminofy,rmaxofy,ymin,ymax,
                          voltage,xcent,ycent,zcent,condid,
                          rminofydata,ymindata,radmindata,
@@ -3699,7 +3766,8 @@ Between surfaces of revolution aligned along the Y axis
                          rcmaxdata,ycmaxdata)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,
                             condid,self.kwlist,
-                            self.generatorf,self.generatord,self.generatori)
+                            self.generatorf,self.generatord,self.generatori,
+                            kw=kw)
 
 #============================================================================
 class ZAnnulus(ZSrfrvIn):
@@ -3713,7 +3781,7 @@ Creates an Annulus as a surface of revolution.
               which case a unique ID is chosen
   """
   def __init__(self,rmin,rmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.rmin = rmin
     self.rmax = rmax
@@ -3730,7 +3798,8 @@ Creates an Annulus as a surface of revolution.
     ZSrfrvIn.__init__(self,' ',zmin,zmax,rmin=rmin,
                       voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
                       condid=condid,
-                      rofzdata=rofzdata,zdata=zdata)
+                      rofzdata=rofzdata,zdata=zdata,
+                      kw=kw)
 
 #============================================================================
 class ZAnnulusElliptic(ZSrfrvEllipticIn,EllipticAssembly):
@@ -3745,7 +3814,7 @@ Creates an Annulus as a surface of revolution.
               which case a unique ID is chosen
   """
   def __init__(self,ellipticity,rmin,rmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.rmin = rmin
     self.rmax = rmax
@@ -3763,7 +3832,8 @@ Creates an Annulus as a surface of revolution.
                               voltage=voltage,
                               xcent=xcent,ycent=ycent,zcent=zcent,
                               condid=condid,
-                              rofzdata=rofzdata,zdata=zdata)
+                              rofzdata=rofzdata,zdata=zdata,
+                              kw=kw)
 
 #============================================================================
 class ZCone(ZSrfrvIn):
@@ -3778,7 +3848,7 @@ Cone
               which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -3792,7 +3862,8 @@ Cone
     ZSrfrvIn.__init__(self,' ',zmin,zmax,
                       voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
                       condid=condid,
-                      rofzdata=rofzdata,zdata=zdata)
+                      rofzdata=rofzdata,zdata=zdata,
+                      kw=kw)
 
 #============================================================================
 class ZConeSlope(ZSrfrvIn):
@@ -3808,7 +3879,7 @@ Cone
               which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.slope = slope
     self.intercept = intercept
@@ -3824,7 +3895,8 @@ Cone
     ZSrfrvIn.__init__(self,' ',zmin,zmax,
                       voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
                       condid=condid,
-                      rofzdata=rofzdata,zdata=zdata)
+                      rofzdata=rofzdata,zdata=zdata,
+                      kw=kw)
 
 #============================================================================
 class ZConeOut(ZSrfrvOut):
@@ -3839,7 +3911,7 @@ Cone outside
               which case a unique ID is chosen
   """
   def __init__(self,r_zmin,r_zmax,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -3853,7 +3925,8 @@ Cone outside
     ZSrfrvOut.__init__(self,' ',zmin,zmax,
                        voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
                        condid=condid,
-                       rofzdata=rofzdata,zdata=zdata)
+                       rofzdata=rofzdata,zdata=zdata,
+                       kw=kw)
 
 #============================================================================
 class ZConeOutSlope(ZSrfrvOut):
@@ -3869,7 +3942,7 @@ Cone outside
               which case a unique ID is chosen
   """
   def __init__(self,slope,intercept,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
 
     self.slope = slope
     self.intercept = intercept
@@ -3885,7 +3958,8 @@ Cone outside
     ZSrfrvOut.__init__(self,' ',zmin,zmax,
                        voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
                        condid=condid,
-                       rofzdata=rofzdata,zdata=zdata)
+                       rofzdata=rofzdata,zdata=zdata,
+                       kw=kw)
 
 #============================================================================
 #============================================================================
@@ -3898,7 +3972,7 @@ def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
                oxp=None,oxm=None,oyp=None,oym=None,
                pwl=None,pwr=None,pal=None,par=None,prl=None,prr=None,
                xcent=0.,ycent=0.,zcent=None,condid=None,splitrodids=false,
-               elemid=None,elem='quad'):
+               elemid=None,elem='quad',**kw):
   """
 Creates an interdigited quadrupole structure.
 Either specify the quadrupole structure...
@@ -4004,13 +4078,17 @@ Or give the quadrupole id to use...
   # --- Create x and y rods
   if ap > 0. and rr > 0. and rl > 0.:
     xrod1 = ZCylinder(rr+rxp,rl-glx,vx+vxp,xcent+ap+rr+axp,ycent+oxp,
-                      zcent-gp*gl/2.,xidsign*condid)
+                      zcent-gp*gl/2.,xidsign*condid,
+                      kw=kw)
     xrod2 = ZCylinder(rr+rxm,rl-glx,vx+vxm,xcent-ap-rr-axm,ycent+oxm,
-                      zcent-gp*gl/2.,xidsign*condid)
+                      zcent-gp*gl/2.,xidsign*condid,
+                      kw=kw)
     yrod1 = ZCylinder(rr+ryp,rl-gly,vy+vyp,xcent+oyp,ycent+ap+rr+ayp,
-                      zcent+gp*gl/2.,yidsign*condid)
+                      zcent+gp*gl/2.,yidsign*condid,
+                      kw=kw)
     yrod2 = ZCylinder(rr+rym,rl-gly,vy+vym,xcent+oym,ycent-ap-rr-aym,
-                      zcent+gp*gl/2.,yidsign*condid)
+                      zcent+gp*gl/2.,yidsign*condid,
+                      kw=kw)
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
@@ -4035,18 +4113,25 @@ Or give the quadrupole id to use...
       ridsign = +1
     if pr < 1.4142*w3d.xmmax:
       plate1 = ZAnnulus(pa+pal,pr+prl,pw+pwl,v1,xcent,ycent,
-                        zcent-0.5*(rl+gl)-pw/2.,lidsign*condid)
+                        zcent-0.5*(rl+gl)-pw/2.,lidsign*condid,
+                        kw=kw)
       plate2 = ZAnnulus(pa+par,pr+prr,pw+pwr,v2,xcent,ycent,
-                        zcent+0.5*(rl+gl)+pw/2.,ridsign*condid)
+                        zcent+0.5*(rl+gl)+pw/2.,ridsign*condid,
+                        kw=kw)
     else:
       plate1 = ZCylinderOut(pa+pal,pw+pwl,v1,xcent,ycent,
-                            zcent-0.5*(rl+gl)-pw/2.,lidsign*condid)
+                            zcent-0.5*(rl+gl)-pw/2.,lidsign*condid,
+                            kw=kw)
       plate2 = ZCylinderOut(pa+par,pw+pwr,v2,xcent,ycent,
-                            zcent+0.5*(rl+gl)+pw/2.,ridsign*condid)
+                            zcent+0.5*(rl+gl)+pw/2.,ridsign*condid,
+                            kw=kw)
     quad = quad + plate1 + plate2
     
   return quad
 
+#============================================================================
+#============================================================================
+#============================================================================
 #============================================================================
 #============================================================================
 #============================================================================
