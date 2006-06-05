@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.9 2006/06/01 19:06:10 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.10 2006/06/05 17:45:09 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -556,9 +556,13 @@ Class for generating secondaries
            if emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
             ns = int(my_yield)
-            vx = desorb.floatArray(ns)
-            vy = desorb.floatArray(ns)
-            vz = desorb.floatArray(ns)
+            # --- The ns+1 is only a temporary fix to avoid an array out of
+            # --- bounds errors. Once the desorb routine is fixed, this
+            # --- code should be updated. Note that as the code is now,
+            # --- in some cases, a desorbed particle will be thrown out.
+            vx = desorb.floatArray(ns+1)
+            vy = desorb.floatArray(ns+1)
+            vz = desorb.floatArray(ns+1)
             vxnew = zeros(ns,'d')
             vynew = zeros(ns,'d')
             vznew = zeros(ns,'d')
