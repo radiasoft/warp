@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.50 2006/05/01 23:47:25 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.51 2006/06/12 22:03:50 dave Exp $"
 
 
 ##############################################################################
@@ -540,7 +540,7 @@ set when a current is specified"""
     if current is not None and currentiz is not None:
       swsum = sum(top.pgroup.sw)
       for js in range(top.pgroup.ns):
-        js1 = top.pgroup.js[js]
+        js1 = top.pgroup.sid[js]
         avecurrent = ave(top.curr[currentiz,js1])
         f = (1. + (current[js1]/avecurrent - 1.)*0.5)
         top.pgroup.sw[js] = top.pgroup.sw[js]*f
