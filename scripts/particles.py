@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.43 2006/05/01 23:46:06 dave Exp $"
+particles_version = "$Id: particles.py,v 1.44 2006/06/12 22:47:16 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -299,7 +299,7 @@ Multiple selection criteria are now supported.
       id = take(id,ii)
       islice = slice(len(ii))
       indices = ii
-    ii = compress(id[islice]==ssn,indices)
+    ii = compress(nint(id[islice])==ssn,indices)
   elif zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     if zl is None: zl = -largepos
@@ -924,6 +924,9 @@ Adds particles to the simulation
                    Only used when top.lrelativ is true.
   pgroup=top.pgroup: Particle group to add particles too
   """
+
+  # --- Check if this is a new species
+  if js+1 > top.ns: setnspecies(js+1,pgroup)
 
   # --- Get length of arrays, set to one for scalars
   try:              lenx = len(x)
