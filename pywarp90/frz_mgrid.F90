@@ -4502,7 +4502,7 @@ IF(l_jump) then
  call solve_multigridrz_jump(grid,accuracy,l_for_timing)
  return
 END if
-if (electrontemperature > 0) then
+if (maxval(electrontemperature) > 0) then
  call multigridberzf(grid,accuracy)
  return
 endif

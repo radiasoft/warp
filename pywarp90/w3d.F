@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.254 $, $Date: 2006/05/26 19:07:42 $
+c@(#) File W3D.F, version $Revision: 3.255 $, $Date: 2006/06/12 22:23:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -836,11 +836,11 @@ c  do a half-advance to bring v to t.l. it
       endif
 
 c  Finalize the moments calculation and do other diagnostics.
-        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
-     &                1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-        call getlabwn()
-        call rhodia3d
+      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &              0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &              1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+      call getlabwn()
+      call rhodia3d
 
 c  Finish transverse space-charge limited injection: change ins and nps.
 c  This is done here so the newly injected particles don't go through
@@ -7854,7 +7854,7 @@ c         --- General capacity matrix solver
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
-        if (electrontemperature == 0) then
+        if (minval(electrontemperature) == 0) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
      &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
@@ -7863,9 +7863,7 @@ c         --- General capacity matrix solver
           call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid,
-     &                        iondensity,electrontemperature,plasmapotential,
-     &                        electrondensitymaxscale)
+     &                        xmmin,ymmin,zmmin,zbeam,zgrid)
         endif
 
 #ifdef MPIPARALLEL
@@ -7909,9 +7907,7 @@ c         --- Chombo AMR  full-multigrid solver
         call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                      rstar,linbend,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                      xmmin,ymmin,zmmin,zbeam,zgrid,
-     &                      iondensity,electrontemperature,plasmapotential,
-     &                      electrondensitymaxscale)
+     &                      xmmin,ymmin,zmmin,zbeam,zgrid)
 
       endif
 

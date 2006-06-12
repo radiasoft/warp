@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.17 $, $Date: 2006/01/06 00:38:50 $
+c version $Revision: 1.18 $, $Date: 2006/06/12 22:23:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -13,13 +13,12 @@ c=============================================================================
       subroutine multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                          rstar,linbend,
      &                          bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                          xmmin,ymmin,zmmin,zbeam,zgrid,
-     &                          iondensity,electrontemperature,plasmapotential,
-     &                          electrondensitymaxscale)
+     &                          xmmin,ymmin,zmmin,zbeam,zgrid)
       use GlobalVars
       use PSOR3d
       use Conductor3d
       use Multigrid3d
+      use BoltzmannElectrons
       use Parallel
 c     use ifcore
       integer(ISZ):: iwhich
@@ -32,8 +31,6 @@ c     use ifcore
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c     call for_set_fpe(FPE_M_TRAP_INV)
 
@@ -62,9 +59,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                        downpasses,uppasses,
      &                        lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                        gridmode,conductors,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        iondensity,electrontemperature,plasmapotential,
-     &                        electrondensitymaxscale)
+     &                        my_index,nslaves,izfsslave,nzfsslave)
 
       return
       end
@@ -77,12 +72,11 @@ c=============================================================================
      &                              downpasses,uppasses,
      &                              lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                              gridmode,conductors,
-     &                              my_index,nslaves,izfsslave,nzfsslave,
-     &                        iondensity,electrontemperature,plasmapotential,
-     &                        electrondensitymaxscale)
+     &                              my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersf3d
       use ConductorTypemodule
       use Constant
+      use BoltzmannElectrons
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -101,8 +95,6 @@ c=============================================================================
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
 c mesh. The fieldsolver allows internal conductors with subgrid scale
@@ -116,6 +108,7 @@ c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
 
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
+      integer(ISZ),allocatable:: regionid(:,:,:)
       real(kind=8),allocatable:: phisave(:,:,:)
       real(kind=8):: bendx((nx+1)*(ny+1))
       character(72):: errline
@@ -145,7 +138,6 @@ c     --- converted and expanded for the multigrid solver.
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)
 
-
 !$OMP PARALLEL
 !$OMP&PRIVATE(ii,i,k,rs,x,r,ix,iy,iz)
 
@@ -159,6 +151,11 @@ c     --- Prepare rho by dividing it by -eps0
         stop
       endif
 
+c     --- Create and setup array which holds the BE region ids
+      allocate(regionid(0:nx,0:ny,0:nz))
+      call setupregionidsbe3d(regionid,nx,ny,nz,dx,dy,dz,
+     &                        xmmin,ymmin,zmmin)
+
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
       mgiters = 0
@@ -170,12 +167,11 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- Do one vcycle.
-        call vcyclebe(0,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+        call vcyclebe(0,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,regionid,
+     &                xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
-     &                my_index,nslaves,izfsslave,nzfsslave,
-     &                iondensity,electrontemperature,plasmapotential,
-     &                electrondensitymaxscale)
+     &                my_index,nslaves,izfsslave,nzfsslave)
 
 c       --- Calculate the change in phi.
 
@@ -219,6 +215,7 @@ c     --- Make a print out.
       call remark(errline)
 
       deallocate(phisave)
+      deallocate(regionid)
 
 c     --- Undo the change of rho
       rho = -rho*eps0
@@ -232,18 +229,20 @@ c     --- Undo the change of rho
       end
 c=============================================================================
       RECURSIVE subroutine vcyclebe(mglevel,nx,ny,nz,nzfull,dx,dy,dz,
-     &                              phi,rho,rstar,linbend,bendx,globalbounds,
-     &                              mgparam,
+     &                              phi,rho,regionid,xmmin,ymmin,zmmin,
+     &                              rstar,linbend,bendx,
+     $                              globalbounds,mgparam,
      &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors,
-     &                              my_index,nslaves,izfsslave,nzfsslave,
-     &                          iondensity,electrontemperature,plasmapotential,
-     &                          electrondensitymaxscale)
+     &                              my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
+      use BoltzmannElectrons
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
+      real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
       logical(ISZ):: linbend
@@ -255,8 +254,6 @@ c=============================================================================
       integer(ISZ):: icndbndy
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
@@ -265,6 +262,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8),allocatable:: lphi(:,:,:),lphicoarse(:,:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:,:)
+      integer(ISZ),allocatable:: regionidcoarse(:,:,:)
       integer(ISZ):: i,iszone=1
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
@@ -300,15 +298,13 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial relaxation iterations
       do i=1,downpasses
-        call relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+        call relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,regionid,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,bendx,
      &                 localbounds,mgparam,
      &                 lcndbndy,icndbndy,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
-     &                 whosendingright,izsendingright,
-     &                 iondensity,electrontemperature,plasmapotential,
-     &                 electrondensitymaxscale)
+     &                 whosendingright,izsendingright)
       enddo
 
 c     --- Check if this is the finest level. If so, then don't do any further
@@ -397,6 +393,19 @@ c       --- Alloate new work space
           stop
         endif
 
+c     --- Create and setup array which holds the BE region ids
+        allocate(regionidcoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcyclebe: allocation error ",allocerror,
+     &           ": could not allocate regionidcoarse to shape ",
+     &           nxcoarse,nycoarse,nzcoarse
+          stop
+        endif
+        call setupregionidsbe3d(regionidcoarse,nxcoarse,nycoarse,nzcoarse,
+     &                          dxcoarse,dycoarse,dzcoarse,
+     &                          xmmin,ymmin,zmmin)
+
 c       --- Calculate the coarsened phi
         call copyphiwithguardcells(nx,ny,nz,nzfull,phi,lphi,localbounds,
      &                             my_index,nslaves,izfsslave,nzfsslave,
@@ -412,11 +421,9 @@ c       --- Calculate the coarsened phi
      &                    phicoarse,mglevel+1)
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,
+        call Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
      &              mglevel,localbounds,mgparam,
      &              lcndbndy,icndbndy,conductors,
-     &              iondensity,electrontemperature,plasmapotential,
-     &              electrondensitymaxscale,
      &              my_index,nslaves,izfsslave,nzfsslave,
      &              whosendingleft,izsendingleft,
      &              whosendingright,izsendingright)
@@ -445,11 +452,9 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphibe(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &              dxcoarsesqi,dycoarsesqi,dzcoarsesqi,
-     &              phicoarse,lphicoarse,
+     &              phicoarse,lphicoarse,regionidcoarse,
      &              mglevel+1,localbounds,mgparam,
      &              lcndbndy,icndbndy,conductors,
-     &              iondensity,electrontemperature,plasmapotential,
-     &              electrondensitymaxscale,
      &              my_index,nslaves,izfsslavec,nzfsslavec,
      &              whosendingleftc,izsendingleftc,
      &              whosendingrightc,izsendingrightc)
@@ -474,12 +479,11 @@ c       --- the corrections after relaxations.
 c       --- Continue at the next coarsest level.
         call vcyclebe(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &                dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
+     &                regionidcoarse,xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,globalbounds,mgparam,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
-     &                my_index,nslaves,izfsslavec,nzfsslavec,
-     &                iondensity,electrontemperature,plasmapotential,
-     &                electrondensitymaxscale)
+     &                my_index,nslaves,izfsslavec,nzfsslavec)
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
@@ -490,23 +494,25 @@ c       --- Add in the correction term.
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
      &                  whosendingright,izsendingright)
+        call clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
+
 
         deallocate(phicoarse,rhocoarse)
+        deallocate(regionidcoarse)
 
       endif
 
 c     --- Do final relaxation passes.
       do i=1,uppasses
-        call relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+        call relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,regionid,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,bendx,
      &                 localbounds,mgparam,
      &                 lcndbndy,icndbndy,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
-     &                 whosendingright,izsendingright,
-     &                 iondensity,electrontemperature,plasmapotential,
-     &                 electrondensitymaxscale)
+     &                 whosendingright,izsendingright)
       enddo
+      call clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
 
       return
       end
@@ -766,18 +772,19 @@ c     --- Set the loop limits, including edges when appropriate.
       return
       end
 c=============================================================================
-      subroutine relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+      subroutine relaxbe3d(mglevel,nx,ny,nz,nzfull,phi,rho,regionid,rstar,
      &                     dxsqi,dysqi,dzsqi,linbend,bendx,bounds,
      &                     mgparam,lcndbndy,icndbndy,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
-     &                     whosendingright,izsendingright,
-     &                     iondensity,electrontemperature,plasmapotential,
-     &                     electrondensitymaxscale)
+     &                     whosendingright,izsendingright)
       use Constant
       use ConductorTypemodule
+      use BoltzmannElectrons
       integer(ISZ):: mglevel,nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
+      real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: linbend
@@ -790,8 +797,6 @@ c=============================================================================
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.  It makes calls to the routines which specify internal
@@ -816,7 +821,7 @@ c
 c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
       integer(ISZ):: parity,s_parity,e_parity
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ix,iy,iz,id
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
       integer(ISZ):: ix1
@@ -899,14 +904,18 @@ c       --- grid refinement.
               if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
               if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
-              if (iondensity .ne. 0.) then
-                expo = (phi(ix,iy,iz) - plasmapotential)/electrontemperature
-                expo = min(expo,log(electrondensitymaxscale))
-                rhoe = iondensity*exp(expo)
-              else
-                rhoe = 0.
+              rhoe = 0.
+              denom = -2.*(dxsqi+dysqi+dzsqi)
+              if (regionid(ix,iy,iz) > 0) then
+                id = regionid(ix,iy,iz)
+                if (iondensity(id) .ne. 0. .and.
+     &              electrontemperature(id) .ne. 0) then
+                  expo = (phi(ix,iy,iz) - plasmapotential(id))/electrontemperature(id)
+                  expo = min(expo,log(electrondensitymaxscale(id)))
+                  rhoe = iondensity(id)*exp(expo)
+                  denom = denom - rhoe/eps0/electrontemperature(id)
+                endif
               endif
-              denom = -2.*(dxsqi+dysqi+dzsqi) - rhoe/eps0/electrontemperature
               Lphi =  (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
      &             +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
      &             +  (phi(ix  ,iy  ,izm1)+phi(ix  ,iy  ,izp1))*dzsqi
@@ -921,18 +930,14 @@ c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
           if (parity == 0) then
-           call condbndymgbe(conductors%evensubgrid,nx,ny,nz,phi,rho,
+           call condbndymgbe(conductors%evensubgrid,nx,ny,nz,phi,rho,regionid,
      &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
-     &                       mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential,
-     &                       electrondensitymaxscale)
+     &                       mglevel,icndbndy)
           endif
           if (parity == 1) then
-           call condbndymgbe(conductors%oddsubgrid,nx,ny,nz,phi,rho,
+           call condbndymgbe(conductors%oddsubgrid,nx,ny,nz,phi,rho,regionid,
      &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
-     &                       mglevel,icndbndy,
-     &                       iondensity,electrontemperature,plasmapotential,
-     &                       electrondensitymaxscale)
+     &                       mglevel,icndbndy)
           endif
         endif
 
@@ -1019,19 +1024,18 @@ c Set data at conductor points to zero.
       return
       end
 c=============================================================================
-      subroutine condbndymgbe(subgrid,nx,ny,nz,phi,rho,dxsqi,dysqi,dzsqi,
-     &                        mgparam,bounds,mglevel,icndbndy,
-     &                        iondensity,electrontemperature,plasmapotential,
-     &                        electrondensitymaxscale)
+      subroutine condbndymgbe(subgrid,nx,ny,nz,phi,rho,regionid,
+     &                        dxsqi,dysqi,dzsqi,
+     &                        mgparam,bounds,mglevel,icndbndy)
       use Constant
       use ConductorSubGridTypemodule
+      use BoltzmannElectrons
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1055,7 +1059,7 @@ c points on the boundary.
       real(kind=8):: delx,dely,delz,Cx,Cy,Cz,ppp
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ix,iy,iz,id
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
       dels => subgrid%dels
@@ -1155,15 +1159,17 @@ c       --- calculate the new phi based on the boundary conditions
         delxsqi = dxsqi/delx
         delysqi = dysqi/dely
         delzsqi = dzsqi/delz
-        if (iondensity .ne. 0.) then
-          expo = (pijk - plasmapotential)/electrontemperature
-          expo = min(expo,log(electrondensitymaxscale))
-          rhoe = iondensity*exp(expo)
-        else
-          rhoe = 0.
-        endif
+        rhoe = 0.
         denom = -(Cx*delxsqi+Cy*delysqi+Cz*delzsqi)
-     &          -rhoe/eps0/electrontemperature
+        if (regionid(ix,iy,iz) > 0) then
+          id = regionid(ix,iy,iz)
+          if (iondensity(id) .ne. 0. .and. electrontemperature(id) .ne. 0) then
+            expo = (pijk - plasmapotential(id))/electrontemperature(id)
+            expo = min(expo,log(electrondensitymaxscale(id)))
+            rhoe = iondensity(id)*exp(expo)
+            denom = denom - rhoe/eps0/electrontemperature(id)
+          endif
+        endif
         Lphi = (pxm+pxp)*delxsqi + (pym+pyp)*delysqi + (pzm+pzp)*delzsqi
      &         -rhoe/eps0
         phi(ix,iy,iz) = pijk - mgparam*(Lphi*ppp - rho(ix,iy,iz))/denom
@@ -1173,27 +1179,25 @@ c       --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,
-     &                      mglevel,bounds,mgparam,
-     &                      lcndbndy,icndbndy,conductors,
-     &                      iondensity,electrontemperature,plasmapotential,
-     &                      electrondensitymaxscale,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
+      subroutine Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
+     &                  mglevel,bounds,mgparam,
+     &                  lcndbndy,icndbndy,conductors,
+     &                  my_index,nslaves,izfsslave,nzfsslave,
+     &                  whosendingleft,izsendingleft,
+     &                  whosendingright,izsendingright)
       use Constant
       use ConductorTypemodule
+      use BoltzmannElectrons
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: lphi(-1:nx+1,-1:ny+1,-3:nz+3)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -1205,7 +1209,7 @@ c include the source term. This will not go to zero when convergence
 c is reached.
 
       real(kind=8):: rhoe,expo
-      integer(ISZ):: ix,iy,iz,ic
+      integer(ISZ):: ix,iy,iz,ic,id
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
 
@@ -1246,12 +1250,14 @@ c     --- Calculate the Lphi.
             if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
             if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
-            if (iondensity .ne. 0.) then
-              expo = (phi(ix,iy,iz) - plasmapotential)/electrontemperature
-              expo = min(expo,log(electrondensitymaxscale))
-              rhoe = iondensity*exp(expo)
-            else
-              rhoe = 0.
+            rhoe = 0.
+            if (regionid(ix,iy,iz) > 0) then
+              if (iondensity(id) .ne. 0. .and.
+     &            electrontemperature(id) .ne. 0) then
+                expo = (phi(ix,iy,iz) - plasmapotential(id))/electrontemperature(id)
+                expo = min(expo,log(electrondensitymaxscale(id)))
+                rhoe = iondensity(id)*exp(expo)
+              endif
             endif
             lphi(ix,iy,iz) = (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
      &                    +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
@@ -1268,14 +1274,10 @@ c     --- Zero the Lphi inside conductors.
 
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
-        call condbndylphibe(conductors%evensubgrid,nx,ny,nz,phi,lphi,
-     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                     iondensity,electrontemperature,plasmapotential,
-     &                     electrondensitymaxscale)
-        call condbndylphibe(conductors%oddsubgrid,nx,ny,nz,phi,lphi,
-     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy,
-     &                     iondensity,electrontemperature,plasmapotential,
-     &                     electrondensitymaxscale)
+        call condbndylphibe(conductors%evensubgrid,nx,ny,nz,phi,lphi,regionid,
+     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
+        call condbndylphibe(conductors%oddsubgrid,nx,ny,nz,phi,lphi,regionid,
+     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
       endif
 
 c     --- Transverse boundaries
@@ -1326,19 +1328,17 @@ c    &                            whosendingleft,whosendingright)
       return
       end
 c=============================================================================
-      subroutine condbndylphibe(subgrid,nx,ny,nz,phi,lphi,dxsqi,dysqi,dzsqi,
-     &                         bounds,mglevel,icndbndy,
-     &                         iondensity,electrontemperature,plasmapotential,
-     &                         electrondensitymaxscale)
+      subroutine condbndylphibe(subgrid,nx,ny,nz,phi,lphi,regionid,
+     &                          dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
       use Constant
       use ConductorSubGridTypemodule
+      use BoltzmannElectrons
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), lphi(-1:nx+1,-1:ny+1,-1:nz+1)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi
       integer(ISZ):: bounds(0:5),icndbndy
-      real(kind=8):: iondensity,electrontemperature,plasmapotential
-      real(kind=8):: electrondensitymaxscale
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1362,7 +1362,7 @@ c points on the boundary.
       real(kind=8):: delx,dely,delz
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ix,iy,iz,id
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
       dels => subgrid%dels
@@ -1452,12 +1452,14 @@ c       --- calculate the new phi based on the boundary conditions
         delxsqi = dxsqi/delx
         delysqi = dysqi/dely
         delzsqi = dzsqi/delz
-        if (iondensity .ne. 0.) then
-          expo = (pijk - plasmapotential)/electrontemperature
-          expo = min(expo,log(electrondensitymaxscale))
-          rhoe = iondensity*exp(expo)
-        else
-          rhoe = 0.
+        rhoe = 0.
+        if (regionid(ix,iy,iz) > 0) then
+          id = regionid(ix,iy,iz)
+          if (iondensity(id) .ne. 0. .and. electrontemperature(id) .ne. 0) then
+            expo = (pijk - plasmapotential(id))/electrontemperature(id)
+            expo = min(expo,log(electrondensitymaxscale(id)))
+            rhoe = iondensity(id)*exp(expo)
+          endif
         endif
         lphi(ix,iy,iz) = (+ (pxm+pxp)*delxsqi
      &                    + (pym+pyp)*delysqi
@@ -1580,4 +1582,58 @@ c     --- Longitudinal boundaries
       return
       end
 c=============================================================================
+      subroutine clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
+      use BoltzmannElectrons
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
+
+      integer(ISZ):: ix,iy,iz,id
+      real(kind=8):: expo,phimax,rhomax
+
+c     --- Clamp phi to phimax. The phimax is calculated assuming that
+c     --- the max electron density will be the max of the iondensity and
+c     --- and the ion particle density (rho).
+      do iz=0,nz
+        do iy=0,ny
+          do ix=0,nx
+            if (regionid(ix,iy,iz) > 0) then
+              id = regionid(ix,iy,iz)
+              if (iondensity(id) == 0. .and. electrontemperature(id) .ne. 0)
+     &          cycle
+              rhomax = max(1.,-rho(ix,iy,iz)/iondensity(id))
+              phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
+              if (phi(ix,iy,iz) > phimax) phi(ix,iy,iz) = phimax
+            endif
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine setupregionidsbe3d(regionid,nx,ny,nz,dx,dy,dz,
+     &                              xmmin,ymmin,zmmin)
+      use BoltzmannElectrons
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: regionid(0:nx,0:ny,0:nz)
+      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin
+
+c Sets id of regions where the Boltzmann-electron distribution is used.
+
+      integer(ISZ):: id,ixmin,ixmax,iymin,iymax,izmin,izmax,ix,iy,iz
+
+      regionid = 0
+      do id=1,nberegions
+        ixmin = (max(0.,xbemin(id)) - xmmin)/dx
+        ixmax = (min(nx*dx,xbemax(id)) - xmmin)/dx
+        iymin = (max(0.,ybemin(id)) - ymmin)/dy
+        iymax = (min(ny*dy,ybemax(id)) - ymmin)/dy
+        izmin = (max(0.,zbemin(id)) - zmmin)/dz
+        izmax = (min(nz*dz,zbemax(id)) - zmmin)/dz
+        regionid(ixmin:ixmax,iymin:iymax,izmin:izmax) = id
+      enddo
+
+      return
+      end
 c=============================================================================

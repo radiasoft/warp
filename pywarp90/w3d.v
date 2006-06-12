@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.214 $, $Date: 2006/05/20 01:13:45 $
+#@(#) File W3D.V, version $Revision: 3.215 $, $Date: 2006/06/12 22:23:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.214 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.215 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -364,40 +364,39 @@ afsapi(:,:) _real
 
 *********** BoltzmannElectrons dump:
 # Parameters controlling the Boltzmann-Electrons.
-iondensity          real      # Base ion charge density, multiplier on Boltzmann
-                              # exponential for field solvers including
-                              # Boltzmann electrons
-electrontemperature real [eV] # Electron temperature in units of eV
-                              # for field solvers including Boltzmann electrons
-plasmapotential     real      # Potential of plasma
-                              # for field solvers including Boltzmann electrons
-electrondensitymaxscale real /2./ # Limit of electron density relative to
-                                  # iondensity. This should be large enough
-                                  # to not affect the solution, but small
-                                  # enough to prevent divergences during
-                                  # field solve.
-xbemin real /-LARGEPOS/ [m] # Minimum of the extent in x over which Boltzmann
-                            # electrons are included
-xbemax real /+LARGEPOS/ [m] # Maximum of the extent in x over which Boltzmann
-                            # electrons are included
-ybemin real /-LARGEPOS/ [m] # Minimum of the extent in y over which Boltzmann
-                            # electrons are included
-ybemax real /+LARGEPOS/ [m] # Maximum of the extent in y over which Boltzmann
-                            # electrons are included
-zbemin real /-LARGEPOS/ [m] # Minimum of the extent in z over which Boltzmann
-                            # electrons are included
-zbemax real /+LARGEPOS/ [m] # Maximum of the extent in z over which Boltzmann
-                            # electrons are included
-luseparticleldensity logical /.false./ # When true, use the density from the
-                                       # particles rather than the specified
-                                       # constant iondensity.
-                                       # Only applies now to the RZ solver.
-lclampphitophimax logical /.false./ # When true, the potential is clamped to
-                                    # phimax, which is calculated assuming that
-                                    # the max electron density is the max of
-                                    # iondensity and the density from ion
-                                    # particles.
-                                    # Only applies now to the RZ solver.
+nberegions       integer /1/
+     # Number of regions where Boltzmann-Electrons are
+iondensity(nberegions)          _real  
+     # Base ion charge density, multiplier on Boltzmann
+     # exponential for field solvers including Boltzmann electrons
+electrontemperature(nberegions) _real [eV]
+     # Electron temperature in units of eV
+     # for field solvers including Boltzmann electrons
+plasmapotential(nberegions)     _real     
+     # Potential of plasma for field solvers including Boltzmann electrons
+electrondensitymaxscale(nberegions) _real /2./
+     # Limit of electron density relative to iondensity. This should be large
+     # enough to not affect the solution, but small enough to prevent
+     # divergences during field solve.
+xbemin(nberegions) _real /-LARGEPOS/ [m]
+     # Minimum of the extent in x over which Boltzmann electrons are included
+xbemax(nberegions) _real /+LARGEPOS/ [m]
+     # Maximum of the extent in x over which Boltzmann electrons are included
+ybemin(nberegions) _real /-LARGEPOS/ [m]
+     # Minimum of the extent in y over which Boltzmann electrons are included
+ybemax(nberegions) _real /+LARGEPOS/ [m]
+     # Maximum of the extent in y over which Boltzmann electrons are included
+zbemin(nberegions) _real /-LARGEPOS/ [m]
+     # Minimum of the extent in z over which Boltzmann electrons are included
+zbemax(nberegions) _real /+LARGEPOS/ [m]
+     # Maximum of the extent in z over which Boltzmann electrons are included
+luseparticleldensity(nberegions) _logical /0/
+     # When true, use the density from the particles rather than the specified
+     # constant iondensity. Only applies now to the RZ solver.
+lclampphitophimax(nberegions) _logical /0/
+     # When true, the potential is clamped to phimax, which is calculated
+     # assuming that the max electron density is the max of iondensity and
+     # the density from ion particles. Only applies now to the RZ solver.
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
