@@ -156,12 +156,16 @@ class Species:
      
   def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
-      if top.pgroup.sm[0]<>0.:
+      if top.pgroup.ns==0:
+        condition = 1
+      else:
+        condition = top.pgroup.sm[0]<>0.
+      if condition:
         top.ns+=1
         top.pgroup.ns+=1
         gchange('*')
         setuppgroup(top.pgroup)
-      js=top.ns-1
+      js=top.pgroup.ns-1
       top.pgroup.sid[js] = js
     self.jslist.append(js)
     type=self.type
@@ -176,6 +180,7 @@ class Species:
         top.pgroup.sq[js]=echarge*charge_state
       else:
         top.pgroup.sq[js]=charge
+    top.zion_s[js]=nint(top.pgroup.sq[js]/echarge)
     # set mass
     try:
       top.pgroup.sm[js]=type.mass
@@ -245,7 +250,7 @@ class Species:
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
     vz=RandomArray.normal(vzmean,vthz,np)
-    self.addpart(x,y,z,vx,vy,vz,js)
+    self.addpart(x,y,z,vx,vy,vz,js=js)
     
   def getn(self,**kw):
     return getn(jslist=self.jslist,**kw)
