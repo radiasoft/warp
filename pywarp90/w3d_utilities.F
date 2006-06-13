@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.7 $, $Date: 2006/05/23 07:07:36 $
+c@(#) File w3d_utilities.F, version $Revision: 1.8 $, $Date: 2006/06/13 01:43:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -503,6 +503,95 @@ c     --- Rearrange the particles
       if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
      &                                             wtime() - substarttime
 !$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      logical(ISZ) function arecoordinatesconsist(nx,dx,xmin,xmax,dxi)
+      integer(ISZ):: nx
+      real(kind=8):: dx,xmin,xmax,dxi
+
+c For the Gridndtype (or any grid coordinate specifications), makes sure
+c that the input is consistent. At most one can be unspecified. If all are
+c set, the values must be consistent. If one is not specified, it is
+c calculated. The grid cell size inverses are always calculated
+
+      integer(ISZ):: defaultcount
+
+      defaultcount = 0
+      if (nx == -1) defaultcount = defaultcount + 1
+      if (dx == LARGEPOS) defaultcount = defaultcount + 1
+      if (xmin == +LARGEPOS) defaultcount = defaultcount + 1
+      if (xmax == -LARGEPOS) defaultcount = defaultcount + 1
+      print*,nx,dx,xmin,xmax,dxi,defaultcount
+
+      if (defaultcount > 1) then
+        arecoordinatesconsist = .false.
+        return
+      else if (defaultcount == 0) then
+        arecoordinatesconsist = (nx == nint((xmax - xmin)/dx))
+        return
+      else
+        if (nx == -1) nx = nint((xmax - xmin)/dx)
+        if (dx == LARGEPOS) dx = (xmax - xmin)/nx
+        if (xmin == +LARGEPOS) xmin = xmax - nx*dx
+        if (xmax == -LARGEPOS) xmax = xmin + nx*dx
+        dxi = 1./dx
+        arecoordinatesconsist = .true.
+        return
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine setupgrid3dtype(grid,check)
+      use Grid3dtypemodule
+      type(Grid3dtype):: grid
+      logical(ISZ):: check
+
+c This checks if the input coordinates are consistent, and if so, allocates
+c array.
+
+      logical(ISZ):: arecoordinatesconsist
+
+      check = arecoordinatesconsist(grid%nx,grid%dx,grid%xmin,grid%xmax,
+     &                              grid%dxi)
+      print*,"X ",check
+      if (.not. check) return
+      check = arecoordinatesconsist(grid%ny,grid%dy,grid%ymin,grid%ymax,
+     &                              grid%dyi)
+      print*,"Y ",check
+      if (.not. check) return
+      check = arecoordinatesconsist(grid%nz,grid%dz,grid%zmin,grid%zmax,
+     &                              grid%dzi)
+      print*,"Z ",check
+      if (.not. check) return
+
+      call Grid3dtypechange(grid)
+
+      return
+      end
+c=============================================================================
+      subroutine setupgrid2dtype(grid,check)
+      use Grid2dtypemodule
+      type(Grid2dtype):: grid
+      logical(ISZ):: check
+
+c This checks if the input coordinates are consistent, and if so, allocates
+c array.
+
+      logical(ISZ):: arecoordinatesconsist
+
+      check = arecoordinatesconsist(grid%nx,grid%dx,grid%xmin,grid%xmax,
+     &                              grid%dxi)
+      if (.not. check) return
+      check = arecoordinatesconsist(grid%ny,grid%dy,grid%ymin,grid%ymax,
+     &                              grid%dyi)
+      if (.not. check) return
+
+      call Grid2dtypechange(grid)
 
       return
       end

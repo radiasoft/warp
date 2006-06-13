@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.13 $, $Date: 2006/06/12 22:23:30 $
+c version $Revision: 1.14 $, $Date: 2006/06/13 01:43:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -17,15 +17,18 @@ c=============================================================================
       use Conductor3d
       use Multigrid3d
       use InGen3d, only:solvergeom,RZgeom
+      use Constant, only:eps0
       use Parallel
 c     use ifcore
       type(GRIDtype):: grid
       real(kind=8):: accuracy
 c     integer(4):: fff
 
-      integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax
+      integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax,id
       logical(ISZ):: lrz
       integer(ISZ):: nlevels
+      real(kind=8):: wr,wz
+      logical(ISZ):: lanyuseparticleldensity,check
 c     call for_set_fpe(FPE_M_TRAP_INV)
 c     fff = for_set_fpe(15_4)
 
@@ -34,6 +37,56 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(1) = grid%ixrbnd
       bounds(4) = grid%izlbnd
       bounds(5) = grid%izrbnd
+
+c     --- Check for luseparticleldensity
+      lanyuseparticleldensity = .false.
+      do id=1,nberegions
+        if (luseparticleldensity(id)) then
+          lanyuseparticleldensity = .true.
+          liondensitygrid2d(id) = .true.
+c         --- Find the extrema of all of the regions
+          iondensitygrid2d%xmin = min(xbemin(id),iondensitygrid2d%xmin)
+          iondensitygrid2d%xmax = max(xbemax(id),iondensitygrid2d%xmax)
+          iondensitygrid2d%ymin = min(zbemin(id),iondensitygrid2d%ymin)
+          iondensitygrid2d%ymax = max(zbemax(id),iondensitygrid2d%ymax)
+c         --- Make sure that are within the grid bounds
+          iondensitygrid2d%xmin = max(grid%rmin,iondensitygrid2d%xmin)
+          iondensitygrid2d%xmax = min(grid%rmax,iondensitygrid2d%xmax)
+          iondensitygrid2d%ymin = max(grid%zmin,iondensitygrid2d%ymin)
+          iondensitygrid2d%ymax = min(grid%zmax,iondensitygrid2d%ymax)
+        endif
+      enddo
+      if (lanyuseparticleldensity) then
+c       --- Force the min's and max's to coincide with field grid values
+c       --- Note that the min's and max's are relative to the field grid,
+c       --- so for example, the location if xmin in the lab frame is
+c       --- iondensitygrid2d%xmin + grid%rmin. This is done so that
+c       --- grid%rmin etc are not needed when iondensitygrid2d is used.
+        wr = floor((iondensitygrid2d%xmin - grid%rmin)/grid%dr)
+        iondensitygrid2d%xmin = grid%dr*nint(wr)
+        wz = floor((iondensitygrid2d%ymin - grid%zmin)/grid%dz)
+        iondensitygrid2d%ymin = grid%dz*nint(wz)
+        wr = ceiling((iondensitygrid2d%xmax - grid%rmin)/grid%dr)
+        iondensitygrid2d%xmax = grid%dr*nint(wr)
+        wz = ceiling((iondensitygrid2d%ymax - grid%zmin)/grid%dz)
+        iondensitygrid2d%ymax = grid%dz*nint(wz)
+c       --- Now dx and dz can be set.
+        iondensitygrid2d%dx = grid%dr
+        iondensitygrid2d%dy = grid%dz
+c       --- This will calculate nx and nz and make sure the input is OK.
+        call setupgrid2dtype(iondensitygrid2d,check)
+        if (.not. check) then
+          print*,"ERROR: luseparticleldensity is being used but the input data is inconsistent"
+          stop
+        endif
+c       --- Now, copy the rho data into the iondensitygrid2d grid
+        ixbemin = iondensitygrid2d%xmin/grid%dr
+        ixbemax = iondensitygrid2d%xmax/grid%dr
+        izbemin = iondensitygrid2d%ymin/grid%dz
+        izbemax = iondensitygrid2d%ymax/grid%dz
+        iondensitygrid2d%grid(:,:) = grid%rho(ixbemin:ixbemax,izbemin:izbemax)
+        iondensitygrid2d%grid(:,:) = iondensitygrid2d%grid(:,:)/eps0
+      endif
 
 c     --- Set flag for whether to do cylindrical or Cartesian.
       lrz = (solvergeom == RZgeom)
@@ -257,7 +310,7 @@ c     phisave = phi
 c     --- Do initial relaxation iterations
       do i=1,downpasses
         call relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
-     &                 dxsqi,dzsqi,xminodx,
+     &                 dxsqi,dzsqi,dx,dz,xminodx,
      &                 bounds,mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
@@ -334,7 +387,7 @@ c       --- Calculate the coarsened phi
      &                               phicoarse,bounds)
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,xminodx,phi,Lphi,regionid,
+        call Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,phi,Lphi,regionid,
      &                mglevel,bounds,mgparam,
      &                lrz,lcndbndy,icndbndy,bnd)
         Lphi(0:nx,0:nz) = rho - Lphi(0:nx,0:nz)
@@ -348,7 +401,7 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphiberz(nxcoarse,nzcoarse,nzfullcoarse,
-     &                dxcoarsesqi,dzcoarsesqi,xminodxcoarse,
+     &                dxcoarsesqi,dzcoarsesqi,dxcoarse,dzcoarse,xminodxcoarse,
      &                phicoarse,Lphicoarse,regionidcoarse,
      &                mglevel+1,bounds,mgparam,
      &                lrz,lcndbndy,icndbndy,bnd%next)
@@ -380,7 +433,7 @@ c       --- Add in the correction term.
         call expandberz(nx,nz,nzfull,phi,
      &                  nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,lzoffset)
-        call clampphitophimaxberz(nx,nz,phi,rho,regionid)
+        call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
 c       call applytransversebcberz(nx,nz,phi,bounds)
 c       call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
 
@@ -395,12 +448,12 @@ c       call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
 c     --- Do final relaxation passes.
       do i=1,uppasses
         call relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
-     &                 dxsqi,dzsqi,xminodx,
+     &                 dxsqi,dzsqi,dx,dz,xminodx,
      &                 bounds,mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
-        call clampphitophimaxberz(nx,nz,phi,rho,regionid)
+        call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
 c       call applytransversebcberz(nx,nz,phi,bounds)
 c       call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
       enddo
@@ -572,7 +625,7 @@ c     --- Set the loop limits, including edges when appropriate.
       end
 c=============================================================================
       subroutine relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
-     &                     dxsqi,dzsqi,xminodx,bounds,
+     &                     dxsqi,dzsqi,dx,dz,xminodx,bounds,
      &                     mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -583,7 +636,7 @@ c=============================================================================
       integer(ISZ):: mglevel,nx,nz,nzfull
       real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
       integer(ISZ):: regionid(0:nx,0:nz)
-      real(kind=8):: dxsqi,dzsqi,xminodx
+      real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
       logical(ISZ):: lrz,lcndbndy
@@ -609,12 +662,13 @@ c are held constant, when 1, they have zero normal derivative, and when 2, the
 c boundaries are periodic.
 
       integer(ISZ):: parity,s_parity,e_parity
-      integer(ISZ):: ix,iz
+      integer(ISZ):: ix,iz,ixx,izz
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       integer(ISZ):: ix1
       integer(ISZ):: ic,ii,id
       real(kind=8):: rr
       real(kind=8):: rhoe,rhoeote,denom,Lphi,expo
+      real(kind=8):: iondensitytmp
       type(CONDtype):: cnd
 
 c     --- Put desired potential onto conductors in phi array.
@@ -668,11 +722,12 @@ c       --- grid refinement.
               rhoeote = 0.
               if (regionid(ix,iz) > 0) then
                 id = regionid(ix,iz)
-                if (iondensity(id) .ne. 0. .and.
+                call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+                if (iondensitytmp .ne. 0. .and.
      &              electrontemperature(id) .ne. 0) then
                   expo=(phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
                   expo = min(expo,log(electrondensitymaxscale(id)))
-                  rhoe = iondensity(id)*exp(expo)
+                  rhoe = iondensitytmp*exp(expo)
                   rhoeote = rhoe/electrontemperature(id)
                 endif
               endif
@@ -704,11 +759,12 @@ c       --- grid refinement.
               denom = -2.*(dxsqi+dzsqi)
               if (regionid(ix,iz) > 0) then
                 id = regionid(ix,iz)
-                if (iondensity(id) .ne. 0. .and.
+                call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+                if (iondensitytmp .ne. 0. .and.
      &              electrontemperature(id) .ne. 0) then
                   expo=(phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
                   expo = min(expo,log(electrondensitymaxscale(id)))
-                  rhoe = iondensity(id)*exp(expo)
+                  rhoe = iondensitytmp*exp(expo)
                   denom = denom - rhoe/electrontemperature(id)
                 endif
               endif
@@ -726,7 +782,7 @@ c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
          call condbndymgberz(bnd,parity,nx,nz,phi,rho,regionid,
-     &                       dxsqi,dzsqi,xminodx,mgparam,bounds,
+     &                       dxsqi,dzsqi,dx,dz,xminodx,mgparam,bounds,
      &                       mglevel,lrz,icndbndy)
         endif
 
@@ -801,7 +857,7 @@ c Set data at conductor points to zero.
       end
 c=============================================================================
       subroutine condbndymgberz(bnd,parity,nx,nz,phi,rho,regionid,
-     &                          dxsqi,dzsqi,xminodx,
+     &                          dxsqi,dzsqi,dx,dz,xminodx,
      &                          mgparam,bounds,mglevel,lrz,icndbndy)
       use BNDtypemodule
       use CONDtypemodule
@@ -811,7 +867,7 @@ c=============================================================================
       integer(ISZ):: nx,nz,mglevel
       real(kind=8):: phi(-1:nx+1,-1:nz+1), rho(0:nx,0:nz)
       integer(ISZ):: regionid(0:nx,0:nz)
-      real(kind=8):: dxsqi,dzsqi,xminodx,mgparam
+      real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
       logical(ISZ):: lrz
 
@@ -850,6 +906,7 @@ c not include Lphi.
       integer(ISZ):: ix,iz,id
       logical(ISZ):: dosubgrid
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
+      real(kind=8):: iondensitytmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -973,11 +1030,12 @@ c         --- calculate the new phi based on the boundary conditions
             denom = - Cx*delxsqi - Cz*delzsqi
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              if (iondensity(id) .ne. 0. .and.
+              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              if (iondensitytmp .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (pik - plasmapotential(id))/electrontemperature(id)
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensity(id)*exp(expo)
+                rhoe = iondensitytmp*exp(expo)
                 denom = denom - rhoe/electrontemperature(id)
               endif
             endif
@@ -991,13 +1049,14 @@ c         --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,xminodx,phi,lphi,regionid,
+      subroutine Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,
+     &                    phi,lphi,regionid,
      &                    mglevel,bounds,mgparam,
      &                    lrz,lcndbndy,icndbndy,bnd)
       use BNDtypemodule
       use BoltzmannElectrons
       integer(ISZ):: nx,nz,nzfull
-      real(kind=8):: dxsqi,dzsqi,xminodx
+      real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
       real(kind=8):: lphi(-1:nx+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:nz)
@@ -1015,6 +1074,7 @@ c source term included, and so will no go to zero at convergence.
       real(kind=8):: rr
       integer(ISZ):: ix,iz,ic,id
       integer(ISZ):: ixmin,ixmax,izmin,izmax
+      real(kind=8):: iondensitytmp
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
@@ -1038,11 +1098,12 @@ c       --- RZ
             rhoe = 0.
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              if (iondensity(id) .ne. 0. .and.
+              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              if (iondensitytmp .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensity(id)*exp(expo)
+                rhoe = iondensitytmp*exp(expo)
               endif
             endif
 
@@ -1071,11 +1132,12 @@ c       --- XZ
             rhoe = 0.
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              if (iondensity(id) .ne. 0. .and.
+              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              if (iondensitytmp .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensity(id)*exp(expo)
+                rhoe = iondensitytmp*exp(expo)
               endif
             endif
 
@@ -1094,7 +1156,7 @@ c     --- Zero the Lphi inside conductors.
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
         call condbndylphiberz(bnd,nx,nz,phi,lphi,regionid,dxsqi,dzsqi,
-     &                        xminodx,bounds,mglevel,lrz,icndbndy)
+     &                        dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       endif
 
 c     --- Transverse boundaries
@@ -1117,7 +1179,7 @@ c     --- Longitudinal boundaries
       end
 c=============================================================================
       subroutine condbndylphiberz(bnd,nx,nz,phi,lphi,regionid,dxsqi,dzsqi,
-     &                            xminodx,bounds,mglevel,lrz,icndbndy)
+     &                            dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       use BNDtypemodule
       use CONDtypemodule
       use BoltzmannElectrons
@@ -1125,7 +1187,7 @@ c=============================================================================
       integer(ISZ):: nx,nz,mglevel
       real(kind=8):: phi(-1:nx+1,-1:nz+1), lphi(-1:nx+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:nz)
-      real(kind=8):: dxsqi,dzsqi,xminodx
+      real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       integer(ISZ):: bounds(0:5),icndbndy
       logical(ISZ):: lrz
 
@@ -1155,6 +1217,7 @@ c points on the boundary.
       integer(ISZ):: ix,iz,id
       logical(ISZ):: dosubgrid
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
+      real(kind=8):: iondensitytmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -1256,11 +1319,12 @@ c         --- calculate the new phi based on the boundary conditions
             rhoe = 0.
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              if (iondensity(id) .ne. 0. .and.
+              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              if (iondensitytmp .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (pik - plasmapotential(id))/electrontemperature(id)
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensity(id)*exp(expo)
+                rhoe = iondensitytmp*exp(expo)
               endif
             endif
             lphi(ix,iz) = (+ (pxm+pxp)*delxsqi
@@ -1302,14 +1366,16 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine clampphitophimaxberz(nx,nz,phi,rho,regionid)
+      subroutine clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
       use BoltzmannElectrons
       integer(ISZ):: nx,nz
+      real(kind=8):: dx,dz
       real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
       integer(ISZ):: regionid(0:nx,0:nz)
 
       integer(ISZ):: ix,iz,id
       real(kind=8):: expo,phimax,rhomax
+      real(kind=8):: iondensitytmp
 
 c     --- Clamp phi to phimax. The phimax is calculated assuming that
 c     --- the max electron density will be the max of the iondensity and 
@@ -1318,9 +1384,10 @@ c     --- and the ion particle density (rho).
         do ix=0,nx
           if (regionid(ix,iz) > 0) then
             id = regionid(ix,iz)
-            if (iondensity(id) .ne. 0. .and.
+            call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+            if (iondensitytmp .ne. 0. .and.
      &          electrontemperature(id) .ne. 0) then
-              rhomax = max(1.,-rho(ix,iz)/iondensity(id))
+              rhomax = max(1.,-rho(ix,iz)/iondensitytmp)
               phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
               if (phi(ix,iz) > phimax) phi(ix,iz) = phimax
             endif
@@ -1349,6 +1416,35 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
         izmax = (min(nz*dz,zbemax(id)) - zmmin)/dz
         regionid(ixmin:ixmax,izmin:izmax) = id
       enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+      use BoltzmannElectrons
+      integer(ISZ):: ix,iz,id
+      real(kind=8):: dx,dz
+      real(kind=8):: iondensitytmp
+
+      real(kind=8):: xx,zz,wxx,wzz
+      integer(ISZ):: ixx,izz
+
+      iondensitytmp = 0.
+      if (liondensitygrid2d(id)) then
+        xx = ix*dx
+        zz = iz*dz
+        ixx = (xx - iondensitygrid2d%xmin)/iondensitygrid2d%dx
+        izz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy
+        wxx = (xx - iondensitygrid2d%xmin)/iondensitygrid2d%dx-ixx
+        wzz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy-izz
+        iondensitytmp =
+     &       iondensitygrid2d%grid(ixx  ,izz  )*(1.-wxx)*(1.-wzz) +
+     &       iondensitygrid2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
+     &       iondensitygrid2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
+     &       iondensitygrid2d%grid(ixx+1,izz+1)*    wxx *    wzz
+      else if (iondensity(id) .ne. 0.) then
+        iondensitytmp = iondensity(id)
+      endif
 
       return
       end

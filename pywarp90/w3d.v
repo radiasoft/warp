@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.215 $, $Date: 2006/06/12 22:23:30 $
+#@(#) File W3D.V, version $Revision: 3.216 $, $Date: 2006/06/13 01:43:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.215 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.216 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -361,6 +361,36 @@ zfsapi(:) _real
 phifsapi(:) _real
 afsapi(:,:) _real
 
+%%%%%%%%%%% Grid3dtype:
+nx    integer /-1/
+ny    integer /-1/
+nz    integer /-1/
+dx    real /LARGEPOS/
+dy    real /LARGEPOS/
+dz    real /LARGEPOS/
+dxi   real /LARGEPOS/
+dyi   real /LARGEPOS/
+dzi   real /LARGEPOS/
+xmin  real /+LARGEPOS/
+xmax  real /-LARGEPOS/
+ymin  real /+LARGEPOS/
+ymax  real /-LARGEPOS/
+zmin  real /+LARGEPOS/
+zmax  real /-LARGEPOS/
+grid(0:nx,0:ny,0:nz) _real
+
+%%%%%%%%%%% Grid2dtype:
+nx    integer /-1/
+ny    integer /-1/
+dx    real /LARGEPOS/
+dy    real /LARGEPOS/
+dxi   real /LARGEPOS/
+dyi   real /LARGEPOS/
+xmin  real /+LARGEPOS/
+xmax  real /-LARGEPOS/
+ymin  real /+LARGEPOS/
+ymax  real /-LARGEPOS/
+grid(0:nx,0:ny) _real
 
 *********** BoltzmannElectrons dump:
 # Parameters controlling the Boltzmann-Electrons.
@@ -397,6 +427,20 @@ lclampphitophimax(nberegions) _logical /0/
      # When true, the potential is clamped to phimax, which is calculated
      # assuming that the max electron density is the max of iondensity and
      # the density from ion particles. Only applies now to the RZ solver.
+liondensitygrid3d(nberegions)       _logical /0/
+iondensitygrid3d        Grid3dtype # Allows a spatially varying iondensity,
+                                   # or is used when luseparticleldensity is
+                                   # true
+lelectrontemperaturegrid3d(nberegions) _logical /0/
+electrontemperaturegrid3d  Grid3dtype # Allows a spatially varying electron
+                                      # temperature
+liondensitygrid2d(nberegions)       _logical /0/
+iondensitygrid2d        Grid2dtype # Allows a spatially varying iondensity,
+                                   # or is used when luseparticleldensity is
+                                   # true
+lelectrontemperaturegrid2d(nberegions) _logical /0/
+electrontemperaturegrid2d  Grid2dtype # Allows a spatially varying electron
+                                      # temperature
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
@@ -883,6 +927,12 @@ sortposandvelbyindex(n:integer,indx:integer,x(n):real,y(n):real,z(n):real,
                      uxout(n):real,uyout(n):real,uzout(n):real,gout(n):real,
                      pcounts:integer)
       subroutine
+setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
+      # Checks the consistency of Grid3dtype input and allocates the grid
+      # If check is false, then the input is inconsistent.
+setupgrid2dtype(grid:Grid2dtype,check:logical) subroutine
+      # Checks the consistency of Grid3dtype input and allocates the grid
+      # If check is false, then the input is inconsistent.
 
 
 
