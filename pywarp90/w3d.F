@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.255 $, $Date: 2006/06/12 22:23:30 $
+c@(#) File W3D.F, version $Revision: 3.256 $, $Date: 2006/06/14 19:00:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -823,7 +823,7 @@ c  0. is passed in as a dummy for all of the particles coordinates
 c  which are not used at this time.
       call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
      &              0.,0.,0.,0.,0.,1,
-     &              nplive,0.,0.,0.,1,1,ns,
+     &              nplive,0.,0.,0.,1,-1,ns,
      &              tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 
 c  If a flag was set making this a "special" step,
@@ -1407,6 +1407,16 @@ c     --- Create local pointers to the arrays in pgroup.
 c  Setup the moments if center is synchv or gen
 c  If OPENMP, copies data to arrays which will be threadprivate
       if (center == "synchv" .or. center == "gen") then
+c  Initialize the moments arrays if the species is being advanced this step,
+c  based on ndts. This must be done outside the OPENMP parallel block.
+        do is=1,pgroup%ns
+          if (mod(it,ndts(is))/=0) cycle
+          isid = pgroup%sid(is-1) + 1
+          call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                  0.,0.,0.,0.,0.,1,
+     &                  nplive,0.,0.,0.,1,isid,ismax,
+     &                  tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+        enddo
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
      &           zmmnts0(NUMZMMNT,0:nszmmnt),
@@ -1454,6 +1464,7 @@ c  Loop over species
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
         jsapi=is-1
+
 c  Advance species according to subcycling rule governed by ndts.
         if (mod(it,ndts(is))/=0) then
           cycle

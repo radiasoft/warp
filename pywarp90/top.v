@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.172 $, $Date: 2006/05/19 23:15:58 $
+#@(#) File TOP.V, version $Revision: 3.173 $, $Date: 2006/06/14 19:00:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.172 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.173 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1376,10 +1376,14 @@ numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
                                  # particles, in units of top.dt.
 zmntmesh(0:nzmmnt)  _real [m]    # Z mesh associated with Z moments
+zmmntsq(0:nszmmnt)  _real [kg]   # Particle charge of species associated with
+                                 # the moments
 zmmntsm(0:nszmmnt)  _real [kg]   # Particle mass of species associated with
                                  # the moments
 zmmntsw(0:nszmmnt)  _real [kg]   # Particle weight of species associated with
                                  # the moments
+zmomentscalculated(0:nszmmnt) _logical     # Set to true if the moments for
+                                           # that species has been calculated
 pnumz(0:nzmmnt,0:nszmmnt)    _real [1]     # No. of (physical) ions at grid point
 xbarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean X coordinate at grid point
 ybarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean Y coordinate at grid point
@@ -1445,8 +1449,8 @@ zlw(nlabwn) _real [m] /LARGEPOS/ # z for lab windows
 iflabwn integer /1/ # turns on lab window moments (0 off; 1 on)
 itlabwn integer /0/ # Sets how often the lab moments are calculated
 ntlabwn integer     # Maximum number of times lab frame moments are calculated
-ilabwn(nlabwn) _integer # Number of times lab frame moments have been calculated
-timelw(ntlabwn,nlabwn)               _real # Time in lab frame
+ilabwn(nlabwn,0:nslabwn) _integer # Number of times lab frame moments have been calculated
+timelw(ntlabwn,nlabwn,0:nslabwn)     _real # Time in lab frame
 pnumlw(ntlabwn,nlabwn,0:nslabwn)     _real # Number of particles in lab frame
 xbarlw(ntlabwn,nlabwn,0:nslabwn)     _real # X bar in lab frame
 ybarlw(ntlabwn,nlabwn,0:nslabwn)     _real # Y bar in lab frame
@@ -1463,8 +1467,8 @@ rrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # R RMS in lab frame
 xxpbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # XX' bar in lab frame
 yypbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # YY' bar in lab frame
 currlw(ntlabwn,nlabwn,0:nslabwn)     _real # Current in lab frame
-linechglw(ntlabwn,nlabwn)            _real # Line-charge in lab frame
 lostparslw(ntlabwn,nlabwn,0:nslabwn) _real # Number of lost particles in lab frame
+linechglw(ntlabwn,nlabwn,0:nslabwn)  _real # Line-charge in lab frame
 
 *********** Moments dump:
 # Scalar moments of general interest

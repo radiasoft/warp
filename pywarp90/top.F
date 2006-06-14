@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.182 $, $Date: 2006/05/19 23:15:58 $
+c@(#) File TOP.F, version $Revision: 3.183 $, $Date: 2006/06/14 19:00:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -613,17 +613,28 @@ c          --- If only one species, then don't have separate species data.
            endif
          endif
 
+c        --- -1 is a flag for isid for itask==1 to zero out the moments
+c        --- summed over all species.
+         if (isid == -1) js = nszmmnt
+
 c        --- This is a very kludgy thing to do. This assumes that this
 c        --- getzmmnt routine will always be called with the temp arrays
 c        --- passed in when itask==1. The only reason the work arrays are
 c        --- passed in anyway is because of the OpenMP code which requires
 c        --- the work arrays to be thread private when called with itask==2.
-         tempmaxp = -LARGEPOS
-         tempminp = +LARGEPOS
-         tempzmmnts0 = 0.
-         tempzmmnts = 0.
-         if (nepwin > 0) nep = 0
-         if(wpid>0) nplive = 0
+c        --- Only the data for the active species is zeroed out, or if isid
+c        --- is -1, then for the summed moments.
+c        --- There is a reduntancy if there is only one species or 
+c        --- lspeciesmoments is false since the arrays will then be
+c        --- initialized twice.
+         tempmaxp(:,js) = -LARGEPOS
+         tempminp(:,js) = +LARGEPOS
+         tempzmmnts0(:,js) = 0.
+         tempzmmnts(:,:,js) = 0.
+         if (nepwin > 0 .and. js < ismax) nep = 0
+         if(wpid>0 .and. js == nszmmnt) nplive = 0
+         zmomentscalculated = .false.
+         zmomentscalculated(nszmmnt) = .true.
       endif
 
       if (itask == 2) then
@@ -631,10 +642,12 @@ c        --- the work arrays to be thread private when called with itask==2.
         allocate(pp(0:17,np),iz(np))
 
 c       --- Save the mass and weight
-c       --- Note that the charge is not needed and should be removed from the
-c       --- arugment list.
+        zmmntsq(js) = q
         zmmntsm(js) = m
         zmmntsw(js) = w
+
+c       --- Set flag that moments for this species has been calculated.
+        zmomentscalculated(js) = .true.
 
 c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so lost particles don't contribute
@@ -1491,6 +1504,17 @@ c     --- done afterwards. Otherwise, only calculate the combined moments.
       endif
 
       if (itask == 2) then
+
+c       --- Save the mass and weight
+c       --- Note that the charge is not needed and should be removed from the
+c       --- arugment list.
+        zmmntsq(js) = q
+        zmmntsm(js) = m
+        zmmntsw(js) = w
+
+c       --- Set flag that moments for this species has been calculated.
+        zmomentscalculated(js) = .true.
+
 c       --- Set maximum and minimum particle coordinate variables
         do ip = 1, np
           if (uzp(ip) /= 0.) then
@@ -2074,8 +2098,8 @@ c  Get info from z moments
 c  The data is only saved every itlabwn steps, even if the moments
 c  are actually calculated more or less often.
 
-      real(kind=8):: w0,w1
-      integer(ISZ):: i,ilw,iz
+      real(kind=8):: w0,w1,w0z,w1z
+      integer(ISZ):: i,ilw,iz,izz,js
 
       if (nlabwn == 0) return
       if (mod(it,itlabwn) > 0) return
@@ -2090,37 +2114,49 @@ c     --- number of species as the z moments.
       do i = 1, nlabwn
         if (zlw(i) > (zbeam+zmmntmin) .and.
      &      zlw(i) < (zbeam+zmmntmax)) then
-          if (ilabwn(i) == ntlabwn) then
+          if (maxval(ilabwn(i,:)) == ntlabwn) then
             ntlabwn = ntlabwn + max(10,int(ntlabwn/10))
             call gchange("Lab_Moments",0)
           endif
-          ilabwn(i) = ilabwn(i) + 1
-          ilw = ilabwn(i)
           iz = (zlw(i) - zbeam - zmmntmin)*dzmi
           w0 = (zlw(i) - zbeam - zmmntmin)*dzmi - iz
           w1 = 1. - w0
-          timelw(ilw,i) = time
-          pnumlw(ilw,i,:)   = w1*pnumz(iz,:)   + w0*pnumz(iz+1,:)
-          xbarlw(ilw,i,:)   = w1*xbarz(iz,:)   + w0*xbarz(iz+1,:)
-          ybarlw(ilw,i,:)   = w1*ybarz(iz,:)   + w0*ybarz(iz+1,:)
-          xrmslw(ilw,i,:)   = w1*xrmsz(iz,:)   + w0*xrmsz(iz+1,:)
-          yrmslw(ilw,i,:)   = w1*yrmsz(iz,:)   + w0*yrmsz(iz+1,:)
-          rrmslw(ilw,i,:)   = w1*rrmsz(iz,:)   + w0*rrmsz(iz+1,:)
-          xxpbarlw(ilw,i,:) = w1*xxpbarz(iz,:) + w0*xxpbarz(iz+1,:)
-          yypbarlw(ilw,i,:) = w1*yypbarz(iz,:) + w0*yypbarz(iz+1,:)
-          vzbarlw(ilw,i,:)  = w1*vzbarz(iz,:)  + w0*vzbarz(iz+1,:)
-          epsxlw(ilw,i,:)   = w1*epsxz(iz,:)   + w0*epsxz(iz+1,:)
-          epsylw(ilw,i,:)   = w1*epsyz(iz,:)   + w0*epsyz(iz+1,:)
-          epszlw(ilw,i,:)   = w1*epszz(iz,:)   + w0*epszz(iz+1,:)
-          vxrmslw(ilw,i,:)  = w1*vxrmsz(iz,:)  + w0*vxrmsz(iz+1,:)
-          vyrmslw(ilw,i,:)  = w1*vyrmsz(iz,:)  + w0*vyrmsz(iz+1,:)
-          vzrmslw(ilw,i,:)  = w1*vzrmsz(iz,:)  + w0*vzrmsz(iz+1,:)
-          iz = (zlw(i) - zbeam - zzmin)*dzzi
-          w0 = (zlw(i) - zbeam - zzmin)*dzzi - iz
-          w1 = 1. - w0
-          currlw(ilw,i,:)  = w1*curr(iz,:)   + w0*curr(iz+1,:)
-          linechglw(ilw,i)  = w1*linechg(iz)   + w0*linechg(iz+1)
-          lostparslw(ilw,i,:)  = w1*lostpars(iz,:)   + w0*lostpars(iz+1,:)
+          izz = (zlw(i) - zbeam - zzmin)*dzzi
+          w0z = (zlw(i) - zbeam - zzmin)*dzzi - izz
+          w1z = 1. - w0z
+          do js=0,nslabwn
+            if (zmomentscalculated(js)) then
+              ilabwn(i,js) = ilabwn(i,js) + 1
+              ilw = ilabwn(i,js)
+              timelw(ilw,i,js) = time
+              pnumlw(ilw,i,js)   = w1*pnumz(iz,js)   + w0*pnumz(iz+1,js)
+              xbarlw(ilw,i,js)   = w1*xbarz(iz,js)   + w0*xbarz(iz+1,js)
+              ybarlw(ilw,i,js)   = w1*ybarz(iz,js)   + w0*ybarz(iz+1,js)
+              xrmslw(ilw,i,js)   = w1*xrmsz(iz,js)   + w0*xrmsz(iz+1,js)
+              yrmslw(ilw,i,js)   = w1*yrmsz(iz,js)   + w0*yrmsz(iz+1,js)
+              rrmslw(ilw,i,js)   = w1*rrmsz(iz,js)   + w0*rrmsz(iz+1,js)
+              xxpbarlw(ilw,i,js) = w1*xxpbarz(iz,js) + w0*xxpbarz(iz+1,js)
+              yypbarlw(ilw,i,js) = w1*yypbarz(iz,js) + w0*yypbarz(iz+1,js)
+              vzbarlw(ilw,i,js)  = w1*vzbarz(iz,js)  + w0*vzbarz(iz+1,js)
+              epsxlw(ilw,i,js)   = w1*epsxz(iz,js)   + w0*epsxz(iz+1,js)
+              epsylw(ilw,i,js)   = w1*epsyz(iz,js)   + w0*epsyz(iz+1,js)
+              epszlw(ilw,i,js)   = w1*epszz(iz,js)   + w0*epszz(iz+1,js)
+              vxrmslw(ilw,i,js)  = w1*vxrmsz(iz,js)  + w0*vxrmsz(iz+1,js)
+              vyrmslw(ilw,i,js)  = w1*vyrmsz(iz,js)  + w0*vyrmsz(iz+1,js)
+              vzrmslw(ilw,i,js)  = w1*vzrmsz(iz,js)  + w0*vzrmsz(iz+1,js)
+              currlw(ilw,i,js)  = w1z*curr(izz,js) + w0z*curr(izz+1,js)
+              lostparslw(ilw,i,js)=w1z*lostpars(izz,js)+w0z*lostpars(izz+1,js)
+              if (js < nslabwn) then
+c               --- This special coding is needed since the linecharge
+c               --- is not calculated for each species.
+                linechglw(ilw,i,js)  =
+     &                     w1z*pnumz(izz  ,js)*dzmi*zmmntsw(js)*zmmntsq(js) +
+     &                     w0z*pnumz(izz+1,js)*dzmi*zmmntsw(js)*zmmntsq(js)
+              else
+                linechglw(ilw,i,js) = w1z*linechg(izz  ) + w0z*linechg(izz+1)
+              endif
+            endif
+          enddo
         endif
       enddo
 
