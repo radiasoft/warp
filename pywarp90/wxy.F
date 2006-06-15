@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.66 $, $Date: 2006/06/15 18:07:16 $
+c@(#) File WXY.M, version $Revision: 3.67 $, $Date: 2006/06/15 21:30:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -589,6 +589,7 @@ c=============================================================================
       use Lattice
       use LatticeInternal
       use Timers
+      use Z_Moments,Only: tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       character(*):: caller
       logical(ISZ):: thisstep,thiszbeam,dolabwn
 
@@ -693,6 +694,15 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
 
+c  Initialize the moments arrays which are calculated during the synchv and
+c  gen phases.
+c  0. is passed in as a dummy for all of the particles coordinates
+c  which are not used at this time.
+      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &              0.,0.,0.,0.,0.,1,
+     &              nplive,0.,0.,0.,1,-1,ns,
+     &              tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
 
@@ -701,6 +711,11 @@ c  do a half-advance to bring v to t.l. it
       elseif (caller == "wxygen") then
          call padvncxy ("gen",pgroup)
       endif
+
+c  Finalize the moments calculation
+      call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &              0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &              1,0,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
 c  Compute mean beam z velocity from current and line charge density 
@@ -936,7 +951,7 @@ c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
-      integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
+      integer(ISZ),pointer:: ins(:),nps(:)
       logical(ISZ),pointer:: ldts(:)
 
       integer(ISZ):: isid,is,ismax,ip,ipmin,i
@@ -976,7 +991,6 @@ c     --- Create local pointers to the arrays in pgroup.
       ins => pgroup%ins
       nps => pgroup%nps
       ldts => pgroup%ldts
-      ndts => pgroup%ndts
       dtscale => pgroup%dtscale
 
       ismax = maxval(pgroup%sid)+1
@@ -1006,10 +1020,6 @@ c         --- If only one species, then don't have separate species data.
 
 c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
-        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,0.,1,
-     &                nplive,0.,0.,0.,1,1,ns,
-     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
      &           zmmnts0(NUMZMMNT,0:nszmmnt),
@@ -1424,9 +1434,6 @@ c     ---  Do final stuff for moments calculation and fix current
           tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
           deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
-          call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                  0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
-     &                  1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 
           call getlabwn()
 c         --- load rho diagnostic qtys
