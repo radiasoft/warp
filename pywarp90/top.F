@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.183 $, $Date: 2006/06/14 19:00:26 $
+c@(#) File TOP.F, version $Revision: 3.184 $, $Date: 2006/06/15 18:00:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1964,6 +1964,9 @@ c --- X extrapolated using constant V and estimated A
 
       real(kind=8):: timetemp,wtime
 
+c     --- Check if the pgroup had been initialized.
+      if (isid == 0) return
+
       oneondt = 1./dt
 
       if (npidepmax .ne. npid) then
@@ -2256,6 +2259,7 @@ c  Sets 1d beam current as a function of z, directly from particle data
 
 !$OMP PARALLEL PRIVATE(ip,js,g,gw,kk,w1,w0)
       do is=1,pgroup%ns
+        if (pgroup%sid(is-1) == -1) cycle
 
         if (lspeciesmoments) then
           js = pgroup%sid(is-1)
@@ -3281,6 +3285,7 @@ c       --- enough space to save them in the LostParticles arrays.
 
 c     --- Get global species number
       isid = pgroup%sid(is-1) + 1
+      if (isid == 0) return
 
 c     --- Check lspeciesmoments, since it affects lostpars
       call checkz_arrays(ns)
