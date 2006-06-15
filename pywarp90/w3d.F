@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.256 $, $Date: 2006/06/14 19:00:26 $
+c@(#) File W3D.F, version $Revision: 3.257 $, $Date: 2006/06/15 18:06:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1314,6 +1314,35 @@ c       --- Add on linear pressure term
       return
       end
 c=============================================================================
+      subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
+     &                             zpo,bendres,bendradi)
+      use ParticleGroupmodule
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: is,np,ipmin,interpdk
+      real(kind=8):: dt
+      real(kind=8):: zpo(np),bendres(np),bendradi(np)
+
+      if (interpdk .ne. 0) then
+        call xpush3dintrp(pgroup,np,is,ipmin)
+      else
+        call xpush3d(pgroup,np,ipmin,dt)
+      endif
+
+c     --- Bend residence factor over POSITION advance step
+      call getbend(np,np,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &             pgroup%gaminv(ipmin),
+     &             bendres,bendradi,-dt,0.,.false.)
+
+c     --- Correct position advance for warped mesh effect
+      call zbendcor(pgroup,np,ipmin,dt,bendres,bendradi)
+
+c     --- Correct position advance for slanted dipole entry/exit
+      call sledgcor(pgroup,np,ipmin,zpo,0.,0.,0.,
+     &              pgroup%sm(is),pgroup%sq(is),.false.)
+
+      return
+      end
+c=============================================================================
       subroutine padvnc3d(center_in,pgroup)
       use ParticleGroupmodule
       use GlobalVars
@@ -1400,6 +1429,7 @@ c     --- Create local pointers to the arrays in pgroup.
       dtscale => pgroup%dtscale
 
       ismax = maxval(pgroup%sid)+1
+      if (ismax == 0) return
 
       halfdt = 0.5*dt
       center = center_in
@@ -1559,13 +1589,14 @@ c           synchv does nothing
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-halfdt_s,halfdt_s,.false.)
+               call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                      pgroup%gaminv(ipmin),
+     &                      bendres,bendradi,-halfdt_s,halfdt_s,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
-     &                        bendres,bendradi,bends,bnezflag,linbend)
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+     &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
@@ -1604,23 +1635,8 @@ c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
-               if (interpdk(isid) .ne. 0) then
-                 call xpush3dintrp(pgroup,ip,is,ipmin)
-               else
-                 call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
-     &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),fulldt_s)
-               endif
-c              --- Bend residence factor over POSITION advance step
-               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-fulldt_s,0.,.false.)
-c              --- Correct position advance for warped mesh effect
-               call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),fulldt_s,bendres,bendradi,bends,linbend)
-c              --- Correct position advance for slanted dipole entry/exit
-               call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
-     &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is),.false.)
-
+               call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
+     &                                fulldt_s,zpo,bendres,bendradi)
 c           --- HALFV
             elseif ((center == "halfv" .and. (interpdk(isid) .ne. 1 .or.
      &               allspecl)) .or. (center == "hbor2" .and.
@@ -1634,13 +1650,14 @@ c               hbor2 does 2nd half.
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,0.,halfdt_s,.false.)
+               call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                      pgroup%gaminv(ipmin),
+     &                      bendres,bendradi,0.,halfdt_s,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
-     &                        bendres,bendradi,bends,bnezflag,linbend)
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+     &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -1675,23 +1692,9 @@ c              --- Advance relativistic Gamma factor
      &                       gamadv,lrelativ)
 c              --- Position advance
                if (center .ne. "hbor2") then
-c              hbor2 just does a v advance, no x push
-                 if (interpdk(isid) .ne. 0) then
-                   call xpush3dintrp(pgroup,ip,is,ipmin)
-                 else
-                   call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
-     &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),fulldt_s)
-                 endif
-c                --- Bend residence factor over POSITION advance step
-                 call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         bendres,bendradi,-fulldt_s,0.,.false.)
-c                --- Correct position advance for warped mesh effect
-                 call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),fulldt_s,bendres,bendradi,bends,linbend)
-c                --- Correct position advance for slanted dipole entry/exit
-                 call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
-     &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is),.false.)
+c                hbor2 just does a v advance, no x push
+                 call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
+     &                                  fulldt_s,zpo,bendres,bendradi)
                endif
 c           --- SYNCHV or GEN
 c           Double "if" follows so that moments are calculated
@@ -1724,13 +1727,14 @@ c               step, using half Boris if interpdk = 1.
 c               More generally hbor1 provides 1st half of a Boris
 c               step, hbor2 provides 2nd half.
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-halfdt_s,0.,.false.)
+               call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
+     &                      pgroup%gaminv(ipmin),bendres,
+     &                      bendradi,-halfdt_s,0.,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
-     &                        bendres,bendradi,bends,bnezflag,linbend)
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+     &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -2221,11 +2225,12 @@ c        --- tan(alpha) / alpha algorithm
       return
       end
 c=========================================================================== 
-      subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,ddt)
+      subroutine xpush3d(pgroup,np,ipmin,ddt)
+      use ParticleGroupmodule
       use Subtimers3d
-      integer(ISZ):: np
+      integer(ISZ):: np,ipmin
       real(kind=8):: ddt
-      real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
+      type(ParticleGroup):: pgroup
 
 c  Advance particle positions
 
@@ -2233,10 +2238,10 @@ c  Advance particle positions
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      do ip=1,np
-        xp(ip) = xp(ip) + uxp(ip)*ddt*gaminv(ip)
-        yp(ip) = yp(ip) + uyp(ip)*ddt*gaminv(ip)
-        zp(ip) = zp(ip) + uzp(ip)*ddt*gaminv(ip)
+      do ip=ipmin,ipmin+np-1
+        pgroup%xp(ip) = pgroup%xp(ip) + pgroup%uxp(ip)*ddt*pgroup%gaminv(ip)
+        pgroup%yp(ip) = pgroup%yp(ip) + pgroup%uyp(ip)*ddt*pgroup%gaminv(ip)
+        pgroup%zp(ip) = pgroup%zp(ip) + pgroup%uzp(ip)*ddt*pgroup%gaminv(ip)
       enddo
 
 !$OMP MASTER
@@ -2435,43 +2440,6 @@ c  at smaller radii, zones are closer together, so field is larger.
 
 !$OMP MASTER
       if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
-!$OMP END MASTER
-      return
-      end      
-c=========================================================================== 
-      subroutine zbendcor(np,xp,zp,uxp,uzp,gaminv,ddt,bendres,bendradi,bends,
-     &                    linbend)
-      use Subtimers3d
-      integer(ISZ):: np
-      real(kind=8):: ddt
-      real(kind=8):: xp(np), zp(np), uxp(np), uzp(np), gaminv(np)
-      real(kind=8):: bendres(np), bendradi(np)
-      logical(ISZ):: bends,linbend
-
-c  Corrects particle axial positions for bending; zp is position
-c  "along the centerline."
-
-      integer(ISZ):: ip
-      real(kind=8):: xprv,xc
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if (.not. bends .or. .not. linbend) then
-!$OMP MASTER
-        if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
-!$OMP END MASTER
-        return
-      endif
-
-      do ip=1,np
-        xprv = xp(ip) - ddt * uxp(ip) * gaminv(ip)
-        xc = 0.5 * (xp(ip) + xprv)
-        zp(ip) = zp(ip) + ddt*uzp(ip)*gaminv(ip)*bendres(ip)
-     &                    *(bendradi(ip)/(bendradi(ip) + xc) - 1.)
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
 !$OMP END MASTER
       return
       end      
@@ -5984,6 +5952,7 @@ c     --- (will be changed if necessary in the loop)
 c     --- loop over species
       do is=is1,is2
          isid = pgroup%sid(is-1) + 1
+         if (isid == 0) cycle
 
 c        --- For the AMR/Chombo version, all of the lost particles must be
 c        --- cleared out.
