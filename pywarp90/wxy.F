@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.65 $, $Date: 2006/06/01 01:45:55 $
+c@(#) File WXY.M, version $Revision: 3.66 $, $Date: 2006/06/15 18:07:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -980,6 +980,7 @@ c     --- Create local pointers to the arrays in pgroup.
       dtscale => pgroup%dtscale
 
       ismax = maxval(pgroup%sid)+1
+      if (ismax == 0) return
 
 c  Zero curr if center is synchv or if using gaps
 c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)
@@ -1174,8 +1175,8 @@ c           --- mesh effect
             call exbendcorxy(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       zpo,ds,bendres,bendradi,lexbend)
 c           --- Correct position advance for slanted dipole entry/exit
-            call sledgcor(ip,xp(ipmin),yp(ipmin),1,zbeam+vbeam*dt,zbeam,
-     &                    uxp(ipmin),uyp(ipmin),vbeam,1.,sm(is),sq(is),.true.)
+            call sledgcor(pgroup,ip,ipmin,zpo,zbeam+vbeam*dt,zbeam,vbeam,
+     &                    pgroup%sm(is),pgroup%sq(is),.true.)
 c         --- PUSHV
           elseif (center == "pushv") then
 c           --- Add in ears and uniform focusing E field pieces
