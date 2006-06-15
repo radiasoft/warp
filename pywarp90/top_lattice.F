@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.4 $, $Date: 2006/04/24 17:23:48 $
+c@(#) File top_lattice.F, version $Revision: 3.5 $, $Date: 2006/06/15 18:02:53 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2234,12 +2234,14 @@ c  For periodic runs, assumes mesh period length = lattice period length
 
       integer(ISZ):: ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
-      real(kind=8):: vz(npz),dzi(npz)
+      real(kind=8),allocatable:: vz(:),dzi(:)
 
       if (.not. bends .or. .not. linbend) then
         bendres = 0.
         return
       endif
+
+      allocate(vz(npz),dzi(npz))
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2299,6 +2301,8 @@ c       --- residence fraction
         bendres(ip) = frac
         bendradi(ip) = cbendrc(iz)
       enddo
+
+      deallocate(vz,dzi)
 
       return
       end
@@ -2566,12 +2570,54 @@ c         --- set the field
       return
       end
 c=========================================================================== 
-      subroutine sledgcor(np,xp,yp,npz,zp,zpo,uxp,uyp,uzp,gaminv,m,q,lslice)
+      subroutine zbendcor(pgroup,np,ipmin,ddt,bendres,bendradi)
+      use ParticleGroupmodule
+      use Lattice,Only:bends
+      use LatticeInternal,Only:linbend
+      use Subtimers3d
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: np,ipmin
+      real(kind=8):: ddt
+      real(kind=8):: bendres(ipmin:ipmin+np-1), bendradi(ipmin:ipmin+np-1)
+
+c  Corrects particle axial positions for bending; zp is position
+c  "along the centerline."
+
+      integer(ISZ):: ip
+      real(kind=8):: xprv,xc
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if (.not. bends .or. .not. linbend) then
+!$OMP MASTER
+        if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+!$OMP END MASTER
+        return
+      endif
+
+      do ip=ipmin,ipmin+np-1
+        xprv = pgroup%xp(ip) - ddt*pgroup%uxp(ip)*pgroup%gaminv(ip)
+        xc = 0.5*(pgroup%xp(ip) + xprv)
+        pgroup%zp(ip) = pgroup%zp(ip) +
+     &                  ddt*pgroup%uzp(ip)*pgroup%gaminv(ip)*bendres(ip)*
+     &                  (bendradi(ip)/(bendradi(ip) + xc) - 1.)
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end      
+c=========================================================================== 
+c=========================================================================== 
+      subroutine sledgcor(pgroup,np,ipmin,zpo,zbeam,zbeamo,vbeam,m,q,lslice)
+      use ParticleGroupmodule
       use Lattice
       use LatticeInternal
-      integer(ISZ):: np,npz
-      real(kind=8):: xp(np), yp(np), zp(npz), zpo(npz) 
-      real(kind=8):: uxp(np), uyp(np), uzp(npz), gaminv(npz) 
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: np,ipmin
+      real(kind=8):: zpo(ipmin:ipmin+np-1)
+      real(kind=8):: zbeam,zbeamo,vbeam
       real(kind=8):: q, m
       logical(ISZ):: lslice
 
@@ -2582,15 +2628,18 @@ c Accounts for the fact that the jumped velocities act on the particles for
 c less than the entire andvance step on entry/exit of the dipole.  
 
       integer(ISZ):: io,ip,iz
-      real(kind=8):: vzi(np),qoverm
+      real(kind=8),allocatable:: vzi(:)
+      real(kind=8):: qoverm,factor
 
       if (.not. dipos .or. .not. lindipo(0)) return
 
+      allocate(vzi(ipmin:ipmin+np-1))
+
       qoverm = q/m
-      if (npz == 1) then
-        vzi = 1./dvnz(uzp(1)*gaminv(1))
+      if (lslice) then
+        vzi = 1./dvnz(vbeam)
       else
-        vzi = 1./dvnz(uzp*gaminv)
+        vzi = 1./dvnz(pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1))
       endif
 
       do io=1,ndipool
@@ -2598,35 +2647,42 @@ c less than the entire andvance step on entry/exit of the dipole.
 
         if (lslice) then
           iz = 0
-          if (.not.((zpo(1) < cdipozs(iz,io) .and. zp(1) >= cdipozs(iz,io)) .or.
-     &              (zpo(1) < cdipoze(iz,io) .and. zp(1) >= cdipoze(iz,io))))
+          if (.not.((zbeamo < cdipozs(iz,io) .and. zbeam >= cdipozs(iz,io)).or.
+     &              (zbeamo < cdipoze(iz,io) .and. zbeam >= cdipoze(iz,io))))
      &      cycle
         endif
-        do ip = 1,np
+        do ip = ipmin,ipmin+np-1
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
-            iz = min(nzl,int(max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)))
+            iz = min(nzl,int(max(0.,(pgroup%zp(ip)-zlmin-zlframe)*dzli+0.5)))
           endif
-          if ((zpo(ip) < cdipozs(iz,io)) .and. (zp(ip) >= cdipozs(iz,io))) then 
+          if ((zpo(ip) < cdipozs(iz,io)) .and.
+     &        (pgroup%zp(ip) >= cdipozs(iz,io))) then 
 c           --- entered dipole
-            uxp(ip) = uxp(ip) + xp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
-            uyp(ip) = uyp(ip) - yp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
-            xp(ip)  = xp(ip) + (zp(ip)-cdipozs(iz,io))*vzi(ip)*
-     &                         xp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
-            yp(ip)  = yp(ip) - (zp(ip)-cdipozs(iz,io))*vzi(ip)*
-     &                         yp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
+            factor = cdipoby(iz,io)*cdipota(iz,io)*qoverm
+            if (factor == 0) cycle
+            pgroup%uxp(ip) = pgroup%uxp(ip) + pgroup%xp(ip)*factor
+            pgroup%uyp(ip) = pgroup%uyp(ip) - pgroup%yp(ip)*factor
+            pgroup%xp(ip)  = pgroup%xp(ip) +
+     &            (pgroup%zp(ip)-cdipozs(iz,io))*vzi(ip)*pgroup%xp(ip)*factor
+            pgroup%yp(ip)  = pgroup%yp(ip) -
+     &            (pgroup%zp(ip)-cdipozs(iz,io))*vzi(ip)*pgroup%yp(ip)*factor
           elseif ((zpo(ip) <  cdipoze(iz,io)) .and.
-     &             (zp(ip) >= cdipoze(iz,io))) then  
+     &             (pgroup%zp(ip) >= cdipoze(iz,io))) then  
 c           --- exited dipole
-            uxp(ip) = uxp(ip) + xp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
-            uyp(ip) = uyp(ip) - yp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
-            xp(ip)  = xp(ip) + (zp(ip)-cdipoze(iz,io))*vzi(ip)*
-     &                         xp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
-            yp(ip)  = yp(ip) - (zp(ip)-cdipoze(iz,io))*vzi(ip)*
-     &                         yp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+            factor = cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+            if (factor == 0) cycle
+            pgroup%uxp(ip) = pgroup%uxp(ip) + pgroup%xp(ip)*factor
+            pgroup%uyp(ip) = pgroup%uyp(ip) - pgroup%yp(ip)*factor
+            pgroup%xp(ip)  = pgroup%xp(ip) +
+     &            (pgroup%zp(ip)-cdipoze(iz,io))*vzi(ip)*pgroup%xp(ip)*factor
+            pgroup%yp(ip)  = pgroup%yp(ip) -
+     &            (pgroup%zp(ip)-cdipoze(iz,io))*vzi(ip)*pgroup%yp(ip)*factor
           endif 
         enddo
       enddo
+
+      deallocate(vzi)
 
       return
       end
