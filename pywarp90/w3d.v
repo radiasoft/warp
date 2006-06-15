@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.216 $, $Date: 2006/06/13 01:43:19 $
+#@(#) File W3D.V, version $Revision: 3.217 $, $Date: 2006/06/15 18:06:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.216 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.217 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -786,10 +786,6 @@ bendez3d(np,xp(np):real,zp(np):real,ez(np):real,
          bendres(np):real,bendradi(np):real,
          bends:logical,bnezflag:logical,linbend:logical)
              subroutine #  Corrects axial electric field for warped geometry
-zbendcor(np,xp(np):real,zp(np):real,uxp(np):real,uzp(np):real,gaminv(np):real,
-         ddt:real,bendres(np):real,bendradi(np):real,
-         bends:logical,linbend:logical)
-             subroutine # Applies correction to z-advance for bends
 epush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,
         ex(np):real,ey(np):real,ez(np):real,q:real,m:real,dt:real)
              subroutine # Particle velocity advance from E field
