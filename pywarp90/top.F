@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.184 $, $Date: 2006/06/15 18:00:56 $
+c@(#) File TOP.F, version $Revision: 3.185 $, $Date: 2006/06/15 18:50:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3095,42 +3095,42 @@ c       --- Only set the ssn if it is not already set.
       return
       end
 c=============================================================================
-      subroutine clearpart(pgroup,js,fillmethod)
+      subroutine clearpart(pgroup,is,fillmethod)
       use ParticleGroupmodule
       use Subtimerstop
       use InPart
       use Particles,Only: wpid
       type(ParticleGroup):: pgroup
-      integer(ISZ):: js,fillmethod
+      integer(ISZ):: is,fillmethod
 
-c Clears out all of the lost particles. If js < 0, the clears out all
+c Clears out all of the lost particles. If is < 0, the clears out all
 c species, otherwise only species requested.
 c The empty spaces can be fill in multiple ways, based on value of fillmethod
 c   0 : don't do anything
 c   1 : fill spaces with particles from the end of the list
 c   2 : shift particles above down (they keep the same order)
 
-      integer(ISZ):: js1,js2,j,ip
+      integer(ISZ):: is1,is2,i,ip
       integer(ISZ):: ips,ds,ipslimit
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (js < 0) then
-        js1 = 1
-        js2 = pgroup%ns
+      if (is < 0) then
+        is1 = 1
+        is2 = pgroup%ns
       else
-        js1 = js
-        js2 = js
+        is1 = is
+        is2 = is
       endif
 
       if (fillmethod == 1) then
 
 c       --- Live particles from the end of the species block are moved
 c       --- to fill in the empty spaces.
-        do j=js1,js2
-          ips = pgroup%ins(j) + pgroup%nps(j) - 1
-          ip = pgroup%ins(j)
-          pgroup%nps(j) = 0
+        do i=is1,is2
+          ips = pgroup%ins(i) + pgroup%nps(i) - 1
+          ip = pgroup%ins(i)
+          pgroup%nps(i) = 0
           do while (ip <= ips)
             if (pgroup%uzp(ip) == 0.) then
               do while (pgroup%uzp(ips) == 0. .and. ips > ip)
@@ -3152,10 +3152,10 @@ c       --- to fill in the empty spaces.
                 pgroup%gaminv(ips) = 0.
                 if(wpid>0) pgroup%pid(ips,wpid) = 0.
                 ips = ips - 1
-                pgroup%nps(j) = pgroup%nps(j) + 1
+                pgroup%nps(i) = pgroup%nps(i) + 1
               endif
             else
-              pgroup%nps(j) = pgroup%nps(j) + 1
+              pgroup%nps(i) = pgroup%nps(i) + 1
             endif
             ip = ip + 1
           enddo
@@ -3164,10 +3164,10 @@ c       --- to fill in the empty spaces.
       else if (fillmethod == 2) then
 
 c       --- Live particles are shifted downward to fill in the empty spaces
-        do j=js1,js2
-          ipslimit = pgroup%ins(j)+pgroup%nps(j)-1
-          pgroup%nps(j) = 0
-          ip = pgroup%ins(j)
+        do i=is1,is2
+          ipslimit = pgroup%ins(i)+pgroup%nps(i)-1
+          pgroup%nps(i) = 0
+          ip = pgroup%ins(i)
           do ips=ip,ipslimit
             if (pgroup%uzp(ips) /= 0.) then
               if (ips > ip) then
@@ -3187,7 +3187,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 if(wpid>0) pgroup%pid(ips,wpid) = 0.
               endif
               ip = ip + 1
-              pgroup%nps(j) = pgroup%nps(j) + 1
+              pgroup%nps(i) = pgroup%nps(i) + 1
             endif
           enddo
         enddo
