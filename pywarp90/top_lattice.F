@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.5 $, $Date: 2006/06/15 18:02:53 $
+c@(#) File top_lattice.F, version $Revision: 3.6 $, $Date: 2006/06/16 18:34:03 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2639,7 +2639,8 @@ c less than the entire andvance step on entry/exit of the dipole.
       if (lslice) then
         vzi = 1./dvnz(vbeam)
       else
-        vzi = 1./dvnz(pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1))
+        vzi = pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)
+        vzi = 1./dvnz(vzi)
       endif
 
       do io=1,ndipool
