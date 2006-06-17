@@ -41,7 +41,7 @@
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.5 2006/04/28 16:28:45 dave Exp $"
+ParaKV_version = "$Id: ParaKV.py,v 1.6 2006/06/17 02:12:01 dave Exp $"
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__
@@ -84,14 +84,14 @@ def para_temp(delta_hp=0.3, delta_h=None):
     # --- Adjust particle velocities after first subtracting flow term
     #     i.e., scale only the thermal part of the velocities.
 
-    top.pgroup.uxp = top.pgroup.uzp*(top.ap0/top.a0)*top.pgroup.xp +
+    top.pgroup.uxp = (top.pgroup.uzp*(top.ap0/top.a0)*top.pgroup.xp +
           (top.pgroup.uxp - top.pgroup.uzp*(top.ap0/top.a0)*top.pgroup.xp)*
           parabolic(rad(top.pgroup.xp/top.a0, top.pgroup.yp/top.b0),
-                    delta_hp, delta_h)
-    top.pgroup.uyp = top.pgroup.uzp*(top.bp0/top.b0)*top.pgroup.yp +
+                    delta_hp, delta_h))
+    top.pgroup.uyp = (top.pgroup.uzp*(top.bp0/top.b0)*top.pgroup.yp +
           (top.pgroup.uyp - top.pgroup.uzp*(top.bp0/top.b0)*top.pgroup.yp)*
           parabolic(rad(top.pgroup.xp/top.a0, top.pgroup.yp/top.b0),
-                    delta_hp, delta_h)
+                    delta_hp, delta_h))
 
 
 def thermal_kv():
