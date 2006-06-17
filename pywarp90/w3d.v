@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.218 $, $Date: 2006/06/17 02:08:42 $
+#@(#) File W3D.V, version $Revision: 3.219 $, $Date: 2006/06/17 02:22:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.218 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.219 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -302,8 +302,8 @@ nmxyz                  integer /0/ +dump +parallel # largest of nx, ny, nz
 nzfull                 integer /0/ +dump # Full size of nz
 izextra                integer /1/ +dump # Amount of extra space at end of phi
 scrtch(0:nmxyz,0:nmxy) _real           # Scratch for fieldsolve, plots
-phi(0:nx,0:ny,-1:nz+izextra) _real [V] +parallel # Electrostatic potential
-rho(0:nx,0:ny,0:nz)    _real [C/m**3] +parallel # Charge density
+phi(:,:,:) _real [V] +parallel # Electrostatic potential
+rho(:,:,:)    _real [C/m**3] +parallel # Charge density
 attx(0:nx-1)           _real           # Attenuation factor as fcn. of kx
 atty(0:ny-1)           _real           # Attenuation factor as fcn. of ky
 attz(0:nzfull)         _real           # Attenuation factor as fcn. of kz
@@ -325,16 +325,33 @@ nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
                      # version.
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
-phip(0:nxp,0:nyp,-1:nzp+1) _real +fassign # Potential used by the particles to
-                 # calculate the field from the solution of Poisson's equation.
-rhop(0:nxp,0:nyp,0:nzp)    _real +fassign # Charge density from the particles.
-ndtsmax integer /0/
+phip(:,:,:) _real # Potential used by the particles to calculate
+                  # the field from the solution of Poisson's equation.
+                  # This will be pointed to each of the different ndts
+                  # groups as needed.
+rhop(:,:,:) _real # Charge density from the particles.
+                  # This will be pointed to each of the different ndts
+                  # groups as needed.
+ndtsmax integer /1/
 nsndts integer /0/
 ndtstorho(ndtsmax) _integer /-1/ #
 rhotondts(0:nsndts-1) _integer
-rhopndts(0:nxp,0:nyp,0:nzp,0:nsndts-1)    _real +fassign
+ldts(0:nsndts-1) _logical /1/
+nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
+                           # It defaults to 1 which is what is needed if
+                           # there are only groups with ndts==1. Otherwise
+                           # it will be 2.
+rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies,0:nsndts-1)    _real +fassign
                  # Temporary copy of the charge density from the particles
                  # for species with different time step sizes.
+                 # This includes the time averaged charge density from
+                 # faster particles and the old rho from the slower particles.
+phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndts-1)    _real +fassign
+                 # Temporary copy of the potential from the particles
+                 # for species with different time step sizes.
+                 # This includes the effect of time averaged charge density
+                 # from faster particles and the old rho from the slower
+                 # particles.
 
 *********** Efields3d:
 nx_selfe integer /0/ +dump           # Same as nx
@@ -855,7 +872,8 @@ inj_smoother(nx:integer,ny:integer,inj_phi(0:nx,0:ny):real,
 getinj_phi() subroutine
 getinj_phi_3d() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
-fetche3dfrompositions(is:integer,n:integer,x(n):real,y(n):real,z(n):real,
+fetche3dfrompositions(is:integer,indts:integer,n:integer,
+                      x(n):real,y(n):real,z(n):real,
                       ex(n):real,ey(n):real,ez(n):real) subroutine
 particleboundaries3d(pgroup:ParticleGroup) subroutine
 loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,

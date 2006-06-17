@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.55 $, $Date: 2006/05/26 05:35:53 $
+c@(#) File w3d_injection.F, version $Revision: 1.56 $, $Date: 2006/06/17 02:22:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -385,7 +385,8 @@ c             --- and the particle arrays are unallocated.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,nn,pgroup%xp(i1:i2),
+              call fetche3dfrompositions(is,pgroup%ndts(is),nn,
+     &                                   pgroup%xp(i1:i2),
      &                                   pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),at,bt,apt)
               call fetchb3dfrompositions(is,nn,pgroup%xp(i1:i2),
@@ -511,7 +512,8 @@ c             --- Make sure there is enough temp space
 
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
-                call fetche3dfrompositions(is,nn,pgroup%xp(ipmin),
+                call fetche3dfrompositions(is,pgroup%ndts(is),nn,
+     &                                     pgroup%xp(ipmin),
      &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     at,bt,apt)
                 call fetchb3dfrompositions(is,nn,pgroup%xp(ipmin),
@@ -1174,7 +1176,8 @@ c           --- and to make the following code look cleaner.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
+              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+     &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
@@ -1310,7 +1313,8 @@ c           --- only particles that have been injected this time step.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,nn,xx,yy,zz,ex,ey,ez)
+              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+     &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
@@ -3957,7 +3961,7 @@ c           --- transform field vector from source coordinates to lab coordinate
         call inj_transform(nrhs,inj_ex_3d,inj_ey_3d,inj_ez_3d,1,ij,1,0)
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
-        call fetche3dfrompositions(0,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp)
+        call fetche3dfrompositions(0,0,nn,xxp,yyp,zzp,ex_tmp,ey_tmp,ez_tmp)
 
         dd = inj_d(ij)*dzmin
         if(dd>dzmin) then

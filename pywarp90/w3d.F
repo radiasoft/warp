@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.257 $, $Date: 2006/06/15 18:06:27 $
+c@(#) File W3D.F, version $Revision: 3.258 $, $Date: 2006/06/17 02:22:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -223,6 +223,13 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxyz = max(nx,ny,nzfull)
       call gchange("Fields3d", 0)
       vbeamfrm = vbeam
+      if(solvergeom /= XYZgeom .and. solvergeom /=XYZgeomMR) then
+c       --- If not using the 3d mover (which has special set up for rho
+c       --- and phi because of subcycling, the rho and phi arrays need to
+c       --- be explicitly allocated.
+        allocate(rho(0:nx,0:ny,0:nz))
+        allocate(phi(0:nx,0:ny,-1:nz+1))
+      endif
       if(solvergeom==XYZgeom   .or. solvergeom==XYgeom .or. solvergeom==XYZgeomMR) then
         if (l2symtry) then
           ymmin = 0.
@@ -303,7 +310,7 @@ c  Initialize the B field solver if it is being used
       if (bfstype >= 0) call init_bfieldsolver(bfstype)
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
-      call vp3d (1)
+      call vp3d(1)
 
 c  Create the dynamic arrays in Z_arrays; set the z mesh
 
@@ -688,6 +695,9 @@ c --- erroneaous results.
       endif
       call setlatt()
 
+c     --- This is a special routine needed when there is subcycling.
+      call setupevensubcyclingrho(it)
+
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
 c  Half-step in v from t.l. it-1   if last step was "special"
 c  Full-step in v from t.l. it-3/2 if last step not "special"
@@ -761,17 +771,6 @@ c  Set the "gap" electric field.
 
       call setegap
 
-c  Gather moments used in diagnostics at "special" timesteps only. 
-c  Compute line charge density (gtlchg3d) and the axial line charge 
-c  (srhoax3d) on 1-d meshes.  Note -- these moments accumulations are
-c  done at this phase of the particle advance to allow for the eventual 
-c  use of a single array for rho and phi.   
-
-      if (lspecial) then
-        call gtlchg3d
-        call srhoax3d
-      endif
-
 c  Charge density contour plot diagnostics.  Note -- these diagnostics 
 c  are done at this phase of the particle advance to allow for the eventual 
 c  use of a single array for rho and phi.   
@@ -800,6 +799,13 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
      &     solvergeom == Zgeom)) then
+        if (maxval(pgroup%ndts) > 1) then
+c         --- Note that with subcycling, this option will be incorrect since
+c         --- the selfe for each ndts group is not (and will not) be
+c         --- calculated.
+          print*,"The efetch option 3 cannot be used with subcycling"
+          stop
+        endif
         call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
      &                  boundxy,boundxy,boundxy,boundxy)
@@ -857,6 +863,8 @@ c  field (sezax3d).
 
       if (lspecial) then
         if (lgetvzofz) call getvzofz
+        call gtlchg3d
+        call srhoax3d
         call getese3d 
         call sphiax3d 
         call  sezax3d
@@ -1381,10 +1389,9 @@ c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
-      integer(ISZ),pointer:: ins(:),nps(:),ndts(:)
-      logical(ISZ),pointer:: ldts(:)
+      integer(ISZ),pointer:: ins(:),nps(:)
 
-      integer(ISZ):: isid,is,ismax,ip,ipmin,i
+      integer(ISZ):: isid,is,ismax,ip,ipmin,i,ndtstmp
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
       real(kind=8):: fulldt_s,halfdt_s
       real(kind=8),allocatable:: zpo(:)
@@ -1424,8 +1431,6 @@ c     --- Create local pointers to the arrays in pgroup.
       sw => pgroup%sw
       ins => pgroup%ins
       nps => pgroup%nps
-      ldts => pgroup%ldts
-      ndts => pgroup%ndts
       dtscale => pgroup%dtscale
 
       ismax = maxval(pgroup%sid)+1
@@ -1437,15 +1442,18 @@ c     --- Create local pointers to the arrays in pgroup.
 c  Setup the moments if center is synchv or gen
 c  If OPENMP, copies data to arrays which will be threadprivate
       if (center == "synchv" .or. center == "gen") then
-c  Initialize the moments arrays if the species is being advanced this step,
-c  based on ndts. This must be done outside the OPENMP parallel block.
+c  Initialize the moments arrays if the species positions has just been
+c  advanced. If so, ldts will still be true from the previous call to
+c  padvnc3d.
+c  This must be done outside the OPENMP parallel block.
         do is=1,pgroup%ns
-          if (mod(it,ndts(is))/=0) cycle
-          isid = pgroup%sid(is-1) + 1
-          call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                  0.,0.,0.,0.,0.,1,
-     &                  nplive,0.,0.,0.,1,isid,ismax,
-     &                  tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+          if (pgroup%ldts(is)) then
+            isid = pgroup%sid(is-1) + 1
+            call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                    0.,0.,0.,0.,0.,1,
+     &                    nplive,0.,0.,0.,1,isid,ismax,
+     &                    tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+          endif
         enddo
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1496,25 +1504,46 @@ c  Loop over species
         jsapi=is-1
 
 c  Advance species according to subcycling rule governed by ndts.
-        if (mod(it,ndts(is))/=0) then
-          cycle
+c  If ndts is even, then the particles can be advanced when the faster
+c  particles has gone half way through the larger time step. At that
+c  point, there will be enough future charge densities from the faster
+c  particles to form a time centered average.
+c
+c  If ndts is odd, then the particles are advanced on the time step that
+c  is past the half way point, again so that all of the future charge
+c  densities are known to form a time centered average.
+c  The ndtstmp is just a clever way of finding that time step.
+c
+c  Note that (it-1) is used since it is advanced before this point.
+c
+c  The synchv is done one time step sooner since it is done after the
+c  field solve which will include that time centered rho average.
+
+        ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
+        if (pgroup%ndts(is) == 1) then
+          center = center_in
+          pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
+          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
+     &          (center_in=="fullv" .or. center_in=="halfv")) then
+          center = center_in
+          pgroup%ldts(is) = .true.
+          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
+     &          (center_in=="synchv")) then
+          center = "synchv"
+          pgroup%ldts(is) = .false.
+          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         else
-          if (ndts(is)==1) then
-            center = center_in
-          else
-            if (center_in=="fullv" .and. ldts(is)) center="halfv"
-            if (center_in=="synchv") then
-              ldts(is)=.true.
-            else
-              ldts(is)=.false.
-            end if
-          end if
-        end if
+          pgroup%ldts(is) = .false.
+          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+          cycle
+        endif
 
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
-        fulldt_s    = dt*ndts(is)*dtscale(is)
-        halfdt_s    = 0.5*fulldt_s
+        fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+        halfdt_s = 0.5*fulldt_s
 
 c If this species involves drift-kinetic interpolation, allocate
 c  space for temporary arrays if sufficient space not already allocated
@@ -1892,20 +1921,22 @@ c=============================================================================
       integer(ISZ):: is,ip,ipmin
       real(kind=8):: fulldt_s,halfdt_s
 
-c  Loop over species
       do is=1,pgroup%ns
 
-c  Advance species according to subcycling rule governed by ndts.
-c  Also include time step size scaling for steady-state and slice modes.
-        if (mod(it,pgroup%ndts(is))/=0) cycle
-        fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
-        halfdt_s    = 0.5*fulldt_s
+c       --- Get the extrpolated particles for the species.
+c       --- This is only done after the positions have been advanced,
+c       --- in which case ldts will be true.
+c       --- Include time step size scaling for steady-state and slice modes.
+        if (pgroup%ldts(is)) then
+          fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+          halfdt_s = 0.5*fulldt_s
 
-        ipmin = pgroup%ins(is)
-        call getextrapolatedparticles(pgroup%ins(is),pgroup%nps(is),pgroup,
-     &             pgroup%npid,halfdt_s,
-     &             pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     &             pgroup%sid(is-1)+1,time,zbeam)
+          ipmin = pgroup%ins(is)
+          call getextrapolatedparticles(pgroup%ins(is),pgroup%nps(is),pgroup,
+     &               pgroup%npid,halfdt_s,
+     &               pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     &               pgroup%sid(is-1)+1,time,zbeam)
+         endif
        enddo
 
       return
@@ -5900,11 +5931,11 @@ c --- rhop array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
-      integer(ISZ):: is1,is2,isid,ix,iy,iz
-      integer(ISZ):: ip,ipmin,is,indts
+      integer(ISZ):: is1,is2,isid
+      integer(ISZ):: ip,ipmin,is,indts,ndtstmp,in1,in2
+      real(kind=8):: rndts
       real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
-      real(kind=8),dimension(:,:,:),pointer::rhopcopy
       integer(ISZ):: allocerror
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -5917,11 +5948,11 @@ c     --- Ensure that the rhop array is setup properly
 c     --- zero rhop if requested
       if (lzero) then
         if (solvergeom == XYZgeom) then
-          call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
-c         --- Zero the rho copy for species with larger time steps
+c         --- Zero the rho copy for species when the positions
+c         --- are advanced.
           do indts=0,nsndts-1
-            if (mod(it+1,rhotondts(indts))==0) then
-              call zeroarry(rhopndts(:,:,:,indts),(nxp+1)*(nyp+1)*(nzp+1))
+            if (ldts(indts)) then
+              call zeroarry(rhopndts(:,:,:,1,indts),(nxp+1)*(nyp+1)*(nzp+1))
             endif
           enddo
         endif
@@ -5970,38 +6001,16 @@ c        --- mode, it is assumed that dtscale has not been changed from 1.
          if(solvergeom==XYZgeom) then
            ipmin = ins_u
            if (nps_u > 0) then
-             if (pgroup%ndts(is)>1) then
-               if (mod(it+1,pgroup%ndts(is))==0) then
-c                 --- If this species is being advanced this step, then
-c                 --- deposit its rho into rhopndts.
-#if defined XLF || defined XLF2
-                  allocate(rhopcopy(0:nxp,0:nyp,0:nzp))                   
-                  rhopcopy = rhop
-                  rhop = rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
-#else
-                  rhopcopy => rhop
-                  rhop => rhopndts(:,:,:,ndtstorho(pgroup%ndts(is)))
-#endif
-                else
-c                 --- Skip the species not being advanced this step
-                  cycle
-                end if
-             end if
-             call setrho3d(rhop,rhop,nps_u,
-     &                     pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                     zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
-     &                     nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
-     &                     l2symtry,l4symtry)
-             if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
-c               --- If this species is being advanced this step, then restore
-c               --- rhop
-#if defined XLF || defined XLF2
-                rhop = rhopcopy
-                deallocate(rhopcopy)
-#else
-                rhop => rhopcopy
-#endif
-             end if
+             if (pgroup%ldts(is)) then
+c              --- Only load the rho if the positions have been advanced.
+               indts = ndtstorho(pgroup%ndts(is))
+               call setrho3d(rhopndts(:,:,:,1,indts),
+     &                       rhopndts(:,:,:,1,indts),nps_u,
+     &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                    zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
+     &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                    l2symtry,l4symtry)
+             endif
            endif
          elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
 c          --- loop over particle blocks
@@ -6066,13 +6075,47 @@ c          --- loop over particle blocks
 c     --- Add together the rhop from the species with different time steps
 c     --- This must be done after all of the species has been deposited.
       if(solvergeom==XYZgeom) then
-        do indts = 0,nsndts-1
-          do iz=0,nz
-            do iy=0,ny
-              do ix=0,nx
-                rhop(ix,iy,iz)=rhop(ix,iy,iz)+rhopndts(ix,iy,iz,indts)
-              enddo
-            enddo
+        do in1 = 0,nsndts-1
+c         --- Copy the individual speices rho to its array holding the total
+c         --- rho.
+          if (mod(rhotondts(indts),2) == 1) then
+            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+          else
+c           --- For ndts even, some contribution may already have been made
+c           --- in setupevensubcyclingrho.
+            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                              rhopndts(:,:,:,1,in1)
+          endif
+        enddo
+        do in1 = 0,nsndts-1
+          rndts = 1./rhotondts(in1)
+          do in2 = 0,nsndts-1
+            if (in1 == in2) cycle
+            ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+            if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1)) then
+c             --- For groups with larger time steps, add in their rho
+c             --- now since it only needs to be done once.
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                rhopndts(:,:,:,1,in2)
+            else if (rhotondts(in1) > rhotondts(in2)) then
+c             --- For groups with smaller times steps, add in the
+c             --- fractional contribution.
+              rndts = 1./rhotondts(in1)
+c             --- Check the special case when the rho for one group is
+c             --- exactly half way between two of the larger time steps.
+c             --- This can happen when the larger is an integer multiple
+c             --- of the smaller.
+c             --- Only half is added in ala the trapezoidal rule.
+              if (mod(rhotondts(in1),rhotondts(in2)) == 0 .and.
+     &            mod(it-1,rhotondts(in1)) == 0) rndts = rndts*0.5
+c             --- Note that time could be saved since rhotondts(in1) > 1
+c             --- and its rho won't change every step and its contribution
+c             --- doesn't needed to be added in every step. Right now
+c             --- though I'm too lazy to figure out the logic and the
+c             --- weighting factors.
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                rhopndts(:,:,:,1,in2)*rndts
+            endif
           enddo
         enddo
       endif
@@ -6083,18 +6126,6 @@ c     --- This must be done after all of the species has been deposited.
 
       endif
 
-c  For parallel version, each processor sends rho to neighboring processors
-c  whose field solve region overlap its particle region.
-      if (lzero) call getrhoforfieldsolve()
-
-c     --- enforce periodicity
-c     --- This is done on the rho array, rather than rhop, since that will
-c     --- be used for the field solve. Also, in some cases, the rhop array
-c     --- will not cover the full axial extent of the system, so 
-c     --- periodicity can over be enforced on rho which does cover the full
-c     --- system.
-      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
-
 c     --- Do any loading that is needed for injection
       call loadrho_inject(pgroup)
 
@@ -6104,31 +6135,93 @@ c     --- Do any loading that is needed for injection
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve()
+      subroutine setupevensubcyclingrho(it)
+      use Fields3dParticles
+      use InGen3d,Only:solvergeom,XYZgeom
+      integer(ISZ):: it
+
+c     --- When, sometimes rho is know at a time that is exactly half way
+c     --- between two larger times steps. When this happens, the trapezoidal
+c     --- rule is used and one half of that rho is added to the larger time
+c     --- steps rho.
+
+      integer(ISZ):: iz,in1,in2,ndtstmp
+      real(kind=8):: rndts
+
+      if (solvergeom/=XYZgeom) return
+
+c     --- First, zero out the rho or those cases
+      do in1 = 0,nsndts-1
+        do in2 = 0,nsndts-1
+          if (in1 == in2) cycle
+          if (rhotondts(in1) > rhotondts(in2)) then
+            if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+              ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+              if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
+                rhopndts(:,:,:,2,in1) = 0.
+                exit
+              endif
+            endif
+          endif
+        enddo
+      enddo
+
+c     --- Then add in the half contribution
+      do in1 = 0,nsndts-1
+        do in2 = 0,nsndts-1
+          if (in1 == in2) cycle
+          if (rhotondts(in1) > rhotondts(in2)) then
+            if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+              ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+              if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
+                rndts = 0.5/rhotondts(in1)
+                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                  rhopndts(:,:,:,1,in2)*rndts
+              endif
+            endif
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine assignrhoandphi(rhopindts,phipindts)
+      use InGen3d
+      use Fields3d
+      use Fields3dParticles
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
+
+c     --- The assignments must be done in a subroutine like this so that
+c     --- the lower and upper bounds of rho and phi are correct.
+
+#ifndef MPIPARALLEL
+
+      if (solvergeom==XYZgeom) then
+c        --- Point rho to the block for the currently active ndts group.
+c        --- Note that nrhopndtscopies is used in case ndts is only 1
+c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
+         rho => rhopindts
+         phi => phipindts
+      endif
+
+#endif
+
+      return
+      end
+c=============================================================================
+      subroutine getrhoforfieldsolve(indts,rhopindts)
       use InGen
       use InGen3d
       use InMesh3d
       use Picglb3d, only: dz
       use Fields3d
       use Fields3dParticles
+      integer(ISZ):: indts
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
 
-#ifndef MPIPARALLEL
-
-      if (solvergeom==XYZgeom) then
-c       --- If rhop is not associated with rho, then copy the data.
-        if (.not. associated(rho,rhop)) then
-          if (nxp == nx .and. nyp == ny .and. nzp == nz) then
-            rho = rhop
-          else
-            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            call remark("ERROR!! rhop and rho are not the same shape!       ")
-            call remark("        The space charge will not be properly used!")
-            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-          endif
-        endif
-      endif
-
-#else
+#ifdef MPIPARALLEL
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -6178,7 +6271,7 @@ c=============================================================================
 
 c Ensures that the phip and rhop arrays are setup properly.
 c Also, setup rhopndts for the case when species have different time step sizes.
-c The setup of rhopndts is skipped is ns == -1.
+c The setup of rhopndts is skipped is ns == -1 or 0.
 
       integer(ISZ):: js,i,nsndtstemp,newndts
 
@@ -6197,37 +6290,33 @@ c The setup of rhopndts is skipped is ns == -1.
 c     --- If either rhop of phip are not associated or either does not have
 c     --- the correct dimensions as given by nxp, etc, something 
 c     --- needs to be done for fix them.
-      if (.not. associated(rhop) .or. .not. associated(phip) .or.
-     &    ANY(ubound(phip) .ne. (/ nxp,nyp,nzp+1 /) ) .or.
-     &    ANY(ubound(rhop) .ne. (/ nxp,nyp,nzp   /) )) then
+c     if (.not. associated(rhop) .or. .not. associated(phip) .or.
+c    &    ANY(ubound(phip) .ne. (/ nxp,nyp,nzp+1 /) ) .or.
+c    &    ANY(ubound(rhop) .ne. (/ nxp,nyp,nzp   /) )) then
 
 c       --- Free whatever the rhop and phip arrays are now refering to.
-        call gfree('Fields3dParticles')
+c       call gfree('Fields3dParticles')
 
-        if (ALL( (/ nxp,nyp,nzp /) == (/ nx,ny,nzfull /) )) then
+c       if (ALL( (/ nxp,nyp,nzp /) == (/ nx,ny,nzfull /) )) then
 c         --- If the sizes of rhop and rho, and phip and phi, are the same,
 c         --- then associate rhop with rho and phip with phi
-          rhop => rho
-          phip => phi
-        else
+c         rhop => rho
+c         phip => phi
+c       else
 c         --- If the sizes are not the same, then allocate the group
-          call gallot('Fields3dParticles',0)
-        endif
-      endif
+c         call gallot('Fields3dParticles',0)
+c       endif
+c     endif
 
-c     --- If -1 was passed in for ns, then skip the setup of rhopndts
+c     --- If -1 or 0 was passed in for ns, then skip the setup of rhopndts
       if (ns == -1) return
+      if (ns == 0) return
 
 c     --- Setup rhopndts
-      if(ns==0) return
 
 c     --- Find maximum value of ndts and use it to size the ndtstorho array
       ndtsmax = max(ndtsmax,maxval(ndts))
       call gchange("Fields3dParticles",0)
-
-c     --- By default, ndts of 1 should give 0. For ndts is 1, a
-c     --- special copy of rhop is not needed.
-      if (ndtstorho(1) == -1) ndtstorho(1) = 0
 
 c     --- Find any new time step sizes which havn't been included and add
 c     --- space to the rhopndts array.
@@ -6241,6 +6330,7 @@ c     --- space to the rhopndts array.
       if (newndts > 0) then
         nsndtstemp = nsndts
         nsndts = nsndts + newndts
+        if (ndtsmax > 1) nrhopndtscopies = 2
         call gchange("Fields3dParticles",0)
         do js = 0, ns-1
           if (ndtstorho(ndts(js)) == -2) then
@@ -6250,6 +6340,11 @@ c     --- space to the rhopndts array.
           endif
         enddo
       endif
+
+c     --- rhop and phip have the special values for the speices which are
+c     --- incremented every time step.
+      rhop => rhopndts(:,:,:,nrhopndtscopies,0)
+      phip => phipndts(:,:,:,0)
 
 c     --- Note that special coding is needed to clean up the rhopndts array
 c     --- for cases when there are no longer certain values of ndts. This
@@ -6280,11 +6375,13 @@ c=============================================================================
 
 c     --- Obtain the self-field from the electrostatic potential
 
+      integer(ISZ):: indts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if(solvergeom==XYZgeom) then
-        call sete3d(phip(0,0,-1),selfe(1,0,0,0),ip,
+        indts = ndtstorho(pgroup%ndts(is))
+        call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
@@ -6365,7 +6462,7 @@ c       --- and the data needs to be copied around.
       return
       end
 c=============================================================================
-      subroutine fetche3dfrompositions(is,n,x,y,z,ex,ey,ez)
+      subroutine fetche3dfrompositions(is,indts,n,x,y,z,ex,ey,ez)
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -6377,7 +6474,7 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
-      integer(ISZ):: is,n
+      integer(ISZ):: is,indts,n
       real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
 
 c     --- Obtain the self-field from the electrostatic potential
@@ -6388,8 +6485,13 @@ c     --- particles group.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      if (indts < 0 .or. indts > nsndts-1) then
+        print*,"An improper value on indts has been passed in"
+        return
+      endif
+
       if(solvergeom==XYZgeom) then
-        call sete3d(phip(0,0,-1),selfe(1,0,0,0),n,
+        call sete3d(phipndts(:,:,:,indts),selfe,n,
      &              x,y,z,
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
@@ -6457,7 +6559,7 @@ c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
 
       do is=1,pgroup%ns
-        if (mod(it,pgroup%ndts(is))==0 .and. pgroup%nps(is) > 0) then
+        if (pgroup%ldts(is) .and. pgroup%nps(is) > 0) then
            ipmin = pgroup%ins(is)
            call stckxy3d(pgroup%nps(is),
      &                   pgroup%xp(ipmin),xmmax,xmmin,dx,
@@ -6473,9 +6575,10 @@ c     --- absorb particles passing through semitransparent disc
 
       do is=1,ns
 c       --- do it only if species was advanced on this time step
-        if (mod(it,pgroup%ndts(is))/=0) cycle
-        call processlostpart(pgroup,is,clearlostpart,time+dt*pgroup%ndts(is),
-     &                       zbeam)
+        if (pgroup%ldts(is)) then
+          call processlostpart(pgroup,is,clearlostpart,time+dt*pgroup%ndts(is),
+     &                         zbeam)
+        endif
       enddo
 
 !$OMP MASTER
@@ -7447,14 +7550,185 @@ c     --- End of loop over apertures
       return
       end
 c===========================================================================
-      subroutine bendfieldsol3d()
+      subroutine getphiforparticles(indts)
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+      integer(ISZ):: indts
+
+#ifdef MPIPARALLEL
+
+c     --- Distribute phi among the processes so each has phi in its
+c     --- particle domain.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+        call getphiforparticlesrz()
+      elseif (solvergeom==XYgeom) then
+        call remark("getphiforparticles not implemented in parallel for XYgeom.")
+        stop
+c      else if(solvergeom==Zgeom) then
+c        call getphiforparticlesz()
+      elseif (solvergeom==XYZgeom) then
+        call
+        getphiforparticles3d(nx,ny,nz,phi,
+     &                       nxp,nyp,nzp,phipndts(:,:,:,indts)
+      end if
+#endif
+
+      return
+      end
+c===========================================================================
+      subroutine getphiforfields()
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+
+c This gets the phi at iz=nz and in the guard cells. It is only needed for
+c the 3d FFT and tridiagonal based solvers for the parallel version.
+
+#ifdef MPIPARALLEL
+
+c     --- Distribute phi among the processes so each has phi in its
+c     --- particle domain.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+c       call getphiforparticlesrz()
+c      else if(solvergeom==Zgeom) then
+c        call getphiforparticlesz()
+      elseif (solvergeom==XYZgeom) then
+        call getphiforfields3d(nx,ny,nz,phi)
+      end if
+#endif
+
+      return
+      end
+c===========================================================================
+      subroutine fieldsol3d(iwhich)
+      use GlobalVars
+      use Subtimers3d
+      use Timers
+      use InGen
+      use Picglb, only: zgrid
+      use InGen3d
+      use InMesh3d
+      use Picglb3d
+      use Fields3d
+      use Fields3dParticles
+      use Efields3d
+      use LatticeInternal
+      use InjectVars
+      use GridBoundary3d
+      integer(ISZ):: iwhich
+
+c  Field solver for 3d warped Cartesian geometry. 
+c  Enter with charge density in rho array, old potential in phi array.
+c  Exit with new potential in phi array, and rho unchanged.
+c  
+c  For field solve in a bend there are two possible cases:
+c      1) Call to an SOR field solver.  
+c      2) Iteration loop for a perturbative calculation of fields. 
+c         The loop is in bendfieldsol3d
+
+      real(kind=8):: timetemp
+      real(kind=8):: substarttime,wtime
+      integer(ISZ):: izmin,izmax,tnz,indts
+      if (lw3dtimesubs) substarttime = wtime()
+      timetemp = wtime()
+
+c     --- If no field solve, return 
+      if ( fstype == -1) return 
+
+c     --- Calculate rstar here since it is only used by the field solver and
+c     --- to ensure that it is set when the field solver is called.
+      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
+
+c     --- Loop over the subcyling groups and do any field solves that
+c     --- are necessary.
+      do indts=0,nsndts-1
+
+        if (.not. ldts(indts)) cycle
+
+c       --- For serial version, the arrays rho and phi are pointed to the
+c       --- appropriate arrays for the current ndts group.
+        call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,indts),
+     &                       phipndts(:,:,:,indts))
+
+c       --- For parallel version, each processor sends rho to neighboring
+c       --- processors whose field solve region overlap its particle region.
+        call getrhoforfieldsolve(indts,rhopndts(:,:,:,nrhopndtscopies,indts))
+
+c       --- enforce periodicity
+c       --- This is done on the rho array, rather than rhop, since that will
+c       --- be used for the field solve. Also, in some cases, the rhop array
+c       --- will not cover the full axial extent of the system, so 
+c       --- periodicity can never be enforced on rho which does cover the full
+c       --- system.
+        call perrho3d(rho,nx,ny,nz,bound0,boundxy)
+
+        if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
+     &      .or. fstype == 13) then
+c         --- SOR and multigrid field solvers - deal with bends directly and
+c         --- set axial boundary conditions (call to perphi3d is not needed)
+c         --- Chombo knows nothing of bends and does its own b.c.'s
+          call vp3d(iwhich)
+
+        else if (.not. linbend) then
+c         --- If not in bend, call VP3D
+          if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
+     &        fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
+     &        fstype == 8 .or. fstype == 9) then
+            if (bound0  == dirichlet) izmin = 1
+            if (bound0  == neumann)   izmin = 0
+            if (bound0  == periodic)  izmin = 0
+            if (boundnz == dirichlet) izmax = nz-1
+            if (boundnz == neumann)   izmax = nz
+            if (boundnz == periodic)  izmax = nz
+            tnz = izmax - izmin + 1
+            call copyarry(rho(0,0,izmin),phi(0,0,izmin),(nx+1)*(ny+1)*(tnz))
+          endif
+          call vp3d(iwhich)
+          call getphiforfields()
+          if (bound0==periodic) call perphi3d(phi,nx,ny,nz)
+
+        else
+c         --- Call perturbative bent beam field solver
+          call bendfieldsol3d(nx,ny,nz,rhopndts(:,:,:,2,indts),
+     &                        phipndts(:,:,:,indts))
+          call getphiforfields()
+          if (bound0==periodic) call perphi3d(phi,nx,ny,nz)
+
+        endif
+
+c       --- Distribute phi among the processes so each has phi in its
+c       --- particle domain.
+        call getphiforparticles(indts)
+
+      enddo
+c     --- End loop over ndts groups
+
+c     --- Points to the values that are used by the most frequently time
+c     --- advanced group.
+      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
+     &                     phipndts(:,:,:,0))
+
+!$OMP MASTER
+      if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+!$OMP END MASTER
+      fstime = fstime + (wtime() - timetemp)
+      return
+      end
+c===========================================================================
+      subroutine bendfieldsol3d(nx,ny,nz,rho,phi)
       use Constant
       use InGen
       use InGen3d
-      use InMesh3d
+      use InMesh3d,Only:xmmin
       use Picglb
-      use Fields3d
       use Picglb3d
+      use Fields3d,rho1=>rho,phi1=>phi
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 
 c Does the FFT field solve in bends.
 
@@ -7518,7 +7792,7 @@ c           --- only modify source if actually in a bend, or at entrance/exit
       enddo
 
 c     --- call Cartesian field solver
-      call vp3d (-1)
+      call vp3d(-1)
 
 c     --- compute error
       bndferr = 0.
@@ -7557,164 +7831,8 @@ c     --- if failure to converge, report the bad news to user
 
       return
       end
-c===========================================================================
-      subroutine getphiforparticles()
-      use InGen3d
-      use InMesh3d
-      use Fields3d
-      use Fields3dParticles
-
-c     --- Ensure that the phip array is setup properly
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
-c       --- Note the -1 is passed in for ns as a flag to skip the
-c       --- setting up of rhopndts.
-        call setupFields3dParticles(-1,0,0)
-      endif
-
-#ifndef MPIPARALLEL
-
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
-c       --- If phip is not associated with phi, then copy the data.
-        if (.not. associated(phi,phip)) then
-          if (nxp == nx .and. nyp == ny .and. nzp == nz) then
-            phip = phi
-          else
-            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            call remark("ERROR!! phip and phi are not the same shape!        ")
-            call remark("        The self field will not be properly applied!")
-            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-          endif
-        endif
-      endif
-
-#else
-
-c     --- Distribute phi among the processes so each has phi in its
-c     --- particle domain.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
-        call getphiforparticlesrz()
-      elseif (solvergeom==XYgeom) then
-        call remark("getphiforparticles not implemented in parallel for XYgeom.")
-        stop
-c      else if(solvergeom==Zgeom) then
-c        call getphiforparticlesz()
-      elseif (solvergeom==XYZgeom) then
-        call getphiforparticles3d(nx,ny,nz,phi(0,0,-1),nxp,nyp,nzp,phip)
-      end if
-#endif
-
-      return
-      end
-c===========================================================================
-      subroutine getphiforfields()
-      use InGen3d
-      use InMesh3d
-      use Fields3d
-      use Fields3dParticles
-
-c This gets the phi at iz=nz and in the guard cells. It is only needed for
-c the 3d FFT and tridiagonal based solvers for the parallel version.
-
-#ifdef MPIPARALLEL
-
-c     --- Distribute phi among the processes so each has phi in its
-c     --- particle domain.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
-c       call getphiforparticlesrz()
-c      else if(solvergeom==Zgeom) then
-c        call getphiforparticlesz()
-      elseif (solvergeom==XYZgeom) then
-        call getphiforfields3d(nx,ny,nz,phi(0,0,-1))
-      end if
-#endif
-
-      return
-      end
-c===========================================================================
-      subroutine fieldsol3d(iwhich)
-      use GlobalVars
-      use Subtimers3d
-      use Timers
-      use InGen
-      use Picglb, only: zgrid
-      use InGen3d
-      use InMesh3d
-      use Picglb3d
-      use Fields3d
-      use Fields3dParticles
-      use Efields3d
-      use LatticeInternal
-      use InjectVars
-      use GridBoundary3d
-      integer(ISZ):: iwhich
-
-c  Field solver for 3d warped Cartesian geometry. 
-c  Enter with charge density in rho array, old potential in phi array.
-c  Exit with new potential in phi array, and rho unchanged.
-c  
-c  For field solve in a bend there are two possible cases:
-c      1) Call to an SOR field solver.  
-c      2) Iteration loop for a perturbative calculation of fields. 
-c         The loop is in bendfieldsol3d
-
-      real(kind=8):: timetemp
-      real(kind=8):: substarttime,wtime
-      integer(ISZ):: izmin,izmax,tnz
-      if (lw3dtimesubs) substarttime = wtime()
-      timetemp = wtime()
-
-c     --- If no field solve, return 
-      if ( fstype == -1) return 
-
-c     --- Calculate rstar here since it is only used by the field solver and
-c     --- to ensure that it is set when the field solver is called.
-      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
-
-      if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
-     &    .or. fstype == 13) then
-c       --- SOR and multigrid field solvers - deal with bends directly and set
-c       --- axial boundary conditions (call to perphi3d is not needed)
-c       --- Chombo knows nothing of bends and does its own b.c.'s
-        call vp3d (iwhich)
-
-      else if (.not. linbend) then
-c       --- If not in bend, call VP3D
-        if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
-     &      fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
-     &      fstype == 8 .or. fstype == 9) then
-          if (bound0  == dirichlet) izmin = 1
-          if (bound0  == neumann)   izmin = 0
-          if (bound0  == periodic)  izmin = 0
-          if (boundnz == dirichlet) izmax = nz-1
-          if (boundnz == neumann)   izmax = nz
-          if (boundnz == periodic)  izmax = nz
-          tnz = izmax - izmin + 1
-          call copyarry (rho(0,0,izmin), phi(0,0,izmin), (nx+1)*(ny+1)*(tnz))
-        endif
-        call vp3d (iwhich)
-        call getphiforfields()
-        if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
-
-      else
-c       --- Call perturbative bent beam field solver
-        call bendfieldsol3d
-        call getphiforfields()
-        if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
-
-      endif
-
-c     --- Distribute phi among the processes so each has phi in its
-c     --- particle domain.
-      call getphiforparticles()
-
-!$OMP MASTER
-      if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
-!$OMP END MASTER
-      fstime = fstime + (wtime() - timetemp)
-      return
-      end
 c=============================================================================
-      subroutine vp3d (iwhich)
+      subroutine vp3d(iwhich)
       use Subtimers3d
       use Constant
       use InGen
@@ -7785,8 +7903,8 @@ c fits and so was replaced with if statements.
       elseif (fstype == 3) then
 c          --- Note that by default, izfsmax=nz, and izfsmin=0.
 c          --- izfsmin and izfsmax allow field solves on a partial grid.
-           call psor3df(iwhich,nx,ny,nz,phi(0,0,-1),rho(0,0,0),
-     &                 phi(0,0,-1),rho(0,0,0),rstar, 
+           call psor3df(iwhich,nx,ny,nz,phi,rho,
+     &                 phi,rho,rstar, 
      &                 dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid,linbend,
      &                 bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
      &                 scrtch(0,0),izfsmin,izfsmax)
@@ -7869,9 +7987,9 @@ c         --- put forward by Lantz
       elseif (fstype == 10) then
 c         --- RZ full-multigrid solver
        if (solvergeom==RZgeom .or. solvergeom==XZgeom) then
-         call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz)
+         call multigridrzf(iwhich,phi,rho,nx,nz)
        elseif (solvergeom==XYgeom) then
-         call multigridxyf2(iwhich,phi(:,:,0),rho(:,:,0),nx,ny)
+         call multigridxyf2(iwhich,phi(:,:,0),rho,nx,ny)
        endif
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
