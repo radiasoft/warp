@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.6 $, $Date: 2006/06/16 18:34:03 $
+c@(#) File top_lattice.F, version $Revision: 3.7 $, $Date: 2006/06/17 02:08:42 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2574,7 +2574,7 @@ c===========================================================================
       use ParticleGroupmodule
       use Lattice,Only:bends
       use LatticeInternal,Only:linbend
-      use Subtimers3d
+      use Subtimerstop
       type(ParticleGroup):: pgroup
       integer(ISZ):: np,ipmin
       real(kind=8):: ddt
@@ -2586,11 +2586,11 @@ c  "along the centerline."
       integer(ISZ):: ip
       real(kind=8):: xprv,xc
       real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
+      if (ltoptimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) then
 !$OMP MASTER
-        if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+        if (ltoptimesubs) timezbendcor = timezbendcor + wtime() - substarttime
 !$OMP END MASTER
         return
       endif
@@ -2604,7 +2604,7 @@ c  "along the centerline."
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+      if (ltoptimesubs) timezbendcor = timezbendcor + wtime() - substarttime
 !$OMP END MASTER
       return
       end      

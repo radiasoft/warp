@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.217 $, $Date: 2006/06/15 18:06:45 $
+#@(#) File W3D.V, version $Revision: 3.218 $, $Date: 2006/06/17 02:08:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.217 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.218 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -1033,7 +1033,6 @@ timesete3d_relativity real /0./
 timeedamp real /0./
 timegetbend real /0./
 timebendez3d real /0./
-timezbendcor real /0./
 timesete3d real /0./
 timegetselfe3d real /0./
 timestptcl3d real /0./
