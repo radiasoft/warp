@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.258 $, $Date: 2006/06/17 02:22:22 $
+c@(#) File W3D.F, version $Revision: 3.259 $, $Date: 2006/06/19 20:14:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6075,18 +6075,21 @@ c          --- loop over particle blocks
 c     --- Add together the rhop from the species with different time steps
 c     --- This must be done after all of the species has been deposited.
       if(solvergeom==XYZgeom) then
-        do in1 = 0,nsndts-1
-c         --- Copy the individual speices rho to its array holding the total
-c         --- rho.
-          if (mod(rhotondts(indts),2) == 1) then
-            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
-          else
-c           --- For ndts even, some contribution may already have been made
-c           --- in setupevensubcyclingrho.
-            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                              rhopndts(:,:,:,1,in1)
-          endif
-        enddo
+c       --- The copy is only needed if there are multiple groups of ndts.
+        if (nrhopndtscopies == 2) then
+          do in1 = 0,nsndts-1
+c           --- Copy the individual speices rho to its array holding the total
+c           --- rho.
+            if (mod(rhotondts(in1),2) == 1) then
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+            else
+c             --- For ndts even, some contribution may already have been made
+c             --- in setupevensubcyclingrho.
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                rhopndts(:,:,:,1,in1)
+            endif
+          enddo
+        endif
         do in1 = 0,nsndts-1
           rndts = 1./rhotondts(in1)
           do in2 = 0,nsndts-1
