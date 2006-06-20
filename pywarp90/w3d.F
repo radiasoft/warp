@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.260 $, $Date: 2006/06/20 17:13:28 $
+c@(#) File W3D.F, version $Revision: 3.261 $, $Date: 2006/06/20 21:11:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1532,6 +1532,7 @@ c  field solve which will include that time centered rho average.
             center = center_in
             pgroup%ldts(is) = .true.
             ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+            itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + ndtstorho(pgroup%ndts(is))
           elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
      &            (center_in=="synchv")) then
             center = "synchv"
@@ -1545,6 +1546,7 @@ c  field solve which will include that time centered rho average.
         else
           pgroup%ldts(is) = .true.
           ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+          itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + 1
         endif
 
 c Include the scaling factors in the time step size, both the one for
@@ -5939,7 +5941,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2,isid
-      integer(ISZ):: ip,ipmin,is,indts,ndtstmp,in1,in2
+      integer(ISZ):: ip,ipmin,is,indts,ndtstmp,in2tmp,in1,in2
       real(kind=8):: rndts
       real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
@@ -6106,15 +6108,17 @@ c     --- This must be done after all of the species has been deposited.
 c       --- The copy is only needed if there are multiple groups of ndts.
         if (nrhopndtscopies == 2) then
           do in1 = 0,nsndts-1
-c           --- Copy the individual speices rho to its array holding the total
-c           --- rho.
-            if (mod(rhotondts(in1),2) == 1) then
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
-            else
-c             --- For ndts even, some contribution may already have been made
-c             --- in setupevensubcyclingrho.
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                rhopndts(:,:,:,1,in1)
+            if (ldts(in1)) then
+c             --- Copy the individual speices rho to its array holding the
+c             --- total rho.
+              if (mod(rhotondts(in1),2) == 1) then
+                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+              else
+c               --- For ndts even, some contribution may already have been made
+c               --- in setupevensubcyclingrho.
+                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                  rhopndts(:,:,:,1,in1)
+              endif
             endif
           enddo
         endif
@@ -6138,15 +6142,18 @@ c             --- exactly half way between two of the larger time steps.
 c             --- This can happen when the larger is an integer multiple
 c             --- of the smaller.
 c             --- Only half is added in ala the trapezoidal rule.
-              if (mod(rhotondts(in1),rhotondts(in2)) == 0 .and.
-     &            mod(it-1,rhotondts(in1)) == 0) rndts = rndts*0.5
+              in2tmp = rhotondts(in2) - mod(rhotondts(in2),2)
+              if (mod(rhotondts(in1),2) == 0 .and. ldts(in2) .and.
+     &            rhotondts(in1) == 2*mod(itndts(in2),rhotondts(in1))) then
+                rndts = rndts*0.5
+              endif
 c             --- The first time step is special since the past histories
 c             --- of the faster moving groups is not known.
 c             --- It is assumed that the starting time step is it=0,
-c             --- which means that it = 1 now. As an estimate, the initial
+c             --- which means that it = 0 now. As an estimate, the initial
 c             --- charge density is multiplied by a scale factor to replace
 c             --- the unknown values from the past.
-              if (it == 1) then
+              if (it == 0) then
                 rndts = ((rhotondts(in1) + 1)/2.)/rhotondts(in1)
               endif
 c             --- Note that time could be saved since rhotondts(in1) > 1
