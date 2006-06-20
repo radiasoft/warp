@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.67 $, $Date: 2006/06/15 21:30:02 $
+c@(#) File WXY.M, version $Revision: 3.68 $, $Date: 2006/06/20 18:39:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -583,7 +583,7 @@ c=============================================================================
       use Fields3d
       use Efields3d
       use Io
-      use Particles,Only: pgroup
+      use Particles,Only: pgroup,nplive
       use Picglb
       use Picglb3d
       use Lattice
