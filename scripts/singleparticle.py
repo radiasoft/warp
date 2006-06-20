@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.30 2006/05/26 19:06:43 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.31 2006/06/20 18:14:55 dave Exp $"
 
 class TraceParticle:
   """
@@ -68,6 +68,8 @@ Available methods...
         top.pgroup.sq[self.js] = top.zion*top.echarge
       if top.pgroup.sm[self.js] == 0.:
         top.pgroup.sm[self.js] = top.aion*top.amu
+      if top.pgroup.sid[self.js] == -1:
+        top.pgroup.sid[self.js] = self.js
 
     # --- Use the particle's ssn to keep track of them
     if top.spid == 0: top.spid = nextpid()
@@ -549,6 +551,7 @@ Available methods...
       top.pgroup.sq[self.js] = top.zion*top.echarge
       top.pgroup.sm[self.js] = top.aion*top.amu
       top.pgroup.sw[self.js] = 0.
+      if top.pgroup.sid[self.js] == -1: top.pgroup.sid[self.js] = self.js
     self.savedata = savedata
     self.enabled = 0
     # --- Do some initialization
