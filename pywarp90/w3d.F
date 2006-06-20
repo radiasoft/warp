@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.259 $, $Date: 2006/06/19 20:14:34 $
+c@(#) File W3D.F, version $Revision: 3.260 $, $Date: 2006/06/20 17:13:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -222,6 +222,8 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
       call gchange("Fields3d", 0)
+      call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
+      call assignrhoandphi(rhopndts,phipndts)
       vbeamfrm = vbeam
       if(solvergeom /= XYZgeom .and. solvergeom /=XYZgeomMR) then
 c       --- If not using the 3d mover (which has special set up for rho
@@ -1519,25 +1521,30 @@ c
 c  The synchv is done one time step sooner since it is done after the
 c  field solve which will include that time centered rho average.
 
-        ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
-        if (pgroup%ndts(is) == 1) then
-          center = center_in
-          pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
-          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
-     &          (center_in=="fullv" .or. center_in=="halfv")) then
-          center = center_in
+        if(solvergeom==XYZgeom) then
+          ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
+          if (pgroup%ndts(is) == 1) then
+            center = center_in
+            pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
+            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+          elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
+     &            (center_in=="fullv" .or. center_in=="halfv")) then
+            center = center_in
+            pgroup%ldts(is) = .true.
+            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+          elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
+     &            (center_in=="synchv")) then
+            center = "synchv"
+            pgroup%ldts(is) = .false.
+            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+          else
+            pgroup%ldts(is) = .false.
+            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+            cycle
+          endif
+        else
           pgroup%ldts(is) = .true.
           ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
-     &          (center_in=="synchv")) then
-          center = "synchv"
-          pgroup%ldts(is) = .false.
-          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        else
-          pgroup%ldts(is) = .false.
-          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-          cycle
         endif
 
 c Include the scaling factors in the time step size, both the one for
@@ -5937,6 +5944,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
+      logical(ISZ):: lzeroeven
 
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -5950,9 +5958,29 @@ c     --- zero rhop if requested
         if (solvergeom == XYZgeom) then
 c         --- Zero the rho copy for species when the positions
 c         --- are advanced.
-          do indts=0,nsndts-1
-            if (ldts(indts)) then
-              call zeroarry(rhopndts(:,:,:,1,indts),(nxp+1)*(nyp+1)*(nzp+1))
+          do in1=0,nsndts-1
+            if (mod(rhotondts(in1),2) == 1 .or. lndtssampleonly) then
+c             --- rho is zeroed for all of the odd cases and if only
+c             --- sampling is done.
+              if (ldts(in1)) then
+                call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+              endif
+            else
+c             --- rho is zeroed for even cases only when there is no group
+c             --- with half its time step size (since those cases already
+c             --- have a contribution added.
+              if (ldts(in1)) then
+                lzeroeven = .true.
+                do in2 = 0,nsndts-1
+                  if (rhotondts(in1) > rhotondts(in2)) then
+                    if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+                      lzeroeven = .false.
+                      exit
+                    endif
+                  endif
+                enddo
+                if (lzeroeven) rhopndts(:,:,:,1,in1) = 0.
+              endif
             endif
           enddo
         endif
@@ -6091,13 +6119,14 @@ c             --- in setupevensubcyclingrho.
           enddo
         endif
         do in1 = 0,nsndts-1
-          rndts = 1./rhotondts(in1)
           do in2 = 0,nsndts-1
             if (in1 == in2) cycle
             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
-            if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1)) then
+            if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1) .or.
+     &          lndtssampleonly) then
 c             --- For groups with larger time steps, add in their rho
 c             --- now since it only needs to be done once.
+c             --- Also, if only sampling instead of averaging.
               rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
      &                                rhopndts(:,:,:,1,in2)
             else if (rhotondts(in1) > rhotondts(in2)) then
@@ -6111,6 +6140,15 @@ c             --- of the smaller.
 c             --- Only half is added in ala the trapezoidal rule.
               if (mod(rhotondts(in1),rhotondts(in2)) == 0 .and.
      &            mod(it-1,rhotondts(in1)) == 0) rndts = rndts*0.5
+c             --- The first time step is special since the past histories
+c             --- of the faster moving groups is not known.
+c             --- It is assumed that the starting time step is it=0,
+c             --- which means that it = 1 now. As an estimate, the initial
+c             --- charge density is multiplied by a scale factor to replace
+c             --- the unknown values from the past.
+              if (it == 1) then
+                rndts = ((rhotondts(in1) + 1)/2.)/rhotondts(in1)
+              endif
 c             --- Note that time could be saved since rhotondts(in1) > 1
 c             --- and its rho won't change every step and its contribution
 c             --- doesn't needed to be added in every step. Right now
@@ -6152,6 +6190,7 @@ c     --- steps rho.
       real(kind=8):: rndts
 
       if (solvergeom/=XYZgeom) return
+      if (lndtssampleonly) return
 
 c     --- First, zero out the rho or those cases
       do in1 = 0,nsndts-1
