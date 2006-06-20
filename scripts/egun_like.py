@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.51 2006/06/12 22:03:50 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.52 2006/06/20 18:13:03 dave Exp $"
 
 
 ##############################################################################
@@ -392,6 +392,7 @@ set when a current is specified"""
         pgroup = ParticleGroup()
         pgroup.ns = 1
         pgroup.gchange()
+        pgroup.sid[:] = top.pgroup.sid[js]
         pgroups.append(pgroup)
 
         if (top.pgroup.nps[js] > 0):
