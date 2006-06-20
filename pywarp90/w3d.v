@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.220 $, $Date: 2006/06/20 17:13:28 $
+#@(#) File W3D.V, version $Revision: 3.221 $, $Date: 2006/06/20 21:09:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.220 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.221 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -332,13 +332,15 @@ phip(:,:,:) _real # Potential used by the particles to calculate
 rhop(:,:,:) _real # Charge density from the particles.
                   # This will be pointed to each of the different ndts
                   # groups as needed.
-lndtssampleonly /.false./ # When true, only the most recent charge density
-                          # from each group is used.
+lndtssampleonly logical /.false./ # When true, only the most recent charge
+                                  # density from each group is used.
 ndtsmax integer /1/
 nsndts integer /0/
 ndtstorho(ndtsmax) _integer /-1/ #
 rhotondts(0:nsndts-1) _integer
 ldts(0:nsndts-1) _logical /1/
+itndts(0:nsndts-1) _integer /0/ # The time level of the position of the
+                                # ndts group
 nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
                            # It defaults to 1 which is what is needed if
                            # there are only groups with ndts==1. Otherwise
