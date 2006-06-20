@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.119 2006/05/18 22:59:45 dave Exp $"
+warp_version = "$Id: warp.py,v 1.120 2006/06/20 18:14:21 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -333,8 +333,15 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
     return result
 
 #=============================================================================
-def addspecies(newns=1,pgroup=None):
-  """Adds one or more new speices. This only allocates the needed arrays."""
+def addspecies(newns=1,pgroup=None,sid=None):
+  """Adds one or more new speices. This only allocates the needed arrays.
+  - newns=1: the number of new species to add
+  - pgroup=top.pgroup: the pgroup to add them to
+  - sid=iota(top.ns-newns,top.ns-1): the global id of the species being added
+                                     This is only meaningful if pgroup is
+                                     specified.
+  """
+  if newns == 0: return
   top.ns = top.ns + newns
   assert top.ns >= 0,"The total number of species cannot be negative"
   gchange("InPart")
@@ -343,10 +350,13 @@ def addspecies(newns=1,pgroup=None):
   gchange("ExtPart")
   # --- top.pgroup is special since it always has top.ns species.
   top.pgroup.ns = top.ns
+  if sid is None: sid = iota(top.ns-newns,top.ns-1)
   setuppgroup(top.pgroup)
+  top.pgroup.sid[-newns:] = sid
   if pgroup is not None:
     pgroup.ns = top.ns
     setuppgroup(pgroup)
+    top.pgroup.sid[-newns:] = sid
   if top.lspeciesmoments:
     top.nszarr = top.ns
     gchange("Z_arrays")
