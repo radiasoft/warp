@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.261 $, $Date: 2006/06/20 21:11:16 $
+c@(#) File W3D.F, version $Revision: 3.262 $, $Date: 2006/06/20 22:59:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6111,7 +6111,7 @@ c       --- The copy is only needed if there are multiple groups of ndts.
             if (ldts(in1)) then
 c             --- Copy the individual speices rho to its array holding the
 c             --- total rho.
-              if (mod(rhotondts(in1),2) == 1) then
+              if (mod(rhotondts(in1),2) == 1 .or. lndtssampleonly) then
                 rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
               else
 c               --- For ndts even, some contribution may already have been made
