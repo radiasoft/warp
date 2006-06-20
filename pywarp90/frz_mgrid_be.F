@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.14 $, $Date: 2006/06/13 01:43:19 $
+c version $Revision: 1.15 $, $Date: 2006/06/20 18:11:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -84,7 +84,7 @@ c       --- Now, copy the rho data into the iondensitygrid2d grid
         ixbemax = iondensitygrid2d%xmax/grid%dr
         izbemin = iondensitygrid2d%ymin/grid%dz
         izbemax = iondensitygrid2d%ymax/grid%dz
-        iondensitygrid2d%grid(:,:) = grid%rho(ixbemin:ixbemax,izbemin:izbemax)
+        iondensitygrid2d%grid(:,:) = grid%rho(ixbemin+1:ixbemax+1,izbemin+1:izbemax+1)
         iondensitygrid2d%grid(:,:) = iondensitygrid2d%grid(:,:)/eps0
       endif
 
@@ -1410,10 +1410,10 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
 
       regionid = 0
       do id=1,nberegions
-        ixmin = (max(0.,xbemin(id)) - xmmin)/dx
-        ixmax = (min(nx*dx,xbemax(id)) - xmmin)/dx
-        izmin = (max(0.,zbemin(id)) - zmmin)/dz
-        izmax = (min(nz*dz,zbemax(id)) - zmmin)/dz
+        ixmin = (max(0.,xbemin(id) - xmmin))/dx
+        ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx
+        izmin = (max(0.,zbemin(id) - zmmin))/dz
+        izmax = (min(nz*dz,zbemax(id) - zmmin))/dz
         regionid(ixmin:ixmax,izmin:izmax) = id
       enddo
 

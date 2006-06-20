@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.18 $, $Date: 2006/06/12 22:23:31 $
+c version $Revision: 1.19 $, $Date: 2006/06/20 18:11:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1625,12 +1625,12 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
 
       regionid = 0
       do id=1,nberegions
-        ixmin = (max(0.,xbemin(id)) - xmmin)/dx
-        ixmax = (min(nx*dx,xbemax(id)) - xmmin)/dx
-        iymin = (max(0.,ybemin(id)) - ymmin)/dy
-        iymax = (min(ny*dy,ybemax(id)) - ymmin)/dy
-        izmin = (max(0.,zbemin(id)) - zmmin)/dz
-        izmax = (min(nz*dz,zbemax(id)) - zmmin)/dz
+        ixmin = (max(0.,xbemin(id) - xmmin))/dx
+        ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx
+        iymin = (max(0.,ybemin(id) - ymmin))/dy
+        iymax = (min(ny*dy,ybemax(id) - ymmin))/dy
+        izmin = (max(0.,zbemin(id) - zmmin))/dz
+        izmax = (min(nz*dz,zbemax(id) - zmmin))/dz
         regionid(ixmin:ixmax,iymin:iymax,izmin:izmax) = id
       enddo
 
