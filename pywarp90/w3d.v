@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.223 $, $Date: 2006/06/21 17:36:42 $
+#@(#) File W3D.V, version $Revision: 3.224 $, $Date: 2006/06/21 22:21:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.223 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.224 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -344,6 +344,7 @@ ndtsaveraging integer /0/ # Sets the type of averaging to do when using
                           # with even ndts step factors.
 ndtsmax integer /1/
 nsndts integer /0/
+nsndtsphi integer /0/
 ndtstorho(ndtsmax) _integer /-1/ #
 rhotondts(0:nsndts-1) _integer
 ldts(0:nsndts-1) _logical /1/
@@ -358,12 +359,13 @@ rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies,0:nsndts-1)    _real +fassign
                  # for species with different time step sizes.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndts-1)    _real +fassign
+phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi-1)    _real +fassign
                  # Temporary copy of the potential from the particles
                  # for species with different time step sizes.
                  # This includes the effect of time averaged charge density
                  # from faster particles and the old rho from the slower
-                 # particles.
+                 # particles. With only sampling, the same phip is used
+                 # for all groups, i.e. nsndtsphi==1.
 
 *********** Efields3d:
 nx_selfe integer /0/ +dump           # Same as nx
