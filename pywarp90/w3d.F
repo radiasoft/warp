@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.265 $, $Date: 2006/06/21 23:12:09 $
+c@(#) File W3D.F, version $Revision: 3.266 $, $Date: 2006/06/21 23:27:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1610,6 +1610,7 @@ c  Loop over species
         jsapi=is-1
 
         if(solvergeom==XYZgeom) then
+          lcycle = .false.
           if (ndtsaveraging == 0) then
             call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
      &                                                 center_in,center,lcycle)
@@ -6659,7 +6660,7 @@ c     --- Obtain the self-field from the electrostatic potential
 
       if(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
-        indts = min(tmpnsndts,ndtstorho(pgroup%ndts(is)))
+        indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is)))
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
@@ -6767,7 +6768,7 @@ c     --- particles group.
 
       if(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
-        indts = min(tmpnsndts,ndtstorho(ndts))
+        indts = min(tmpnsndts-1,ndtstorho(ndts))
         if (indts < 0 .or. indts > nsndts-1) then
           print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
           return
