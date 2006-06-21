@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.263 $, $Date: 2006/06/21 17:35:05 $
+c@(#) File W3D.F, version $Revision: 3.264 $, $Date: 2006/06/21 22:27:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -223,7 +223,8 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxyz = max(nx,ny,nzfull)
       call gchange("Fields3d", 0)
       call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
-      call assignrhoandphi(rhopndts,phipndts)
+      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
+     &                       phipndts(:,:,:,0))
       vbeamfrm = vbeam
       if(solvergeom /= XYZgeom .and. solvergeom /=XYZgeomMR) then
 c       --- If not using the 3d mover (which has special set up for rho
@@ -1324,6 +1325,112 @@ c       --- Add on linear pressure term
       return
       end
 c=============================================================================
+      subroutine setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
+     &                                                 center_in,center,lcycle)
+      use ParticleGroupmodule
+      use Fields3dParticles
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: it,is
+      character(*):: center_in
+      character(len=len(center_in)):: center
+      logical(ISZ):: lcycle
+
+c  Advance species according to subcycling rule governed by ndts.
+c  The ndts groups are advanced as soon as all of the needed
+c  information is available.
+c
+c  The halfv can be done on the first time step of each cycle.
+c  The synchv is done on the last.
+c
+c  Note that (it-1) is used since it is advanced before this point.
+
+      if (mod(it-1,pgroup%ndts(is)) == 0 .and.
+     &    (center_in=="fullv" .or. center_in=="halfv")) then
+        center = center_in
+        pgroup%ldts(is) = .true.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        itndts(ndtstorho(pgroup%ndts(is))) =
+     &          itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+      elseif (mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
+     &        (center_in=="synchv")) then
+        center = "synchv"
+        pgroup%ldts(is) = .false.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+      else
+        pgroup%ldts(is) = .false.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        lcycle = .true.
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
+     &                                               center_in,center,lcycle)
+      use ParticleGroupmodule
+      use Fields3dParticles
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: it,is
+      character(*):: center_in
+      character(len=len(center_in)):: center
+      logical(ISZ):: lcycle
+
+c  Advance species according to subcycling rule governed by ndts.
+c  If ndts is even, then the particles can be advanced when the faster
+c  particles has gone half way through the larger time step. At that
+c  point, there will be enough future charge densities from the faster
+c  particles to form a time centered average.
+c
+c  If ndts is odd, then the particles are advanced on the time step that
+c  is past the half way point, again so that all of the future charge
+c  densities are known to form a time centered average.
+c  The ndtstmp is just a clever way of finding that time step.
+c
+c  Note that (it-1) is used since it is advanced before this point.
+c
+c  The synchv is done one time step sooner since it is done after the
+c  field solve which will include that time centered rho average.
+
+      integer(ISZ):: ndtstmp
+
+      ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
+      if (pgroup%ndts(is) == 1) then
+        center = center_in
+        pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+      elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
+     &        (center_in=="fullv" .or. center_in=="halfv")) then
+        center = center_in
+        pgroup%ldts(is) = .true.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + ndtstorho(pgroup%ndts(is))
+      elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
+     &        (center_in=="synchv")) then
+        center = "synchv"
+        pgroup%ldts(is) = .false.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+      else
+        pgroup%ldts(is) = .false.
+        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        lcycle = .true.
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
+     &                                               center_in,center,lcycle)
+      use ParticleGroupmodule
+      use Fields3dParticles
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: it,is
+      character(*):: center_in
+      character(len=len(center_in)):: center
+      logical(ISZ):: lcycle
+
+      return
+      end
+c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
      &                             zpo,bendres,bendradi)
       use ParticleGroupmodule
@@ -1412,6 +1519,7 @@ c      real(kind=8),allocatable:: bx(:), by(:), bz(:)
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
+      logical(ISZ):: lcycle
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -1505,44 +1613,19 @@ c  Loop over species
         isid = pgroup%sid(is-1) + 1
         jsapi=is-1
 
-c  Advance species according to subcycling rule governed by ndts.
-c  If ndts is even, then the particles can be advanced when the faster
-c  particles has gone half way through the larger time step. At that
-c  point, there will be enough future charge densities from the faster
-c  particles to form a time centered average.
-c
-c  If ndts is odd, then the particles are advanced on the time step that
-c  is past the half way point, again so that all of the future charge
-c  densities are known to form a time centered average.
-c  The ndtstmp is just a clever way of finding that time step.
-c
-c  Note that (it-1) is used since it is advanced before this point.
-c
-c  The synchv is done one time step sooner since it is done after the
-c  field solve which will include that time centered rho average.
-
         if(solvergeom==XYZgeom) then
-          ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
-          if (pgroup%ndts(is) == 1) then
-            center = center_in
-            pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
-            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-          elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
-     &            (center_in=="fullv" .or. center_in=="halfv")) then
-            center = center_in
-            pgroup%ldts(is) = .true.
-            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-            itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + ndtstorho(pgroup%ndts(is))
-          elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
-     &            (center_in=="synchv")) then
-            center = "synchv"
-            pgroup%ldts(is) = .false.
-            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-          else
-            pgroup%ldts(is) = .false.
-            ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-            cycle
+          if (ndtsaveraging == 0) then
+            call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
+     &                                                 center_in,center,lcycle)
+          elseif (ndtsaveraging == 1) then
+            call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
+     &                                               center_in,center,lcycle)
+          elseif (ndtsaveraging == 2) then
+            call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
+     &                                               center_in,center,lcycle)
           endif
+          if (lcycle) cycle
+
         else
           pgroup%ldts(is) = .true.
           ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
@@ -5924,9 +6007,48 @@ c=============================================================================
 
 c     --- Zero the rho copy for species when the positions
 c     --- are advanced.
+c     --- rhopndts(:,:,:,2,in1) holds the old rho which is still needed
+c     --- for the faster advanced groups.
       do in1=0,nsndts-1
         if (ldts(in1)) then
+          rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
           call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine averagerhowithsampledsubcycling()
+      use Picglb,Only: it
+      use Fields3dParticles
+
+      integer(ISZ):: in1,in2,ndtstmp,in2tmp
+      real(kind=8):: wranf,oldornew
+
+c     --- Save the rho where the fastest particle's rho is. For now,
+c     --- assume that this is in1=0
+      do in1=0,nsndts-1
+        if (it == 0) then
+c         --- At it==0, before the first step, always add the new rho.
+          rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+        elseif (mod(rhotondts(in1),2) == 1) then
+          if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
+     &        mod(it-1,rhotondts(in1)) == 0) then
+            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+          else
+            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
+          endif
+        else
+c         --- When ndts is even, at the mid point of the step, randomly
+c         --- choose the old or the new
+          oldornew = wranf() - 0.5
+          if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. + oldornew .or.
+     &        mod(it-1,rhotondts(in1)) == 0) then
+            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+          else
+            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
+          endif
         endif
       enddo
 
@@ -5937,6 +6059,7 @@ c=============================================================================
       use Fields3dParticles
 
       integer(ISZ):: in1
+
 c     --- Zero the rho copy for species when the positions
 c     --- are advanced.
       do in1=0,nsndts-1
@@ -5969,11 +6092,92 @@ c         endif
       return
       end
 c=============================================================================
+      subroutine averagerhowithfullvsubcycling()
+      use Fields3dParticles
+      use Picglb,Only: it
+
+      integer(ISZ):: in1,in2,ndtstmp,in2tmp
+      real(kind=8):: rndts
+
+c     --- The copy is only needed if there are multiple groups of ndts.
+      if (nrhopndtscopies == 2) then
+        do in1 = 0,nsndts-1
+          if (ldts(in1)) then
+c           --- Copy the individual speices rho to its array holding the
+c           --- total rho.
+            if (mod(rhotondts(in1),2) == 1 .or. ndtsaveraging == 0) then
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+            else
+c             --- For ndts even, some contribution may already have been made
+c             --- in setupevensubcyclingrho.
+              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                                rhopndts(:,:,:,1,in1)
+            endif
+          endif
+        enddo
+      endif
+      do in1 = 0,nsndts-1
+        do in2 = 0,nsndts-1
+          if (in1 == in2) cycle
+          ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+          if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1) .or.
+     &        ndtsaveraging == 0) then
+c           --- For groups with larger time steps, add in their rho
+c           --- now since it only needs to be done once.
+c           --- Also, if only sampling instead of averaging.
+            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                              rhopndts(:,:,:,1,in2)
+          else if (rhotondts(in1) > rhotondts(in2)) then
+c           --- For groups with smaller times steps, add in the
+c           --- fractional contribution.
+            rndts = 1./rhotondts(in1)
+c           --- Check the special case when the rho for one group is
+c           --- exactly half way between two of the larger time steps.
+c           --- This can happen when the larger is an integer multiple
+c           --- of the smaller.
+c           --- Only half is added in ala the trapezoidal rule.
+            in2tmp = rhotondts(in2) - mod(rhotondts(in2),2)
+            if (mod(rhotondts(in1),2) == 0 .and. ldts(in2) .and.
+     &          rhotondts(in1) == 2*mod(itndts(in2),rhotondts(in1))) then
+              rndts = rndts*0.5
+            endif
+c           --- The first time step is special since the past histories
+c           --- of the faster moving groups is not known.
+c           --- It is assumed that the starting time step is it=0,
+c           --- which means that it = 0 now. As an estimate, the initial
+c           --- charge density is multiplied by a scale factor to replace
+c           --- the unknown values from the past.
+            if (it == 0) then
+              rndts = ((rhotondts(in1) + 1)/2.)/rhotondts(in1)
+            endif
+c           --- Note that time could be saved since rhotondts(in1) > 1
+c           --- and its rho won't change every step and its contribution
+c           --- doesn't needed to be added in every step. Right now
+c           --- though I'm too lazy to figure out the logic and the
+c           --- weighting factors.
+            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+     &                              rhopndts(:,:,:,1,in2)*rndts
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
       subroutine zerorhowithhalfvsubcycling()
       use Fields3dParticles
 
       print*,"Version 2 of averaging for subcyling is not yet supported"
       stop
+
+      return
+      end
+c=============================================================================
+      subroutine averagerhowithhalfvsubcycling()
+      use Fields3dParticles
+
+      integer(ISZ):: in1,in2,ndtstmp,in2tmp
+      real(kind=8):: rndts
 
       return
       end
@@ -6002,8 +6206,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2,isid
-      integer(ISZ):: ip,ipmin,is,indts,ndtstmp,in2tmp,in1,in2
-      real(kind=8):: rndts
+      integer(ISZ):: ip,ipmin,is,indts
       real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
@@ -6148,67 +6351,13 @@ c          --- loop over particle blocks
 c     --- Add together the rhop from the species with different time steps
 c     --- This must be done after all of the species has been deposited.
       if(solvergeom==XYZgeom) then
-c       --- The copy is only needed if there are multiple groups of ndts.
-        if (nrhopndtscopies == 2) then
-          do in1 = 0,nsndts-1
-            if (ldts(in1)) then
-c             --- Copy the individual speices rho to its array holding the
-c             --- total rho.
-              if (mod(rhotondts(in1),2) == 1 .or. ndtsaveraging == 0) then
-                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
-              else
-c               --- For ndts even, some contribution may already have been made
-c               --- in setupevensubcyclingrho.
-                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                  rhopndts(:,:,:,1,in1)
-              endif
-            endif
-          enddo
+        if (ndtsaveraging == 0) then
+          call averagerhowithsampledsubcycling()
+        elseif (ndtsaveraging == 1) then
+          call averagerhowithfullvsubcycling()
+        elseif (ndtsaveraging == 2) then
+          call averagerhowithhalfvsubcycling()
         endif
-        do in1 = 0,nsndts-1
-          do in2 = 0,nsndts-1
-            if (in1 == in2) cycle
-            ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
-            if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1) .or.
-     &          ndtsaveraging == 0) then
-c             --- For groups with larger time steps, add in their rho
-c             --- now since it only needs to be done once.
-c             --- Also, if only sampling instead of averaging.
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                rhopndts(:,:,:,1,in2)
-            else if (rhotondts(in1) > rhotondts(in2)) then
-c             --- For groups with smaller times steps, add in the
-c             --- fractional contribution.
-              rndts = 1./rhotondts(in1)
-c             --- Check the special case when the rho for one group is
-c             --- exactly half way between two of the larger time steps.
-c             --- This can happen when the larger is an integer multiple
-c             --- of the smaller.
-c             --- Only half is added in ala the trapezoidal rule.
-              in2tmp = rhotondts(in2) - mod(rhotondts(in2),2)
-              if (mod(rhotondts(in1),2) == 0 .and. ldts(in2) .and.
-     &            rhotondts(in1) == 2*mod(itndts(in2),rhotondts(in1))) then
-                rndts = rndts*0.5
-              endif
-c             --- The first time step is special since the past histories
-c             --- of the faster moving groups is not known.
-c             --- It is assumed that the starting time step is it=0,
-c             --- which means that it = 0 now. As an estimate, the initial
-c             --- charge density is multiplied by a scale factor to replace
-c             --- the unknown values from the past.
-              if (it == 0) then
-                rndts = ((rhotondts(in1) + 1)/2.)/rhotondts(in1)
-              endif
-c             --- Note that time could be saved since rhotondts(in1) > 1
-c             --- and its rho won't change every step and its contribution
-c             --- doesn't needed to be added in every step. Right now
-c             --- though I'm too lazy to figure out the logic and the
-c             --- weighting factors.
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                rhopndts(:,:,:,1,in2)*rndts
-            endif
-          enddo
-        enddo
       endif
 
       if (solvergeom == XYZgeomMR) then
@@ -6299,6 +6448,31 @@ c        --- Note that nrhopndtscopies is used in case ndts is only 1
 c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
          rho => rhopindts
          phi => phipindts
+      endif
+
+#endif
+
+      return
+      end
+c=============================================================================
+      subroutine assignrhopandphip(rhopindts,phipindts)
+      use InGen3d
+      use Fields3d
+      use Fields3dParticles
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
+
+c     --- The assignments must be done in a subroutine like this so that
+c     --- the lower and upper bounds of rho and phi are correct.
+
+#ifndef MPIPARALLEL
+
+      if (solvergeom==XYZgeom) then
+c        --- Point rho to the block for the currently active ndts group.
+c        --- Note that nrhopndtscopies is used in case ndts is only 1
+c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
+         rhop => rhopindts
+         phip => phipindts
       endif
 
 #endif
@@ -6426,6 +6600,11 @@ c     --- space to the rhopndts array.
         nsndtstemp = nsndts
         nsndts = nsndts + newndts
         if (ndtsmax > 1) nrhopndtscopies = 2
+        if (ndtsaveraging == 0) then
+          nsndtsphi = 1
+        else
+          nsndtsphi = nsndts
+        endif
         call gchange("Fields3dParticles",0)
         do js = 0, ns-1
           if (ndtstorho(ndts(js)) == -2) then
@@ -6438,8 +6617,8 @@ c     --- space to the rhopndts array.
 
 c     --- rhop and phip have the special values for the speices which are
 c     --- incremented every time step.
-      rhop => rhopndts(:,:,:,nrhopndtscopies,0)
-      phip => phipndts(:,:,:,0)
+      call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies,0),
+     &                     phipndts(:,:,:,0))
 
 c     --- Note that special coding is needed to clean up the rhopndts array
 c     --- for cases when there are no longer certain values of ndts. This
@@ -6470,12 +6649,13 @@ c=============================================================================
 
 c     --- Obtain the self-field from the electrostatic potential
 
-      integer(ISZ):: indts
+      integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if(solvergeom==XYZgeom) then
-        indts = ndtstorho(pgroup%ndts(is))
+        tmpnsndts = getnsndtsforsubcycling()
+        indts = min(tmpnsndts,ndtstorho(pgroup%ndts(is)))
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
@@ -6577,17 +6757,17 @@ c     --- This is nearly the same as fetche except that the positions
 c     --- are passed in via the argument list rather than through the
 c     --- particles group.
 
-      integer(ISZ):: indts
+      integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      indts = ndtstorho(ndts)
-      if (indts < 0 .or. indts > nsndts-1) then
-        print*,"An improper value on indts has been passed in"
-        return
-      endif
-
       if(solvergeom==XYZgeom) then
+        tmpnsndts = getnsndtsforsubcycling()
+        indts = min(tmpnsndts,ndtstorho(ndts))
+        if (indts < 0 .or. indts > nsndts-1) then
+          print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
+          return
+        endif
         call sete3d(phipndts(:,:,:,indts),selfe,n,
      &              x,y,z,
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
@@ -7666,8 +7846,7 @@ c     --- particle domain.
 c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call
-        getphiforparticles3d(nx,ny,nz,phi,
+        call getphiforparticles3d(nx,ny,nz,phi,
      &                       nxp,nyp,nzp,phipndts(:,:,:,indts)
       end if
 #endif
@@ -7728,7 +7907,7 @@ c         The loop is in bendfieldsol3d
 
       real(kind=8):: timetemp
       real(kind=8):: substarttime,wtime
-      integer(ISZ):: izmin,izmax,tnz,indts
+      integer(ISZ):: izmin,izmax,tnz,indts,tmpnsndts,getnsndtsforsubcycling
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
 
@@ -7741,7 +7920,8 @@ c     --- to ensure that it is set when the field solver is called.
 
 c     --- Loop over the subcyling groups and do any field solves that
 c     --- are necessary.
-      do indts=0,nsndts-1
+      tmpnsndts = getnsndtsforsubcycling()
+      do indts=0,tmpnsndts-1
 
         if (.not. ldts(indts)) cycle
 
