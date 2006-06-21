@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.262 $, $Date: 2006/06/20 22:59:46 $
+c@(#) File W3D.F, version $Revision: 3.263 $, $Date: 2006/06/21 17:35:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -698,7 +698,7 @@ c --- erroneaous results.
       call setlatt()
 
 c     --- This is a special routine needed when there is subcycling.
-      call setupevensubcyclingrho(it)
+c     call setupevensubcyclingrho(it)
 
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
 c  Half-step in v from t.l. it-1   if last step was "special"
@@ -5917,6 +5917,67 @@ c     --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
+      subroutine zerorhowithsampledsubcycling()
+      use Fields3dParticles
+
+      integer(ISZ):: in1
+
+c     --- Zero the rho copy for species when the positions
+c     --- are advanced.
+      do in1=0,nsndts-1
+        if (ldts(in1)) then
+          call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine zerorhowithfullvsubcycling()
+      use Fields3dParticles
+
+      integer(ISZ):: in1
+c     --- Zero the rho copy for species when the positions
+c     --- are advanced.
+      do in1=0,nsndts-1
+        if (mod(rhotondts(in1),2) == 1) then
+c         --- rho is zeroed for all of the odd cases
+          if (ldts(in1)) then
+            call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+          endif
+        else
+          print*,"This version of subcyling is not supported with even step sizes."
+          stop
+c         --- rho is zeroed for even cases only when there is no group
+c         --- with half its time step size (since those cases already
+c         --- have a contribution added.
+c         if (ldts(in1)) then
+c           lzeroeven = .true.
+c           do in2 = 0,nsndts-1
+c             if (rhotondts(in1) > rhotondts(in2)) then
+c               if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+c                 lzeroeven = .false.
+c                 exit
+c               endif
+c             endif
+c           enddo
+c           if (lzeroeven) rhopndts(:,:,:,1,in1) = 0.
+c         endif
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine zerorhowithhalfvsubcycling()
+      use Fields3dParticles
+
+      print*,"Version 2 of averaging for subcyling is not yet supported"
+      stop
+
+      return
+      end
+c=============================================================================
       subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
       use ParticleGroupmodule
       use GlobalVars
@@ -5960,31 +6021,13 @@ c     --- zero rhop if requested
         if (solvergeom == XYZgeom) then
 c         --- Zero the rho copy for species when the positions
 c         --- are advanced.
-          do in1=0,nsndts-1
-            if (mod(rhotondts(in1),2) == 1 .or. lndtssampleonly) then
-c             --- rho is zeroed for all of the odd cases and if only
-c             --- sampling is done.
-              if (ldts(in1)) then
-                call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
-              endif
-            else
-c             --- rho is zeroed for even cases only when there is no group
-c             --- with half its time step size (since those cases already
-c             --- have a contribution added.
-              if (ldts(in1)) then
-                lzeroeven = .true.
-                do in2 = 0,nsndts-1
-                  if (rhotondts(in1) > rhotondts(in2)) then
-                    if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
-                      lzeroeven = .false.
-                      exit
-                    endif
-                  endif
-                enddo
-                if (lzeroeven) rhopndts(:,:,:,1,in1) = 0.
-              endif
-            endif
-          enddo
+          if (ndtsaveraging == 0) then
+            call zerorhowithsampledsubcycling()
+          elseif (ndtsaveraging == 1) then
+            call zerorhowithfullvsubcycling()
+          elseif (ndtsaveraging == 2) then
+            call zerorhowithhalfvsubcycling()
+          endif
         endif
         if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
      &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
@@ -6111,7 +6154,7 @@ c       --- The copy is only needed if there are multiple groups of ndts.
             if (ldts(in1)) then
 c             --- Copy the individual speices rho to its array holding the
 c             --- total rho.
-              if (mod(rhotondts(in1),2) == 1 .or. lndtssampleonly) then
+              if (mod(rhotondts(in1),2) == 1 .or. ndtsaveraging == 0) then
                 rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
               else
 c               --- For ndts even, some contribution may already have been made
@@ -6127,7 +6170,7 @@ c               --- in setupevensubcyclingrho.
             if (in1 == in2) cycle
             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
             if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1) .or.
-     &          lndtssampleonly) then
+     &          ndtsaveraging == 0) then
 c             --- For groups with larger time steps, add in their rho
 c             --- now since it only needs to be done once.
 c             --- Also, if only sampling instead of averaging.
@@ -6196,41 +6239,44 @@ c     --- steps rho.
       integer(ISZ):: iz,in1,in2,ndtstmp
       real(kind=8):: rndts
 
-      if (solvergeom/=XYZgeom) return
-      if (lndtssampleonly) return
+      return
+
+c     --- This code is not supported
+
+c     if (solvergeom/=XYZgeom) return
 
 c     --- First, zero out the rho or those cases
-      do in1 = 0,nsndts-1
-        do in2 = 0,nsndts-1
-          if (in1 == in2) cycle
-          if (rhotondts(in1) > rhotondts(in2)) then
-            if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
-              ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
-              if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
-                rhopndts(:,:,:,2,in1) = 0.
-                exit
-              endif
-            endif
-          endif
-        enddo
-      enddo
+c     do in1 = 0,nsndts-1
+c       do in2 = 0,nsndts-1
+c         if (in1 == in2) cycle
+c         if (rhotondts(in1) > rhotondts(in2)) then
+c           if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+c             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+c             if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
+c               rhopndts(:,:,:,2,in1) = 0.
+c               exit
+c             endif
+c           endif
+c         endif
+c       enddo
+c     enddo
 
 c     --- Then add in the half contribution
-      do in1 = 0,nsndts-1
-        do in2 = 0,nsndts-1
-          if (in1 == in2) cycle
-          if (rhotondts(in1) > rhotondts(in2)) then
-            if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
-              ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
-              if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
-                rndts = 0.5/rhotondts(in1)
-                rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                  rhopndts(:,:,:,1,in2)*rndts
-              endif
-            endif
-          endif
-        enddo
-      enddo
+c     do in1 = 0,nsndts-1
+c       do in2 = 0,nsndts-1
+c         if (in1 == in2) cycle
+c         if (rhotondts(in1) > rhotondts(in2)) then
+c           if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
+c             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
+c             if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
+c               rndts = 0.5/rhotondts(in1)
+c               rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
+c    &                                  rhopndts(:,:,:,1,in2)*rndts
+c             endif
+c           endif
+c         endif
+c       enddo
+c     enddo
 
       return
       end
@@ -6511,7 +6557,7 @@ c       --- and the data needs to be copied around.
       return
       end
 c=============================================================================
-      subroutine fetche3dfrompositions(is,indts,n,x,y,z,ex,ey,ez)
+      subroutine fetche3dfrompositions(is,ndts,n,x,y,z,ex,ey,ez)
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -6523,7 +6569,7 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
-      integer(ISZ):: is,indts,n
+      integer(ISZ):: is,ndts,n
       real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
 
 c     --- Obtain the self-field from the electrostatic potential
@@ -6531,9 +6577,11 @@ c     --- This is nearly the same as fetche except that the positions
 c     --- are passed in via the argument list rather than through the
 c     --- particles group.
 
+      integer(ISZ):: indts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      indts = ndtstorho(ndts)
       if (indts < 0 .or. indts > nsndts-1) then
         print*,"An improper value on indts has been passed in"
         return

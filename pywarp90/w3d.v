@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.221 $, $Date: 2006/06/20 21:09:57 $
+#@(#) File W3D.V, version $Revision: 3.222 $, $Date: 2006/06/21 17:35:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.221 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.222 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -332,8 +332,16 @@ phip(:,:,:) _real # Potential used by the particles to calculate
 rhop(:,:,:) _real # Charge density from the particles.
                   # This will be pointed to each of the different ndts
                   # groups as needed.
-lndtssampleonly logical /.false./ # When true, only the most recent charge
-                                  # density from each group is used.
+ndtsaveraging integer /2/ # Sets the type of averaging to do when using
+                          # subcycling. When 0, no averaging is done, only
+                          # the most recent charge density from each ndts
+                          # group is used. When 1, the averaging is done from
+                          # n-1/2 to n+1/2 and the two halves of the velocity
+                          # advance use the same self field. When 2, the
+                          # fields for the two velocity halves are different,
+                          # the first averaging from n-1/2 to n, the second
+                          # from n to n+1/2. Note that method 1 does not work
+                          # with even ndts step factors.
 ndtsmax integer /1/
 nsndts integer /0/
 ndtstorho(ndtsmax) _integer /-1/ #
