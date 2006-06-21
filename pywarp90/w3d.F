@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.264 $, $Date: 2006/06/21 22:27:33 $
+c@(#) File W3D.F, version $Revision: 3.265 $, $Date: 2006/06/21 23:12:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1352,10 +1352,8 @@ c  Note that (it-1) is used since it is advanced before this point.
         itndts(ndtstorho(pgroup%ndts(is))) =
      &          itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
       elseif (mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
-     &        (center_in=="synchv")) then
-        center = "synchv"
-        pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+     &        (center_in=="synchv" .or. center_in == "gen")) then
+        center = center_in
       else
         pgroup%ldts(is) = .false.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
@@ -1405,10 +1403,8 @@ c  field solve which will include that time centered rho average.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + ndtstorho(pgroup%ndts(is))
       elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
-     &        (center_in=="synchv")) then
-        center = "synchv"
-        pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+     &        (center_in=="synchv" .or. center_in == "gen")) then
+        center = center_in
       else
         pgroup%ldts(is) = .false.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
@@ -6011,7 +6007,9 @@ c     --- rhopndts(:,:,:,2,in1) holds the old rho which is still needed
 c     --- for the faster advanced groups.
       do in1=0,nsndts-1
         if (ldts(in1)) then
-          rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+          if (nrhopndtscopies == 2) then
+            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+          endif
           call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
         endif
       enddo
@@ -6025,6 +6023,8 @@ c=============================================================================
 
       integer(ISZ):: in1,in2,ndtstmp,in2tmp
       real(kind=8):: wranf,oldornew
+
+      if (ndtsmax == 1) return
 
 c     --- Save the rho where the fastest particle's rho is. For now,
 c     --- assume that this is in1=0
@@ -6099,6 +6099,8 @@ c=============================================================================
       integer(ISZ):: in1,in2,ndtstmp,in2tmp
       real(kind=8):: rndts
 
+      if (ndtsmax == 1) return
+
 c     --- The copy is only needed if there are multiple groups of ndts.
       if (nrhopndtscopies == 2) then
         do in1 = 0,nsndts-1
@@ -6166,6 +6168,8 @@ c           --- weighting factors.
 c=============================================================================
       subroutine zerorhowithhalfvsubcycling()
       use Fields3dParticles
+
+      if (ndtsmax == 1) return
 
       print*,"Version 2 of averaging for subcyling is not yet supported"
       stop
