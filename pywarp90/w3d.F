@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.268 $, $Date: 2006/06/22 00:51:53 $
+c@(#) File W3D.F, version $Revision: 3.269 $, $Date: 2006/06/22 00:53:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1400,7 +1400,6 @@ c  field solve which will include that time centered rho average.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         itndts(ndtstorho(pgroup%ndts(is))) =
      &             itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
-        print*,"setup 3",itndts(ndtstorho(pgroup%ndts(is))),pgroup%ndts(is)
       elseif ((pgroup%ndts(is) == 1 .or.
      &         mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
      &        (center_in=="synchv" .or. center_in == "gen")) then
