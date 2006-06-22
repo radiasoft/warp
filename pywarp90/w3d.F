@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.266 $, $Date: 2006/06/21 23:27:58 $
+c@(#) File W3D.F, version $Revision: 3.267 $, $Date: 2006/06/22 00:17:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1391,18 +1391,17 @@ c  field solve which will include that time centered rho average.
 
       integer(ISZ):: ndtstmp
 
-      ndtstmp = pgroup%ndts(is)-mod(pgroup%ndts(is),2)
-      if (pgroup%ndts(is) == 1) then
-        center = center_in
-        pgroup%ldts(is) = (center_in=="fullv" .or. center_in=="halfv")
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-      elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
+      ndtstmp = pgroup%ndts(is) - mod(pgroup%ndts(is),2)
+      if (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
      &        (center_in=="fullv" .or. center_in=="halfv")) then
         center = center_in
         pgroup%ldts(is) = .true.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + ndtstorho(pgroup%ndts(is))
-      elseif (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1 .and.
+        itndts(ndtstorho(pgroup%ndts(is))) =
+     &             itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        print*,"setup 3",itndts(ndtstorho(pgroup%ndts(is))),pgroup%ndts(is)
+      elseif ((pgroup%ndts(is) == 1 .or.
+     &         mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
      &        (center_in=="synchv" .or. center_in == "gen")) then
         center = center_in
       else
@@ -1615,10 +1614,10 @@ c  Loop over species
             call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
      &                                                 center_in,center,lcycle)
           elseif (ndtsaveraging == 1) then
-            call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
+            call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
      &                                               center_in,center,lcycle)
           elseif (ndtsaveraging == 2) then
-            call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
+            call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
      &                                               center_in,center,lcycle)
           endif
           if (lcycle) cycle
@@ -6108,7 +6107,7 @@ c     --- The copy is only needed if there are multiple groups of ndts.
           if (ldts(in1)) then
 c           --- Copy the individual speices rho to its array holding the
 c           --- total rho.
-            if (mod(rhotondts(in1),2) == 1 .or. ndtsaveraging == 0) then
+            if (mod(rhotondts(in1),2) == 1) then
               rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
             else
 c             --- For ndts even, some contribution may already have been made
@@ -6123,8 +6122,7 @@ c             --- in setupevensubcyclingrho.
         do in2 = 0,nsndts-1
           if (in1 == in2) cycle
           ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
-          if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1) .or.
-     &        ndtsaveraging == 0) then
+          if (rhotondts(in1) < rhotondts(in2) .and. ldts(in1)) then
 c           --- For groups with larger time steps, add in their rho
 c           --- now since it only needs to be done once.
 c           --- Also, if only sampling instead of averaging.
