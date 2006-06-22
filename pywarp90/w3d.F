@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.267 $, $Date: 2006/06/22 00:17:44 $
+c@(#) File W3D.F, version $Revision: 3.268 $, $Date: 2006/06/22 00:51:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1358,6 +1358,7 @@ c  Note that (it-1) is used since it is advanced before this point.
         pgroup%ldts(is) = .false.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         lcycle = .true.
+        if (center_in == "gen") lcycle = .false.
       endif
 
       return
@@ -1408,6 +1409,7 @@ c  field solve which will include that time centered rho average.
         pgroup%ldts(is) = .false.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         lcycle = .true.
+        if (center_in == "gen") lcycle = .false.
       endif
 
       return
@@ -1544,22 +1546,15 @@ c     --- Create local pointers to the arrays in pgroup.
       halfdt = 0.5*dt
       center = center_in
 
-c  Setup the moments if center is synchv or gen
-c  If OPENMP, copies data to arrays which will be threadprivate
-      if (center == "synchv" .or. center == "gen") then
-c  Initialize the moments arrays if the species positions has just been
-c  advanced. If so, ldts will still be true from the previous call to
-c  padvnc3d.
-c  This must be done outside the OPENMP parallel block.
-        do is=1,pgroup%ns
-          if (pgroup%ldts(is)) then
-            isid = pgroup%sid(is-1) + 1
-            call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                    0.,0.,0.,0.,0.,1,
-     &                    nplive,0.,0.,0.,1,isid,ismax,
-     &                    tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-          endif
-        enddo
+!$OMP PARALLEL
+!$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
+!$OMP&        uxpadv,uypadv,uzpadv,maxp,minp,zmmnts0,zmmnts)
+
+      allocate(zpo(nparpgrp))
+      allocate(uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp))
+      allocate(gaminvo(nparpgrp))
+      allocate(bendres(nparpgrp), bendradi(nparpgrp))
+
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
      &           zmmnts0(NUMZMMNT,0:nszmmnt),
@@ -1569,27 +1564,7 @@ c  This must be done outside the OPENMP parallel block.
      &           ": could not allocate temp arrays to shape ",nszmmnt
           stop
         endif
-        maxp = tempmaxp
-        minp = tempminp
-        zmmnts0 = tempzmmnts0
-        zmmnts = tempzmmnts
-#else
-        maxp => tempmaxp
-        minp => tempminp
-        zmmnts0 => tempzmmnts0
-        zmmnts => tempzmmnts
 #endif
-      endif
-
-!$OMP PARALLEL
-!$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
-!$OMP&        uxpadv,uypadv,uzpadv)
-!$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
-
-      allocate(zpo(nparpgrp))
-      allocate(uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp))
-      allocate(gaminvo(nparpgrp))
-      allocate(bendres(nparpgrp), bendradi(nparpgrp))
 
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,nparpgrp)
@@ -1645,6 +1620,34 @@ c Also set m_over_q, q_over_m**2
             if (sq(is) .ne. 0.) m_over_q(isid)=sm(is)/sq(is)
             if (sm(is) .ne. 0.) qovermsq(isid)= (sq(is)/sm(is))**2
          endif
+
+c  Setup the moments if center is synchv or gen
+c  If OPENMP, copies data to arrays which will be threadprivate
+         if (center == "synchv" .or. center == "gen") then
+c  Initialize the moments arrays if the species positions has just been
+c  advanced. If so, ldts will still be true from the previous call to
+c  padvnc3d.
+!$OMP SINGLE
+          if (pgroup%ldts(is)) then
+            isid = pgroup%sid(is-1) + 1
+            call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                    0.,0.,0.,0.,0.,1,
+     &                    nplive,0.,0.,0.,1,isid,ismax,
+     &                    tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+          endif
+!$OMP END SINGLE
+#ifdef _OPENMP
+          maxp(:,isid) = tempmaxp(:,isid)
+          minp(:,isid) = tempminp(:,isid)
+          zmmnts0(:,isid) = tempzmmnts0(:,isid)
+          zmmnts(:,:,isid) = tempzmmnts(:,:,isid)
+#else
+          maxp => tempmaxp
+          minp => tempminp
+          zmmnts0 => tempzmmnts0
+          zmmnts => tempzmmnts
+#endif
+      endif
 
 c  Loop over particle blocks; move each block separately
 !$OMP DO
