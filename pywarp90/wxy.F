@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.68 $, $Date: 2006/06/20 18:39:09 $
+c@(#) File WXY.M, version $Revision: 3.69 $, $Date: 2006/06/22 17:25:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -46,6 +46,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use Io
       use Lattice
@@ -189,6 +190,10 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
       call gallot("Fields3d", 0)
+      call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
+      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
+     &                     phipndts(:,:,:,0))
+
       if (efetch == 3) call gallot("Efields3d",0)
       vbeamfrm = vbeam
       if (l2symtry) then
@@ -2332,6 +2337,10 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
+      if(solvergeom/=XYgeom) then
+        call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
+      endif
+
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
       if(lzero) then
@@ -2382,7 +2391,7 @@ c        --- loop over particle blocks
          else
            ip = nps_u
            ipmin = ins_u
-           call setrhoxy(rho(0,0,0),ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
+           call setrhoxy(rho,ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                   pgroup%zp(ipmin),zgrid,
      &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
      &                   pgroup%sq(is),pgroup%sw(is))
