@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.269 $, $Date: 2006/06/22 00:53:43 $
+c@(#) File W3D.F, version $Revision: 3.270 $, $Date: 2006/06/23 21:59:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1438,7 +1438,8 @@ c=============================================================================
       if (interpdk .ne. 0) then
         call xpush3dintrp(pgroup,np,is,ipmin)
       else
-        call xpush3d(pgroup,np,ipmin,dt)
+        call xpush3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &               pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),dt)
       endif
 
 c     --- Bend residence factor over POSITION advance step
@@ -2346,12 +2347,11 @@ c        --- tan(alpha) / alpha algorithm
       return
       end
 c=========================================================================== 
-      subroutine xpush3d(pgroup,np,ipmin,ddt)
-      use ParticleGroupmodule
+      subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
       use Subtimers3d
-      integer(ISZ):: np,ipmin
-      real(kind=8):: ddt
-      type(ParticleGroup):: pgroup
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtp
 
 c  Advance particle positions
 
@@ -2359,14 +2359,14 @@ c  Advance particle positions
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      do ip=ipmin,ipmin+np-1
-        pgroup%xp(ip) = pgroup%xp(ip) + pgroup%uxp(ip)*ddt*pgroup%gaminv(ip)
-        pgroup%yp(ip) = pgroup%yp(ip) + pgroup%uyp(ip)*ddt*pgroup%gaminv(ip)
-        pgroup%zp(ip) = pgroup%zp(ip) + pgroup%uzp(ip)*ddt*pgroup%gaminv(ip)
+      do ip=1,np
+        xp(ip) = xp(ip) + uxp(ip)*gaminv(ip)*dtp
+        yp(ip) = yp(ip) + uyp(ip)*gaminv(ip)*dtp
+        zp(ip) = zp(ip) + uzp(ip)*gaminv(ip)*dtp
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timexpush3d = timexpush3d + wtime() - substarttime
+      if (lw3dtimesubs) timexpusht3d = timexpusht3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
