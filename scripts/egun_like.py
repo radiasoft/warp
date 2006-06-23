@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.52 2006/06/20 18:13:03 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.53 2006/06/23 23:50:14 dave Exp $"
 
 
 ##############################################################################
@@ -110,7 +110,7 @@ def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         ipstep=None,egundata_window=-1,plottraces_window=-1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None,
         resetlostpart=0,current=None,currentiz=None,ntblocks=1,
-        lvariabletimestep=0,fvariabletimestep=0.9):
+        lvariabletimestep=0,fvariabletimestep=0.5,dtscalechangemax=2.):
   """
 Performs steady-state iterations
   - iter=1: number of iterations to perform
@@ -441,8 +441,12 @@ set when a current is specified"""
       # --- adjust time step according to maximum velocity and mesh size in z
       if lvariabletimestep:
         for js in xrange(top.pgroup.ns):
-          vzmax=max(abs(getvz(js=js)))
-          top.pgroup.dtscale[js]=max(_dtscaleinit[js],(fvariabletimestep*w3d.dz/vzmax)/top.dt)
+          vzmax=globalmax(abs(getvz(js=js,gather=0)))
+          newdtscale = max(_dtscaleinit[js],
+                           (fvariabletimestep*w3d.dz/vzmax)/top.dt)
+          newdtscalechange = min(dtscalechangemax,
+                                 newdtscale/top.pgroup.dtscale[js])
+          top.pgroup.dtscale[js]=top.pgroup.dtscale[js]*newdtscalechange
       # --- push markers one step ahead
       step()
       if ntblocks>1:
