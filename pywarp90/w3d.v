@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.224 $, $Date: 2006/06/21 22:21:19 $
+#@(#) File W3D.V, version $Revision: 3.225 $, $Date: 2006/06/29 16:46:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.224 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.225 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -51,6 +51,7 @@ l2symtry             logical    /.false./  # Turns on 2-fold symmetry
 l4symtry             logical    /.false./  # Turns on 4-fold symmetry
 lbeforefs  logical    /.false./  # Turns on call to python function "beforefs"
 lafterfs   logical    /.false./  # Turns on call to python function "afterfs"
+lbeforelr  logical    /.false./  # Turns on call to python function "beforelr"
 lcallscraper  logical    /.false./  # Turns on call to python function "callscraper"
 izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
 izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
@@ -366,6 +367,10 @@ phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi-1)    _real +fassign
                  # from faster particles and the old rho from the slower
                  # particles. With only sampling, the same phip is used
                  # for all groups, i.e. nsndtsphi==1.
+nxc  integer /0/ # Number of grid cells in x axis for isnearbycond
+nyc  integer /0/ # Number of grid cells in y axis for isnearbycond
+nzc  integer /0/ # Number of grid cells in z axis for isnearbycond
+isnearbycond(0:nxc,0:nyc,0:nzc) _integer
 
 *********** Efields3d:
 nx_selfe integer /0/ +dump           # Same as nx
@@ -720,25 +725,32 @@ AMRuse_inactive_regions logical /.false./# When true, the fields in inactive
 #setptrs(bx:real,by:real,bz:real,ex:real,ey:real,ez:real) 
 #            subroutine # sets database B and E arrays
 #                      # equal to bx, by, bz, ex, ey, ez
-mugrdbpush(np,is,ipmin,dtb:real,needcalcgradb)
+mugrdbpush(pgroup:ParticleGroup,np,is,ipmin,dtb:real,needcalcgradb)
             subroutine #  does the mu grad B parallel acceleration 
                        #  and corresponding change to vperp
-xpush3dintrp(np,is,ipmin)
+xpush3dintrp(pgroup:ParticleGroup,np,is,ipmin,dt:real)
               subroutine #  does the interpolated x push
-getvperpparsq(np,ipmin) 
+getvperpparsq(pgroup:ParticleGroup,np,ipmin) 
               subroutine #  finds v_perp^2, v_parallel^2, vparallel/B,v^2
                          #  of particles
-getveff(np,is,ipmin,x:real,y:real,z:real,predcor:string) 
+getveff(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,predcor:string,dt:real) 
     subroutine #  gets components of interpolated velocity used in x push
-getvdrift(np,is,ipmin,x:real,y:real,z:real) 
+getvdrift(np,is,x(np):real,y(np):real,z(np):real,gaminv(np):real) 
     subroutine #  calculates vdrift from ExB and gradB
-setfields(np,is,ipmin,x:real,y:real,z:real) 
+setfields(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
     subroutine #  sets E,B at particle arrays; determines interpolation
                #  parameter alpha and its complement alphabar
-getgradbsq(np,is,ipmin,x:real,y:real,z:real) 
+setfields2(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
+           ux(np):real,uy(np):real,uz(np):real)
+    subroutine #  sets E,B at particle arrays; determines interpolation
+               #  parameter alpha and its complement alphabar
+getgradbsq(np,is,ipmin,x(np):real,y(np):real,z(np):real,gaminv(np):real,dt:real) 
          subroutine    #  calculates or fetches grad B^2 components
-geteb(np,is,ipmin,x:real,y:real,z:real) 
+geteb(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
           subroutine   #  fetch E and B fields
+setvdrifts(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
+           ux(np):real,uy(np):real,uz(np):real,predcor:string)
+    subroutine #  calculates vdrifts from ExB and gradB
 
 *********** W3Dsubs:
 # Subroutines in package 3D
@@ -896,7 +908,9 @@ loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
 loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
              rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
              epsx(np):real,epsy(np):real) subroutine
-
+setupFields3dParticles(ns,ndts,it) subroutine
+check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
+     
 *********** W3Dutilities:
 sortparticlesbyindex(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
                      uz(n):real,nblocks:integer,
@@ -961,8 +975,6 @@ setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
 setupgrid2dtype(grid:Grid2dtype,check:logical) subroutine
       # Checks the consistency of Grid3dtype input and allocates the grid
       # If check is false, then the input is inconsistent.
-
-
 
 *********** W3Dload:
 r_b      real [m]     /0./ # Code set: CFE rms equivalent beam radius 
@@ -1061,6 +1073,7 @@ timebpush3d real /0./
 timebpusht3d real /0./
 timexpush3d real /0./
 timexpusht3d real /0./
+timecheckcc3d real /0./
 timesete3d_relativity real /0./
 timeedamp real /0./
 timegetbend real /0./
