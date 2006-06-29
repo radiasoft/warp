@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.42 2006/05/01 23:45:15 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.43 2006/06/29 18:07:53 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -71,12 +71,15 @@ conductors are an argument.
     if self.lsavecondid:
       top.lsavelostpart = true
     if self.lsaveintercept:
+      if not top.lsaveoldpos:top.lsaveoldpos=true
       # --- Note that nextpid returns numbers based on 1 based indexing
-      self.xoldpid=nextpid() - 1
-      self.yoldpid=nextpid() - 1
-      self.zoldpid=nextpid() - 1
+      if top.xoldpid==0:top.xoldpid=nextpid()
+      if top.yoldpid==0:top.yoldpid=nextpid()
+      if top.zoldpid==0:top.zoldpid=nextpid()
+      self.xoldpid=top.xoldpid - 1
+      self.yoldpid=top.yoldpid - 1
+      self.zoldpid=top.zoldpid - 1
       setuppgroup(top.pgroup)
-      installbeforestep(self.saveoldpos)
     self.l_print_timing=0
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
@@ -99,12 +102,13 @@ conductors are an argument.
     self.installscraper()
 
   def registerconductors(self,newconductors):
-    self.updategrid()
+#    self.updategrid()
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
       self.conductors.append(c)
-      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+#      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+    self.updategrid()
 
   def unregisterconductors(self,conductor,nooverlap=0):
     self.conductors.remove(conductor)
@@ -139,28 +143,26 @@ after load balancing."""
     self.grid = Grid(nz=nz,
                      izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy())
     self.updateconductors()
+    if top.chdtspid>0:
+      if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nz:
+        w3d.nxc=self.grid.nx
+        w3d.nyc=self.grid.ny
+        w3d.nzc=self.grid.nz
+        gchange('Fields3dParticles')
+        sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,self.grid.nx,self.grid.ny,self.grid.nz)
 
   def updateconductors(self):
     for c in self.conductors:
       self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
 
-  def saveoldpos(self):
-    for js in xrange(top.ns):
-      if top.pgroup.nps[js]>0:
-        i1 = top.pgroup.ins[js] - 1
-        i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
-        top.pgroup.pid[i1:i2,self.xoldpid]=top.pgroup.xp[i1:i2].copy()
-        top.pgroup.pid[i1:i2,self.yoldpid]=top.pgroup.yp[i1:i2].copy()
-        top.pgroup.pid[i1:i2,self.zoldpid]=top.pgroup.zp[i1:i2].copy()
-      
   def scrapeall(self,clear=0):
     if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
     for js in xrange(top.pgroup.ns):
-      if top.it%top.pgroup.ndts[js]==0:
+      if top.pgroup.ldts[js]:
         if self.l_print_timing:tt=0.
         if self.l_print_timing:t.start()
-        self.scrape(js)
+        self.scrape(js);
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'scrape',t.milli()
         if self.l_print_timing:t.start()
@@ -436,12 +438,12 @@ after load balancing."""
       getgridngp3d(nn,xg,yg,zg,pp,
                    nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
-    elif w3d.solvergeom == w3d.RZgeom:
+    elif w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
       getgridngp2d(nn,xg,yg,pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
     else:
-      raise "The particle scraping only works for XYZ and RZ geometry"
+      raise "The particle scraping only works for XYZ, XZ, XY and RZ geometry"
 
 
     if w3d.solvergeom == w3d.RZgeom:
@@ -502,7 +504,7 @@ after load balancing."""
         if top.wpid==0:
           w = len(pidtoconsider)
         else:
-          w = sum(take(top.pidlost[:,wpid],pidtoconsider))
+          w = sum(take(top.pidlost[:,top.wpid],pidtoconsider))
         w=parallelsum(w)
         if me==0:
           c.lostparticles_data += [[top.time, 
