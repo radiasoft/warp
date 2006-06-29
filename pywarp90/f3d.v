@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.151 $, $Date: 2006/05/20 01:13:45 $
+#@(#) File F3D.V, version $Revision: 3.152 $, $Date: 2006/06/29 16:54:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.151 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.152 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -294,6 +294,10 @@ cond_sumrhointerior(interior:ConductorInteriorType,
                     nx:integer,ny:integer,nz:integer,rho(0:nx,0:ny,0:nz):real,
                     ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                     izmin:integer,izmax:integer) real function
+subcond_sumrhointerior(rhosum:real,interior:ConductorInteriorType,
+                    nx:integer,ny:integer,nz:integer,rho(0:nx,0:ny,0:nz):real,
+                    ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
+                    izmin:integer,izmax:integer) subroutine
 
 *********** MultigridBE3d dump:
 multigridbe3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
