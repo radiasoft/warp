@@ -1,7 +1,7 @@
 """Creates the function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.6 2005/05/27 22:38:27 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.7 2006/06/29 17:50:29 jlvay Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -431,17 +431,17 @@ type, and should draw any general lattice.
     xaxis,zaxis = _makearcs(xaxis,zaxis,narc)
     xl,zl = array(xl),array(zl)
 
-    tolabfrm(zlatmin,len(xq),xq,zq)
-    tolabfrm(zlatmin,len(xh),xh,zh)
-    tolabfrm(zlatmin,len(xe),xe,ze)
-    tolabfrm(zlatmin,len(xm),xm,zm)
-    tolabfrm(zlatmin,len(xb),xb,zb)
-    tolabfrm(zlatmin,len(xp),xp,zp)
-    tolabfrm(zlatmin,len(xa),xa,za)
-    tolabfrm(zlatmin,len(xc),xc,zc)
-    tolabfrm(zlatmin,len(xd),xd,zd)
-    tolabfrm(zlatmin,len(xaxis),xaxis,zaxis)
-    tolabfrm(zlatmin,len(xl),xl,zl)
+    if len(xq)>0:tolabfrm(zlatmin,len(xq),xq,zq)
+    if len(xh)>0:tolabfrm(zlatmin,len(xh),xh,zh)
+    if len(xe)>0:tolabfrm(zlatmin,len(xe),xe,ze)
+    if len(xm)>0:tolabfrm(zlatmin,len(xm),xm,zm)
+    if len(xb)>0:tolabfrm(zlatmin,len(xb),xb,zb)
+    if len(xp)>0:tolabfrm(zlatmin,len(xp),xp,zp)
+    if len(xa)>0:tolabfrm(zlatmin,len(xa),xa,za)
+    if len(xc)>0:tolabfrm(zlatmin,len(xc),xc,zc)
+    if len(xd)>0:tolabfrm(zlatmin,len(xd),xd,zd)
+    if len(xaxis)>0:tolabfrm(zlatmin,len(xaxis),xaxis,zaxis)
+    if len(xl)>0:tolabfrm(zlatmin,len(xl),xl,zl)
 
   # --- plot the lattice
   _plotele(xc,zc,bendcolor,len(ic),len(zbend))
