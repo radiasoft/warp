@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.7 2006/05/30 13:37:24 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.8 2006/06/29 17:59:37 jlvay Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -78,13 +78,24 @@ Class for generating particles from impact ionization.
   def add(self,incident_species,emitted_species,cross_section=None,target_species=None,ndens=None):
     if not self.inter.has_key(incident_species):
         self.inter[incident_species]={}
-        for key in ['target_species','emitted_species','cross_section','ndens']:
+        for key in ['target_species','emitted_species','cross_section','ndens','remove_incident','remove_target']:
           self.inter[incident_species][key]=[]
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     self.inter[incident_species]['target_species']  +=[target_species]
-    self.inter[incident_species]['emitted_species'] +=[emitted_species]
+    if emitted_species[0] in [incident_species,target_species]:
+      self.inter[incident_species]['emitted_species'] +=[emitted_species[1:]]
+    else:
+      self.inter[incident_species]['emitted_species'] +=[emitted_species]
     self.inter[incident_species]['cross_section']   +=[cross_section]
     self.inter[incident_species]['ndens']           +=[ndens]
+    if incident_species is emitted_species[0]:
+      self.inter[incident_species]['remove_incident']+=[0]
+    else:
+      self.inter[incident_species]['remove_incident']+=[1]
+    if target_species is emitted_species[0]:
+      self.inter[incident_species]['remove_target']+=[0]
+    else:
+      self.inter[incident_species]['remove_target']+=[1]
     if target_species is not None:
       if not self.target_dens.has_key(target_species):
         self.target_dens[target_species]={}
@@ -172,7 +183,12 @@ Class for generating particles from impact ionization.
         else:
           tname=target_species.name
         twidth=max(twidth,len(tname))
-        for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][it]):
+        firstelement = []
+        if not self.inter[incident_species]['remove_incident'][it]:
+          firstelement = [incident_species]
+        if not self.inter[incident_species]['remove_target'][it]:
+          firstelement = [target_species]
+        for ie,emitted_species in enumerate(firstelement+self.inter[incident_species]['emitted_species'][it]):
           ename=emitted_species.name
           if not ewidth.has_key(ie):
             ewidth[ie]=len(ename)
@@ -195,7 +211,12 @@ Class for generating particles from impact ionization.
           cname = ''
         else:
           cname='(CS=%g)'%(self.inter[incident_species]['cross_section'][it])
-        for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][it]):
+        firstelement = []
+        if not self.inter[incident_species]['remove_incident'][it]:
+          firstelement = [incident_species]
+        if not self.inter[incident_species]['remove_target'][it]:
+          firstelement = [target_species]
+        for ie,emitted_species in enumerate(firstelement+self.inter[incident_species]['emitted_species'][it]):
           if ie==0:
             ename=fe[ie]%emitted_species.name[:ewidth[ie]]
           else:
@@ -220,7 +241,7 @@ Class for generating particles from impact ionization.
       ispushed=0
       for js in incident_species.jslist:
         npinc+=top.pgroup.nps[js]
-        if top.it%top.pgroup.ndts[js]==0:ispushed=1
+        if top.pgroup.ldts[js]:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
@@ -265,7 +286,7 @@ Class for generating particles from impact ionization.
       ispushed=0
       for js in incident_species.jslist:
         npinc+=top.pgroup.nps[js]
-        if top.it%top.pgroup.ndts[js]==0:ispushed=1
+        if top.pgroup.ldts[js]:ispushed=1
       if npinc==0 or not ispushed:continue
       for it,target_species in enumerate(self.inter[incident_species]['target_species']):
         ndens=self.inter[incident_species]['ndens'][it]
@@ -327,9 +348,7 @@ Class for generating particles from impact ionization.
           # probability
           ncol = dp*cross_section*vi*top.dt*top.pgroup.ndts[js]*self.stride
           l_ionization_projectile=0
-          for emitted_species in self.inter[incident_species]['emitted_species'][it]:
-            if emitted_species.type is incident_species.type:l_ionization_projectile=1           
-          if l_ionization_projectile:
+          if self.inter[incident_species]['remove_incident'][it]:
             ncol = where(ncol>=1.,1.-1.e-10,ncol)
           ncoli=int(ncol)
           ncol=ncol-ncoli
@@ -337,7 +356,7 @@ Class for generating particles from impact ionization.
           ncoli=where(r<ncol,ncoli+1,ncoli)
           io=compress(ncoli>0,arange(ni))
           nnew = len(io)
-          if l_ionization_projectile:
+          if self.inter[incident_species]['remove_incident'][it]:
             vxnew = vxi
             vynew = vyi
             vznew = vzi
@@ -355,13 +374,13 @@ Class for generating particles from impact ionization.
             xnew = xnewp+(ranf(vnew)-0.5)*1.e-10*self.dx
             ynew = ynewp+(ranf(vnew)-0.5)*1.e-10*self.dy
             znew = znewp+(ranf(vnew)-0.5)*1.e-10*self.dz
-            if l_ionization_projectile:
+            if self.inter[incident_species]['remove_incident'][it]:
               vxnew = take(vxnew,io)
               vynew = take(vynew,io)
               vznew = take(vznew,io)
             for emitted_species in self.inter[incident_species]['emitted_species'][it]:
               if self.l_verbose:print 'add ',nnew, emitted_species.name,' from by impact ionization:',incident_species.name,'+',target_species.name 
-              if emitted_species.type is incident_species.type:
+              if self.inter[incident_species]['remove_incident'][it] and (emitted_species.type is incident_species.type):
                 self.addpart(nnew,xnewp,ynewp,znewp,vxnew,vynew,vznew,emitted_species.jslist[0])
               else:
                 self.addpart(nnew,xnew,ynew,znew,vnew,vnew,vnew,emitted_species.jslist[0])
