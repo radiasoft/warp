@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.105 $, $Date: 2006/06/07 21:31:58 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.106 $, $Date: 2006/06/29 16:55:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1831,6 +1831,35 @@ c Set rho to zero inside conductor points.
 !$OMP END DO
 
       cond_sumrhointerior = rhosum
+      return
+      end
+      subroutine subcond_sumrhointerior(rhosum,interior,nx,ny,nz,rho,
+     &                                  ixmin,ixmax,iymin,iymax,izmin,izmax)
+      use ConductorInteriorTypemodule
+      type(ConductorInteriorType):: interior
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+ 
+c Set rho to zero inside conductor points.
+
+      integer(ISZ):: ic,ix,iy,iz
+      real(kind=8):: rhosum
+      rhosum = 0.
+
+!$OMP DO
+      do ic = interior%istart(0),interior%istart(1)-1
+        ix = interior%indx(0,ic)
+        iy = interior%indx(1,ic)
+        iz = interior%indx(2,ic)
+        if (ixmin <= ix .and. ix <= ixmax .and.
+     &      iymin <= iy .and. iy <= iymax .and.
+     &      izmin <= iz .and. iz <= izmax) then
+          rhosum = rhosum + rho(ix,iy,iz)
+        endif
+      enddo
+!$OMP END DO
+
       return
       end
 c=============================================================================
