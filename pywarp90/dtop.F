@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.143 $, $Date: 2006/05/19 21:32:25 $
+c@(#) File DTOP.F, version $Revision: 3.144 $, $Date: 2006/06/29 16:17:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -629,7 +629,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.143 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.144 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1465,6 +1465,89 @@ c     --- itask == 0.
       return
       end
 c=============================================================================
+      subroutine deposgridrzvect(itask,np,x,y,z,vx,vy,vz,w,nx,ny,grid,gridcount,
+     &                       xmin,xmax,ymin,ymax)
+      integer(ISZ):: itask,nx,ny,np
+      real(kind=8):: x(np), y(np), z(np), vx(np), vy(np), vz(np), w(np)
+      real(kind=8):: grid(0:nx,0:ny,3), gridcount(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax,r,vr,vt
+
+c Deposits particle data onto 2-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        r = sqrt(x(ip)*x(ip)+y(ip)*y(ip))
+        if (r*dxi>1.e-10) then
+          vr =  vx(ip)*x(ip)/r+vy(ip)*y(ip)/r
+          vt = -vx(ip)*y(ip)/r+vy(ip)*x(ip)/r
+        else
+          vr = sqrt(vx(ip)*vx(ip)+vy(ip)*vy(ip))
+          vt = 0.
+        end if
+        gx = (r - xmin)*dxi
+        gy = (z(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
+          grid(ix  ,iy  ,1) = grid(ix  ,iy  ,1) + vr*(1. - wx)*(1. - wy) * w(ip)
+          grid(ix+1,iy  ,1) = grid(ix+1,iy  ,1) + vr*      wx *(1. - wy) * w(ip)
+          grid(ix  ,iy+1,1) = grid(ix  ,iy+1,1) + vr*(1. - wx)*      wy  * w(ip)
+          grid(ix+1,iy+1,1) = grid(ix+1,iy+1,1) + vr*      wx *      wy  * w(ip)
+          grid(ix  ,iy  ,2) = grid(ix  ,iy  ,2) + vt*(1. - wx)*(1. - wy) * w(ip)
+          grid(ix+1,iy  ,2) = grid(ix+1,iy  ,2) + vt*      wx *(1. - wy) * w(ip)
+          grid(ix  ,iy+1,2) = grid(ix  ,iy+1,2) + vt*(1. - wx)*      wy  * w(ip)
+          grid(ix+1,iy+1,2) = grid(ix+1,iy+1,2) + vt*      wx *      wy  * w(ip)
+          grid(ix  ,iy  ,3) = grid(ix  ,iy  ,3) + vz(ip)*(1. - wx)*(1. - wy) * w(ip)
+          grid(ix+1,iy  ,3) = grid(ix+1,iy  ,3) + vz(ip)*      wx *(1. - wy) * w(ip)
+          grid(ix  ,iy+1,3) = grid(ix  ,iy+1,3) + vz(ip)*(1. - wx)*      wy  * w(ip)
+          grid(ix+1,iy+1,3) = grid(ix+1,iy+1,3) + vz(ip)*      wx *      wy  * w(ip)
+          gridcount(ix  ,iy  ) = gridcount(ix  ,iy  ) + (1. - wx)*(1. - wy) * w(ip)
+          gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy) * w(ip)
+          gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy  * w(ip)
+          gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy  * w(ip)
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iy=0,ny
+          do ix=0,nx
+            if (gridcount(ix,iy) > 0.) then
+              grid(ix,iy,:) = grid(ix,iy,:)/gridcount(ix,iy)
+            endif
+          enddo
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
       subroutine getgrid2d(np,x,y,z,nx,ny,grid,xmin,xmax,ymin,ymax)
       integer(ISZ):: nx,ny,np
       real(kind=8):: x(np), y(np), z(np)
@@ -1672,6 +1755,105 @@ c     --- itask == 0.
       return
       end
 c=============================================================================
+      subroutine deposgrid3dvect(itask,np,x,y,z,vx,vy,vz,w,nx,ny,nz,grid,gridcount,
+     &                       xmin,xmax,ymin,ymax,zmin,zmax)
+      integer(ISZ):: itask,nx,ny,nz,np
+      real(kind=8):: x(np), y(np), z(np), vx(np), vy(np), vz(np), w(np)
+      real(kind=8):: grid(0:nx,0:ny,0:nz,3), gridcount(0:nx,0:ny,0:nz)
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      logical(ISZ):: l_radial
+
+c Deposits particle velocities onto 3-D mesh, returning averages (or fluid) velocities on grid.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+      dzi = nz/(zmax - zmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny .and.
+     &      0. <= gz .and. gz < nz) then
+          ix = int(gx)
+          iy = int(gy)
+          iz = int(gz)
+          wx = gx - ix
+          wy = gy - iy
+          wz = gz - iz
+          grid(ix  ,iy  ,iz, 1)   = grid(ix  ,iy  ,iz, 1)   + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz, 1)   = grid(ix+1,iy  ,iz, 1)   + w(ip)*vx(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz, 1)   = grid(ix  ,iy+1,iz, 1)   + w(ip)*vx(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz, 1)   = grid(ix+1,iy+1,iz, 1)   + w(ip)*vx(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz+1, 1) = grid(ix  ,iy  ,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ix+1,iy  ,iz+1, 1) = grid(ix+1,iy  ,iz+1, 1) + w(ip)*vx(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iy+1,iz+1, 1) = grid(ix  ,iy+1,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*      wy *      wz
+          grid(ix+1,iy+1,iz+1, 1) = grid(ix+1,iy+1,iz+1, 1) + w(ip)*vx(ip)*      wx *      wy *      wz 
+          grid(ix  ,iy  ,iz, 2)   = grid(ix  ,iy  ,iz, 2)   + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz, 2)   = grid(ix+1,iy  ,iz, 2)   + w(ip)*vy(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz, 2)   = grid(ix  ,iy+1,iz, 2)   + w(ip)*vy(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz, 2)   = grid(ix+1,iy+1,iz, 2)   + w(ip)*vy(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz+1, 2) = grid(ix  ,iy  ,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ix+1,iy  ,iz+1, 2) = grid(ix+1,iy  ,iz+1, 2) + w(ip)*vy(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iy+1,iz+1, 2) = grid(ix  ,iy+1,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*      wy *      wz
+          grid(ix+1,iy+1,iz+1, 2) = grid(ix+1,iy+1,iz+1, 2) + w(ip)*vy(ip)*      wx *      wy *      wz 
+          grid(ix  ,iy  ,iz, 3)   = grid(ix  ,iy  ,iz, 3)   + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz, 3)   = grid(ix+1,iy  ,iz, 3)   + w(ip)*vz(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz, 3)   = grid(ix  ,iy+1,iz, 3)   + w(ip)*vz(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz, 3)   = grid(ix+1,iy+1,iz, 3)   + w(ip)*vz(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz+1, 3) = grid(ix  ,iy  ,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ix+1,iy  ,iz+1, 3) = grid(ix+1,iy  ,iz+1, 3) + w(ip)*vz(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iy+1,iz+1, 3) = grid(ix  ,iy+1,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*      wy *      wz
+          grid(ix+1,iy+1,iz+1, 3) = grid(ix+1,iy+1,iz+1, 3) + w(ip)*vz(ip)*      wx *      wy *      wz 
+          gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
+          gridcount(ix+1,iy  ,iz)   = gridcount(ix+1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
+          gridcount(ix  ,iy+1,iz)   = gridcount(ix  ,iy+1,iz)   + (1. - wx)*      wy *(1. - wz)
+          gridcount(ix+1,iy+1,iz)   = gridcount(ix+1,iy+1,iz)   +       wx *      wy *(1. - wz)
+          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + (1. - wx)*(1. - wy)*      wz
+          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) +       wx *(1. - wy)*      wz
+          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + (1. - wx)*      wy *      wz
+          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) +       wx *      wy *      wz
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iz=0,nz
+          do iy=0,ny
+            do ix=0,nx
+              if (gridcount(ix,iy,iz) > 0.) then
+                grid(ix,iy,iz,:) = grid(ix,iy,iz,:)/gridcount(ix,iy,iz)
+              endif
+            enddo
+          enddo
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
       subroutine getgrid3d(np,x,y,z,f,nx,ny,nz,grid,
      &                     xmin,xmax,ymin,ymax,zmin,zmax,l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz,np
@@ -1745,6 +1927,64 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,np
       real(kind=8):: x(np), y(np), z(np), f(np)
       real(kind=8):: grid(0:nx,0:ny,0:nz)
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gathers data from a 3-D mesh onto particle positions.
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz
+      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+      real(kind=8):: xsymmetryplane,ysymmetryplane
+
+c     --- These now default to zero, but could be input quantities.
+      xsymmetryplane = 0.
+      ysymmetryplane = 0.
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+      dzi = nz/(zmax - zmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid, taking into account any symmetries.
+        if (l4symtry) then
+          gx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+        else if (l2symtry) then
+          gx = x(ip)
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+        else
+          gx = x(ip)
+          gy = y(ip)
+        endif
+        gx = (gx    - xmin)*dxi
+        gy = (gy    - ymin)*dyi
+        gz = (z(ip) - zmin - zgrid)*dzi
+
+c       --- if within grid, gather
+        if (0. <= gx .and. gx <= nx .and.
+     &      0. <= gy .and. gy <= ny .and.
+     &      0. <= gz .and. gz <= nz) then
+          ix = nint(gx)
+          iy = nint(gy)
+          iz = nint(gz)
+          f(ip) = grid(ix,iy,iz)
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getgridngp3di(np,x,y,z,f,nx,ny,nz,grid,
+     &                         xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
+     &                         l2symtry,l4symtry)
+      integer(ISZ):: nx,ny,nz,np
+      real(kind=8):: x(np), y(np), z(np)
+      integer(ISZ):: grid(0:nx,0:ny,0:nz), f(np)
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
       logical(ISZ):: l2symtry,l4symtry
 
@@ -2858,3 +3098,29 @@ c --- interpolate field on new grid node using linear interpolation from coarse 
       return
       END subroutine grid2grid
 c=============================================================================
+      subroutine sum_neighbors3d(fin,fout,nx,ny,nz)
+      INTEGER(ISZ), INTENT(IN) :: nx, ny, nz
+      INTEGER(ISZ) :: fin(nx+1,ny+1,nz+1)
+      INTEGER(ISZ) :: fout(nx+1,ny+1,nz+1)
+
+      INTEGER(ISZ) :: j,k,l,jmin,jmax,kmin,kmax,lmin,lmax
+
+      do l = 1, nz+1
+        lmin = MAX(1,l-1)
+        lmax = MIN(nz+1,l+1)
+        do k = 1, ny+1
+          kmin = MAX(1,k-1)
+          kmax = MIN(ny+1,k+1)
+          do j = 1, nx+1
+            jmin = MAX(1,j-1)
+            jmax = MIN(nx+1,j+1)
+            fout(j,k,l) = SUM(fin(jmin:jmax,kmin:kmax,lmin:lmax))
+          end do
+        end do
+      end do
+
+      end subroutine sum_neighbors3d
+c=============================================================================
+
+
+
