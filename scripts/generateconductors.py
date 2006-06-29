@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.132 2006/06/01 19:00:44 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.133 2006/06/29 17:57:09 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -289,7 +289,7 @@ Should never be directly created by the user.
       if fullplane:
         plfp(c,self.xcent-array(r),z,[len(r)])
 
-  def get_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100):
+  def get_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100):
     """
   Returns conductor current history:
     - js=None    : select species to consider (default None means that contribution from all species are added)
@@ -323,8 +323,8 @@ Should never be directly created by the user.
     ne = 0
     if l_emit and len(self.emitparticles_data) > 0:
       datae = array(self.emitparticles_data)
-      qe = datae[:,1].copy()
-      te = datae[:,0].copy()
+      qe = -datae[:,1].copy()
+      te =  datae[:,0].copy()
       if tmin is None:tmine=min(te)
       if tmax is None:tmaxe=max(te)
       if js is not None:
@@ -334,7 +334,7 @@ Should never be directly created by the user.
       ne = shape(qe)[0]
     # collect accumulated image data
     ni = 0
-    if l_accu and len(self.imageparticles_data) > 0:
+    if l_image and len(self.imageparticles_data) > 0:
       datai = array(self.imageparticles_data)
       qi = 0.5*(datai[2:,1]-datai[:-2,1])
       ti = datai[1:-1,0].copy()
@@ -348,12 +348,12 @@ Should never be directly created by the user.
     qtmp = zeros(nt+1,Float)
     dt = (tmax-tmin)/nt
     # accumulate data
-    if nl>0:deposgrid1d(1,nl,tl, ql,nt,qt,qtmp,tmin,tmax)
-    if ne>0:deposgrid1d(1,ne,te,-qe,nt,qt,qtmp,tmin,tmax)
-    if ni>0:deposgrid1d(1,ni,ti, qi,nt,qt,qtmp,tmin,tmax)
+    if nl>0:deposgrid1d(1,nl,tl.astype(Float),ql.astype(Float),nt,qt,qtmp,tmin,tmax)
+    if ne>0:deposgrid1d(1,ne,te.astype(Float),qe.astype(Float),nt,qt,qtmp,tmin,tmax)
+    if ni>0:deposgrid1d(1,ni,ti.astype(Float),qi.astype(Float),nt,qt,qtmp,tmin,tmax)
     return arange(tmin,tmax+0.1*dt,dt),qt/dt
    
-  def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_accu=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
+  def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
     """
   Plots conductor current history:
     - js=None      : select species to consider (default None means that contribution from all species are added)
@@ -367,7 +367,7 @@ Should never be directly created by the user.
     - type='solid' : line type
     """
     if me<>0:return
-    time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_accu=l_accu,tmin=tmin,tmax=tmax,nt=nt)
+    time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_image=l_image,tmin=tmin,tmax=tmax,nt=nt)
     plg(current,time,color=color,width=width,type=type)
     ptitles('Current history at '+self.name,'time (s)','I (A)')
 
@@ -448,7 +448,10 @@ Should never be directly created by the user.
      # --- potential and so is not represented in sum of Enormal and so is not
      # --- accounted for properly. It needs to be explicitly subtracted off
      # --- since it should not be included as image charge.)
-     qinterior = cond_sumrhointerior(interior,g.nx,g.ny,g.nz,g.rho,
+#     qinterior = cond_sumrhointerior(interior,g.nx,g.ny,g.nz,g.rho,
+#                                     ixmin,ixmax,iymin,iymax,izmin,izmax)
+     qinterior=0.
+     subcond_sumrhointerior(qinterior,interior,g.nx,g.ny,g.nz,g.rho,
                                      ixmin,ixmax,iymin,iymax,izmin,izmax)
      qc = qc - qinterior
 
@@ -1551,10 +1554,6 @@ Creates a grid object which can generate conductor data.
     self.l4symtry = _default(l4symtry,w3d.l4symtry)
     self.izslave = _default(izslave,top.izfsslave)
     self.nzslave = _default(nzslave,top.nzfsslave)
-    
-    if w3d.solvergeom==w3d.XYgeom and not wxy.lthick:
-        self.zmmin=-smallpos
-        self.zmmax=-self.zmmin
     
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
