@@ -564,7 +564,7 @@ the top level grid.
                 top.pgroup.uzp[i:i+n],top.pgroup.gaminv[i:i+n],None,q,w,
                 lrootonly)
       print "setj done ",self.blocknumber
-      if (top.pgroup.ndts[js]>1 and ((top.it+1)%top.pgroup.ndts[js]==0)):
+      if (top.pgroup.ndts[js]>1 and top.pgroup.ldts[js]):
         self.pointjtojcopy(lrootonly)
         self.addjspecies(js,lrootonly)
     # distribute current density among blocks
