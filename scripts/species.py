@@ -144,7 +144,7 @@ Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2')
 Water           = Molecule(mass=18.*amu, Symbol='H2O')
 
 class Species:
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name=''):
+  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',l_autodt=1):
     self.jslist=[]
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
@@ -153,7 +153,12 @@ class Species:
     if type.__class__ is not Particle:
       self.charge_state=charge_state
     self.name=name
-     
+    self.l_autodt=l_autodt
+    if l_autodt and top.pgroup.lvdtsmax>1:
+      for i in range(top.pgroup.lvdtsmax-1):
+        self.add_group()
+        top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+        
   def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
       if top.pgroup.ns==0:
