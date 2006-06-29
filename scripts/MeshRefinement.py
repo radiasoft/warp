@@ -565,7 +565,7 @@ the top level grid.
       if n == 0: continue
       # deposit species according to subcycling rule governed by ndts.
       if top.pgroup.ndts[js]>1 or top.pgroup.lselfb[js]:
-        if (top.it+1)%top.pgroup.ndts[js]==0: 
+        if top.pgroup.ldts[js]: 
           self.pointrhotorhospecies(js,lrootonly)
           self.zerorho(lrootonly)
         else:
@@ -575,7 +575,7 @@ the top level grid.
                   top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w,
                   depositallparticles,lrootonly)
       if ((top.pgroup.ndts[js]>1 or top.pgroup.lselfb[js]) and
-          ((top.it+1)%top.pgroup.ndts[js]==0)):
+          top.pgroup.ldts[js]):
         self.pointrhotorhocopy(lrootonly)
         self.addrhospecies(js,lrootonly)
     # distribute charge density among blocks
@@ -1326,8 +1326,8 @@ Fetches the E field. This should only be called at the root level grid.
       self.pointphitophispecies(js)
       self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                        exfsapispecies,eyfsapispecies,ezfsapispecies)
-      w3d.exfsapi+=exfsapispecies
-      w3d.eyfsapi+=eyfsapispecies
+      w3d.exfsapi[...]+=exfsapispecies
+      w3d.eyfsapi[...]+=eyfsapispecies
       self.pointphitophispecies(None)
 
   def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
