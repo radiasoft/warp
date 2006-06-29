@@ -6,7 +6,10 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.22 2006/03/02 19:15:38 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.23 2006/06/29 17:24:34 jlvay Exp $"
+import __main__
+__main__.selectbox = 0
+__main__.selectbox_remove = 1
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -46,6 +49,19 @@ class VisualModel(Visualizable):
   def createdxobject(self,kwdict={},**kw):
 
     import pyOpenDX
+
+    if __main__.selectbox:
+      try:
+        self.SelectBox(__main__.selectbox_xmin,
+                           __main__.selectbox_xmax,
+                           __main__.selectbox_ymin,
+                           __main__.selectbox_ymax,
+                           __main__.selectbox_zmin,
+                           __main__.selectbox_zmax,
+                           l_remove=__main__.selectbox_remove)
+      except:
+        print 'warning: problem in call to SelectBox'
+        pass
 
     n = len(self.triangles)
     p = array(self.triangles).copy()
@@ -278,7 +294,7 @@ class VisualModel(Visualizable):
   def Dot(self,v1,v2):
     return sum(array(v1)*array(v2))
 
-  def SelectBox(self,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
+  def SelectBox(self,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None,l_remove=1):
     if xmin is None: 
       if w3d.l4symtry or w3d.l2symtry:
         xmin=-w3d.xmmax
@@ -298,18 +314,27 @@ class VisualModel(Visualizable):
     xt = at[:,0]
     yt = at[:,1]
     zt = at[:,2]
-    xin = where(bitwise_and(xt>=xmin,xt<=xmax),1,0)
-    yin = where(bitwise_and(yt>=ymin,yt<=ymax),1,0)
-    zin = where(bitwise_and(zt>=zmin,zt<=zmax),1,0)
-    tin = bitwise_and(bitwise_and(xin,yin),zin)
-    tin = sum(transpose(reshape(tin,[ntriangles,3])))
-    xt = reshape(xt,[ntriangles,3])
-    yt = reshape(yt,[ntriangles,3])
-    zt = reshape(zt,[ntriangles,3])
-    xt = ravel(compress(tin==3,xt,0))
-    yt = ravel(compress(tin==3,yt,0))
-    zt = ravel(compress(tin==3,zt,0))
-    self.triangles = transpose(reshape(concatenate([xt,yt,zt]),[3,shape(xt)[0]])).tolist()
+    if l_remove:
+      xin = where(bitwise_and(xt>=xmin,xt<=xmax),1,0)
+      yin = where(bitwise_and(yt>=ymin,yt<=ymax),1,0)
+      zin = where(bitwise_and(zt>=zmin,zt<=zmax),1,0)
+      tin = bitwise_and(bitwise_and(xin,yin),zin)
+      tin = sum(transpose(reshape(tin,[ntriangles,3])))
+      xt = reshape(xt,[ntriangles,3])
+      yt = reshape(yt,[ntriangles,3])
+      zt = reshape(zt,[ntriangles,3])
+      xt = ravel(compress(tin==3,xt,0))
+      yt = ravel(compress(tin==3,yt,0))
+      zt = ravel(compress(tin==3,zt,0))
+      self.triangles = transpose(reshape(concatenate([xt,yt,zt]),[3,shape(xt)[0]])).tolist()
+    else:
+      xt=where(xt>xmin,xt,xmin)
+      xt=where(xt<xmax,xt,xmax)
+      yt=where(yt>ymin,yt,ymin)
+      yt=where(yt<ymax,yt,ymax)
+      zt=where(zt>zmin,zt,zmin)
+      zt=where(zt<zmax,zt,zmax)
+      self.triangles = transpose(reshape(concatenate([xt,yt,zt]),[3,shape(xt)[0]])).tolist()
 
 #########################################################################
 class VisualMesh (VisualModel):
