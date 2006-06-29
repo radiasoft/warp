@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.185 $, $Date: 2006/06/15 18:50:22 $
+c@(#) File TOP.F, version $Revision: 3.186 $, $Date: 2006/06/29 16:20:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -515,7 +515,6 @@ c     --- ears calculation
 
       return
       end
-c============================================================================ 
 c=============================================================================
       subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,dtscale,
      &                    itask,nplive,
@@ -2830,17 +2829,17 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,ishift
       if (pgroup%npid > 0) then
-      call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
-     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
-     &                  pgroup%xp,pgroup%yp,pgroup%zp,
-     &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
-     &                  pgroup%pid)
+        call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
+     &                    pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
+     &                    pgroup%xp,pgroup%yp,pgroup%zp,
+     &                    pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
+     &                    pgroup%pid)
       else
-      call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
-     &                  pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
-     &                  pgroup%xp,pgroup%yp,pgroup%zp,
-     &                  pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
-     &                  0.)
+        call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
+     &                    pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
+     &                    pgroup%xp,pgroup%yp,pgroup%zp,
+     &                    pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
+     &                    0.)
       endif
       return
       end
@@ -2903,6 +2902,7 @@ c       --- (ins(is) - ipmax_s(is-1)) < -ishift
         if (ins(is) - ipmax_s(is-1) < -ishift) then
           print*,"WARNING: shftpart: particle data will be lost since there is"
           print*,"                   not enough space in the arrays."
+          stop
         endif
 
         do ip=ipmax_s(is-1)+1-ishift, ins(is)+nps(is)-1
@@ -3569,6 +3569,198 @@ c=============================================================================
 !$OMP END MASTER
 
       return
+      end
+c=============================================================================
+      subroutine chgparticlesdts(pgroup)
+      use ParticleGroupmodule
+      use Particles, only: chdtspid,spid
+      type(ParticleGroup):: pgroup
+      
+      real(kind=8)::tmp
+      integer(kind=ISZ)::ipid,ipd,ipu,ipl,iplast,nec,neclast,nex,i,is,nps,ipdlast,nulast,ndlast
+      integer(kind=ISZ)::iu,id,ipdu,ipdl,ipdulast,ipdllast
+      integer(kind=ISZ)::nrmd(pgroup%ns),nrmu(pgroup%ns),npsinit(pgroup%ns)
+c      write(0,*) 'exchange'
+c      write(0,*) 'up = ',pgroup%nchdts_up
+c      write(0,*) 'do = ',pgroup%nchdts_down
+
+c --- first exchange between species O<=>O<=>O
+      do is=1,pgroup%ns-1
+        if(pgroup%nchdts_up(is)>0 .and. pgroup%nchdts_down(is+1)>0) then
+          nex=min(pgroup%nchdts_up(is),pgroup%nchdts_down(is+1))
+          do i=1,nex
+c       --- compute indices
+            ipd=pgroup%ins(is+1)+nint(pgroup%pid(pgroup%ins(is+1)+pgroup%nchdts_down(is+1)-i,             chdtspid))-1
+            ipu=pgroup%ins(is  )+nint(pgroup%pid(pgroup%ins(is  )+pgroup%nps(is)-pgroup%nchdts_up(is)+i-1,chdtspid))-1
+c       --- exchange particles
+            tmp=pgroup%xp    (ipu);   pgroup%xp    (ipu)  =pgroup%xp    (ipd);   pgroup%xp    (ipd)  =tmp
+            tmp=pgroup%yp    (ipu);   pgroup%yp    (ipu)  =pgroup%yp    (ipd);   pgroup%yp    (ipd)  =tmp
+            tmp=pgroup%zp    (ipu);   pgroup%zp    (ipu)  =pgroup%zp    (ipd);   pgroup%zp    (ipd)  =tmp
+            tmp=pgroup%uxp   (ipu);   pgroup%uxp   (ipu)  =pgroup%uxp   (ipd);   pgroup%uxp   (ipd)  =tmp
+            tmp=pgroup%uyp   (ipu);   pgroup%uyp   (ipu)  =pgroup%uyp   (ipd);   pgroup%uyp   (ipd)  =tmp
+            tmp=pgroup%uzp   (ipu);   pgroup%uzp   (ipu)  =pgroup%uzp   (ipd);   pgroup%uzp   (ipd)  =tmp
+            tmp=pgroup%gaminv(ipu);   pgroup%gaminv(ipu)  =pgroup%gaminv(ipd);   pgroup%gaminv(ipd)  =tmp
+            do ipid=1,pgroup%npid
+              if (ipid/=chdtspid) then
+                tmp=pgroup%pid(ipu,ipid); pgroup%pid(ipu,ipid)=pgroup%pid(ipd,ipid); pgroup%pid(ipd,ipid)=tmp
+              endif
+            enddo
+          enddo
+          pgroup%nchdts_up(is)=pgroup%nchdts_up(is)-nex
+          pgroup%nchdts_down(is+1)=pgroup%nchdts_down(is+1)-nex
+        endif
+      enddo
+
+c --- compute number of particles that will be left to be removed after copies down and up
+      nrmd(2:pgroup%ns-1) = max(0,pgroup%nchdts_down(2:pgroup%ns-1)-pgroup%nchdts_down(3:pgroup%ns))
+      nrmd(pgroup%ns) = pgroup%nchdts_down(pgroup%ns)
+      nrmd(1)=0
+      nrmu(2:pgroup%ns-1) = max(0,pgroup%nchdts_up(2:pgroup%ns-1)-pgroup%nchdts_up(1:pgroup%ns-2))
+      nrmu(1) = pgroup%nchdts_up(1)
+      nrmu(pgroup%ns)=0
+      npsinit=pgroup%nps
+      
+c      write(0,*) 'copy down'
+c      write(0,*) 'up = ',pgroup%nchdts_up
+c      write(0,*) 'do = ',pgroup%nchdts_down
+c --- copy down O<==O
+      do is=2,pgroup%ns
+c       --- Make room for the particles going down
+        call chckpart(pgroup,is-1,0,max(0,pgroup%nchdts_down(is)-pgroup%nchdts_down(is-1)),.false.)
+        do i=1,pgroup%nchdts_down(is)
+          if(i<=pgroup%nchdts_down(is-1)) then
+            ipl=pgroup%ins(is-1) + nint(pgroup%pid(pgroup%ins(is-1)+pgroup%nchdts_down(is-1)-i,chdtspid))-1
+          else
+            ipl=pgroup%ins(is-1) + pgroup%nps(is-1) + i - pgroup%nchdts_down(is-1) - 1
+          endif 
+          ipd =pgroup%ins(is)+nint(pgroup%pid(pgroup%ins(is)+pgroup%nchdts_down(is)-i,chdtspid))-1
+          pgroup%xp    (ipl)  =pgroup%xp    (ipd)
+          pgroup%yp    (ipl)  =pgroup%yp    (ipd)
+          pgroup%zp    (ipl)  =pgroup%zp    (ipd)
+          pgroup%uxp   (ipl)  =pgroup%uxp   (ipd)
+          pgroup%uyp   (ipl)  =pgroup%uyp   (ipd)
+          pgroup%uzp   (ipl)  =pgroup%uzp   (ipd)
+          pgroup%gaminv(ipl)  =pgroup%gaminv(ipd)
+          do ipid=1,pgroup%npid
+            if (ipid/=chdtspid) then
+              pgroup%pid   (ipl,ipid)=pgroup%pid   (ipd,ipid)
+            endif
+          enddo
+        enddo
+        pgroup%nps(is-1)     = pgroup%nps(is-1) + max(0,pgroup%nchdts_down(is) - pgroup%nchdts_down(is-1))
+      enddo 
+
+c      write(0,*) 'copy up'
+c      write(0,*) 'up = ',pgroup%nchdts_up
+c      write(0,*) 'do = ',pgroup%nchdts_down
+c --- copy up O==>O
+      do is=pgroup%ns-1,1,-1
+c       --- Make room for the particles going up
+        call chckpart(pgroup,is+1,0,max(0,pgroup%nchdts_up(is)-pgroup%nchdts_up(is+1)),.false.)
+        do i=1,pgroup%nchdts_up(is)
+          if(i<=pgroup%nchdts_up(is+1)) then
+            ipu=pgroup%ins(is+1) + nint(pgroup%pid(pgroup%ins(is+1)+npsinit(is+1)-pgroup%nchdts_up(is+1)+i-1,chdtspid))-1
+          else
+            ipu=pgroup%ins(is+1) + pgroup%nps(is+1) + i - pgroup%nchdts_up(is+1) - 1
+          endif 
+          ipd=pgroup%ins(is)+nint(pgroup%pid(pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1,chdtspid))-1
+c          write(0,*) ipd,' => ',ipu, i, is,pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1
+c          write(0,*) pgroup%pid(pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1,chdtspid)
+          pgroup%xp    (ipu)  =pgroup%xp    (ipd)
+          pgroup%yp    (ipu)  =pgroup%yp    (ipd)
+          pgroup%zp    (ipu)  =pgroup%zp    (ipd)
+          pgroup%uxp   (ipu)  =pgroup%uxp   (ipd)
+          pgroup%uyp   (ipu)  =pgroup%uyp   (ipd)
+          pgroup%uzp   (ipu)  =pgroup%uzp   (ipd)
+          pgroup%gaminv(ipu)  =pgroup%gaminv(ipd)
+          do ipid=1,pgroup%npid
+            if (ipid/=chdtspid) then
+              pgroup%pid   (ipu,ipid)=pgroup%pid   (ipd,ipid)
+            endif
+          enddo
+        enddo
+        pgroup%nps(is+1)     = pgroup%nps(is+1) + max(0,pgroup%nchdts_up(is) - pgroup%nchdts_up(is+1))
+      enddo 
+
+c      write(0,*) 'fill holes'
+c      write(0,*) 'rm up = ',nrmu
+c      write(0,*) 'rm do = ',nrmd
+c --- fill holes with last particles in species
+      do is=1,pgroup%ns
+        nulast=nrmu(is)
+        ndlast=nrmd(is)
+        iu=1
+        id=1
+        ipdl=pgroup%ins(is)+pgroup%nps(is)
+        ipdu=ipdl
+        ipdllast=0
+        ipdulast=0
+        ipdlast=0
+        do while(iu<=nulast .or. id<=ndlast) 
+          iplast=pgroup%ins(is)+pgroup%nps(is)-1
+          if(id<=ndlast) then
+            ipdl     = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + id-1    ,chdtspid))-1
+            ipdllast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + ndlast-1,chdtspid))-1
+          else 
+            ipdllast = 0
+            ipdl     = pgroup%ins(is)+pgroup%nps(is)
+          endif
+          if(iu<=nulast) then
+            ipdu     = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is) - iu    ,chdtspid))-1
+            ipdulast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is) - nulast,chdtspid))-1
+          else 
+            ipdulast = 0
+            ipdu     = pgroup%ins(is)+pgroup%nps(is)
+          endif
+          ipd=min(ipdl,ipdu)
+          ipdlast=max(ipdllast,ipdulast)
+          do while(ipdlast==iplast)
+            pgroup%nps(is) = pgroup%nps(is) - 1
+            iplast=pgroup%ins(is)+pgroup%nps(is)-1
+            if (ipdulast>ipdllast) then
+              nulast=nulast-1
+            else
+              ndlast=ndlast-1
+            endif
+            if(iu>nulast .and. id>ndlast) exit
+            if(id<=ndlast) then
+              ipdllast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + ndlast-1,chdtspid))-1
+            else 
+              ipdllast = 0
+            endif
+            if(iu<=nulast) then
+              ipdulast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is)-nulast,chdtspid))-1
+            else 
+              ipdulast = 0
+            endif
+            ipdlast=max(ipdllast,ipdulast)
+          enddo
+          if(iu>nulast .and. id>ndlast) exit
+          pgroup%xp    (ipd)  =pgroup%xp    (iplast)
+          pgroup%yp    (ipd)  =pgroup%yp    (iplast)
+          pgroup%zp    (ipd)  =pgroup%zp    (iplast)
+          pgroup%uxp   (ipd)  =pgroup%uxp   (iplast)
+          pgroup%uyp   (ipd)  =pgroup%uyp   (iplast)
+          pgroup%uzp   (ipd)  =pgroup%uzp   (iplast)
+          pgroup%gaminv(ipd)  =pgroup%gaminv(iplast)
+          do ipid=1,pgroup%npid
+            if (ipid/=chdtspid) then
+              pgroup%pid   (ipd,ipid)=pgroup%pid   (iplast,ipid)
+            endif
+          enddo
+          pgroup%nps(is) = pgroup%nps(is) - 1
+          if(ipdu<ipdl) then
+            iu=iu+1
+          else
+            id=id+1
+          endif
+        enddo
+      enddo
+c      write(0,*) 'done'
+c --- zero out down and up arrays
+      pgroup%nchdts_up  =0
+      pgroup%nchdts_down=0
+
       end
 c=============================================================================
 c Routines for handling particle groups
