@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.271 $, $Date: 2006/06/29 17:54:37 $
+c@(#) File W3D.F, version $Revision: 3.272 $, $Date: 2006/06/29 18:25:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -56,7 +56,9 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles, Only: pgroup,npmax,wpid,tpid,rpid
+      use Particles, Only: pgroup,npmax,wpid,tpid,rpid,chdtspid,
+     &                     xoldpid,yoldpid,zoldpid,lsaveoldpos,
+     &                     expid,eypid,ezpid,bxpid,bypid,bzpid
       use Picglb
       use Picglb3d
       use OutParams
@@ -196,11 +198,9 @@ c  (rwallfac = 1 is probably NOT a good guess)
 
 c  Calculate derived quantities and species related arrays  (species are 
 c  set from an internal call to "species" in derivqty).   
-
       call derivqty
 
 c  Load text lines which are printed at the bottom of all plots.
-
       call stepid (it, time, zbeam)
 
 c  Print values of input variables, other interesting things to text file
@@ -396,6 +396,21 @@ c  Load the particles, calculate the charge density
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
       if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.true.)
+      if (chdtspid>0) then
+        lsaveoldpos = .true.
+        allspecl    = .true.
+      endif
+      if (lsaveoldpos) then
+        xoldpid = nextpid()
+        yoldpid = nextpid()
+        zoldpid = nextpid()
+        expid = nextpid()
+        eypid = nextpid()
+        ezpid = nextpid()
+        bxpid = nextpid()
+        bypid = nextpid()
+        bzpid = nextpid()
+      endif
       call remark(" ---  done")
 
 c  Set up for injection
@@ -931,7 +946,7 @@ c  B_self more than once.
       qoverm = q/m
 
 c     --- handle uniform fields
-      call applyuniformfields(np,ez,bz)
+      call applyuniformfields(np,ex,ey,ez,bx,by,bz)
 
 c     --- handle quads
       call applyquad(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
@@ -1360,7 +1375,7 @@ c  Note that (it-1) is used since it is advanced before this point.
         lcycle = .true.
         if (center_in == "gen") lcycle = .false.
       endif
-
+      
       return
       end
 c=============================================================================
@@ -1430,13 +1445,20 @@ c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
      &                             zpo,bendres,bendradi)
       use ParticleGroupmodule
+      use Particles, only: chdtspid,xoldpid,yoldpid,zoldpid,lsaveoldpos
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,np,ipmin,interpdk
       real(kind=8):: dt
       real(kind=8):: zpo(np),bendres(np),bendradi(np)
 
+      if (lsaveoldpos) then
+        pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
+        pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
+        pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
+      endif
+
       if (interpdk .ne. 0) then
-        call xpush3dintrp(pgroup,np,is,ipmin)
+        call xpush3dintrp(pgroup,np,is,ipmin,dt)
       else
         call xpush3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &               pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),dt)
@@ -1469,7 +1491,8 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid
+      use Particles,Only: nplive,wpid,chdtspid,spid,xoldpid,yoldpid,zoldpid,
+     &                    expid,eypid,ezpid,bxpid,bypid,bzpid
       use Fields3d
       use Fields3dParticles
       use Efields3d
@@ -1577,12 +1600,25 @@ c  Set storage for field arrays if not adequate already
          npfield = nparpgrp
          call gchange("DKInterptmp",0)
       endif
-
+c  Set lvdts array
+      if (ndtsaveraging == 0) then
+        do is=1,pgroup%ns
+          if (pgroup%ndts(is) == 1) then
+            pgroup%lvdts(is) = .true.
+          elseif (mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
+     &      center_in=="synchv") then
+            pgroup%lvdts(is) = .true.
+          else
+            pgroup%lvdts(is) = .false.
+          endif
+        enddo
+        pgroup%lvdts(pgroup%ns+1)=.false.
+      endif
+      
 c  Loop over species
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
         jsapi=is-1
-
         if(solvergeom==XYZgeom) then
           lcycle = .false.
           if (ndtsaveraging == 0) then
@@ -1602,7 +1638,6 @@ c  Loop over species
           ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
           itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + 1
         endif
-
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
         fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
@@ -1739,12 +1774,12 @@ c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction before and half after Bpush
                if (interpdk(isid) .ne. 0) then
 c                  call setptrs(bx,by,bz,ex,ey,ez)
-                  call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
                endif
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), fulldt_s, ibpush)
                if (interpdk(isid) .ne. 0)
-     &           call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,0)
+     &           call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
 c              --- Final half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
@@ -1796,7 +1831,7 @@ c              --- If interpolating with drift kinetics, must do
 c              ---  a mu grad B correction.  Since may be calling
 c              ---  this on first timestep, must make sure grad B's are
 c              ---  calculated, so last arg = 1.
-                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
                else
                   call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), halfdt_s, ibpush)
@@ -1872,7 +1907,7 @@ c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction
 c              --- Half magnetic field increment to momenta
                if (interpdk(isid) .ne. 0) then
-                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,1)
+                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
                   call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), fulldt_s, -1)
 c                 Half a Boris push
@@ -1920,6 +1955,15 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
                 call getextrapolatedparticles(ipmin,ip,pgroup,pgroup%npid,
      &                                        halfdt_s,uxpo,uypo,uzpo,
      &                                        isid,time,zbeam)
+              endif
+              if(center == "synchv" .and. chdtspid>0) then
+                call check_cc3d(pgroup,is,ipmin,ip,ex,ey,ez,bx,by,bz)
+                pid(ipmin:ipmin+ip-1,expid) = ex(1:ip)
+                pid(ipmin:ipmin+ip-1,eypid) = ey(1:ip)
+                pid(ipmin:ipmin+ip-1,ezpid) = ez(1:ip)
+                pid(ipmin:ipmin+ip-1,bxpid) = bx(1:ip)
+                pid(ipmin:ipmin+ip-1,bypid) = by(1:ip)
+                pid(ipmin:ipmin+ip-1,bzpid) = bz(1:ip)
               endif
             endif
          enddo
@@ -1985,10 +2029,19 @@ c       --- Inject more particles. This adds particles and alters ins and nps.
 
 c       --- Treat particles at boundaries
         call particleboundaries3d(pgroup)
+
+        if (lbeforelr) call execuser("beforelr")
  
 c       --- Collect charge density (3d)
         call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
         if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+
+      elseif (center == 'synchv') then
+
+c     --- change particles group/species according to courant condition
+c        write(0,*) 'n_up',pgroup%nchdts_up
+c        write(0,*) 'n_do',pgroup%nchdts_down
+        if(chdtspid>0) call chgparticlesdts(pgroup)
 
       endif
 c----------------------------------------------------------------------------
@@ -2388,6 +2441,109 @@ c  Advance particle positions
 
 !$OMP MASTER
       if (lw3dtimesubs) timexpusht3d = timexpusht3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine check_cc3d(pgroup,is,ipmin,np,ex,ey,ez,bx,by,bz)
+      use Constant
+      use InGen
+      use Subtimers3d
+      use beam_acc
+      use Picglb, only: time,zgrid
+      use Picglb3d
+      use InGen3d
+      use InMesh3d
+      use ParticleGroupmodule
+      use Particles, only: xoldpid, yoldpid, zoldpid, chdtspid,
+     &                     expid,eypid,ezpid,bxpid,bypid,bzpid, tpid
+      use Fields3dParticles, only: nxc,nyc,nzc,isnearbycond
+      implicit none
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: np,is,ipmin,ipmin0,ip0,ips,myndts
+      real(kind=8):: dd,denorm,dbnorm,denorm_up,dbnorm_up,exo,eyo,ezo,bxo,byo,bzo,dex,dey,dez,dbx,dby,dbz
+      real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
+      integer(ISZ)::pisnearbycond(np)
+      logical(ISZ):: ldfield_below_threshold,ldfield_below_threshold_up,l_pisnearbycond
+
+c Check if particle is under or over the Courant condition limits (ccmin and ccmax) 
+c and regiter the ones that fall outside the limits for change to group (or species) 
+c with appropriate time step.
+
+      integer(ISZ):: ip,ndtsmax
+      real(kind=8):: substarttime,wtime,ddx,ddy,ddz,dtgaminv
+      if (lw3dtimesubs) substarttime = wtime()
+
+        ndtsmax = 2**(pgroup%lvdtsmax-1)
+        myndts  = pgroup%ndts(is)
+        ipmin0=ipmin-1
+        if (nxc>0) then
+          call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
+     &                   pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
+     &                   l2symtry,l4symtry)
+        else
+          l_pisnearbycond=.false.
+        end if
+        do ip=1,np
+          ip0=ipmin0+ip
+          if(tpid>0) then
+            if ((time-pgroup%pid(ip0,tpid))<ndtsmax*dt) cycle
+          endif
+          ddx=abs(pgroup%xp(ip0)-pgroup%pid(ip0,xoldpid))/dx
+          ddy=abs(pgroup%yp(ip0)-pgroup%pid(ip0,yoldpid))/dy
+          ddz=abs(pgroup%zp(ip0)-pgroup%pid(ip0,zoldpid))/dz
+          exo = pgroup%pid(ip0,expid)
+          eyo = pgroup%pid(ip0,eypid)
+          ezo = pgroup%pid(ip0,ezpid)
+          bxo = pgroup%pid(ip0,bxpid)
+          byo = pgroup%pid(ip0,bypid)
+          bzo = pgroup%pid(ip0,bzpid)
+          dex=abs(ex(ip)-exo)
+          dey=abs(ey(ip)-eyo)
+          dez=abs(ez(ip)-ezo)
+          dbx=abs(bx(ip)-bxo)
+          dby=abs(by(ip)-byo)
+          dbz=abs(bz(ip)-bzo)
+          denorm = defieldmax*sqrt(exo*exo+eyo*eyo+ezo*ezo)
+          dbnorm = dbfieldmax*sqrt(bxo*bxo+byo*byo+bzo*bzo)
+          ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and. 
+     &                              dbx<=dbnorm .and. dby<=dbnorm .and. dbz<=dbnorm
+          if (myndts<ndtsmax) then
+c           --- the threshold on field change is lower for increasing time step in order to 
+c           --- minimize particles changing time steps back and forth due to constant crossing of threshold
+            denorm_up = denorm*real(pgroup%ndts(is))/pgroup%ndts(is+1)
+            dbnorm_up = dbnorm*real(pgroup%ndts(is))/pgroup%ndts(is+1)
+            ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and. 
+     &                                   dbx<=dbnorm_up .and. dby<=dbnorm_up .and. dbz<=dbnorm_up
+          endif
+          if (nxc>0) then
+            if (pisnearbycond(ip)>0) then
+              l_pisnearbycond=.true.
+            else
+              l_pisnearbycond=.false.
+            endif
+          end if
+          dd=max(ddx,ddy,ddz)
+c         --- if dd<ccmin or dd>ccmax, register particle for move to group/species with 
+c         --- appropriate time step 
+          if(myndts>1 .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
+c           --- move to group with smaller time step
+            ips = ipmin+ip-pgroup%ins(is)
+c            write(0,*) 'set do ',is,ipmin,pgroup%nchdts_down(is),ip
+            pgroup%pid(pgroup%ins(is)+pgroup%nchdts_down(is),chdtspid)=ips
+            pgroup%nchdts_down(is)=pgroup%nchdts_down(is)+1
+          elseif(pgroup%lvdts(is+1) .and. myndts<ndtsmax .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
+     &           .not. l_pisnearbycond) then
+c           --- move to group with larger time step
+            ips = ipmin+ip-pgroup%ins(is)
+            pgroup%nchdts_up(is)=pgroup%nchdts_up(is)+1
+c            write(0,*) 'set up ',is,ipmin,pgroup%nchdts_up(is),ips,np
+            pgroup%pid(pgroup%ins(is)+pgroup%nps(is)-pgroup%nchdts_up(is),chdtspid)=ips
+          endif
+        enddo
+c        write(0,*) 'exit check_cc3d, up, do',pgroup%nchdts_up,pgroup%nchdts_down
+!$OMP MASTER
+      if (lw3dtimesubs) timecheckcc3d = timecheckcc3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -6684,9 +6840,7 @@ c       --- and the data needs to be copied around.
         api_xlf2 = .true.
         ipapi    = ip
         ipminapi = ipmin
-        exfsapi => ex(1:ip)
-        eyfsapi => ey(1:ip)
-        ezfsapi => ez(1:ip)
+        allocate(exfsapi(ip),eyfsapi(ip),ezfsapi(ip))
 #else
         xfsapi => pgroup%xp(ipmin:ipmin+ip-1)
         yfsapi => pgroup%yp(ipmin:ipmin+ip-1)
@@ -6706,16 +6860,17 @@ c       --- and the data needs to be copied around.
         deallocate(exfsapi,eyfsapi,ezfsapi)
 #else
 #ifdef XLF2
+        ex(1:ip) = exfsapi
+        ey(1:ip) = eyfsapi
+        ez(1:ip) = ezfsapi
+        deallocate(exfsapi,eyfsapi,ezfsapi)
+#else
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
-#else
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
-        nullify(exfsapi)
-        nullify(eyfsapi)
-        nullify(ezfsapi)
 #endif
 #endif
       elseif(solvergeom==RZgeom) then
@@ -6780,6 +6935,17 @@ c     --- particles group.
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==XYZgeomMR) then
+#if defined(XLF) || defined(XLF2)
+c       --- The pointer assignment breaks with the xlf compilers, so instead
+c       --- new arrays are allocated and those are used as the work space.
+c       --- This is less efficient since there is overhead in the allocation
+c       --- and the data needs to be copied around.
+        allocate(xfsapi(n),yfsapi(n),zfsapi(n))
+        allocate(exfsapi(n),eyfsapi(n),ezfsapi(n))
+        xfsapi = x
+        yfsapi = y
+        zfsapi = z
+#else
         isfsapi = is
         xfsapi => x
         yfsapi => y
@@ -6787,11 +6953,20 @@ c     --- particles group.
         exfsapi => ex
         eyfsapi => ey
         ezfsapi => ez
+#endif
         call execuser("fetcheMR")
         isfsapi = -1
+#if defined(XLF) || defined(XLF2)
+        ex(1:n) = exfsapi
+        ey(1:n) = eyfsapi
+        ez(1:n) = ezfsapi
+        deallocate(xfsapi,yfsapi,zfsapi)
+        deallocate(exfsapi,eyfsapi,ezfsapi)
+#else
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
+#endif
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
@@ -6828,6 +7003,7 @@ c=============================================================================
       use InMesh3d
       use Picglb
       use Picglb3d
+      use Particles, only: chdtspid
       type(ParticleGroup):: pgroup
 
 c Does everything needed to apply particle boundary conditions.
@@ -6864,7 +7040,7 @@ c       --- do it only if species was advanced on this time step
      &                         zbeam)
         endif
       enddo
-
+      
 !$OMP MASTER
       if (lw3dtimesubs) timeparticleboundaries3d = timeparticleboundaries3d + wtime() - substarttime
 !$OMP END MASTER
