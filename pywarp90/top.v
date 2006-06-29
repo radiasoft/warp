@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.174 $, $Date: 2006/06/17 02:08:42 $
+#@(#) File TOP.V, version $Revision: 3.175 $, $Date: 2006/06/29 16:14:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.174 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.175 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -871,8 +871,16 @@ tstop                     real  [s]  /LARGEPOS/
    # Time at which run will stop
 zstop                     real  [m]  /LARGEPOS/
    # Z location at which run will stop
+bx0                       real [T]   /0./
+   # Uniform B field in x
+by0                       real [T]   /0./
+   # Uniform B field in y
 bz0                       real [T]   /0./
    # Uniform axial "guide" B field
+ex0                       real /0./
+   # Uniform E field in x
+ey0                       real /0./
+   # Uniform E field in y
 ez0                       real /0./
    # Linear Ez field for bunching force
 vbeamfrm                  real [M/S]
@@ -964,6 +972,14 @@ clearlostpart             integer /1/
    # When 0, do not clear lost particles, when 1, swap lost particles with
    # ones at the end of the array (much faster), when 2, shift particles to
    # fill in the gaps (much slower)
+courantmin                     real    /0.25/
+   # minimum fraction of particle courant condition under which particle time step is multiplied by two
+courantmax                     real    /0.5/
+   # maximum fraction of particle courant condition above which particle time step is divided by two
+defieldmax                     real    /0.5/
+   # maximum fraction of electric field change in last time step allowed 
+dbfieldmax                     real    /0.5/
+   # maximum fraction of magnetic field change in last time step allowed 
 
 *********** InPart dump:
 # Particle input quantities (input qtys)
@@ -1896,7 +1912,28 @@ tpid   integer    /0/  # position of particle creation time in array pid
                        # (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid
                        # (FORTRAN indexed: based 1)
+xoldpid   integer /0/  # position of particles previous position in x in array pid
+                       # (FORTRAN indexed: based 1)                  
+yoldpid   integer /0/  # position of particles previous position in y in array pid
+                       # (FORTRAN indexed: based 1)                  
+zoldpid   integer /0/  # position of particles previous position in z in array pid
+                       # (FORTRAN indexed: based 1)                  
+expid   integer /0/  # position of particles Ex field in array pid
+                       # (FORTRAN indexed: based 1)                  
+eypid   integer /0/  # position of particles Ey field in array pid
+                       # (FORTRAN indexed: based 1)                  
+ezpid   integer /0/  # position of particles Ez field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bxpid   integer /0/  # position of particles Bx field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bypid   integer /0/  # position of particles By field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bzpid   integer /0/  # position of particles Bz field in array pid
+                       # (FORTRAN indexed: based 1)                  
+chdtspid integer  /0/  # position of particle pid for dts change
+                       # (FORTRAN indexed: based 1)
 ssn    integer    /1/  # next particles 'social security number' available
+lsaveoldpos logical /.false./ # Flag setting whether old particle positions are saved
 
 %%%%%%%%%%% ParticleGroup:
 # Dynamic particle arrays, and related data
@@ -1915,6 +1952,12 @@ nps(ns)  _integer /0/  # Number of particles in species
 sid(0:ns-1) _integer /-1/ # Global species index for each species
 ndts(ns) _integer /1/  # Stride for time step advance for each species
 ldts(ns) _logical /1/
+lvdts(ns+1)  _logical /1/
+nchdts_up(ns) _integer /0/ # Number of particles to change to group/species 
+                           # with larger time step
+nchdts_down(ns) _integer /0/ # Number of particles to change to group/species 
+                           # with smaller time step
+lvdtsmax  integer /1/  # maximum number of ndts levels
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
@@ -2106,6 +2149,13 @@ deposgrid2dw(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits data onto a 2-D grid.
+deposgridrzvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+            vx(np):real,vy(np):real,vz(np):real,
+            w(np):real,nx:integer,ny:integer,
+            grid(0:nx,0:ny,3):real,gridcount(0:nx,0:ny):real,
+            xmin:real,xmax:real,ymin:real,ymax:real)
+        subroutine
+        # Deposits velocities onto a 2-D radial grid.
 getgrid2d(np:integer,x(np):real,y(np):real,z(np):real,
           nx:integer,ny:integer,grid(0:nx,0:ny):real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
@@ -2127,6 +2177,13 @@ deposgrid3d(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
             xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
         subroutine
         # Deposits data onto a 3-D grid.
+deposgrid3dvect(itask:integer,np:integer,x(np):real,y(np):real,z(np):real,
+            vx(np):real,vy(np):real,vz(np):real,w(np):real,
+            nx:integer,ny:integer,nz:integer,
+            grid(0:nx,0:ny,0:nz,3):real,gridcount(0:nx,0:ny,0:nz):real,
+            xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
+        subroutine
+        # Deposits velocities onto a 3-D grid.
 getgrid3d(np:integer,x(np):real,y(np):real,z(np):real,f(np):real,
           nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
@@ -2155,6 +2212,7 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
              gridout(0:nxout,0:nyout,0:nzout):real) subroutine
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
+sum_neighbors3d(fin(nx+1,ny+1,nz+1):integer,fout(nx+1,ny+1,nz+1):integer,nx:integer,ny:integer,nz:integer) subroutine # sum neighbouring cells
 take2dint(a(0:n1-1,0:n2-1):integer,n1:integer,n2:integer,
           i(n):integer,j(n):integer,n:integer,b(n):integer) subroutine
 getpsgrd(np,xp(np):real,uxp(np):real,nw,nh,psgrd(0:nw,0:nh):real,
@@ -2259,6 +2317,13 @@ processlostpart(pgroup:ParticleGroup,is:integer,clearlostpart:integer,
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
 alotlostpart() subroutine # Allocate space for saving lost particles
+chcklostpart(is:integer,nlower:integer,nhigher:integer) 
+             subroutine # Make sure that there is enough space in the lost particle arrays for nlower
+                        # new particles below and nhigher above the lost particles.  Returns if
+                        # there is already enough space above and below.  If there is enough total
+                        # space but not enough room above or below, the lost particles are shifted
+                        # appropriately. If there is not enough space, add more to the arrays.
+                        # Particle data is shifted appropriately.
 checkparticlegroup(pgroup:ParticleGroup,is:integer,
                    nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles in
@@ -2471,6 +2536,7 @@ impact_ion(is1:integer,is2:integer,nbp:real,w:real,
                       # xpemit = xpabsorb + shiftx + (wranf()-0.5)*deltax 
                       # ypemit = ypabsorb + shifty + (wranf()-0.5)*deltay 
                       # zpemit = zpabsorb + shiftz + (wranf()-0.5)*deltaz 
+chgparticlesdts(pgroup:ParticleGroup) subroutine 
 
 ******** Subtimerstop:
 ltoptimesubs logical /.false./
