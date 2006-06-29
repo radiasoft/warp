@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.270 $, $Date: 2006/06/23 21:59:22 $
+c@(#) File W3D.F, version $Revision: 3.271 $, $Date: 2006/06/29 17:54:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1623,31 +1623,28 @@ c Also set m_over_q, q_over_m**2
 
 c  Setup the moments if center is synchv or gen
 c  If OPENMP, copies data to arrays which will be threadprivate
+c  This needs to be fixed when there are multiple pgroups since the
+c  species may be spread out among the pgroups.
          if (center == "synchv" .or. center == "gen") then
-c  Initialize the moments arrays if the species positions has just been
-c  advanced. If so, ldts will still be true from the previous call to
-c  padvnc3d.
 !$OMP SINGLE
-          if (pgroup%ldts(is)) then
-            isid = pgroup%sid(is-1) + 1
-            call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                    0.,0.,0.,0.,0.,1,
-     &                    nplive,0.,0.,0.,1,isid,ismax,
-     &                    tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-          endif
+           isid = pgroup%sid(is-1) + 1
+           call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                   0.,0.,0.,0.,0.,1,
+     &                   nplive,0.,0.,0.,1,isid,ismax,
+     &                   tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 !$OMP END SINGLE
 #ifdef _OPENMP
-          maxp(:,isid) = tempmaxp(:,isid)
-          minp(:,isid) = tempminp(:,isid)
-          zmmnts0(:,isid) = tempzmmnts0(:,isid)
-          zmmnts(:,:,isid) = tempzmmnts(:,:,isid)
+           maxp(:,isid) = tempmaxp(:,isid)
+           minp(:,isid) = tempminp(:,isid)
+           zmmnts0(:,isid) = tempzmmnts0(:,isid)
+           zmmnts(:,:,isid) = tempzmmnts(:,:,isid)
 #else
-          maxp => tempmaxp
-          minp => tempminp
-          zmmnts0 => tempzmmnts0
-          zmmnts => tempzmmnts
+           maxp => tempmaxp
+           minp => tempminp
+           zmmnts0 => tempzmmnts0
+           zmmnts => tempzmmnts
 #endif
-      endif
+         endif
 
 c  Loop over particle blocks; move each block separately
 !$OMP DO
@@ -6030,11 +6027,12 @@ c=============================================================================
 
 c     --- Save the rho where the fastest particle's rho is. For now,
 c     --- assume that this is in1=0
-      do in1=0,nsndts-1
+      do in1=1,nsndts-1
         if (it == 0) then
 c         --- At it==0, before the first step, always add the new rho.
           rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
         elseif (mod(rhotondts(in1),2) == 1) then
+c         --- Use the rho that is closest in time to the current time.
           if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
      &        mod(it-1,rhotondts(in1)) == 0) then
             rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
@@ -6042,11 +6040,15 @@ c         --- At it==0, before the first step, always add the new rho.
             rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
           endif
         else
-c         --- When ndts is even, at the mid point of the step, randomly
-c         --- choose the old or the new
-          oldornew = wranf() - 0.5
-          if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. + oldornew .or.
-     &        mod(it-1,rhotondts(in1)) == 0) then
+c         --- When ndts is even, at the mid point of the step, take the
+c         --- average of the old and the new
+c         --- Otherwise, use the rho that is closest in time to the currentc
+c         --- time.
+          if (mod(it-1,rhotondts(in1)) == rhotondts(in1)/2) then
+            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) +
+     &       0.5*(rhopndts(:,:,:,1,in1) + rhopndts(:,:,:,2,in1))
+          else if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
+     &             mod(it-1,rhotondts(in1)) == 0) then
             rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
           else
             rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
