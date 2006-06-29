@@ -50,7 +50,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.13 2006/02/17 00:56:47 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.14 2006/06/29 17:48:58 jlvay Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -216,6 +216,7 @@ class ControllerFunction:
 aftergenerate = ControllerFunction('aftergenerate')
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
+beforelr = ControllerFunction('beforelr')
 callscraper = ControllerFunction('callscraper')
 calladdconductor = ControllerFunction('calladdconductor')
 callbeforestepfuncs = ControllerFunction('callbeforestepfuncs')
@@ -270,7 +271,7 @@ Anything that may have already been installed will therefore be unaffected.
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
 controllerfunctioncontainer = ControllerFunctionContainer(
-                               [aftergenerate,beforefs,afterfs,
+                               [aftergenerate,beforefs,afterfs,beforelr,
                                 callscraper,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
@@ -313,6 +314,18 @@ def uninstallafterfs(f):
   if not afterfs.hasfuncsinstalled(): warp.w3d.lafterfs = warp.false
 def isinstalledafterfs(f):
   return afterfs.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
+def installbeforelr(f):
+  "Adds a function to the list of functions called before a load rho"
+  beforelr.installfuncinlist(f)
+  warp.w3d.lbeforelr = warp.true
+def uninstallbeforelr(f):
+  "Removes the function from the list of functions called before a load rho"
+  beforelr.uninstallfuncinlist(f)
+  if not beforelr.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
+def isinstalledbeforelr(f):
+  return beforelr.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def installparticlescraper(f):
