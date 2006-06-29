@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.58 $, $Date: 2006/06/22 01:29:51 $
+c@(#) File w3d_injection.F, version $Revision: 1.59 $, $Date: 2006/06/29 16:50:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3525,10 +3525,9 @@ c     --- zero out the array
 
 c     --- Loop over species and particles
       if(.not. l_inj_rz) then
-        do is=1,ns
+        do is=1,pgroup%ns
           i1 = pgroup%ins(is)
           i2 = pgroup%ins(is)+pgroup%nps(is)-1
-
 c         --- Transform the particles into the frame of the injection source
           if (pgroup%nps(is) > 0) then
             ijp(i1:i2) = int(pgroup%pid(i1:i2,injpid))
@@ -3632,7 +3631,6 @@ c         --- Transform the particles back into the lab frame
      &                    pgroup%xp(i1:i2),pgroup%yp(i1:i2),pgroup%zp(i1:i2),
      &                    pgroup%nps(is),ijp(i1:i2),1,1)
           endif
-
         enddo
 
         if (solvergeom/=Zgeom) then
@@ -3651,7 +3649,7 @@ c         --- contributing area which is within the emitting surface.
         end if
 
       else !l_inj_rz=.true.
-        do is=1,ns
+        do is=1,pgroup%ns
           i1 = pgroup%ins(is)
           i2 = pgroup%ins(is)+pgroup%nps(is)-1
 c         --- Transform the particles into the frame of the injection source
