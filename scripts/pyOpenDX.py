@@ -14,7 +14,14 @@ try:
 except:
   pass
 import __main__
-__main__.selectbox = 0
+__main__.selectbox        = 0
+__main__.selectbox_remove = 1
+__main__.selectbox_xmin   = None
+__main__.selectbox_xmax   = None
+__main__.selectbox_ymin   = None
+__main__.selectbox_ymax   = None
+__main__.selectbox_zmin   = None
+__main__.selectbox_zmax   = None
 __main__.l_hardware_acceleration = 1
 __main__.l_dxforceupdate = 0
 __main__.l_dxupdate_all_windows = 1
@@ -32,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.27 2006/04/28 17:59:14 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.28 2006/06/29 18:11:10 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -50,7 +57,8 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
                        (take(pgroup.uyp,ii)/take(pgroup.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,ratio=1.,stride=1,type='speedy',scale=None,**kw):
+def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,ratio=1.,stride=1,
+          type='speedy',color=None,scale=None,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   pgroup = kw.get('pgroup',top.pgroup)
@@ -67,7 +75,8 @@ def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,rati
   if zscale is not None:
     zz = zz*zscale
   return viewparticles(xx,yy,zz,cc,
-                       labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale)
+                       labels,name=None,display=display,size=size,ratio=ratio,
+                       stride=stride,type=type,scale=scale,color=color)
 
 def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=0.,stride=1,type='standard',scale=None,**kw):
   """Vector Plot X-Y-Z-Vx-Vy-Vz"""
@@ -91,6 +100,32 @@ def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=
   if zscale is not None:
     zz = zz*zscale
   return viewvparticles(xx,yy,zz,vx,vy,vz,
+                       labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale,normalize=1)
+
+def pprzvrvtvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=0.,stride=1,type='standard',scale=None,**kw):
+  """Vector Plot X-Y-Z-Vx-Vy-Vz"""
+  checkparticleplotarguments(kw)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if labels == 1: labels = ['X','Y','Z']
+  xx = take(top.xp,ii)
+  yy = take(top.yp,ii)
+  r = sqrt(xx*xx+yy*yy)
+  zz = take(top.zp,ii)
+  vx = take(top.uxp,ii)
+  vy = take(top.uyp,ii)
+  vz = take(top.uzp,ii)
+  gg = take(top.gaminv,ii)
+  vx=vx*gg
+  vy=vy*gg
+  vr =  vx*xx/r+vy*yy/r
+  vt = -vx*yy/r+vy*xx/r
+  vz=vz*gg
+  if rscale is not None:
+    xx = xx*rscale
+    yy = yy*rscale
+  if zscale is not None:
+    zz = zz*zscale
+  return viewvparticles(r,zeros(shape(r)[0],'d'),zz,vr,vt,vz,
                        labels,name=None,display=display,size=size,ratio=ratio,stride=stride,type=type,scale=scale,normalize=1)
 
 ###########################################################################
@@ -309,7 +344,7 @@ def viewparticles(x,y,z,v,labels=None,name=None,
 
   minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
   moutput = ['glyphs']
-  (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
+  (glyphs,) = DXCallModule('Glyph',minput,moutput)
 
   if color is not None:
     if color=='auto' or colormap is not None:
@@ -338,7 +373,8 @@ def viewparticles(x,y,z,v,labels=None,name=None,
 
 ###########################################################################
 def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
-                  display=1,size=1.,ratio=0.,stride=1,type='standard',scale=None,normalize=0):
+                  color=None,intensity=1.,opacity=1.,colorbar=1,colormap=None,
+                  display=1,size=1.,ratio=0.,stride=1,type='standard',scale=None,shape=1.,normalize=0):
   if stride==1:
     x = gatherarray(x)
     y = gatherarray(y)
@@ -355,44 +391,42 @@ def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
     vz = gatherarray(vz[::stride])
   if me > 0: return
   if normalize:
-    vx = vx/ave(abs(vx))
-    vy = vy/ave(abs(vy))
-    vz = vz/ave(abs(vz))
+    vmax=max(sqrt(vx*vx+vy*vy+vz*vz))
+    vx = vx/vmax
+    vy = vy/vmax
+    vz = vz/vmax
 
-  # --- First combine particle data and create a DX array
-  n = len(x)
-  p = zeros((n,3),'d')
-  p[:,0] = x
-  p[:,1] = y
-  p[:,2] = z
-  v = zeros((n,3),'d')
-  v[:,0] = vx
-  v[:,1] = vy
-  v[:,2] = vz
-  dxp = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
-  DXAddArrayData(dxp,0,n,p.astype(Float32))
-  dxv = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
-  DXAddArrayData(dxv,0,n,v.astype(Float32))
-
-  # --- Create the field
-  dxf = DXNewField()
-  DXSetComponentValue(dxf,'positions',dxp)
-  DXSetComponentValue(dxf,'data',dxv)
-  DXEndField(dxf)
+  dxf = DXParticles(x,y,z,vx,vy,vz)
 
   # --- Create glyphs to render data
-  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
+  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size,'shape':shape}
   moutput = ['glyphs']
-  (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
+  (glyphs,) = DXCallModule('Glyph',minput,moutput)
 
-  minput = {'data':glyphs}#,'opacity':.5}
-  moutput = ['mapped']
-  (dxobject,) = DXCallModule('AutoColor',minput,moutput)
+  if color is not None:
+    if color=='auto' or colormap is not None:
+      if colormap is None:
+        glyphs,colormap = DXAutoColor(glyphs,opacity=opacity,intensity=intensity)
+      else:
+        glyphs = DXColor(glyphs,color=colormap,opacity=opacity)        
+    elif color=='greyscale':
+      glyphs = DXAutoGrayScale(glyphs,opacity=opacity,saturation=intensity)
+    else:
+      glyphs = DXColor(glyphs,color=color,opacity=opacity)
+
+  if color is not None and colorbar:
+    dxcolorbar = DXColorBar(colormap)
 
   if display:
-    DXImage(dxobject,name=name,labels=labels)
+    if color is not None and colorbar:
+      DXImage(DXCollect([glyphs,dxcolorbar]),name=name,labels=labels,scale=scale)
+    else:
+      DXImage(glyphs,name=name,labels=labels,scale=scale)
   else:
-    return dxobject
+    if color is not None and colorbar:
+      return glyphs,dxcolorbar
+    else:
+      return glyphs
 
 ###########################################################################
 def viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax,color='yellow'):
@@ -506,7 +540,13 @@ reference to the dxobject is deleted.
     del self.dxobject
     if __main__.selectbox:
       try:
-        dxobject.SelectBox()
+        dxobject.SelectBox(__main__.selectbox_xmin,
+                           __main__.selectbox_xmax,
+                           __main__.selectbox_ymin,
+                           __main__.selectbox_ymax,
+                           __main__.selectbox_zmin,
+                           __main__.selectbox_zmax,
+                           l_remove=__main__.selectbox_remove)
       except:
         pass
     return dxobject
@@ -520,7 +560,6 @@ Displays the dxobject, creating it if necessary.
 
 ###########################################################################
 class DXCollection(Visualizable):
-  global selectbox
   def __init__(self,*dxobjects,**kw):
     self.labels = kw.get('labels',None)
     self.preserve = kw.get('preserve',0)
@@ -528,7 +567,13 @@ class DXCollection(Visualizable):
     for o in dxobjects:
       if __main__.selectbox:
         try:
-          o.SelectBox()
+          o.SelectBox(__main__.selectbox_xmin,
+                           __main__.selectbox_xmax,
+                           __main__.selectbox_ymin,
+                           __main__.selectbox_ymax,
+                           __main__.selectbox_zmin,
+                           __main__.selectbox_zmax,
+                           l_remove=__main__.selectbox_remove)
         except:
           pass
       self.addobject(o)
@@ -833,6 +878,30 @@ array of vectors. For a scalar vector, just pass a list [vx,vy,vz] or a
     DXAddArrayData(dxv,0,product(shape(v)[:-1]),v.astype(vtype))
     return dxv
 
+def DXParticles(x,y,z,vx,vy,vz):
+  # --- First combine particle data and create a DX array
+  n = len(x)
+  p = zeros((n,3),'d')
+  p[:,0] = x
+  p[:,1] = y
+  p[:,2] = z
+  v = zeros((n,3),'d')
+  v[:,0] = vx
+  v[:,1] = vy
+  v[:,2] = vz
+  dxp = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxp,0,n,p.astype(Float32))
+  dxv = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxv,0,n,v.astype(Float32))
+
+  # --- Create the field
+  dxf = DXNewField()
+  DXSetComponentValue(dxf,'positions',dxp)
+  DXSetComponentValue(dxf,'data',dxv)
+  DXEndField(dxf)
+
+  return dxf
+
 def DXCamera(lookto=[0.,0.,0.],lookfrom=[0.,0.,1.],width=100.,resolution=640,aspect=0.75,up=[0,1,0],perspective=0,angle=30.,background='black'):
     minput = {'to':DXVector(lookto),
              'from':DXVector(lookfrom),
@@ -878,7 +947,7 @@ def DXCollect(dxobjects):
   (group,) = DXCallModule('Collect',minput,moutput)
   return group
 
-def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.):
+def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.,direction='front'):
   """
 Displays an image of the input object, allowing mouse controls for moving the
 image. Default mode is rotation. Press 1 for panning, 2 for zooming.
@@ -926,9 +995,14 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
 
   if camera is None:
     DXReference(__main__.dxwindow.dxobject)
-    minput = {'object':__main__.dxwindow.dxobject,'perspective':__main__.dxperspective,'angle':__main__.dxangle}
-    moutput = ['camera']
-    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+#    minput = {'object':__main__.dxwindow.dxobject,'perspective':__main__.dxperspective,
+#              'angle':__main__.dxangle,'direction':direction}
+#    moutput = ['camera']
+#    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    camera=DXAutocamera(dxobject=__main__.dxwindow.dxobject,
+                        perspective=__main__.dxperspective,
+                        angle=__main__.dxangle,
+                        direction=direction)
   __main__.dxcamera=camera
 
   try:
@@ -1075,6 +1149,7 @@ Writes an image of the object to a file.
     minput = {'object':dxobject} 
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    camera
 
   if labels is not None:
     assert (len(labels) == 3),"Length of lables list must be three"
