@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.9 $, $Date: 2006/06/21 21:25:19 $
+c@(#) File w3d_utilities.F, version $Revision: 1.10 $, $Date: 2006/06/29 16:52:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -412,9 +412,9 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
+      dxi = 1./dx**2
+      dyi = 1./dy**2
+      dzi = 1./dz**2
 
       do iz=0,nz
         do iy=0,ny
@@ -432,12 +432,18 @@ c=============================================================================
             if (iz == 0) izm1 = 1
             if (iz == nz) izp1 = nz-1
 
-            gr(ix,iy,iz) = (abs(f(ixp1,iy  ,iz  )-f(ix  ,iy  ,iz  )) +
-     &                      abs(f(ix  ,iy  ,iz  )-f(ixm1,iy  ,iz  )))*dxi +
-     &                     (abs(f(ix  ,iyp1,iz  )-f(ix  ,iy  ,iz  )) +
-     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iym1,iz  )))*dyi +
-     &                     (abs(f(ix  ,iy  ,izp1)-f(ix  ,iy  ,iz  )) +
-     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iy  ,izm1)))*dzi
+c            gr(ix,iy,iz) = (abs(f(ixp1,iy  ,iz  )-f(ix  ,iy  ,iz  )) +
+c     &                      abs(f(ix  ,iy  ,iz  )-f(ixm1,iy  ,iz  )))*dxi +
+c     &                     (abs(f(ix  ,iyp1,iz  )-f(ix  ,iy  ,iz  )) +
+c     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iym1,iz  )))*dyi +
+c     &                     (abs(f(ix  ,iy  ,izp1)-f(ix  ,iy  ,iz  )) +
+c     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iy  ,izm1)))*dzi
+            gr(ix,iy,iz) = sqrt( max( abs(f(ixp1,iy  ,iz  )-f(ix  ,iy  ,iz  )),
+     &                                abs(f(ix  ,iy  ,iz  )-f(ixm1,iy  ,iz  )))**2*dxi +
+     &                           max( abs(f(ix  ,iyp1,iz  )-f(ix  ,iy  ,iz  )),
+     &                                abs(f(ix  ,iy  ,iz  )-f(ix  ,iym1,iz  )))**2*dyi +
+     &                           max( abs(f(ix  ,iy  ,izp1)-f(ix  ,iy  ,iz  )),
+     &                                abs(f(ix  ,iy  ,iz  )-f(ix  ,iy  ,izm1)))**2*dzi)
           enddo
         enddo
       enddo
