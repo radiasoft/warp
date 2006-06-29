@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.44 2006/06/12 22:47:16 dave Exp $"
+particles_version = "$Id: particles.py,v 1.45 2006/06/29 18:05:30 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -701,6 +701,69 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
+def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=0,edrift=1,bdrift=1,**kw):
+  "Returns the velocity drifts."
+  if jslist is None:
+    jslist=[js]
+  nptot=0
+  vxl=[]
+  vyl=[]
+  vzl=[]
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  lost = kw.get('lost',0)
+  for js in jslist:
+    ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
+    np=len(ii)
+    nptot+=np
+    x  = take(getattrwithsuffix(object,'xp', suffix),ii)
+    y  = take(getattrwithsuffix(object,'yp', suffix),ii)
+    z  = take(getattrwithsuffix(object,'zp', suffix),ii)
+    ux = take(getattrwithsuffix(object,'uxp',suffix),ii)
+    uy = take(getattrwithsuffix(object,'uyp',suffix),ii)
+    uz = take(getattrwithsuffix(object,'uzp',suffix),ii)
+    npinttmp=w3d.npint+0
+    npfieldtmp=w3d.npfield+0
+    w3d.npint=np
+    w3d.npfield=np
+    gchange('DKInterptmp')
+    setvdrifts(pgroup,np,js+1,x,y,z,ux,uy,uz,"corrector")
+    if edrift:
+      if bdrift:
+        vxl.append(w3d.vdx[:np])
+        vyl.append(w3d.vdy[:np])
+        vzl.append(w3d.vdz[:np])
+      else:
+        vxl.append(w3d.vex[:np])
+        vyl.append(w3d.vey[:np])
+        vzl.append(w3d.vez[:np])
+    else:
+      if bdrift:
+        vxl.append(w3d.vbx[:np])
+        vyl.append(w3d.vby[:np])
+        vzl.append(w3d.vbz[:np])
+    w3d.npint=npinttmp
+    w3d.npfield=npfieldtmp
+    gchange('DKInterptmp')
+  if nptot == 0:
+    return array([],'d'),array([],'d'),array([],'d')
+  else:
+    vx = zeros(nptot,'d')
+    vy = zeros(nptot,'d')
+    vz = zeros(nptot,'d')
+    ip=0
+    for il in range(len(vxl)):
+      np=shape(vxl[il])
+      vx[ip:ip+np]=vxl[il]
+      vy[ip:ip+np]=vyl[il]
+      vz[ip:ip+np]=vzl[il]
+      ip+=np
+  if lparallel and gather: 
+    return gatherarray(vx,bcast=bcast), \
+           gatherarray(vy,bcast=bcast), \
+           gatherarray(vz,bcast=bcast)
+  else:
+    return vx,vy,vz
+#-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
 if sys.version[:5] != "1.5.1":
   if lparallel:
@@ -899,7 +962,7 @@ def getvzrange(kwdict={}):
 
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
-def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=1.,js=0,
+def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,js=0,
                  lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None):
