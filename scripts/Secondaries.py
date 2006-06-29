@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.10 2006/06/05 17:45:09 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.11 2006/06/29 17:01:58 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -109,7 +109,7 @@ Class for generating secondaries
         else:                m = material[iis][ics]
         self.add(js,cond,issec[iis][ics],m)
     
-  def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None):
+  def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,scale_factor=None):
     if material is None: material = conductor.material
     if interaction_type is None:
       if material=='Cu' and incident_species.type is Electron: interaction_type=1
@@ -118,14 +118,15 @@ Class for generating secondaries
       if material=='Au' and incident_species.type is Helium:   interaction_type=4
       if material=='SS' and incident_species.type is Potassium:interaction_type=5
     if interaction_type is None:raise('Error in Secondaries: invalid material or incident species')
-    isinc=incident_species.jslist[0]
+    isinc=incident_species
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     issec=[]
     for e in emitted_species:
       issec.append(e.jslist[0])
     if not self.inter.has_key(isinc):
         self.inter[isinc]={}
-        for key in ['emitted','condids','issec','conductors','type','isneut','incident_species','emitted_species','material']:
+        for key in ['emitted','condids','issec','conductors','type','isneut','incident_species', \
+                    'emitted_species','material','scale_factor']:
           self.inter[isinc][key]=[]
         self.inter[isinc]['incident_species']=incident_species
     self.inter[isinc]['condids']         += [conductor.condid]
@@ -137,6 +138,9 @@ Class for generating secondaries
     self.inter[isinc]['emitted_species'] += [emitted_species]
     self.inter[isinc]['material']        += [material]
     self.inter[isinc]['type']            += [interaction_type]
+    if scale_factor is not None and scale_factor>1.:
+      raise('Error in secondaries: scale_factor must be less than 1.')
+    self.inter[isinc]['scale_factor']    += [scale_factor]
     for e in emitted_species:
       js=e.jslist[0]
       if not self.x.has_key(js):
@@ -272,7 +276,7 @@ Class for generating secondaries
       stride=top.pgroup.ndts[js]
       i1 = top.inslost[js] - 1 
       i2 = top.inslost[js] + top.npslost[js] - 1
-      for ics,cond in enumerate(self.inter[js]['conductors']):
+      for ics,cond in enumerate(self.inter[incident_species]['conductors']):
         icond = cond.condid
         if self.l_verbose:print 'ics',ics
         iit = compress(top.pidlost[i1+top.it%stride:i2:stride,-1]==icond,arange(top.it%stride,top.npslost[js],stride))
@@ -322,7 +326,11 @@ Class for generating secondaries
         e0 = where(gaminvlost==1., \
                    0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
                    (1./gaminvlost-1.)*top.pgroup.sm[js]*clight**2/top.echarge)
-#        print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
+        if self.l_verbose:
+          print 'xplost',xplost
+          print 'yplost',yplost
+          print 'zplost',zplost
+          print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
         v = array([vxplost,vyplost,vzplost])
 #        u = array([uxplost,uyplost,uzplost])
         theta = take(top.pidlost[i1:i2,-3],iit)
@@ -421,15 +429,15 @@ Class for generating secondaries
             tinit+=t.micro()
             t.start()
           if self.l_verbose:print 'e0, coseta',e0[i],coseta[i]
-          for ie,emitted_species in enumerate(self.inter[js]['emitted_species'][ics]):
+          for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][ics]):
            js_new=emitted_species.jslist[0]
            if emitted_species.type is Electron:
             if incident_species.type is Electron:
 #             try: # need try since will generate error if no secondaries are created
                if top.wpid>0:
-                 self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[js]['type'][ics])
+                 self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[incident_species]['type'][ics])
                else:
-                 self.generate_secondaries(e0[i],coseta[i],weight,self.inter[js]['type'][ics])
+                 self.generate_secondaries(e0[i],coseta[i],weight,self.inter[incident_species]['type'][ics])
                ns=self.secelec_ns[0]
                ut=self.secelec_ut[:ns]
                un=self.secelec_un[:ns]
@@ -445,9 +453,10 @@ Class for generating secondaries
 #               ns=0
             else: # incidents are atoms or ions
              if incident_species.type.__class__ is Atom:
-              try:
+#              try:
 
-               if self.inter[js]['material'][ics]=='SS':target_num=10025
+               if self.inter[incident_species]['material'][ics]=='SS':target_num=10025
+#              -- version 0.2.1
                ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
                                           max(0.04,coseta[i]),
                                           float(incident_species.type.Z),
@@ -457,6 +466,7 @@ Class for generating secondaries
                                           self.emitted_bn,
                                           self.emitted_bt,
                                           self.emitted_bz)
+#              -- version 0.6.1
 #               ion_ind_e0 = txphysics.doubleArray(1)
 #               ion_ind_ct = txphysics.doubleArray(1)
 #               ion_ind_e0[0] = e0[i]/(1.e6*incident_species.type.A)
@@ -470,6 +480,11 @@ Class for generating secondaries
 #                                       target_num,
 #                                       0.)
                ns = min(ns,self.npmax)
+               if self.inter[incident_species]['scale_factor'][ics] is not None:
+                 # scale by user provided factor (default is not to scale)
+                 fns=float(ns)*self.inter[incident_species]['scale_factor'][ics]
+                 ns=int(fns)
+                 if ranf()<(fns-ns):ns+=1
                self.coseta=coseta[i]
                itype=None
                nsemit=ns+0
@@ -494,14 +509,14 @@ Class for generating secondaries
                ns=nsemit
                if self.l_verbose:
                  print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
-              except:
-               ns=0
+#              except:
+#               ns=0
             if self.l_record_timing:
               t.finish()
               tgen+=t.micro()
               t.start()
             if ns>0:
-             self.inter[js]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
+             self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
              if costheta[i]<1.-1.e-10:
               z_unit0 = array([-sinphi[i],cosphi[i],0.])
 #              z       = -array([uzplost[i]*n_unit0[1][i]-uyplost[i]*n_unit0[2][i],
@@ -539,13 +554,15 @@ Class for generating secondaries
                condition = (sqrt(xnew**2+ynew**2)>xmax) or \
                            (znew<zmin) or (znew>zmax)
              else:
-               condition = (xnew<xmin) & (xnew>xmax) & \
-                           (ynew<ymin) & (ynew>ymax) & \
-                           (znew<zmin) & (znew>zmax)
+               condition = (xnew<xmin) or (xnew>xmax) or \
+                           (ynew<ymin) or (ynew>ymax) or \
+                           (znew<zmin) or (znew>zmax)
              if condition:
               print 'WARNING: new particle outside boundaries',xnew,ynew,znew
+#              self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
+#              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
-              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
+              n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
              else:
                if top.wpid==0:
                 self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,itype=itype)
@@ -584,9 +601,9 @@ Class for generating secondaries
                condition = (sqrt(xnew**2+ynew**2)>xmax) or \
                            (znew<zmin) or (znew>zmax)
             else:
-               condition = (xnew<xmin) & (xnew>xmax) & \
-                           (ynew<ymin) & (ynew>ymax) & \
-                           (znew<zmin) & (znew>zmax)
+               condition = (xnew<xmin) or (xnew>xmax) or \
+                           (ynew<ymin) or (ynew>ymax) or \
+                           (znew<zmin) or (znew>zmax)
             if condition:
               print 'WARNING: new particle outside boundaries',xnew,ynew,znew
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
