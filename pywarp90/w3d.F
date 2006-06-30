@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.272 $, $Date: 2006/06/29 18:25:02 $
+c@(#) File W3D.F, version $Revision: 3.273 $, $Date: 2006/06/30 23:04:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8106,7 +8106,8 @@ c     --- are necessary.
       tmpnsndts = getnsndtsforsubcycling()
       do indts=0,tmpnsndts-1
 
-        if (.not. ldts(indts)) cycle
+        if (.not. ldts(indts) .and.
+     &      (ndtsaveraging == 0 .and. .not. any(ldts))) cycle
 
 c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.
