@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.106 $, $Date: 2006/06/29 16:55:13 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.107 $, $Date: 2006/07/01 00:49:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -210,6 +210,21 @@ c       --- Change rstar if using Nuemann boundary conditions
         if (bounds(5) == 1 .and. my_index == nslaves-1) rstar(nz+1)=rstar(nz-1)
 #endif
       endif
+
+c     --- Make sure guard planes have sensible values before beginning.
+      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
+      if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
+      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
+      if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
+#ifdef MPIPARALLEL
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
+     &                            my_index,nslaves,izfsslave,
+     &                            whosendingleft,whosendingright)
+#endif
 
 c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
