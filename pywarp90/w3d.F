@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.274 $, $Date: 2006/07/03 20:49:47 $
+c@(#) File W3D.F, version $Revision: 3.275 $, $Date: 2006/07/03 22:52:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1364,8 +1364,10 @@ c  Note that (it-1) is used since it is advanced before this point.
         center = center_in
         pgroup%ldts(is) = .true.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        itndts(ndtstorho(pgroup%ndts(is))) =
+        if (itndts(ndtstorho(pgroup%ndts(is))) == it-1) then
+          itndts(ndtstorho(pgroup%ndts(is))) =
      &          itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        endif
       elseif ((mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
      &        center_in=="synchv") .or. center_in == "gen") then
         center = center_in
@@ -1413,8 +1415,10 @@ c  field solve which will include that time centered rho average.
         center = center_in
         pgroup%ldts(is) = .true.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        itndts(ndtstorho(pgroup%ndts(is))) =
-     &             itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        if (itndts(ndtstorho(pgroup%ndts(is))) < it) then
+          itndts(ndtstorho(pgroup%ndts(is))) =
+     &               itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        endif
       elseif ((pgroup%ndts(is) == 1 .or.
      &        (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
      &         center_in=="synchv") .or. center_in == "gen") then
@@ -1619,25 +1623,19 @@ c  Loop over species
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
         jsapi=is-1
-        if(solvergeom==XYZgeom) then
-          lcycle = .false.
-          if (ndtsaveraging == 0) then
-            call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
-     &                                                 center_in,center,lcycle)
-          elseif (ndtsaveraging == 1) then
-            call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
+        lcycle = .false.
+        if (ndtsaveraging == 0) then
+          call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
      &                                               center_in,center,lcycle)
-          elseif (ndtsaveraging == 2) then
-            call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
-     &                                               center_in,center,lcycle)
-          endif
-          if (lcycle) cycle
-
-        else
-          pgroup%ldts(is) = .true.
-          ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-          itndts(ndtstorho(pgroup%ndts(is))) = itndts(ndtstorho(pgroup%ndts(is))) + 1
+        elseif (ndtsaveraging == 1) then
+          call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
+     &                                             center_in,center,lcycle)
+        elseif (ndtsaveraging == 2) then
+          call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
+     &                                             center_in,center,lcycle)
         endif
+        if (lcycle) cycle
+
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
         fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
