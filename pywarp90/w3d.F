@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.273 $, $Date: 2006/06/30 23:04:19 $
+c@(#) File W3D.F, version $Revision: 3.274 $, $Date: 2006/07/03 20:49:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1366,8 +1366,8 @@ c  Note that (it-1) is used since it is advanced before this point.
         ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
         itndts(ndtstorho(pgroup%ndts(is))) =
      &          itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
-      elseif (mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
-     &        (center_in=="synchv" .or. center_in == "gen")) then
+      elseif ((mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
+     &        center_in=="synchv") .or. center_in == "gen") then
         center = center_in
       else
         pgroup%ldts(is) = .false.
@@ -1416,8 +1416,8 @@ c  field solve which will include that time centered rho average.
         itndts(ndtstorho(pgroup%ndts(is))) =
      &             itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
       elseif ((pgroup%ndts(is) == 1 .or.
-     &         mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
-     &        (center_in=="synchv" .or. center_in == "gen")) then
+     &        (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
+     &         center_in=="synchv") .or. center_in == "gen") then
         center = center_in
       else
         pgroup%ldts(is) = .false.
