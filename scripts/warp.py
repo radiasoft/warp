@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.120 2006/06/20 18:14:21 dave Exp $"
+warp_version = "$Id: warp.py,v 1.121 2006/07/19 18:37:14 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -72,6 +72,7 @@ try:  # chopy hasn't been installed on all machines yet
   from chopy import *
 except ImportError:
   pass
+from em2dpy import *
 import controllers
 from controllers import *
 from ctl import *
