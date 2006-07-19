@@ -1,5 +1,5 @@
-emi
-#@(#) File EMI.V, version $Revision: 1.1 $, $Date: 2006/07/18 17:21:07 $
+em2d
+#@(#) File EM2D.V, version $Revision: 1.2 $, $Date: 2006/07/19 18:32:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -50,7 +50,6 @@ time                           real /0./
 dt                             real /0.5/
 dtfact                         real /0.995/
 delta_t                        real /0./
-ndelta_t                     integer /1/
 tmin_moving_main_window      real /0./
 anormr	                     real /1./
 anormj                       real /1./
@@ -62,10 +61,8 @@ lambda_laser                   real /1./
 xgauss                         real /1./
 ampfac                         real /1./
 nmaxw                        integer /1/
-rap                          integer /1/
 ntamp_scatter                integer /2/
 ntamp_gather                 integer /4/
-ntamp_apr                    integer /4/
 xlbound                      integer /0/
 xrbound                      integer /0/
 ylbound                      integer /0/
@@ -107,15 +104,11 @@ cyl_cool                     logical /.false./
 cyl_cool_centre              logical /.false./
 del_collect                  real    /0./
 icone                        integer /0/
-l_onegrid                    logical /.true./
 l_residue                    logical /.false./
 type_residue                 integer /1/
 l_verbose                    logical /.false./
 l_readinputnamelists         logical /.false./
 l_getfieldfrombase           logical /.false./
-l_noinputfield               logical /.false./
-l_copyfields                 logical /.false./
-l_moving_window              logical /.false./
 l_absorbx                    logical /.true./
 l_absorby                    logical /.true./
 l_add_particles              logical /.false./
@@ -125,10 +118,21 @@ l_conserve_global_neutrality logical /.false./ # electrons are reflected at bnd 
 l_linear_new                 logical /.true./
 l_overcycle_ions             logical /.true./
 l_push_ions                  logical /.true./
-l_elaser_out_plane           logical /.false./
 
 *********** EMIFIELDobjects dump:
-field _EMIFIELDtype
+field      _EMIFIELDtype
+fpatchgros _EMIFIELDtype
+fpatchfin  _EMIFIELDtype
+l_onegrid                    logical /.true./
+l_elaser_out_plane           logical /.false./
+l_moving_window              logical /.false./
+l_noinputfield               logical /.false./
+l_copyfields                 logical /.false./
+ixpatch integer
+iypatch integer
+ntamp_apr                    integer /4/
+rap                          integer /1/
+ndelta_t                     integer /1/
 
 *********** EMIIONobjects dump:
 ion _EMIIONtype
@@ -170,35 +174,13 @@ Bxfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
 Byfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
 Bzfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
 
-emi2d_init()  subroutine # 
-emi2d_init2()  subroutine # 
-propalaser() subroutine #
-emi2d_step()  subroutine # 
-deprho() subroutine #
-dep_electron() subroutine #
-dep_ion() subroutine #
-step_field() subroutine #
-step_field_simple(nt) subroutine #
-getex(it:integer) subroutine #
-getey(it:integer) subroutine #
-getbz(it:integer) subroutine #
-getrhojxjy(it:integer) subroutine #
-smooth2(q:real,nx:integer,ny:integer) subroutine
-check_divemrho() subroutine
-dep_rho() subroutine
-grimaxall() subroutine
-griuniall() subroutine
-maxwell(which:integer,t:real) subroutine
-gchange_electrons(nbpart:integer) subroutine
-move_electrons() subroutine
-initfields(which:integer, nx:integer, ny:integer, 
+init_fields(f:EMIFIELDtype, nx:integer, ny:integer, 
            nbndx:integer, nbndy:integer, 
            dtm:real, dx:real, dy:real, xmin:real, 
-           ymin:real, rap:integer, nvect:integer) subroutine
-push_em_e(which:integer,dtsdx:real,dtsdy:real) subroutine
-push_em_b(which:integer,dtsdx:real,dtsdy:real) subroutine
-create_bnd(b:type_bnd, nx:integer, ny:integer, nbndx:integer,
-           nbndy:integer, dt:real, dx:real, dy:real) subrountine
+           ymin:real, rap:integer, 
+           xlb:integer,ylb:integer,xrb:integer,yrb:integer) subroutine
+push_em_e(f:EMIFIELDtype,dt:real) subroutine
+push_em_b(f:EMIFIELDtype,dt:real) subroutine
 
 %%%%%%%% EMIFIELDtype:
 nx integer
@@ -214,9 +196,14 @@ dx real
 dy real
 dxi real
 dyi real
+xlbound                      integer /0/
+xrbound                      integer /0/
+ylbound                      integer /0/
+yrbound                      integer /0/
 l_apply_pml logical /.true./
 l_add_source logical /.true./
 l_overcycle_ions logical /.true./
+l_addpatchresidual           logical /.false./
 ntemp integer
 ipulse integer /1/
 npulse integer
@@ -226,29 +213,6 @@ sinteta real
 cst1 real
 cst2 real
 cj(2) _real
-potfax real
-potfay real
-ngmax integer 
-ngmaxf2 integer
-ngmaxf3 integer
-n4x integer
-n4xp1 integer
-n4xp2 integer
-n4xp3 integer
-n4xf2 integer
-n4xf2p1 integer
-n4xf2p2 integer
-n4xf2p3 integer
-n4xf3 integer
-n4xf3p1 integer
-n4xf3p2 integer
-n4xf3p3 integer
-nvect integer
-id1(nvect*41) _integer
-id2(nvect*17) _integer
-id3(nvect*49) _integer
-id4(nvect*19) _integer
-sd(nvect*41) _real
 Ex(0:nx+3,0:ny+2) _real
 Ey(0:nx+3,0:ny+2) _real
 Ez(0:nx+3,0:ny+2) _real
@@ -259,13 +223,6 @@ Excopy(0:nxcopy+3,0:nycopy+2) _real
 Eycopy(0:nxcopy+3,0:nycopy+2) _real
 Bzcopy(0:nxcopy+3,0:nycopy+2) _real
 Rhojxjy(0:nx+3,0:ny+2,4) _real
-Exi(0:nxi+3,0:nyi+2) _real 
-Eyi(0:nxi+3,0:nyi+2) _real
-Ezi(0:nxi+3,0:nyi+2) _real
-Bxi(0:nxi+3,0:nyi+2) _real 
-Byi(0:nxi+3,0:nyi+2) _real
-Bzi(0:nxi+3,0:nyi+2) _real
-Rhoi(0:nxi+3,0:nyi+2) _real
 rm1(ny) _real
 rm2(ny) _real
 Bz_in(0:ny+2) _real
@@ -279,6 +236,8 @@ profy(0:ny+2) _real
 temp(0:ntemp) _real
 tpulse(0:npulse+1) _real
 pulse(0:npulse+1) _real
+bndexeybz _type_bnd
+bndbxbyez _type_bnd
 
 %%%%%%%% EMIIONtype:
 nbpart integer
