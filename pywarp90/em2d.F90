@@ -2,7 +2,7 @@
 
 subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,l_particles_weight)
    implicit none
-   real(kind=8), dimension(0:,0:,1:), intent(in out) :: j
+   real(kind=8), dimension(-1:,-1:,1:), intent(in out) :: j
    integer(ISZ) :: np
    real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dy,xmin,ymin
@@ -197,7 +197,7 @@ end subroutine depose_jxjy_esirkepov_linear_serial
    
       integer(ISZ) :: np
       real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
-      real(kind=8), dimension(0:,0:) :: exg,eyg,ezg,bxg,byg,bzg 
+      real(kind=8), dimension(-1:,-1:) :: exg,eyg,ezg,bxg,byg,bzg 
       real(kind=8) :: xmin,ymin,dx,dy
       integer(ISZ) :: ip, iixp, ijxp
       real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
