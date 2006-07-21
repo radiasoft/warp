@@ -5,7 +5,7 @@
 module mod_field
 
 USE mod_bnd
-USE EMIFIELDobjects
+USE EM2D_FIELDobjects
 use GlobalVars
 use Picglb
 implicit none
@@ -26,7 +26,7 @@ INTEGER :: j, k
 real(kind=8) :: dt
 real(kind=8) :: dtsdx,dtsdy
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Exapr, Eyapr
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 
 dtsdx = dt/f%dx
 dtsdy = dt/f%dy
@@ -121,7 +121,7 @@ end subroutine champ_b
 subroutine champ_e(f,dt)
 implicit none
 
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 INTEGER :: j, k
 real(kind=8) :: dt,dtsdx,dtsdy
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
@@ -237,7 +237,7 @@ subroutine exchange_bnd_field(b, f)
  implicit none
 
 TYPE(type_bnd  ) :: b
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: jb, kb, jf, kf,jk1,jk
 
@@ -453,7 +453,7 @@ subroutine exchange_bnd_field2(b, f)
  implicit none
 
 TYPE(type_bnd  ) :: b
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: jb, kb, jf, kf,jk1,jk
 
@@ -663,7 +663,7 @@ END subroutine exchange_bnd_field2
 subroutine griuni(f)
 
 implicit none
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: which,i,j
 
@@ -696,7 +696,7 @@ INTEGER :: which,i,j
       subroutine grimax(f)
 
 implicit none
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: which,i,j
 
@@ -735,7 +735,7 @@ INTEGER :: which,i,j
  data cs /4*.25,-1.25/,ds/4*.5,3.5/,ns/5/
  data dc /4*2.,-2.8/
 
- TYPE(EMIFIELDtype) :: f
+ TYPE(EM2D_FIELDtype) :: f
 
 
       i1=0
@@ -1139,10 +1139,10 @@ subroutine smooth2(q,nx,ny)
 
 
 !subroutine initfields(f,nx, ny, nbndx, nbndy, dtm, dx, dy, xmin, ymin, rap, xlb, ylb, xrb, yrb)
-!use mod_field, only:init_fields, EMIFIELDtype
+!use mod_field, only:init_fields, EM2D_FIELDtype
 !implicit none
 
-!TYPE(EMIFIELDtype), pointer :: f
+!TYPE(EM2D_FIELDtype), pointer :: f
 !INTEGER(ISZ), INTENT(IN) :: nx, ny, rap
 !INTEGER(ISZ), INTENT(IN) :: nbndx, nbndy, xlb, ylb, xrb, yrb
 !REAL(kind=8), INTENT(IN) :: dtm, dx, dy, xmin, ymin
@@ -1156,16 +1156,16 @@ subroutine smooth2(q,nx,ny)
 !************* SUBROUTINE init_fields  *************************************************
 subroutine init_fields(f,nx, ny, nbndx, nbndy, dtm, dx, dy, xmin, ymin, rap, xlb, ylb, xrb, yrb)
 use mod_bnd
-use mod_field, only:EMIFIELDtype, l_copyfields, l_elaser_out_plane
+use mod_field, only:EM2D_FIELDtype, l_copyfields, l_elaser_out_plane
 implicit none
 
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 INTEGER(ISZ), INTENT(IN) :: nx, ny, rap
 INTEGER(ISZ), INTENT(IN) :: nbndx, nbndy, xlb, ylb, xrb, yrb
 REAL(kind=8), INTENT(IN) :: dtm, dx, dy, xmin, ymin
 INTEGER :: k,m
 
-!f => NewEMIFIELDType()
+!f => NewEM2D_FIELDType()
 f%bndexeybz => Newtype_bnd()
 f%bndbxbyez => Newtype_bnd()
 
@@ -1198,12 +1198,12 @@ f%js = 1 ! position of the source
     f%nxcopy = 0
     f%nycopy = 0
   END if
-!  call EMIFIELDtypeallot(f)
+!  call EM2D_FIELDtypeallot(f)
 
 call create_bnd(f%bndexeybz, nx, ny, nbndx=10, nbndy=10, dt=dtm, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
 call create_bnd(f%bndbxbyez, nx, ny, nbndx=10, nbndy=10, dt=dtm, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
   
-  call EMIFIELDtypeallot(f)
+  call EM2D_FIELDtypeallot(f)
 
 
 	f%Ex = 0.
@@ -1234,10 +1234,10 @@ return
 END subroutine init_fields
 
 subroutine push_em_e(f,dt)
-use mod_field, only: champ_e, EMIFIELDtype
+use mod_field, only: champ_e, EM2D_FIELDtype
 implicit none
 
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 REAL(kind=8), INTENT(IN) :: dt
 
 call champ_e(f,dt)
@@ -1246,10 +1246,10 @@ return
 end subroutine push_em_e
 
 subroutine push_em_b(f,dt)
-use mod_field, only: champ_b, EMIFIELDtype
+use mod_field, only: champ_b, EM2D_FIELDtype
 implicit none
 
-TYPE(EMIFIELDtype) :: f
+TYPE(EM2D_FIELDtype) :: f
 REAL(kind=8), INTENT(IN) :: dt
 
 call champ_b(f,dt)
@@ -1262,10 +1262,10 @@ end subroutine push_em_b
 subroutine griuni(f)
 ! average fields at nodes locations
 
-use mod_field, only: EMIFIELDtype
+use mod_field, only: EM2D_FIELDtype
 implicit none
 INTEGER :: i,j
-TYPE(EMIFIELDtype), POINTER :: f
+TYPE(EM2D_FIELDtype) :: f
 
   do  i=f%nx+1,1,-1
     do  j=0,f%ny+1
@@ -1294,10 +1294,10 @@ end subroutine griuni
 subroutine grimax(f)
 ! undo of griuni (puts E and B staggered values back)
 
-use mod_field, only: EMIFIELDtype
+use mod_field, only: EM2D_FIELDtype
 implicit none
 INTEGER :: i,j
-TYPE(EMIFIELDtype), POINTER :: f
+TYPE(EM2D_FIELDtype) :: f
 
   do j=1,f%ny+1
     do i=1,f%nx+1

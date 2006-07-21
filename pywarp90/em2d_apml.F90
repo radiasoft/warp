@@ -4,9 +4,9 @@
 
 !*************  MODULE bnd  *****************
 module mod_bnd
-!use mod_emiprecision
+!use mod_EM2D_precision
 !use mod_system
-use EMIbnd
+use EM2D_bnd
 implicit none
 
 INTEGER(ISZ), parameter :: pml = 1, &
