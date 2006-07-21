@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.3 $, $Date: 2006/07/21 20:21:38 $
+#@(#) File EM2D.V, version $Revision: 1.4 $, $Date: 2006/07/21 23:34:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -9,7 +9,7 @@ em2d
 # David P. Grote, LLNL, (510)423-7194
 # Jean-Luc Vay,   LBNL, (510)486-4934
 
-*********** APML:
+*********** EM2D_APML:
 pml              integer /1/
 pml_sadjusted    integer /2/
 apml_exponential integer /3/
@@ -17,7 +17,7 @@ apml_hybrid      integer /4/
 apml_ssa         integer /5/
 apml_lwa         integer /6/
 
-*********** EMIbnd dump:
+*********** EM2D_bnd dump:
 s_max_init       real    /4./
 s_max_x          real
 s_max_y          real
@@ -32,13 +32,10 @@ bndbxbyez        _type_bnd
 bndbxbyezc       _type_bnd
 bndbxbyezf       _type_bnd
 
-*********** EMIsystem dump:
+*********** EM2D_system dump:
 mksa                         integer /0/
 oneoverk0                    integer /1/
 inputunits                   integer /0/
-absorb                       integer /0/
-reflect                      integer /1/
-periodic                     integer /2/
 idebe                        integer /1/
 idebi                        integer /1/
 ifine                        integer /0/
@@ -46,15 +43,11 @@ ifini                        integer /0/
 nbpart                       integer /0/
 nsteps                       integer /1/
 itime                        integer /0/
-time                           real /0./
-dt                             real /0.5/
 dtfact                         real /0.995/
 delta_t                        real /0./
 tmin_moving_main_window      real /0./
 anormr	                     real /1./
 anormj                       real /1./
-nx                           integer /3/
-ny                           integer /2/
 xlong                          real /1./
 ylong                          real /1./
 lambda_laser                   real /1./ 
@@ -119,10 +112,10 @@ l_linear_new                 logical /.true./
 l_overcycle_ions             logical /.true./
 l_push_ions                  logical /.true./
 
-*********** EMIFIELDobjects dump:
-field        _EMIFIELDtype
-fpatchcoarse _EMIFIELDtype
-fpatchfine   _EMIFIELDtype
+*********** EM2D_FIELDobjects dump:
+field        _EM2D_FIELDtype
+fpatchcoarse _EM2D_FIELDtype
+fpatchfine   _EM2D_FIELDtype
 l_onegrid                    logical /.true./
 l_elaser_out_plane           logical /.false./
 l_moving_window              logical /.false./
@@ -151,10 +144,7 @@ Bxfsum(0:nxfsum+3,0:nyfsum+2) _real
 Byfsum(0:nxfsum+3,0:nyfsum+2) _real
 Bzfsum(0:nxfsum+3,0:nyfsum+2) _real
 
-*********** EMIIONobjects dump:
-ion _EMIIONtype
-
-*********** EMImain dump:
+*********** EM2D_main dump:
 # Variables needed by the main routines of package EMI
 nxmain integer /0/
 nymain integer /0/
@@ -174,15 +164,24 @@ l_nodeposition logical /.false./
 datapath character*(80) /" "/
 rhoaux(0:nxmain+3,0:nymain+2,nplanmain) _real
 
-init_fields(f:EMIFIELDtype, nx:integer, ny:integer, 
+init_fields(f:EM2D_FIELDtype, nx:integer, ny:integer, 
            nbndx:integer, nbndy:integer, 
            dtm:real, dx:real, dy:real, xmin:real, 
            ymin:real, rap:integer, 
            xlb:integer,ylb:integer,xrb:integer,yrb:integer) subroutine
-push_em_e(f:EMIFIELDtype,dt:real) subroutine
-push_em_b(f:EMIFIELDtype,dt:real) subroutine
+push_em_e(f:EM2D_FIELDtype,dt:real) subroutine
+push_em_b(f:EM2D_FIELDtype,dt:real) subroutine
+depose_current_em2d(np:integer,xp(np):real,yp(np):real,
+                    uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+                    w(np):real,q:real,dt:real,l_particles_weight:logical) subroutine
+geteb_em2d(np:integer,xp(np):real,yp(np):real,
+           ex(np):real,ey(np):real,ez(np):real,
+           bx(np):real,by(np):real,bz(np):real) subroutine   
+em2d_step() subroutine
+griuni(f:EM2D_FIELDtype) subroutine
+grimax(f:EM2D_FIELDtype) subroutine
 
-%%%%%%%% EMIFIELDtype:
+%%%%%%%% EM2D_FIELDtype:
 nx integer
 ny integer
 nxi integer
@@ -238,30 +237,6 @@ tpulse(0:npulse+1) _real
 pulse(0:npulse+1) _real
 bndexeybz _type_bnd
 bndbxbyez _type_bnd
-
-%%%%%%%% EMIIONtype:
-nbpart integer
-nbpartmax integer
-nvect integer
-rxi(1:nbpartmax) _real
-ryi(1:nbpartmax) _real
-vxi(1:nbpartmax) _real
-vyi(1:nbpartmax) _real
-vzi(1:nbpartmax) _real
-weight(1:nbpartmax) _real
-wexn(1:nvect) _real
-weyn(1:nvect) _real
-wbzn(1:nvect) _real
-jd(nvect+1,16) _integer
-w (nvect+1,16) _real
-isort_tab1(nvect) _integer 
-isort_tab2(nvect) _integer
-isort_tab3(nvect) _integer
-isort_tab4(nvect) _integer
-isort_tab5(nvect) _integer
-isort_tab6(nvect) _integer
-npi(nvect) _integer
-npie(nvect) _integer
 
 %%%%%%%% type_bnd:
 n integer
