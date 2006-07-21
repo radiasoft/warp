@@ -240,7 +240,7 @@ end subroutine depose_jxjy_esirkepov_linear_serial
  end subroutine geteb2d_linear_serial
 
 subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight)
-   use EMIFIELDobjects
+   use EM2D_FIELDobjects
    implicit none
    integer(ISZ) :: np
    real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
@@ -250,11 +250,11 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
    integer(ISZ) :: ip, np_inpatch
    logical(ISZ) :: l_inpatch(np)
    
-   TYPE(EMIFIELDtype), POINTER :: f
+   TYPE(EM2D_FIELDtype), POINTER :: f
 
    f => field
    if (l_onegrid) then
-     call depose_jxjy_esirkepov_linear_serial(f%J,np,xp(0),yp(0),uxp(0),uyp(0),uzp(0),gaminv(0), &
+     call depose_jxjy_esirkepov_linear_serial(f%J,np,xp,yp,uxp,uyp,uzp,gaminv, &
                                               w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
    else
      np_inpatch = 0
@@ -292,7 +292,7 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
 end subroutine depose_current_em2d
 
 subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
-   use EMIFIELDobjects
+   use EM2D_FIELDobjects
    implicit none
    
    integer(ISZ) :: np
@@ -303,7 +303,7 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
    real(kind=8), allocatable, dimension(:) :: ext,eyt,ezt,bxt,byt,bzt
    real(kind=8) :: d1,d2,d3,d4,d,wtz(np)
 
-   TYPE(EMIFIELDtype), POINTER :: f
+   TYPE(EM2D_FIELDtype), POINTER :: f
 
    f => field
    if (l_onegrid) then
@@ -372,4 +372,108 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
      end if
    endif
 end subroutine geteb_em2d
+
+subroutine em2d_step()
+      use InGen
+      use Constant
+      use GlobalVars
+      use Picglb
+      use Particles
+      use Beam_acc
+      use DKInterptmp
+      use EM2D_FIELDobjects
+      implicit None
+      
+!     --- Create local pointers to the arrays in pgroup.
+      real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: gaminv(:),pid(:,:)
+      real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
+      integer(ISZ),pointer:: ins(:),nps(:)
+      real(kind=8) :: wtmp(nparpgrp)
+
+      integer(ISZ) :: is, ipmin, ip
+
+!  Set storage for field arrays if not adequate already
+      if (npfield < nparpgrp) then
+         npfield = nparpgrp
+         call gchange("DKInterptmp",0)
+      endif
+
+!     --- Create local pointers to the arrays in pgroup.
+      xp => pgroup%xp
+      yp => pgroup%yp
+      zp => pgroup%zp
+      uxp => pgroup%uxp
+      uyp => pgroup%uyp
+      uzp => pgroup%uzp
+      gaminv => pgroup%gaminv
+      if (pgroup%npid > 0) pid => pgroup%pid
+
+      sm => pgroup%sm
+      sq => pgroup%sq
+      sw => pgroup%sw
+      ins => pgroup%ins
+      nps => pgroup%nps
+      dtscale => pgroup%dtscale
+
+      wtmp = 0.
+
+      field%J = 0.      
+
+      ! put fields back on staggered grid
+      call grimax(field) 
+      
+      do is=1,pgroup%ns
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+
+            call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
+                          bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
+            call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin), &
+                          ex, ey, ez, sq(is), sm(is), 0.5*dt)
+!              --- Advance relativistic Gamma factor
+            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin), &
+                          gamadv,lrelativ)
+            call xpush3d(ip,xp(ipmin),yp(ipmin),zp(ipmin), &
+                         uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
+            
+            ! we assume that all particles have same weight
+            call depose_current_em2d(ip,xp(ipmin),yp(ipmin), &
+                                     uxp(ipmin),uyp(ipmin),uzp(ipmin), &
+                                     gaminv(ipmin),wtmp,sq(is),dt,.false.)
+         end do
+      end do
+
+      call push_em_b(field,0.5*dt*clight)
+      call push_em_e(field,dt*clight)
+      call push_em_b(field,0.5*dt*clight)
+
+!     put fields values at nodes
+      call griuni(field) 
+
+      do is=1,pgroup%ns
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+
+            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
+
+            call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin), &
+                          ex, ey, ez, sq(is), sm(is), 0.5*dt)
+!              --- Advance relativistic Gamma factor
+            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin), &
+                          gamadv,lrelativ)
+            call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
+                          bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
+         end do
+      end do
+
+      it=it+1
+      time=time+dt
+      
+  return
+end subroutine em2d_step
+
+
+
+
 
