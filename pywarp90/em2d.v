@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.2 $, $Date: 2006/07/19 18:32:04 $
+#@(#) File EM2D.V, version $Revision: 1.3 $, $Date: 2006/07/21 20:21:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -120,9 +120,9 @@ l_overcycle_ions             logical /.true./
 l_push_ions                  logical /.true./
 
 *********** EMIFIELDobjects dump:
-field      _EMIFIELDtype
-fpatchgros _EMIFIELDtype
-fpatchfin  _EMIFIELDtype
+field        _EMIFIELDtype
+fpatchcoarse _EMIFIELDtype
+fpatchfine   _EMIFIELDtype
 l_onegrid                    logical /.true./
 l_elaser_out_plane           logical /.false./
 l_moving_window              logical /.false./
@@ -133,6 +133,23 @@ iypatch integer
 ntamp_apr                    integer /4/
 rap                          integer /1/
 ndelta_t                     integer /1/
+xminpatch_scatter            real /0./
+xmaxpatch_scatter            real /0./
+yminpatch_scatter            real /0./
+ymaxpatch_scatter            real /0./
+xminpatch_gather             real /0./
+xmaxpatch_gather             real /0./
+yminpatch_gather             real /0./
+ymaxpatch_gather             real /0./
+transition_zone              real /0./ # length of zone for linear transition from coarse to fine force (in coarse cell units)
+nxfsum integer /0/
+nyfsum integer /0/
+Exfsum(0:nxfsum+3,0:nyfsum+2) _real
+Eyfsum(0:nxfsum+3,0:nyfsum+2) _real
+Ezfsum(0:nxfsum+3,0:nyfsum+2) _real
+Bxfsum(0:nxfsum+3,0:nyfsum+2) _real
+Byfsum(0:nxfsum+3,0:nyfsum+2) _real
+Bzfsum(0:nxfsum+3,0:nyfsum+2) _real
 
 *********** EMIIONobjects dump:
 ion _EMIIONtype
@@ -155,24 +172,7 @@ l_savefields logical /.false./
 l_noacceleration logical /.false./
 l_nodeposition logical /.false./
 datapath character*(80) /" "/
-transition_zone real /0/ # length of zone for linear transition from coarse to fine force (in coarse cell units)
 rhoaux(0:nxmain+3,0:nymain+2,nplanmain) _real
-nxfsum integer /0/
-nyfsum integer /0/
-nxfsumi integer /0/
-nyfsumi integer /0/
-Exfsum(0:nxfsum+3,0:nyfsum+2) _real
-Eyfsum(0:nxfsum+3,0:nyfsum+2) _real
-Ezfsum(0:nxfsum+3,0:nyfsum+2) _real
-Bxfsum(0:nxfsum+3,0:nyfsum+2) _real
-Byfsum(0:nxfsum+3,0:nyfsum+2) _real
-Bzfsum(0:nxfsum+3,0:nyfsum+2) _real
-Exfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
-Eyfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
-Ezfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
-Bxfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
-Byfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
-Bzfsumi(0:nxfsumi+3,0:nyfsumi+2) _real
 
 init_fields(f:EMIFIELDtype, nx:integer, ny:integer, 
            nbndx:integer, nbndy:integer, 
@@ -222,7 +222,7 @@ Bz(0:nx+3,0:ny+2) _real
 Excopy(0:nxcopy+3,0:nycopy+2) _real
 Eycopy(0:nxcopy+3,0:nycopy+2) _real
 Bzcopy(0:nxcopy+3,0:nycopy+2) _real
-Rhojxjy(0:nx+3,0:ny+2,4) _real
+J(0:nx+3,0:ny+2,3) _real
 rm1(ny) _real
 rm2(ny) _real
 Bz_in(0:ny+2) _real
