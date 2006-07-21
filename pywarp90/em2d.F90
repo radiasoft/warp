@@ -239,3 +239,137 @@ end subroutine depose_jxjy_esirkepov_linear_serial
    return
  end subroutine geteb2d_linear_serial
 
+subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight)
+   use EMIFIELDobjects
+   implicit none
+   integer(ISZ) :: np
+   real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
+   real(kind=8) :: dt,q
+   logical(ISZ) :: l_particles_weight
+
+   integer(ISZ) :: ip, np_inpatch
+   logical(ISZ) :: l_inpatch(np)
+   
+   TYPE(EMIFIELDtype), POINTER :: f
+
+   f => field
+   if (l_onegrid) then
+     call depose_jxjy_esirkepov_linear_serial(f%J,np,xp(0),yp(0),uxp(0),uyp(0),uzp(0),gaminv(0), &
+                                              w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+   else
+     np_inpatch = 0
+     do ip=1,np
+       IF(xp(ip)>xminpatch_scatter .and. xp(ip)<xmaxpatch_scatter .and. &
+          yp(ip)>yminpatch_scatter .and. yp(ip)<ymaxpatch_scatter) then
+         l_inpatch(ip) = .true.
+         np_inpatch = np_inpatch+1
+       else
+         l_inpatch(ip) = .false.
+       END if
+     end do
+     if (np-np_inpatch>0) then
+       call depose_jxjy_esirkepov_linear_serial(f%J,np-np_inpatch, &
+                                                pack(xp,.not. l_inpatch), &
+                                                pack(yp,.not. l_inpatch), &
+                                                pack(uxp,.not. l_inpatch), &
+                                                pack(uyp,.not. l_inpatch), &
+                                                pack(uzp,.not. l_inpatch), &
+                                                pack(gaminv,.not. l_inpatch), &
+                                                w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+     end if
+     if (np_inpatch>0) then
+       f => fpatchfine
+       call depose_jxjy_esirkepov_linear_serial(f%J,np_inpatch, &
+                                                pack(xp,l_inpatch), &
+                                                pack(yp,l_inpatch), &
+                                                pack(uxp,l_inpatch), &
+                                                pack(uyp,l_inpatch), &
+                                                pack(uzp,l_inpatch), &
+                                                pack(gaminv,l_inpatch), &
+                                                w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+     end if     
+   endif
+end subroutine depose_current_em2d
+
+subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
+   use EMIFIELDobjects
+   implicit none
+   
+   integer(ISZ) :: np
+   real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
+
+   integer(ISZ) :: ip, ipt, np_inpatch, np_outpatch
+   logical(ISZ) :: l_inpatch(np)
+   real(kind=8), allocatable, dimension(:) :: ext,eyt,ezt,bxt,byt,bzt
+   real(kind=8) :: d1,d2,d3,d4,d,wtz(np)
+
+   TYPE(EMIFIELDtype), POINTER :: f
+
+   f => field
+   if (l_onegrid) then
+     call geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,f%xmin,f%ymin,f%dx,f%dy, &
+          f%ex,f%ey,f%ez,f%bx,f%by,f%bz)
+   else
+     np_inpatch = 0
+     do ip=1,np
+       IF(xp(ip)>xminpatch_gather .and. xp(ip)<xmaxpatch_gather .and. &
+          yp(ip)>yminpatch_gather .and. yp(ip)<ymaxpatch_gather) then
+         l_inpatch(ip) = .true.
+         np_inpatch = np_inpatch+1
+       else
+         l_inpatch(ip) = .false.
+       END if
+     end do
+     np_outpatch = np-np_inpatch
+     if (np_outpatch>0) then
+       allocate(ext(np_outpatch),eyt(np_outpatch),ezt(np_outpatch), &
+                bxt(np_outpatch),byt(np_outpatch),bzt(np_outpatch))
+       ext=0.; eyt=0.; ezt=0.; 
+       bxt=0.; byt=0.; bzt=0.; 
+       call geteb2d_linear_serial(np,pack(xp,.not. l_inpatch), &
+                                     pack(yp,.not. l_inpatch), &
+                                     ext,eyt,ezt,bxt,byt,bzt, &
+                                     f%xmin,f%ymin,f%dx,f%dy, &
+                                     f%ex,f%ey,f%ez,f%bx,f%by,f%bz)
+       ipt = 1
+       do ip=1,np
+         if (.not. l_inpatch(ip)) then
+           ex(ip)=ex(ip)+ext(ipt)
+           ey(ip)=ey(ip)+eyt(ipt)
+           ez(ip)=ez(ip)+ezt(ipt)
+           bx(ip)=bx(ip)+bxt(ipt)
+           by(ip)=by(ip)+byt(ipt)
+           bz(ip)=bz(ip)+bzt(ipt)
+         end if
+         ipt=ipt+1
+       enddo
+       deallocate(ext,eyt,ezt,bxt,byt,bzt)
+     end if
+     if (np_inpatch>0) then
+       f => fpatchfine
+       allocate(ext(np_inpatch),eyt(np_inpatch),ezt(np_inpatch), &
+                bxt(np_inpatch),byt(np_inpatch),bzt(np_inpatch))
+       ext=0.; eyt=0.; ezt=0.; 
+       bxt=0.; byt=0.; bzt=0.; 
+       call geteb2d_linear_serial(np,pack(xp,l_inpatch), &
+                                     pack(yp,l_inpatch), &
+                                     ext,eyt,ezt,bxt,byt,bzt, &
+                                     f%xmin,f%ymin,f%dx,f%dy, &
+                                     exfsum,eyfsum,ezfsum,bxfsum,byfsum,bzfsum)
+       ipt = 1
+       do ip=1,np
+         if (l_inpatch(ip)) then
+           ex(ip)=ex(ip)+ext(ipt)
+           ey(ip)=ey(ip)+eyt(ipt)
+           ez(ip)=ez(ip)+ezt(ipt)
+           bx(ip)=bx(ip)+bxt(ipt)
+           by(ip)=by(ip)+byt(ipt)
+           bz(ip)=bz(ip)+bzt(ipt)
+         end if
+         ipt=ipt+1
+       enddo
+       deallocate(ext,eyt,ezt,bxt,byt,bzt)
+     end if
+   endif
+end subroutine geteb_em2d
+
