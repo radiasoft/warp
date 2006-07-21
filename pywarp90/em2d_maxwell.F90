@@ -15,7 +15,7 @@ TYPE bnd_pointer
 end type bnd_pointer
 !type(bnd_pointer), dimension(3,2) :: bnds ! first dimension is for [main grid, coarse patch, fine patch]
 !                                          ! second dimension is for [(Ex,Ey,Bz),(Bx,By,Ez)]
-!INTEGER, parameter :: base=1, patchgros=2, patchfin=3
+!INTEGER, parameter :: base=1, patchcoarse=2, patchfine=3
 
 contains
 
@@ -38,7 +38,7 @@ do k = 1, f%ny+1
   end do
 end do
 
-! advance Ey
+! advance By
 do k = 0, f%ny+1
   do j = 1, f%nx+1
     f%By(j,k) = f%By(j,k) + dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) 
@@ -88,28 +88,28 @@ if (f%l_add_source) then
 end if
 
 IF(f%l_addpatchresidual) then
-  ALLOCATE(Exapr(0:fpatchgros%nx+1,0:fpatchgros%ny+1))
-  ALLOCATE(Eyapr(0:fpatchgros%nx+1,0:fpatchgros%ny+1))
+  ALLOCATE(Exapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
+  ALLOCATE(Eyapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
   Exapr = 0.
   Eyapr = 0.
-  call project_ex(exfin=fpatchfin%ex(0:fpatchfin%nx+1,0:fpatchfin%ny+1), exgros=Exapr,rap=rap)
-  call project_ey(eyfin=fpatchfin%ey(0:fpatchfin%nx+1,0:fpatchfin%ny+1), eygros=Eyapr,rap=rap)
-  Exapr = Exapr - fpatchgros%ex(0:fpatchgros%nx+1,0:fpatchgros%ny+1)
-  Eyapr = Eyapr - fpatchgros%ey(0:fpatchgros%nx+1,0:fpatchgros%ny+1)
+  call project_ex(exfin=fpatchfine%ex(0:fpatchfine%nx+1,0:fpatchfine%ny+1), exgros=Exapr,rap=rap)
+  call project_ey(eyfin=fpatchfine%ey(0:fpatchfine%nx+1,0:fpatchfine%ny+1), eygros=Eyapr,rap=rap)
+  Exapr = Exapr - fpatchcoarse%ex(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
+  Eyapr = Eyapr - fpatchcoarse%ey(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
   j = ntamp_apr
-  do k = ntamp_apr, fpatchgros%ny+1-ntamp_apr
+  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
     f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdx * Eyapr(j,k)
   END do
-  j = fpatchgros%nx+1-ntamp_apr
-  do k = ntamp_apr, fpatchgros%ny+1-ntamp_apr
+  j = fpatchcoarse%nx+1-ntamp_apr
+  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
     f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdx * Eyapr(j+1,k)
   END do
   k = ntamp_apr
-  do j = ntamp_apr, fpatchgros%nx+1-ntamp_apr
+  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
     f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdy * Exapr(j,k)
   END do
-  k = fpatchgros%ny+1-ntamp_apr
-  do j = ntamp_apr, fpatchgros%nx+1-ntamp_apr
+  k = fpatchcoarse%ny+1-ntamp_apr
+  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
     f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdy * Exapr(j,k+1)
   END do
   DEALLOCATE(Exapr,Eyapr)
@@ -142,7 +142,7 @@ end if
 do k = 1, f%ny+1
   do j = 0, f%nx+1
     f%Ex(j,k) = f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) &
-                          - f%rhojxjy(j,k,2)
+                          - f%J(j,k,1)
   end do
 end do
 
@@ -150,7 +150,7 @@ end do
 do k = 0, f%ny+1
   do j = 1, f%nx+1
     f%Ey(j,k) = f%Ey(j,k) - dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k)) &
-                          - f%rhojxjy(j,k,3)
+                          - f%J(j,k,2)
   end do
 end do
 
@@ -159,7 +159,7 @@ do k = 0, f%ny+1
   do j = 0, f%nx+1
     f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                           - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
-                          - f%rhojxjy(j,k,4)
+                          - f%J(j,k,3)
   end do
 end do
 
@@ -200,25 +200,25 @@ if (f%l_add_source) then
 end if
 
 IF(f%l_addpatchresidual) then
-  ALLOCATE(Bzapr(0:fpatchgros%nx+1,0:fpatchgros%ny+1))
+  ALLOCATE(Bzapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
   Bzapr = 0. 
-  call project_bz(bzfin=fpatchfin%bz(0:fpatchfin%nx+1,0:fpatchfin%ny+1), bzgros=Bzapr,rap=rap)
-  Bzapr = Bzapr - fpatchgros%bz(0:fpatchgros%nx+1,0:fpatchgros%ny+1)
+  call project_bz(bzfin=fpatchfine%bz(0:fpatchfine%nx+1,0:fpatchfine%ny+1), bzgros=Bzapr,rap=rap)
+  Bzapr = Bzapr - fpatchcoarse%bz(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
   
   j = ntamp_apr
-  do k = ntamp_apr, fpatchgros%ny+1-ntamp_apr
+  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
     f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) - dtsdx * Bzapr(j,k)
   END do
-  j = fpatchgros%nx+2-ntamp_apr
-  do k = ntamp_apr, fpatchgros%ny+1-ntamp_apr
+  j = fpatchcoarse%nx+2-ntamp_apr
+  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
     f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) + dtsdx * Bzapr(j-1,k)
   END do
   k = ntamp_apr
-  do j = ntamp_apr, fpatchgros%nx+1-ntamp_apr
+  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
     f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) + dtsdy * Bzapr(j,k)
   END do
-  k = fpatchgros%ny+2-ntamp_apr
-  do j = ntamp_apr, fpatchgros%nx+1-ntamp_apr
+  k = fpatchcoarse%ny+2-ntamp_apr
+  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
     f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) - dtsdy * Bzapr(j,k-1)
   END do
   DEALLOCATE(Bzapr)
@@ -1213,7 +1213,7 @@ call create_bnd(f%bndbxbyez, nx, ny, nbndx=10, nbndy=10, dt=dtm, dx=dx, dy=dy, x
 	f%By = 0.
 	f%Bz = 0.
 	
-	f%Rhojxjy = 0.
+	f%J = 0.
 
 	f%Bz_in = 0.
 	f%Ey_in = 0.
