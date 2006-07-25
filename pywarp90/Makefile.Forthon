@@ -4,7 +4,7 @@ SO = so
 PUBLICHOME = 
 
 
-all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
+all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2d.$(SO) ranffortran.c
 	rm -f warpC.so
 	python setup.py build --build-platlib .
 
@@ -40,6 +40,9 @@ cirpy.$(SO): toppy.$(SO) cir.F cir.v
 
 chopy.$(SO): toppy.$(SO) cho.F cho.v
 	Forthon -a $(FCOMP) $(DEBUG) cho
+
+em2dpy.$(SO): toppy.$(SO) em2d.F90 em2d_apml.F90 em2d_maxwell.F90 em2d.v
+	Forthon -a $(FCOMP) $(DEBUG) em2d em2d_apml.F90 em2d_maxwell.F90
 
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
