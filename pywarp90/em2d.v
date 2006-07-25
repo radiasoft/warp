@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.4 $, $Date: 2006/07/21 23:34:13 $
+#@(#) File EM2D.V, version $Revision: 1.5 $, $Date: 2006/07/25 17:31:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -181,6 +181,37 @@ em2d_step() subroutine
 griuni(f:EM2D_FIELDtype) subroutine
 grimax(f:EM2D_FIELDtype) subroutine
 
+%%%%%%%% type_bnd:
+n integer
+nx integer
+ny integer
+nbndx integer
+nbndy integer
+n1x integer
+nbot integer
+nint integer
+ntop integer
+nbot1 integer
+nbot2 integer
+ntop1 integer
+ntop2 integer
+Ex(1:n) _real
+Ey(1:n) _real
+Bzx(1:n) _real
+Bzy(1:n) _real
+aEx(1:n) _real
+bEx(1:n) _real
+cEx(1:n) _real
+aEy(1:n) _real
+bEy(1:n) _real
+cEy(1:n) _real
+aBzx(1:n) _real
+bBzx(1:n) _real
+cBzx(1:n) _real
+aBzy(1:n) _real
+bBzy(1:n) _real
+cBzy(1:n) _real
+
 %%%%%%%% EM2D_FIELDtype:
 nx integer
 ny integer
@@ -238,33 +269,3 @@ pulse(0:npulse+1) _real
 bndexeybz _type_bnd
 bndbxbyez _type_bnd
 
-%%%%%%%% type_bnd:
-n integer
-nx integer
-ny integer
-nbndx integer
-nbndy integer
-n1x integer
-nbot integer
-nint integer
-ntop integer
-nbot1 integer
-nbot2 integer
-ntop1 integer
-ntop2 integer
-Ex(1:n) _real
-Ey(1:n) _real
-Bzx(1:n) _real
-Bzy(1:n) _real
-aEx(1:n) _real
-bEx(1:n) _real
-cEx(1:n) _real
-aEy(1:n) _real
-bEy(1:n) _real
-cEy(1:n) _real
-aBzx(1:n) _real
-bBzx(1:n) _real
-cBzx(1:n) _real
-aBzy(1:n) _real
-bBzy(1:n) _real
-cBzy(1:n) _real
