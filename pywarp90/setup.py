@@ -35,7 +35,7 @@ dummybuild = build(dummydist)
 dummybuild.finalize_options()
 builddir = dummybuild.build_temp
 
-warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho']
+warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d']
 
 # --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
 # --- files are always put in a build/temp directory relative to where the
@@ -60,7 +60,8 @@ warpobjects = warpobjects + ['top_lattice.o','dtop.o',
                              'fft.o','util.o',
                              'fxy_mgrid.o',
                              'dwrz.o',
-                             'frz_mgrid.o','frz_mgrid_be.o']
+                             'frz_mgrid.o','frz_mgrid_be.o',
+                             'em2d_apml.o','em2d_maxwell.o']
 if parallel:
   warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
                                'w3dslave.o']
