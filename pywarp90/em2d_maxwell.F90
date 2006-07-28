@@ -54,6 +54,13 @@ do k = 0, f%ny+1
 end do
 
 ! add source term
+if (l_elaser_out_plane) then
+  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
+  f%cst2 =  2.*dt/f%dy /(1.+dt*f%clight/f%dy)
+else
+  f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
+  f%cst2 =  2.*dt/f%dx /(1.+dt*f%clight/f%dx)
+end if
 if (f%l_add_source) then
  if (.not.l_moving_window) then
   if(l_elaser_out_plane) then
@@ -123,11 +130,12 @@ implicit none
 
 TYPE(EM2D_FIELDtype) :: f
 INTEGER :: j, k
-real(kind=8) :: dt,dtsdx,dtsdy
+real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
-dtsdx = dt/f%dx
-dtsdy = dt/f%dy
+dtsdx = f%clight**2*dt/f%dx
+dtsdy = f%clight**2*dt/f%dy
+mudt  = f%mu0*f%clight**2*dt
 
 if (f%l_apply_pml) then
   call exchange_bnd_field2(f%bndbxbyez,f)
@@ -142,7 +150,7 @@ end if
 do k = 1, f%ny+1
   do j = 0, f%nx+1
     f%Ex(j,k) = f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) &
-                          - f%J(j,k,1)
+                          - mudt  * f%J(j,k,1)
   end do
 end do
 
@@ -150,7 +158,7 @@ end do
 do k = 0, f%ny+1
   do j = 1, f%nx+1
     f%Ey(j,k) = f%Ey(j,k) - dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k)) &
-                          - f%J(j,k,2)
+                          - mudt  * f%J(j,k,2)
   end do
 end do
 
@@ -159,10 +167,17 @@ do k = 0, f%ny+1
   do j = 0, f%nx+1
     f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                           - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
-                          - f%J(j,k,3)
+                          - mudt  * f%J(j,k,3)
   end do
 end do
 
+if (l_elaser_out_plane) then
+  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
+  f%cst2 =  f%clight**2*2.*dt/f%dy /(1.+dt*f%clight/f%dy)
+else
+  f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
+  f%cst2 =  f%clight**2*2.*dt/f%dx /(1.+dt*f%clight/f%dx)
+end if
 if (f%l_add_source .and. .not.l_moving_window .and. .not. l_elaser_out_plane) then
     ! Evaluate Ex and Ey source
     do k = 1, f%ny+1
@@ -1154,7 +1169,7 @@ subroutine smooth2(q,nx,ny)
 
 
 !************* SUBROUTINE init_fields  *************************************************
-subroutine init_fields(f,nx, ny, nbndx, nbndy, dtm, dx, dy, xmin, ymin, rap, xlb, ylb, xrb, yrb)
+subroutine init_fields(f,nx, ny, nbndx, nbndy, dt, dx, dy, clight, mu0, xmin, ymin, rap, xlb, ylb, xrb, yrb)
 use mod_bnd
 use mod_field, only:EM2D_FIELDtype, l_copyfields, l_elaser_out_plane
 implicit none
@@ -1162,7 +1177,7 @@ implicit none
 TYPE(EM2D_FIELDtype) :: f
 INTEGER(ISZ), INTENT(IN) :: nx, ny, rap
 INTEGER(ISZ), INTENT(IN) :: nbndx, nbndy, xlb, ylb, xrb, yrb
-REAL(kind=8), INTENT(IN) :: dtm, dx, dy, xmin, ymin
+REAL(kind=8), INTENT(IN) :: dt, dx, dy, xmin, ymin, clight, mu0
 INTEGER :: k,m
 
 !f => NewEM2D_FIELDType()
@@ -1181,14 +1196,8 @@ f%dxi = 1./dx
 f%dyi = 1./dy
 f%npulse=300
 f%ntemp = 2*max(nx,ny)+4
-if (l_elaser_out_plane) then
-  f%cst1 = (1.-dtm/dy)/(1.+dtm/dy)
-  f%cst2 =  2.*dtm/dy /(1.+dtm/dy)
-else
-  f%cst1 = (1.-dtm/dx)/(1.+dtm/dx)
-  f%cst2 =  2.*dtm/dx /(1.+dtm/dx)
-end if
-
+f%clight = clight
+f%mu0    = mu0
 f%js = 1 ! position of the source
 
   IF(l_copyfields) then
@@ -1200,8 +1209,8 @@ f%js = 1 ! position of the source
   END if
 !  call EM2D_FIELDtypeallot(f)
 
-call create_bnd(f%bndexeybz, nx, ny, nbndx=10, nbndy=10, dt=dtm, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
-call create_bnd(f%bndbxbyez, nx, ny, nbndx=10, nbndy=10, dt=dtm, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+call create_bnd(f%bndexeybz, nx, ny, nbndx=10, nbndy=10, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+call create_bnd(f%bndbxbyez, nx, ny, nbndx=10, nbndy=10, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
   
   call EM2D_FIELDtypeallot(f)
 
