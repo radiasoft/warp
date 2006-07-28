@@ -1,5 +1,6 @@
 #include "top.h"
-
+module em2d_depos
+contains
 subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,l_particles_weight)
    implicit none
    real(kind=8), dimension(-1:,-1:,1:), intent(in out) :: j
@@ -9,10 +10,9 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
    logical(ISZ) :: l_particles_weight
 
    real(kind=8) :: dxi,dyi,dtsdx,dtsdy,sd(18),xint,yint,wx(1:4,1:5),wy(1:5,1:4)
-   real(kind=8) :: xold,yold,xmid,ymid,x,y,wq,tmp,vx,vy,dts2dx,dts2dy,s1x,s2x,s1y,s2y
+   real(kind=8) :: xold,yold,xmid,ymid,x,y,wq,wqx,wqy,tmp,vx,vy,dts2dx,dts2dy,s1x,s2x,s1y,s2y,invsurf,invdtdx,invdtdy
    real(kind=8), DIMENSION(6) :: sx, sy, sx0, sy0, dsx, dsy
    integer(ISZ) :: iixp0,ijxp0,iixp,ijxp,ip,dix,diy,idx,idy
-
 
       dxi = 1./dx
       dyi = 1./dy
@@ -20,6 +20,9 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
       dtsdy = dt*dyi
       dts2dx = 0.5*dtsdx
       dts2dy = 0.5*dtsdy
+      invsurf = 1./(dx*dy)
+      invdtdx = 1./(dt*dx)
+      invdtdy = 1./(dt*dy)
 
       do ip=1,np
       
@@ -37,6 +40,8 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         else
           wq=q
         end if
+        wqx = wq*invdtdy
+        wqy = wq*invdtdx
 
 !       computation of current at x n+1/2 v n+1/2
 
@@ -93,25 +98,25 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         dsy(2)=sy(2)-sy0(2);dsy(3)=sy(3)-sy0(3)
         dsy(4)=sy(4)-sy0(4);dsy(5)=sy(5)-sy0(5)
 
-        tmp = (sy0(3+idy)+0.5*dsy(3+idy))*wq; wx(2,1) = dsx(3+idx)*tmp
-                                              wx(3,1) = dsx(4+idx)*tmp
-                                              wx(4,1) = dsx(5+idx)*tmp
-        tmp = (sy0(4+idy)+0.5*dsy(4+idy))*wq; wx(2,2) = dsx(3+idx)*tmp
-                                              wx(3,2) = dsx(4+idx)*tmp
-                                              wx(4,2) = dsx(5+idx)*tmp
-        tmp = (sy0(5+idy)+0.5*dsy(5+idy))*wq; wx(2,4) = dsx(3+idx)*tmp
-                                              wx(3,4) = dsx(4+idx)*tmp
-                                              wx(4,4) = dsx(5+idx)*tmp
+        tmp = (sy0(3+idy)+0.5*dsy(3+idy))*wqx; wx(2,1) = dsx(3+idx)*tmp
+                                               wx(3,1) = dsx(4+idx)*tmp
+                                               wx(4,1) = dsx(5+idx)*tmp
+        tmp = (sy0(4+idy)+0.5*dsy(4+idy))*wqx; wx(2,2) = dsx(3+idx)*tmp
+                                               wx(3,2) = dsx(4+idx)*tmp
+                                               wx(4,2) = dsx(5+idx)*tmp
+        tmp = (sy0(5+idy)+0.5*dsy(5+idy))*wqx; wx(2,4) = dsx(3+idx)*tmp
+                                               wx(3,4) = dsx(4+idx)*tmp
+                                               wx(4,4) = dsx(5+idx)*tmp
 
-        tmp = (sx0(3+idx)+0.5*dsx(3+idx))*wq; wy(2,1) = dsy(3+idy)*tmp
-                                              wy(2,2) = dsy(4+idy)*tmp
-                                              wy(2,4) = dsy(5+idy)*tmp
-        tmp = (sx0(4+idx)+0.5*dsx(4+idx))*wq; wy(3,1) = dsy(3+idy)*tmp
-                                              wy(3,2) = dsy(4+idy)*tmp
-                                              wy(3,4) = dsy(5+idy)*tmp
-        tmp = (sx0(5+idx)+0.5*dsx(5+idx))*wq; wy(4,1) = dsy(3+idy)*tmp
-                                              wy(4,2) = dsy(4+idy)*tmp
-                                              wy(4,4) = dsy(5+idy)*tmp
+        tmp = (sx0(3+idx)+0.5*dsx(3+idx))*wqy; wy(2,1) = dsy(3+idy)*tmp
+                                               wy(2,2) = dsy(4+idy)*tmp
+                                               wy(2,4) = dsy(5+idy)*tmp
+        tmp = (sx0(4+idx)+0.5*dsx(4+idx))*wqy; wy(3,1) = dsy(3+idy)*tmp
+                                               wy(3,2) = dsy(4+idy)*tmp
+                                               wy(3,4) = dsy(5+idy)*tmp
+        tmp = (sx0(5+idx)+0.5*dsx(5+idx))*wqy; wy(4,1) = dsy(3+idy)*tmp
+                                               wy(4,2) = dsy(4+idy)*tmp
+                                               wy(4,4) = dsy(5+idy)*tmp
 
         sd(1) = wx(2,1)
         sd(2) = wx(3,1)+sd(1)
@@ -137,25 +142,25 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         sd(15) = wy(4,2)+sd(12)
         sd(18) = wy(4,4)+sd(15)
 
-        j(iixp0,  ijxp0  ,1)=j(iixp0  ,ijxp0  ,1)+sd(1)
-        j(iixp0+1,ijxp0  ,1)=j(iixp0+1,ijxp0  ,1)+sd(2)
-        j(iixp0+2,ijxp0  ,1)=j(iixp0+2,ijxp0  ,1)+sd(3)
-        j(iixp0,  ijxp0+1,1)=j(iixp0  ,ijxp0+1,1)+sd(4)
-        j(iixp0+1,ijxp0+1,1)=j(iixp0+1,ijxp0+1,1)+sd(5)
-        j(iixp0+2,ijxp0+1,1)=j(iixp0+2,ijxp0+1,1)+sd(6)
-        j(iixp0,  ijxp0+2,1)=j(iixp0  ,ijxp0+2,1)+sd(7)
-        j(iixp0+1,ijxp0+2,1)=j(iixp0+1,ijxp0+2,1)+sd(8)
-        j(iixp0+2,ijxp0+2,1)=j(iixp0+2,ijxp0+2,1)+sd(9)
+        j(iixp0,  ijxp0  ,1)=j(iixp0  ,ijxp0  ,1)-sd(1)
+        j(iixp0+1,ijxp0  ,1)=j(iixp0+1,ijxp0  ,1)-sd(2)
+        j(iixp0+2,ijxp0  ,1)=j(iixp0+2,ijxp0  ,1)-sd(3)
+        j(iixp0,  ijxp0+1,1)=j(iixp0  ,ijxp0+1,1)-sd(4)
+        j(iixp0+1,ijxp0+1,1)=j(iixp0+1,ijxp0+1,1)-sd(5)
+        j(iixp0+2,ijxp0+1,1)=j(iixp0+2,ijxp0+1,1)-sd(6)
+        j(iixp0,  ijxp0+2,1)=j(iixp0  ,ijxp0+2,1)-sd(7)
+        j(iixp0+1,ijxp0+2,1)=j(iixp0+1,ijxp0+2,1)-sd(8)
+        j(iixp0+2,ijxp0+2,1)=j(iixp0+2,ijxp0+2,1)-sd(9)
             
-        j(iixp0,  ijxp0  ,2)=j(iixp0  ,ijxp0  ,2)+sd(10)
-        j(iixp0+1,ijxp0  ,2)=j(iixp0+1,ijxp0  ,2)+sd(11)
-        j(iixp0+2,ijxp0  ,2)=j(iixp0+2,ijxp0  ,2)+sd(12)
-        j(iixp0,  ijxp0+1,2)=j(iixp0  ,ijxp0+1,2)+sd(13)
-        j(iixp0+1,ijxp0+1,2)=j(iixp0+1,ijxp0+1,2)+sd(14)
-        j(iixp0+2,ijxp0+1,2)=j(iixp0+2,ijxp0+1,2)+sd(15)
-        j(iixp0,  ijxp0+2,2)=j(iixp0  ,ijxp0+2,2)+sd(16)
-        j(iixp0+1,ijxp0+2,2)=j(iixp0+1,ijxp0+2,2)+sd(17)
-        j(iixp0+2,ijxp0+2,2)=j(iixp0+2,ijxp0+2,2)+sd(18)
+        j(iixp0,  ijxp0  ,2)=j(iixp0  ,ijxp0  ,2)-sd(10)
+        j(iixp0+1,ijxp0  ,2)=j(iixp0+1,ijxp0  ,2)-sd(11)
+        j(iixp0+2,ijxp0  ,2)=j(iixp0+2,ijxp0  ,2)-sd(12)
+        j(iixp0,  ijxp0+1,2)=j(iixp0  ,ijxp0+1,2)-sd(13)
+        j(iixp0+1,ijxp0+1,2)=j(iixp0+1,ijxp0+1,2)-sd(14)
+        j(iixp0+2,ijxp0+1,2)=j(iixp0+2,ijxp0+1,2)-sd(15)
+        j(iixp0,  ijxp0+2,2)=j(iixp0  ,ijxp0+2,2)-sd(16)
+        j(iixp0+1,ijxp0+2,2)=j(iixp0+1,ijxp0+2,2)-sd(17)
+        j(iixp0+2,ijxp0+2,2)=j(iixp0+2,ijxp0+2,2)-sd(18)
       
         ! Esirkepov deposition of Jx and Jy is over; now starts linear deposition of Jz
         xmid=x-dts2dx*vx
@@ -165,27 +170,24 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
         x = x-0.5
         y = y-0.5
 
-        wq = wq*uzp(ip)*gaminv(ip)
+        wq = wq*uzp(ip)*gaminv(ip)*invsurf
       
-!      if(esirkepov) w=w*dt
-        wq = wq*dt 
-
         iixp=int(x)
         ijxp=int(y)
 
         xint = x-iixp
         yint = y-ijxp
 
-        s1x =  1.-xint
-        s2x =  xint
+        s1x = 1.-xint
+        s2x = xint
 
         s1y = 1.-yint
         s2y = yint
 
-        j(iixp  ,ijxp  ,3)=j(iixp  ,ijxp  ,3)-s1x*s1y*wq
-        j(iixp+1,ijxp  ,3)=j(iixp+1,ijxp  ,3)-s2x*s1y*wq
-        j(iixp  ,ijxp+1,3)=j(iixp  ,ijxp+1,3)-s1x*s2y*wq
-        j(iixp+1,ijxp+1,3)=j(iixp+1,ijxp+1,3)-s2x*s2y*wq
+        j(iixp  ,ijxp  ,3)=j(iixp  ,ijxp  ,3)+s1x*s1y*wq
+        j(iixp+1,ijxp  ,3)=j(iixp+1,ijxp  ,3)+s2x*s1y*wq
+        j(iixp  ,ijxp+1,3)=j(iixp  ,ijxp+1,3)+s1x*s2y*wq
+        j(iixp+1,ijxp+1,3)=j(iixp+1,ijxp+1,3)+s2x*s2y*wq
         
       
     end do
@@ -238,9 +240,11 @@ end subroutine depose_jxjy_esirkepov_linear_serial
 
    return
  end subroutine geteb2d_linear_serial
+end module em2d_depos
 
 subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight)
    use EM2D_FIELDobjects
+   use em2d_depos
    implicit none
    integer(ISZ) :: np
    real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
@@ -293,6 +297,7 @@ end subroutine depose_current_em2d
 
 subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
    use EM2D_FIELDobjects
+   use em2d_depos
    implicit none
    
    integer(ISZ) :: np
@@ -373,6 +378,108 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
    endif
 end subroutine geteb_em2d
 
+subroutine smooth2d_lindman(q,nx,ny)
+ implicit none
+
+ integer(ISZ) :: nx,ny,ns,i1,i2,j1,j2,is,i,j,ntemp
+
+ real(kind=8), dimension(0:nx+3,0:ny+2) :: q
+ real(kind=8), dimension(5) :: cs,ds,dc
+ real(kind=8), dimension(:), ALLOCATABLE :: temp
+
+ data cs /4*.25,-1.25/,ds/4*.5,3.5/,ns/5/
+ data dc /4*2.,-2.8/
+
+     ntemp = 2*max(nx,ny)+4
+     ALLOCATE(temp(0:ntemp))
+
+
+      i1=0
+      i2=nx+2
+      j1=0
+      j2=ny+2
+
+      temp=0.
+
+!     x smoothing
+
+      do 110 is=1,ns
+      do  i=2,nx-1,2
+!cdir nodep
+      do  j=1,ny+1
+      temp(j+j1)=q(i-1,j)+dc(is)*q(i,j)+q(i+1,j)
+      q(i-1,j)=cs(is)*temp(j+j2)
+      temp(j+j2)=q(i,j)+dc(is)*q(i+1,j)+q(i+2,j)
+      q(i,j)=cs(is)*temp(j+j1)
+
+      enddo
+      enddo
+
+      do  j=1,ny+1
+      q(nx,j)=cs(is)*temp(j+j2)
+      q(1,j)=0.
+      q(nx+1,j)=0.
+      enddo
+
+ 110  continue
+
+!     y smoothing
+!     -----------
+      do 160 is=1,ns
+
+      do j=2,ny-1,2
+
+!cdir nodep
+      do  i=1,nx+1
+      temp(i+i1)=q(i,j-1)+dc(is)*q(i,j)+q(i,j+1)
+      q(i,j-1)=cs(is)*temp(i+i2)
+      temp(i+i2)=q(i,j)+dc(is)*q(i,j+1)+q(i,j+2)
+      q(i,j)=cs(is)*temp(i+i1)
+      enddo
+      enddo
+
+      do  i=1,nx+1
+      q(i,ny)=cs(is)*temp(i+i2)
+      q(i,1)=0.
+      q(i,ny+1)=0.
+      enddo
+
+ 160  continue
+      DEALLOCATE(temp)
+
+      return
+      end subroutine smooth2d_lindman
+
+subroutine em2d_smoothdensity()
+   use EM2D_FIELDobjects
+   implicit none
+   
+   TYPE(EM2D_FIELDtype), POINTER :: f
+   real(kind=8), dimension(:,:), pointer :: jaux
+   integer(ISZ) :: i,ngrids
+
+   if (l_onegrid) then
+     ngrids = 1
+   else
+     ngrids = 2
+   end if
+   do i=1, ngrids
+     if(i==1) then
+       f => field
+     else
+       f => fpatchfine
+     endif
+    jaux => f%J(:,:,1)
+    call smooth2d_lindman(jaux,f%nx,f%ny)
+    jaux => f%J(:,:,2)
+    call smooth2d_lindman(jaux,f%nx,f%ny)
+    jaux => f%J(:,:,3)
+    call smooth2d_lindman(jaux,f%nx,f%ny)
+  end do
+  
+  return
+end subroutine em2d_smoothdensity
+
 subroutine em2d_step()
       use InGen
       use Constant
@@ -382,6 +489,7 @@ subroutine em2d_step()
       use Beam_acc
       use DKInterptmp
       use EM2D_FIELDobjects
+      use em2d_depos
       implicit None
       
 !     --- Create local pointers to the arrays in pgroup.
@@ -421,11 +529,13 @@ subroutine em2d_step()
       field%J = 0.      
 
       ! put fields back on staggered grid
-      call grimax(field) 
-      
       do is=1,pgroup%ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+
+            ex=0.; ey=0.; ez=0.; bx=0.; by=0.; bz=0.
+
+            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
 
             call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
                           bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
@@ -437,16 +547,30 @@ subroutine em2d_step()
             call xpush3d(ip,xp(ipmin),yp(ipmin),zp(ipmin), &
                          uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
             
+         end do
+      end do
+      
+      call particleboundaries3d(pgroup)
+      
+      do is=1,pgroup%ns
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+
             ! we assume that all particles have same weight
             call depose_current_em2d(ip,xp(ipmin),yp(ipmin), &
                                      uxp(ipmin),uyp(ipmin),uzp(ipmin), &
-                                     gaminv(ipmin),wtmp,sq(is),dt,.false.)
+                                     gaminv(ipmin),wtmp,sq(is)*sw(is),dt, &
+                                     .false.)
+                               
          end do
       end do
+      if(l_smoothdensity) call em2d_smoothdensity()
 
-      call push_em_b(field,0.5*dt*clight)
-      call push_em_e(field,dt*clight)
-      call push_em_b(field,0.5*dt*clight)
+      call grimax(field) 
+      
+      call push_em_b(field,0.5*dt)
+      call push_em_e(field,dt,clight,mu0)
+      call push_em_b(field,0.5*dt)
 
 !     put fields values at nodes
       call griuni(field) 
@@ -454,6 +578,8 @@ subroutine em2d_step()
       do is=1,pgroup%ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+
+            ex=0.; ey=0.; ez=0.; bx=0.; by=0.; bz=0.
 
             call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
 
