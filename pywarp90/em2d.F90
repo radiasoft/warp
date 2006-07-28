@@ -569,8 +569,9 @@ subroutine em2d_step()
       call grimax(field) 
       
       call push_em_b(field,0.5*dt)
-      call push_em_e(field,dt,clight,mu0)
+      call push_em_e(field,dt)
       call push_em_b(field,0.5*dt)
+      call move_window_fields()
 
 !     put fields values at nodes
       call griuni(field) 

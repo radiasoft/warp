@@ -1078,7 +1078,114 @@ INTEGER :: which,i,j
 
    END subroutine interpol
 
+subroutine shift_fields_1cell(f)
+TYPE(EM2D_FIELDtype) :: f
+
+    if (l_elaser_out_plane) then
+      f%Ex(:,0:f%ny+2-f%rap)=f%Ex(:,f%rap:f%ny+2)
+      f%Ey(:,0:f%ny+2-f%rap)=f%Ey(:,f%rap:f%ny+2)
+      f%Ez(:,0:f%ny+2-f%rap)=f%Ez(:,f%rap:f%ny+2)
+      f%Bx(:,0:f%ny+2-f%rap)=f%Bx(:,f%rap:f%ny+2)
+      f%By(:,0:f%ny+2-f%rap)=f%By(:,f%rap:f%ny+2)
+      f%Bz(:,0:f%ny+2-f%rap)=f%Bz(:,f%rap:f%ny+2)
+
+      f%J(:,0:f%ny+2-f%rap,:)=f%J(:,f%rap:f%ny+2,:)
+
+      f%Ex(:,f%ny+2-f%rap+1:)=0.
+      f%Ey(:,f%ny+2-f%rap+1:)=0.
+      f%Ez(:,f%ny+2-f%rap+1:)=0.
+      f%Bx(:,f%ny+2-f%rap+1:)=0.
+      f%By(:,f%ny+2-f%rap+1:)=0.
+      f%Bz(:,f%ny+2-f%rap+1:)=0.
+
+      f%J(:,f%ny+2-f%rap+1:,:)=0.
+    else
+      f%Ex(0:f%nx+3-f%rap,:)=f%Ex(f%rap:f%nx+3,:)
+      f%Ey(0:f%nx+3-f%rap,:)=f%Ey(f%rap:f%nx+3,:)
+      f%Ez(0:f%nx+3-f%rap,:)=f%Ez(f%rap:f%nx+3,:)
+      f%Bx(0:f%nx+3-f%rap,:)=f%Bx(f%rap:f%nx+3,:)
+      f%By(0:f%nx+3-f%rap,:)=f%By(f%rap:f%nx+3,:)
+      f%Bz(0:f%nx+3-f%rap,:)=f%Bz(f%rap:f%nx+3,:)
+
+      f%J(0:f%nx+3-f%rap,:,:)=f%J(f%rap:f%nx+3,:,:)
+
+      f%Ex(f%nx+3-f%rap+1:,:)=0.
+      f%Ey(f%nx+3-f%rap+1:,:)=0.
+      f%Ez(f%nx+3-f%rap+1:,:)=0.
+      f%Bx(f%nx+3-f%rap+1:,:)=0.
+      f%By(f%nx+3-f%rap+1:,:)=0.
+      f%Bz(f%nx+3-f%rap+1:,:)=0.
+
+      f%J(f%nx+3-f%rap+1:,:,:)=0.
+    end if
+
+end subroutine shift_fields_1cell
 end module mod_field
+
+subroutine move_window_fields()
+use mod_field
+use Picglb
+implicit none
+TYPE(EM2D_FIELDtype), POINTER      :: f
+LOGICAL :: cond
+integer :: which, ngrid
+
+  if(.not. l_moving_window .or. (mod(it,ndelta_t)/=0)) return
+
+  if (l_onegrid) then
+    cond = .true.
+    ngrid = 1
+  else
+    if (l_elaser_out_plane) then
+      cond = nint(fpatchfine%ymax/field%dy)==nint(field%ymax/field%dy)
+    else
+      cond = nint(fpatchfine%xmax/field%dx)==nint(field%xmax/field%dx)
+    end if
+    ngrid = 3
+  end if
+  if(time<tmin_moving_main_window) return
+
+  do which = 1, ngrid
+    select case (which)
+      case (1)
+        f => field
+      case (2)
+        f => fpatchcoarse
+      case (3)
+        f => fpatchfine
+      case default
+    end select
+    if (which==1 .and. .not. cond) cycle ! do not move main window if patch not at upper end
+    call shift_fields_1cell(f)
+    call move_window_bnd(f%bndexeybz,f%rap,l_elaser_out_plane)
+    call move_window_bnd(f%bndbxbyez,f%rap,l_elaser_out_plane)
+    if (l_elaser_out_plane) then
+      f%ymin  =f%ymin  +field%dy
+      f%ymax  =f%ymax  +field%dy
+      if(which==2) then
+        yminpatch_gather  = yminpatch_gather +field%dy
+        yminpatch_scatter = yminpatch_scatter+field%dy
+        ymaxpatch_gather  = ymaxpatch_gather +field%dy
+        ymaxpatch_scatter = ymaxpatch_scatter+field%dy
+        if(.not. cond) iypatch=iypatch+1
+      end if
+    else
+      f%xmin  =f%xmin  +field%dx
+      f%xmax  =f%xmax  +field%dx
+      if(which==2) then
+        xminpatch_gather  = xminpatch_gather +field%dx
+        xminpatch_scatter = xminpatch_scatter+field%dx
+        xmaxpatch_gather  = xmaxpatch_gather +field%dx
+        xmaxpatch_scatter = xmaxpatch_scatter+field%dx
+        if(.not. cond) ixpatch=ixpatch+1
+      end if
+   end if
+  end do
+  
+  return
+end subroutine move_window_fields
+
+
 
 subroutine smooth2(q,nx,ny)
  implicit none
@@ -1192,6 +1299,8 @@ f%ymin = ymin
 f%rap = rap
 f%dx = dx
 f%dy = dy
+f%xmax = xmin+f%dx*f%nx
+f%ymax = ymin+f%dy*f%ny
 f%dxi = 1./dx
 f%dyi = 1./dy
 f%npulse=300

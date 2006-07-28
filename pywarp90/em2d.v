@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.6 $, $Date: 2006/07/28 15:35:05 $
+#@(#) File EM2D.V, version $Revision: 1.7 $, $Date: 2006/07/28 23:48:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,6 +60,7 @@ xmaxpatch_gather             real /0./
 yminpatch_gather             real /0./
 ymaxpatch_gather             real /0./
 transition_zone              real /0./ # length of zone for linear transition from coarse to fine force (in coarse cell units)
+tmin_moving_main_window      real /0./
 nxfsum integer /0/
 nyfsum integer /0/
 Exfsum(0:nxfsum+3,0:nyfsum+2) _real
@@ -74,7 +75,7 @@ init_fields(f:EM2D_FIELDtype, nx:integer, ny:integer,
            dtm:real, dx:real, dy:real, clight:real, mu0:real, 
            xmin:real, ymin:real, rap:integer, 
            xlb:integer,ylb:integer,xrb:integer,yrb:integer) subroutine
-push_em_e(f:EM2D_FIELDtype,dt:real,clight:real,mu0:real) subroutine
+push_em_e(f:EM2D_FIELDtype,dt:real) subroutine
 push_em_b(f:EM2D_FIELDtype,dt:real) subroutine
 depose_current_em2d(np:integer,xp(np):real,yp(np):real,
                     uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
@@ -127,6 +128,8 @@ nxcopy integer
 nycopy integer 
 xmin real
 ymin real
+xmax real
+ymax real
 rap integer
 dx real
 dy real
