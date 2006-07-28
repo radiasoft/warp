@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.275 $, $Date: 2006/07/03 22:52:45 $
+c@(#) File W3D.F, version $Revision: 3.276 $, $Date: 2006/07/28 22:12:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6593,6 +6593,7 @@ c     enddo
 c=============================================================================
       subroutine assignrhoandphi(rhopindts,phipindts)
       use InGen3d
+      use InMesh3d
       use Fields3d
       use Fields3dParticles
       real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
@@ -6605,10 +6606,17 @@ c     --- the lower and upper bounds of rho and phi are correct.
 
       if (solvergeom==XYZgeom) then
 c        --- Point rho to the block for the currently active ndts group.
-c        --- Note that nrhopndtscopies is used in case ndts is only 1
-c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
          rho => rhopindts
          phi => phipindts
+      endif
+
+#else
+
+      if (solvergeom==XYZgeom) then
+c       --- The rho and phi arrays need to be allocated if they havn't already
+c       --- been.
+        if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
+        if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
       endif
 
 #endif
@@ -6626,8 +6634,6 @@ c=============================================================================
 c     --- The assignments must be done in a subroutine like this so that
 c     --- the lower and upper bounds of rho and phi are correct.
 
-#ifndef MPIPARALLEL
-
       if (solvergeom==XYZgeom) then
 c        --- Point rho to the block for the currently active ndts group.
 c        --- Note that nrhopndtscopies is used in case ndts is only 1
@@ -6635,8 +6641,6 @@ c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
          rhop => rhopindts
          phip => phipindts
       endif
-
-#endif
 
       return
       end
@@ -6649,21 +6653,21 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       integer(ISZ):: indts
-      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8):: rhopindts(0:nxp,0:nyp,0:nzp)
 
 #ifdef MPIPARALLEL
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
+        call getrhoforfieldsolverz(nx,nz,rho)
       else if(solvergeom==XYgeom) then
         call remark("XYgeom not tested in parallel")
         stop
       else if(solvergeom==Zgeom) then
-        call getrhoforfieldsolvez(nz,rho(0,0,0))
+        call getrhoforfieldsolvez(nz,rho)
       elseif (solvergeom==XYZgeom) then
-        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,nzpguard)
+        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhopindts,nzpguard)
       end if
 
 #endif
@@ -6779,7 +6783,7 @@ c     --- space to the rhopndts array.
 c     --- rhop and phip have the special values for the speices which are
 c     --- incremented every time step.
       call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies,0),
-     &                     phipndts(:,:,:,0))
+     &                       phipndts(:,:,:,0))
 
 c     --- Note that special coding is needed to clean up the rhopndts array
 c     --- for cases when there are no longer certain values of ndts. This
@@ -8028,7 +8032,7 @@ c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
         call getphiforparticles3d(nx,ny,nz,phi,
-     &                       nxp,nyp,nzp,phipndts(:,:,:,indts)
+     &                            nxp,nyp,nzp,phipndts(:,:,:,indts))
       end if
 #endif
 
@@ -8101,8 +8105,10 @@ c     --- to ensure that it is set when the field solver is called.
 
 c     --- Loop over the subcyling groups and do any field solves that
 c     --- are necessary.
+c     --- Do loop in reverse order so that rho and phi end up with the arrays
+c     --- for the speices with the smallest timestep.
       tmpnsndts = getnsndtsforsubcycling()
-      do indts=0,tmpnsndts-1
+      do indts=tmpnsndts-1,0,-1
 
         if (.not. ldts(indts) .and.
      &      (ndtsaveraging == 0 .and. .not. any(ldts))) cycle
@@ -8151,8 +8157,7 @@ c         --- If not in bend, call VP3D
 
         else
 c         --- Call perturbative bent beam field solver
-          call bendfieldsol3d(nx,ny,nz,rhopndts(:,:,:,2,indts),
-     &                        phipndts(:,:,:,indts))
+          call bendfieldsol3d()
           call getphiforfields()
           if (bound0==periodic) call perphi3d(phi,nx,ny,nz)
 
@@ -8177,17 +8182,14 @@ c     --- advanced group.
       return
       end
 c===========================================================================
-      subroutine bendfieldsol3d(nx,ny,nz,rho,phi)
+      subroutine bendfieldsol3d()
       use Constant
       use InGen
       use InGen3d
-      use InMesh3d,Only:xmmin
+      use InMesh3d
       use Picglb
       use Picglb3d
-      use Fields3d,rho1=>rho,phi1=>phi
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      use Fields3d
 
 c Does the FFT field solve in bends.
 
