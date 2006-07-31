@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.107 $, $Date: 2006/07/01 00:49:09 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.108 $, $Date: 2006/07/31 23:45:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -217,11 +217,20 @@ c     --- Make sure guard planes have sensible values before beginning.
       if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
       if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 #ifdef MPIPARALLEL
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
+      lzoffset = 0
+      rzoffset = 0
+      if (izfsslave(my_index) > 0) localbounds(4) = -1
+      if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
+      call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
+     &                      bounds,nzfull,
+     &                      lzoffset,rzoffset,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
-      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
      &                            my_index,nslaves,izfsslave,
      &                            whosendingleft,whosendingright)
 #endif
@@ -245,17 +254,6 @@ c     --- Also setup parallel arrays.
 !$OMP END SINGLE
         rhosave = rho
         localbounds = bounds
-#ifdef MPIPARALLEL
-        lzoffset = 0
-        rzoffset = 0
-        call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                        bounds,nzfull,
-     &                        lzoffset,rzoffset,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
-        if (izfsslave(my_index) > 0) localbounds(4) = -1
-        if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
-#endif
       endif
 
       allocate(phisave(0:nx,0:ny,-1:nz+1),stat=allocerror)
