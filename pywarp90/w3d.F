@@ -1,12 +1,27 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.276 $, $Date: 2006/07/28 22:12:08 $
+c@(#) File W3D.F, version $Revision: 3.277 $, $Date: 2006/07/31 23:07:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
 c  3d electrostatic PIC code, Cartesian geometry, for beam problems
 c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
+c=============================================================================
+      module w3d_interfaces
+      interface
+      subroutine assignrhoandphi(rhopindts,phipindts)
+      use Fields3dParticles
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
+      end subroutine assignrhoandphi
+      subroutine assignrhopandphip(rhopindts,phipindts)
+      use Fields3dParticles
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
+      end subroutine assignrhopandphip
+      end interface
+      end module w3d_interfaces
 c=============================================================================
       subroutine w3dinit
       use Subtimers3d
@@ -72,6 +87,7 @@ c=============================================================================
       use DKInterp
       use InDiag3d
       use ExtPart
+      use w3d_interfaces
 c     use ifcore
 
 c  Invoked by the GENERATE command, it sets up the problem
@@ -224,7 +240,7 @@ c  so that by default izfsmax = nz (for full field solve).
       call gchange("Fields3d", 0)
       call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
-     &                       phipndts(:,:,:,0))
+     &                     phipndts(:,:,:,0))
       vbeamfrm = vbeam
       if(solvergeom /= XYZgeom .and. solvergeom /=XYZgeomMR) then
 c       --- If not using the 3d mover (which has special set up for rho
@@ -6697,6 +6713,7 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Fields3dParticles
+      use w3d_interfaces
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -8079,6 +8096,7 @@ c===========================================================================
       use LatticeInternal
       use InjectVars
       use GridBoundary3d
+      use w3d_interfaces
       integer(ISZ):: iwhich
 
 c  Field solver for 3d warped Cartesian geometry. 
