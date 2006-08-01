@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.21 $, $Date: 2006/05/01 23:48:39 $
+c@(#) File WRZ.M, version $Revision: 3.22 $, $Date: 2006/08/01 22:35:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -57,7 +57,7 @@ c  Invoked by the GENERATE command, it sets up the problem
 
 c  declare scratch space for getzmmnt
        
-       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma,ismax
+       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma,isid,ismax
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
        real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
@@ -244,12 +244,13 @@ c  Create the dynamic arrays for z moments; calculate moments
            zmntmesh(k) = zmmntmin + k*(zmmntmax-zmmntmin)/nzmmnt
         enddo
         ismax = maxval(pgroup%sid)+1
-        call getzmmnt(1,0.,0.,0.,0.,0.,
-     &                0.,0.,0.,0.,
-     &                0.,0.,1,
-     &                nplive,0.,0.,0.,1,1,ismax,
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,-1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+
         do is=1,ns
+           isid = pgroup%sid(is-1) + 1
            do ipmin = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1, nparpgrp
               num = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
 c             --- Use t=0 u data also as "old" data for extraps
@@ -259,19 +260,20 @@ c             --- Use t=0 u data also as "old" data for extraps
               if(wpid==0) then
                 call getzmmnt(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     & pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,2,nplive,
-     &                        uxpo,uypo,uzpo,is,ns)
+     &                        pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,
+     &                        pgroup%dtscale(is),2,nplive,
+     &                        uxpo,uypo,uzpo,is,isid,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
               else
                 call getzmmnt_weights(num,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                        pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     & pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,2,nplive,
-     &                        uxpo,uypo,uzpo,is,ns)
+     &                        pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),
+     &                        pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,pgroup%dtscale(is),2,nplive,
+     &                        uxpo,uypo,uzpo,is,isid,ismax,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
               endif
            enddo
-           call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,
-     &                   pgroup%uyp,pgroup%uzp,
-     &                   pgroup%gaminv,pgroup%sq(1),pgroup%sm(1),pgroup%sw(1),dt/2.,
-     &                   3,nplive,uxpo,uypo,uzpo,1,ns)
+           call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                   0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                   1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
          enddo
       endif
  
@@ -1027,6 +1029,7 @@ c=============================================================================
       use Picglb
       use Fieldsrz
       use Z_arrays
+      use Z_Moments
       use LinearBeam
       character(*):: center
  
@@ -1034,12 +1037,14 @@ c  Advances the particles position and velocity according to CENTER,
 c  and also advances RHO.
  
  
-      integer(ISZ):: is,ipmin,ip,i
+      integer(ISZ):: is,ipmin,ip,i,isid,ismax
       real(kind=8):: er(nparpgrp), et(nparpgrp), ez(nparpgrp)
       real(kind=8):: br(nparpgrp), bt(nparpgrp), bz(nparpgrp)
       real(kind=8):: frext(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
  
+      ismax = maxval(pgroup%sid)+1
+
 c  Zero RHO if particles are advanced
       if (center.eq."fullv" .or. center.eq."halfv") then
 c        call zeroarry(rho,nrz)
@@ -1051,14 +1056,15 @@ c     call zeroarry(curr,nz+1)
 c  Zero the moments if center is synchv
       if (center .eq. "synchv") then
 c       call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(1),pgroup%sw(1),1,nplive)
-        call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,pgroup%uyp,
-     &                pgroup%uzp,pgroup%gaminv,pgroup%sq(1),pgroup%sm(1),
-     &                pgroup%sw(1),dt/2.,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns)
+        call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                0.,0.,0.,0.,0.,1,
+     &                nplive,0.,0.,0.,1,-1,ns,
+     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
       endif
  
 c  Loop over species
       do is=1,ns
+         isid = pgroup%sid(is-1) + 1
 c  Call seterz to fill E_z and E_r arrays
          if (it .le. 1) then
          call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
@@ -1103,14 +1109,17 @@ c    &                       pgroup%gaminv(ipmin),pgroup%sm(is),pgroup%sw(is),2,
                if(wpid==0) then
                  call getzmmnt(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
-     & pgroup%gaminv(ipmin),pgroup%sq(1),pgroup%sm(is),pgroup%sw(is),dt/2.,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns)
+     &                         pgroup%gaminv(ipmin),pgroup%sq(is),pgroup%sm(is),pgroup%sw(is),dt/2.,
+     &                         pgroup%dtscale(is),2,nplive,
+     &                         uxpo,uypo,uzpo,is,isid,ismax,
+     &                         tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
                else
                  call getzmmnt_weights(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                         pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                         pgroup%gaminv(ipmin),pgroup%pid(ipmin,wpid),
-     &                         pgroup%sq(1),pgroup%sm(is),pgroup%sw(is),dt/2.,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns)
+     &                         pgroup%sq(is),pgroup%sm(is),pgroup%sw(is),dt/2.,pgroup%dtscale(is),2,nplive,
+     &                         uxpo,uypo,uzpo,is,isid,ismax,
+     &                         tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
                endif
                call setcurr(curr,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),
      &                      pgroup%sq(is),pgroup%sw(is),zgrid,dz,zmmin)
@@ -1149,10 +1158,9 @@ c          call zeroarry(rhov,nrz)
 c        ---  Do final stuff for moments calculation
          if (center .eq. "synchv") then
 c         call getemits(1,xp,yp,pgroup%zp,pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,pgroup%sm(is),pgroup%sw(is),3,nplive)
-          call getzmmnt(1,pgroup%xp,pgroup%yp,pgroup%zp,pgroup%uxp,pgroup%uyp,
-     &                  pgroup%uzp,pgroup%gaminv,pgroup%sq(1),pgroup%sm(is),
-     &                  pgroup%sw(is),dt/2.,
-     &                  3,nplive,uxpo,uypo,uzpo,1,ns)
+         call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
+     &                 0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
+     &                 1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
          endif
  
 c        --- Make rho periodic if periodic in z
