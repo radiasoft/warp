@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.108 $, $Date: 2006/07/31 23:45:38 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.109 $, $Date: 2006/08/01 21:20:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -226,7 +226,7 @@ c     --- Make sure guard planes have sensible values before beginning.
      &                      lzoffset,rzoffset,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
