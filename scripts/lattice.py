@@ -60,7 +60,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.50 2006/04/22 00:24:30 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.51 2006/08/02 23:12:21 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2761,9 +2761,10 @@ Plots the time dependent field of the accl element
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color)
 
 def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
-             zlatstrt=None,**kw):
+             zlatstrt=None,withscaling=1,**kw):
   """
 Plots the one of the field components in one of the planes
+ - ib: the index of the lattice element to plot
  - component: Component to plot, one of 'x', 'y', or 'z'.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
@@ -2771,6 +2772,7 @@ Plots the one of the field components in one of the planes
  - withbends=1: When true, account for bends and convert to the lab frame.
                 Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
+ - withscaling=1: when true, apply the sc and sf scaling factors
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
@@ -2803,6 +2805,11 @@ such as contours, and cellarray.
   # --- Get the B field. If all three axis specified, just return the value
   # --- at that location.
   bb = bb[sx,sy,sz,id]
+
+  # --- Get the scaling factors
+  ss = top.bgrdsc[ib] + top.bgrdsf[ib]
+  bb = bb*ss
+
   if len(ax) == 0: return bb
 
   # --- Get mesh quantities along first axis
