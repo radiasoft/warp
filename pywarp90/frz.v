@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.45 $, $Date: 2006/02/01 00:27:08 $
+#@(#) File FRZ.V, version $Revision: 3.46 $, $Date: 2006/08/07 20:35:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.45 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.46 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -243,6 +243,14 @@ adjust_lpfd(f:integer,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:r
 setphirz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
          # get phi in p from RZ grid at locations [x,y,z]
 
+init_bworkgrid(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,
+               bounds(0:5):integer,
+               u(0:nr+2,0:nz+2):real,rho(nr+1,nz+1):real) subroutine
+         # Sets up the GRDItype object used during the RZ magnetic field solve.
+multigridrzb(iwhich:integer,iaxis:integer,u0(0:nr0+2,0:nz0+2):real,
+             rho0(nr0+1,nz0+1):real,nr0:integer,nz0:integer,accuracy:real)
+         subroutine
+         # Does one part of the RZ magnetic field solve
 lphiberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
          phi:real,res:real,mglevel:integer,bounds:integer,mgparam:integer,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
@@ -253,6 +261,8 @@ restrictberz(nx:integer,nz:integer,nzfull:integer,u:real,delx:integer,delz:integ
              delcx:integer,delcz:integer,
              bounds:integer,boundscoarse:integer,lzoffset:integer,
              withoutzeros:logical) subroutine
+getanalyticbtheta(bfield:BFieldGridType) subroutine
+         # Performs and optional ananlytic calculation of Btheta
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
