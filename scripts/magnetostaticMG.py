@@ -22,7 +22,7 @@ class MagnetostaticMG(object):
   __bfieldinputs__ = ['mgparam','downpasses','uppasses',
                       'mgmaxiters','mgtol','mgmaxlevels','mgform',
                       'lcndbndy','icndbndy','laddconductor',
-                      'lcylindrical'] 
+                      'lcylindrical','lanalyticbtheta'] 
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
@@ -32,7 +32,7 @@ class MagnetostaticMG(object):
                     'lreducedpickle':0}
 
   def __init__(self,**kw):
-    self.solvergeom = w3d.XYZgeom
+    #self.solvergeom = w3d.XYZgeom
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors.
@@ -115,6 +115,17 @@ class MagnetostaticMG(object):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
+    # --- Check for cylindrical geometry
+    self.lcylindrical = (self.solvergeom == w3d.RZgeom) or self.lcylindrical
+
+    # --- Fix the values of xmmin and ymmin is necessary
+    if self.lcylindrical:
+      self.ny = 0
+      if self.xmmin < 0.: self.xmmin = 0.
+      if self.ymmin < 0.: self.ymmin = 0.
+      self.l2symtry = false
+      self.l4symtry = false
+
     # --- Set set parallel related paramters and calculate mesh sizes
     if self.nslaves <= 1:
       self.nzfull = self.nz
@@ -122,11 +133,18 @@ class MagnetostaticMG(object):
       self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
-    self.dx = (self.xmmax - self.xmmin)/self.nx
-    self.dy = (self.ymmax - self.ymmin)/self.ny
-    self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+    if self.nx > 0: self.dx = (self.xmmax - self.xmmin)/self.nx
+    if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
+    if self.nzfull > 0: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
+
+    if self.lcylindrical:
+      self.dy = self.dx
+      if w3d.l4symtry or (self.lcylindrical and self.xmmin==0.):
+        self.bounds[0] = neumann
+      self.bounds[2] = dirichlet
+      self.bounds[3] = dirichlet
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
@@ -199,7 +217,7 @@ class MagnetostaticMG(object):
     self.bfield.bounds = self.bounds
     self.bfield.lcylindrical = self.lcylindrical
     self.bfield.lusevectorpotential = true
-    self.bfield.lanalyticbtheta = false
+    self.bfield.lanalyticbtheta = self.lanalyticbtheta
     self.bfield.j = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
     self.bfield.b = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
     self.bfield.a = fzeros((3,3+self.nx,3+self.ny,3+self.nz),'d')
@@ -364,6 +382,11 @@ class MagnetostaticMG(object):
 
     bfield.j[...] = bfield.j*mu0*eps0
 
+    if self.lcylindrical:
+      init_bworkgrid(bfield.nx,bfield.nz,bfield.dx,bfield.dz,
+                     bfield.xmmin,bfield.zmmin,bfield.bounds,
+                     bfield.a[0,:,0,:],bfield.j[0,:,0,:])
+
     # --- Note that the arrays being passed in are not contiguous, which means
     # --- that copies are being done.
     # --- If only initialization is being done (iwhich==1) then the bvp3d_work
@@ -372,22 +395,31 @@ class MagnetostaticMG(object):
     idmax = 2
     if iwhich == 1: idmax = 0
     for id in range(idmax+1):
-      multigrid3dsolve(iwhich,bfield.nx,bfield.ny,bfield.nz,bfield.nzfull,
-                       bfield.dx,bfield.dy,bfield.dz,
-                       bfield.a[id,1:-1,1:-1,:],
-                       bfield.j[id,:,:,:],
-                       bfield.rstar,self.linbend,bfield.bounds,
-                       bfield.xmmin,bfield.ymmin,bfield.zmmin,
-                       top.zbeam,top.zgrid,
-                       bfield.mgparam[id],bfield.mgform[id],
-                       bfield.mgiters[id],bfield.mgmaxiters[id],
-                       bfield.mgmaxlevels[id],bfield.mgerror[id],
-                       bfield.mgtol[id],
-                       bfield.downpasses[id],bfield.uppasses[id],
-                       bfield.lcndbndy,bfield.laddconductor,
-                       bfield.icndbndy,false,
-                       self.gridmode,bfield.conductors,
-                       self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+      if (bfield.lanalyticbtheta and
+          ((bfield.lusevectorpotential and (id == 0 or id == 2)) or
+          (not bfield.lusevectorpotential and id == 1))): continue
+
+      if self.lcylindrical:
+        multigridrzb(iwhich,id,bfield.a[id,:,1,:],
+                     bfield.j[id,:,0,:],
+                     bfield.nx,bfield.nz,bfield.mgtol[id])
+      else:
+        multigrid3dsolve(iwhich,bfield.nx,bfield.ny,bfield.nz,bfield.nzfull,
+                         bfield.dx,bfield.dy,bfield.dz,
+                         bfield.a[id,1:-1,1:-1,:],
+                         bfield.j[id,:,:,:],
+                         bfield.rstar,self.linbend,bfield.bounds,
+                         bfield.xmmin,bfield.ymmin,bfield.zmmin,
+                         top.zbeam,top.zgrid,
+                         bfield.mgparam[id],bfield.mgform[id],
+                         bfield.mgiters[id],bfield.mgmaxiters[id],
+                         bfield.mgmaxlevels[id],bfield.mgerror[id],
+                         bfield.mgtol[id],
+                         bfield.downpasses[id],bfield.uppasses[id],
+                         bfield.lcndbndy,bfield.laddconductor,
+                         bfield.icndbndy,false,
+                         self.gridmode,bfield.conductors,
+                         self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
 
     # --- This is slightly inefficient in some cases, since for example, the
     # --- MG solver already takes care of the longitudinal BC's.
@@ -395,6 +427,9 @@ class MagnetostaticMG(object):
 
     # --- Now take the curl of A to get B.
     getbfroma3d(bfield)
+
+    # --- If using the analytic form of Btheta, calculate it here.
+    if bfield.lanalyticbtheta: getanalyticbtheta(bfield)
 
     # --- Unscale the current density
     bfield.j[...] = bfield.j/(mu0*eps0)
