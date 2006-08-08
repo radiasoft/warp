@@ -6,6 +6,7 @@ from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
 import time
+import operator
 try:
   import psyco
 except ImportError:
@@ -36,6 +37,12 @@ Implements adaptive mesh refinement in 3d for the B field solver
                     dims=None,mins=None,maxs=None,
                     nguard=1,
                     children=None,lreducedpickle=1,**kw):
+
+    # --- Check the dimensionality.
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+      self.nd = 3
+    elif w3d.solvergeom in [w3d.RZgeom]:
+      self.nd = 2
 
     # --- Pass the input value of lreducedpickle into the Multigrid class
     kw['lreducedpickle'] = lreducedpickle
@@ -69,6 +76,40 @@ Implements adaptive mesh refinement in 3d for the B field solver
     self.overlapslower = {}
     self.overlapshigher = {}
     self.nguard = nguard
+
+    # --- Check the input for errors.
+    errorstring = "Input argument %s must be of length %d"
+    if refinement is not None and operator.isSequenceType(refinement):
+      assert len(refinement)==self.nd,errorstring%('refinement',self.nd)
+    if lower is not None:
+      assert len(lower)==self.nd,errorstring%('lower',self.nd)
+    if upper is not None:
+      assert len(upper)==self.nd,errorstring%('upper',self.nd)
+    if dims is not None:
+      assert len(dims)==self.nd,errorstring%('dims',self.nd)
+    if mins is not None:
+      assert len(mins)==self.nd,errorstring%('mins',self.nd)
+    if maxs is not None:
+      assert len(maxs)==self.nd,errorstring%('maxs',self.nd)
+
+    # --- Check the dimensionality. If less than 3D, set the appropriate
+    # --- dimension to zero. (The code only works with XYZ and RZ now.)
+    if w3d.solvergeom == w3d.RZgeom:
+      if refinement is not None:
+        if operator.isSequenceType(refinement):
+          refinement = [refinement[0],1,refinement[1]]
+        else:
+          refinement = [refinement,1,refinement]
+      if lower is not None:
+        lower = [lower[0],0,lower[1]]
+      if upper is not None:
+        upper = [upper[0],0,upper[1]]
+      if dims is not None:
+        dims = [dims[0],0,dims[1]]
+      if mins is not None:
+        mins = [mins[0],0.,mins[1]]
+      if maxs is not None:
+        maxs = [maxs[0],0.,maxs[1]]
 
     if parent is None:
       # --- For the root, the dimensions and extent of the grid should
@@ -264,7 +305,7 @@ it knows whether to re-register itself.
       getattr(self,vname)[...] = a
 
   def addchild(self,lower=None,upper=None,mins=None,maxs=None,
-                    refinement=[2,2,2],nslaves=1,my_index=0):
+                    refinement=2,nslaves=1,my_index=0):
     """
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
@@ -274,7 +315,6 @@ Add a mesh refined block to this block.
     child = MRBlockB(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                      refinement=refinement,nguard=self.nguard,
                      nslaves=nslaves,my_index=my_index)
-    #self.addblockaschild(child)
     self.children.append(child)
 
   def addblockaschild(self,block):
@@ -525,7 +565,7 @@ the top level grid.
     # and create rhospecies if not done already
     if (len(compress(top.pgroup.ndts>1,top.pgroup.ndts))>0):
       if not self.__dict__.has_key('jspecies'):
-        self.idts  =compress(top.pgroup.ndts>1,arange(top.pgroup.ns))
+        self.idts = compress(top.pgroup.ndts>1,arange(top.pgroup.ns))
         self.createjspecies(lrootonly)
         for js in range(top.pgroup.ns):
           if top.pgroup.ndts[js]>1:
@@ -648,7 +688,13 @@ of blocks, rather than walking through the tree structure.
     if len(self.children) > 0 and not lrootonly:
 
       ichild = zeros(len(x))
-      self.getichild_allsort(x,y,z,ichild)
+      if self.lcylindrical:
+        xx = sqrt(x**2 + y**2)
+        yy = zeros(len(x),'d')
+      else:
+        xx = x
+        yy = y
+      self.getichild_allsort(xx,yy,z,ichild)
 
       x,y,z,ux,uy,uz,gaminv,nperchild = self.sortbyichild(ichild,x,y,z,
                                                           ux,uy,uz,gaminv)
@@ -706,13 +752,14 @@ Fortran version
       u = minimum(child.fullupperoverrefinement,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dopbounds = ((child.pbounds[0] == 1 or
+      dopbounds = (((child.pbounds[0] == 1 or
                     child.pbounds[1] == 1 or
                     child.pbounds[2] == 1) and
                   (l[0] == 0 or l[1] == 0 or l[2] == 0 or
                    u[0] == self.rootdims[0] or
                    u[1] == self.rootdims[1] or
-                   u[2] == self.rootdims[2]))
+                   u[2] == self.rootdims[2])) or
+                   self.ny == 0)
 
       w = self.getwarrayforj(child.refinement)
       gatherjfromchild(self.bfield.j,self.dims,child.bfield.j,child.dims,
@@ -822,19 +869,8 @@ gives a better initial guess for the field solver.
     pass
     
   #--------------------------------------------------------------------------
-  # --- Methods to fetch E-fields and potential
+  # --- Methods to fetch B-fields and potential
   #--------------------------------------------------------------------------
-
-  def fetchb(self):
-    """
-Fetches the B field. This should only be called at the root level grid.
-    """
-    if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-    self.fetchbfrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                                     w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
 
   def getichild_positiveonly(self,x,y,z,ichild):
     """
@@ -866,6 +902,17 @@ Gathers the ichild for the fetche_allsort.
 
     return xout,yout,zout,isort,nperchild
 
+  def fetchb(self):
+    """
+Fetches the B field. This should only be called at the root level grid.
+    """
+    if w3d.api_xlf2:
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+    self.fetchbfrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                     w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+
   def fetchbfrompositions_allsort(self,x,y,z,bx,by,bz):
     """
 Given the list of particles, fetch the B fields.
@@ -878,8 +925,14 @@ blocknumber rather than the child number relative to the parent.
     if len(self.children) > 0:
 
       ichild = zeros(len(x))
+      if self.lcylindrical:
+        xx = sqrt(x**2 + y**2)
+        yy = zeros(len(x),'d')
+      else:
+        xx = x
+        yy = y
       # --- This assumes that the root block has blocknumber zero.
-      self.getichild_positiveonly(x,y,z,ichild)
+      self.getichild_positiveonly(xx,yy,z,ichild)
 
       x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
 
@@ -898,7 +951,7 @@ blocknumber rather than the child number relative to the parent.
                                           tbx[i:i+n],tby[i:i+n],tbz[i:i+n])
       i = i + n
 
-    # --- Now, put the E fields back into the original arrays, unsorting
+    # --- Now, put the B fields back into the original arrays, unsorting
     # --- the data
     if isort is not None:
       n = len(x)
@@ -906,11 +959,64 @@ blocknumber rather than the child number relative to the parent.
 
   def fetcha(self):
     """
+Fetches the vector potential. This should only be called at the root level grid.
+    """
+    if w3d.api_xlf2:
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+    self.fetchafrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.afsapi)
+
+  def fetchafrompositions_allsort(self,x,y,z,a):
+    """
+Given the list of particles, fetch the vector potential.
+This first gets the blocknumber of the block where each of the particles are
+to be deposited. This is then sorted once. The loop is then over the list
+of blocks, rather than walking through the tree structure.
+Note that this depends on having ichilddomains filled with the
+blocknumber rather than the child number relative to the parent.
+    """
+    if len(self.children) > 0:
+
+      ichild = zeros(len(x))
+      if self.lcylindrical:
+        xx = sqrt(x**2 + y**2)
+        yy = zeros(len(x),'d')
+      else:
+        xx = x
+        yy = y
+      # --- This assumes that the root block has blocknumber zero.
+      self.getichild_positiveonly(xx,yy,z,ichild)
+
+      x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
+
+      # --- Create temporary arrays to hold the vector potential
+      ta = zeros((3,len(x)),'d')
+
+    else:
+      isort = None
+      nperchild = [len(x)]
+      ta = a
+
+    # --- For each block, pass to it the particles in it's domain.
+    i = 0
+    for block,n in zip(self.root.listofblocks,nperchild):
+      MagnetostaticMG.fetchbfrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],a[:,i:i+n])
+      i = i + n
+
+    # --- Now, put the vector potential back into the original arrays, unsorting
+    # --- the data
+    if isort is not None:
+      n = len(x)
+      putsortedefield(len(tbx),isort,ta[0,:],ta[1,:],ta[2,:],a[0,:n],a[1,:n],a[2,:n])
+
+  def fetcha_old(self):
+    """
 Fetches the potential. This should only be called at the root level grid.
     """
     self.fetchafrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.afsapi)
 
-  def fetchafrompositions(self,x,y,z,a):
+  def fetchafrompositions_old(self,x,y,z,a):
     """
 Fetches the potential, given a list of positions
     """
@@ -923,7 +1029,13 @@ Fetches the potential, given a list of positions
       # --- childdomains is positive (which does not include any guard cells).
       ichild = zeros(len(x))
       add(ichild,self.blocknumber,ichild)
-      getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
+      if self.lcylindrical:
+        xx = sqrt(x**2 + y**2)
+        yy = zeros(len(x),'d')
+      else:
+        xx = x
+        yy = y
+      getichildpositiveonly(self.blocknumber,len(x),xx,yy,z,ichild,
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                             self.zmmin,self.zmmax,
@@ -1133,7 +1245,17 @@ be plotted.
       cmax = kw.get('cmax',None)
 
       comp = kw.get('comp',2)
-      if type(comp) != IntType: comp = ['x','y','z'].index(comp)
+      if type(comp) != IntType:
+        try:
+          comp = ['x','y','z'].index(comp)
+        except ValueError:
+          pass
+        if self.lcylindrical:
+          try:
+            comp = ['r','theta','z'].index(comp)
+          except ValueError:
+            pass
+      assert type(comp) == IntType,"Unrecognized component was input"
 
       if cmin is None:
         cmin = self.arraysliceoperation(ip,idim,getdataname,min,minnd,+largepos,
@@ -1186,9 +1308,19 @@ be plotted.
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
     self.genericpf('geta',kwdict,1,pcazx)
+  def pcazr(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
+    self.genericpf('geta',kwdict,1,pcazx)
   def pcazy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
+    self.genericpf('geta',kwdict,0,pcazy)
+  def pcaztheta(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
     self.genericpf('geta',kwdict,0,pcazy)
   def pcbxy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -1198,9 +1330,19 @@ be plotted.
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
     self.genericpf('getb',kwdict,1,pcbzx)
+  def pcbzr(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
+    self.genericpf('getb',kwdict,1,pcbzx)
   def pcbzy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
+    self.genericpf('getb',kwdict,0,pcbzy)
+  def pcbztheta(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
     self.genericpf('getb',kwdict,0,pcbzy)
   def pcjxy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -1210,9 +1352,19 @@ be plotted.
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
     self.genericpf('getj',kwdict,1,pcjzx)
+  def pcjzr(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
+    self.genericpf('getj',kwdict,1,pcjzx)
   def pcjzy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
     kwdict.update(kw)
+    self.genericpf('getj',kwdict,0,pcjzy)
+  def pcjztheta(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    kwdict['fullplane'] = 0
     self.genericpf('getj',kwdict,0,pcjzy)
 
 
