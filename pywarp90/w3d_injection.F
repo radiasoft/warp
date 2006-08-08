@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.59 $, $Date: 2006/06/29 16:50:01 $
+c@(#) File w3d_injection.F, version $Revision: 1.60 $, $Date: 2006/08/08 19:22:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1422,7 +1422,7 @@ c               --- Concentric Spheres", PhysRev, 1924.
                 if (inject == 2) then
                   const = 4./9.*eps0*(2.*abs(qoverm))**.5*dxi**2*
      &             fulldt_s*area/echarge/pgroup%sw(is)/
-     &             (1. + 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
+     &             (1. - 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
                 endif
 
                 do ith=0,nttinj(ij)-1
@@ -1433,8 +1433,8 @@ c                 --- angle of point in transverse plane
 c                 --- Find coordinates of the point a distance inj_dx from
 c                 --- the source along a line perpendicular to the
 c                 --- emitting surface.
-                  p2x = abs(xtinject(ij) + (rinj - rrr)*cos(aa) - xmmin)*dxi
-                  p2y = abs(ytinject(ij) + (rinj - rrr)*sin(aa) - ymmin)*dyi
+                  p2x = abs(xtinject(ij) + (rinj + rrr)*cos(aa) - xmmin)*dxi
+                  p2y = abs(ytinject(ij) + (rinj + rrr)*sin(aa) - ymmin)*dyi
                   i2x = p2x
                   i2y = p2y
                   w2x = p2x - i2x
@@ -1449,7 +1449,7 @@ c                 --- the emitting surface.
      &                     phip(i2x+1,i2y+1,iz)*    w2x *    w2y  )
 
 c                 --- normal velocity
-                  vnorm = -fulldt_s*qoverm*ehalf
+                  vnorm = fulldt_s*qoverm*ehalf
 
 c                 --- Axial velocity
 c                 --- Calculated using axial E field dx from surface.
@@ -1505,7 +1505,7 @@ c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     pgroup%zp(ii) = zm + wz*inj_dz
                     rr = wrandom(xrandom,injctcnt,dig2,1,1)
-                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*rrr
+                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz + rr*rrr
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
                     pgroup%xp(ii) = xtinject(ij) + rp*cos(t)
