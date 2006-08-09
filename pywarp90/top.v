@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.175 $, $Date: 2006/06/29 16:14:34 $
+#@(#) File TOP.V, version $Revision: 3.176 $, $Date: 2006/08/09 00:13:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.175 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.176 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1212,7 +1212,9 @@ vztinject(ntinj) _real /0./ [m/s] # Starting velocity.
 ntinject(ns)      _integer # Number of particles injected off of the
                            # transverse injection sources.
 jmaxtinj(ntinj)    _real   # Maximum injected current for transverse injection.
-tinjprev(0:nttinjmax-1,0:nztmax,ntinj) _real
+tinj_phi(0:nttinjmax,0:nztmax,ntinj) _real
+   # Grid holding the potential drop for transverse emitting surfaces
+tinjprev(0:nttinjmax,0:nztmax,ntinj) _real
    # Grid holding number of particles injected on transverse surface
    # on previous time step.  Only used when inject=2
 
