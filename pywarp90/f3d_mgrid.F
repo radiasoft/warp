@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.109 $, $Date: 2006/08/01 21:20:17 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.110 $, $Date: 2006/08/09 01:18:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -226,13 +226,14 @@ c     --- Make sure guard planes have sensible values before beginning.
      &                      lzoffset,rzoffset,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
-      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
-     &                            my_index,nslaves,izfsslave,
-     &                            whosendingleft,whosendingright)
+c     --- These calls break the parallel field solver
+c     call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
+c    &                    my_index,nslaves,izfsslave,nzfsslave,
+c    &                    whosendingleft,izsendingleft,
+c    &                    whosendingright,izsendingright)
+c     call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+c    &                            my_index,nslaves,izfsslave,
+c    &                            whosendingleft,whosendingright)
 #endif
 
 c     --- If using residual correction form, need to save the original rho.
