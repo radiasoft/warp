@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.175 2006/05/23 07:05:50 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.176 2006/08/09 00:08:15 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -43,7 +43,7 @@ ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr(), ppzvperp()
 ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
 ppvxvy(), ppvxvz(), ppvyvz(), ppvzvperp()
 pptrace()
-pprrp(), pprtp(), pprvz()
+pprrp(), pprtp(), pprvr(), pprvz()
 
 The following plot various particles projections using color.
 ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
@@ -2437,6 +2437,55 @@ def pprtp(iw=0,scale=0,slopejs=-1,**kw):
   return ppgeneric(tp,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pprtp.__doc__ = pprtp.__doc__ + ppgeneric_doc("r","theta'")
+
+##########################################################################
+def pprvr(iw=0,scale=0,slopejs=-1,**kw):
+  """Plots R-Vr, If slope='auto', it is calculated from the moments.
+  - scale=0: when true, scale particle by 2*rms
+  - slopejs=-1: Species whose moments are used to calculate the slope
+                 -1 means use data combined from all species.
+  """
+  checkparticleplotarguments(kw)
+  if ppmultispecies(pprvr,(iw,scale,slopejs),kw): return
+  xscale = 1.
+  yscale = 1.
+  vxscale = 1.
+  vyscale = 1.
+  if scale:
+    iiw = max(0,iw)
+    xscale = 2.*top.xrms[iiw,slopejs]
+    yscale = 2.*top.yrms[iiw,slopejs]
+    vxscale = 2.*top.vxrms[iiw,slopejs]
+    vyscale = 2.*top.vyrms[iiw,slopejs]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xx = getx(ii=ii,gather=0,**kw)/xscale
+  yy = gety(ii=ii,gather=0,**kw)/yscale
+  vx = getvx(ii=ii,gather=0,**kw)/vxscale
+  vy = getvy(ii=ii,gather=0,**kw)/vyscale
+  rr = sqrt(xx**2 + yy**2)
+  tt = arctan2(yy,xx)
+  vr = vx*cos(tt) + vy*sin(tt)
+  slope = kw.get('slope',0.)
+  if type(slope) == type(''):
+    aversq = globalave(rr**2)
+    avervr = globalave(rr*vr)
+    if aversq > 0.:
+      slope = avervr/aversq
+    else:
+      slope = 0.
+    kw['slope'] = slope
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
+                      top.xpplmin*top.vbeam/vxscale,
+                      top.xpplmax*top.vbeam/vyscale)
+  kw.setdefault('local',0)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Vr vs R","R","Vr",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(vr,rr,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pprvr.__doc__ = pprvr.__doc__ + ppgeneric_doc("r","vr")
 
 ##########################################################################
 def pprvz(iw=0,**kw):
