@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.27 $, $Date: 2005/11/30 00:27:56 $
+c F3DSLAVE.M, version $Revision: 1.28 $, $Date: 2006/08/09 01:27:13 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -12,12 +12,12 @@ c=============================================================================
 
 c This routine sends out and receives boundary data for the SOR field solver.
 
-      integer(4  ):: left_pe,right_pe
-      integer(4  ):: left_recv,right_recv,left_send,right_send
-      integer(4  ):: waitcount,waitstart
+      integer(MPIISZ):: left_pe,right_pe
+      integer(MPIISZ):: left_recv,right_recv,left_send,right_send
+      integer(MPIISZ):: waitcount,waitstart
 
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4),mpierror
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4),mpierror
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -57,20 +57,20 @@ c     --- above are used.
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
       if (my_index > 0 .or. bound0 == 2) then
-        call MPI_ISEND(phi(0,0,left_send),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,4),
+        call MPI_ISEND(phi(0,0,left_send),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(1),mpierror)
-        call MPI_IRECV(phi(0,0,left_recv),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,4),
+        call MPI_IRECV(phi(0,0,left_recv),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(2),mpierror)
       endif
 
       if (my_index < nslaves-1 .or. boundnz == 2) then
-        call MPI_ISEND(phi(0,0,nz-right_send),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,4),
+        call MPI_ISEND(phi(0,0,nz-right_send),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(3),mpierror)
-        call MPI_IRECV(phi(0,0,nz-right_recv),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,4),
+        call MPI_IRECV(phi(0,0,nz-right_recv),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(4),mpierror)
       endif
 
@@ -105,16 +105,16 @@ c
 c Algorithm assumes that all dimensions are powers of two and the number
 c of processors is a power of two.
 
-      integer(4  ):: nn
-      integer(4  ):: is,ix,iy,j,left_pe,right_pe
+      integer(MPIISZ):: nn
+      integer(MPIISZ):: is,ix,iy,j,left_pe,right_pe
       include "mpif.h"
-      integer(4  ):: mpinewtype,mpierror
-      integer(4  ):: mpinewtype2,mpidoublesize
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE)
-      integer(4  ):: blen(2),bdisp(2),btype(2)
-      integer(4  ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
-      integer(4  ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
-c     integer(4  ),parameter:: M_TRANSPOSE=10
+      integer(MPIISZ):: mpinewtype,mpierror
+      integer(MPIISZ):: mpinewtype2,mpidoublesize
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: blen(2),bdisp(2),btype(2)
+      integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
+c     integer(MPIISZ),parameter:: M_TRANSPOSE=10
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -145,7 +145,7 @@ c     --- At the end, the data is copy back into the phi array.
 
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
-      call MPI_TYPE_VECTOR(int(nz,4),nn,int((nx+1)*(ny+1),4),
+      call MPI_TYPE_VECTOR(int(nz,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     mpinewtype,mpierror)
       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -172,12 +172,12 @@ c       --- chunks of data, i.e. nn times number of bytes per real.
         bdisp(2) = nn*mpidoublesize
         btype(1) = mpinewtype
         btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(2_4,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi(0,0,0),1_4,mpinewtype2,
-     &                    phi_trnsps,int(nn*nz,4),MPI_DOUBLE_PRECISION,
+        call MPI_ALLTOALL(phi(0,0,0),int(1,MPIISZ),mpinewtype2,
+     &                    phi_trnsps,int(nn*nz,MPIISZ),MPI_DOUBLE_PRECISION,
      &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
@@ -197,7 +197,7 @@ c       --- bound so that the extent is equal to the size a one double.
         bdisp(2) = mpidoublesize
         btype(1) = mpinewtype
         btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(2_4,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Setup displacement arrays.
@@ -253,16 +253,16 @@ c
 c Algorithm assumes that all dimensions are powers of two and the number
 c of processors is a power of two.
 
-      integer(4  ):: nn
-      integer(4  ):: is,ix,iy,j,left_pe,right_pe
+      integer(MPIISZ):: nn
+      integer(MPIISZ):: is,ix,iy,j,left_pe,right_pe
       include "mpif.h"
-      integer(4  ):: mpinewtype,mpierror
-      integer(4  ):: mpinewtype2,mpidoublesize
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE)
-      integer(4  ):: blen(2),bdisp(2),btype(2)
-      integer(4  ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
-      integer(4  ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
-c     integer(4  ),parameter:: M_TRANSPOSE=10
+      integer(MPIISZ):: mpinewtype,mpierror
+      integer(MPIISZ):: mpinewtype2,mpidoublesize
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: blen(2),bdisp(2),btype(2)
+      integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
+c     integer(MPIISZ),parameter:: M_TRANSPOSE=10
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -279,7 +279,7 @@ c the temp space.
       nn = (nx_tran+1)*ny_tran
       call copyarry(phi,phi_trnsps,nn*nz*nslaves)
 
-      call MPI_TYPE_VECTOR(int(nz,4),nn,int((nx+1)*(ny+1),4),
+      call MPI_TYPE_VECTOR(int(nz,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     mpinewtype,mpierror)
       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -293,12 +293,12 @@ c the temp space.
         bdisp(2) = nn*mpidoublesize
         btype(1) = mpinewtype
         btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(2_4,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi_trnsps,int(nn*nz,4),MPI_DOUBLE_PRECISION,
-     &                    phi(0,0,0),1_4,mpinewtype2,
+        call MPI_ALLTOALL(phi_trnsps,int(nn*nz,MPIISZ),MPI_DOUBLE_PRECISION,
+     &                    phi(0,0,0),int(1,MPIISZ),mpinewtype2,
      &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
@@ -315,7 +315,7 @@ c       --- bound so that the extent is equal to the size a one double.
         bdisp(2) = mpidoublesize
         btype(1) = mpinewtype
         btype(2) = MPI_UB
-        call MPI_TYPE_STRUCT(2_4,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_STRUCT(int(2,MPIISZ),blen,bdisp,btype,mpinewtype2,mpierror)
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Setup displacement arrays.
@@ -733,14 +733,15 @@ c=============================================================================
       real(kind=8):: data(ndata,nproc,nstep)
 c Gathers data in subgroups of processors
       include "mpif.h"
-      integer(4  ):: isend
-      integer(4  ):: datatype,subcomm,ierror
+      integer(MPIISZ):: isend
+      integer(MPIISZ):: datatype,subcomm,ierror
+      integer(MPIISZ):: mpierror
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- First, create subgroups of processors
       if (nproc < nslaves) then
-        call MPI_COMM_SPLIT(MPI_COMM_WORLD,int(my_index/nproc,4),0,subcomm,
+        call MPI_COMM_SPLIT(MPI_COMM_WORLD,int(my_index/nproc,MPIISZ),0,subcomm,
      &                      ierror)
       else
         call MPI_COMM_DUP(MPI_COMM_WORLD,subcomm,ierror)
@@ -749,19 +750,19 @@ c     --- First, create subgroups of processors
 c     --- First nstep > 1, create new data type
       if (nstep > 1) then
 c       --- NOTE: thist coding is not complete
-        call MPI_TYPE_VECTOR(int(nproc,4),int(ndata,4),int(ndata*nproc,4),
+        call MPI_TYPE_VECTOR(int(nproc,MPIISZ),int(ndata,MPIISZ),int(ndata*nproc,MPIISZ),
      &                       MPI_DOUBLE_PRECISION,
      &                       datatype,ierror)
-        call MPI_TYPE_COMMIT(datatype)
+        call MPI_TYPE_COMMIT(datatype,mpierror)
       else
         datatype = MPI_DOUBLE_PRECISION
       endif
 
 c     --- Gather the data
       isend = mod(my_index,nproc) + 1
-      call MPI_ALLGATHER(data(1:ndata,isend,1),int(ndata,4),
+      call MPI_ALLGATHER(data(1:ndata,isend,1),int(ndata,MPIISZ),
      &                   MPI_DOUBLE_PRECISION,
-     &                   data,int(ndata,4),MPI_DOUBLE_PRECISION,subcomm,ierror)
+     &                   data,int(ndata,MPIISZ),MPI_DOUBLE_PRECISION,subcomm,ierror)
 
 c     --- Delete the subgroup communicator
       call MPI_COMM_FREE(subcomm,ierror)
@@ -1027,6 +1028,7 @@ c       --- Increment the number of sends that processor makes.
         numsendingright(whosendingright(idx)) = numsendingright(whosendingright(idx)) + 1
       enddo
 
+
 !$OMP MASTER
       if (lf3dtimesubs) timemggetexchangepes = timemggetexchangepes + wtime() - substarttime
 !$OMP END MASTER
@@ -1049,14 +1051,14 @@ c=============================================================================
 
 c This routine sends out and receives boundary data for the MG field solver.
 
-      integer(4  ):: leftdelta,rightdelta
-      integer(4  ):: lr,rr,ls,rs
-      integer(4  ):: ip,w
+      integer(MPIISZ):: leftdelta,rightdelta
+      integer(MPIISZ):: lr,rr,ls,rs
+      integer(MPIISZ):: ip,w
 
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
-      integer(4  ):: mpirequest(2*nslaves+2),mpierror
-      integer(4  ):: messid
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
+      integer(MPIISZ):: mpirequest(2*nslaves+2),mpierror
+      integer(MPIISZ):: messid
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
       messid = nzfull
@@ -1090,15 +1092,15 @@ c     --- of the data overlaps.
         if (my_index == whosendingleft(ip)) then
           w = w + 1
           ls = izsendingleft(ip) - leftdelta
-          call MPI_ISEND(phi(-delt,-delt,ls),int((nx+1+2*delt)*(ny+1+2*delt),4),
+          call MPI_ISEND(phi(-delt,-delt,ls),int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,ip,messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
       if (whosendingright(my_index) /= -1) then
         w = w + 1
-        call MPI_IRECV(phi(-delt,-delt,lr),int((nx+1+2*delt)*(ny+1+2*delt),4),
-     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),4),
+        call MPI_IRECV(phi(-delt,-delt,lr),int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1107,15 +1109,15 @@ c     --- of the data overlaps.
         if (my_index == whosendingright(ip)) then
           w = w + 1
           rs = izsendingright(ip) + rightdelta
-          call MPI_ISEND(phi(-delt,-delt,rs),int((nx+1+2*delt)*(ny+1+2*delt),4),
+          call MPI_ISEND(phi(-delt,-delt,rs),int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,ip,messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
       if (whosendingleft(my_index) /= -1) then
         w = w + 1
-        call MPI_IRECV(phi(-delt,-delt,rr),int((nx+1+2*delt)*(ny+1+2*delt),4),
-     &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),4),
+        call MPI_IRECV(phi(-delt,-delt,rr),int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1144,12 +1146,12 @@ c=============================================================================
 c This routine sends out and receives boundary data for the MG field solver.
 c This only sends plane iz=0 when there are periodic boundary conditions.
 
-      integer(ISZ):: ip,w
+      integer(MPIISZ):: ip,w
 
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves)
-      integer(4  ):: mpirequest(nslaves),mpierror
-      integer(4  ):: messid = 10
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves)
+      integer(MPIISZ):: mpirequest(nslaves),mpierror
+      integer(MPIISZ):: messid = 10
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1171,7 +1173,7 @@ c       --- on the waitall since that message would never be received.
           if (my_index == whosendingleft(ip)) then
             w = w + 1
             call MPI_ISEND(phi(-delt,-delt,zsend),
-     &                     int((nx+1+2*delt)*(ny+1+2*delt),4),
+     &                     int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,ip,messid,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1183,7 +1185,7 @@ c       --- See comments on loop above.
           if (my_index == whosendingright(ip)) then
             w = w + 1
             call MPI_ISEND(phi(-delt,-delt,nz-zsend),
-     &                     int((nx+1+2*delt)*(ny+1+2*delt),4),
+     &                     int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,ip,messid,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1194,8 +1196,8 @@ c       --- See comments on loop above.
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
           call MPI_IRECV(phi(-delt,-delt,nz+zsend),
-     &                   int((nx+1+2*delt)*(ny+1+2*delt),4),
-     &                   MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),4),
+     &                   int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
+     &                   MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                   messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
@@ -1204,8 +1206,8 @@ c       --- See comments on loop above.
         if (whosendingright(my_index) /= -1) then
           w = w + 1
           call MPI_IRECV(phi(-delt,-delt,-zsend),
-     &                   int((nx+1+2*delt)*(ny+1+2*delt),4),
-     &                   MPI_DOUBLE_PRECISION,int(whosendingright(my_index),4),
+     &                   int((nx+1+2*delt)*(ny+1+2*delt),MPIISZ),
+     &                   MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
      &                   messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
@@ -1237,13 +1239,13 @@ c=============================================================================
 
 c This routine sends out and receives boundary data for the MG field solver.
 
-      integer(4  ):: ls,rs
-      integer(4  ):: ip,w
+      integer(MPIISZ):: ls,rs
+      integer(MPIISZ):: ip,w
 
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
-      integer(4  ):: mpirequest(2*nslaves+2),mpierror
-      integer(4  ):: messid
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
+      integer(MPIISZ):: mpirequest(2*nslaves+2),mpierror
+      integer(MPIISZ):: messid
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
       messid = nzfull
@@ -1271,7 +1273,7 @@ c         --- In this case, the izsendingleft(ip) is set to send the guard cell,
 c         --- so override it.
           if (my_index < ip) ls = 0
 
-          call MPI_ISEND(rho(0,0,ls),int((nx+1)*(ny+1),4),
+          call MPI_ISEND(rho(0,0,ls),int((nx+1)*(ny+1),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,ip,messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
 
@@ -1283,8 +1285,8 @@ c     --- finer level don't need a rho sent to it.
       if (whosendingright(my_index) /= -1 .and. 
      &    .not. (izfsslave(my_index)==0 .and. lzoffset(my_index)==0)) then
         w = w + 1
-        call MPI_IRECV(rho(0,0,0),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),4),
+        call MPI_IRECV(rho(0,0,0),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1306,7 +1308,7 @@ c         --- In this case, the izsendingright(ip) is set to send the guard cell
 c         --- so override it.
           if (my_index > ip) rs = nz
 
-          call MPI_ISEND(rho(0,0,rs),int((nx+1)*(ny+1),4),
+          call MPI_ISEND(rho(0,0,rs),int((nx+1)*(ny+1),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,ip,messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
 
@@ -1319,8 +1321,8 @@ c     --- finer level don't need a rho sent to it.
      &    .not. (izfsslave(my_index)+nzfsslave(my_index)==nzfull .and.
      &           rzoffset(my_index)==0.)) then
         w = w + 1
-        call MPI_IRECV(rho(0,0,nz),int((nx+1)*(ny+1),4),
-     &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),4),
+        call MPI_IRECV(rho(0,0,nz),int((nx+1)*(ny+1),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
@@ -1346,10 +1348,10 @@ c ordering as would be in serial. Primarily used for debugging purposes.
 c It is maintained in case it is needed for future use since there is some subtlty
 c to getting it correct.
 
-      integer(4  ):: ix,iy,iz,lastz,firstz
+      integer(MPIISZ):: ix,iy,iz,lastz,firstz
       include "mpif.h"
-      integer(4  ):: mpierror,mpistatus(MPI_STATUS_SIZE)
-      integer(4  ):: messid = 999
+      integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+      integer(MPIISZ):: messid = 999
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1367,7 +1369,7 @@ c     lastz = nz - 2
 c Each processor prints out its data and then sends a message to the next so it
 c can print its data.
       if (my_index > 0) then
-        call MPI_RECV(firstz,1_4,MPI_INTEGER,int(my_index-1,4),messid,
+        call MPI_RECV(firstz,int(1,MPIISZ),MPI_INTEGER,int(my_index-1,MPIISZ),messid,
      &                MPI_COMM_WORLD,mpistatus,mpierror)
         firstz = firstz - izs
       else
@@ -1391,7 +1393,7 @@ c the processors deal with files.
       close(22)
 
       if (my_index < nslaves - 1) then
-        call MPI_SEND(izs+lastz+1,1_4,MPI_INTEGER,int(my_index+1,4),messid,
+        call MPI_SEND(izs+lastz+1,int(1,MPIISZ),MPI_INTEGER,int(my_index+1,MPIISZ),messid,
      &                MPI_COMM_WORLD,mpierror)
       endif
 
@@ -1436,13 +1438,13 @@ c of nzpslave to overlap further than the 2 cells - currently needed only
 c for special cases of injection. Nonetheless, having the limits makes the
 c more robust to future changes.
 
-      integer(4  ):: left_pe,right_pe
-      integer(4  ):: left_iz,right_iz,left_nz,right_nz,nn
-      integer(4  ):: ix,iy,iz
+      integer(MPIISZ):: left_pe,right_pe
+      integer(MPIISZ):: left_iz,right_iz,left_nz,right_nz,nn
+      integer(MPIISZ):: ix,iy,iz
       integer(ISZ),allocatable:: buffer(:,:,:,:)
       include "mpif.h"
-      integer(4  ):: messid = 50
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
+      integer(MPIISZ):: messid = 50
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1535,24 +1537,24 @@ c  Only first and last processors do anything.
 
       real(kind=8):: jtemp(0:2,0:bfield%nx,0:bfield%ny)
       include "mpif.h"
-      integer(4  ):: nn
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
-      integer(4  ):: messid = 70
+      integer(MPIISZ):: nn
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(MPIISZ):: messid = 70
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
  
       if (my_index == nslaves-1) then
-        nn = int(3*(bfield%nx+1)*(bfield%ny+1),4)
+        nn = int(3*(bfield%nx+1)*(bfield%ny+1),MPIISZ)
         call MPI_ISEND(bfield%j(:,:,:,bfield%nz),nn,MPI_DOUBLE_PRECISION,
-     &                 0_4,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 int(0,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
         call MPI_RECV(bfield%j(:,:,:,bfield%nz),nn,MPI_DOUBLE_PRECISION,
-     &                0_4,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                int(0,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == 0) then
         call MPI_RECV(jtemp,nn,MPI_DOUBLE_PRECISION,
-     &            int(nslaves-1,4),messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &            int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
         bfield%j(:,:,:,0) = bfield%j(:,:,:,0) + jtemp
         call MPI_ISEND(bfield%j(:,:,:,0),nn,MPI_DOUBLE_PRECISION,
-     &             int(nslaves-1,4),messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &             int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
       if (my_index == 0 .or. my_index == nslaves-1) then
@@ -1577,14 +1579,14 @@ c will be done. This assumes that each processor "owns" j from
 c iz=0 to either iz=nz-1 or nz-2 depending on the overlap. Each is
 c only responsible for sending out the j is owns.
 
-      integer(4  ):: i,right_nz,nn
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,right_nz,nn
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
-      integer(4  ):: mpirequest(nslaves)
-      integer(4  ):: w
-      integer(4  ):: messid = 60
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(MPIISZ):: mpirequest(nslaves)
+      integer(MPIISZ):: w
+      integer(MPIISZ):: messid = 60
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1618,7 +1620,7 @@ c     --- Copy any data locally as well.
         if (nzsend(i) > 0) then
           if (i /= my_index) then
             w = w + 1
-            nn = int(3*nzsend(i)*(bfieldp%nx+1)*(bfieldp%ny+1),4)
+            nn = int(3*nzsend(i)*(bfieldp%nx+1)*(bfieldp%ny+1),MPIISZ)
             call MPI_ISEND(bfield%j(:,:,:,izsend(i)),nn,
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
@@ -1633,7 +1635,7 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if (i /= my_index) then
           if (nzrecv(i) > 0) then
-            nn = int(3*nzrecv(i)*(bfield%nx+1)*(bfield%ny+1),4)
+            nn = int(3*nzrecv(i)*(bfield%nx+1)*(bfield%ny+1),MPIISZ)
             call MPI_RECV(bfield%j(:,:,:,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
@@ -1666,29 +1668,29 @@ c  sets slice at nz+1 equal to the slice at 1
 c  Only first and last processors do anything.
 
       include "mpif.h"
-      integer(4  ):: nn1,nn2
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
-      integer(4  ):: messid = 70
+      integer(MPIISZ):: nn1,nn2
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(MPIISZ):: messid = 70
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
  
-      nn1 = int(3*1*(bfield%nx+3)*(bfield%ny+3),4)
-      nn2 = int(3*2*(bfield%nx+3)*(bfield%ny+3),4)
+      nn1 = int(3*1*(bfield%nx+3)*(bfield%ny+3),MPIISZ)
+      nn2 = int(3*2*(bfield%nx+3)*(bfield%ny+3),MPIISZ)
       if (my_index == 0) then
         call MPI_ISEND(bfield%j(:,:,:,0:1),nn2,MPI_DOUBLE_PRECISION,
-     &             int(nslaves-1,4),messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &             int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       else if (my_index == nslaves-1) then
         call MPI_ISEND(bfield%j(:,:,:,bfield%nz-1),nn1,MPI_DOUBLE_PRECISION,
-     &                 0_4,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 int(0,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
       if (my_index == 0) then
         call MPI_RECV(bfield%j(:,:,:,-1),nn1,MPI_DOUBLE_PRECISION,
-     &                int(nslaves-1,4),messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == nslaves-1) then
         call MPI_RECV(bfield%j(:,:,:,bfield%nz:bfield%nz+1),nn2,
      &                MPI_DOUBLE_PRECISION,
-     &                0_4,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                int(0,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       endif
 
       if (my_index == 0 .or. my_index == nslaves-1) then
@@ -1712,14 +1714,14 @@ c Get the B for the extent where the particles are. This gets B from
 c neighboring processors, and at the very least gets B in the guard planes,
 c iz=-1 and +1.
 
-      integer(4  ):: i,nn
-      integer(4  ):: izglobal,izmaxp,izmaxfs
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,nn
+      integer(MPIISZ):: izglobal,izmaxp,izmaxfs
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
-      integer(4  ):: mpierror,w
-      integer(4  ):: messid = 80
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(MPIISZ):: mpierror,w
+      integer(MPIISZ):: messid = 80
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1752,7 +1754,7 @@ c     --- Send the data out to processors that need it.
         if (nzsend(i) > 0) then
           if ( i /= my_index) then
             w = w + 1
-            nn = int(3*nzsend(i)*(bfield%nx+1)*(bfield%ny+1),4)
+            nn = int(3*nzsend(i)*(bfield%nx+1)*(bfield%ny+1),MPIISZ)
             call MPI_ISEND(bfield%b(:,:,:,izsend(i)),nn,
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
@@ -1767,7 +1769,7 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           if (nzrecv(i) > 0) then
-            nn = int(3*nzrecv(i)*(bfieldp%nx+1)*(bfieldp%ny+1),4)
+            nn = int(3*nzrecv(i)*(bfieldp%nx+1)*(bfieldp%ny+1),MPIISZ)
             call MPI_RECV(bfieldp%b(:,:,:,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
@@ -1797,14 +1799,14 @@ c Get the A for the full extent where the fields are. This gets A from
 c neighboring processors, and at the very least gets A in the guard planes,
 c iz=-1 and +1.
 
-      integer(4  ):: i,nn
-      integer(4  ):: izglobal,izmax,izmaxfs
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,nn
+      integer(MPIISZ):: izglobal,izmax,izmaxfs
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
-      integer(4  ):: mpierror,w
-      integer(4  ):: messid = 81
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(MPIISZ):: mpierror,w
+      integer(MPIISZ):: messid = 81
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 

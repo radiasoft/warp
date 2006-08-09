@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.34 $, $Date: 2006/03/28 02:08:55 $
+c W3DSLAVE.M, version $Revision: 1.35 $, $Date: 2006/08/09 01:27:14 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -30,11 +30,11 @@ c This is the routine which divies up the work among the slaves.
       real(kind=8):: zinjmax(ninject)
       real(kind=8):: zperproc,avezpp,ztot,sumzslave,zlast
       real(kind=8):: zpmin,zpmax
-      logical(4  ):: w3dinitialized
+      logical(MPIISZ):: w3dinitialized
       data w3dinitialized/.false./
       save w3dinitialized
-      logical(4  ):: initialized
-      integer(4  ):: mpierror,nslavestmp,my_indextmp
+      logical(MPIISZ):: initialized
+      integer(MPIISZ):: mpierror,nslavestmp,my_indextmp
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -337,7 +337,7 @@ c reciprocals of the sw of each processor, and so depends only on the
 c total number of particles.
       real(kind=8):: swtemp(ns)
       integer(ISZ):: is
-      integer(4  ):: mpierror
+      integer(MPIISZ):: mpierror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -345,7 +345,7 @@ c total number of particles.
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
       swtemp = sw
-      call MPI_ALLREDUCE(swtemp,sw,int(ns,4),MPI_DOUBLE_PRECISION,MPI_SUM,
+      call MPI_ALLREDUCE(swtemp,sw,int(ns,MPIISZ),MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
@@ -386,13 +386,13 @@ c of nzpslave to overlap further than the 2 cells - currently needed only
 c for special cases of injection. Nonetheless, having the limits makes the
 c more robust to future changes.
 
-      integer(4  ):: left_pe,right_pe
-      integer(4  ):: left_iz,right_iz,left_nz,right_nz,nn
-      integer(4  ):: ix,iy,iz
+      integer(MPIISZ):: left_pe,right_pe
+      integer(MPIISZ):: left_iz,right_iz,left_nz,right_nz,nn
+      integer(MPIISZ):: ix,iy,iz
       real(kind=8),allocatable:: buffer(:,:,:)
       include "mpif.h"
-      integer(4  ):: messid = 50
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
+      integer(MPIISZ):: messid = 50
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -499,17 +499,17 @@ c of nzpslave to overlap further than the 2 cells - currently needed only
 c for special cases of injection. Nonetheless, having the limits makes the
 c more robust to future changes.
 
-      integer(4  ):: left_pe,right_pe
-      integer(4  ):: left_iz,right_iz,left_nz,right_nz
-      integer(4  ):: nzpfull,nn,nz,izl,nzl
-      integer(4  ),allocatable:: izoverlap(:)
-      integer(4  ):: iz_comm
-      integer(4  ):: iz,ip,iz1,iz2,iw
-      integer(4  ):: color
+      integer(MPIISZ):: left_pe,right_pe
+      integer(MPIISZ):: left_iz,right_iz,left_nz,right_nz
+      integer(MPIISZ):: nzpfull,nn,nz,izl,nzl
+      integer(MPIISZ),allocatable:: izoverlap(:)
+      integer(MPIISZ):: iz_comm
+      integer(MPIISZ):: iz,ip,iz1,iz2,iw
+      integer(MPIISZ):: color
       real(kind=8),allocatable:: buffer(:,:,:),buffer2d(:,:)
       include "mpif.h"
-      integer(4  ):: messid = 50
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,2),mpierror,mpirequest(2)
+      integer(MPIISZ):: messid = 50
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,2),mpierror,mpirequest(2)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 c     print*,"sumrhoondomainboundaries ",my_index
@@ -621,7 +621,7 @@ c             --- First setup the communicator
               else
                 color = MPI_UNDEFINED
               endif
-              call MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0_4,iz_comm,mpierror)
+              call MPI_COMM_SPLIT(MPI_COMM_WORLD,color,int(0,MPIISZ),iz_comm,mpierror)
               if (color == 1) then
                 call MPI_ALLREDUCE(rhop(:,:,iz-izpslave(my_index)),buffer2d,nn,
      &                             MPI_DOUBLE_PRECISION,MPI_SUM,iz_comm,
@@ -665,15 +665,15 @@ c=============================================================================
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
 
       integer(ISZ):: allocerror
-      integer(4  ):: i,nn,i1,i2,iz,nzbuff
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,nn,i1,i2,iz,nzbuff
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       real(kind=8),allocatable:: sendbuffer(:,:,:),recvbuffer(:,:,:)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
-      integer(4  ):: mpirequest(nslaves)
-      integer(4  ):: w
-      integer(4  ):: messid = 50
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(MPIISZ):: mpirequest(nslaves)
+      integer(MPIISZ):: w
+      integer(MPIISZ):: messid = 50
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -683,7 +683,7 @@ c     --- First, calculate what data needs to be sent.
         nzsend(i) = min(izpslave(my_index)+nzpslave(my_index),
      &                  izpslave(i)+nzpslave(i))
      &             - max(izpslave(my_index),izpslave(i)) + 1
-        nzsend(i) = max(0_4,nzsend(i))
+        nzsend(i) = max(int(0,MPIISZ),nzsend(i))
       enddo
       nzsend(my_index) = 0
 
@@ -720,7 +720,7 @@ c     --- they get posted as soon as possible.
         nzrecv(i) = min(izpslave(my_index)+nzpslave(my_index),
      &                  izpslave(i)+nzpslave(i))
      &             - max(izpslave(my_index),izpslave(i)) + 1
-        nzrecv(i) = max(0_4,nzrecv(i))
+        nzrecv(i) = max(int(0,MPIISZ),nzrecv(i))
       enddo
       nzrecv(my_index) = 0
 
@@ -757,15 +757,15 @@ c=============================================================================
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
 
       integer(ISZ):: allocerror
-      integer(4  ):: i,nn,i1,i2,iz,nzbuff
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,nn,i1,i2,iz,nzbuff
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       real(kind=8),allocatable:: sendbuffer(:,:,:),recvbuffer(:,:,:)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
-      integer(4  ):: mpirequest(nslaves)
-      integer(4  ):: w
-      integer(4  ):: messid = 50
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(MPIISZ):: mpirequest(nslaves)
+      integer(MPIISZ):: w
+      integer(MPIISZ):: messid = 50
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -775,7 +775,7 @@ c     --- First, calculate what data needs to be sent.
         nzsend(i) = min(izpslave(my_index)+nzpslave(my_index),
      &                  izpslave(i)+nzpslave(i))
      &             - max(izpslave(my_index),izpslave(i)) + 1
-        nzsend(i) = max(0_4,nzsend(i))
+        nzsend(i) = max(int(0,MPIISZ),nzsend(i))
       enddo
       nzsend(my_index) = 0
 
@@ -814,7 +814,7 @@ c     --- they get posted as soon as possible.
         nzrecv(i) = min(izpslave(my_index)+nzpslave(my_index),
      &                  izpslave(i)+nzpslave(i))
      &             - max(izpslave(my_index),izpslave(i)) + 1
-        nzrecv(i) = max(0_4,nzrecv(i))
+        nzrecv(i) = max(int(0,MPIISZ),nzrecv(i))
       enddo
       nzrecv(my_index) = 0
 
@@ -855,22 +855,22 @@ c  sets slice at nz+1 equal to the slice at 1
 c  Only first and last processors do anything.
       real(kind=8):: rhotemp(0:nx,0:ny)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
-      integer(4  ):: messid = 70
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(MPIISZ):: messid = 70
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
  
       if (my_index == nslaves-1) then
-        call MPI_ISEND(rho(0,0,nz),int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &                 0_4,messid,MPI_COMM_WORLD,mpirequest,mpierror)
-        call MPI_RECV(rho(0,0,nz),int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &                0_4,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+        call MPI_ISEND(rho(0,0,nz),int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &                 int(0,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
+        call MPI_RECV(rho(0,0,nz),int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &                int(0,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == 0) then
-        call MPI_RECV(rhotemp,int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &            int(nslaves-1,4),messid,MPI_COMM_WORLD,mpistatus,mpierror)
+        call MPI_RECV(rhotemp,int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &            int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
         rho(:,:,0) = rho(:,:,0) + rhotemp
-        call MPI_ISEND(rho(0,0,0),int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &             int(nslaves-1,4),messid,MPI_COMM_WORLD,mpirequest,mpierror)
+        call MPI_ISEND(rho(0,0,0),int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &             int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
       if (my_index == 0 .or. my_index == nslaves-1) then
@@ -897,14 +897,14 @@ c will be done. This assumes that each processor "owns" rho from
 c iz=0 to either iz=nz-1 or nz-2 depending on the overlap. Each is
 c only responsible for sending out the rho is owns.
 
-      integer(4  ):: i,right_nz,onz
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,right_nz,onz
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
-      integer(4  ):: mpirequest(nslaves)
-      integer(4  ):: w
-      integer(4  ):: messid = 60
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(MPIISZ):: mpirequest(nslaves)
+      integer(MPIISZ):: w
+      integer(MPIISZ):: messid = 60
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -959,7 +959,7 @@ c     --- Copy any data locally as well.
         if (nzsend(i) > 0) then
           if (i /= my_index) then
             w = w + 1
-            call MPI_ISEND(rhop(0,0,izsend(i)),int(nzsend(i)*(nxp+1)*(nyp+1),4),
+            call MPI_ISEND(rhop(0,0,izsend(i)),int(nzsend(i)*(nxp+1)*(nyp+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
@@ -979,7 +979,7 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if (i /= my_index) then
           if (nzrecv(i) > 0) then
-            call MPI_RECV(rho(0,0,izrecv(i)),int(nzrecv(i)*(nx+1)*(ny+1),4),
+            call MPI_RECV(rho(0,0,izrecv(i)),int(nzrecv(i)*(nx+1)*(ny+1),MPIISZ),
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
@@ -1009,25 +1009,25 @@ c  sets slice at -1 equal to the slice at nz-1
 c  sets slice at nz+1 equal to the slice at 1
 c  Only first and last processors do anything.
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
-      integer(4  ):: messid = 70
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(MPIISZ):: messid = 70
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
  
       if (my_index == 0) then
-        call MPI_ISEND(phi(0,0,0),int(2*(nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &             int(nslaves-1,4),messid,MPI_COMM_WORLD,mpirequest,mpierror)
+        call MPI_ISEND(phi(0,0,0),int(2*(nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &             int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       else if (my_index == nslaves-1) then
-        call MPI_ISEND(phi(0,0,nz-1),int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &                 0_4,messid,MPI_COMM_WORLD,mpirequest,mpierror)
+        call MPI_ISEND(phi(0,0,nz-1),int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &                 int(0,MPIISZ),messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
       if (my_index == 0) then
-        call MPI_RECV(phi(0,0,-1),int((nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &                int(nslaves-1,4),messid,MPI_COMM_WORLD,mpistatus,mpierror)
+        call MPI_RECV(phi(0,0,-1),int((nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &                int(nslaves-1,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == nslaves-1) then
-        call MPI_RECV(phi(0,0,nz),int(2*(nx+1)*(ny+1),4),MPI_DOUBLE_PRECISION,
-     &                0_4,messid,MPI_COMM_WORLD,mpistatus,mpierror)
+        call MPI_RECV(phi(0,0,nz),int(2*(nx+1)*(ny+1),MPIISZ),MPI_DOUBLE_PRECISION,
+     &                int(0,MPIISZ),messid,MPI_COMM_WORLD,mpistatus,mpierror)
       endif
 
       if (my_index == 0 .or. my_index == nslaves-1) then
@@ -1053,14 +1053,14 @@ c Get the phi for the extent where the particles are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
-      integer(4  ):: i
-      integer(4  ):: izglobal,izmaxp,izmaxfs
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i
+      integer(MPIISZ):: izglobal,izmaxp,izmaxfs
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
-      integer(4  ):: mpierror,w
-      integer(4  ):: messid = 80
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(MPIISZ):: mpierror,w
+      integer(MPIISZ):: messid = 80
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1093,7 +1093,7 @@ c     --- Send the data out to processors that need it.
         if (nzsend(i) > 0) then
           if ( i /= my_index) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,izsend(i)),int(nzsend(i)*(nx+1)*(ny+1),4),
+            call MPI_ISEND(phi(0,0,izsend(i)),int(nzsend(i)*(nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
@@ -1107,7 +1107,7 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           if (nzrecv(i) > 0) then
-            call MPI_RECV(phip(0,0,izrecv(i)),int(nzrecv(i)*(nxp+1)*(nyp+1),4),
+            call MPI_RECV(phip(0,0,izrecv(i)),int(nzrecv(i)*(nxp+1)*(nyp+1),MPIISZ),
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
@@ -1136,14 +1136,14 @@ c Get the phi for the full extent where the fields are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
-      integer(4  ):: i,nn
-      integer(4  ):: izglobal,izmax,izmaxfs
-      integer(4  ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
-      integer(4  ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
+      integer(MPIISZ):: i,nn
+      integer(MPIISZ):: izglobal,izmax,izmaxfs
+      integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
-      integer(4  ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
-      integer(4  ):: mpierror,w
-      integer(4  ):: messid = 81
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(MPIISZ):: mpierror,w
+      integer(MPIISZ):: messid = 81
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 

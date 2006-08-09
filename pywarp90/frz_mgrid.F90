@@ -3434,9 +3434,9 @@ END subroutine relaxbndxzwguard
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd
 
-    INTEGER(4) :: nr,nz
-    INTEGER(4) :: p_up, p_down, nsize
-    integer(4) :: mpi_req(2*nslaves+2),mpistatus(MPI_STATUS_SIZE,2*nslaves+2),mpierror,ir
+    INTEGER(MPIISZ) :: nr,nz
+    INTEGER(MPIISZ) :: p_up, p_down, nsize
+    integer(MPIISZ) :: mpi_req(2*nslaves+2),mpistatus(MPI_STATUS_SIZE,2*nslaves+2),mpierror,ir
 
     
 !    write(o_line,*) my_index,':enter exchangefbnd'
@@ -3485,9 +3485,9 @@ END subroutine relaxbndxzwguard
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd, izf
 
-    INTEGER(4) :: nr,nz
-    INTEGER(4) :: p_up, p_down
-    integer(4) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir
+    INTEGER(MPIISZ) :: nr,nz
+    INTEGER(MPIISZ) :: p_up, p_down
+    integer(MPIISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir
 
     real(8), allocatable, dimension(:) :: ftmpd, ftmpu, ftmpds, ftmpus
     
@@ -3558,7 +3558,7 @@ END subroutine relaxbndxzwguard
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd
 
-    INTEGER(4) :: nr,nz,i
+    INTEGER(MPIISZ) :: nr,nz,i
     INTEGER(ISZ) :: p_up, p_down
 
     REAL(8), DIMENSION(0:SIZE(f,1)-1) :: fr,fl
@@ -3611,9 +3611,9 @@ END subroutine relaxbndxzwguard
     REAL(8), INTENT(IN OUT) :: rho(1:,1:)!rho(1:nr+1,1:nz+1)
     INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd
 
-    INTEGER(4) :: nr,nz
-    INTEGER(4) :: p_up, p_down
-    integer(4) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir,j
+    INTEGER(MPIISZ) :: nr,nz
+    INTEGER(MPIISZ) :: p_up, p_down
+    integer(MPIISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir,j
     real(8), allocatable, dimension(:) :: fd, fu
 
 !    write(o_line,*) my_index,':enter exchangeres'
@@ -3675,8 +3675,8 @@ END subroutine relaxbndxzwguard
     REAL(8), INTENT(IN OUT) :: f(1:,1:)!f(1:nr+1,1:nz+1)
     INTEGER(ISZ), INTENT(IN) :: level, izlbnd, izrbnd
 
-    INTEGER(4) :: nz, p_up, p_down, j, nr
-    integer(4) :: mpi_req(2),mpistatus(MPI_STATUS_SIZE,2),mpierror,ir
+    INTEGER(MPIISZ) :: nz, p_up, p_down, j, nr
+    integer(MPIISZ) :: mpi_req(2),mpistatus(MPI_STATUS_SIZE,2),mpierror,ir
     real(8), allocatable, dimension(:,:) :: fd, fu
 
 !    write(o_line,*) my_index,':enter merge'
@@ -7727,8 +7727,8 @@ TYPE(GRIDtype) :: grid
 
 INTEGER(ISZ) :: i, ilg, iug, ilp, iup, il, iu, j, l, ii, ll, jex, lex
 
-integer(4):: mpistatus(MPI_STATUS_SIZE)
-INTEGER(4):: mpirequest,mpierror
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+INTEGER(MPIISZ):: mpirequest,mpierror
 
 logical(ISZ) :: testthis=.false.
 INTEGER(ISZ), ALLOCATABLE :: wz(:)
@@ -7846,8 +7846,8 @@ implicit none
 TYPE(GRIDtype) :: grid
 
 INTEGER(ISZ) :: i, ilg, iug, ilp, iup, il, iu, j,l, ll, jex, lex, testeq
-integer(4):: mpistatus(MPI_STATUS_SIZE)
-INTEGER(4):: mpirequest,mpierror
+integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+INTEGER(MPIISZ):: mpirequest,mpierror
 
 logical(ISZ) :: testthis=.false.
 
