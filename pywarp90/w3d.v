@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.225 $, $Date: 2006/06/29 16:46:38 $
+#@(#) File W3D.V, version $Revision: 3.226 $, $Date: 2006/08/09 00:12:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.225 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.226 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -897,6 +897,7 @@ inj_smoother(nx:integer,ny:integer,inj_phi(0:nx,0:ny):real,
              inj_nsmooth:integer) subroutine
 getinj_phi() subroutine
 getinj_phi_3d() subroutine
+gettinj_phi() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
 fetche3dfrompositions(is:integer,indts:integer,n:integer,
                       x(n):real,y(n):real,z(n):real,
@@ -1093,7 +1094,9 @@ timeinjctint real /0./
 timefill_inj real /0./
 timeinj_transform real /0./
 timegetinj_phi real /0./
+timegettinj_phi real /0./
 timeinj_sete3d real /0./
+timetinj_sete3d real /0./
 timeinj_addtemp3d real /0./
 timeinj_setrho3d real /0./
 timeinj_setrhomr real /0./
