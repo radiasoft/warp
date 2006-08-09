@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.277 $, $Date: 2006/07/31 23:07:42 $
+c@(#) File W3D.F, version $Revision: 3.278 $, $Date: 2006/08/09 00:12:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -847,6 +847,7 @@ c         --- calculated.
 
 c  Set the potential near the emitting surface.
       call getinj_phi()
+      call gettinj_phi()
 
 c  Set the transverse E fields near any defined apertures.
       call set_aperture_e()
