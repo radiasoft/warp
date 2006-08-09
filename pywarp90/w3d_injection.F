@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.60 $, $Date: 2006/08/08 19:22:35 $
+c@(#) File w3d_injection.F, version $Revision: 1.61 $, $Date: 2006/08/09 00:11:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1237,8 +1237,12 @@ c           --- are particles which still have noninteger pid(:,injpid).
 
             i1 = pgroup%ins(is)
             i2 = pgroup%ins(is)+pgroup%nps(is)-1
-            mask = ((pgroup%pid(i1:i2,injpid) -
-     &           int(pgroup%pid(i1:i2,injpid))))
+            where (pgroup%pid(i1:i2,injpid) < ninject+1)
+              mask = ((pgroup%pid(i1:i2,injpid) -
+     &             int(pgroup%pid(i1:i2,injpid))))
+            elsewhere
+              mask = 0.
+            endwhere
             nn = COUNT(mask > 0.)
 #endif
 
@@ -1272,8 +1276,8 @@ c           --- Assume that injection will never be done inside a bend.
 
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
-            i1 = pgroup%ins(is)
-            i2 = pgroup%ins(is)+npinje_s(isid)-1
+            i1 = pgroup%ins(is)+ntinject(isid)
+            i2 = pgroup%ins(is)+ntinject(isid)+npinje_s(isid)-1
             tt(1:nn) = fulldt_s*(pgroup%pid(i1:i2,injpid) -
      &                       int(pgroup%pid(i1:i2,injpid)))
 c           --- Create equivalences
@@ -1348,8 +1352,8 @@ c           --- Advance relativistic Gamma factor
 
 #ifdef MPIPARALLEL
 c           --- Copy data back into the particle arrays
-            i1 = pgroup%ins(is)
-            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            i1 = pgroup%ins(is)+ntinject(isid)
+            i2 = pgroup%ins(is)+ntinject(isid)+pgroup%nps(is)-1
             pgroup%xp(i1:i2) = UNPACK(xx,mask>0.,pgroup%xp(i1:i2))
             pgroup%yp(i1:i2) = UNPACK(yy,mask>0.,pgroup%yp(i1:i2))
             pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
@@ -1442,17 +1446,16 @@ c                 --- emitting surface.
 
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface.
-                  ehalf = rri*(vtinject(ij) -
-     &                     phip(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) -
-     &                     phip(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) -
-     &                     phip(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  -
-     &                     phip(i2x+1,i2y+1,iz)*    w2x *    w2y  )
+c                 --- Average this over the four corners of this square.
+                  ehalf = rri*0.25*(tinj_phi(ith  ,iz,ij)+tinj_phi(ith  ,iz+1,ij) +
+     &                              tinj_phi(ith+1,iz,ij)+tinj_phi(ith+1,iz+1,ij))
 
 c                 --- normal velocity
                   vnorm = fulldt_s*qoverm*ehalf
 
 c                 --- Axial velocity
 c                 --- Calculated using axial E field dx from surface.
+c                 --- Keep this as it is in case rtinject varies.
                   vznorm = fulldt_s*qoverm* 0.5*dzi*(
      &     (phip(i2x  ,i2y  ,iz-1) - phip(i2x  ,i2y  ,iz+1))*(1.-w2x)*(1.-w2y) +
      &     (phip(i2x+1,i2y  ,iz-1) - phip(i2x+1,i2y  ,iz+1))*    w2x *(1.-w2y) +
@@ -1494,7 +1497,7 @@ c                   --- get charge density at injection point
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
-                  call chckpart(pgroup,is,npinje_s(isid) +
+                  call chckpart(pgroup,is,ntinject(isid) +
      &                             nn*nttinj(ij)*(nztinjmx(ij)-nztinjmn(ij)),
      &                          0,.true.)
                   call chckpart(pgroup,is,nn,0,.true.)
@@ -1505,7 +1508,7 @@ c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     pgroup%zp(ii) = zm + wz*inj_dz
                     rr = wrandom(xrandom,injctcnt,dig2,1,1)
-                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz + rr*rrr
+                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
                     pgroup%xp(ii) = xtinject(ij) + rp*cos(t)
@@ -1518,6 +1521,7 @@ c                   --- calculate position of new particle
      &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                     pgroup%uzp(ii) = vznorm*rr + vthz_s(isid)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
+                    if (pgroup%uzp(ii) == 0.) pgroup%uzp(ii) = SMALLPOS
                     if (lrelativ) then
                       pgroup%gaminv(ii) = sqrt(1.-
      &     (pgroup%uxp(ii)**2+pgroup%uyp(ii)**2+pgroup%uzp(ii)**2)*clightsqi)
@@ -1533,6 +1537,7 @@ c                   --- increment particle counter
 c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
                     pgroup%pid(ii,:) = 0.
+                    pgroup%pid(ii,injpid) = ninject + ij + rnrev(injctcnt,dig5)
 c                   --- Save SSN 
                     if (spid>0) then
                       pgroup%pid(ii,spid) = ssn
@@ -1555,49 +1560,281 @@ c           --- end loop over species
 c         --- end loop over transverse injection sources
           enddo
 
-c         --- Sum ntinject to get total number of particles injected.
+c         --- Call transverse particle scraping routine to force
+c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            npinject = npinject + ntinject(isid)
+            ii = pgroup%ins(is) - npinje_s(isid) - ntinject(isid)
+            if (ntinject(isid) > 0) then
+              call stckxy3d(ntinject(isid),pgroup%xp(ii),xmmax,xmmin,dx,
+     &                      pgroup%yp(ii),ymmax,
+     &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
+     &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
+     &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
+              call processlostpart(pgroup,is,clearlostpart,time,zbeam)
+            endif
           enddo
 
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+            if (.not. pgroup%ldts(is)) cycle
+c           --- Sum ntinject to get the total number of particles injected.
+            npinject = npinject + ntinject(isid)
+
+c           --- make injected particles live particles
+            pgroup%ins(is) = pgroup%ins(is) - ntinject(isid)
+            pgroup%nps(is) = pgroup%nps(is) + ntinject(isid)
+          enddo
 
 c         --- print warning if no particles were injected
           if (npinject == 0) then
             call remark("No particles were injected transversely.")
           endif
 
-c         --- load new particles into rho
-c         --- This must be done after all of the particles for this timestep
-c         --- are injected.
+c         --- Now, advance the particles off of the emitting surface using
+c         --- isochronous leapfrog.  Each particle has it's own time step
+c         --- size, uniformly distributed between 0 and dt.
+          do is=1,pgroup%ns
+            isid = pgroup%sid(is-1) + 1
+c           --- Skip this if no particles of this species were injected.
+            if (.not. pgroup%ldts(is)) cycle
+            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            if(ntinject(isid)==0) cycle
+
+c           --- Make sure that there is enough room in the temporary arrays.
+            if (ntinject(isid) > npgrp) then
+              npgrp = ntinject(isid)
+              call gchange("Setpwork3d",0)
+            endif
+
+c           --- Make equivalences so names make sense below
+            ex => at
+            ey => bt
+            ez => apt
+            bx => bpt
+            by => xct
+            bz => xpct
+            bendres => yct
+            bendradi => ypct
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
+
+c           --- Create equivalences
+c           --- In this section of code, this is purely for convenience
+c           --- and to make the following code look cleaner.
+            nn = ntinject(isid)
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+ntinject(isid)-1
+            xx => pgroup%xp(i1:i2)
+            yy => pgroup%yp(i1:i2)
+            zz => pgroup%zp(i1:i2)
+            ux => pgroup%uxp(i1:i2)
+            uy => pgroup%uyp(i1:i2)
+            uz => pgroup%uzp(i1:i2)
+            gg => pgroup%gaminv(i1:i2)
+            id => pgroup%pid(i1:i2,injpid)
+
+c           --- get E self-field at initial positions
+            if (linj_efromgrid) then
+              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+     &                                   ex,ey,ez)
+              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+            endif
+            call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
+
+c           --- get external fields at initial positions
+            call exteb3d(nn,xx,yy,zz,uz,gg,0.,fulldt_s*0.5,bx,by,bz,ex,ey,ez,
+     &                   pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+
+c           --- Fetch the time step size
+            tt(1:nn) = fulldt_s*(id - int(id))
+
+c           --- do half velocity advance with E fields
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),tt,0.5)
+
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
+
+c           --- do half velocity advance with B fields
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5,ibpush)
+
+c           --- do full position advance
+            call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,tt)
+
+c           --- setrho is now done by the setrho call in padvnc3d.
+          enddo
+
+        elseif (itask == 2) then
+c Do second part of constant current injection: get new E fields (this is
+c done after field solve including injected particles), synchronize velocity
+c with position, and then move velocity one half timestep back to match time
+c level of rest of particles.
+c         --- loop over species
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            call loadrho3d(pgroup,pgroup%ins(is)-npinje_s(isid)-ntinject(isid),
-     &                     pgroup%ins(is)-npinje_s(isid)-1,is,.false.)
-          enddo
-c         if(solvergeom==RZgeom) then
-c           call distribute_rho_rz()
-c           call get_rho_rz(rho(0,0,0),nx,nz,1,0)
-c         end if
+            fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
 
-        elseif (itask == 3) then
-c         --- Only include new particles now, after rest of particles have
-c         --- gone through 'synchv' so position and velocity are at same time
-c         --- level.
+#ifndef MPIPARALLEL
+c           --- Skip this if no particles of this species were injected.
+            if(ntinject(isid)==0) cycle
+            nn = ntinject(isid)
+#else
+c           --- Find particles that were freshly injected. These
+c           --- are particles which still have noninteger pid(:,injpid).
+            allocate(mask(pgroup%nps(is)),stat=allocerror)
+            if (allocerror /= 0) then
+              print*,"inject3d: allocation error ",allocerror,
+     &               ": could not allocate mask to shape ",pgroup%nps(is)
+              stop
+            endif
 
-c         --- make injected particles live particles
-          if (ntinj > 0) then
-            do is=1,pgroup%ns
-              isid = pgroup%sid(is-1) + 1
-              if (.not. pgroup%ldts(is)) cycle
-              pgroup%ins(is) = pgroup%ins(is) - ntinject(isid)
-              pgroup%nps(is) = pgroup%nps(is) + ntinject(isid)
-            enddo
-          endif
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            where (pgroup%pid(i1:i2,injpid) > ninject+1)
+              mask = ((pgroup%pid(i1:i2,injpid) -
+     &             int(pgroup%pid(i1:i2,injpid))))
+            elsewhere
+              mask = 0.
+            endwhere
+            nn = COUNT(mask > 0.)
+#endif
+
+c           --- Make sure that there is enough room in the temporary arrays.
+            if (nn > npgrp) then
+              npgrp = nn
+              call gchange("Setpwork3d",0)
+            endif
+
+c           --- Make equivalences so names make sense below
+            ex => at
+            ey => bt
+            ez => apt
+            bx => bpt
+            by => xct
+            bz => xpct
+            bendres => yct
+            bendradi => ypct
+
+c           --- Zero the B field which is accumulated below
+            ex = 0.
+            ey = 0.
+            ez = 0.
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
+
+#ifndef MPIPARALLEL
+c           --- Fetch time step size
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+ntinject(isid)-1
+            tt(1:nn) = fulldt_s*(pgroup%pid(i1:i2,injpid) -
+     &                       int(pgroup%pid(i1:i2,injpid)))
+c           --- Create equivalences
+            xx => pgroup%xp(i1:i2)
+            yy => pgroup%yp(i1:i2)
+            zz => pgroup%zp(i1:i2)
+            ux => pgroup%uxp(i1:i2)
+            uy => pgroup%uyp(i1:i2)
+            uz => pgroup%uzp(i1:i2)
+            gg => pgroup%gaminv(i1:i2)
+            id => pgroup%pid(i1:i2,injpid)
+#else
+c           --- Create equivalences
+            xx => xt(1:nn)
+            yy => yt(1:nn)
+            zz => zt(1:nn)
+            ux => uxt(1:nn)
+            uy => uyt(1:nn)
+            uz => uzt(1:nn)
+            gg => rt(1:nn)
+            id => perpscal(1:nn)
+c           --- Fetch time step size
+            tt(1:nn) = fulldt_s*PACK(mask,mask > 0.)
+c           --- Copy particle data into temporary arrays, collecting
+c           --- only particles that have been injected this time step.
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            xx = PACK(pgroup%xp(i1:i2),mask > 0.)
+            yy = PACK(pgroup%yp(i1:i2),mask > 0.)
+            zz = PACK(pgroup%zp(i1:i2),mask > 0.)
+            ux = PACK(pgroup%uxp(i1:i2),mask > 0.)
+            uy = PACK(pgroup%uyp(i1:i2),mask > 0.)
+            uz = PACK(pgroup%uzp(i1:i2),mask > 0.)
+            gg = PACK(pgroup%gaminv(i1:i2),mask > 0.)
+            id = PACK(pgroup%pid(i1:i2,injpid),mask > 0.)
+#endif
+
+c           --- calculate new E self-fields
+            if (linj_efromgrid) then
+              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+     &                                   ex,ey,ez)
+              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+            endif
+            call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
+
+c           --- Get external fields at current positions.
+            call exteb3d(nn,xx,yy,zz,uz,gg,-fulldt_s*0.5,0.,bx,by,bz,ex,ey,ez,
+     &                pgroup%sm(is),pgroup%sq(is),bendres,bendradi,1.,fulldt_s)
+
+c           --- complete B advance
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5,ibpush)
+
+c           --- complete the E advance
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),
+     &                    tt,0.5)
+
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
+
+c           --- Now, move velocites back one half a step
+c           --- first half of a backward B advance
+            call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,pgroup%sq(is),pgroup%sm(is),
+     &                    -0.5*fulldt_s,ibpush)
+
+c           --- then half of a backward E advance
+            call epush3d(nn,ux,uy,uz,ex,ey,ez,pgroup%sq(is),pgroup%sm(is),
+     &                    -0.5*fulldt_s)
+
+c           --- Advance relativistic Gamma factor
+            call gammaadv(nn,gg,ux,uy,uz,gamadv,lrelativ)
+
+#ifdef MPIPARALLEL
+c           --- Copy data back into the particle arrays
+            i1 = pgroup%ins(is)
+            i2 = pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%xp(i1:i2) = UNPACK(xx,mask>0.,pgroup%xp(i1:i2))
+            pgroup%yp(i1:i2) = UNPACK(yy,mask>0.,pgroup%yp(i1:i2))
+            pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
+            pgroup%uxp(i1:i2) = UNPACK(ux,mask>0.,pgroup%uxp(i1:i2))
+            pgroup%uyp(i1:i2) = UNPACK(uy,mask>0.,pgroup%uyp(i1:i2))
+            pgroup%uzp(i1:i2) = UNPACK(uz,mask>0.,pgroup%uzp(i1:i2))
+            pgroup%pid(i1:i2,injpid) = int(pgroup%pid(i1:i2,injpid))
+            deallocate(mask)
+#endif
+
+c        --- end of loop over species
+         enddo
 
         endif
+
       endif
 c     --- End of transverse injection
 
@@ -1860,6 +2097,7 @@ c to large number.
         nztmax = max(nztmax, nztinjmx(ij) - nztinjmn(ij))
         if (jmaxtinj(ij) == 0.) jmaxtinj(ij) = LARGEPOS
       enddo
+      call gchange("InjectVars",0)
 
 c Determine what the value of inj_ns should be. It can either be 1 or
 c ns: if only one species will be injected from each source, the it is 1,
@@ -4244,3 +4482,208 @@ c            wz = dd*2.**(inj_nz-iz)-1.
       return
       end
 c===========================================================================
+      subroutine gettinj_phi()
+      use Subtimers3d
+      use Constant
+      use InMesh3d
+      use InjectVars
+      use InjectVars3d
+
+c Calculate potential drop from transverse emitting surface at distance
+c of dx from the surface.
+
+      integer(ISZ):: ij,iz,ith
+      real(kind=8):: aa,rrr
+      real(kind=8):: xx((1+nttinjmax)*(1+nztmax)*ntinj)
+      real(kind=8):: yy((1+nttinjmax)*(1+nztmax)*ntinj)
+      real(kind=8):: zz((1+nttinjmax)*(1+nztmax)*ntinj)
+      integer(ISZ):: ti((1+nttinjmax)*(1+nztmax)*ntinj)
+      integer(ISZ):: zi((1+nttinjmax)*(1+nztmax)*ntinj)
+      integer(ISZ):: in((1+nttinjmax)*(1+nztmax)*ntinj)
+      real(kind=8):: pp((1+nttinjmax)*(1+nztmax)*ntinj)
+      integer(ISZ):: nn,ii,i1,i2
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if (inject < 1 .or. inject > 3) return
+
+      call updateinj_zmminmax()
+
+c     --- loop over injection sources
+c     --- i1 and i2 keep track of the data as new data from each injection
+c     --- source is added. i1 is the starting location for the each set of
+c     --- data and i2 is the location of the last data point.
+      i1 = 1
+      do ij=1,ntinj
+        i2 = i1 - 1
+
+        do iz=0,nztinjmx(ij)-nztinjmn(ij)
+          do ith=0,nttinj(ij)
+
+            i2 = i2 + 1
+
+            aa = ith*2.*pi/nttinj(ij)
+            rrr = sign(inj_dx,rtinject(iz,ij))
+            xx(i2) = xtinject(ij) + (rtinject(iz,ij) + rrr)*cos(aa)
+            yy(i2) = ytinject(ij) + (rtinject(iz,ij) + rrr)*sin(aa)
+            zz(i2) = zmmin + iz*inj_dz
+
+c           --- Save coordinates relative to injection grid.
+            zi(i2) = iz
+            ti(i2) = ith
+            in(i2) = ij
+
+          enddo
+        enddo
+
+c       --- Select only those data points which are within the grid.
+c       --- This also removes particles not within the domain of this
+c       --- process.
+        nn = i1
+        do ii=i1,i2
+          if (inj_zmmin <= zz(ii) .and. zz(ii) <= inj_zmmax) then
+            if (nn < ii) then
+              zi(nn) = zi(ii)
+              ti(nn) = ti(ii)
+              xx(nn) = xx(ii)
+              yy(nn) = yy(ii)
+              zz(nn) = zz(ii)
+              in(nn) = in(ii)
+            endif
+            nn = nn + 1
+          endif
+        enddo
+        i2 = nn - 1
+
+        i1 = i2 + 1
+
+      enddo
+      nn = i1 - 1
+
+      pp = 0.
+      call fetchphi(nn,xx,yy,zz,pp)
+
+c     --- Calculate the difference between phi at that point and phi on
+c     --- the emitting surface.
+      tinj_phi = 0.
+      do ii=1,nn
+        tinj_phi(ti(ii),zi(ii),in(ii)) = vtinject(in(ii)) - pp(ii)
+      enddo
+        
+#ifdef MPIPARALLEL
+c     --- The result calculated on each processor is gathered on all
+      call parallelnonzerorealarray(inj_phi,(1+inj_nx)*(1+inj_ny)*ninject)
+#endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegettinj_phi = timegettinj_phi + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine tinj_sete3d(npart,xp,yp,zp,pid,ex,ey,ez)
+      use Subtimers3d
+      use Constant
+      use InGen3d
+      use InMesh3d
+      use Picglb3d
+      use InPart
+      use InjectVars
+      use InjectVars3d
+      integer(ISZ):: npart
+      real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
+      real(kind=8):: ex(npart),ey(npart),ez(npart)
+
+c Calculate the electric field from the grid for particles near the transverse
+c emitting surfaces.  The normal electric field is calculated from the potential drop
+c across a length of 'dx' along a line normal to the emitting surface.  The
+c field components are then obtained from the normal field.
+c Eventually this routine could be expanded to calculate the E field near
+c any conductor surface.
+
+      real(kind=8):: xx,yy,zz
+      integer(ISZ):: ijp
+      integer(ISZ):: ip,iz,it,ij
+      real(kind=8):: rr,dd,rrr,dzi
+      real(kind=8):: aa,wt,wz,en
+      real(kind=8):: sx,sy
+      real(kind=8):: fourthirds,onethird
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c     --- The user can force the code to skip the special calculation of the 
+c     --- E fields for particles behind the virtual surface.
+      if (linj_efromgrid) return
+
+      fourthirds = 4./3.
+      onethird = 1./3.
+      dzi = 1./inj_dz
+
+c     --- Loop over particles
+      do ip=1,npart
+
+c       --- Get number of injection source of particle.  The particle id
+c       --- has the number of the injection source the particle was
+c       --- emitted from. The int is needed since it is doing double
+c       --- duty and has other information stored in the fractional part.
+        ij = int(pid(ip)) - ninject
+        if(ij==0) cycle
+
+        xx = xp(ip) - xtinject(ij)
+        yy = yp(ip) - ytinject(ij)
+        zz = zp(ip) - zmmin - nztinjmn(ij)*inj_dz
+
+        iz = zz*dzi
+        if(.not.l_inj_rz) then
+          aa = atan2(yy,xx)
+        else
+          aa = 0.
+        endif
+        if (aa < 0.) aa = aa + 2*pi
+        it = aa/(2.*pi)*nttinj(ij)
+
+        if (iz < 0. .or. iz >= (nztinjmx(ij) - nztinjmn(ij))) cycle
+
+        rrr = sign(1.,rtinject(iz,ij))
+
+c       --- Calculate distance of particle from the emitting surface
+        rr = sqrt(xx**2 + yy**2)
+        dd = (rr - rtinject(iz,ij))*inj_dx
+
+c       --- Only calculate E-field if particle close to emitting surface.
+        if (0.0 <= rrr*dd .and. abs(dd) <= 1.) then
+
+c         --- Find coordinates of the point on the secondary surface in front
+c         --- of the emitting surface along a line perpendicular to the
+c         --- emitting surface.
+          wz = zz*dzi - iz
+          wt = aa/(2.*pi)*nttinj(ij) - it
+
+c         --- Calculate the normal electric field from the potential drop in
+c         --- front of the emitting surface. The normal field given by the
+c         --- Child-Langmuir solution (for planar surfaces) is used.
+          en = (tinj_phi(it  ,iz  ,ij)*(1.-wt)*(1.-wz) +
+     &          tinj_phi(it+1,iz  ,ij)*    wt *(1.-wz) +
+     &          tinj_phi(it  ,iz+1,ij)*(1.-wt)*    wz  +
+     &          tinj_phi(it+1,iz+1,ij)*    wt *    wz   )/inj_dx
+          if (linj_enormcl) then
+c           --- Scale the normal E field to match the Child-Langmuir solution
+            en = en*fourthirds*(dd)**onethird
+          endif
+
+c         --- Set the particle's electric field based off of the normal
+c         --- electric fields.
+          if(l_inj_rz) aa = atan2(yy,dvnz(xx))
+          ex(ip) = -en*cos(aa)
+          ey(ip) = -en*sin(aa)
+          ez(ip) =  0.
+
+        endif
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timetinj_sete3d = timetinj_sete3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
