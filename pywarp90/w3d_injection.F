@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.61 $, $Date: 2006/08/09 00:11:58 $
+c@(#) File w3d_injection.F, version $Revision: 1.62 $, $Date: 2006/08/09 01:13:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1244,6 +1244,10 @@ c           --- are particles which still have noninteger pid(:,injpid).
               mask = 0.
             endwhere
             nn = COUNT(mask > 0.)
+            if (nn == 0) then
+              deallocate(mask)
+              cycle
+            endif
 #endif
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -1710,6 +1714,10 @@ c           --- are particles which still have noninteger pid(:,injpid).
               mask = 0.
             endwhere
             nn = COUNT(mask > 0.)
+            if (nn == 0) then
+              deallocate(mask)
+              cycle
+            endif
 #endif
 
 c           --- Make sure that there is enough room in the temporary arrays.
