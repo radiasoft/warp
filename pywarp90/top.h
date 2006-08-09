@@ -35,6 +35,11 @@
 #endif
 #endif
 
+! Define size of integers used in the MPI libraries.
+#ifndef MPIISZ
+#define MPIISZ 4
+#endif
+
 ! Define size of word.
 #ifndef WORDSIZE
 #if defined T3E || defined J90
