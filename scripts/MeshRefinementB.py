@@ -765,6 +765,7 @@ Fortran version
       gatherjfromchild(self.bfield.j,self.dims,child.bfield.j,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
                          child.refinement,w,
+                         self.lcylinderical,self.xmesh,child.xmesh,
                          dopbounds,child.pbounds,self.rootdims)
 
     # --- zerorhoinoverlap is call here so that any contribution from
