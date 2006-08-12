@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.110 $, $Date: 2006/08/09 01:18:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.111 $, $Date: 2006/08/12 04:30:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3900,7 +3900,9 @@ c=============================================================================
 c=============================================================================
       subroutine gatherjfromchild(j,nn,childj,cnn,
      &                            l,u,fulllower,childlower,childupper,
-     &                            r,weights,dopbounds,pbounds,rootdims)
+     &                            r,weights,
+     &                            radius,cradius,lcylindrical,
+     &                            dopbounds,pbounds,rootdims)
       use Subtimersf3d
       integer(ISZ):: nn(0:2),cnn(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
@@ -3910,6 +3912,8 @@ c=============================================================================
       real(kind=8):: j(0:2,0:nn(0),0:nn(1),0:nn(2))
       real(kind=8):: childj(0:2,0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
+      real(kind=8):: radius(0:nn(0)),cradius(0:cnn(0))
+      logical(ISZ):: lcylindrical
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
@@ -3944,9 +3948,10 @@ c=============================================================================
               do iwy=iwy1,iwy2
                 do iwx=iwx1,iwx2
                   wj=weights(iwx,iwy,iwz)*childj(:,icx+iwx,icy+iwy,icz+iwz)
+                  if (lcylindrical) wj = wj*cradius(iwx)/radius(ix0)
 
-c                   --- Adjust for symmetries
-                    if (dopbounds == 1) then
+c                 --- Adjust for symmetries
+                  if (dopbounds == 1) then
                     if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
      &                wj = 2*wj
                     if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
