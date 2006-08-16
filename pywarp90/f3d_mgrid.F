@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.111 $, $Date: 2006/08/12 04:30:29 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.112 $, $Date: 2006/08/16 18:48:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3918,9 +3918,13 @@ c=============================================================================
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
       integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
-      real(kind=8):: wj(0:2)
+      real(kind=8):: cdr
+      real(kind=8):: wj(0:2),crr,rr,onethird
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+
+      cdr = cradius(1) - cradius(0)
+      onethird = 1./3.
 
       do iz=l(2),u(2)
         iz0 = iz - fulllower(2)
@@ -3944,11 +3948,34 @@ c=============================================================================
             iwx2 = ix2 - ix*r(0)
             icx = ix*r(0) - childlower(0)
 
+            if (lcylindrical) then
+              if (radius(ix0) == 0.) then
+c               rr = 0.75/(0.5*0.5*r(0)*cdr*r(0))
+                rr = 3./(r(0)*cdr*r(0))
+              else
+                rr = 1./(2.*radius(ix0)*r(0))
+              endif
+            endif
+
             do iwz=iwz1,iwz2
               do iwy=iwy1,iwy2
                 do iwx=iwx1,iwx2
                   wj=weights(iwx,iwy,iwz)*childj(:,icx+iwx,icy+iwy,icz+iwz)
-                  if (lcylindrical) wj = wj*cradius(iwx)/radius(ix0)
+                  if (lcylindrical) then
+c                   --- Calculate volumes. Note that the factors of pi and dz
+c                   --- cancel out and so are left out, but the refinement
+c                   --- factor in z is still included. Also not that one
+c                   --- factor of dr has beed factored out. Finally, note
+c                   --- that crr is calculated as the volume to avoid a
+c                   --- division.
+                    if (cradius(icx+iwx) == 0.) then
+c                     crr = 0.75/(0.5*0.5*cdr)
+                      crr = cdr*onethird
+                    else
+                      crr = 2.*cradius(icx+iwx)
+                    endif
+                    wj = wj*r(2)*rr*crr
+                  endif
 
 c                 --- Adjust for symmetries
                   if (dopbounds == 1) then
