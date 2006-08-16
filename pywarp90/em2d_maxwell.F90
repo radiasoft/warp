@@ -1318,8 +1318,8 @@ f%js = 1 ! position of the source
   END if
 !  call EM2D_FIELDtypeallot(f)
 
-call create_bnd(f%bndexeybz, nx, ny, nbndx=10, nbndy=10, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
-call create_bnd(f%bndbxbyez, nx, ny, nbndx=10, nbndy=10, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+call create_bnd(f%bndexeybz, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+call create_bnd(f%bndbxbyez, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
   
   call EM2D_FIELDtypeallot(f)
 
