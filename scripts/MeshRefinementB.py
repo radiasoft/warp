@@ -39,7 +39,7 @@ Implements adaptive mesh refinement in 3d for the B field solver
                     children=None,lreducedpickle=1,**kw):
 
     # --- Check the dimensionality.
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       self.nd = 3
     elif w3d.solvergeom in [w3d.RZgeom]:
       self.nd = 2
@@ -765,7 +765,7 @@ Fortran version
       gatherjfromchild(self.bfield.j,self.dims,child.bfield.j,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
                          child.refinement,w,
-                         self.lcylinderical,self.xmesh,child.xmesh,
+                         self.xmesh,child.xmesh,self.lcylindrical,
                          dopbounds,child.pbounds,self.rootdims)
 
     # --- zerorhoinoverlap is call here so that any contribution from

@@ -24,9 +24,8 @@ class AMRTree(object,Visualizable):
       self.f            = None
       self.f_user       = None
       self.nbcells_user = None
-      if getcurrpkg()=='w3d' and (w3d.solvergeom==w3d.XYZgeom or w3d.solvergeom==w3d.XYZgeomMR):
-        self.solvergeom = w3d.XYZgeomMR
-        w3d.solvergeom = w3d.XYZgeomMR
+      if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeom:
+        self.solvergeom = w3d.XYZgeom
         self.blocks=MRBlock()     
       else:
         self.solvergeom = w3d.solvergeom
@@ -40,7 +39,7 @@ class AMRTree(object,Visualizable):
       self.enable()
 
     def enable(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         registersolver(self)
       else:
         installbeforefs(self.generate)
@@ -98,33 +97,33 @@ class AMRTree(object,Visualizable):
         ifcond = top.it%w3d.AMRgenerate_periodicity<>0
       if (ifcond or not lzero): lrootonly = 0
       else:                                       lrootonly = 1
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.loadrho(lzero=lzero,lrootonly=lrootonly)
       else:
         raise "Only 3d supported as registered solver."
         
     def solve(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.generate()
         self.blocks.solve()
       else:
         raise "Only 3d supported as registered solver."
 
     def fetche(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.fetche()
       else:
         raise "Only 3d supported as registered solver."
 
     def fetchphi(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.fetchphi()
       else:
         raise "Only 3d supported as registered solver."
 
     def installconductor(self,conductor,dfill=2):
       self.addconductor(conductor,dfill)
-      if self.solvergeom==w3d.XYZgeomMR:
+      if self.solvergeom==w3d.XYZgeom:
         self.blocks.installconductor(conductor,dfill=self.dfill)
       else:
         self.restorefrzgrid()
@@ -143,19 +142,19 @@ class AMRTree(object,Visualizable):
         get_cond_rz(1)
 
     def hasconductors(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         return self.blocks.hasconductors()
       else:
         return f3d.conductors.interior.n > 0
 
     def getconductors(self):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         return self.blocks.getconductors(alllevels=1)
       else:
         return f3d.conductors
 
     def setconductorvoltage(self,voltage,condid=0,discrete=false,setvinject=false):
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.setconductorvoltage(voltage,condid,discrete,setvinject)
       else:
         setconductorvoltage(voltage,condid,discrete,setvinject)
@@ -538,7 +537,7 @@ class AMRTree(object,Visualizable):
       return f
     def setblocks(self):
       self.nblocks=0
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.resetroot()
         mothergrid = self.blocks
       else:
@@ -549,7 +548,7 @@ class AMRTree(object,Visualizable):
       # --- have complex linkages and may not be immediately removed.
       gc.collect()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
         zmin0 = w3d.zmmin; zmax0 = w3d.zmmax; dz = w3d.dz
       if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.XZgeom:
@@ -559,7 +558,7 @@ class AMRTree(object,Visualizable):
       for ii,blocks in enumerate(self.listblocks[1:]):
         i = ii+1
         if i>1:
-          if self.solvergeom == w3d.XYZgeomMR:
+          if self.solvergeom == w3d.XYZgeom:
             mothergrid = mothergrid.children[0]
           else:
             mothergrid = mothergrid.down
@@ -568,7 +567,7 @@ class AMRTree(object,Visualizable):
           if (self.lremoveblockswithoutparticles and
              not self.patchhasparticles(patch)): continue
           self.nblocks+=1
-          if self.solvergeom == w3d.XYZgeomMR:
+          if self.solvergeom == w3d.XYZgeom:
             lower = nint(array(patch[:3])*r)
             upper = lower + nint(array(patch[3:])*r)
             mothergrid.addchild(lower,upper,refinement=self.MRfact)
@@ -589,7 +588,7 @@ class AMRTree(object,Visualizable):
                         t_xmin*self.MRfact,t_xmax*self.MRfact,
                         t_ymin*self.MRfact,t_ymax*self.MRfact)
 
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         self.blocks.finalize()
       else:
         g = frz.basegrid
@@ -634,7 +633,7 @@ class AMRTree(object,Visualizable):
         g.loc_part_fd=g.gid[0]
 
     def patchhasparticles(self,patch):
-      if self.solvergeom==w3d.XYZgeomMR:
+      if self.solvergeom==w3d.XYZgeom:
         i1,j1,k1 = patch[:3]
         i2,j2,k2 = array([i1,j1,k1]) + patch[3:]
         rho = self.blocks.rho[i1:i2+1,j1:j2+1,k1:k2+1]
@@ -677,7 +676,7 @@ class AMRTree(object,Visualizable):
           else:
             self.f = self.f_user
         elif self.f is None:
-          if self.solvergeom==w3d.XYZgeomMR:
+          if self.solvergeom==w3d.XYZgeom:
             self.f = self.blocks.rho
           else:
             self.f = frz.basegrid.rho
@@ -685,7 +684,7 @@ class AMRTree(object,Visualizable):
         # set cell dimensions of mother grid according to geometry
         dx = w3d.dx
         dz = w3d.dz
-        if self.solvergeom==w3d.XYZgeomMR or self.solvergeom==w3d.XYgeom:
+        if self.solvergeom==w3d.XYZgeom or self.solvergeom==w3d.XYgeom:
           dy = w3d.dy
         if self.solvergeom==w3d.XZgeom or self.solvergeom==w3d.RZgeom:
           dy = w3d.dz
@@ -696,7 +695,7 @@ class AMRTree(object,Visualizable):
         self.Rdens = w3d.AMRrefinement**w3d.AMRmaxlevel_density
         self.Rgrad = w3d.AMRrefinement**w3d.AMRmaxlevel_gradient
         self.threshold = w3d.AMRthreshold_gradient
-        if self.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeom:
           self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**3
         else:
           self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**2
@@ -730,7 +729,7 @@ class AMRTree(object,Visualizable):
         # clear inactive regions in each blocks
         if not w3d.AMRuse_inactive_regions:
           if l_timing: t.start()
-          if self.solvergeom==w3d.XYZgeomMR:
+          if self.solvergeom==w3d.XYZgeom:
             self.blocks.clearinactiveregions(self.nbcells)
           else:
             g = frz.basegrid
@@ -741,7 +740,7 @@ class AMRTree(object,Visualizable):
       
       # set conductor data
       if l_timing:t.start()
-      if self.solvergeom==w3d.XYZgeomMR:
+      if self.solvergeom==w3d.XYZgeom:
         for cond,dfill in zip(self.conductors,self.conductorsdfill):
           self.blocks.installconductor(cond,dfill=dfill)
       else:
@@ -775,7 +774,7 @@ class AMRTree(object,Visualizable):
       
       if l_timing:t.start()
       # load charge density on new set of blocks
-      if self.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeom:
         # --- Call the solvers loadrho routine directly since AMR instance
         # --- is already the registered solver.
         self.blocks.loadrho(lzero=true,lrootonly=0)
@@ -855,7 +854,7 @@ class AMRTree(object,Visualizable):
             dxlist.append(viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax,self.colors[i]))
       self.dxobject = DXCollection(*dxlist)
     def draw(self,level=None):
-        if self.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeom:
           self.createdxobject(level=level)
           DXImage(self)
         else:

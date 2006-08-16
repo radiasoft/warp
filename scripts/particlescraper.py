@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.43 2006/06/29 18:07:53 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.44 2006/08/16 18:52:14 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -199,7 +199,7 @@ after load balancing."""
 #    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
     zz = top.pgroup.zp[i1:i2]
     pp = zeros(top.pgroup.nps[js],'d')
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
@@ -220,7 +220,7 @@ after load balancing."""
     iscrape = compress(pp>0.,arange(i1,i2))
     if len(iscrape) == 0: return
  
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       nd=3
       gdx = [0.,dx,0.,dx,0.,dx,0.,dx]
       gdy = [0.,0.,dy,dy,0.,0.,dy,dy]
@@ -254,7 +254,7 @@ after load balancing."""
     for i in range(2**nd):
 
       # --- Get conductor id that particles are near
-      if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+      if w3d.solvergeom in [w3d.XYZgeom]:
         getgridngp3d(nn,xg+gdx[i],yg+gdy[i],zg+gdz[i],pp,
                      nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                      w3d.l2symtry,w3d.l4symtry)
@@ -295,10 +295,10 @@ after load balancing."""
         xx = take(xx,ixyz)
         xg = take(xg,ixyz)
         pp = take(pp,ixyz)
-        if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR,w3d.XYgeom]:
+        if w3d.solvergeom in [w3d.XYZgeom,w3d.XYgeom]:
           yy = take(yy,ixyz)
           yg = take(yg,ixyz)
-        if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR,w3d.XZgeom,w3d.RZgeom]:
+        if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom,w3d.RZgeom]:
           zz = take(zz,ixyz)
           zg = take(zg,ixyz)
 
@@ -322,7 +322,7 @@ after load balancing."""
 #    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
     zz = top.pgroup.zp[i1:i2]
     pp = zeros(top.pgroup.nps[js],'d')
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
@@ -352,7 +352,7 @@ after load balancing."""
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       getgridngp3d(nn,xg,yg,zg,pp,
                    nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
@@ -434,7 +434,7 @@ after load balancing."""
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
-    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
+    if w3d.solvergeom in [w3d.XYZgeom]:
       getgridngp3d(nn,xg,yg,zg,pp,
                    nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)

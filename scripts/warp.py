@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.122 2006/08/09 00:16:38 dave Exp $"
+warp_version = "$Id: warp.py,v 1.123 2006/08/16 18:52:14 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -489,37 +489,51 @@ The default is to zero out rho.
 
 #=============================================================================
 # --- Setup routines which give access to fortran any field solver
-_fieldsolver = [None]
+_fieldsolvers = []
 def registersolver(solver):
   """
-Registers the solver to be used in the particle simulation.
+Registers solvers to be used in the particle simulation.
  - solver: is the solver object. It must have the methods loadrho, solve, and
            fetche defined. fetchb and fetchphi will also be needed in some
            cases.
 
   """
-  _fieldsolver[0] = solver
-  w3d.solvergeom = w3d.XYZgeomMR
-def getregisteredsolver():
-  return _fieldsolver[0]
-def loadrhoMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].loadrho(lzero=not top.laccumulate_rho)
-def loadjMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].loadj(lzero=not top.laccumulate_rho)
-def fieldsolMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].solve()
-def fetcheMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].fetche()
-def fetchbMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].fetchb()
-def fetchphiMR():
-  assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].fetchphi()
+  _fieldsolvers.append(solver)
+  top.fstype = 12
+def getregisteredsolver(i=0):
+  if len(_fieldsolvers) == 0: return None
+  return _fieldsolvers[i]
+def unregistersolver(solver):
+  assert solver in _fieldsolvers,"Specified solver was not registered"
+  _fieldsolvers.remove(solver)
+def loadrhoregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.loadrho(lzero=not top.laccumulate_rho)
+def loadjregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.loadj(lzero=not top.laccumulate_rho)
+def fieldsolregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.solve()
+def fetcheregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetche()
+def fetchbregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetchb()
+def fetchphiregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetchphi()
+def fetcharegistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetcha()
 def initfieldsolver():
     if w3d.AMRlevels>0:
       if 'AMRtree' not in __main__.__dict__:
@@ -527,12 +541,13 @@ def initfieldsolver():
         AMRtree=AMR.AMRTree()
         __main__.__dict__['AMRtree'] = AMRtree
         gchange('AMR')
-__main__.__dict__['loadrhoMR'] = loadrhoMR
-__main__.__dict__['loadjMR'] = loadjMR
-__main__.__dict__['fieldsolMR'] = fieldsolMR
-__main__.__dict__['fetcheMR'] = fetcheMR
-__main__.__dict__['fetchbMR'] = fetchbMR
-__main__.__dict__['fetchphiMR'] = fetchphiMR
+__main__.__dict__['loadrhoregistered'] = loadrhoregistered
+__main__.__dict__['loadjregistered'] = loadjregistered
+__main__.__dict__['fieldsolregistered'] = fieldsolregistered
+__main__.__dict__['fetcheregistered'] = fetcheregistered
+__main__.__dict__['fetchbregistered'] = fetchbregistered
+__main__.__dict__['fetchphiregistered'] = fetchphiregistered
+__main__.__dict__['fetcharegistered'] = fetcharegistered
 __main__.__dict__['initfieldsolver'] = initfieldsolver
 
 #=============================================================================
@@ -550,30 +565,24 @@ Registers the B field solver to be used in the particle simulation.
   top.bfstype = 12
 def getregisteredbsolver():
   return _bfieldsolver[0]
-def bloadjUSER():
+def bloadjregistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
   _bfieldsolver[0].loadj(lzero=not top.laccumulate_rho)
-def bfieldsolUSER():
+def bfieldsolregistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
   _bfieldsolver[0].solve()
-def bfetchbUSER():
+def bfetchbregistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
   _bfieldsolver[0].fetchb()
-def bfetchaUSER():
+def bfetcharegistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
   _bfieldsolver[0].fetcha()
 def initbfieldsolver():
    pass
-#  if w3d.AMRlevels>0:
-#    if 'AMRtree' not in __main__.__dict__:
-#      import AMR
-#      AMRtree=AMR.AMRTree()
-#      __main__.__dict__['AMRtree'] = AMRtree
-#      gchange('AMR')
-__main__.__dict__['bloadjUSER'] = bloadjUSER
-__main__.__dict__['bfieldsolUSER'] = bfieldsolUSER
-__main__.__dict__['bfetchbUSER'] = bfetchbUSER
-__main__.__dict__['bfetchaUSER'] = bfetchaUSER
+__main__.__dict__['bloadjregistered'] = bloadjregistered
+__main__.__dict__['bfieldsolregistered'] = bfieldsolregistered
+__main__.__dict__['bfetchbregistered'] = bfetchbregistered
+__main__.__dict__['bfetcharegistered'] = bfetcharegistered
 __main__.__dict__['initbfieldsolver'] = initbfieldsolver
 
 ##############################################################################
@@ -1032,7 +1041,7 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Do some setup for the RZ solver
   if getcurrpkg() == 'w3d' and w3d.solvergeom==w3d.RZgeom: mk_grids_ptr()
   # --- Load the charge density (since it was not saved)
-  if not (w3d.solvergeom in [w3d.XYZgeomMR,w3d.RZgeom]):
+  if not (w3d.solvergeom in [w3d.RZgeom] or top.fstype == 12):
     loadrho()
     # --- Recalculate the fields (since it was not saved)
     if dofieldsol: fieldsol(0)

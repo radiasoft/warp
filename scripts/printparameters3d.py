@@ -35,7 +35,6 @@ def printparameters3d():
   if w3d.solvergeom == w3d.XYgeom: textblock += ' Geometry is XY\n'
   if w3d.solvergeom == w3d.Zgeom: textblock += ' Geometry is Z\n'
   if w3d.solvergeom == w3d.Rgeom: textblock += ' Geometry is R\n'
-  if w3d.solvergeom == w3d.XYZgeomMR: textblock += ' Geometry is 3-D with AMR\n'
 
   if top.nbend >= 1:
     xrbend = top.bendrc[0]
