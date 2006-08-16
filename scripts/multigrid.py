@@ -127,6 +127,10 @@ class MultiGrid(object):
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
 
+    self.ix_axis = nint(-self.ymmin/self.dy)
+    self.iy_axis = nint(-self.ymmin/self.dy)
+    self.iz_axis = nint(-self.ymmin/self.dy)
+
     # --- Create extra variables which are used in various places
     self.nxp = self.nx
     self.nyp = self.ny
@@ -281,6 +285,9 @@ class MultiGrid(object):
 
   def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
+
+  def fetcha(self):
+    pass
 
   def getselfe(self,recalculate=0):
     if type(self.selfe) != ArrayType:
