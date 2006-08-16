@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.62 $, $Date: 2006/08/09 01:13:12 $
+c@(#) File w3d_injection.F, version $Revision: 1.63 $, $Date: 2006/08/16 18:47:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -91,7 +91,7 @@ c     --- Set factor so correct number of particles are loaded when
 c     --- symmetry is used.  With 2-fold, particles need to be loaded
 c     --- on both sides of the symmetry axis.  With 4-fold, particles
 c     --- need to be loaded in each of the four quadrants.
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+      if(solvergeom==XYZgeom) then
         spreadx = 1
         spready = 1
       elseif(solvergeom==RZgeom) then
@@ -640,8 +640,7 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
-            if (solvergeom==XYZgeom .or. solvergeom==XYZgeomMR .or.
-     &          solvergeom==AMRgeom) then
+            if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
               call inj_setrho3d(pgroup,inj_dz,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
 c             --- When using the RZ solver, inj_rho is forced to be
@@ -2969,8 +2968,7 @@ c     --- E fields for particles behind the virtual surface.
 
       if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,inj_dz,ex,ey,ez)
 
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or.
-     &   solvergeom==RZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         if(.not.l_inj_rz) then
           spreadx = 1
           spready = 1
@@ -3724,7 +3722,7 @@ c Calculate the charge density in the region of the injector mesh refinement.
       allocate(ijp(pgroup%npmax))
       allocate(dz_local(0:inj_nz))
 
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
+      if(solvergeom==XYZgeom) then
         sx = 1
         sy = 1
       elseif(solvergeom==RZgeom) then
@@ -4276,7 +4274,7 @@ c any conductor surface.
       allocate(tex(npart),tey(npart),tez(npart))
       allocate(ijp(npart))
 
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
+      if(solvergeom==XYZgeom) then
         spreadx = 1
         spready = 1
       elseif(solvergeom==RZgeom) then

@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.227 $, $Date: 2006/08/09 01:14:42 $
+#@(#) File W3D.V, version $Revision: 3.228 $, $Date: 2006/08/16 18:47:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.227 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.228 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -63,7 +63,6 @@ XZgeom     integer    /3/  # 2-D sheath geometry
 XYgeom     integer    /4/  # 2-D planar geometry
 Zgeom      integer    /5/  # 1-D planar geometry
 Rgeom      integer    /6/  # 1-D radial geometry
-XYZgeomMR  integer    /7/  # 3D-XYZ geometry with mesh refinement
  
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,

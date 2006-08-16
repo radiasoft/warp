@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.19 $, $Date: 2006/05/23 07:09:46 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.20 $, $Date: 2006/08/16 18:47:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -60,6 +60,7 @@ c=============================================================================
 
       integer(ISZ):: bfstype
 
+      if (bfstype == -1) return
       if (bfstype == 12) return
 
       if (bfield%xmmin == 0) bfield%xmmin = xmmin
@@ -151,135 +152,133 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: allocerror
 
       if (lf3dtimesubs) substarttime = wtime()
+      if (depos == 'none') return
 
-      if (bfstype == 12 .and. depos /= 'none') then
-        call execuser("bloadjUSER")
-!$OMP MASTER
-        if (lf3dtimesubs) timeloadj3d = timeloadj3d + wtime() - substarttime
-!$OMP END MASTER
-        return
-      endif
+      if (fstype == 12) then
+        call execuser("loadjregistered")
+      elseif (bfstype == 12) then
+        call execuser("bloadjregistered")
+      elseif (bfstype >= 0) then
 
-c     --- Ensure that the jp array is setup properly
-      if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
-      endif
-
-c     --- zero jp if requested
-      if (lzero) then
+c       --- Ensure that the jp array is setup properly
         if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-          call zeroarry(bfieldp%j,
-     &                  3*(bfieldp%nx+1)*(bfieldp%ny+1)*(bfieldp%nz+1))
+          call setupbfieldsforparticles3d(pgroup%ns,pgroup%ndts,it,bfield,bfieldp)
         endif
-      end if
 
-c     --- set limits on loop over species
-      if (is_i == -1) then
-        is1 = 1
-        is2 = pgroup%ns
-      else
-        is1 = is_i
-        is2 = is_i
-      endif
-
-      if(depos /= 'none') then
-
-c     --- set initial limits from input
-c     --- (will be changed if necessary in the loop)
-      ins_u = ins_i
-      nps_u = nps_i
-
-c     --- loop over species
-      do is=is1,is2
-
-c       --- get loop limits for particles if needed
-        if (ins_i == -1) ins_u = pgroup%ins(is)
-        if (nps_i == -1) nps_u = pgroup%nps(is)
-
-c       --- Scale the weight, sw, by the time step scale size. This only
-c       --- makes sense for steady-state and slice modes. In time-dependent
-c       --- mode, it is assumed that dtscale has not been changed from 1.
-        swtmp = pgroup%sw(is)*pgroup%dtscale(is)
-
-        if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-          ipmin = ins_u
-          if (nps_u > 0) then
-            if (pgroup%ndts(is)>1) then
-c             --- This code would be better if it were in setj3d, but since
-c             --- jp is passed into it, this must be done here.
-              if (mod(it+1,pgroup%ndts(is))==0) then
-c                --- If this species is being advanced this step, then
-c                --- deposit its j into jptmp.
-                 jpcopy => bfieldp%j
-                 bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                 bfieldp%j = 0.
-              else
-c                --- If this species is not being advanced this step, then
-c                --- just add its saved jptmp into jp.
-                 bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-                 cycle
-               end if
-            end if
-            if(wpid==0) then
-              call setj3d(bfieldp,bfieldp%j,nps_u,
-     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                    pgroup%sq(is)*swtmp(1),
-     &                    0,swtmp,depos,l2symtry,l4symtry)
-            else
-c             --- Due to compiler bug, the pid array needs to be temporarily
-c             --- pointed to in order to be properly passed into setj3d.
-c             --- When pid is passed directly into setj3d, it is just all
-c             --- zeros.
-              pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
-              call setj3d(bfieldp,bfieldp%j,nps_u,
-     &                    pgroup%xp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%yp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
-     &                    pgroup%uxp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%uyp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%uzp(ipmin:ipmin+nps_u-1),
-     &                    pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                    pgroup%sq(is)*swtmp(1),nps_u,pidtmp,
-     &                    depos,l2symtry,l4symtry)
-            endif
-            if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
-c             --- If this species is being advanced this step, then restore
-c             --- jp and copy its j into jp.
-              bfieldp%j => jpcopy
-              bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
-            end if
+c       --- zero jp if requested
+        if (lzero) then
+          if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+              call zeroarry(bfieldp%j,
+     &                    3*(bfieldp%nx+1)*(bfieldp%ny+1)*(bfieldp%nz+1))
           endif
-        elseif(solvergeom==XZgeom) then
-          print*,"Error: Self magnetic field not support with solvergeom=XZgeom"
-        elseif(solvergeom==Zgeom) then
-          print*,"Error: Self magnetic field not support with solvergeom=Zgeom"
-        elseif(solvergeom==Rgeom) then
-          print*,"Error: Self magnetic field not support with solvergeom=Rgeom"
-        elseif(solvergeom==AMRgeom) then
-          print*,"Error: Self magnetic field not support with solvergeom=AMRgeom"
         end if
-      enddo
 
-      endif
+c       --- set limits on loop over species
+        if (is_i == -1) then
+          is1 = 1
+          is2 = pgroup%ns
+        else
+          is1 = is_i
+          is2 = is_i
+        endif
 
-c  For parallel version, each processor sends j to neighboring processors
-c  whose field solve region overlap its particle region.
-      if (lzero) call getjforfieldsolve()
+c       --- set initial limits from input
+c       --- (will be changed if necessary in the loop)
+        ins_u = ins_i
+        nps_u = nps_i
 
-c     --- enforce periodicity
-c     --- This is done on the j array, rather than jp, since j will
-c     --- be used for the field solve. Also, in some cases, the jp array
-c     --- will not cover the full axial extent of the system, so 
-c     --- periodicity can only be enforced on j which does cover the full
-c     --- system.
-      if (lzero) then
-        call perj3d(bfield,bound0,boundxy)
+c       --- loop over species
+        do is=is1,is2
+
+c         --- get loop limits for particles if needed
+          if (ins_i == -1) ins_u = pgroup%ins(is)
+          if (nps_i == -1) nps_u = pgroup%nps(is)
+
+c         --- Scale the weight, sw, by the time step scale size. This only
+c         --- makes sense for steady-state and slice modes. In time-dependent
+c         --- mode, it is assumed that dtscale has not been changed from 1.
+          swtmp = pgroup%sw(is)*pgroup%dtscale(is)
+
+          if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+            ipmin = ins_u
+            if (nps_u > 0) then
+              if (pgroup%ndts(is)>1) then
+c               --- This code would be better if it were in setj3d, but since
+c               --- jp is passed into it, this must be done here.
+                if (mod(it+1,pgroup%ndts(is))==0) then
+c                  --- If this species is being advanced this step, then
+c                  --- deposit its j into jptmp.
+                   jpcopy => bfieldp%j
+                   bfieldp%j => bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                   bfieldp%j = 0.
+                else
+c                  --- If this species is not being advanced this step, then
+c                  --- just add its saved jptmp into jp.
+                   bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+                   cycle
+                 end if
+              end if
+              if(wpid==0) then
+                call setj3d(bfieldp,bfieldp%j,nps_u,
+     &                      pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                      pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                      pgroup%sq(is)*swtmp(1),
+     &                      0,swtmp,depos,l2symtry,l4symtry)
+              else
+c               --- Due to compiler bug, the pid array needs to be temporarily
+c               --- pointed to in order to be properly passed into setj3d.
+c               --- When pid is passed directly into setj3d, it is just all
+c               --- zeros.
+                pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
+                call setj3d(bfieldp,bfieldp%j,nps_u,
+     &                      pgroup%xp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%yp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
+     &                      pgroup%uxp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
+     &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
+     &                      pgroup%sq(is)*swtmp(1),nps_u,pidtmp,
+     &                      depos,l2symtry,l4symtry)
+              endif
+              if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
+c               --- If this species is being advanced this step, then restore
+c               --- jp and copy its j into jp.
+                bfieldp%j => jpcopy
+                bfieldp%j = bfieldp%j + bfieldp%jtmp(:,:,:,:,bfieldp%jsjtmp(is-1))
+              end if
+            endif
+          elseif(solvergeom==XZgeom) then
+            print*,"Error: Self magnetic field not support with solvergeom=XZgeom"
+          elseif(solvergeom==Zgeom) then
+            print*,"Error: Self magnetic field not support with solvergeom=Zgeom"
+          elseif(solvergeom==Rgeom) then
+            print*,"Error: Self magnetic field not support with solvergeom=Rgeom"
+          elseif(solvergeom==AMRgeom) then
+            print*,"Error: Self magnetic field not support with solvergeom=AMRgeom"
+          end if
+        enddo
+
+
+c       --- For parallel version, each processor sends j to neighboring
+c       --- processors whose field solve region overlap its particle region.
+        if (lzero) call getjforfieldsolve()
+
+c       --- enforce periodicity
+c       --- This is done on the j array, rather than jp, since j will
+c       --- be used for the field solve. Also, in some cases, the jp array
+c       --- will not cover the full axial extent of the system, so 
+c       --- periodicity can only be enforced on j which does cover the full
+c       --- system.
+        if (lzero) then
+          call perj3d(bfield,bound0,boundxy)
+        endif
+
       endif
 
 !$OMP MASTER
@@ -1699,7 +1698,18 @@ c     --- Obtain the magnetic field
         return
       endif
 
-      if (bfstype == 12) then
+      if (fstype == 12 .or. bfstype == 12) then
+#if defined(XLF) || defined(XLF2)
+c       --- The pointer assignment breaks with the xlf compilers, so instead
+c       --- new arrays are allocated and those are used as the work space.
+c       --- This is less efficient since there is overhead in the allocation
+c       --- and the data needs to be copied around.
+        allocate(xfsapi(n),yfsapi(n),zfsapi(n))
+        allocate(bxfsapi(n),byfsapi(n),bzfsapi(n))
+        xfsapi = x
+        yfsapi = y
+        zfsapi = z
+#else
         isfsapi = is
         xfsapi => x
         yfsapi => y
@@ -1707,11 +1717,24 @@ c     --- Obtain the magnetic field
         bxfsapi => bx
         byfsapi => by
         bzfsapi => bz
-        call execuser("bfetchbUSER")
+#endif
+        if (fstype == 12) then
+          call execuser("fetchbregistered")
+        else
+          call execuser("bfetchbregistered")
+        endif
         isfsapi = -1
+#if defined(XLF) || defined(XLF2)
+        bx(1:n) = bxfsapi
+        by(1:n) = byfsapi
+        bz(1:n) = bzfsapi
+        deallocate(xfsapi,yfsapi,zfsapi)
+        deallocate(bxfsapi,byfsapi,bzfsapi)
+#else
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
+#endif
         nullify(bxfsapi)
         nullify(byfsapi)
         nullify(bzfsapi)
@@ -1733,7 +1756,7 @@ c     --- Obtain the magnetic field
 c=============================================================================
       subroutine fetcha(n,x,y,z,a)
       use BFieldGrid
-      use InGen,Only: bfstype
+      use InGen,Only: fstype,bfstype
       use InGen3d
       use Picglb
       use FieldSolveAPI
@@ -1742,12 +1765,16 @@ c=============================================================================
       real(kind=8),target:: x(n),y(n),z(n),a(0:2,n)
 
 c     --- Call the appropriate routine to get the A
-      if (bfstype == 12) then
+      if (fstype == 12 .or. bfstype == 12) then
         xfsapi => x
         yfsapi => y
         zfsapi => z
         afsapi => a
-        call execuser("bfetchaUSER")
+        if (fstype == 12) then
+          call execuser("fetcharegistered")
+        else
+          call execuser("bfetcharegistered")
+        endif
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
@@ -1897,7 +1924,7 @@ c=============================================================================
 
       if (bfstype == 12) then
         if (iwhich <= 0) then
-          call execuser('bfieldsolUSER')
+          call execuser('bfieldsolregistered')
           return
         endif
       endif

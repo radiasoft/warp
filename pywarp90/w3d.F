@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.278 $, $Date: 2006/08/09 00:12:52 $
+c@(#) File W3D.F, version $Revision: 3.279 $, $Date: 2006/08/16 18:47:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -242,14 +242,14 @@ c  so that by default izfsmax = nz (for full field solve).
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
      &                     phipndts(:,:,:,0))
       vbeamfrm = vbeam
-      if(solvergeom /= XYZgeom .and. solvergeom /=XYZgeomMR) then
+      if(solvergeom /= XYZgeom) then
 c       --- If not using the 3d mover (which has special set up for rho
 c       --- and phi because of subcycling, the rho and phi arrays need to
 c       --- be explicitly allocated.
         allocate(rho(0:nx,0:ny,0:nz))
         allocate(phi(0:nx,0:ny,-1:nz+1))
       endif
-      if(solvergeom==XYZgeom   .or. solvergeom==XYgeom .or. solvergeom==XYZgeomMR) then
+      if(solvergeom==XYZgeom   .or. solvergeom==XYgeom) then
         if (l2symtry) then
           ymmin = 0.
         elseif (l4symtry) then
@@ -297,7 +297,7 @@ c  Calculate mesh dimensioning quantities
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       ix_axis = nint(-xmmin/dx)
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or. solvergeom==AMRgeom .or. solvergeom==XYgeom) then
+      if(solvergeom==XYZgeom .or.solvergeom==AMRgeom .or. solvergeom==XYgeom) then
         iy_axis = nint(-ymmin/dy)
       else ! RZgeom, XZgeom, Zgeom, Rgeom
         iy_axis = 0
@@ -326,7 +326,7 @@ c  Initialize base grid for RZ solver
 
 c  Initialize the B field solver if it is being used
 
-      if (bfstype >= 0) call init_bfieldsolver(bfstype)
+      call init_bfieldsolver(bfstype)
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
       call vp3d(1)
@@ -411,7 +411,7 @@ c  Load the particles, calculate the charge density
       call setgamma(pgroup,lrelativ)
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
-      if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.true.)
+      call loadj3d(pgroup,-1,-1,-1,.true.)
       if (chdtspid>0) then
         lsaveoldpos = .true.
         allspecl    = .true.
@@ -1714,12 +1714,9 @@ c             is 0
                enddo
             endif
 
-c           --- Obtain the self-field from the electrostatic potential
+c           --- Obtain the self-fields
             call fetche3d(pgroup,ipmin,ip,is)
-            if (lcallfetchb) then
-              call fetchb3dfrompositions(is,ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                                   bx,by,bz)
-            endif
+            call fetchb3d(pgroup,ipmin,ip,is)
 
 c           --- Get E field for particles near the  injection surface.
             call inj_sete(pgroup,ipmin,ip,ex,ey,ez)
@@ -2049,7 +2046,7 @@ c       --- Treat particles at boundaries
  
 c       --- Collect charge density (3d)
         call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-        if (bfstype >= 0) call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+        call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 
       elseif (center == 'synchv') then
 
@@ -6397,6 +6394,8 @@ c     --- Ensure that the rhop array is setup properly
         call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
       endif
 
+      if(depos == 'none') return
+
 c     --- zero rhop if requested
       if (lzero) then
         if (solvergeom == XYZgeom) then
@@ -6427,120 +6426,120 @@ c     --- set limits on loop over species
         is2 = is_i
       endif
 
-      if(depos /= 'none') then
 
-c     --- set initial limits from input
-c     --- (will be changed if necessary in the loop)
-      ins_u = ins_i
-      nps_u = nps_i
+      if (fstype == 12) then
+c       --- Use user registered solver to load rho
+        call execuser("loadrhoregistered")
+      else
 
-c     --- loop over species
-      do is=is1,is2
-         isid = pgroup%sid(is-1) + 1
-         if (isid == 0) cycle
+c       --- set initial limits from input
+c       --- (will be changed if necessary in the loop)
+        ins_u = ins_i
+        nps_u = nps_i
 
-c        --- For the AMR/Chombo version, all of the lost particles must be
-c        --- cleared out.
-         if (solvergeom == AMRgeom) call clearpart(pgroup,is,1)
+c       --- loop over species
+        do is=is1,is2
+           isid = pgroup%sid(is-1) + 1
+           if (isid == 0) cycle
 
-c        --- get loop limits for particles if needed
-         if (ins_i == -1) ins_u = pgroup%ins(is)
-         if (nps_i == -1) nps_u = pgroup%nps(is)
+c          --- For the AMR/Chombo version, all of the lost particles must be
+c          --- cleared out.
+           if (solvergeom == AMRgeom) call clearpart(pgroup,is,1)
 
-c        --- Scale the weight, sw, by the time step scale size. This only
-c        --- makes sense for steady-state and slice modes. In time-dependent
-c        --- mode, it is assumed that dtscale has not been changed from 1.
-         swtmp = pgroup%sw(is)*pgroup%dtscale(is)
+c          --- get loop limits for particles if needed
+           if (ins_i == -1) ins_u = pgroup%ins(is)
+           if (nps_i == -1) nps_u = pgroup%nps(is)
 
-         if(solvergeom==XYZgeom) then
-           ipmin = ins_u
-           if (nps_u > 0) then
-             if (pgroup%ldts(is)) then
-c              --- Only load the rho if the positions have been advanced.
-               indts = ndtstorho(pgroup%ndts(is))
-               call setrho3d(rhopndts(:,:,:,1,indts),
-     &                       rhopndts(:,:,:,1,indts),nps_u,
-     &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                    zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
-     &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
-     &                    l2symtry,l4symtry)
+c          --- Scale the weight, sw, by the time step scale size. This only
+c          --- makes sense for steady-state and slice modes. In time-dependent
+c          --- mode, it is assumed that dtscale has not been changed from 1.
+           swtmp = pgroup%sw(is)*pgroup%dtscale(is)
+  
+           if(solvergeom==XYZgeom) then
+             ipmin = ins_u
+             if (nps_u > 0) then
+               if (pgroup%ldts(is)) then
+c                --- Only load the rho if the positions have been advanced.
+                 indts = ndtstorho(pgroup%ndts(is))
+                 call setrho3d(rhopndts(:,:,:,1,indts),
+     &                         rhopndts(:,:,:,1,indts),nps_u,
+     &                      pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                      zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
+     &                      nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                      l2symtry,l4symtry)
+               endif
              endif
+           elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+c            --- loop over particle blocks
+             do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+               ip = min(nparpgrp, ins_u+nps_u-ipmin)
+               if(wpid==0) then
+                 call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                            pgroup%zp(ipmin),ip,
+     &                            pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
+               else
+                 call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                            pgroup%zp(ipmin),pgroup%pid(ipmin,wpid),ip,
+     &                            pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
+               end if
+             enddo
+           elseif(solvergeom==XYgeom) then
+c            --- loop over particle blocks
+             do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+               ip = min(nparpgrp, ins_u+nps_u-ipmin)
+               if(wpid==0) then
+                 call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                            pgroup%yp(ipmin),ip,
+     &                            pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
+               else
+                 call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                            pgroup%yp(ipmin),pgroup%pid(ipmin,wpid),ip,
+     &                            pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
+               end if
+             enddo
+           elseif(solvergeom==Zgeom) then
+c            --- loop over particle blocks
+             do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+                ip = min(nparpgrp, ins_u+nps_u-ipmin)
+                call rhoweightz(pgroup%zp(ipmin),ip,pgroup%sq(is)*swtmp,
+     &                          nz,dz,zgrid)
+             enddo
+           elseif(solvergeom==Rgeom) then
+c            --- loop over particle blocks
+             do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+                ip = min(nparpgrp, ins_u+nps_u-ipmin)
+                if(wpid==0) then
+                  call rhoweightr(pgroup%xp(ipmin),pgroup%yp(ipmin),ip,
+     &                            pgroup%sq(is)*swtmp,nx,dx,xmmin)
+                else
+                  call rhoweightr_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                                    pgroup%pid(ipmin,wpid),ip,
+     &                                    pgroup%sq(is)*swtmp,nx,dx,xmmin)
+                end if
+             enddo
+           elseif(solvergeom==AMRgeom) then
+c            --- loop over particle blocks
+             do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+                ip = min(nparpgrp, ins_u+nps_u-ipmin)
+                call cho_setrho3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                            pgroup%zp(ipmin),zgrid,
+     &                            pgroup%sq(is),swtmp,isid,
+     &                            (ipmin-pgroup%ins(is))/nparpgrp)
+             enddo
            endif
-         elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-c          --- loop over particle blocks
-           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-             ip = min(nparpgrp, ins_u+nps_u-ipmin)
-             if(wpid==0) then
-               call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                          pgroup%zp(ipmin),ip,
-     &                          pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
-             else
-               call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                          pgroup%zp(ipmin),pgroup%pid(ipmin,wpid),ip,
-     &                          pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
-             end if
-           enddo
-         elseif(solvergeom==XYgeom) then
-c          --- loop over particle blocks
-           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-             ip = min(nparpgrp, ins_u+nps_u-ipmin)
-             if(wpid==0) then
-               call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                          pgroup%yp(ipmin),ip,
-     &                          pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
-             else
-               call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                          pgroup%yp(ipmin),pgroup%pid(ipmin,wpid),ip,
-     &                          pgroup%sq(is)*swtmp,nx,ny,dx,dy,xmmin,ymmin)
-             end if
-           enddo
-         elseif(solvergeom==Zgeom) then
-c          --- loop over particle blocks
-           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-              ip = min(nparpgrp, ins_u+nps_u-ipmin)
-              call rhoweightz(pgroup%zp(ipmin),ip,pgroup%sq(is)*swtmp,
-     &                        nz,dz,zgrid)
-           enddo
-         elseif(solvergeom==Rgeom) then
-c          --- loop over particle blocks
-           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-              ip = min(nparpgrp, ins_u+nps_u-ipmin)
-              if(wpid==0) then
-                call rhoweightr(pgroup%xp(ipmin),pgroup%yp(ipmin),ip,
-     &                          pgroup%sq(is)*swtmp,nx,dx,xmmin)
-              else
-                call rhoweightr_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                                  pgroup%pid(ipmin,wpid),ip,
-     &                                  pgroup%sq(is)*swtmp,nx,dx,xmmin)
-              end if
-           enddo
-         elseif(solvergeom==AMRgeom) then
-c          --- loop over particle blocks
-           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-              ip = min(nparpgrp, ins_u+nps_u-ipmin)
-              call cho_setrho3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &                          pgroup%zp(ipmin),zgrid,
-     &                          pgroup%sq(is),swtmp,isid,
-     &                          (ipmin-pgroup%ins(is))/nparpgrp)
-           enddo
-         end if
-      enddo
+        enddo
 
-c     --- Add together the rhop from the species with different time steps
-c     --- This must be done after all of the species has been deposited.
-      if(solvergeom==XYZgeom) then
-        if (ndtsaveraging == 0) then
-          call averagerhowithsampledsubcycling()
-        elseif (ndtsaveraging == 1) then
-          call averagerhowithfullvsubcycling()
-        elseif (ndtsaveraging == 2) then
-          call averagerhowithhalfvsubcycling()
+c       --- Add together the rhop from the species with different time steps
+c       --- This must be done after all of the species has been deposited.
+        if(solvergeom==XYZgeom) then
+          if (ndtsaveraging == 0) then
+            call averagerhowithsampledsubcycling()
+          elseif (ndtsaveraging == 1) then
+            call averagerhowithfullvsubcycling()
+          elseif (ndtsaveraging == 2) then
+            call averagerhowithhalfvsubcycling()
+          endif
         endif
-      endif
-
-      if (solvergeom == XYZgeomMR) then
-        call execuser("loadrhoMR")
-      endif
 
       endif
 
@@ -6836,14 +6835,7 @@ c     --- Obtain the self-field from the electrostatic potential
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom) then
-        tmpnsndts = getnsndtsforsubcycling()
-        indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is)))
-        call sete3d(phipndts(:,:,:,indts),selfe,ip,
-     &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry)
-      elseif(solvergeom==XYZgeomMR) then
+      if(fstype == 12) then
         isfsapi = is
 #ifdef XLF
 c       --- The pointer assignment breaks with the xlf compilers, so instead
@@ -6870,7 +6862,7 @@ c       --- and the data needs to be copied around.
         ezfsapi => ez(1:ip)
 #endif
 #endif
-        call execuser("fetcheMR")
+        call execuser("fetcheregistered")
         isfsapi = -1
 #ifdef XLF
         ex(1:ip) = exfsapi
@@ -6893,6 +6885,13 @@ c       --- and the data needs to be copied around.
         nullify(zfsapi)
 #endif
 #endif
+      elseif(solvergeom==XYZgeom) then
+        tmpnsndts = getnsndtsforsubcycling()
+        indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is)))
+        call sete3d(phipndts(:,:,:,indts),selfe,ip,
+     &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
+     &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
@@ -6943,18 +6942,7 @@ c     --- particles group.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom) then
-        tmpnsndts = getnsndtsforsubcycling()
-        indts = min(tmpnsndts-1,ndtstorho(ndts))
-        if (indts < 0 .or. indts > nsndts-1) then
-          print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
-          return
-        endif
-        call sete3d(phipndts(:,:,:,indts),selfe,n,
-     &              x,y,z,
-     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry)
-      elseif(solvergeom==XYZgeomMR) then
+      if(fstype == 12) then
 #if defined(XLF) || defined(XLF2)
 c       --- The pointer assignment breaks with the xlf compilers, so instead
 c       --- new arrays are allocated and those are used as the work space.
@@ -6974,7 +6962,7 @@ c       --- and the data needs to be copied around.
         eyfsapi => ey
         ezfsapi => ez
 #endif
-        call execuser("fetcheMR")
+        call execuser("fetcheregistered")
         isfsapi = -1
 #if defined(XLF) || defined(XLF2)
         ex(1:n) = exfsapi
@@ -6990,6 +6978,17 @@ c       --- and the data needs to be copied around.
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
+      elseif(solvergeom==XYZgeom) then
+        tmpnsndts = getnsndtsforsubcycling()
+        indts = min(tmpnsndts-1,ndtstorho(ndts))
+        if (indts < 0 .or. indts > nsndts-1) then
+          print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
+          return
+        endif
+        call sete3d(phipndts(:,:,:,indts),selfe,n,
+     &              x,y,z,
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
+     &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv)
       elseif(solvergeom==XZgeom) then
@@ -7011,6 +7010,18 @@ c       --- and the data needs to be copied around.
 !$OMP MASTER
       if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
 !$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine fetchb3d(pgroup,ipmin,ip,is)
+      use ParticleGroupmodule
+      use DKInterptmp
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: ipmin,ip,is
+      call fetchb3dfrompositions(is,ip,
+     &                           pgroup.xp(ipmin),pgroup.yp(ipmin),
+     &                           pgroup.zp(ipmin),
+     &                           bx,by,bz)
       return
       end
 c=============================================================================
@@ -7244,7 +7255,7 @@ c      --- Put ny to zero for RZ geometry
       endif
 
 c     --- Put grid min's to zero as appropriate for the symmetry
-      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+      if(solvergeom==XYZgeom) then
         if (l2symtry) then
           ymmin = 0.
         elseif (l4symtry) then
@@ -7314,6 +7325,7 @@ c     --- Also, make sure the rstar is non-zero.
       end
 c=============================================================================
       subroutine fetchphi(n,x,y,z,p)
+      use InGen
       use InGen3d
       use Picglb
       use FieldSolveAPI
@@ -7321,29 +7333,31 @@ c=============================================================================
       real(kind=8),target:: x(n),y(n),z(n),p(n)
 
 c     --- Call the appropriate routine to get the phi
-      if(solvergeom==XYZgeom) then
-        call fetchphi3d(n,x,y,z,p)
-      elseif(solvergeom==RZgeom) then
-        call setphirz(n,x,y,z,p,zgrid)
-      elseif(solvergeom==XZgeom) then
-        call setphixz(n,x,y,z,p,zgrid)
-      elseif(solvergeom==XYgeom) then
-        call remark("fetchphi not implemented in XY.")
-        stop
-      elseif(solvergeom==Zgeom) then
-        call setphiz(n,z,p,zgrid)
-      elseif(solvergeom==AMRgeom) then
-        call cho_getphi3d(n,x,y,z,0.,p,-1,-1)
-      elseif(solvergeom==XYZgeomMR) then
+      if (fstype == 12) then
         xfsapi => x
         yfsapi => y
         zfsapi => z
         phifsapi => p
-        call execuser("fetchphiMR")
+        call execuser("fetchphiregistered")
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
         nullify(phifsapi)
+      elseif (solvergeom==XYZgeom) then
+        call fetchphi3d(n,x,y,z,p)
+      elseif (solvergeom==RZgeom) then
+        call setphirz(n,x,y,z,p,zgrid)
+      elseif (solvergeom==XZgeom) then
+        call setphixz(n,x,y,z,p,zgrid)
+      elseif (solvergeom==XYgeom) then
+        call remark("fetchphi not implemented in XY.")
+        stop
+      elseif (solvergeom==Zgeom) then
+        call setphiz(n,z,p,zgrid)
+      elseif (solvergeom==AMRgeom) then
+        call cho_getphi3d(n,x,y,z,0.,p,-1,-1)
+      else
+        p = 0.
       endif
 
       call fetchphi_from_pgrd(n,x,y,z,p)
@@ -8342,14 +8356,13 @@ c   2  3d fft and 3d capacity matrix for internal quadrupole conductors
 c   3  3d SOR field solve 
 c   4  2d fft in transverse plane, tridiag solve in z
 
-      if (fstype .ne. -1) then
+      if (fstype .ne. -1 .and. fstype .ne. 12) then
         if(solvergeom==RZgeom .or.
      &     solvergeom==XZgeom .or.
      &     solvergeom==XYgeom .or.
      &     solvergeom==Rgeom  .or.
      &     solvergeom==Zgeom) fstype=10
         if(solvergeom==AMRgeom) fstype = 11
-        if (solvergeom == XYZgeomMR) fstype = 12
       endif
 
       if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
@@ -8477,7 +8490,7 @@ c         --- Chombo AMR  full-multigrid solver
      &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
       elseif (fstype == 12) then
         if (iwhich <= 0) then
-          call execuser('fieldsolMR')
+          call execuser('fieldsolregistered')
         endif
 
       elseif (fstype == 13) then
