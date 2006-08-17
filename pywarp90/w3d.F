@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.279 $, $Date: 2006/08/16 18:47:41 $
+c@(#) File W3D.F, version $Revision: 3.280 $, $Date: 2006/08/17 16:40:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1676,18 +1676,12 @@ c  If OPENMP, copies data to arrays which will be threadprivate
 c  This needs to be fixed when there are multiple pgroups since the
 c  species may be spread out among the pgroups.
          if (center == "synchv" .or. center == "gen") then
-!$OMP SINGLE
-           isid = pgroup%sid(is-1) + 1
-           call getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,
-     &                   0.,0.,0.,0.,0.,1,
-     &                   nplive,0.,0.,0.,1,isid,ismax,
-     &                   tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-!$OMP END SINGLE
 #ifdef _OPENMP
-           maxp(:,isid) = tempmaxp(:,isid)
-           minp(:,isid) = tempminp(:,isid)
-           zmmnts0(:,isid) = tempzmmnts0(:,isid)
-           zmmnts(:,:,isid) = tempzmmnts(:,:,isid)
+c          --- Same defaults as set in getzmmnt
+           maxp(:,isid) = -LARGEPOS
+           minp(:,isid) = +LARGEPOS
+           zmmnts0(:,isid) = 0.
+           zmmnts(:,:,isid) = 0.
 #else
            maxp => tempmaxp
            minp => tempminp

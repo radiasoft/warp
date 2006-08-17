@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.186 $, $Date: 2006/06/29 16:20:45 $
+c@(#) File TOP.F, version $Revision: 3.187 $, $Date: 2006/08/17 16:40:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -612,26 +612,17 @@ c          --- If only one species, then don't have separate species data.
            endif
          endif
 
-c        --- -1 is a flag for isid for itask==1 to zero out the moments
-c        --- summed over all species.
-         if (isid == -1) js = nszmmnt
-
 c        --- This is a very kludgy thing to do. This assumes that this
 c        --- getzmmnt routine will always be called with the temp arrays
 c        --- passed in when itask==1. The only reason the work arrays are
 c        --- passed in anyway is because of the OpenMP code which requires
 c        --- the work arrays to be thread private when called with itask==2.
-c        --- Only the data for the active species is zeroed out, or if isid
-c        --- is -1, then for the summed moments.
-c        --- There is a reduntancy if there is only one species or 
-c        --- lspeciesmoments is false since the arrays will then be
-c        --- initialized twice.
-         tempmaxp(:,js) = -LARGEPOS
-         tempminp(:,js) = +LARGEPOS
-         tempzmmnts0(:,js) = 0.
-         tempzmmnts(:,:,js) = 0.
-         if (nepwin > 0 .and. js < ismax) nep = 0
-         if(wpid>0 .and. js == nszmmnt) nplive = 0
+         tempmaxp = -LARGEPOS
+         tempminp = +LARGEPOS
+         tempzmmnts0 = 0.
+         tempzmmnts = 0.
+         if (nepwin > 0) nep = 0
+         if(wpid>0) nplive = 0
          zmomentscalculated = .false.
          zmomentscalculated(nszmmnt) = .true.
       endif
