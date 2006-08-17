@@ -6748,7 +6748,6 @@ IF(solvergeom==RZgeom) then
     grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
 #endif
   end do
- END if
 else ! IF(solvergeom==XZgeom) then
   invdr = 1._8/dr
   invdz = 1._8/dz
@@ -6807,11 +6806,10 @@ else ! IF(solvergeom==XZgeom) then
     grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
 #endif
   end do
- END if
 END if
 
 return
-END SUBROUTINE RHOWEIGHTRZ
+END SUBROUTINE RHOWEIGHTRZGRID
 
 subroutine rhoweightrzgrid_weights(grid,xp,yp,zp,w,np,q,nr,nz,dr,dz,rgrid,zgrid)
 use GRIDtypemodule
@@ -6878,11 +6876,7 @@ IF(solvergeom==RZgeom) then
     grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
 #endif
   end do
- END if
 else ! IF(solvergeom==XZgeom) then
- IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
-  call rhoweightxz_amr_weights(xp,zp,w,np,q,zgrid)
- else
   invdr = 1._8/dr
   invdz = 1._8/dz
 
@@ -6941,11 +6935,10 @@ else ! IF(solvergeom==XZgeom) then
     grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
 #endif
   end do
- END if
 END if
 
 return
-END SUBROUTINE RHOWEIGHTRZgrid_weights
+END SUBROUTINE RHOWEIGHTRZGRID_WEIGHTS
 
 subroutine rhoweightr(xp,yp,np,q,nr,dr,rgrid)
 USE multigridrz
