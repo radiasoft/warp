@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.64 $, $Date: 2006/08/17 16:55:42 $
+c@(#) File w3d_injection.F, version $Revision: 1.65 $, $Date: 2006/08/17 17:09:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1428,7 +1428,7 @@ c               --- K. Blodgett, "Currents Limited by Space Charge Between
 c               --- Concentric Spheres", PhysRev, 1924.
                 if (inject == 2) then
                   const = 4./9.*eps0*(2.*abs(qoverm))**.5*dxi**2*
-     &             fulldt_s*area/echarge/pgroup%sw(is)/
+     &             fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &             (1. - 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
                 endif
 
@@ -1480,8 +1480,8 @@ c                 --- number of particles injected in grid cell
      &                    real(nttinj(ij)*(nztinjmx(ij) - nztinjmn(ij)))
                   elseif (inject == 2) then
                     tinjprev(ith,ijz,ij) = ftinject(isid,ij)*(
-     &                                    inj_param*const*abs(ehalf*inj_dx)**1.5 +
-     &                                    (1. - inj_param)*tinjprev(ith,ijz,ij))
+     &                               inj_param*const*abs(ehalf*inj_dx)**1.5 +
+     &                               (1. - inj_param)*tinjprev(ith,ijz,ij))
                     rnn = tinjprev(ith,ijz,ij)
                   elseif (inject == 3) then
 c                   --- get charge density at injection point
