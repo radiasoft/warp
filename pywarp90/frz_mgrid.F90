@@ -6683,6 +6683,270 @@ END if
 return
 END SUBROUTINE RHOWEIGHTRZ_weights
 
+subroutine rhoweightrzgrid(grid,xp,yp,zp,np,q,nr,nz,dr,dz,rgrid,zgrid)
+use GRIDtypemodule
+USE multigridrz
+USE FRZmgrid, ONLY: mgridrz_xfact, mgridrz_yfact
+implicit none
+
+type(GRIDtype):: grid
+INTEGER(ISZ), INTENT(IN) :: np, nr, nz
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
+REAL(8), INTENT(IN) :: q, dr, dz, rgrid, zgrid
+
+REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolxz, zmin0, qw
+INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
+REAL(8):: substarttime
+
+IF(np==0) return
+
+IF(solvergeom==RZgeom) then
+  invdr = 1._8/dr
+  invdz = 1._8/dz
+
+  ! computes divider by cell volumes to get density
+  IF(rgrid==0.) then
+    j = 0
+    ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
+    ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+    ! and Verboncoeur, J. of Comp. Phys.,
+    invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
+    do j = 1, nr
+      invvol(j) = 1._8 / (2._8 * pi * real(j,8) * dr * dr * dz)
+    end do
+  else
+    do j = 0, nr
+      invvol(j) = 1._8 / (2._8 * pi * (rgrid+real(j,8)*dr) * dr * dz)
+    end do
+  END if
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-rgrid)*invdr
+    zpos = (zp(i)-grid%zminp-zgrid)*invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    jnp=jn+1
+    lnp=ln+1
+#ifdef MPIPARALLEL
+    grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + q * oddr * oddz * invvol(jn-1)
+    grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
+    grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
+    grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
+    grid%rhominr = MIN(grid%rhominr,jn)
+    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+    grid%rhominz = MIN(grid%rhominz,ln)
+    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
+#else
+    grid%rho(jn, ln)  = grid%rho(jn, ln)  + q * oddr * oddz * invvol(jn-1)
+    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
+    grid%rho(jn, lnp) = grid%rho(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
+    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
+#endif
+  end do
+ END if
+else ! IF(solvergeom==XZgeom) then
+  invdr = 1._8/dr
+  invdz = 1._8/dz
+
+  invvolxz = 1._8 / (dr*dz)
+
+  IF( solvergeom==XYgeom) then
+    zmin0 = grid%zminp
+  else ! solvergeom=XZgeom
+    zmin0 = grid%zminp-zgrid
+  END if
+
+  qw = q
+  if (solvergeom==XZgeom .and. l4symtry) qw=qw*0.5
+  if (solvergeom==XYgeom) then
+    if(l4symtry) then
+      qw=qw*0.25
+    elseif(l2symtry) then
+      qw=qw*0.5
+    end if
+  end if
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(l4symtry) then
+      rpos = (ABS(xp(i))-grid%xmin)*invdr
+    else
+      rpos = (xp(i)-grid%xmin)*invdr
+    END if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-zmin0)*invdz
+    else
+      zpos = (zp(i)-zmin0)*invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    jnp=jn+1
+    lnp=ln+1
+#ifdef MPIPARALLEL
+    grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
+    grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
+    grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
+    grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
+    grid%rhominr = MIN(grid%rhominr,jn)
+    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+    grid%rhominz = MIN(grid%rhominz,ln)
+    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
+#else
+    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
+    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
+    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
+    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
+#endif
+  end do
+ END if
+END if
+
+return
+END SUBROUTINE RHOWEIGHTRZ
+
+subroutine rhoweightrzgrid_weights(grid,xp,yp,zp,w,np,q,nr,nz,dr,dz,rgrid,zgrid)
+use GRIDtypemodule
+USE multigridrz
+USE Subtimers3d
+implicit none
+
+type(GRIDtype):: grid
+INTEGER(ISZ), INTENT(IN) :: np, nr, nz
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, w
+REAL(8), INTENT(IN) :: q, dr, dz, rgrid, zgrid
+
+REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolxz, qw, q0, zmin0
+INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
+
+IF(np==0) return
+
+IF(solvergeom==RZgeom) then
+  invdr = 1._8/dr
+  invdz = 1._8/dz
+
+  ! computes divider by cell volumes to get density
+  IF(rgrid==0.) then
+    j = 0
+    ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
+    ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+    ! and Verboncoeur, J. of Comp. Phys.,
+    invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
+    do j = 1, nr
+      invvol(j) = 1._8 / (2._8 * pi * real(j,8) * dr * dr * dz)
+    end do
+  else
+    do j = 0, nr
+      invvol(j) = 1._8 / (2._8 * pi * (rgrid+real(j,8)*dr) * dr * dz)
+    end do
+  END if
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    rpos = (SQRT(xp(i)*xp(i)+yp(i)*yp(i))-rgrid)*invdr
+    zpos = (zp(i)-grid%zminp-zgrid)*invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    jnp=jn+1
+    lnp=ln+1
+    qw = q*w(i)
+#ifdef MPIPARALLEL
+    grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
+    grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
+    grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
+    grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
+    grid%rhominr = MIN(grid%rhominr,jn)
+    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+    grid%rhominz = MIN(grid%rhominz,ln)
+    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
+#else
+    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
+    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
+    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
+    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
+#endif
+  end do
+ END if
+else ! IF(solvergeom==XZgeom) then
+ IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
+  call rhoweightxz_amr_weights(xp,zp,w,np,q,zgrid)
+ else
+  invdr = 1._8/dr
+  invdz = 1._8/dz
+
+  invvolxz = 1._8 / (dr*dz)
+
+  q0 = q
+  if (solvergeom==XZgeom .and. l4symtry) q0=q0*0.5
+  if (solvergeom==XYgeom) then
+    if(l4symtry) then
+      q0=q0*0.25
+    elseif(l2symtry) then
+      q0=q0*0.5
+    end if
+  end if
+
+  IF( solvergeom==XYgeom) then
+    zmin0 = grid%zminp
+  else ! solvergeom=XZgeom
+    zmin0 = grid%zminp-zgrid
+  END if
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(l4symtry) then
+      rpos = abs(xp(i))*invdr
+    else
+      rpos = (xp(i)-grid%xmin)*invdr
+    END if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-zmin0)*invdz
+    else
+      zpos = (zp(i)-zmin0)*invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    jnp=jn+1
+    lnp=ln+1
+    qw = q0*w(i)
+#ifdef MPIPARALLEL
+    grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
+    grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
+    grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
+    grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
+    grid%rhominr = MIN(grid%rhominr,jn)
+    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+    grid%rhominz = MIN(grid%rhominz,ln)
+    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
+#else
+    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
+    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
+    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
+    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
+#endif
+  end do
+ END if
+END if
+
+return
+END SUBROUTINE RHOWEIGHTRZgrid_weights
+
 subroutine rhoweightr(xp,yp,np,q,nr,dr,rgrid)
 USE multigridrz
 USE FRZmgrid, ONLY: mgridrz_xfact, mgridrz_yfact

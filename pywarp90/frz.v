@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.46 $, $Date: 2006/08/07 20:35:04 $
+#@(#) File FRZ.V, version $Revision: 3.47 $, $Date: 2006/08/17 23:27:23 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.46 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.47 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -206,6 +206,15 @@ get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 reset_rzmgrid_rho() subroutine
          # sets rho to zero.
+rhoweightrzgrid(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,np:integer,
+                q:real,nr:integer,nz:integer,dr:real,dz:real,
+                rgrid:real,zgrid:real) subroutine
+         # deposits rho on the specified grid object
+rhoweightrzgrid_weights(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,
+                        w(np):real,np:integer,
+                        q:real,nr:integer,nz:integer,dr:real,dz:real,
+                        rgrid:real,zgrid:real) subroutine
+         # deposits rho from weighted particles on the specified grid object
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real) subroutine
