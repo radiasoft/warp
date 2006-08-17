@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.65 $, $Date: 2006/08/17 17:09:56 $
+c@(#) File w3d_injection.F, version $Revision: 1.66 $, $Date: 2006/08/17 19:50:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2528,7 +2528,7 @@ c     --- If transforming to coordinates of source, subtract source center
         if (ishift == 1) then
           do i=1,np
             ij = ijp(min(i,ni))
-            if (ij > 0) then
+            if (0 < ij .and. ij <= ninject  ) then
               x(i) = x(i) - xinject(ij)
               y(i) = y(i) - yinject(ij)
               z(i) = z(i) - zinject(ij)
@@ -2542,7 +2542,7 @@ c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
 c         do i=1,np
 c           ij = ijp(min(i,ni))
-c           if (ij > 0) then
+c           if (0 < ij .and. ij <= ninject  ) then
 c             x(i) = x(i) - xpinject(ij)*vzinject(ij)
 c             y(i) = y(i) - ypinject(ij)*vzinject(ij)
 c             z(i) = z(i) - vzinject(ij)
@@ -2575,7 +2575,7 @@ c         phi = atan(ypinject(ij)*cos(theta))
         endif
         do i=1,np
           ij = ijp(min(i,ni))
-          if (ij > 0) then
+          if (0 < ij .and. ij <= ninject  ) then
             if (ni > 1) then
 c             --- See comments above.
               theta = thetainject(ij)
@@ -2612,7 +2612,7 @@ c     --- If transforming from coordinates of source, add source center
         if (ishift == 1) then
           do i=1,np
             ij = ijp(min(i,ni))
-            if (ij > 0) then
+            if (0 < ij .and. ij <= ninject  ) then
               x(i) = x(i) + xinject(ij)
               y(i) = y(i) + yinject(ij)
               z(i) = z(i) + zinject(ij)
@@ -2626,7 +2626,7 @@ c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
 c         do i=1,np
 c           ij = ijp(min(i,ni))
-c           if (ij > 0) then
+c           if (0 < ij .and. ij <= ninject  ) then
 c             x(i) = x(i) + xpinject(ij)*vzinject(ij)
 c             y(i) = y(i) + ypinject(ij)*vzinject(ij)
 c             z(i) = z(i) + vzinject(ij)
@@ -3011,7 +3011,7 @@ c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = ijp(ip)
-        if(ij==0) cycle
+        if (ij <= 0 .or. ij > ninject) cycle
         zii = 1./(inj_dz*inj_d(ij))
         inj_di = 1./inj_d(ij)
 
@@ -3197,7 +3197,7 @@ c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = ijp(ip)
-        if(ij==0) cycle
+        if (ij <= 0 .or. ij > ninject) cycle
         zii = 1./(dz*inj_d(ij))
         inj_di = 1./inj_d(ij)
 
@@ -3359,7 +3359,7 @@ c         --- This is not necessarily the correct thing to do, but at least
 c         --- for now, it avoids memory problems and seg faults.
 c         --- Ultimately, a particle should be able to check if its near
 c         --- any conductor and do special coding for the field near it.
-          if (ij == 0) cycle
+          if (ij <= 0 .or. ij > ninject) cycle
 
           ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
           iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
@@ -3506,12 +3506,12 @@ c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
           ij = int(pgroup%pid(ip,injpid))
 
-c           --- Skip particles that did not come from an injection source.
-c           --- This is not necessarily the correct thing to do, but at least
-c           --- for now, it avoids memory problems and seg faults.
-c           --- Ultimately, a particle should be able to check if its near
-c           --- any conductor and do special coding for the field near it.
-            if (ij == 0) cycle
+c         --- Skip particles that did not come from an injection source.
+c         --- This is not necessarily the correct thing to do, but at least
+c         --- for now, it avoids memory problems and seg faults.
+c         --- Ultimately, a particle should be able to check if its near
+c         --- any conductor and do special coding for the field near it.
+          if (ij <= 0 .or. ij > ninject) cycle
 
 c         --- Calculate distance of particle from the emitting surface
           dd = pgroup%zp(ip)*dzi
@@ -3800,7 +3800,7 @@ c           --- This is not necessarily the correct thing to do, but at least
 c           --- for now, it avoids memory problems and seg faults.
 c           --- Ultimately, a particle should be able to check if its near
 c           --- any conductor and do special coding for the field near it.
-            if (ij == 0) cycle
+            if (ij <= 0 .or. ij > ninject) cycle
 
             ix = int(abs(pgroup%xp(ip) - inj_xmmin(ij))*dxi)
             iy = int(abs(pgroup%yp(ip) - inj_ymmin(ij))*dyi)
@@ -3926,7 +3926,7 @@ c           --- This is not necessarily the correct thing to do, but at least
 c           --- for now, it avoids memory problems and seg faults.
 c           --- Ultimately, a particle should be able to check if its near
 c           --- any conductor and do special coding for the field near it.
-            if (ij == 0) cycle
+            if (ij <= 0 .or. ij > ninject) cycle
 
 c           --- set temporaries
             rinji = 1./rinject(ij)
@@ -4337,7 +4337,7 @@ c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = ijp(ip)
-        if(ij==0) cycle
+        if (ij <= 0 .or. ij > ninject) cycle
 
 c       --- set temporaries
         rinj = rinject(ij)
@@ -4637,7 +4637,7 @@ c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = int(pid(ip)) - ninject
-        if(ij==0) cycle
+        if (ij <= 0 .or. ij > ntinj) cycle
 
         xx = xp(ip) - xtinject(ij)
         yy = yp(ip) - ytinject(ij)
