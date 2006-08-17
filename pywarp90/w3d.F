@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.280 $, $Date: 2006/08/17 16:40:38 $
+c@(#) File W3D.F, version $Revision: 3.281 $, $Date: 2006/08/17 16:43:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7013,8 +7013,8 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
       call fetchb3dfrompositions(is,ip,
-     &                           pgroup.xp(ipmin),pgroup.yp(ipmin),
-     &                           pgroup.zp(ipmin),
+     &                           pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                           pgroup%zp(ipmin),
      &                           bx,by,bz)
       return
       end
