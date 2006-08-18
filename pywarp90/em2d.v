@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.7 $, $Date: 2006/07/28 23:48:41 $
+#@(#) File EM2D.V, version $Revision: 1.8 $, $Date: 2006/08/18 17:19:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -87,6 +87,8 @@ em2d_step() subroutine
 griuni(f:EM2D_FIELDtype) subroutine
 grimax(f:EM2D_FIELDtype) subroutine
 smooth2d_lindman(q(0:nx+2,0:ny+2),nx,ny) subroutine
+em2d_smoothdensity() subroutine
+move_window_field(f:EM2D_FIELDtype) subroutine
 
 %%%%%%%% type_bnd:
 n integer
