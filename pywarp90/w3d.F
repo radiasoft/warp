@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.281 $, $Date: 2006/08/17 16:43:19 $
+c@(#) File W3D.F, version $Revision: 3.282 $, $Date: 2006/08/18 17:18:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -111,14 +111,14 @@ c  Put ny to zero for RZ geometry and setup a few flags
 
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
-        fstype = 10
+        if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
         lsezax3d = .false.
         lsrhoax3d = .false.
         lsphiax3d = .false.
         lrhodia3d = .false.
       elseif(solvergeom==XYgeom) then
         nz = 0
-        fstype = 10
+        if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
         lsezax3d = .false.
         lsrhoax3d = .false.
         lsphiax3d = .false.
@@ -126,13 +126,13 @@ c  Put ny to zero for RZ geometry and setup a few flags
       elseif(solvergeom==Zgeom) then
         nx = 0
         ny = 0
-        fstype = 10
+        if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
       elseif(solvergeom==Rgeom) then
         ny = 0
         nz = 0
-        fstype = 10
+        if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
       elseif(solvergeom==AMRgeom) then
-        fstype = 11
+        if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 11
       endif
 
 c  If a B field solver is being used, then turn on the fetching of the B field
@@ -315,13 +315,15 @@ c  Setup arrays for potential and charge density for the particles.
 #endif
 
 c  Initialize base grid for RZ solver
-      if(solvergeom==RZgeom .or.
-     &   solvergeom==XZgeom .or.
-     &   solvergeom==Rgeom  .or.
-     &   solvergeom==Zgeom) then
-        call init_base(nx,nz,dx,dz,xmmin,zmmin)
-      elseif(solvergeom==XYgeom) then
-        call init_base(nx,ny,dx,dy,xmmin,ymmin)
+      if (fstype == 10) then
+        if(solvergeom==RZgeom .or.
+     &     solvergeom==XZgeom .or.
+     &     solvergeom==Rgeom  .or.
+     &     solvergeom==Zgeom) then
+          call init_base(nx,nz,dx,dz,xmmin,zmmin)
+        elseif(solvergeom==XYgeom) then
+          call init_base(nx,ny,dx,dy,xmmin,ymmin)
+        end if
       end if
 
 c  Initialize the B field solver if it is being used
