@@ -1156,22 +1156,16 @@ integer :: which, ngrid
       case default
     end select
     if (which==1 .and. .not. cond) cycle ! do not move main window if patch not at upper end
-    call shift_fields_1cell(f)
-    call move_window_bnd(f%bndexeybz,f%rap,l_elaser_out_plane)
-    call move_window_bnd(f%bndbxbyez,f%rap,l_elaser_out_plane)
+    call move_window_field(f)
     if (l_elaser_out_plane) then
-      f%ymin  =f%ymin  +field%dy
-      f%ymax  =f%ymax  +field%dy
       if(which==2) then
-        yminpatch_gather  = yminpatch_gather +field%dy
-        yminpatch_scatter = yminpatch_scatter+field%dy
-        ymaxpatch_gather  = ymaxpatch_gather +field%dy
-        ymaxpatch_scatter = ymaxpatch_scatter+field%dy
+        yminpatch_gather  = yminpatch_gather +f%dy*f%rap
+        yminpatch_scatter = yminpatch_scatter+f%dy*f%rap
+        ymaxpatch_gather  = ymaxpatch_gather +f%dy*f%rap
+        ymaxpatch_scatter = ymaxpatch_scatter+f%dy*f%rap
         if(.not. cond) iypatch=iypatch+1
       end if
     else
-      f%xmin  =f%xmin  +field%dx
-      f%xmax  =f%xmax  +field%dx
       if(which==2) then
         xminpatch_gather  = xminpatch_gather +field%dx
         xminpatch_scatter = xminpatch_scatter+field%dx
@@ -1185,7 +1179,22 @@ integer :: which, ngrid
   return
 end subroutine move_window_fields
 
-
+subroutine move_window_field(f)
+use EM2D_FIELDtypemodule
+use mod_field,Only: l_elaser_out_plane,shift_fields_1cell
+use mod_bnd
+TYPE(EM2D_FIELDtype), POINTER      :: f
+  call shift_fields_1cell(f)
+  call move_window_bnd(f%bndexeybz,f%rap,l_elaser_out_plane)
+  call move_window_bnd(f%bndbxbyez,f%rap,l_elaser_out_plane)
+  if (l_elaser_out_plane) then
+    f%ymin  =f%ymin  +f%dy*f%rap
+    f%ymax  =f%ymax  +f%dy*f%rap
+  else
+    f%xmin  =f%xmin  +f%dx*f%rap
+    f%xmax  =f%xmax  +f%dx*f%rap
+  end if
+end subroutine move_window_field
 
 subroutine smooth2(q,nx,ny)
  implicit none
