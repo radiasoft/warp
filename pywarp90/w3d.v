@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.228 $, $Date: 2006/08/16 18:47:42 $
+#@(#) File W3D.V, version $Revision: 3.229 $, $Date: 2006/08/22 17:42:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.228 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.229 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -877,7 +877,7 @@ stckxy3d(np,xp(np):real,xmmax:real,xmmin:real,dx:real,
          zp(np):real,zmmin:real,dz:real,
          uxp(np):real,uyp(np):real,uzp(np):real,
          gaminv(np):real,zgrid:real,zbeam:real,
-         l2symtry:logical,l4symtry:logical,pboundxy:real,lcountaslost:logical)
+         l2symtry:logical,l4symtry:logical,pboundxy:integer,lcountaslost:logical)
              subroutine # Enforces sticky x and y walls
 stptcl3d(pgroup:ParticleGroup)   subroutine # Particle initializer
 setrstar(rstar(-1:nz+1):real,nz:integer,dz:real,zmmin:real,zgrid:real)
