@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.229 $, $Date: 2006/08/22 17:42:26 $
+#@(#) File W3D.V, version $Revision: 3.230 $, $Date: 2006/08/23 00:08:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.229 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.230 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -316,22 +316,7 @@ phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch)
 xywork(2,0:nx,0:ny)    _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 
-*********** Fields3dParticles parallel:
-nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
-nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
-nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
-nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
-                     # the particle domains. Only applies for the parallel
-                     # version.
-zmminp real      # Lower limit of z for grid for particles
-zmmaxp real      # Upper limit of z for grid for particles
-phip(:,:,:) _real # Potential used by the particles to calculate
-                  # the field from the solution of Poisson's equation.
-                  # This will be pointed to each of the different ndts
-                  # groups as needed.
-rhop(:,:,:) _real # Charge density from the particles.
-                  # This will be pointed to each of the different ndts
-                  # groups as needed.
+*********** Subcycling dump:
 ndtsaveraging integer /0/ # Sets the type of averaging to do when using
                           # subcycling. When 0, no averaging is done, only
                           # the most recent charge density from each ndts
@@ -354,6 +339,23 @@ nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
                            # It defaults to 1 which is what is needed if
                            # there are only groups with ndts==1. Otherwise
                            # it will be 2.
+
+*********** Fields3dParticles parallel:
+nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
+nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
+nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
+nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
+                     # the particle domains. Only applies for the parallel
+                     # version.
+zmminp real      # Lower limit of z for grid for particles
+zmmaxp real      # Upper limit of z for grid for particles
+phip(:,:,:) _real # Potential used by the particles to calculate
+                  # the field from the solution of Poisson's equation.
+                  # This will be pointed to each of the different ndts
+                  # groups as needed.
+rhop(:,:,:) _real # Charge density from the particles.
+                  # This will be pointed to each of the different ndts
+                  # groups as needed.
 rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies,0:nsndts-1)    _real +fassign
                  # Temporary copy of the charge density from the particles
                  # for species with different time step sizes.

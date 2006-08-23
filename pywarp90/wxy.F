@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.69 $, $Date: 2006/06/22 17:25:45 $
+c@(#) File WXY.M, version $Revision: 3.70 $, $Date: 2006/08/23 00:08:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -46,6 +46,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
+      use Subcycling,Only:nrhopndtscopies
       use Fields3dParticles
       use Efields3d
       use Io
@@ -190,7 +191,7 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
       call gallot("Fields3d", 0)
-      call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
+      call setupFields3dParticles()
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
      &                     phipndts(:,:,:,0))
 

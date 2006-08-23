@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.10 $, $Date: 2006/06/29 16:52:43 $
+c@(#) File w3d_utilities.F, version $Revision: 1.11 $, $Date: 2006/08/23 00:08:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -604,7 +604,7 @@ c array.
 c=============================================================================
       integer(ISZ) function getnsndtsforsubcycling()
       use InGen3d,Only: solvergeom,XYZgeom
-      use Fields3dParticles,Only: ndtsaveraging,nsndts
+      use Subcycling,Only: ndtsaveraging,nsndts
 
       integer(ISZ):: tmpnsndts
 

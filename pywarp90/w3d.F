@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.282 $, $Date: 2006/08/18 17:18:28 $
+c@(#) File W3D.F, version $Revision: 3.283 $, $Date: 2006/08/23 00:08:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -64,6 +64,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
+      use Subcycling,Only:nrhopndtscopies
       use Fields3dParticles
       use Efields3d
       use GridBoundary3d
@@ -238,7 +239,8 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
       call gchange("Fields3d", 0)
-      call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
+      call setupSubcycling(pgroup%ns,pgroup%ndts,it)
+      call setupFields3dParticles()
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
      &                     phipndts(:,:,:,0))
       vbeamfrm = vbeam
@@ -1362,7 +1364,7 @@ c=============================================================================
       subroutine setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
      &                                                 center_in,center,lcycle)
       use ParticleGroupmodule
-      use Fields3dParticles
+      use Subcycling
       type(ParticleGroup):: pgroup
       integer(ISZ):: it,is
       character(*):: center_in
@@ -1403,7 +1405,7 @@ c=============================================================================
       subroutine setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
      &                                               center_in,center,lcycle)
       use ParticleGroupmodule
-      use Fields3dParticles
+      use Subcycling
       type(ParticleGroup):: pgroup
       integer(ISZ):: it,is
       character(*):: center_in
@@ -1455,7 +1457,7 @@ c=============================================================================
       subroutine setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
      &                                               center_in,center,lcycle)
       use ParticleGroupmodule
-      use Fields3dParticles
+      use Subcycling
       type(ParticleGroup):: pgroup
       integer(ISZ):: it,is
       character(*):: center_in
@@ -1517,6 +1519,7 @@ c=============================================================================
       use Particles,Only: nplive,wpid,chdtspid,spid,xoldpid,yoldpid,zoldpid,
      &                    expid,eypid,ezpid,bxpid,bypid,bzpid
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       use Efields3d
       use Picglb
@@ -2130,6 +2133,7 @@ c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,bound0,boundxy)
       use GlobalVars
       use Subtimers3d
+      use InGen,Only: fstype
       use InGen3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
@@ -2140,6 +2144,7 @@ c=============================================================================
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
 
+      if (fstype == 12) return
       if (solvergeom==AMRgeom) return
 
 c  Enforce transverse periodicity if requested.
@@ -6160,6 +6165,7 @@ c     --- scalar loop does the actual deposition
       end
 c=============================================================================
       subroutine zerorhowithsampledsubcycling()
+      use Subcycling
       use Fields3dParticles
 
       integer(ISZ):: in1
@@ -6182,6 +6188,7 @@ c     --- for the faster advanced groups.
 c=============================================================================
       subroutine averagerhowithsampledsubcycling()
       use Picglb,Only: it
+      use Subcycling
       use Fields3dParticles
 
       integer(ISZ):: in1,in2,ndtstmp,in2tmp
@@ -6224,6 +6231,7 @@ c         --- time.
       end
 c=============================================================================
       subroutine zerorhowithfullvsubcycling()
+      use Subcycling
       use Fields3dParticles
 
       integer(ISZ):: in1
@@ -6261,6 +6269,7 @@ c         endif
       end
 c=============================================================================
       subroutine averagerhowithfullvsubcycling()
+      use Subcycling
       use Fields3dParticles
       use Picglb,Only: it
 
@@ -6334,6 +6343,7 @@ c           --- weighting factors.
       end
 c=============================================================================
       subroutine zerorhowithhalfvsubcycling()
+      use Subcycling
       use Fields3dParticles
 
       if (ndtsmax == 1) return
@@ -6345,6 +6355,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine averagerhowithhalfvsubcycling()
+      use Subcycling
       use Fields3dParticles
 
       integer(ISZ):: in1,in2,ndtstmp,in2tmp
@@ -6365,6 +6376,7 @@ c=============================================================================
       use Picglb3d
       use Particles,Only: wpid
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       use GridBoundary3d
       type(ParticleGroup):: pgroup
@@ -6385,48 +6397,47 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lw3dtimesubs) substarttime = wtime()
 
-c     --- Ensure that the rhop array is setup properly
-      if(solvergeom==XYZgeom) then
-        call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
-      endif
+c     --- Ensure that subcycling is setup correctly (in case the user had
+c     --- made changes.
+      call setupSubcycling(pgroup%ns,pgroup%ndts,it)
 
       if(depos == 'none') return
-
-c     --- zero rhop if requested
-      if (lzero) then
-        if (solvergeom == XYZgeom) then
-c         --- Zero the rho copy for species when the positions
-c         --- are advanced.
-          if (ndtsaveraging == 0) then
-            call zerorhowithsampledsubcycling()
-          elseif (ndtsaveraging == 1) then
-            call zerorhowithfullvsubcycling()
-          elseif (ndtsaveraging == 2) then
-            call zerorhowithhalfvsubcycling()
-          endif
-        endif
-        if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
-     &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
-      end if
-
-c     --- change AMR grid if necessary
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
-     &   solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
-
-c     --- set limits on loop over species
-      if (is_i == -1) then
-        is1 = 1
-        is2 = pgroup%ns
-      else
-        is1 = is_i
-        is2 = is_i
-      endif
-
 
       if (fstype == 12) then
 c       --- Use user registered solver to load rho
         call execuser("loadrhoregistered")
       else
+
+c       --- zero rhop if requested
+        if (lzero) then
+          if (solvergeom == XYZgeom) then
+            call setupFields3dParticles()
+c           --- Zero the rho copy for species when the positions
+c           --- are advanced.
+            if (ndtsaveraging == 0) then
+              call zerorhowithsampledsubcycling()
+            elseif (ndtsaveraging == 1) then
+              call zerorhowithfullvsubcycling()
+            elseif (ndtsaveraging == 2) then
+              call zerorhowithhalfvsubcycling()
+            endif
+          endif
+          if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
+     &       solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
+        end if
+
+c       --- change AMR grid if necessary
+        if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
+     &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
+
+c       --- set limits on loop over species
+        if (is_i == -1) then
+          is1 = 1
+          is2 = pgroup%ns
+        else
+          is1 = is_i
+          is2 = is_i
+        endif
 
 c       --- set initial limits from input
 c       --- (will be changed if necessary in the loop)
@@ -6549,8 +6560,9 @@ c     --- Do any loading that is needed for injection
       end
 c=============================================================================
       subroutine setupevensubcyclingrho(it)
-      use Fields3dParticles
-      use InGen3d,Only:solvergeom,XYZgeom
+c     use Subcycling
+c     use Fields3dParticles
+c     use InGen3d,Only:solvergeom,XYZgeom
       integer(ISZ):: it
 
 c     --- When, sometimes rho is know at a time that is exactly half way
@@ -6558,8 +6570,8 @@ c     --- between two larger times steps. When this happens, the trapezoidal
 c     --- rule is used and one half of that rho is added to the larger time
 c     --- steps rho.
 
-      integer(ISZ):: iz,in1,in2,ndtstmp
-      real(kind=8):: rndts
+c     integer(ISZ):: iz,in1,in2,ndtstmp
+c     real(kind=8):: rndts
 
       return
 
@@ -6663,6 +6675,7 @@ c=============================================================================
       use InMesh3d
       use Picglb3d, only: dz
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       integer(ISZ):: indts
       real(kind=8):: rhopindts(0:nxp,0:nyp,0:nzp)
@@ -6704,23 +6717,66 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine setupFields3dParticles(ns,ndts,it)
+      subroutine setupSubcycling(ns,ndts,it)
+      use Picglb3d
+      use Subcycling
+      integer(ISZ):: ns,ndts(0:ns-1),it
+
+c Setups in the bookkeepping variables and arrays for particle subcycling.
+c These are generic and can be used by any field solver.
+
+      integer(ISZ):: js,i,nsndtstemp,newndts
+
+c     --- If there are no particle species, then do nothing
+      if (ns == 0) return
+
+c     --- Find maximum value of ndts and use it to size the ndtstorho array
+      ndtsmax = max(ndtsmax,maxval(ndts))
+      call gchange("Subcycling",0)
+
+c     --- Find any new time step sizes which havn't been included and add
+c     --- space to the rhopndts array.
+      newndts = 0
+      do js = 0, ns-1
+        if (ndtstorho(ndts(js)) == -1) then
+          ndtstorho(ndts(js)) = -2
+          newndts = newndts + 1
+        endif
+      enddo
+      if (newndts > 0) then
+        nsndtstemp = nsndts
+        nsndts = nsndts + newndts
+        if (ndtsmax > 1) nrhopndtscopies = 2
+        if (ndtsaveraging == 0) then
+          nsndtsphi = 1
+        else
+          nsndtsphi = nsndts
+        endif
+        call gchange("Subcycling",0)
+        do js = 0, ns-1
+          if (ndtstorho(ndts(js)) == -2) then
+            ndtstorho(ndts(js)) = nsndtstemp
+            rhotondts(nsndtstemp) = ndts(js)
+            nsndtstemp = nsndtstemp + 1
+          endif
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine setupFields3dParticles()
       use Picglb3d
       use InMesh3d
       use Fields3d
       use Fields3dParticles
+      use Subcycling,Only:nrhopndtscopies
       use w3d_interfaces
 #ifdef MPIPARALLEL
       use Parallel
 #endif
 
-      integer(ISZ):: ns,ndts(0:ns-1),it
-
 c Ensures that the phip and rhop arrays are setup properly.
-c Also, setup rhopndts for the case when species have different time step sizes.
-c The setup of rhopndts is skipped is ns == -1 or 0.
-
-      integer(ISZ):: js,i,nsndtstemp,newndts
 
       nxp = nx
       nyp = ny
@@ -6733,6 +6789,8 @@ c The setup of rhopndts is skipped is ns == -1 or 0.
       zmminp = zmminglobal + izpslave(my_index)*dz
       zmmaxp = zmminp + nzp*dz
 #endif
+
+      call gchange("Fields3dParticles",0)
 
 c     --- If either rhop of phip are not associated or either does not have
 c     --- the correct dimensions as given by nxp, etc, something 
@@ -6754,44 +6812,6 @@ c         --- If the sizes are not the same, then allocate the group
 c         call gallot('Fields3dParticles',0)
 c       endif
 c     endif
-
-c     --- If -1 or 0 was passed in for ns, then skip the setup of rhopndts
-      if (ns == -1) return
-      if (ns == 0) return
-
-c     --- Setup rhopndts
-
-c     --- Find maximum value of ndts and use it to size the ndtstorho array
-      ndtsmax = max(ndtsmax,maxval(ndts))
-      call gchange("Fields3dParticles",0)
-
-c     --- Find any new time step sizes which havn't been included and add
-c     --- space to the rhopndts array.
-      newndts = 0
-      do js = 0, ns-1
-        if (ndtstorho(ndts(js)) == -1) then
-          ndtstorho(ndts(js)) = -2
-          newndts = newndts + 1
-        endif
-      enddo
-      if (newndts > 0) then
-        nsndtstemp = nsndts
-        nsndts = nsndts + newndts
-        if (ndtsmax > 1) nrhopndtscopies = 2
-        if (ndtsaveraging == 0) then
-          nsndtsphi = 1
-        else
-          nsndtsphi = nsndts
-        endif
-        call gchange("Fields3dParticles",0)
-        do js = 0, ns-1
-          if (ndtstorho(ndts(js)) == -2) then
-            ndtstorho(ndts(js)) = nsndtstemp
-            rhotondts(nsndtstemp) = ndts(js)
-            nsndtstemp = nsndtstemp + 1
-          endif
-        enddo
-      endif
 
 c     --- rhop and phip have the special values for the speices which are
 c     --- incremented every time step.
@@ -6818,6 +6838,7 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
@@ -6923,6 +6944,7 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
@@ -8102,6 +8124,7 @@ c===========================================================================
       use InMesh3d
       use Picglb3d
       use Fields3d
+      use Subcycling
       use Fields3dParticles
       use Efields3d
       use LatticeInternal
