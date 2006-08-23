@@ -1168,11 +1168,8 @@ from gatherrhofromchildren.
     # --- which is needed on the boundaries will be up to date.
     if not self.islastcall(): return
 
-    # check if selfb is turned on for at least one species
-    # and create phispecies if not done already
-    if (self is self.root) and sum(top.pgroup.lselfb)>0:
-      if not self.__dict__.has_key('phispecies'):
-        self.iselfb=compress(top.pgroup.lselfb,arange(top.pgroup.ns))
+    # create phispecies if not done already
+    if not self.__dict__.has_key('phispecies'):
         self.createphispecies()
 
     # solve on phi
@@ -1197,6 +1194,7 @@ from gatherrhofromchildren.
   def createphispecies(self,lrootonly=0):
     self.phispecies = {}
     self.phispecies[None] = self.phi
+    self.iselfb=compress(top.pgroup.lselfb,arange(top.pgroup.ns))
     for i in self.iselfb:
       if i not in self.phispecies.keys():
         self.phispecies[i] = fzeros(shape(self.phi),'d')
