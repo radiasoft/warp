@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.55 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -316,7 +316,7 @@ c A much, much better way of doing this is to sort the data first.
       integer(ISZ):: ip,iq,i1,j1,i2,j2
 
       maxpoints = 3*ntriangles
-      call gchange("ConductorGeometryVisualization")
+      call gchange("ConductorGeometryVisualization",0)
       npoints = 0
       ip = 1
       do while (ip < 3*ntriangles)
