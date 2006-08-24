@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.19 $, $Date: 2006/06/20 18:11:41 $
+c version $Revision: 1.20 $, $Date: 2006/08/24 19:37:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1616,7 +1616,7 @@ c=============================================================================
      &                              xmmin,ymmin,zmmin)
       use BoltzmannElectrons
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: regionid(0:nx,0:ny,0:nz)
+      integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin
 
 c Sets id of regions where the Boltzmann-electron distribution is used.
