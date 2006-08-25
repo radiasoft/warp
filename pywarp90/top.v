@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.176 $, $Date: 2006/08/09 00:13:56 $
+#@(#) File TOP.V, version $Revision: 3.177 $, $Date: 2006/08/25 20:02:23 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.176 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.177 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2392,6 +2392,9 @@ getbeamcom(pgroup:ParticleGroup) real function
        # particles.
 zpartbnd(pgroup:ParticleGroup,zmmax:real,zmmin:real,dz:real,zgrid:real)
        subroutine
+       # Enforces axial particle boundary conditions
+zpartbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
+                 zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
        # Enforces axial particle boundary conditions
 reorgparticles(pgroup:ParticleGroup) subroutine
        # Reorganizes particles for the parallel version
