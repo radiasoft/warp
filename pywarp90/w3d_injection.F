@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.66 $, $Date: 2006/08/17 19:50:48 $
+c@(#) File w3d_injection.F, version $Revision: 1.67 $, $Date: 2006/08/25 21:10:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -56,6 +56,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(pgroup%ns),jton(pgroup%ns),vzconst(pgroup%ns)
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
+      real(kind=8),pointer:: ppvz(:)
       integer(ISZ):: spreadx, spready
       integer(ISZ):: ixmin,ixmax,iymin,iymax
       logical(ISZ):: linj_cell
@@ -1398,6 +1399,10 @@ c         --- zero ntinject for inject = 2 or 3
             enddo
           endif
 
+c         --- Set up arrays to be used to fetch phi for the calculation of
+c         --- vznorm
+          allocate(xx(8),yy(8),zz(8),ppvz(8))
+
 c         --- Loop over injection sources
           do ij=1,ntinj
 
@@ -1459,12 +1464,19 @@ c                 --- normal velocity
 c                 --- Axial velocity
 c                 --- Calculated using axial E field dx from surface.
 c                 --- Keep this as it is in case rtinject varies.
+c                 --- fetchphi is used to allow other geometries.
+                  xx = (/i2x,i2x,i2x+1,i2x+1,i2x,i2x,i2x+1,i2x+1/)
+                  yy = (/i2y,i2y,i2y,i2y,i2y+1,i2y+1,i2y+1,i2y+1/)
+                  zz = (/iz-1,iz+1,iz-1,iz+1,iz-1,iz+1,iz-1,iz+1/)
+                  xx = xmmin  + xx*dx
+                  yy = ymmin  + yy*dy
+                  zz = zmminp + zz*dz
+                  call fetchphi(8,xx,yy,zz,ppvz)
                   vznorm = fulldt_s*qoverm* 0.5*dzi*(
-     &     (phip(i2x  ,i2y  ,iz-1) - phip(i2x  ,i2y  ,iz+1))*(1.-w2x)*(1.-w2y) +
-     &     (phip(i2x+1,i2y  ,iz-1) - phip(i2x+1,i2y  ,iz+1))*    w2x *(1.-w2y) +
-     &     (phip(i2x  ,i2y+1,iz-1) - phip(i2x  ,i2y+1,iz+1))*(1.-w2x)*    w2y  +
-     &     (phip(i2x+1,i2y+1,iz-1) - phip(i2x+1,i2y+1,iz+1))*    w2x *    w2y)
-
+     &                     (ppvz(1) - ppvz(2))*(1.-w2x)*(1.-w2y) +
+     &                     (ppvz(3) - ppvz(4))*    w2x *(1.-w2y) +
+     &                     (ppvz(5) - ppvz(6))*(1.-w2x)*    w2y  +
+     &                     (ppvz(7) - ppvz(8))*    w2x *    w2y)
 
 c                 --- Find coordinates of the point.
                   p2x = abs(xtinject(ij) + rinj*cos(aa) - xmmin)*dxi
@@ -1562,6 +1574,9 @@ c           --- end loop over species
 
 c         --- end loop over transverse injection sources
           enddo
+
+c         --- Clean up temp arrays
+          deallocate(xx,yy,zz,ppvz)
 
 c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
