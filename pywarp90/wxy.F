@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.70 $, $Date: 2006/08/23 00:08:48 $
+c@(#) File WXY.M, version $Revision: 3.71 $, $Date: 2006/08/25 21:50:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -225,8 +225,11 @@ c  Calculate mesh dimensioning quantities
       do j = 0, ny
          ymesh(j) = j * dy + ymmin
       enddo
+      do k = 0, nzfull
+         zmesh(k) = k * dz + zmminglobal
+      enddo
       do k = 0, nz
-         zmesh(k) = k * dz + zmmin
+         zmeshlocal(k) = k * dz + zmmin
       enddo
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz

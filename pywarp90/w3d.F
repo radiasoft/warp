@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.283 $, $Date: 2006/08/23 00:08:49 $
+c@(#) File W3D.F, version $Revision: 3.284 $, $Date: 2006/08/25 21:50:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -293,8 +293,11 @@ c  Calculate mesh dimensioning quantities
       do j = 0, ny
          ymesh(j) = j*dy + ymmin
       enddo
+      do k = 0, nzfull
+         zmesh(k) = k*dz + zmminglobal
+      enddo
       do k = 0, nz
-         zmesh(k) = k*dz + zmmin
+         zmeshlocal(k) = k*dz + zmmin
       enddo
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
@@ -6732,7 +6735,13 @@ c     --- If there are no particle species, then do nothing
 
 c     --- Find maximum value of ndts and use it to size the ndtstorho array
       ndtsmax = max(ndtsmax,maxval(ndts))
+      nsndts = max(1,nsndts)
       call gchange("Subcycling",0)
+
+c     --- Force the first subcycling group to be the one which advances
+c     --- every time step (even if no such group exists).
+      ndtstorho(1) = 0
+      rhotondts(0) = 1
 
 c     --- Find any new time step sizes which havn't been included and add
 c     --- space to the rhopndts array.

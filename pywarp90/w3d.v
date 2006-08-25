@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.230 $, $Date: 2006/08/23 00:08:49 $
+#@(#) File W3D.V, version $Revision: 3.231 $, $Date: 2006/08/25 21:50:54 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.230 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.231 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -296,7 +296,8 @@ bndferr                real    [1]     # Error after bent-self-field solve
 bndfit                 integer [1]     # Iters used, bent-self-field solve
 xmesh(0:nx)            _real [m] +dump # X coordinates of mesh points
 ymesh(0:ny)            _real [m] +dump # Y coordinates of mesh points
-zmesh(0:nz)            _real [m] +dump +parallel # Z coordinates of mesh points
+zmeshlocal(0:nz)       _real [m] +dump +parallel # Z coordinates of local mesh points
+zmesh(0:nzfull)        _real [m] +dump # Z coordinates of global mesh points
 nmxy                   integer /0/ +dump # larger of nx, ny
 nmxyz                  integer /0/ +dump +parallel # largest of nx, ny, nz
 nzfull                 integer /0/ +dump # Full size of nz
