@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.112 $, $Date: 2006/08/16 18:48:29 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.113 $, $Date: 2006/08/25 21:46:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -448,7 +448,11 @@ c=============================================================================
       else
         i2 = nz + delz
       endif
-      sss(1) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+      if (i2 >= i1) then
+        sss(1) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+      else
+        sss(1) = 0.
+      endif
 
       if (my_index > 0) then
         i1 = izfsslave(my_index-1) + nzfsslave(my_index-1) -
@@ -457,7 +461,11 @@ c=============================================================================
         i1 = 0 - delz
       endif
       i2 = nz + delz
-      sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+      if (i2 >= i1) then
+        sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+      else
+        sss(2) = 0.
+      endif
 
       if (npes > 1) call parallelsumrealarray(sss,2)
       mggetarraysum = sss
@@ -1083,22 +1091,17 @@ c=============================================================================
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is only transverse.
 
-      integer(ISZ):: izmin,izmax
       integer(ISZ):: ix,iy,iz
       integer(ISZ):: jx,jy,jz
       real(kind=8):: dx,dy,dz
       real(kind=8):: wx,wy,wz
-
-c     --- Set the loop limits, including edges when appropriate.
-      izmin = 0
-      izmax = nz
 
       dx = 1.*nxcoarse/nx
       dy = 1.*nycoarse/ny
       dz = 1.*nzfullcoarse/nzfull
 
 !$OMP DO
-      do iz=izmin,izmax
+      do iz=0,nz
         jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
         wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
         do iy=0,ny-1
@@ -1122,7 +1125,7 @@ c     --- Set the loop limits, including edges when appropriate.
       enddo
 
       if (bounds(1) > 0 .or. bounds(3) > 0) then
-        do iz=izmin,izmax
+        do iz=0,nz
           jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
           wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
           phi(nx,ny,iz) = phi(nx,ny,iz) +
