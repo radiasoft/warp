@@ -1,9 +1,41 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.41 $, $Date: 2006/08/09 01:27:14 $
+c TOPSLAVE.M, version $Revision: 1.42 $, $Date: 2006/08/25 21:48:42 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
+      subroutine MY_MPI_ALLREDUCE(ztemp,zmmnts,nn,
+     &                      XMPI_DOUBLE_PRECISION,XMPI_SUM,XMPI_COMM_WORLD,mpierror)
+      use Parallel
+      integer(MPIISZ):: nn
+      real(kind=8):: ztemp(nn),zmmnts(nn)
+      integer(MPIISZ):: XMPI_DOUBLE_PRECISION,XMPI_SUM,XMPI_COMM_WORLD,mpierror
+      include "mpif.h"
+      integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE)
+
+      if (nslaves == 1) return
+
+      if (my_index == 0) then
+        call MPI_SEND(zmmnts,nn,MPI_DOUBLE_PRECISION,1_4,1010_4,
+     &                MPI_COMM_WORLD,mpierror)
+      endif
+
+      if (my_index > 0) then
+        call MPI_RECV(ztemp,nn,MPI_DOUBLE_PRECISION,
+     &                int(my_index-1,MPIISZ),1010_4,MPI_COMM_WORLD,mpistatus,mpierror)
+        zmmnts = zmmnts + ztemp
+        call MPI_SEND(zmmnts,nn,MPI_DOUBLE_PRECISION,int(mod(my_index+1,nslaves),MPIISZ),1010_4,
+     &                MPI_COMM_WORLD,mpierror)
+      endif
+
+      if (my_index == 0) then
+        call MPI_RECV(zmmnts,nn,MPI_DOUBLE_PRECISION,
+     &                int(nslaves-1,MPIISZ),1010_4,MPI_COMM_WORLD,mpistatus,mpierror)
+      endif
+      call MPI_BCAST(zmmnts,nn,MPI_DOUBLE_PRECISION,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
+
+      return
+      end
 c===========================================================================
       subroutine zpartbnd_slave(pgroup,zmmax,zmmin,dz,zgrid)
       use ParticleGroupmodule
@@ -725,25 +757,38 @@ c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
 
 c     --- temporary for z moments
-      real(kind=8):: ztemp0(NUMZMMNT,0:nszmmnt)
-      real(kind=8):: ztemp(0:nzmmnt,NUMZMMNT,0:nszmmnt)
-      real(kind=8):: maxes1(6,0:nszmmnt),mines1(6,0:nszmmnt)
-      real(kind=8):: maxes2(6,0:nszmmnt),mines2(6,0:nszmmnt)
+      real(kind=8),allocatable:: ztemp0(:,:)
+      real(kind=8),allocatable:: ztemp(:,:,:)
+      real(kind=8),allocatable:: maxes1(:,:),mines1(:,:)
+      real(kind=8),allocatable:: maxes2(:,:),mines2(:,:)
+      integer(MPIISZ):: nn
       include "mpif.h"
       integer(MPIISZ):: mpierror
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
+      allocate(ztemp0(NUMZMMNT,0:nszmmnt))
+      allocate(ztemp(0:nzmmnt,NUMZMMNT,0:nszmmnt))
+      allocate(maxes1(6,0:nszmmnt),mines1(6,0:nszmmnt))
+      allocate(maxes2(6,0:nszmmnt),mines2(6,0:nszmmnt))
+
 c     --- Do reduction on whole beam moments.
       ztemp0 = zmmnts0
-      call MPI_ALLREDUCE(ztemp0,zmmnts0,int(NUMZMMNT*(1+nszmmnt),MPIISZ),
+      nn = NUMZMMNT*(1+nszmmnt)
+      call MPI_ALLREDUCE(ztemp0,zmmnts0,nn,
      &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
 
 c     --- Do reduction on beam z moments.
       ztemp = zmmnts
-      call MPI_ALLREDUCE(ztemp,zmmnts,int((1+nzmmnt)*NUMZMMNT*(1+nszmmnt),MPIISZ),
+      nn = (1+nzmmnt)*NUMZMMNT*(1+nszmmnt)
+c     print*,"PSM1 ",my_index,nn
+      call MPI_ALLREDUCE(ztemp,zmmnts,nn,
      &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
+c     call MPI_REDUCE(ztemp,zmmnts,nn,
+c    &                MPI_DOUBLE_PRECISION,MPI_SUM,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
+c     call MPI_BCAST(zmmnts,nn,MPI_DOUBLE_PRECISION,int(0,MPIISZ),MPI_COMM_WORLD,mpierror)
 
+c     print*,"PSM2 ",my_index
 c     --- Find global max's and min's
 c     --- This is done minimizing the amount of interprocessor communication
       maxes1(1,:) = xmaxp
@@ -776,6 +821,11 @@ c     --- This is done minimizing the amount of interprocessor communication
       vxminp = mines2(4,:)
       vyminp = mines2(5,:)
       vzminp = mines2(6,:)
+
+      deallocate(ztemp0)
+      deallocate(ztemp)
+      deallocate(maxes1,mines1)
+      deallocate(maxes2,mines2)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallel_sum_mmnts = timeparallel_sum_mmnts + wtime() - substarttime
