@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.133 2006/06/29 17:57:09 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.134 2006/08/25 21:33:27 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -534,7 +534,7 @@ AssemblyNot class.  Represents 'not' of assemblies.
   """
   def __init__(self,l):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material})
+                           kw={'material':l.material,'name':l.name})
     self.left = l
   def getextent(self):
     return (-self.left.getextent())
@@ -559,7 +559,7 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material})
+                           kw={'material':l.material,'name':l.name})
     self.left = l
     self.right = r
   def getextent(self):
@@ -592,7 +592,7 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material})
+                           kw={'material':l.material,'name':l.name})
     self.left = l
     self.right = r
   def getextent(self):
@@ -625,7 +625,7 @@ AssemblyMinus class.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material})
+                           kw={'material':l.material,'name':l.name})
     self.left = l
     self.right = r
   def getextent(self):
