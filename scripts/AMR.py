@@ -294,10 +294,19 @@ class AMRTree(object,Visualizable):
       # get number of refinement levels
       n = nint(log(Rdens)/log(MRfact)) 
       # get nb cells proportional to f
-      fg=MRfact**(dim*(n+1))*f/maxnd(f)
-      fg=where(fg>1,fg,1)
-      return MRfact**int(log(fg)/log(dim**MRfact))
-#      return b**int(log(fg)/log(b**dim))
+#      fg=MRfact**(dim*(n+1))*f/maxnd(f)
+      if 0:
+        fg=MRfact**(dim*n)*f/maxnd(f)
+        fg=where(fg>1,fg,1)
+#        return MRfact**int(log(fg)/log(dim**MRfact))
+        return MRfact**int(log(fg)/log(MRfact**dim))
+#        return b**int(log(fg)/log(b**dim))
+      else:
+        nbpcell=4
+        fg = int(f*w3d.dx*w3d.dy*w3d.dz/(top.sw[0]*echarge))
+        fg = where(fg>1,fg,1)
+        fg = MRfact**int(log(fg)/log(nbpcell*MRfact**dim))
+        return where(fg>n,n,fg)
 
     def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,lmax=4):
       if f is None: return None
@@ -306,18 +315,66 @@ class AMRTree(object,Visualizable):
       fg2 = self.getnbcell_rho(f,Rdens,MRfact)
       f = int(where(fg1>fg2,fg1,fg2))
       # next loop removes isolated blocks of lmax cells or less
-      # this needs improvements and is only 2-D for now
-      if(lmax>0 and rank(f)==2):
+      # this needs improvements 
+      if lmax>0:
+       if rank(f)==3:
+        nx=shape(f)[0]
+        ny=shape(f)[1]
+        nz=shape(f)[2]
+        t = fzeros([nx,ny,nz])
+        r = maxnd(f)
+        while r>=1:
+          sum_neighbors3d(where(f==r,0,1),t,nx-1,ny-1,nz-1)
+          fl = where(f==r and t<=lmax,1,0)
+          f = where(fl==1,r,f)
+          r=r/MRfact
+       if rank(f)==2:
         nr=shape(f)[0]
         nz=shape(f)[1]
         t = fzeros([nr,nz])
         r = maxnd(f)
         while r>=1:
           sum_neighbors(where(f==r,0,1),t,nr-1,nz-1)
-          fl = where(f==1 and t<=lmax,1,0)
+          fl = where(f==r and t<=lmax,1,0)
           f = where(fl==1,r,f)
           r=r/MRfact
       return f
+
+    def getconds2d(self,f0,fno,ib,lx,ux,ly,uy,progressive,nooverlap):
+        f0t = f0[lx:ux,ly:uy]
+        if(progressive):
+           cond = sum(f0t>=ib)>0
+        else:
+           cond = sum(f0t==ib)>0
+        if(nooverlap):
+          cond2 = sum(fno[lx:ux,ly:uy])==0
+        else:
+          cond2 = true
+        return cond,cond2
+
+    def getconds3d(self,f0,fno,ib,lx,ux,ly,uy,lz,uz,progressive,nooverlap):
+        f0t = f0[lx:ux,ly:uy,lz:uz]
+        if(progressive):
+           cond = sum(sum(f0t>=ib))>0
+        else:
+           cond = sum(sum(f0t==ib))>0
+        if(nooverlap):
+          cond2 = sum(sum(fno[lx:ux,ly:uy,lz:uz]))==0
+        else:
+          cond2 = true
+        return cond,cond2
+
+    def get_area_fraction(self,f,j,k,l,ix,iy,iz,ixm,iym,izm,ib,progressive=true):
+      if rank(f)==2:
+        if(progressive):
+          return float(sum(sum(f[j-ixm:j+ix,k-iym:k+iy]>=ib)))/((ix+ixm)*(iy+iym))
+        else:
+          return float(sum(sum(f[j-ixm:j+ix,k-iym:k+iy]==ib)))/((ix+ixm)*(iy+iym))
+      else:
+        if(progressive):
+          return float(sum(sum(sum(f[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz]>=ib))))/((ix+ixm)*(iy+iym)*(iz+izm))
+        else:
+          return float(sum(sum(sum(f[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz]==ib))))/((ix+ixm)*(iy+iym)*(iz+izm))
 
     def setlist(self,f,rl,b,progressive=true,nooverlap=true):
       self.listblocks = [0]
@@ -331,6 +388,138 @@ class AMRTree(object,Visualizable):
         nz = shape(f)[2]
       else:
         nz=0; iz=0; izm=0; l=0
+
+      # loop all refinement levels
+      for i in range(nlevels-1,0,-1):
+        r = rl[min(i-1,len(rl)-1)]
+        ib = b**i
+        if(progressive and i<nlevels-1):
+          f0 = where(self.sumpatch(listpatches,nx,ny,nz,dim)>0,ib,f)
+        else:
+          f0 = f.copy()
+        f1 = ravel(f0)
+        if(progressive):
+          listnodes = nonzero(f1>=ib)
+        else:
+          listnodes = nonzero(f1==ib)
+        listpatches = []
+        if(nooverlap):
+          if dim==2:
+            fno = zeros([nx,ny])
+          else:
+            fno = zeros([nx,ny,nz])
+        # loop all nodes where refinement is needed
+        for n in listnodes:
+          ix  = 1
+          iy  = 1
+          ixm = 0
+          iym = 0
+          if dim==2:
+            j = n/ny
+            k = n%ny
+            f0t = f0[j,k]
+          else: #dim=3
+            j = n/(ny*nz)
+            k = n%(ny*nz)/nz
+            l = n%nz
+            iz  = 1
+            izm = 0
+            f0t = f0[j,k,l]
+          # check if a patch is present
+          if(progressive):
+            cond = f0t>=ib
+          else:
+            cond = f0t==ib
+          if(cond):
+            tryit = true
+            # try to expand the patch
+            while tryit:
+             ix0  = ix+0
+             iy0  = iy+0
+             ixm0 = ixm+0
+             iym0 = iym+0
+             if dim==2:
+              # x up
+              if(j+ix<nx):
+                cond,cond2=self.getconds2d(f0,fno,ib,j+ix,j+ix+1,k-iym,k+iy,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix+1,iy,iz,ixm,iym,izm,ib,p)>=r):ix+=1
+              # y up
+              if(k+iy<ny):
+                cond,cond2=self.getconds2d(f0,fno,ib,j-ixm,j+ix,k+iy,k+iy+1,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy+1,iz,ixm,iym,izm,ib,p)>=r):iy+=1
+              # x down
+              if(j-ixm-1>-1):
+                cond,cond2=self.getconds2d(f0,fno,ib,j-ixm-1,j-ixm,k-iym,k+iy,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm+1,iym,izm,ib,p)>=r):ixm+=1
+              # y down
+              if(k-iym-1>-1):
+                cond,cond2=self.getconds2d(f0,fno,ib,j-ixm,j+ix,k-iym-1,k-iym,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm,iym+1,izm,ib,p)>=r):iym+=1
+              if(ix==ix0 and iy==iy0 and ixm==ixm0 and iym==iym0):tryit=false
+             # end if dim==2
+
+             if dim==3:
+              iz0  = iz+0
+              izm0 = izm+0
+              # x up
+              if(j+ix<nx):
+                cond,cond2=self.getconds3d(f0,fno,ib,j+ix,j+ix+1,k-iym,k+iy,l-izm,l+iz,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix+1,iy,iz,ixm,iym,izm,ib,p)>=r):ix+=1
+              # y up
+              if(k+iy<ny):
+                cond,cond2=self.getconds3d(f0,fno,ib,j-ixm,j+ix,k+iy,k+iy+1,l-izm,l+iz,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy+1,iz,ixm,iym,izm,ib,p)>=r):iy+=1
+              # z up
+              if(l+iz<nz):
+                cond,cond2=self.getconds3d(f0,fno,ib,j-ixm,j+ix,k-iym,k+iy,l+iz,l+iz+1,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz+1,ixm,iym,izm,ib,p)>=r):iz+=1
+              # x down
+              if(j-ixm-1>-1):
+                cond,cond2=self.getconds3d(f0,fno,ib,j-ixm-1,j-ixm,k-iym,k+iy,l-izm,l+iz,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm+1,iym,izm,ib,p)>=r):ixm+=1
+              # y down
+              if(k-iym-1>-1):
+                cond,cond2=self.getconds3d(f0,fno,ib,j-ixm,j+ix,k-iym-1,k-iym,l-izm,l+iz,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm,iym+1,izm,ib,p)>=r):iym+=1
+              # z down
+              if(l-izm-1>-1):
+                cond,cond2=self.getconds3d(f0,fno,ib,j-ixm,j+ix,k-iym,k+iy,l-izm-1,l-izm,progressive,nooverlap)
+                if(cond and cond2):
+                  if(self.get_area_fraction(f0,j,k,l,ix,iy,iz,ixm,iym,izm+1,ib,p)>=r):izm+=1
+
+              if(ix==ix0 and iy==iy0 and iz==iz0 and 
+                 ixm==ixm0 and iym==iym0 and izm==izm0):tryit=false
+
+            if dim==2:
+              f0[j-ixm:j+ix,k-iym:k+iy] = 0
+              if(nooverlap):fno[j-ixm:j+ix,k-iym:k+iy] = 1
+              listpatches.append([j-ixm,k-iym,ixm+ix,iym+iy])
+            else:
+              f0[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz] = 0
+              if(nooverlap):fno[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz] = 1
+              listpatches.append([j-ixm,k-iym,l-izm,ixm+ix,iym+iy,izm+iz])
+        self.listblocks.insert(1,listpatches)
+
+    def setlistold(self,f,rl,b,progressive=true,nooverlap=true):
+      p = progressive
+      nlevels = nint(log(maxnd(f))/log(b))+1
+      dim = rank(f)
+      nx = shape(f)[0]
+      ny = shape(f)[1]
+      if dim==3:
+        nz = shape(f)[2]
+      else:
+        nz=0; iz=0; izm=0; l=0
+      self.listblocks = [0]
 
       # loop all refinement levels
       for i in range(nlevels-1,0,-1):
@@ -502,19 +691,6 @@ class AMRTree(object,Visualizable):
               listpatches.append([j-ixm,k-iym,l-izm,ixm+ix,iym+iy,izm+iz])
         self.listblocks.insert(1,listpatches)
 
-    def get_area_fraction(self,f,j,k,l,ix,iy,iz,ixm,iym,izm,ib,progressive=true):
-      if rank(f)==2:
-#        print ix,ixm,iy,iym,((ix+ixm)*(iy+iym))
-        if(progressive):
-          return float(sum(sum(f[j-ixm:j+ix,k-iym:k+iy]>=ib)))/((ix+ixm)*(iy+iym))
-        else:
-          return float(sum(sum(f[j-ixm:j+ix,k-iym:k+iy]==ib)))/((ix+ixm)*(iy+iym))
-      else:
-        if(progressive):
-          return float(sum(sum(sum(f[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz]>=ib))))/((ix+ixm)*(iy+iym)*(iz+izm))
-        else:
-          return float(sum(sum(sum(f[j-ixm:j+ix,k-iym:k+iy,l-izm:l+iz]==ib))))/((ix+ixm)*(iy+iym)*(iz+izm))
-
     def sumpatch(self,listpatches,nx,ny,nz,dim):
       if dim==2:
         f = fzeros([nx,ny])
@@ -535,6 +711,7 @@ class AMRTree(object,Visualizable):
           iz = patch[5]
           f[j:j+ix,k:k+iy,l:l+iz] += 1
       return f
+      
     def setblocks(self):
       self.nblocks=0
       if self.solvergeom == w3d.XYZgeom:
@@ -644,7 +821,7 @@ class AMRTree(object,Visualizable):
       if maxnd(abs(rho)) == 0.: return 0
       else:                     return 1
 
-    def generate(self,l_timing=0):
+    def generate(self,l_timing=0,l_allocate_blocks=1):
       """
     Generate AMR blocks based on values and gradients of self.f. If self.f is None, its default is 
     the charge density. If self.f is null, an error message is raised.
@@ -718,7 +895,9 @@ class AMRTree(object,Visualizable):
         if l_timing:
             t.finish()
             print 'generated list in ',t.seconds(),' seconds.'
- 
+        
+        if not l_allocate_blocks:return
+          
         # allocate blocks from list self.listblocks
         if l_timing:t.start()
         self.setblocks()
@@ -841,21 +1020,42 @@ class AMRTree(object,Visualizable):
       kw.update(kwdict)
       withguards = kw.get('withguards',1)
       level = kw.get('level',None)
+      xmin = kw.get('xmin')
+      xmax = kw.get('xmax')
+      ymin = kw.get('ymin')
+      ymax = kw.get('ymax')
+      zmin = kw.get('zmin')
+      zmax = kw.get('zmax')
+      if xmin is None:xmin=w3d.xmmin
+      if xmax is None:xmax=w3d.xmmax
+      if ymin is None:ymin=w3d.ymmin
+      if ymax is None:ymax=w3d.ymmax
+      if zmin is None:zmin=w3d.zmmin
+      if zmax is None:zmax=w3d.zmmax
       dxlist = []
       for i,blocks in enumerate(self.listblocks[1:]):
        if level is None or level==i:
         for patch in blocks:
-            xmin = w3d.xmmin + patch[0]*w3d.dx
-            xmax =     xmin  + patch[3]*w3d.dx
-            ymin = w3d.ymmin + patch[1]*w3d.dy
-            ymax =     ymin  + patch[4]*w3d.dy
-            zmin = w3d.zmmin + patch[2]*w3d.dz
-            zmax =     zmin  + patch[5]*w3d.dz
-            dxlist.append(viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax,self.colors[i]))
+            xminp = w3d.xmmin + patch[0]*w3d.dx
+            xmaxp =     xminp + patch[3]*w3d.dx
+            yminp = w3d.ymmin + patch[1]*w3d.dy
+            ymaxp =     yminp + patch[4]*w3d.dy
+            zminp = w3d.zmmin + patch[2]*w3d.dz
+            zmaxp =     zminp + patch[5]*w3d.dz
+            if( not( (xminp>xmax) or (xmaxp<xmin) or \
+                     (yminp>ymax) or (ymaxp<ymin) or \
+                     (zminp>zmax) or (zmaxp<zmin))): 
+              dxlist.append(viewboundingbox(max(xmin,xminp),min(xmax,xmaxp),
+                                            max(ymin,yminp),min(ymax,ymaxp),
+                                            max(zmin,zminp),min(zmax,zmaxp),
+                                            self.colors[i]))
       self.dxobject = DXCollection(*dxlist)
-    def draw(self,level=None):
-        if self.solvergeom==w3d.XYZgeom:
-          self.createdxobject(level=level)
+    def draw(self,level=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
+        if self.solvergeom==w3d.XYZgeomMR:
+          self.createdxobject(level=level,
+                              xmin=xmin,xmax=xmax,
+                              ymin=ymin,ymax=ymax,
+                              zmin=zmin,zmax=zmax)
           DXImage(self)
         else:
           self.draw_blocks2d(level=level)
