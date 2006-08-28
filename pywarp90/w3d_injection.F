@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.68 $, $Date: 2006/08/28 19:09:51 $
+c@(#) File w3d_injection.F, version $Revision: 1.69 $, $Date: 2006/08/28 22:07:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -87,6 +87,13 @@ c Clear out the lost particles.
 
 c Set inject z min and max.
       call updateinj_zmminmax()
+
+c     --- Set the potential near the emitting surface.
+c     --- Note that these routines are now called twice (once for each itask) which
+c     --- may not be necessary in most cases, but it does ensure that the phi arrays
+c     --- are setup properly if the fields are change by the user.
+      call getinj_phi()
+      call gettinj_phi()
 
 c     --- Set factor so correct number of particles are loaded when
 c     --- symmetry is used.  With 2-fold, particles need to be loaded

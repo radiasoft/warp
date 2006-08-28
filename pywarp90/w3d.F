@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.284 $, $Date: 2006/08/25 21:50:53 $
+c@(#) File W3D.F, version $Revision: 3.285 $, $Date: 2006/08/28 22:07:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -853,8 +853,8 @@ c         --- calculated.
       endif
 
 c  Set the potential near the emitting surface.
-      call getinj_phi()
-      call gettinj_phi()
+c     call getinj_phi()
+c     call gettinj_phi()
 
 c  Set the transverse E fields near any defined apertures.
       call set_aperture_e()
@@ -889,13 +889,6 @@ c  Finalize the moments calculation and do other diagnostics.
      &              1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
       call getlabwn()
       call rhodia3d
-
-c  Finish transverse space-charge limited injection: change ins and nps.
-c  This is done here so the newly injected particles don't go through
-c  the 'synchv' advance.
-      if (caller == "w3dexe") then
-         call inject3d(3,pgroup)
-      end if
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
 c  Compute mean beam z velocity from current and line charge density 
@@ -7425,10 +7418,10 @@ c Fetch phi at points.
           izp1 = iz + 1
           if (abs(x(ii)) == xmmax) ixp1 = ix
           if (abs(y(ii)) == ymmax) iyp1 = iy
-          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
           if (xmmin  <= abs(x(ii)) .and. abs(x(ii)) <= xmmax .and.
      &        ymmin  <= abs(y(ii)) .and. abs(y(ii)) <= ymmax .and.
-     &        zmminp <=     z(ii)  .and.     z(ii)  <= zmmaxp) then
+     &        zmminp-dz <=     z(ii)  .and.     z(ii)  <= zmmaxp+dz) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
@@ -7452,10 +7445,10 @@ c Fetch phi at points.
           izp1 = iz + 1
           if (abs(x(ii)) == xmmax) ixp1 = ix
           if (abs(y(ii)) == ymmax) iyp1 = iy
-          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
           if (xmmin  <=     x(ii)  .and.     x(ii)  <= xmmax .and.
      &        ymmin  <= abs(y(ii)) .and. abs(y(ii)) <= ymmax .and.
-     &        zmminp <=     z(ii)  .and.     z(ii)  <= zmmaxp) then
+     &        zmminp-dz <=     z(ii)  .and.     z(ii)  <= zmmaxp+dz) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
@@ -7479,10 +7472,10 @@ c Fetch phi at points.
           izp1 = iz + 1
           if (abs(x(ii)) == xmmax) ixp1 = ix
           if (abs(y(ii)) == ymmax) iyp1 = iy
-          if (abs(z(ii)) == zmmax) izp1 = iz
+          if (abs(z(ii)) == zmmaxp+dz) izp1 = iz
           if (xmmin  <= x(ii) .and. x(ii) <= xmmax .and.
      &        ymmin  <= y(ii) .and. y(ii) <= ymmax .and.
-     &        zmminp <= z(ii) .and. z(ii) <= zmmaxp) then
+     &        zmminp-dz <= z(ii) .and. z(ii) <= zmmaxp+dz) then
             p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
      &              phip(ixp1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
      &              phip(ix  ,iyp1,iz  )*(1.-wx)*    wy *(1.-wz) +
