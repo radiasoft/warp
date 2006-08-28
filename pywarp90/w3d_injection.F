@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.67 $, $Date: 2006/08/25 21:10:56 $
+c@(#) File w3d_injection.F, version $Revision: 1.68 $, $Date: 2006/08/28 19:09:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -499,7 +499,7 @@ c         loop over species and injection sources
 
             ipmin = pgroup%ins(is)
             nn = 0
-            do ij=1,inject
+            do ij=1,ninject
               ipmin = ipmin + nn
 c             --- Get number of particles injected
               nn = npinjtmp(isid,ij)
@@ -1518,7 +1518,7 @@ c                 --- source.
                   call chckpart(pgroup,is,nn,0,.true.)
 
                   do ip=1,nn
-                    ii = pgroup%ins(is) - npinje_s(isid) - nti - 1
+                    ii = pgroup%ins(is) - nti - 1
 c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     pgroup%zp(ii) = zm + wz*inj_dz
@@ -1583,7 +1583,7 @@ c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            ii = pgroup%ins(is) - npinje_s(isid) - ntinject(isid)
+            ii = pgroup%ins(is) - ntinject(isid)
             if (ntinject(isid) > 0) then
               call stckxy3d(ntinject(isid),pgroup%xp(ii),xmmax,xmmin,dx,
      &                      pgroup%yp(ii),ymmax,
