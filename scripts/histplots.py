@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.30 2006/05/04 23:12:54 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.31 2006/08/29 21:49:37 jlvay Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -634,6 +634,16 @@ if sys.version[:5] != "1.5.1":
   hpxybar.__doc__ = hpxybar.__doc__ + hpbasicwintext
 
 
+def hpzbar(iw=0,kwdict={},**kw):
+  "True mean z."
+  kw.update(kwdict)
+  kw['titlet']="True mean z"
+  kw['titlel']="(m)"
+  hpbasicwin('hzbar',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxbar.__doc__ = hpxbar.__doc__ + hpbasicwintext
+
+
 def hpxrms(iw=0,kwdict={},**kw):
   "True RMS x."
   kw.update(kwdict)
@@ -662,6 +672,16 @@ def hprrms(iw=0,kwdict={},**kw):
   hpbasicwin('hrrms',iw,kw)
 if sys.version[:5] != "1.5.1":
   hprrms.__doc__ = hprrms.__doc__ + hpbasicwintext
+
+
+def hpzrms(iw=0,kwdict={},**kw):
+  "True RMS z."
+  kw.update(kwdict)
+  kw['titlet']="True RMS z"
+  kw['titlel']="(m)"
+  hpbasicwin('hzrms',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxrms.__doc__ = hpxrms.__doc__ + hpbasicwintext
 
 
 def hpxprms(iw=0,kwdict={},**kw):
