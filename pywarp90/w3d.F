@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.285 $, $Date: 2006/08/28 22:07:32 $
+c@(#) File W3D.F, version $Revision: 3.286 $, $Date: 2006/08/29 01:07:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6749,11 +6749,6 @@ c     --- space to the rhopndts array.
         nsndtstemp = nsndts
         nsndts = nsndts + newndts
         if (ndtsmax > 1) nrhopndtscopies = 2
-        if (ndtsaveraging == 0) then
-          nsndtsphi = 1
-        else
-          nsndtsphi = nsndts
-        endif
         call gchange("Subcycling",0)
         do js = 0, ns-1
           if (ndtstorho(ndts(js)) == -2) then
@@ -6763,6 +6758,15 @@ c     --- space to the rhopndts array.
           endif
         enddo
       endif
+
+c     --- Make sure that nsndtsphi is set properly, and call the gchange
+c     --- to allocate phipndts.
+      if (ndtsaveraging == 0) then
+        nsndtsphi = 1
+      else
+        nsndtsphi = nsndts
+      endif
+      call gchange("Subcycling",0)
 
       return
       end
