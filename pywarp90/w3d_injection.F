@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.69 $, $Date: 2006/08/28 22:07:32 $
+c@(#) File w3d_injection.F, version $Revision: 1.70 $, $Date: 2006/08/29 01:32:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1461,9 +1461,8 @@ c                 --- emitting surface.
 
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface.
-c                 --- Average this over the four corners of this square.
-                  ehalf = rri*0.25*(tinj_phi(ith  ,iz,ij)+tinj_phi(ith  ,iz+1,ij) +
-     &                              tinj_phi(ith+1,iz,ij)+tinj_phi(ith+1,iz+1,ij))
+c                 --- Average this over z
+                  ehalf = rri*0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
 
 c                 --- normal velocity
                   vnorm = fulldt_s*qoverm*ehalf
@@ -1502,6 +1501,7 @@ c                 --- number of particles injected in grid cell
      &                               inj_param*const*abs(ehalf*inj_dx)**1.5 +
      &                               (1. - inj_param)*tinjprev(ith,ijz,ij))
                     rnn = tinjprev(ith,ijz,ij)
+                    if (ith == 0) tinjprev(nttinj(ij),ijz,ij) = tinjprev(ith,ijz,ij)
                   elseif (inject == 3) then
 c                   --- get charge density at injection point
                     rr = rhop(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) +
