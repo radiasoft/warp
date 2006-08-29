@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.144 $, $Date: 2006/06/29 16:17:52 $
+c@(#) File DTOP.F, version $Revision: 3.145 $, $Date: 2006/08/29 21:48:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -153,7 +153,6 @@ c  Save results of this time step in history buffers
 
       do js=0,nshist
         hbmlen(jhist,js) = sqrt(max(SMALLPOS, zsqbar(0,js)-zbar(0,js)**2))
-        hzbar(jhist,js) = zbar(0,js)
         hekzmbe(jhist,js) = ekzmbe(js)
         hekzbeam(jhist,js) = ekzbeam(js)
         hekperp(jhist,js) = ekperp(js)
@@ -191,9 +190,11 @@ c       --- option, or when rewriting the code thusly.
           hpnum(iw,jhist,js)    = pnum(iw,js)
           hxbar(iw,jhist,js)    = xbar(iw,js)
           hybar(iw,jhist,js)    = ybar(iw,js)
+          hzbar(iw,jhist,js)    = zbar(iw,js)
           hxrms(iw,jhist,js)    = xrms(iw,js)
           hyrms(iw,jhist,js)    = yrms(iw,js)
           hrrms(iw,jhist,js)    = rrms(iw,js)
+          hzrms(iw,jhist,js)    = zrms(iw,js)
           hxprms(iw,jhist,js)   = xprms(iw,js)
           hyprms(iw,jhist,js)   = yprms(iw,js)
           hxsqbar(iw,jhist,js)  = xsqbar(iw,js)
@@ -629,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.144 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.145 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
