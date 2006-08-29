@@ -1,7 +1,7 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.19 2005/06/21 16:20:06 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.20 2006/08/29 01:36:47 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -125,8 +125,8 @@ def field_solve(phisave,solver,pkg3d):
     if (pkg3d.boundxy > 0 or pkg3d.l4symtry): iymin = 0
     if (pkg3d.boundxy > 0): iymax = pkg3d.ny
     if (pkg3d.bound0  > 0): izmin = 0
-    if (pkg3d.boundnz > 0): izmax = pkg3d.ny
-    pkg3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
+    if (pkg3d.boundnz > 0): izmax = pkg3d.nz
+    pkg3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+2] = 0.
   else:
     pkg3d.phi[:,:,:] = phisave
     
@@ -169,7 +169,7 @@ def _find_mgparam(phisave,solver,pkg3d):
 # --- Execute while loop until two iterations give the same number of field
 # --- solve iterations or until a maximum number of iterations has been
 # --- reached.
-  while (mgiters_prev != solver.mgiters and icount < 200):
+  while (mgiters_prev != solver.mgiters and icount < 20):
 
 #   --- print out current value of mgparam
     print "Best parameter so far = %f" % solver.mgparam
@@ -210,7 +210,7 @@ def _find_mgparam(phisave,solver,pkg3d):
     icount = icount + 1
 
 # --- print message if an optimal value wasn't found
-  if (icount == 200):
+  if (icount == 20):
     print "Warning: maximum number of iterations reached."
     print "         The value of mgparam may not be optimal."
     print "         Try increasing mgmaxit."
