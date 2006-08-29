@@ -1183,7 +1183,7 @@ subroutine move_window_field(f)
 use EM2D_FIELDtypemodule
 use mod_field,Only: l_elaser_out_plane,shift_fields_1cell
 use mod_bnd
-TYPE(EM2D_FIELDtype), POINTER      :: f
+TYPE(EM2D_FIELDtype):: f
   call shift_fields_1cell(f)
   call move_window_bnd(f%bndexeybz,f%rap,l_elaser_out_plane)
   call move_window_bnd(f%bndbxbyez,f%rap,l_elaser_out_plane)
