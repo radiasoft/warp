@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.177 $, $Date: 2006/08/25 20:02:23 $
+#@(#) File TOP.V, version $Revision: 3.178 $, $Date: 2006/08/29 21:47:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.177 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.178 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1533,8 +1533,6 @@ hvbeam(0:lenhist)             _real [m/s]   limited (0:jhist)
    # Beam frame velocity
 hbmlen(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # RMS beam length
-hzbar(0:lenhist,0:nshist)     _real [m]     limited (0:jhist,0:nshist)
-   # History of the average of z over all particles
 hefld(0:lenhist)              _real [J]     limited (0:jhist)
    # Field energy
 hekzmbe(0:lenhist,0:nshist)   _real [J]     limited (0:jhist,0:nshist)
@@ -1612,6 +1610,9 @@ hxbar(0:nzwind,0:lenhist,0:nshist)     _real [m]
 hybar(0:nzwind,0:lenhist,0:nshist)     _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True mean y by window as a function of time
+hzbar(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # True mean z by window as a function of time
 hxybar(0:nzwind,0:lenhist,0:nshist)    _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True mean xy by window as a function of time
@@ -1624,6 +1625,9 @@ hyrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
 hrrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS r by window as a function of time
+hzrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # True RMS z by window as a function of time
 hxprms(0:nzwind,0:lenhist,0:nshist)    _real [m]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS x' by window as a function of time
