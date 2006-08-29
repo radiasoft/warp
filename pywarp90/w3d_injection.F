@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.70 $, $Date: 2006/08/29 01:32:47 $
+c@(#) File w3d_injection.F, version $Revision: 1.71 $, $Date: 2006/08/29 18:48:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1462,7 +1462,7 @@ c                 --- emitting surface.
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface.
 c                 --- Average this over z
-                  ehalf = rri*0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
+                  ehalf = rri*0.5*(tinj_phi(ith,ijz,ij)+tinj_phi(ith,ijz+1,ij))
 
 c                 --- normal velocity
                   vnorm = fulldt_s*qoverm*ehalf
