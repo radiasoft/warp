@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.45 2006/06/29 18:05:30 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.46 2006/08/30 23:00:50 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -424,14 +424,19 @@ Multiple selection criteria are now supported.
 # --- The checks of the len of ii are there in case the particle arrays
 # --- are unallocated.
 #-------------------------------------------------------------------------
-def getn(iw=0,gather=1,bcast=0,**kw):
+_particlebcastdefault = [1]
+def setgetparticlebcastdefault(defval=1):
+  _particlebcastdefault[0] = defval
+def getn(iw=0,gather=1,bcast=None,**kw):
   "Returns number of particles in selection."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   if lparallel and gather: return globalsum(len(ii))
   else: return len(ii)
 #-------------------------------------------------------------------------
-def getx(iw=0,gather=1,bcast=0,**kw):
+def getx(iw=0,gather=1,bcast=None,**kw):
   "Returns the X positions."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -442,8 +447,9 @@ def getx(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gety(iw=0,gather=1,bcast=0,**kw):
+def gety(iw=0,gather=1,bcast=None,**kw):
   "Returns the Y positions."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -454,8 +460,9 @@ def gety(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getz(iw=0,gather=1,bcast=0,**kw):
+def getz(iw=0,gather=1,bcast=None,**kw):
   "Returns the Z positions."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -466,8 +473,9 @@ def getz(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getr(iw=0,gather=1,bcast=0,**kw):
+def getr(iw=0,gather=1,bcast=None,**kw):
   "Returns the R postions."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -479,8 +487,9 @@ def getr(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gettheta(iw=0,gather=1,bcast=0,**kw):
+def gettheta(iw=0,gather=1,bcast=None,**kw):
   "Returns the theta postions."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -492,8 +501,9 @@ def gettheta(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvx(iw=0,gather=1,bcast=0,**kw):
+def getvx(iw=0,gather=1,bcast=None,**kw):
   "Returns the X velocity."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -505,8 +515,9 @@ def getvx(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvy(iw=0,gather=1,bcast=0,**kw):
+def getvy(iw=0,gather=1,bcast=None,**kw):
   "Returns the Y velocity."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -518,8 +529,9 @@ def getvy(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvz(iw=0,gather=1,bcast=0,**kw):
+def getvz(iw=0,gather=1,bcast=None,**kw):
   "Returns the Z velocity."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -531,8 +543,9 @@ def getvz(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvr(iw=0,gather=1,bcast=0,**kw):
+def getvr(iw=0,gather=1,bcast=None,**kw):
   "Returns the radial velocity."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -548,8 +561,9 @@ def getvr(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvtheta(iw=0,gather=1,bcast=0,**kw):
+def getvtheta(iw=0,gather=1,bcast=None,**kw):
   "Returns the azimuthal velocity."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -565,8 +579,9 @@ def getvtheta(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getux(iw=0,gather=1,bcast=0,**kw):
+def getux(iw=0,gather=1,bcast=None,**kw):
   "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -577,8 +592,9 @@ def getux(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getuy(iw=0,gather=1,bcast=0,**kw):
+def getuy(iw=0,gather=1,bcast=None,**kw):
   "Returns the Y momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -589,8 +605,9 @@ def getuy(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getuz(iw=0,gather=1,bcast=0,**kw):
+def getuz(iw=0,gather=1,bcast=None,**kw):
   "Returns the Z momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -601,8 +618,9 @@ def getuz(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getxp(iw=0,gather=1,bcast=0,**kw):
+def getxp(iw=0,gather=1,bcast=None,**kw):
   "Returns the X velocity over the Z velocity (X')."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -614,8 +632,9 @@ def getxp(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getyp(iw=0,gather=1,bcast=0,**kw):
+def getyp(iw=0,gather=1,bcast=None,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -627,8 +646,9 @@ def getyp(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getrp(iw=0,gather=1,bcast=0,**kw):
+def getrp(iw=0,gather=1,bcast=None,**kw):
   "Returns the radial velocity over the Z velocity (R')."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -645,8 +665,9 @@ def getrp(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def gettp(iw=0,gather=1,bcast=0,**kw):
+def gettp(iw=0,gather=1,bcast=None,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -663,8 +684,9 @@ def gettp(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getgaminv(iw=0,gather=1,bcast=0,**kw):
+def getgaminv(iw=0,gather=1,bcast=None,**kw):
   "Returns the gamma inverse."
+  if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
   if len(ii) > 0:
@@ -675,11 +697,12 @@ def getgaminv(iw=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
+def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
   """Returns particle id number.
   -id=0: which pid value to return
          if id=-1, returns all pids.
   """
+  if bcast is None: bcast = _particlebcastdefault[0]
   suffix,object,pgroup = _getobjectpgroup(kw)
   lost = kw.get('lost',0)
   if lost:
@@ -701,8 +724,9 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
-def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=0,edrift=1,bdrift=1,**kw):
+def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw):
   "Returns the velocity drifts."
+  if bcast is None: bcast = _particlebcastdefault[0]
   if jslist is None:
     jslist=[js]
   nptot=0
@@ -769,7 +793,10 @@ if sys.version[:5] != "1.5.1":
   if lparallel:
     _gatherdoc = (
 """  gather=1 When 1, all data is gathered to PE0
-  bcast=0: when true, result is broadcast to all processors
+  bcast=1: when true, result is broadcast to all processors
+           Note that the setgetparticlebcastdefault can be
+           used to set the default value to 0, which is
+           more efficient if the bcast is not needed.
 """)
   else:
     _gatherdoc = ''
