@@ -22,7 +22,7 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.12 2005/08/18 23:49:39 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.13 2006/08/30 22:55:43 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -175,24 +175,28 @@ dimension.
   else: return hl[:,0]
 
 # --- Returns the max of the multiarray
-def maxnd(x):
+def maxnd(x,defaultval=-1.e36):
   """Return the max element of an array of any dimension"""
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
+  if len(xtemp) == 0: return defaultval
   return max(xtemp)
 # --- Returns the min of the multiarray
-def minnd(x):
+def minnd(x,defaultval=+1.e36):
   """Return the min element of an array of any dimension"""
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
+  if len(xtemp) == 0: return defaultval
   return min(xtemp)
 # --- Returns the sum of the multiarray
-def sumnd(x):
+def sumnd(x,defaultval=0.):
   """Return the total sum of an array of any dimension"""
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
+  if len(xtemp) == 0: return defaultval
   return sum(xtemp)
 # --- Returns the sum of the multiarray
-def avend(x):
+def avend(x,defaultval=0.):
   """Return the average of an array of any dimension"""
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
+  if len(xtemp) == 0: return defaultval
   return sum(xtemp)/len(xtemp)
 
 # Gets next available filename with the format 'root.nnn.suffix'.
