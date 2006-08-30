@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.123 2006/08/16 18:52:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.124 2006/08/30 22:58:23 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -932,10 +932,11 @@ def fixrestoreswitholdparticlearrays(filename):
                    resetrho=false,dofieldsol=false,resetmoments=false)
 
 def restoreolddump(filename):
-  fixrestoresfrombeforeelementoverlaps(filename)
-  fixrestoreswithmomentswithoutspecies(filename)
-  fixrestoreswithoriginalparticlearrays(filename)
-  fixrestoreswitholdparticlearrays(filename)
+  pass
+  #fixrestoresfrombeforeelementoverlaps(filename)
+  #fixrestoreswithmomentswithoutspecies(filename)
+  #fixrestoreswithoriginalparticlearrays(filename)
+  #fixrestoreswitholdparticlearrays(filename)
 
 ##############################################################################
 ##############################################################################
@@ -946,11 +947,11 @@ def restoreolddump(filename):
 ##############################################################################
 ##############################################################################
 # --- Dump command
-def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
+def dump(filename=None,prefix='',suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
          ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,hdf=0):
   """
 Creates a dump file
-  - filename=(runid+'%06d'%top.it+suffix+'.dump')
+  - filename=(prefix+runid+'%06d'%top.it+suffix+'.dump')
   - attr='dump': All variables with the given attribute or group name are
     written to the file. The default attribute makes a restartable dump file.
   - serial=0: When 1, does a dump of only non-parallel data (parallel version
@@ -976,13 +977,14 @@ Creates a dump file
     else:
       s = '.dump'
     if onefile or not lparallel:
-      filename=arraytostr(top.runid)+('%06d'%top.it)+suffix+s
+      filename=prefix+arraytostr(top.runid)+('%06d'%top.it)+suffix+s
     else:
-      filename=arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
+      filename=prefix+arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
   else:
     if not onefile and lparallel:
       # --- Append the processor number to the user inputted filename
       filename = filename + '%05d'%me
+  print filename
   # --- Make list of all of the new python variables.
   interpreter_variables = []
   if pyvars:
@@ -1059,45 +1061,6 @@ Reads in data from file, redeposits charge density and does field solve
 ##############################################################################
 ##############################################################################
 ##############################################################################
-
-# This routine reads in and rearranges the history arrays from
-# a parallel run so that they can be interpreted from a serial run.
-def gethzarrays(filename,verbose=0):
-  """OBSOLETE - is not needed now"""
-  # --- Open file and get some numbers
-  ff = PR.PR(filename)
-  npes = len(ff.read('nps_p@parallel'))
-  nz = shape(ff.read('zmesh@w3d'))[0] - 1
-  lenhist = ff.read('lenhist@top')
-  top.lenhist = lenhist
-  top.nzmmnt = nz
-  top.nzzarr = nz
-  # --- Read in each array
-  hlist = ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz','hepsgz',
-    'hepshz','hepsngz','hepsnhz','hxbarz','hybarz','hxybarz','hxrmsz','hyrmsz',
-    'hxprmsz','hyprmsz','hxsqbarz','hysqbarz','hvxbarz','hvybarz','hxpbarz',
-    'hypbarz','hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz','hxxpbarz',
-    'hyypbarz','hxypbarz','hyxpbarz','hxpypbarz','hxvzbarz','hyvzbarz',
-    'hvxvzbarz','hvyvzbarz']
-  for h in hlist:
-    try:
-      exec('top.l%s = ff.read("l%s@top")'%(h,h))
-      exec('top.i%s = ff.read("i%s@top")'%(h,h))
-    except:
-      break
-  # --- Allocate space
-  gchange("Hist")
-  for h in hlist:
-    # --- If true, then read in data
-    if eval('top.l'+h):
-      if verbose: print "Reading in ",h
-      # --- Read in the whole array
-      d = ff.read(h+'@parallel')
-      v = eval('top.'+h)
-      # --- Copy it to the correct place chunk by chunk
-      for i in range(npes):
-        v[i*(nz/npes):(i+1)*(nz/npes)+1,:] = d[i,:,:]
-  ff.close()
 
 ##############################################################################
 def printtimers(file=None):
