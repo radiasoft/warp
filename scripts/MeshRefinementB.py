@@ -1377,7 +1377,7 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.a[comp,ix-self.fulllower[0]+1,iy-self.fulllower[1]+1,1:-1],self.zmesh,
+    plg(self.bfield.a[comp,ix-self.fulllower[0]+1,iy-self.fulllower[1]+1,1:-1],self.zmeshlocal,
         color=color)
     if not selfonly:
       for child in self.children:
@@ -1419,7 +1419,7 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.j[comp,ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
+    plg(self.bfield.j[comp,ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmeshlocal,
         color=color)
     if not selfonly:
       for child in self.children:
@@ -1469,7 +1469,7 @@ be plotted.
     if iy > upper[1]: return
     if self is self.root: accumulateplotlists()
     plg(self.bfield.b[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
-        self.zmesh[iz],color=color)
+        self.zmeshlocal[iz],color=color)
     if not selfonly:
       for child in self.children:
         child.plbz(comp,ix*child.refinement[0],iy*child.refinement[1],

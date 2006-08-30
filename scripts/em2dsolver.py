@@ -90,11 +90,12 @@ class EM2D(object):
       # --- values. Internally, the class always uses x and y. The user
       # --- interface will depend on solvergeom
       self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-      self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+      self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
+      self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
       self.zmin = self.zmmin
       self.ny = self.nz
       self.dy = self.dz
-      self.ymesh = self.zmesh
+      self.ymesh = self.zmeshlocal
       self.ymin = self.zmin
       self.bounds[2] = self.bounds[4]
       self.bounds[3] = self.bounds[5]

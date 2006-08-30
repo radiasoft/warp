@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.21 2006/04/15 00:13:36 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.22 2006/08/30 22:54:38 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -68,7 +68,8 @@ Warning - this does not yet work in parallel
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
   if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
     w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
-  w3d.zmesh[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
+  w3d.zmesh[:] = w3d.zmminglobal + arange(w3d.nzfull+1)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
 
   # --- Find the grid axis
   w3d.ix_axis = nint(-w3d.xmmin/w3d.dx)
@@ -260,7 +261,8 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
       top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
       top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
   # --- Recalculate zmesh
-  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmesh[:] = w3d.zmminglobal + iota(0,w3d.nzfull)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   # --- Adjust all of the axial meshes
   if top.nzl == w3d.nzfull:
     top.dzl = w3d.dz

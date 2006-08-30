@@ -133,7 +133,8 @@ class MultiGrid(object):
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+    self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
+    self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
 
     # --- Create extra variables which are used in various places
     self.nxp = self.nx

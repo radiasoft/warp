@@ -390,8 +390,8 @@ Creates helix with constant Ez in the pulse.
     vv,ez = self.getvoltage(time)
 
     # --- Interpolate from helix mesh to the field grid
-    iz  = int((w3d.zmesh + top.zgrid - self.zswave)/self.dzwave)
-    wz0 =     (w3d.zmesh + top.zgrid - self.zswave)/self.dzwave - iz
+    iz  = int((w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave)
+    wz0 =     (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave - iz
     wz1 = 1. - wz0
     
     # --- Zero out any points beyond the helix mesh
@@ -549,12 +549,12 @@ Creates helix with constant Ez in the pulse.
 
     # --- Add in wave part of helix
     # --- Interpolate from helix mesh to the field grid
-    iz  = (w3d.zmesh + top.zgrid - self.zswave)/self.dzwave
+    iz  = (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave
     if ngp:
       wz1 = ones(1+w3d.nz,'d')
       wz0 = zeros(1+w3d.nz,'d')
     else:
-      wz0 = (w3d.zmesh + top.zgrid - self.zswave)/self.dzwave - int(iz)
+      wz0 = (w3d.zmeshlocal + top.zgrid - self.zswave)/self.dzwave - int(iz)
       wz1 = 1. - wz0
     
     # --- Zero out any points beyond the helix mesh
@@ -570,12 +570,12 @@ Creates helix with constant Ez in the pulse.
 
     # --- Add in termination part of helix
     # --- Interpolate from helix mesh to the field grid
-    iz  = (w3d.zmesh + top.zgrid - self.zsterm)/self.dzterm
+    iz  = (w3d.zmeshlocal + top.zgrid - self.zsterm)/self.dzterm
     if ngp:
       wz1 = ones(1+w3d.nz,'d')
       wz0 = zeros(1+w3d.nz,'d')
     else:
-      wz0 = (w3d.zmesh + top.zgrid - self.zsterm)/self.dzterm - int(iz)
+      wz0 = (w3d.zmeshlocal + top.zgrid - self.zsterm)/self.dzterm - int(iz)
       wz1 = 1. - wz0
     
     # --- Zero out any points beyond the helix mesh

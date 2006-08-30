@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.68 2006/05/05 21:38:30 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.69 2006/08/30 22:54:39 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -433,7 +433,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           if me == 0: izmin = 0
           else:       izmin = top.izslave[me]+1
           ff.write(pdbname,ppp,indx=(0,0,izmin))
-        elif p == 'w3d' and vname in ['zmesh']:
+        elif p == 'w3d' and vname in ['zmeshlocal']:
           # --- This has the same decomposition as the fields
           iz1 = 0
           iz2 = top.nzfsslave[me] + 1
@@ -466,7 +466,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   # --- restore.
   skipparallel = ['pgroup',
     'xplost','yplost','zplost','uxplost','uyplost','uzplost','gaminvlost',
-    'tplost','pidlost','conductors','rho','phi']
+    'tplost','pidlost','conductors','rho','phi','zmeshlocal']
 
   # --- Read in all of the serial data. This is only really needed
   # --- to deal with fortran derived types properly.
@@ -577,6 +577,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- variable is a scalar.
       if len(ff.inquire_shape(v)) == 0: continue
       if verbose: "reading "+p+"."+vname
+      "reading "+p+"."+vname
       # --- Make sure that the variable is still valid. If not
       # --- (e.g. it has been deleted) then don't try to restore it.
       try:
@@ -632,7 +633,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         itriple = array([0,w3d.nx,1,0,w3d.ny,1,
             top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
         setattr(pkg,vname,ff.read_part(v,itriple))
-      elif p == 'w3d' and vname in ['zmesh']:
+      elif p == 'w3d' and vname in ['zmeshlocal']:
         # --- The rest are domain decomposed Z arrays
         itriple = array([top.izfsslave[me],
                          top.izfsslave[me]+top.nzfsslave[me],1])

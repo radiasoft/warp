@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.48 2006/08/04 00:11:27 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.49 2006/08/30 22:54:38 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -522,7 +522,8 @@ def _adjustz():
   gchange("Fields3d")
   gchange("Z_Moments")
   gchange("Hist")
-  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmesh[:] = w3d.zmminglobal + iota(0,w3d.nzfull)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   
   # --- Reset the lattice
   setlatt()
