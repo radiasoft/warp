@@ -208,12 +208,12 @@ class Species:
     if xmax is None:xmax=w3d.xmmax
     if ymin is None:ymin=w3d.ymmin
     if ymax is None:ymax=w3d.ymmax
-    if zmin is None:zmin=w3d.zmmin
-    if zmax is None:zmax=w3d.zmmax
+    if zmin is None:zmin=w3d.zmminglobal
+    if zmax is None:zmax=w3d.zmmaxglobal
     if dens is None:
       if nx is None:nx=w3d.nx
       if ny is None:ny=w3d.ny
-      if nz is None:nz=w3d.nz
+      if nz is None:nz=w3d.nzfull
       density = fzeros([nx+1,ny+1,nz+1],'d')
       densityc = fzeros([nx+1,ny+1,nz+1],'d')
     else:
@@ -225,7 +225,7 @@ class Species:
 
     np=0
     for js in self.jslist:
-      np+=top.pgroup.nps[js]
+      np+=getn(js=js)
     if np==0:
       if dens is None:
         return density
@@ -233,14 +233,15 @@ class Species:
         return
     for js in self.jslist:
       print js
-      x=getx(js=js,lost=lost)
-      y=gety(js=js,lost=lost)
-      z=getz(js=js,lost=lost)
+      x=getx(js=js,lost=lost,gather=0)
+      y=gety(js=js,lost=lost,gather=0)
+      z=getz(js=js,lost=lost,gather=0)
       np=shape(x)[0]
       w=top.pgroup.sw[js]*ones(np,'d')
       if charge:w*=top.pgroup.sq[js]    
       deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
     density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+    density[...] = parallelsum(density)
     if dens is None:return density
   
   def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false):
