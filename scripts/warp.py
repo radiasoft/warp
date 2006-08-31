@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.124 2006/08/30 22:58:23 dave Exp $"
+warp_version = "$Id: warp.py,v 1.125 2006/08/31 23:52:58 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -947,7 +947,7 @@ def restoreolddump(filename):
 ##############################################################################
 ##############################################################################
 # --- Dump command
-def dump(filename=None,prefix='',suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
+def dump(filename=None,prefix='',suffix='',attr='dump',serial=0,onefile=0,pyvars=1,
          ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,hdf=0):
   """
 Creates a dump file
@@ -956,7 +956,7 @@ Creates a dump file
     written to the file. The default attribute makes a restartable dump file.
   - serial=0: When 1, does a dump of only non-parallel data (parallel version
     only).
-  - onefile=1: When 1, all processors dump to one file, otherwise each dumps to
+  - onefile=0: When 0, all processors dump to one file, otherwise each dumps to
     seperate file. The processor number is appended to the dump filename.
   - pyvars=1: When 1, saves user defined python variables to the file.
   - ff=None: Optional file object. When passed in, write to that file instead
@@ -979,11 +979,11 @@ Creates a dump file
     if onefile or not lparallel:
       filename=prefix+arraytostr(top.runid)+('%06d'%top.it)+suffix+s
     else:
-      filename=prefix+arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
+      filename=prefix+arraytostr(top.runid)+('%06d_%05d_%05d'%(top.it,me,npes))+suffix+s
   else:
     if not onefile and lparallel:
       # --- Append the processor number to the user inputted filename
-      filename = filename + '%05d'%me
+      filename = filename + '%05d_%05d'%(me,npes)
   print filename
   # --- Make list of all of the new python variables.
   interpreter_variables = []
@@ -1007,13 +1007,13 @@ Creates a dump file
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,onefile=1,verbose=false,dofieldsol=true):
+def restart(filename,onefile=0,verbose=false,dofieldsol=true):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
               files, filename should only be prefix up to but not including
               the '_' before the processor number.
-  - onefile=1: Restores from one file unless 0, then each processor restores
+  - onefile=0: Restores from one file unless 0, then each processor restores
                from seperate file.
   - dofieldsol=true: When true, call fieldsol(0). This allows special cases
                      where just calling fieldsol(0) is not appropriate or
@@ -1022,7 +1022,7 @@ Reads in data from file, redeposits charge density and does field solve
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
   if not onefile:
-    filename = filename + '_%05d.dump'%(me)
+    filename = filename + '_%05d_%05d.dump'%(me,npes)
   # --- Call different restore routine depending on context
   if onefile and lparallel:
     parallelrestore(filename,verbose=verbose)
