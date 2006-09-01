@@ -12,7 +12,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.11 2006/06/29 17:01:58 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.12 2006/09/01 19:42:28 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -629,7 +629,7 @@ Class for generating secondaries
       for ics,c in enumerate(self.inter[js]['conductors']):
         for ie in range(len(self.inter[js]['emitted'][ics])):
           totemit = parallelsum(self.inter[js]['emitted'][ics][ie])
-          if me==0 and abs(totemit)>0.:
+          if abs(totemit)>0.:
             c.emitparticles_data += [[top.time, 
                                       totemit,
                                       top.dt,
