@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.46 2006/08/30 23:00:50 dave Exp $"
+particles_version = "$Id: particles.py,v 1.47 2006/09/01 20:32:15 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -989,7 +989,7 @@ def getvzrange(kwdict={}):
 
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
-def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,js=0,
+def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,js=0,sid=None,
                  lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None):
@@ -1017,6 +1017,10 @@ Adds particles to the simulation
 
   # --- Check if this is a new species
   if js+1 > top.ns: setnspecies(js+1,pgroup)
+
+  # --- Set the sid if it hasn't already be done
+  if sid is None: sid = js
+  if top.pgroup.sid[js] == -1: top.pgroup.sid[js] = sid
 
   # --- Get length of arrays, set to one for scalars
   try:              lenx = len(x)
@@ -1088,7 +1092,6 @@ Adds particles to the simulation
 
   # --- Do followup work if requested
   if resetrho:
-    w3d.rho=0.0
     loadrho()
   if dofieldsol:
     fieldsol(-1)
