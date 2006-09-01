@@ -142,9 +142,11 @@ class EM2D(object):
   def setj(self,x,y,ux,uy,uz,gaminv,q,w):
     n = len(x)
     if n == 0: return
-    wtmp = zerps(n,'d')
-    depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wtmp,q*w,top.dt,
-                        self.l_particles_weight)
+    wtmp = zeros(n,'d')
+    em2d_depose_jxjy_esirkepov_linear_serial(self.field.j,n,x,y,ux,uy,uz,
+           gaminv,wtmp,q*w,self.field.xmin,self.field.ymin,top.dt,
+           self.field.dx,self.field.dy,self.field.nx,self.field.ny,
+           self.l_particles_weight)
 
   def fetchefrompositions(self,x,y,ex,ey,ez):
     n = len(x)
@@ -152,7 +154,12 @@ class EM2D(object):
     self.bx = zeros(n,'d')
     self.by = zeros(n,'d')
     self.bz = zeros(n,'d')
-    geteb_em2d(n,x,y,ex,ey,ez,self.bx,self.by,self.bz)
+    em2d_geteb2d_linear_serial(n,x,y,ex,ey,ez,self.bx,self.by,self.bz,
+                               self.field.xmin,self.field.ymin,
+                               self.field.dx,self.field.dy,
+                               self.field.nx,self.field.ny,
+                               self.field.Ex,self.field.Ey,self.field.Ez,
+                               self.field.Bx,self.field.By,self.field.Bz)
 
   def fetchbfrompositions(self,x,z,bx,by,bz):
     # --- This assumes that fetchefrompositions was already called
