@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.134 2006/08/25 21:33:27 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.135 2006/09/01 19:41:34 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -299,7 +299,6 @@ Should never be directly created by the user.
     - t_max=None : max time
     - nt=100     : nb of cells
     """
-    if me<>0:return
     tminl=0.
     tmaxl=top.time
     tmine=0.
@@ -334,7 +333,7 @@ Should never be directly created by the user.
       ne = shape(qe)[0]
     # collect accumulated image data
     ni = 0
-    if l_image and len(self.imageparticles_data) > 0:
+    if l_image and len(self.imageparticles_data) > 2:
       datai = array(self.imageparticles_data)
       qi = 0.5*(datai[2:,1]-datai[:-2,1])
       ti = datai[1:-1,0].copy()
@@ -348,9 +347,9 @@ Should never be directly created by the user.
     qtmp = zeros(nt+1,Float)
     dt = (tmax-tmin)/nt
     # accumulate data
-    if nl>0:deposgrid1d(1,nl,tl.astype(Float),ql.astype(Float),nt,qt,qtmp,tmin,tmax)
-    if ne>0:deposgrid1d(1,ne,te.astype(Float),qe.astype(Float),nt,qt,qtmp,tmin,tmax)
-    if ni>0:deposgrid1d(1,ni,ti.astype(Float),qi.astype(Float),nt,qt,qtmp,tmin,tmax)
+    if nl>0:deposgrid1d(1,nl,tl,ql,nt,qt,qtmp,tmin,tmax)
+    if ne>0:deposgrid1d(1,ne,te,qe,nt,qt,qtmp,tmin,tmax)
+    if ni>0:deposgrid1d(1,ni,ti,qi,nt,qt,qtmp,tmin,tmax)
     return arange(tmin,tmax+0.1*dt,dt),qt/dt
    
   def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
@@ -484,9 +483,10 @@ Should never be directly created by the user.
     else:
       qc = 0.
       
-    qc=parallelsum(qc)
+    q  = parallelsum(q)
+    qc = parallelsum(qc)
     
-    if me==0:self.imageparticles_data += [[top.time,q*eps0+qc]]
+    self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
       window(0)
