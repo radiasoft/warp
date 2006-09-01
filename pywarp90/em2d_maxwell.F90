@@ -1080,43 +1080,67 @@ INTEGER :: which,i,j
 
 subroutine shift_fields_1cell(f)
 TYPE(EM2D_FIELDtype) :: f
+    integer(4):: ix,iy
 
+!   --- Note that the loops are written out since they seem to give
+!   --- the intel compiler fits.
     if (l_elaser_out_plane) then
-      f%Ex(:,0:f%ny+2-f%rap)=f%Ex(:,f%rap:f%ny+2)
-      f%Ey(:,0:f%ny+2-f%rap)=f%Ey(:,f%rap:f%ny+2)
-      f%Ez(:,0:f%ny+2-f%rap)=f%Ez(:,f%rap:f%ny+2)
-      f%Bx(:,0:f%ny+2-f%rap)=f%Bx(:,f%rap:f%ny+2)
-      f%By(:,0:f%ny+2-f%rap)=f%By(:,f%rap:f%ny+2)
-      f%Bz(:,0:f%ny+2-f%rap)=f%Bz(:,f%rap:f%ny+2)
+      do iy=0,f%ny+2-f%rap
+        do ix=0,f%nx+3
+          f%Ex(ix,iy) = f%Ex(ix,iy+f%rap)
+          f%Ey(ix,iy) = f%Ey(ix,iy+f%rap)
+          f%Ez(ix,iy) = f%Ez(ix,iy+f%rap)
+          f%Bx(ix,iy) = f%Bx(ix,iy+f%rap)
+          f%By(ix,iy) = f%By(ix,iy+f%rap)
+          f%Bz(ix,iy) = f%Bz(ix,iy+f%rap)
+          f%J(ix,iy,1) = f%J(ix,iy+f%rap,1)
+          f%J(ix,iy,2) = f%J(ix,iy+f%rap,2)
+          f%J(ix,iy,3) = f%J(ix,iy+f%rap,3)
+        enddo
+      enddo
 
-      f%J(:,0:f%ny+2-f%rap,:)=f%J(:,f%rap:f%ny+2,:)
+      do iy=f%ny+2-f%rap+1,f%ny+2
+        do ix=0,f%nx+3
+          f%Ex(ix,iy) = 0.
+          f%Ey(ix,iy) = 0.
+          f%Ez(ix,iy) = 0.
+          f%Bx(ix,iy) = 0.
+          f%By(ix,iy) = 0.
+          f%Bz(ix,iy) = 0.
+          f%J(ix,iy,1) = 0.
+          f%J(ix,iy,2) = 0.
+          f%J(ix,iy,3) = 0.
+        enddo
+      enddo
 
-      f%Ex(:,f%ny+2-f%rap+1:)=0.
-      f%Ey(:,f%ny+2-f%rap+1:)=0.
-      f%Ez(:,f%ny+2-f%rap+1:)=0.
-      f%Bx(:,f%ny+2-f%rap+1:)=0.
-      f%By(:,f%ny+2-f%rap+1:)=0.
-      f%Bz(:,f%ny+2-f%rap+1:)=0.
-
-      f%J(:,f%ny+2-f%rap+1:,:)=0.
     else
-      f%Ex(0:f%nx+3-f%rap,:)=f%Ex(f%rap:f%nx+3,:)
-      f%Ey(0:f%nx+3-f%rap,:)=f%Ey(f%rap:f%nx+3,:)
-      f%Ez(0:f%nx+3-f%rap,:)=f%Ez(f%rap:f%nx+3,:)
-      f%Bx(0:f%nx+3-f%rap,:)=f%Bx(f%rap:f%nx+3,:)
-      f%By(0:f%nx+3-f%rap,:)=f%By(f%rap:f%nx+3,:)
-      f%Bz(0:f%nx+3-f%rap,:)=f%Bz(f%rap:f%nx+3,:)
+      do iy=0,f%ny+2
+        do ix=0,f%nx+3-f%rap
+          f%Ex(ix,iy) = f%Ex(ix+f%rap,iy)
+          f%Ey(ix,iy) = f%Ey(ix+f%rap,iy)
+          f%Ez(ix,iy) = f%Ez(ix+f%rap,iy)
+          f%Bx(ix,iy) = f%Bx(ix+f%rap,iy)
+          f%By(ix,iy) = f%By(ix+f%rap,iy)
+          f%Bz(ix,iy) = f%Bz(ix+f%rap,iy)
+          f%J(ix,iy,1) = f%J(ix+f%rap,iy,1)
+          f%J(ix,iy,2) = f%J(ix+f%rap,iy,2)
+          f%J(ix,iy,3) = f%J(ix+f%rap,iy,3)
+        enddo
+      enddo
 
-      f%J(0:f%nx+3-f%rap,:,:)=f%J(f%rap:f%nx+3,:,:)
-
-      f%Ex(f%nx+3-f%rap+1:,:)=0.
-      f%Ey(f%nx+3-f%rap+1:,:)=0.
-      f%Ez(f%nx+3-f%rap+1:,:)=0.
-      f%Bx(f%nx+3-f%rap+1:,:)=0.
-      f%By(f%nx+3-f%rap+1:,:)=0.
-      f%Bz(f%nx+3-f%rap+1:,:)=0.
-
-      f%J(f%nx+3-f%rap+1:,:,:)=0.
+      do iy=0,f%ny+2
+        do ix=f%nx+3-f%rap+1,f%nx+3
+          f%Ex(ix,iy) = 0.
+          f%Ey(ix,iy) = 0.
+          f%Ez(ix,iy) = 0.
+          f%Bx(ix,iy) = 0.
+          f%By(ix,iy) = 0.
+          f%Bz(ix,iy) = 0.
+          f%J(ix,iy,1) = 0.
+          f%J(ix,iy,2) = 0.
+          f%J(ix,iy,3) = 0.
+        enddo
+      enddo
     end if
 
 end subroutine shift_fields_1cell

@@ -1,10 +1,10 @@
 #include "top.h"
 module em2d_depos
 contains
-subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,l_particles_weight)
+subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
    implicit none
-   real(kind=8), dimension(-1:,-1:,1:), intent(in out) :: j
-   integer(ISZ) :: np
+   integer(ISZ) :: np,nx,ny
+   real(kind=8), dimension(-1:nx+2,-1:ny+1,3), intent(in out) :: j
    real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: q,dt,dx,dy,xmin,ymin
    logical(ISZ) :: l_particles_weight
@@ -195,11 +195,11 @@ subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q
   return
 end subroutine depose_jxjy_esirkepov_linear_serial
 
- subroutine geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,exg,eyg,ezg,bxg,byg,bzg)
+ subroutine geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
    
-      integer(ISZ) :: np
+      integer(ISZ) :: np,nx,ny
       real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
-      real(kind=8), dimension(-1:,-1:) :: exg,eyg,ezg,bxg,byg,bzg 
+      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg,bxg,byg,bzg 
       real(kind=8) :: xmin,ymin,dx,dy
       integer(ISZ) :: ip, iixp, ijxp
       real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
@@ -259,7 +259,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
    f => field
    if (l_onegrid) then
      call depose_jxjy_esirkepov_linear_serial(f%J,np,xp,yp,uxp,uyp,uzp,gaminv, &
-                                              w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+                                              w,q,f%xmin,f%ymin,dt,f%dx,f%dy, &
+                                              f%nx,f%ny,l_particles_weight)
    else
      np_inpatch = 0
      do ip=1,np
@@ -279,7 +280,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
                                                 pack(uyp,.not. l_inpatch), &
                                                 pack(uzp,.not. l_inpatch), &
                                                 pack(gaminv,.not. l_inpatch), &
-                                                w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+                                                w,q,f%xmin,f%ymin,dt, &
+                                                f%dx,f%dy,f%nx,f%ny,l_particles_weight)
      end if
      if (np_inpatch>0) then
        f => fpatchfine
@@ -290,7 +292,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
                                                 pack(uyp,l_inpatch), &
                                                 pack(uzp,l_inpatch), &
                                                 pack(gaminv,l_inpatch), &
-                                                w,q,f%xmin,f%ymin,dt,f%dx,f%dy,l_particles_weight)
+                                                w,q,f%xmin,f%ymin,dt, &
+                                                f%dx,f%dy,f%nx,f%ny,l_particles_weight)
      end if     
    endif
 end subroutine depose_current_em2d
@@ -312,7 +315,7 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
 
    f => field
    if (l_onegrid) then
-     call geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,f%xmin,f%ymin,f%dx,f%dy, &
+     call geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
           f%ex,f%ey,f%ez,f%bx,f%by,f%bz)
    else
      np_inpatch = 0
@@ -334,7 +337,7 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
        call geteb2d_linear_serial(np,pack(xp,.not. l_inpatch), &
                                      pack(yp,.not. l_inpatch), &
                                      ext,eyt,ezt,bxt,byt,bzt, &
-                                     f%xmin,f%ymin,f%dx,f%dy, &
+                                     f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
                                      f%ex,f%ey,f%ez,f%bx,f%by,f%bz)
        ipt = 1
        do ip=1,np
@@ -359,7 +362,7 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
        call geteb2d_linear_serial(np,pack(xp,l_inpatch), &
                                      pack(yp,l_inpatch), &
                                      ext,eyt,ezt,bxt,byt,bzt, &
-                                     f%xmin,f%ymin,f%dx,f%dy, &
+                                     f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
                                      exfsum,eyfsum,ezfsum,bxfsum,byfsum,bzfsum)
        ipt = 1
        do ip=1,np
@@ -377,6 +380,32 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
      end if
    endif
 end subroutine geteb_em2d
+
+subroutine em2d_geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
+  use em2d_depos,Only: geteb2d_linear_serial
+   
+  integer(ISZ) :: np,nx,ny
+  real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
+  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg,bxg,byg,bzg 
+  real(kind=8) :: xmin,ymin,dx,dy
+
+  call geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
+
+  return
+end subroutine em2d_geteb2d_linear_serial
+
+subroutine em2d_depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
+  use em2d_depos,Only: depose_jxjy_esirkepov_linear_serial
+  integer(ISZ) :: np,nx,ny
+  real(kind=8), dimension(-1:nx+2,-1:ny+1,3), intent(in out) :: j
+  real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
+  real(kind=8) :: q,dt,dx,dy,xmin,ymin
+  logical(ISZ) :: l_particles_weight
+
+  call depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
+
+  return
+end subroutine em2d_depose_jxjy_esirkepov_linear_serial
 
 subroutine smooth2d_lindman(q,nx,ny)
  implicit none

@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.9 $, $Date: 2006/08/19 00:53:44 $
+#@(#) File EM2D.V, version $Revision: 1.10 $, $Date: 2006/09/01 16:37:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -80,7 +80,23 @@ push_em_b(f:EM2D_FIELDtype,dt:real) subroutine
 depose_current_em2d(np:integer,xp(np):real,yp(np):real,
                     uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
                     w(np):real,q:real,dt:real,l_particles_weight:logical) subroutine
-geteb_em2d(np:integer,xp(np):real,yp(np):real,
+em2d_geteb2d_linear_serial(np:integer,xp(np):real,yp(np):real,
+                           ex(np):real,ey(np):real,ez(np):real,
+                           bx(np):real,by(np):real,bz(np):real,
+                           xmin:real,ymin:real,dx:real,dy:real,
+                           nx:integer,ny:integer,
+                           exg(0:nx+3,0:ny+2):real,eyg(0:nx+3,0:ny+2):real,
+                           ezg(0:nx+3,0:ny+2):real,
+                           bxg(0:nx+3,0:ny+2):real,byg(0:nx+3,0:ny+2):real,
+                           bzg(0:nx+3,0:ny+2):real) subroutine
+em2d_depose_jxjy_esirkepov_linear_serial(j:real,
+                           np:integer,xp:real(np),yp:real(np),
+                           uxp:real(np),uyp:real(np),uzp:real(np),
+                           gaminv:real(np),w:real(np),q:real,
+                           xmin:real,ymin:real,dt:real,dx:real,dy:real,
+                           nx:integer,ny:integer,l_particles_weight:logical)
+                           subroutine
+geteb_em2d(f:EM2D_FIELDtype,np:integer,xp(np):real,yp(np):real,
            ex(np):real,ey(np):real,ez(np):real,
            bx(np):real,by(np):real,bz(np):real) subroutine   
 em2d_step() subroutine
