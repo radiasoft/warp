@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.44 2006/08/16 18:52:14 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.45 2006/09/01 19:40:11 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -380,9 +380,12 @@ after load balancing."""
     # --- Just return if there are no lost particles.
     if top.npslost[jsid] == 0: 
       if self.lcollectlpdata:
+        # --- If data is being collected, the 0 from this processor must still
+        # --- be added to the sum.
         for c in self.conductors:
+          # --- This parallelsum coordinates with the ones below.
           w=parallelsum(0.)
-          if me==0 and w<>0.:
+          if w<>0.:
             c.lostparticles_data += [[top.time, 
                                       w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                       top.dt,
@@ -457,7 +460,13 @@ after load balancing."""
       ii = compress(pp == c.condid,arange(nn))
       if len(ii) == 0: 
         if self.lcollectlpdata:
+          # --- This parallelsum coordinates with the ones above and below.
           w=parallelsum(0.)
+          if w<>0.:
+            c.lostparticles_data += [[top.time, 
+                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                      top.dt,
+                                      jsid]]
         continue
       xc = take(x8,ii)
       yc = take(y8,ii)
@@ -505,10 +514,10 @@ after load balancing."""
           w = len(pidtoconsider)
         else:
           w = sum(take(top.pidlost[:,top.wpid],pidtoconsider))
+        # --- This parallelsum coordinates with the ones above
         w=parallelsum(w)
-        if me==0:
-          c.lostparticles_data += [[top.time, 
-                                    w*top.pgroup.sq[js]*top.pgroup.sw[js],
-                                    top.dt,
-                                    jsid]]
+        c.lostparticles_data += [[top.time, 
+                                  w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                  top.dt,
+                                  jsid]]
 
