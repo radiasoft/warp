@@ -196,6 +196,9 @@ class EM2D(object):
       w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
       w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     ex,ey,ez = self.transformfields(w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    ex[:] = 0.
+    ey[:] = 0.
+    ez[:] = 0.
     x,y,ux,uy,uz = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
     self.fetchefrompositions(x,y,ex,ey,ez)
 
@@ -205,6 +208,9 @@ class EM2D(object):
       w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
       w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
     bx,by,bz = self.transformfields(w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+    bx[:] = 0.
+    by[:] = 0.
+    bz[:] = 0.
     x,y,ux,uy,uz = self.transformparticles(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi)
     self.fetchbfrompositions(x,y,bx,by,bz)
 
