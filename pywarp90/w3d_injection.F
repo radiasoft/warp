@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.71 $, $Date: 2006/08/29 18:48:07 $
+c@(#) File w3d_injection.F, version $Revision: 1.72 $, $Date: 2006/09/07 16:14:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4557,7 +4557,7 @@ c     --- data and i2 is the location of the last data point.
             rrr = sign(inj_dx,rtinject(iz,ij))
             xx(i2) = xtinject(ij) + (rtinject(iz,ij) + rrr)*cos(aa)
             yy(i2) = ytinject(ij) + (rtinject(iz,ij) + rrr)*sin(aa)
-            zz(i2) = zmmin + iz*inj_dz
+            zz(i2) = zmmin + (iz + nztinjmn(ij))*inj_dz
 
 c           --- Save coordinates relative to injection grid.
             zi(i2) = iz
