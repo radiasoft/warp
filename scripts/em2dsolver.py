@@ -15,6 +15,7 @@ class EM2D(object):
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __em2dinputs__ = ['l_onegrid','l_copyfields','l_moving_window',
+                    'tmin_moving_main_window',
                     'l_elaser_out_plane','ndelta_t',
                    'ntamp_scatter','ntamp_gather']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,
@@ -143,7 +144,7 @@ class EM2D(object):
     n = len(x)
     if n == 0: return
     wtmp = zeros(n,'d')
-    em2d_depose_jxjy_esirkepov_linear_serial(self.field.j,n,x,y,ux,uy,uz,
+    em2d_depose_jxjy_esirkepov_linear_serial(self.field.J,n,x,y,ux,uy,uz,
            gaminv,wtmp,q*w,self.field.xmin,self.field.ymin,top.dt,
            self.field.dx,self.field.dy,self.field.nx,self.field.ny,
            self.l_particles_weight)
@@ -151,23 +152,21 @@ class EM2D(object):
   def fetchefrompositions(self,x,y,ex,ey,ez):
     n = len(x)
     if n == 0: return
-    self.bx = zeros(n,'d')
-    self.by = zeros(n,'d')
-    self.bz = zeros(n,'d')
-    em2d_geteb2d_linear_serial(n,x,y,ex,ey,ez,self.bx,self.by,self.bz,
-                               self.field.xmin,self.field.ymin,
-                               self.field.dx,self.field.dy,
-                               self.field.nx,self.field.ny,
-                               self.field.Ex,self.field.Ey,self.field.Ez,
-                               self.field.Bx,self.field.By,self.field.Bz)
+    em2d_gete2d_linear_serial(n,x,y,ex,ey,ez,
+                              self.field.xmin,self.field.ymin,
+                              self.field.dx,self.field.dy,
+                              self.field.nx,self.field.ny,
+                              self.field.Ex,self.field.Ey,self.field.Ez)
 
-  def fetchbfrompositions(self,x,z,bx,by,bz):
+  def fetchbfrompositions(self,x,y,bx,by,bz):
     # --- This assumes that fetchefrompositions was already called
     n = len(x)
     if n == 0: return
-    bx[:] = self.bx
-    by[:] = self.by
-    bz[:] = self.bz
+    em2d_getb2d_linear_serial(n,x,y,bx,by,bz,
+                              self.field.xmin,self.field.ymin,
+                              self.field.dx,self.field.dy,
+                              self.field.nx,self.field.ny,
+                              self.field.Bx,self.field.By,self.field.Bz)
 
   def fetchphifrompositions(self,x,z,phi):
     pass
@@ -228,12 +227,17 @@ class EM2D(object):
   def optimizeconvergence(self,resetpasses=1):
     pass
 
+  def move_window_fields(self):
+    if not self.l_moving_window or ((top.it%self.ndelta_t)!=0): return
+    if top.time < self.tmin_moving_main_window: return
+    move_window_field(self.field)
+
   def solve(self,iwhich=0):
     grimax(self.field)
     push_em_b(self.field,0.5*top.dt)
     push_em_e(self.field,top.dt)
     push_em_b(self.field,0.5*top.dt)
-    move_window_field(self.field)
+    self.move_window_fields()
     griuni(self.field)
 
 
