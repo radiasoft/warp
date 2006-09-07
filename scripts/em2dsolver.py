@@ -1,6 +1,7 @@
 """Class for doing 2 1/2 D electromagnetic solver using code adapted from the
 emi code"""
 from warp import *
+import operator
 
 try:
   import psyco
@@ -19,7 +20,11 @@ class EM2D(object):
                     'l_elaser_out_plane','ndelta_t',
                    'ntamp_scatter','ntamp_gather']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,
-                    'l_particles_weight':false}
+                    'l_particles_weight':false,
+                    'laser_amplitude':1.,'laser_profile':None,
+                    'laser_gauss_width':None,'laser_angle':0.,
+                    'laser_wavelength':None,'laser_wavenumber':None,
+                    'laser_frequency':None,'laser_source':2}
 
   def __init__(self,**kw):
     top.lcallfetchb = true
@@ -107,6 +112,9 @@ class EM2D(object):
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
 
+    # --- Handle laser inputs
+    self.setuplaser()
+
   def __getstate__(self):
     dict = self.__dict__.copy()
     return dict
@@ -121,6 +129,42 @@ class EM2D(object):
                 self.dx,self.dy,clight,mu0,
                 self.xmmin,self.ymmin,1,
                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+    self.field.js = self.laser_source
+
+  def setuplaser(self):
+    if self.laser_profile is not None:
+      if self.laser_frequency is None:
+        if self.laser_wavenumber is not None:
+          self.laser_wavelength = clight*self.laser_wavenumber
+        elif self.laser_wavelength is not None:
+          self.laser_wavelength = 2.*pi*clight/self.laser_wavelength
+      assert self.laser_frequency is not None,\
+             "One of the frequency, wavenumber, or wavelength must be given"
+
+    # --- Check if laser_amplitude is a function, table, or constant
+    self.laser_amplitude_func = None
+    self.laser_amplitude_table = None
+    if operator.isSequenceType(self.laser_amplitude):
+      assert len(self.laser_amplitude.shape) == 2 and \
+             self.laser_amplitude.shape[1] == 2,\
+             "The laser_amplitude table is not formatted properly"
+      self.laser_amplitude_table = self.laser_amplitude
+      self.laser_amplitude_table_i = -1
+    elif callable(self.laser_amplitude):
+      self.laser_amplitude_func = self.laser_amplitude
+
+    # --- Check if laser_profile has a type, is a function, or a table
+    self.laser_profile_func = None
+    if self.laser_profile == 'gaussian':
+      assert self.laser_gauss_width is not None,\
+             "For a gaussian laser, the width must be specified using laser_gauss_width"
+      f = self.field
+      xx = arange(self.nx+4)*f.dx+f.xmin*f.dx - 0.5*f.nx*f.dx
+      self.laser_profile = exp(-(xx/self.laser_gauss_width)**2/2.)
+    elif operator.isSequenceType(self.laser_profile):
+      assert len(self.laser_profile) == self.nx+4,"The specified profile must be of length nx+4"
+    elif callable(self.laser_profile):
+      self.laser_profile_func = self.laser_profile
 
   def transformparticles(self,x,y,z,ux=None,uy=None,uz=None):
     if self.solvergeom == w3d.XYgeom:
@@ -238,7 +282,47 @@ class EM2D(object):
     if top.time < self.tmin_moving_main_window: return
     move_window_field(self.field)
 
+  def add_laser(self):
+    if self.laser_profile is None: return
+
+    if self.laser_amplitude_func is not None:
+      self.laser_amplitude = self.laser_amplitude_func(top.time)
+    elif self.laser_amplitude_table is not None:
+      if top.time < self.laser_amplitude_table[0,1]:
+        self.laser_amplitude = self.laser_amplitude_table[0,0]
+      elif top.time >= self.laser_amplitude_table[-1,1]:
+        self.laser_amplitude = self.laser_amplitude_table[-1,0]
+      else:
+        i = self.laser_amplitude_table_i
+        while top.time > self.laser_amplitude_table[i+1,1]:
+          i = i + 1
+        self.laser_amplitude_table_i = i
+        ww = ((top.time - self.laser_amplitude_table[i,1])/
+           (self.laser_amplitude_table[i+1,1]-self.laser_amplitude_table[i,1]))
+        self.laser_amplitude = ((1.-ww)*self.laser_amplitude_table[i,0] +
+                                    ww *self.laser_amplitude_table[i+1,0])
+
+    if self.laser_profile_func is not None:
+      self.laser_profile = self.laser_profile_func(top.time)
+      assert len(self.laser_profile) == self.nx+4,"The specified profile must be of length nx+4"
+
+    if (self.l_elaser_out_plane):
+      xx = (arange(self.nx+4) - 0.5)*self.field.dx+self.field.xmin
+    else:
+      xx = (arange(self.nx+3) - 0.5)*self.field.dx+self.field.xmin
+
+    if self.laser_frequency is not None:
+      phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
+    else:
+      phase = 0.
+
+    if (self.l_elaser_out_plane):
+      self.field.Ez_in = self.laser_amplitude*self.laser_profile*cos(phase)
+    else:
+      self.field.Bz_in = self.laser_amplitude*self.laser_profile[:-1]*cos(phase)
+
   def solve(self,iwhich=0):
+    self.add_laser()
     grimax(self.field)
     push_em_b(self.field,0.5*top.dt)
     push_em_e(self.field,top.dt)
