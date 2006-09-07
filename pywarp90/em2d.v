@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.10 $, $Date: 2006/09/01 16:37:55 $
+#@(#) File EM2D.V, version $Revision: 1.11 $, $Date: 2006/09/07 00:40:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -77,28 +77,40 @@ init_fields(f:EM2D_FIELDtype, nx:integer, ny:integer,
            xlb:integer,ylb:integer,xrb:integer,yrb:integer) subroutine
 push_em_e(f:EM2D_FIELDtype,dt:real) subroutine
 push_em_b(f:EM2D_FIELDtype,dt:real) subroutine
-depose_current_em2d(np:integer,xp(np):real,yp(np):real,
-                    uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
-                    w(np):real,q:real,dt:real,l_particles_weight:logical) subroutine
-em2d_geteb2d_linear_serial(np:integer,xp(np):real,yp(np):real,
-                           ex(np):real,ey(np):real,ez(np):real,
-                           bx(np):real,by(np):real,bz(np):real,
+depose_current_em2d(n:integer,x(n):real,y(n):real,
+                    ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
+                    w(n):real,q:real,dt:real,l_particles_weight:logical) subroutine
+em2d_geteb2d_linear_serial(n:integer,x(n):real,y(n):real,
+                           ex(n):real,ey(n):real,ez(n):real,
+                           bx(n):real,by(n):real,bz(n):real,
                            xmin:real,ymin:real,dx:real,dy:real,
                            nx:integer,ny:integer,
                            exg(0:nx+3,0:ny+2):real,eyg(0:nx+3,0:ny+2):real,
                            ezg(0:nx+3,0:ny+2):real,
                            bxg(0:nx+3,0:ny+2):real,byg(0:nx+3,0:ny+2):real,
                            bzg(0:nx+3,0:ny+2):real) subroutine
+em2d_gete2d_linear_serial(n:integer,x(n):real,y(n):real,
+                          ex(n):real,ey(n):real,ez(n):real,
+                          xmin:real,ymin:real,dx:real,dy:real,
+                          nx:integer,ny:integer,
+                          exg(0:nx+3,0:ny+2):real,eyg(0:nx+3,0:ny+2):real,
+                          ezg(0:nx+3,0:ny+2):real) subroutine
+em2d_getb2d_linear_serial(n:integer,x(n):real,y(n):real,
+                          bx(n):real,by(n):real,bz(n):real,
+                          xmin:real,ymin:real,dx:real,dy:real,
+                          nx:integer,ny:integer,
+                          bxg(0:nx+3,0:ny+2):real,byg(0:nx+3,0:ny+2):real,
+                          bzg(0:nx+3,0:ny+2):real) subroutine
 em2d_depose_jxjy_esirkepov_linear_serial(j:real,
-                           np:integer,xp:real(np),yp:real(np),
-                           uxp:real(np),uyp:real(np),uzp:real(np),
-                           gaminv:real(np),w:real(np),q:real,
+                           n:integer,x(n):real,y(n):real,
+                           ux(n):real,uy(n):real,uz(n):real,
+                           gaminv(n):real,w(n):real,q:real,
                            xmin:real,ymin:real,dt:real,dx:real,dy:real,
                            nx:integer,ny:integer,l_particles_weight:logical)
                            subroutine
-geteb_em2d(f:EM2D_FIELDtype,np:integer,xp(np):real,yp(np):real,
-           ex(np):real,ey(np):real,ez(np):real,
-           bx(np):real,by(np):real,bz(np):real) subroutine   
+geteb_em2d(f:EM2D_FIELDtype,n:integer,x(n):real,y(n):real,
+           ex(n):real,ey(n):real,ez(n):real,
+           bx(n):real,by(n):real,bz(n):real) subroutine   
 em2d_step() subroutine
 griuni(f:EM2D_FIELDtype) subroutine
 grimax(f:EM2D_FIELDtype) subroutine

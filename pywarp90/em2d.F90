@@ -240,6 +240,88 @@ end subroutine depose_jxjy_esirkepov_linear_serial
 
    return
  end subroutine geteb2d_linear_serial
+ subroutine gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
+   
+      integer(ISZ) :: np,nx,ny
+      real(kind=8), dimension(np) :: xp,yp,ex,ey,ez
+      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg
+      real(kind=8) :: xmin,ymin,dx,dy
+      integer(ISZ) :: ip, iixp, ijxp
+      real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
+
+      dxi = 1./dx
+      dyi = 1./dy
+
+      do ip=1,np
+
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+
+        iixp=int(x)
+        ijxp=int(y)
+
+        xint=x-iixp
+        yint=y-ijxp
+
+        s1x=xint
+        s2x=1.-xint
+        s1y=yint
+        s2y=1.-yint
+
+        w1 = s1x*s1y
+        w2 = s2x*s1y 
+        w3 = s1x*s2y
+        w4 = s2x*s2y 
+          
+        ex(ip) = ex(ip)+(w1*exg(iixp+1,ijxp+1)+w2*exg(iixp,ijxp+1)+w3*exg(iixp+1,ijxp)+w4*exg(iixp,ijxp))
+        ey(ip) = ey(ip)+(w1*eyg(iixp+1,ijxp+1)+w2*eyg(iixp,ijxp+1)+w3*eyg(iixp+1,ijxp)+w4*eyg(iixp,ijxp))
+        ez(ip) = ez(ip)+(w1*ezg(iixp+1,ijxp+1)+w2*ezg(iixp,ijxp+1)+w3*ezg(iixp+1,ijxp)+w4*ezg(iixp,ijxp))
+
+     end do
+
+   return
+ end subroutine gete2d_linear_serial
+ subroutine getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
+   
+      integer(ISZ) :: np,nx,ny
+      real(kind=8), dimension(np) :: xp,yp,bx,by,bz
+      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: bxg,byg,bzg 
+      real(kind=8) :: xmin,ymin,dx,dy
+      integer(ISZ) :: ip, iixp, ijxp
+      real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
+
+      dxi = 1./dx
+      dyi = 1./dy
+
+      do ip=1,np
+
+        x = (xp(ip)-xmin)*dxi
+        y = (yp(ip)-ymin)*dyi
+
+        iixp=int(x)
+        ijxp=int(y)
+
+        xint=x-iixp
+        yint=y-ijxp
+
+        s1x=xint
+        s2x=1.-xint
+        s1y=yint
+        s2y=1.-yint
+
+        w1 = s1x*s1y
+        w2 = s2x*s1y 
+        w3 = s1x*s2y
+        w4 = s2x*s2y 
+          
+        bx(ip) = bx(ip)+(w1*bxg(iixp+1,ijxp+1)+w2*bxg(iixp,ijxp+1)+w3*bxg(iixp+1,ijxp)+w4*bxg(iixp,ijxp))
+        by(ip) = by(ip)+(w1*byg(iixp+1,ijxp+1)+w2*byg(iixp,ijxp+1)+w3*byg(iixp+1,ijxp)+w4*byg(iixp,ijxp))
+        bz(ip) = bz(ip)+(w1*bzg(iixp+1,ijxp+1)+w2*bzg(iixp,ijxp+1)+w3*bzg(iixp+1,ijxp)+w4*bzg(iixp,ijxp))
+
+     end do
+
+   return
+ end subroutine getb2d_linear_serial
 end module em2d_depos
 
 subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight)
@@ -393,6 +475,32 @@ subroutine em2d_geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy
 
   return
 end subroutine em2d_geteb2d_linear_serial
+
+subroutine em2d_gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
+  use em2d_depos,Only: gete2d_linear_serial
+   
+  integer(ISZ) :: np,nx,ny
+  real(kind=8), dimension(np) :: xp,yp,ex,ey,ez
+  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg
+  real(kind=8) :: xmin,ymin,dx,dy
+
+  call gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
+
+  return
+end subroutine em2d_gete2d_linear_serial
+
+subroutine em2d_getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
+  use em2d_depos,Only: getb2d_linear_serial
+   
+  integer(ISZ) :: np,nx,ny
+  real(kind=8), dimension(np) :: xp,yp,bx,by,bz
+  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: bxg,byg,bzg 
+  real(kind=8) :: xmin,ymin,dx,dy
+
+  call getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
+
+  return
+end subroutine em2d_getb2d_linear_serial
 
 subroutine em2d_depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
   use em2d_depos,Only: depose_jxjy_esirkepov_linear_serial
