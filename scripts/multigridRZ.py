@@ -14,12 +14,12 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGrid(object):
+class MultiGridRZ(object):
   
   __w3dinputs__ = ['nx','nz','nzfull','nzpguard',
                    'xmmin','xmmax','zmmin','zmmax',
                    'zmminglobal','zmmaxglobal',
-                   'bound0','boundnz','boundxy',,'l2symtry','l4symtry',
+                   'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom',
                    'iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']
@@ -41,27 +41,27 @@ class MultiGrid(object):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGrid.__w3dinputs__:
+    for name in MultiGridRZ.__w3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__GRIDtypeinputs__:
+    for name in MultiGridRZ.__GRIDtypeinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__f3dinputs__:
+    for name in MultiGridRZ.__f3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__topinputs__:
+    for name in MultiGridRZ.__topinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(top,name))
       if kw.has_key(name): del kw[name]
-    for name,defvalue in MultiGrid.__flaginputs__.iteritems():
+    for name,defvalue in MultiGridRZ.__flaginputs__.iteritems():
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
@@ -466,7 +466,7 @@ class MultiGrid(object):
                          self.plasmapotential,self.electrondensitymaxscale)
 
     if self.efetch == 3:
-      MultiGrid.getselfe(self,recalculate=1)
+      MultiGridRZ.getselfe(self,recalculate=1)
 
   ##########################################################################
   # Define the basic plot commands
@@ -841,9 +841,9 @@ class MultiGrid(object):
              self.lcndbndy,self.icndbndy,self.conductors)
     return res
 
-# --- This can only be done after MultiGrid is defined.
+# --- This can only be done after MultiGridRZ is defined.
 try:
-  psyco.bind(MultiGrid)
+  psyco.bind(MultiGridRZ)
 except NameError:
   pass
 
