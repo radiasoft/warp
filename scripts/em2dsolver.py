@@ -90,7 +90,6 @@ class EM2D(object):
       self.dy = (self.ymmax - self.ymmin)/self.ny
       self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
       self.ysymmetryplane = 0.
-      self.ymin = self.ymmin
     if self.solvergeom in [w3d.XZgeom]:
       # --- When Z is used, set Z quantities, and set Y quantities to the same
       # --- values. Internally, the class always uses x and y. The user
@@ -98,11 +97,10 @@ class EM2D(object):
       self.dz = (self.zmmax - self.zmmin)/self.nz
       self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
       self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
-      self.zmin = self.zmmin
       self.ny = self.nz
       self.dy = self.dz
       self.ymesh = self.zmeshlocal
-      self.ymin = self.zmin
+      self.ymmin = self.zmmin
       self.bounds[2] = self.bounds[4]
       self.bounds[3] = self.bounds[5]
 #     self.ndelta_t = top.vbeam*top.dt/w3d.dz
