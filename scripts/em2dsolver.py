@@ -95,8 +95,8 @@ class EM2D(object):
       # --- When Z is used, set Z quantities, and set Y quantities to the same
       # --- values. Internally, the class always uses x and y. The user
       # --- interface will depend on solvergeom
-      self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-      self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
+      self.dz = (self.zmmax - self.zmmin)/self.nzfull
+      self.zmesh = self.zmmin + arange(0,self.nzfull+1)*self.dz
       self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
       self.zmin = self.zmmin
       self.ny = self.nz
