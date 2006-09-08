@@ -29,7 +29,7 @@ class MultiGrid(object):
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
                    'my_index','nslaves','izfsslave','nzfsslave']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
-                    'lreducedpickle':0}
+                    'lreducedpickle':0,'lnorestoreonpickle':0}
 
   def __init__(self,**kw):
     self.solvergeom = w3d.XYZgeom
@@ -169,7 +169,7 @@ class MultiGrid(object):
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
-    if self.lreducedpickle:
+    if self.lreducedpickle and not self.lnorestoreonpickle:
       self.allocatefieldarrays()
       # --- Regenerate the conductor data
       self.conductors = ConductorType()
