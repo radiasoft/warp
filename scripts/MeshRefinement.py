@@ -258,7 +258,8 @@ it knows whether to re-register itself.
     if self.iamtheregisteredsolver:
       del self.iamtheregisteredsolver
       registersolver(self)
-    if self == self.root and self.lreducedpickle:
+    if (self == self.root and self.lreducedpickle and
+        not self.lnorestoreonpickle):
       # --- It is assumed that at this point, all of the children have been
       # --- restored.
       # --- Regenerate childdomains
@@ -352,10 +353,12 @@ Given a block instance, installs it as a child.
     # --- This should only be called at the top level.
     if self != self.root or self.finalized: return
     blocklists = self.generateblocklevellists()
+    blocklistslower,blocklistsupper = self.swapblocklistswithprocessneighbors(blocklists)
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
     self.initializechilddomains()
-    self.findoverlappingsiblings(blocklists[1:])
+    self.findoverlappingsiblings(blocklists[1:],
+                                 blocklistslower[1:],blocklistsupper[1:])
     self.finalized = 1
 
   def generateblocklevellists(self,blocklists=None):
@@ -374,6 +377,26 @@ Given a block instance, installs it as a child.
       b = child.generateblocklevellists(blocklists[1:])
     return blocklists
 
+  def swapblocklistswithprocessneighbors(self,blocklists):
+    if not lparallel:
+      blocklistslower = [[] for i in range(100)]
+      blocklistsupper = [[] for i in range(100)]
+    else:
+      # --- First, set so amount data sent to neighbors will be small
+      lreducedpicklesave = self.lreducedpickle
+      for block in self.listofblocks:
+        self.lreducedpickle = 1
+        self.lnorestoreonpickle = 1
+      if (self.my_index > 0): mpi.send(blocklists,self.my_index-1)
+      if (self.my_index < npes): blocklistsupper = mpi.recv(self.my_index+1)
+      if (self.my_index < npes): mpi.send(blocklists,self.my_index+1)
+      if (self.my_index > 0): blocklistslower = mpi.recv(self.my_index-1)
+      # --- Restore the flags
+      for block in self.listofblocks:
+        self.lreducedpickle = lreducedpicklesave
+        self.lnorestoreonpickle = 0
+    return blocklistslower,blocklistsupper
+      
   def clearparentsandchildren(self):
     self.parents = []
     for child in self.children:
@@ -429,7 +452,7 @@ Sets the regions that are covered by the children.
       ii = self.getchilddomains(l,u)
       ii[...] = +child.blocknumber
 
-  def findoverlappingsiblings(self,blocklists):
+  def findoverlappingsiblings(self,blocklists,blocklistslower,blocklistsupper):
     """
 Recursive routine to find, at each level of refinement, all overlapping
 siblings.
