@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.286 $, $Date: 2006/08/29 01:07:44 $
+c@(#) File W3D.F, version $Revision: 3.287 $, $Date: 2006/09/08 20:41:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -416,6 +416,7 @@ c  Load the particles, calculate the charge density
       call setuppgroup(pgroup)
       call stptcl3d(pgroup)
       call setgamma(pgroup,lrelativ)
+      call injctint(pgroup)
       call remark(" ---  Setting charge density")
       call loadrho3d(pgroup,-1,-1,-1,.true.)
       call loadj3d(pgroup,-1,-1,-1,.true.)
@@ -437,7 +438,6 @@ c  Load the particles, calculate the charge density
       call remark(" ---  done")
 
 c  Set up for injection
-      call injctint(pgroup)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
