@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.67 2006/02/28 23:01:40 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.68 2006/09/11 19:16:41 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -54,7 +54,7 @@ which the lattice elements are checked. When the slice location is found
 within an element, the routine applies that elements boundary condition
 and ignores the rest of the elements. The order in which they are
 checked is as follows...
-quads, accls, emlts, mmlts, mmlt2s, pgrds, bgrds, bgrd2s, heles, bends,
+quads, accls, emlts, mmlts, pgrds, egrds, bgrds, heles, bends,
 dipos, sexts, drfts
 Note that the author can not anticipate all possibilities, so if one of
 the assumptions above doesn't work for you, please contact me.
@@ -611,10 +611,9 @@ Constructor arguments:
     self.acclcm  = []
     self.emltcm  = []
     self.mmltcm  = []
-    self.mmlt2cm = []
     self.pgrdcm  = []
+    self.egrdcm  = []
     self.bgrdcm  = []
-    self.bgrd2cm = []
     self.helecm  = []
     self.bendcm  = []
     self.dipocm  = []
@@ -1057,6 +1056,13 @@ in the celemid array. It returns each element only once.
       for pid,pzs,pze in self.elemlist(top.npgrdol,top.cpgrdid,
                                        top.cpgrdzs,top.cpgrdze):
         if self.quadrods('pgrd',pid,pzs,pze,self.pgrdcm):
+          return
+    #--------------------------------------------------------------------------
+    if top.negrdol > 0:
+      for eid,ezs,eze in self.elemlist(top.negrdol,top.cegrdid,
+                                       top.cegrdzs,top.cegrdze):
+        if self.roundpipe(eid,ezs,eze,top.egrdap,top.egrdax,top.egrday,
+                          top.egrdox,top.egrdoy,self.egrdcm):
           return
     #--------------------------------------------------------------------------
     if top.nbgrdol > 0:

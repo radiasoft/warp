@@ -1,6 +1,6 @@
 from warp import *
 from lattice import *
-drifts_version = "$Id: drifts.py,v 1.2 2005/02/16 00:32:33 jlvay Exp $"
+drifts_version = "$Id: drifts.py,v 1.3 2006/09/11 19:16:41 dave Exp $"
 
 def initdrifts():
   if top.drfts: return
@@ -65,6 +65,13 @@ def initdrifts():
       elist.append(Mmlt(zs=top.mmltzs[ii],ze=top.mmltze[ii],ap=top.mmltap[ii],
                         ox=top.mmltox[ii],oy=top.mmltoy[ii],
                         id=top.mmltid[ii]))
+  if top.egrds:
+    elist = []
+    elems.append(elist)
+    for ii in xrange(top.negrd+1):
+      elist.append(Bgrd(zs=top.egrdzs[ii],ze=top.egrdze[ii],ap=top.egrdap[ii],
+                        ox=top.egrdox[ii],oy=top.egrdoy[ii],
+                        id=top.egrdid[ii]))
   if top.bgrds:
     elist = []
     elems.append(elist)

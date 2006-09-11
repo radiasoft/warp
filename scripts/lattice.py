@@ -44,12 +44,14 @@ addnewhele: Adds a new hele element
 addnewemlt: Adds a new emlt element
 addnewmmlt: Adds a new mmlt element
 addnewaccl: Adds a new accl element
+addnewegrd: Adds a new egrd element
 addnewbgrd: Adds a new bgrd element
 addnewbsqgrad: Adds a new bsqgrad element
 addnewpgrd: Adds a new pgrd element
 plotemlt: plots the multipole components
 plotmmlt: plots the multipole components
 plotacclet: plots the time depenedent accl field
+plotegrd: plots components of the B field
 plotbgrd: plots components of the B field
 """
 
@@ -60,7 +62,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.51 2006/08/02 23:12:21 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.52 2006/09/11 19:16:41 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1047,6 +1049,106 @@ Or specify the data set
     top.mmltid[top.nmmlt] = self.id
     return top.mmltze[top.nmmlt]
 
+class Egrd(Elem):
+  """
+Creates an instance of a Egrd lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
+  - xs=0: x starts of 3-D grid of E field data
+  - ys=0: y starts of 3-D grid of E field data
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - sf=0 relative scaling factor
+  - sc=0 absolute scaling factor
+One must either specify the field data or give an id from an existing data or
+from another element.
+Either specify the index
+  - id=None: index of data set to use
+Or specify the data set
+  - ex=[] Ex (V/m)
+  - ey=[] Ey (V/m)
+  - ez=[] Ez (V/m)
+  - dx=0 x increment size (m)
+  - dy=0 y increment size (m)
+  - dz=0 z increment size (m)
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
+               xs=0,ys=0,ox=0,oy=0,ol=0,error_type='',
+               id=None,sf=0,sc=1,ex=[],ey=[],ez=[],dx=0,dy=0,dz=0):
+    assert (ex or ey or ez) or (id is not None),"A data set or id must be given"
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
+    self.type = 'Egrd'
+    self.xs = xs
+    self.ys = ys
+    self.sf = sf
+    self.sc = sc
+    self.ex = ex
+    self.ey = ey
+    self.ez = ez
+    self.dx = dx
+    self.dy = dy
+    self.dz = dz
+    self.derivedquantities()
+    if id is None: self.id = top.egrdns + 1
+    else:          self.id = id
+    top.egrdns = max(self.id,top.egrdns)
+    if self.ex or self.ey or self.ez:
+      sex = shape(self.ex)
+      sey = shape(self.ey)
+      sez = shape(self.ez)
+      top.egrdnx = max(sex[0]-1,sey[0]-1,sez[0]-1,top.egrdnx)
+      top.egrdny = max(sex[1]-1,sey[1]-1,sez[1]-1,top.egrdny)
+      top.egrdnz = max(sex[2]-1,sey[2]-1,sez[2]-1,top.egrdnz)
+      gchange("EGRDdata")
+    # --- Install data only if this is a new data set (i.e. egrddx == 0)
+    id = self.id
+    if (self.ex or self.ey or self.ez) and top.egrddx[id-1] == 0.:
+      top.egrddx[id-1] = self.dx
+      top.egrddy[id-1] = self.dy
+      top.egrddz[id-1] = self.dz
+      sex = shape(self.ex)
+      sey = shape(self.ey)
+      sez = shape(self.ez)
+      top.egrdex[:sex[0],:sex[1],:sex[2],id-1] = self.ex
+      top.egrdey[:sey[0],:sey[1],:sey[2],id-1] = self.ey
+      top.egrdez[:sez[0],:sez[1],:sez[2],id-1] = self.ez
+  def derivedquantities(self):
+    self.ex = array(self.ex)
+    self.ey = array(self.ey)
+    self.ez = array(self.ez)
+  def install(self,zz):
+    top.negrd = top.negrd + 1
+    self.iegrd = top.negrd
+    if top.negrd > len(top.egrdzs)-1:
+      iegrd = top.negrd
+      top.negrd = top.negrd + 100
+      gchange("Lattice")
+      top.negrd = iegrd
+    top.egrdzs[top.negrd] = zz + self.zshift
+    top.egrdze[top.negrd] = top.egrdzs[top.negrd] + self.length
+    top.egrdap[top.negrd] = self.ap
+    top.egrdax[top.negrd] = self.ax
+    top.egrday[top.negrd] = self.ay
+    top.egrdxs[top.negrd] = self.xs
+    top.egrdys[top.negrd] = self.ys
+    top.egrdox[top.negrd] = self.offset_x*errordist(self.error_type)
+    top.egrdoy[top.negrd] = self.offset_y*errordist(self.error_type)
+    top.egrdol[top.negrd] = self.ol
+    top.egrdsf[top.negrd] = self.sf
+    top.egrdsc[top.negrd] = self.sc
+    top.egrdid[top.negrd] = self.id
+    return top.egrdze[top.negrd]
+    
+
 class Bgrd(Elem):
   """
 Creates an instance of a Bgrd lattice element.
@@ -1426,6 +1528,7 @@ information if the WARP lattice arrays is deleted.
   top.naccl = 100
   top.nemlt = 100
   top.nmmlt = 100
+  top.negrd = 100
   top.nbgrd = 100
   top.npgrd = 100
   top.nsext = 100
@@ -1440,6 +1543,7 @@ information if the WARP lattice arrays is deleted.
   top.naccl = -1
   top.nemlt = -1
   top.nmmlt = -1
+  top.negrd = -1
   top.nbgrd = -1
   top.npgrd = -1
   top.nsext = -1
@@ -1459,6 +1563,8 @@ information if the WARP lattice arrays is deleted.
       top.tunelen=0.5*(top.emltzs[2]+top.emltze[2]-top.emltzs[0]-top.emltze[0])
     elif top.nmmlt >= 2:
       top.tunelen=0.5*(top.mmltzs[2]+top.mmltze[2]-top.mmltzs[0]-top.mmltze[0])
+    elif top.negrd >= 2:
+      top.tunelen=0.5*(top.egrdzs[2]+top.egrdze[2]-top.egrdzs[0]-top.egrdze[0])
     elif top.nbgrd >= 2:
       top.tunelen=0.5*(top.bgrdzs[2]+top.bgrdze[2]-top.bgrdzs[0]-top.bgrdze[0])
     elif top.npgrd >= 2:
@@ -2340,6 +2446,112 @@ accl arrays with the same suffices:
   return ie
 
 # ----------------------------------------------------------------------------
+# --- EGRD --- XXX
+def addnewegrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
+               ph=0.,sp=0.,cp=0.,
+               sf=0.,sc=1.,sy=0,dx=None,dy=None,ex=None,ey=None,ez=None,
+               nx=None,ny=None,nz=None):
+  """
+Adds a new egrd element to the lattice. The element will be placed at the
+appropriate location.
+Required arguments:
+  - zs, ze: specify the start and end of the element
+Optionally, id may be specified, using a previously defined dataset
+takes precedence):
+  - id: data set ID corresponding to already existing egrd data
+Or, one or more 3-D field arrays may be specified
+  - ex, ey, ez
+  - dx,dy: transverse grid cell size must also be specified
+The following are all optional and have the same meaning and default as the
+egrd arrays with the same suffices:
+  - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
+  """
+  # --- Make sure that enough input was given to create the E arrays
+  assert (id is not None) or \
+         ((ex is not None or ey is not None or ez is not None) and \
+          (dx is not None and dy is not None)) or \
+         (dx is not None and dy is not None and
+          nx is not None and ny is not None and nz is not None),\
+         """either an 'id' or a dataset, ex, ey, or ez, with dx and dy, or all
+of dx, dy, nx, ny, nz, must be passed in"""
+  # --- Make sure that at least some of the element is in the proper range,
+  # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
+  assert (zs < ze),"element start must be less than element end"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
+
+  # --- Get a dict of the input arguments and their values.
+  ldict = locals()
+
+  # --- Setup the lattice arrays for the insertion of the new element. If
+  # --- there are already egrds, then find the place where the new one is to
+  # --- be inserted and shift the existing data to open up a space.
+  # --- Note that this uses that same check as in resetlat, that egrdid > 0,
+  # --- to determine whether or not a egrd is defined.
+  ie = 0
+  # --- Find which element the new one goes before.
+  while (ie <= top.negrd and top.egrdzs[ie] <= zs and top.egrdid[ie] > 0):
+    ie = ie + 1
+
+  # --- Increase the size of the arrays by one. Except for the case when
+  # --- there are no elements yet defined, which is true when the not'ed
+  # --- statement is true.
+  if ie > top.negrd or top.egrdid[-1] != 0:
+    top.negrd = top.negrd + 100
+    gchange("Lattice")
+
+  # --- Setup dictionary relating lattice array with input argument names.
+  # --- This is done here so that the references to the lattice arrays
+  # --- refer to the updated memory locations after the gchange.
+  edict = {'zs':top.egrdzs,'ze':top.egrdze,'xs':top.egrdxs,'ys':top.egrdys,
+           'ap':top.egrdap,'ax':top.egrdax,'ay':top.egrday,
+           'ox':top.egrdox,'oy':top.egrdoy,'ph':top.egrdph,
+           'sp':top.egrdsp,'cp':top.egrdcp,'sf':top.egrdsf,'sc':top.egrdsc,
+           'sy':top.egrdsy}
+
+  # --- Shift the existing data in the arrays to open up a space for the
+  # --- new element. The element id must be handled seperately.
+  if ie <= top.negrd:
+    top.egrdid[ie+1:] = top.egrdid[ie:-1] + 0
+    for e in edict.values():
+      e[ie+1:] = e[ie:-1] + 0
+
+  # --- Insert the new element. Note that edict correlates the lattice array
+  # --- with the input arguments and ldict correlate the arguements with
+  # --- their values.
+  for (xx,e) in map(None,edict.keys(),edict.values()):
+    e[ie] = ldict[xx]
+
+  # --- Now setup the 3-D field grid dataset
+  if id is not None:
+    # --- If an 'id' was passed in, then just use that.
+    top.egrdid[ie] = id
+  else:
+    # --- Otherwise, create a new dataset.
+    top.egrdns = top.egrdns + 1
+    top.egrdid[ie] = top.egrdns
+    # --- Get array size
+    if ex is not None: nx,ny,nz = array(shape(ex)) - array([1,1,1])
+    if ey is not None: nx,ny,nz = array(shape(ey)) - array([1,1,1])
+    if ez is not None: nx,ny,nz = array(shape(ez)) - array([1,1,1])
+    # --- Make sure that the arrays are big enough
+    top.egrdnx = max(nx,top.egrdnx)
+    top.egrdny = max(ny,top.egrdny)
+    top.egrdnz = max(nz,top.egrdnz)
+    gchange("EGRDdata")
+    # --- Copy the data in
+    top.egrddx[-1] = dx
+    top.egrddy[-1] = dy
+    top.egrddz[-1] = (ze - zs)/nz
+    if ex is not None: top.egrdex[:nx+1,:ny+1,:nz+1,-1] = ex
+    if ey is not None: top.egrdey[:nx+1,:ny+1,:nz+1,-1] = ey
+    if ez is not None: top.egrdez[:nx+1,:ny+1,:nz+1,-1] = ez
+
+  # --- Return the id of the new dataset. This allows the user to refer to
+  # --- this new dataset without having to know its actual number.
+  return ie,top.egrdid[ie]
+
+# ----------------------------------------------------------------------------
 # --- BGRD --- XXX
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sp=0.,cp=0.,
@@ -2760,6 +2972,96 @@ Plots the time dependent field of the accl element
     if not tcentered: tt = top.acclts[ii] + tt
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color)
 
+def plotegrd(ie=0,component=None,ix=None,iy=None,iz=None,withbends=1,
+             zlatstrt=None,withscaling=1,**kw):
+  """
+Plots the one of the field components in one of the planes
+ - ie: the index of the lattice element to plot
+ - component: Component to plot, one of 'x', 'y', or 'z'.
+ - ix, iy, iz: When one is set, plots the in the plane a that value.
+               When two are set, plots along the remaining axis.
+               Each is an integer between 0 and egrdnx, egrdny, or egrdnz.
+ - withbends=1: When true, account for bends and convert to the lab frame.
+                Only applies with iy specified.
+ - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
+ - withscaling=1: when true, apply the sc and sf scaling factors
+Accepts any keywords from ppgeneric for controller how the grid is plotted,
+such as contours, and cellarray.
+  """
+  assert component in ['x','y','z'],\
+         "component to plot must be one of 'x', 'y', or 'z'"
+  assert (ix is not None) or (iy is not None) or (iz is not None),\
+         "One of ix, iy, iz must be specified"
+  if zlatstrt is None: zlatstrt = top.zlatstrt
+  id = top.egrdid[ie] - 1
+  ee = getattr(top,'egrde'+component)
+
+  # --- Determine which axis are specified and which are to be plotted.
+  ax = ['z','x','y']
+  if ix is not None:
+    ax.remove('x')
+    sx = ix
+  else:
+    sx = slice(None)
+  if iy is not None:
+    ax.remove('y')
+    sy = iy
+  else:
+    sy = slice(None)
+  if iz is not None:
+    ax.remove('z')
+    sz = iz
+  else:
+    sz = slice(None)
+
+  # --- Get the E field. If all three axis specified, just return the value
+  # --- at that location.
+  ee = ee[sx,sy,sz,id]
+
+  # --- Get the scaling factors
+  ss = top.egrdsc[ie] + top.egrdsf[ie]
+  ee = ee*ss
+
+  if len(ax) == 0: return ee
+
+  # --- Get mesh quantities along first axis
+  xs = getattr(top,'egrd'+ax[0]+'s')[ie]
+  if ax[0] == 'z': xs = xs + zlatstrt
+  else:            xs = xs + getattr(top,'egrdo'+ax[0])
+  nx = getattr(top,'egrdn'+ax[0])
+  dx = getattr(top,'egrdd'+ax[0])[id]
+
+  if len(ax) > 1:
+    # --- Get mesh quantities along second axis
+    ys = getattr(top,'egrd'+ax[1]+'s')[ie]
+    if ax[1] == 'z': ys = ys + zlatstrt
+    else:            ys = ys + getattr(top,'egrdo'+ax[1])
+    ny = getattr(top,'egrdn'+ax[1])
+    dy = getattr(top,'egrdd'+ax[1])[id]
+
+
+  if len(ax) == 1:
+    # --- Make 1-d line plot
+    xm = xs + iota(0,nx)*dx
+    color = kw.get('color','fg')
+    plg(ee,xm,color=color)
+
+  elif len(ax) == 2:
+    # --- Make 2-d plot
+    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+
+    if withbends and iy is not None and top.bends:
+      # --- Apply coordinate transformations in any bends
+      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+
+    kw['xmesh'] = xm
+    kw['ymesh'] = ym
+    ppgeneric(gridt=ee,kwdict=kw)
+
+  elif len(ax) == 3:
+    # --- Will do isosurface or volume rendering in future
+    raise '3-d plot Not yet implemented'
+
 def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
              zlatstrt=None,withscaling=1,**kw):
   """
@@ -2802,7 +3104,7 @@ such as contours, and cellarray.
   else:
     sz = slice(None)
 
-  # --- Get the B field. If all three axis specified, just return the value
+  # --- Get the E field. If all three axis specified, just return the value
   # --- at that location.
   bb = bb[sx,sy,sz,id]
 
@@ -2858,7 +3160,7 @@ Plots the one of the field components in one of the planes
               If not specified, will plot the potential.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                When two are set, plots along the remaining axis.
-               Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
+               Each is an integer between 0 and pgrdnx, pgrdny, or pgrdnz.
  - withbends=1: When true, account for bends and convert to the lab frame.
                 Only applies with iy specified.
  - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame

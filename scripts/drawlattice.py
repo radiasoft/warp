@@ -1,7 +1,7 @@
 """Creates the function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.7 2006/06/29 17:50:29 jlvay Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.8 2006/09/11 19:16:41 dave Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -61,6 +61,7 @@ def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=None,narc=10,
                 zhele=None,xhele=None,helelab=None,helecolor=35,
                 zemlt=None,xemlt=None,emltlab=None,emltcolor=60,
                 zmmlt=None,xmmlt=None,mmltlab=None,mmltcolor=85,
+                zegrd=None,xegrd=None,egrdlab=None,egrdcolor=110,
                 zbgrd=None,xbgrd=None,bgrdlab=None,bgrdcolor=110,
                 zpgrd=None,xpgrd=None,pgrdlab=None,pgrdcolor=135,
                 zaccl=None,xaccl=None,accllab=None,acclcolor=160,
@@ -130,6 +131,7 @@ type, and should draw any general lattice.
       if top.heles: zlatmax = max(max(top.heleze),zlatmax)
       if top.emlts: zlatmax = max(max(top.emltze),zlatmax)
       if top.mmlts: zlatmax = max(max(top.mmltze),zlatmax)
+      if top.egrds: zlatmax = max(max(top.egrdze),zlatmax)
       if top.bgrds: zlatmax = max(max(top.bgrdze),zlatmax)
       if top.pgrds: zlatmax = max(max(top.pgrdze),zlatmax)
       if top.dipos: zlatmax = max(max(top.dipoze),zlatmax)
@@ -154,6 +156,10 @@ type, and should draw any general lattice.
     zmmlt = array([0., 0.  , 0.2, 0.8, 1.  ,  1.  ,  0.8,  0.2,  0.  , 0.])
     xmmlt = array([0., 0.25, 0.5, 0.5, 0.25, -0.25, -0.5, -0.5, -0.25, 0.])
     if ilinflg == 0: xmmlt,zmmlt = _makearcs(xmmlt,zmmlt,narc)
+  if zegrd is None:
+    zegrd = array([0.,0.,0.333,0.333,0.667,0.667,1.,1.,0.667,0.667,0.333,0.333,0.,0.,1.,1.,0.,0.])
+    xegrd = array([0.,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.167,0.167,-0.167,-0.167,0.])
+    if ilinflg == 0: xegrd,zegrd = _makearcs(xegrd,zegrd,narc)
   if zbgrd is None:
     zbgrd = array([0.,0.,0.333,0.333,0.667,0.667,1.,1.,0.667,0.667,0.333,0.333,0.,0.,1.,1.,0.,0.])
     xbgrd = array([0.,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.167,0.167,-0.167,-0.167,0.])
@@ -224,6 +230,13 @@ type, and should draw any general lattice.
     def mmltlab(nm,mmltlab=mmltlab):
       return mmltlab
 
+  if egrdlab is None:
+    def egrdlab(ne):
+        return "E%d"%ne
+  elif type(egrdlab) is not FunctionType:
+    def egrdlab(ne,egrdlab=egrdlab):
+      return egrdlab
+
   if bgrdlab is None:
     def bgrdlab(nb):
         return "B%d"%nb
@@ -272,6 +285,7 @@ type, and should draw any general lattice.
   ih,nh = _getelem('hele',zlatmin,zlatmax)
   ie,ne = _getelem('emlt',zlatmin,zlatmax)
   im,nm = _getelem('mmlt',zlatmin,zlatmax)
+  ie,ne = _getelem('egrd',zlatmin,zlatmax)
   ib,nb = _getelem('bgrd',zlatmin,zlatmax)
   ip,np = _getelem('pgrd',zlatmin,zlatmax)
   id,nd = _getelem('dipo',zlatmin,zlatmax)
@@ -286,6 +300,7 @@ type, and should draw any general lattice.
     if len(ih) > 0: hmax = max(hmax,max(take(top.heleze-top.helezs,ih)))
     if len(ie) > 0: hmax = max(hmax,max(take(top.emltze-top.emltzs,ie)))
     if len(im) > 0: hmax = max(hmax,max(take(top.mmltze-top.mmltzs,im)))
+    if len(ie) > 0: hmax = max(hmax,max(take(top.egrdze-top.egrdzs,ie)))
     if len(ib) > 0: hmax = max(hmax,max(take(top.bgrdze-top.bgrdzs,ib)))
     if len(ip) > 0: hmax = max(hmax,max(take(top.pgrdze-top.pgrdzs,ip)))
     if len(id) > 0: hmax = max(hmax,max(take(top.dipoze-top.dipozs,id)))
@@ -313,6 +328,7 @@ type, and should draw any general lattice.
     if len(ih) > 0 and nh in ih: zhmin = top.helezs[nh]
     if len(ie) > 0 and ne in ie: zemin = top.emltzs[ne]
     if len(im) > 0 and nm in im: zmmin = top.mmltzs[nm]
+    if len(ie) > 0 and ne in ie: zbmin = top.egrdzs[ne]
     if len(ib) > 0 and nb in ib: zbmin = top.bgrdzs[nb]
     if len(ip) > 0 and np in ip: zpmin = top.pgrdzs[np]
     if len(id) > 0 and nd in id: zdmin = top.dipozs[nd]
@@ -353,6 +369,14 @@ type, and should draw any general lattice.
       zend = top.mmltze[nm]
       cl.append(mmltlab(nm))
       nm = nm + 1
+    elif ilatspc == 'e':
+      # --- load egrd element 
+      zaxis,xaxis,ze,xe,zl,xl = _addelement(top.egrdzs[ne],top.egrdze[ne],
+                                            zend,dh,zegrd,xegrd,
+                                            zaxis,xaxis,ze,xe,zl,xl)
+      zend = top.egrdze[ne]
+      cl.append(egrdlab(ne))
+      ne = ne + 1
     elif ilatspc == 'b':
       # --- load bgrd element 
       zaxis,xaxis,zb,xb,zl,xl = _addelement(top.bgrdzs[nb],top.bgrdze[nb],
@@ -449,6 +473,7 @@ type, and should draw any general lattice.
   _plotele(xh,zh,helecolor,len(ih),len(zhele))
   _plotele(xe,ze,emltcolor,len(ie),len(zemlt))
   _plotele(xm,zm,mmltcolor,len(im),len(zmmlt))
+  _plotele(xe,ze,egrdcolor,len(ie),len(zegrd))
   _plotele(xb,zb,bgrdcolor,len(ib),len(zbgrd))
   _plotele(xp,zp,pgrdcolor,len(ip),len(zpgrd))
   _plotele(xa,za,acclcolor,len(ia),len(zaccl))
