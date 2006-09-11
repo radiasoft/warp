@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.72 $, $Date: 2006/09/07 16:14:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.73 $, $Date: 2006/09/11 19:42:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -38,14 +38,14 @@ c first cleans up the particle arrays and makes sure that there is enough room
 c for the new particles.  The second is the coding for constant current
 c injection.  The third part is for space-charge limited injection.
 
-      integer(ISZ):: is,isid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz,i1,i2
+      integer(ISZ):: is,isid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,i1,i2
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
-      real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
+      real(kind=8):: rr,vhalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
       real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
-      real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj
+      real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj,ainjp1,binjp1
       real(kind=8):: sphericalcorrection
       real(kind=8):: vtx,vty,larmorfreq
       real(kind=8):: fulldt_s
@@ -1408,7 +1408,7 @@ c         --- zero ntinject for inject = 2 or 3
 
 c         --- Set up arrays to be used to fetch phi for the calculation of
 c         --- vznorm
-          allocate(xx(8),yy(8),zz(8),ppvz(8))
+          allocate(xx(2),yy(2),zz(2),ppvz(2))
 
 c         --- Loop over injection sources
           do ij=1,ntinj
@@ -1423,92 +1423,98 @@ c           --- loop over species
 
 c             --- Load particles one azimuthal section at a time,
 c             --- only if there is a positive number of injected particles.
-              do iz=nztinjmn(ij),nztinjmx(ij)-1
-                zm = zmmin + iz*inj_dz
-                ijz = iz - nztinjmn(ij)
-                rinj = abs(rtinject(ijz,ij))
-                rinji = 1./abs(rtinject(ijz,ij))
-                rrr = sign(inj_dx,rtinject(ijz,ij))
-                rri = 1./rrr
+              do iz=0,nztinj(ij)-1
+                zm = ztinjmn(ij) + iz*dztinj(ij)
+                ainj = atinject(iz,ij)
+                binj = btinject(iz,ij)
+                ainjp1 = atinject(iz+1,ij)
+                binjp1 = btinject(iz+1,ij)
+                ainji = 1./atinject(iz,ij)
+                binji = 1./btinject(iz,ij)
+                if (ltinj_outward(ij)) then
+                  rrr = +1.
+                else
+                  rrr = -1.
+                endif
 
 c               --- Area of section of emitting surface.
-                area = inj_dz*rinj*2.*pi/nttinj(ij)
-
-c               --- Const for inject = 2.  Denominator includes factor for
-c               --- emitting on concentric cylinders.  See I. Langmuir,
-c               --- K. Blodgett, "Currents Limited by Space Charge Between
-c               --- Concentric Spheres", PhysRev, 1924.
-                if (inject == 2) then
-                  const = 4./9.*eps0*(2.*abs(qoverm))**.5*dxi**2*
-     &             fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
-     &             (1. - 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
-                endif
+                area = dztinj(ij)*sqrt(ainj*binj)*2.*pi/nttinj(ij)
 
                 do ith=0,nttinj(ij)-1
 
 c                 --- angle of point in transverse plane
                   aa = ith*2.*pi/nttinj(ij)
+                  rinj = sqrt((ainj*cos(aa))**2 + (binj*sin(aa))**2)
+                  rinji = 1./rinj
 
-c                 --- Find coordinates of the point a distance inj_dx from
-c                 --- the source along a line perpendicular to the
-c                 --- emitting surface.
-                  p2x = abs(xtinject(ij) + (rinj + rrr)*cos(aa) - xmmin)*dxi
-                  p2y = abs(ytinject(ij) + (rinj + rrr)*sin(aa) - ymmin)*dyi
-                  i2x = p2x
-                  i2y = p2y
-                  w2x = p2x - i2x
-                  w2y = p2y - i2y
+c                 --- Find coordinates of the point on the virtual surface
+c                 --- along a line perpendicular to the emitting surface.
+c                 --- Also calculate the distance of that point from the surface.
+c                 --- Note that dx, dy, and dz are used since these relate to
+c                 --- the field grid, not the injection grid.
+                  p2x = (ainj + rrr*inj_dx)*cos(aa)
+                  p2y = (binj + rrr*inj_dy)*sin(aa)
+                  rrr = sqrt(p2x**2 + p2y**2) - rinj
+                  rri = 1./rrr
+                  p2x = xtinject(ij) + p2x - xmmin
+                  p2y = ytinject(ij) + p2y - ymmin
 
 c                 --- Fetch difference between phi at that point and phi on
-c                 --- the emitting surface.
-c                 --- Average this over z
-                  ehalf = rri*0.5*(tinj_phi(ith,ijz,ij)+tinj_phi(ith,ijz+1,ij))
+c                 --- the emitting surface, averaging over z
+                  vhalf = 0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
 
 c                 --- normal velocity
-                  vnorm = fulldt_s*qoverm*ehalf
+                  vnorm = fulldt_s*qoverm*vhalf*rri
 
 c                 --- Axial velocity
-c                 --- Calculated using axial E field dx from surface.
-c                 --- Keep this as it is in case rtinject varies.
+c                 --- Calculated using axial E field on virtual surface.
+c                 --- This does not take into account any variation in a and btinject
 c                 --- fetchphi is used to allow other geometries.
-                  xx = (/i2x,i2x,i2x+1,i2x+1,i2x,i2x,i2x+1,i2x+1/)
-                  yy = (/i2y,i2y,i2y,i2y,i2y+1,i2y+1,i2y+1,i2y+1/)
-                  zz = (/iz-1,iz+1,iz-1,iz+1,iz-1,iz+1,iz-1,iz+1/)
-                  xx = xmmin  + xx*dx
-                  yy = ymmin  + yy*dy
-                  zz = zmminp + zz*dz
-                  call fetchphi(8,xx,yy,zz,ppvz)
-                  vznorm = fulldt_s*qoverm* 0.5*dzi*(
-     &                     (ppvz(1) - ppvz(2))*(1.-w2x)*(1.-w2y) +
-     &                     (ppvz(3) - ppvz(4))*    w2x *(1.-w2y) +
-     &                     (ppvz(5) - ppvz(6))*(1.-w2x)*    w2y  +
-     &                     (ppvz(7) - ppvz(8))*    w2x *    w2y)
-
-c                 --- Find coordinates of the point.
-                  p2x = abs(xtinject(ij) + rinj*cos(aa) - xmmin)*dxi
-                  p2y = abs(ytinject(ij) + rinj*sin(aa) - ymmin)*dyi
-                  i2x = p2x
-                  i2y = p2y
-                  w2x = p2x - i2x
-                  w2y = p2y - i2y
+                  xx = (/p2x,p2x/)
+                  yy = (/p2y,p2y/)
+                  zz = (/zm,zm+dztinj(ij)/)
+                  call fetchphi(2,xx,yy,zz,ppvz)
+                  vznorm = fulldt_s*qoverm* 0.5*(ppvz(1) - ppvz(2))/dztinj(ij)
 
 c                 --- number of particles injected in grid cell
                   if (inject == 1) then
                     rnn = ntinject(isid)*ftinject(isid,ij)/
-     &                    real(nttinj(ij)*(nztinjmx(ij) - nztinjmn(ij)))
+     &                    real(nttinj(ij)*(ztinjmx(ij) - ztinjmn(ij)))
                   elseif (inject == 2) then
-                    tinjprev(ith,ijz,ij) = ftinject(isid,ij)*(
-     &                               inj_param*const*abs(ehalf*inj_dx)**1.5 +
-     &                               (1. - inj_param)*tinjprev(ith,ijz,ij))
-                    rnn = tinjprev(ith,ijz,ij)
-                    if (ith == 0) tinjprev(nttinj(ij),ijz,ij) = tinjprev(ith,ijz,ij)
+c                   --- Const for inject = 2.  Denominator includes factor for
+c                   --- emitting on concentric cylinders.  See I. Langmuir,
+c                   --- K. Blodgett, "Currents Limited by Space Charge Between
+c                   --- Concentric Spheres", PhysRev, 1924.
+                    const = 4./9.*eps0*(2.*abs(qoverm))**.5*rri**2*
+     &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
+     &                      (1. - 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
+                    tinjprev(ith,iz,ij) = ftinject(isid,ij)*(
+     &                                    inj_param*const*abs(vhalf*rrr)**1.5 +
+     &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
+                    rnn = tinjprev(ith,iz,ij)
+                    if (ith == 0) tinjprev(nttinj(ij),iz,ij) = tinjprev(ith,iz,ij)
                   elseif (inject == 3) then
+c                   --- Find coordinates of the point.
+c                   --- This only works with basic 3d and RZ solvers
+                    p2x = abs(xtinject(ij) + ainj*cos(aa) - xmmin)/dx
+                    p2y = abs(ytinject(ij) + binj*sin(aa) - ymmin)/dy
+                    p2z = (zm - zmmin)/dz
+                    i2x = p2x
+                    i2y = p2y
+                    i2z = p2z
+                    w2x = p2x - i2x
+                    w2y = p2y - i2y
+                    w2z = p2z - i2z
 c                   --- get charge density at injection point
-                    rr = rhop(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) +
-     &                   rhop(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  +
-     &                   rhop(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) +
-     &                   rhop(i2x+1,i2y+1,iz)*    w2x *    w2y
-                    rnn=(eps0*ehalf - rr*inj_dx)*area/
+                    rr = rhop(i2x  ,i2y  ,i2z  )*(1.-w2x)*(1.-w2y)*(1.-w2z) +
+     &                   rhop(i2x  ,i2y+1,i2z  )*(1.-w2x)*    w2y *(1.-w2z) +
+     &                   rhop(i2x+1,i2y  ,i2z  )*    w2x *(1.-w2y)*(1.-w2z) +
+     &                   rhop(i2x+1,i2y+1,i2z  )*    w2x *    w2y *(1.-w2z) +
+     &                   rhop(i2x  ,i2y  ,i2z+1)*(1.-w2x)*(1.-w2y)*    w2z  +
+     &                   rhop(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  +
+     &                   rhop(i2x+1,i2y  ,i2z+1)*    w2x *(1.-w2y)*    w2z  +
+     &                   rhop(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
+                    rnn=(eps0*vhalf*rri - rr*abs(rrr))*area/
      &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(isid,ij)
                   endif
                   rnn = min(rnn,
@@ -1520,7 +1526,7 @@ c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
                   call chckpart(pgroup,is,ntinject(isid) +
-     &                             nn*nttinj(ij)*(nztinjmx(ij)-nztinjmn(ij)),
+     &                          nn*nttinj(ij)*(ztinjmx(ij)-ztinjmn(ij)),
      &                          0,.true.)
                   call chckpart(pgroup,is,nn,0,.true.)
 
@@ -1528,20 +1534,20 @@ c                 --- source.
                     ii = pgroup%ins(is) - nti - 1
 c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
-                    pgroup%zp(ii) = zm + wz*inj_dz
-                    rr = wrandom(xrandom,injctcnt,dig2,1,1)
-                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz
+                    pgroup%zp(ii) = zm + wz*dztinj(ij)
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
-                    pgroup%xp(ii) = xtinject(ij) + rp*cos(t)
-                    pgroup%yp(ii) = ytinject(ij) + rp*sin(t)
-                    vtx = 0.5*vztinject(ij)*emitx_s(isid)*rinji+vthperp_s(isid)
-                    vty = 0.5*vztinject(ij)*emity_s(isid)*rinji+vthperp_s(isid)
-                    pgroup%uxp(ii) = vnorm*cos(t) + vtx*
-     &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
-                    pgroup%uyp(ii) = vnorm*sin(t) + vty*
-     &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
-                    pgroup%uzp(ii) = vznorm*rr + vthz_s(isid)*
+                    pgroup%xp(ii) = xtinject(ij) + (ainj*(1.-wz) + ainjp1*wz)*cos(t)
+                    pgroup%yp(ii) = ytinject(ij) + (binj*(1.-wz) + binjp1*wz)*sin(t)
+                    vtx = 0.5*vztinject(ij)*emitx_s(isid)/sqrt(ainj*binj) + 
+     &                    vthperp_s(isid)
+                    vty = 0.5*vztinject(ij)*emity_s(isid)/sqrt(ainj*binj) + 
+     &                    vthperp_s(isid)
+                    pgroup%uxp(ii) = vnorm*cos(t) +
+     &                    vtx*wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
+                    pgroup%uyp(ii) = vnorm*sin(t) +
+     &                    vty*wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
+                    pgroup%uzp(ii) = vznorm + vthz_s(isid)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                     if (pgroup%uzp(ii) == 0.) pgroup%uzp(ii) = SMALLPOS
                     if (lrelativ) then
@@ -1894,10 +1900,11 @@ c=============================================================================
 
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: ixmin,ixmax,iymin,iymax
-      integer(ISZ):: inx,iny
+      integer(ISZ):: inx,iny,iz
       integer(ISZ):: is,isid,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
+      real(kind=8):: circum
       integer(ISZ), external :: oneiftrue, nextpid
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -2113,20 +2120,36 @@ c --- Estimate number of particles injected
         call gchange("Setpwork3d",0)
       endif
 
-c Check for transverse space-charge limited injection.  Calculate number
-c of azimuthal sections that the transverse emitting surface is broken into.
-c That number is rounded to the nearest integer.  This must be done before
-c the call to gchange("InjectVars3d",0) since ntting is used as an array
-c dimension
-c Also, find maximum length of surfaces, and set maximum current density
-c to large number.
+c Setup transverse injection
+
+c Set the z cell size and number for transverse injection. The user can set nztinj.
       do ij=1,ntinj
-        nttinj(ij) = int(abs(rtinject(0,ij))*2.*pi/min(inj_dx,inj_dy) + .5)
-        nttinjmax = max(nttinjmax,nttinj(ij))
-        nztmax = max(nztmax, nztinjmx(ij) - nztinjmn(ij))
-        if (jmaxtinj(ij) == 0.) jmaxtinj(ij) = LARGEPOS
+        if (nztinj(ij) == 0) nztinj(ij) = nint((ztinjmx(ij) - ztinjmn(ij))/dz)
+        if (nztinj(ij) == 0) nztinj(ij) = 1
+        dztinj(ij) = (ztinjmx(ij) - ztinjmn(ij))/nztinj(ij)
+        nztmax = max(nztmax, nztinj(ij))
       enddo
       call gchange("InjectVars",0)
+
+c Set the default values of atinject and btinject and calculate the number of theta
+c points if not already set.
+      do ij=1,ntinj
+        do iz=0,nztmax
+          if (atinject(iz,ij) == -1.) atinject(iz,ij) = a0
+          if (btinject(iz,ij) == -1.) btinject(iz,ij) = b0
+        enddo
+        circum = maxval(sqrt(atinject(:,ij)*btinject(:,ij)))
+        if (nttinj(ij) == 0) nttinj(ij) = nint(circum*2.*pi/min(inj_dx,inj_dy))
+        nttinjmax = max(nttinjmax,nttinj(ij))
+      enddo
+
+c In case there is no axial injection, set the particle weight.
+      do is=1,pgroup%ns
+        isid = pgroup%sid(is-1) + 1
+        if (pgroup%sw(is) == 0.)
+     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
+     &                    pgroup%sq(is))/ntinject(isid)
+      enddo
 
 c Determine what the value of inj_ns should be. It can either be 1 or
 c ns: if only one species will be injected from each source, the it is 1,
@@ -4548,16 +4571,20 @@ c     --- data and i2 is the location of the last data point.
       do ij=1,ntinj
         i2 = i1 - 1
 
-        do iz=0,nztinjmx(ij)-nztinjmn(ij)
+        do iz=0,nztmax
           do ith=0,nttinj(ij)
 
             i2 = i2 + 1
 
             aa = ith*2.*pi/nttinj(ij)
-            rrr = sign(inj_dx,rtinject(iz,ij))
-            xx(i2) = xtinject(ij) + (rtinject(iz,ij) + rrr)*cos(aa)
-            yy(i2) = ytinject(ij) + (rtinject(iz,ij) + rrr)*sin(aa)
-            zz(i2) = zmmin + (iz + nztinjmn(ij))*inj_dz
+            if (ltinj_outward(ij)) then
+              rrr = +1.
+            else
+              rrr = -1.
+            endif
+            xx(i2) = xtinject(ij) + (atinject(iz,ij) + rrr*inj_dx)*cos(aa)
+            yy(i2) = ytinject(ij) + (btinject(iz,ij) + rrr*inj_dy)*sin(aa)
+            zz(i2) = ztinjmn(ij) + iz*dztinj(ij)
 
 c           --- Save coordinates relative to injection grid.
             zi(i2) = iz
@@ -4636,7 +4663,7 @@ c any conductor surface.
       real(kind=8):: xx,yy,zz
       integer(ISZ):: ijp
       integer(ISZ):: ip,iz,it,ij
-      real(kind=8):: rr,dd,rrr,dzi
+      real(kind=8):: rr,dd,rrr,dzi,rinj
       real(kind=8):: aa,wt,wz,en
       real(kind=8):: sx,sy
       real(kind=8):: fourthirds,onethird
@@ -4649,7 +4676,6 @@ c     --- E fields for particles behind the virtual surface.
 
       fourthirds = 4./3.
       onethird = 1./3.
-      dzi = 1./inj_dz
 
 c     --- Loop over particles
       do ip=1,npart
@@ -4663,9 +4689,10 @@ c       --- duty and has other information stored in the fractional part.
 
         xx = xp(ip) - xtinject(ij)
         yy = yp(ip) - ytinject(ij)
-        zz = zp(ip) - zmmin - nztinjmn(ij)*inj_dz
+        zz = zp(ip) - ztinjmn(ij)
 
-        iz = zz*dzi
+        iz = zz/dztinj(ij)
+        wz = zz/dztinj(ij) - iz
         if(.not.l_inj_rz) then
           aa = atan2(yy,xx)
         else
@@ -4674,13 +4701,19 @@ c       --- duty and has other information stored in the fractional part.
         if (aa < 0.) aa = aa + 2*pi
         it = aa/(2.*pi)*nttinj(ij)
 
-        if (iz < 0. .or. iz >= (nztinjmx(ij) - nztinjmn(ij))) cycle
+        if (iz < 0. .or. iz >= nztinj(ij)) cycle
 
-        rrr = sign(1.,rtinject(iz,ij))
+        if (ltinj_outward(ij)) then
+          rrr = +1.
+        else
+          rrr = -1.
+        endif
 
 c       --- Calculate distance of particle from the emitting surface
         rr = sqrt(xx**2 + yy**2)
-        dd = (rr - rtinject(iz,ij))*inj_dx
+        rinj = sqrt((atinject(iz,ij)*cos(aa))**2+(btinject(iz,ij)*sin(aa))**2)*(1.-wz)+
+     &         sqrt((atinject(iz+1,ij)*cos(aa))**2+(btinject(iz+1,ij)*sin(aa))**2)*wz
+        dd = (rr - rinj)/rinj
 
 c       --- Only calculate E-field if particle close to emitting surface.
         if (0.0 <= rrr*dd .and. abs(dd) <= 1.) then
@@ -4688,7 +4721,6 @@ c       --- Only calculate E-field if particle close to emitting surface.
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
-          wz = zz*dzi - iz
           wt = aa/(2.*pi)*nttinj(ij) - it
 
 c         --- Calculate the normal electric field from the potential drop in
@@ -4697,7 +4729,7 @@ c         --- Child-Langmuir solution (for planar surfaces) is used.
           en = (tinj_phi(it  ,iz  ,ij)*(1.-wt)*(1.-wz) +
      &          tinj_phi(it+1,iz  ,ij)*    wt *(1.-wz) +
      &          tinj_phi(it  ,iz+1,ij)*(1.-wt)*    wz  +
-     &          tinj_phi(it+1,iz+1,ij)*    wt *    wz   )/inj_dx
+     &          tinj_phi(it+1,iz+1,ij)*    wt *    wz   )/rinj
           if (linj_enormcl) then
 c           --- Scale the normal E field to match the Child-Langmuir solution
             en = en*fourthirds*(dd)**onethird
@@ -4708,7 +4740,18 @@ c         --- electric fields.
           if(l_inj_rz) aa = atan2(yy,dvnz(xx))
           ex(ip) = -en*cos(aa)
           ey(ip) = -en*sin(aa)
-          ez(ip) =  0.
+          if (linj_eperp) then
+            ez(ip) = dd*((tinj_phi(it  ,iz  ,ij)*(1.-wt)*(1.-wz) +
+     &                    tinj_phi(it+1,iz  ,ij)*    wt *(1.-wz) +
+     &                    tinj_phi(it  ,iz+1,ij)*(1.-wt)*    wz  +
+     &                    tinj_phi(it+1,iz+1,ij)*    wt *    wz) -
+     &                   (tinj_phi(it  ,iz+1,ij)*(1.-wt)*(1.-wz) +
+     &                    tinj_phi(it+1,iz+1,ij)*    wt *(1.-wz) +
+     &                    tinj_phi(it  ,iz+2,ij)*(1.-wt)*    wz  +
+     &                    tinj_phi(it+1,iz+2,ij)*    wt *    wz))/dztinj(ij)
+          else
+            ez(ip) =  0.
+          endif
 
         endif
       enddo
