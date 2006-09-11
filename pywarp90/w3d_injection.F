@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.75 $, $Date: 2006/09/11 22:45:22 $
+c@(#) File w3d_injection.F, version $Revision: 1.76 $, $Date: 2006/09/11 23:19:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1470,11 +1470,12 @@ c                 --- Axial velocity
 c                 --- Calculated using axial E field on virtual surface.
 c                 --- This does not take into account any variation in a and btinject
 c                 --- fetchphi is used to allow other geometries.
-                  xx = (/p2x,p2x/)
-                  yy = (/p2y,p2y/)
-                  zz = (/zm,zm+dztinj(ij)/)
-                  call fetchphi(2,xx,yy,zz,ppvz)
-                  vznorm = fulldt_s*qoverm* 0.5*(ppvz(1) - ppvz(2))/dztinj(ij)
+c                 xx = (/p2x,p2x/)
+c                 yy = (/p2y,p2y/)
+c                 zz = (/zm,zm+dztinj(ij)/)
+c                 call fetchphi(2,xx,yy,zz,ppvz)
+c                 vznorm = fulldt_s*qoverm*(ppvz(1) - ppvz(2))/dztinj(ij)
+                  vznorm = fulldt_s*qoverm*(tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
 
 c                 --- number of particles injected in grid cell
                   if (inject == 1) then
@@ -2076,7 +2077,7 @@ c Also set particle parameters: charge, mass and weight
      &                  0,.true.)
         endif
         if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(isid)*echarge
-        if (pgroup%sw(is) == 0.)
+        if (pgroup%sw(is) == 0. .and. npinje_s(isid) > 0)
      &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
      &                    pgroup%sq(is))/npinje_s(isid)
         if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(isid)*amu
@@ -2145,9 +2146,10 @@ c points if not already set.
 c In case there is no axial injection, set the particle weight.
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
-        if (pgroup%sw(is) == 0.)
-     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
-     &                    pgroup%sq(is))/ntinject(isid)
+        if (pgroup%sw(is) == 0. .and. ntinject(isid) > 0) then
+          pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
+     &                     pgroup%sq(is))/ntinject(isid)
+        endif
       enddo
 
 c Set up ftinject array if not set by the user (if sum of ftinject = 0).
@@ -4674,7 +4676,8 @@ c any conductor surface.
       integer(ISZ):: ijp
       integer(ISZ):: ip,iz,ith,ij
       real(kind=8):: ainj,binj,ainjp1,binjp1
-      real(kind=8):: rr,dd,rsign,dzi,rinj
+      real(kind=8):: p2x,p2y
+      real(kind=8):: dr,rr,dd,rsign,dzi,rinj
       real(kind=8):: aa,wt,wz,en
       real(kind=8):: sx,sy
       real(kind=8):: fourthirds,onethird
