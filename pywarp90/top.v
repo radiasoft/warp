@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.178 $, $Date: 2006/08/29 21:47:52 $
+#@(#) File TOP.V, version $Revision: 3.179 $, $Date: 2006/09/11 19:42:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.178 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.179 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -202,6 +202,7 @@ neerr     integer /1000/      # No. of electric mult elements for which error
                               # data is stored
 nmerr     integer /1000/      # No. of magnetic mult elements for which error
                               # data is stored
+negrd     integer /NELEMENT/  # No. of elements with E field on a 3-D grid
 nbgrd     integer /NELEMENT/  # No. of elements with B field on a 3-D grid
 npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
 nbsqgrad  integer /NELEMENT/  # No. of elements with grad B^2 field on a 3-D grid
@@ -393,6 +394,28 @@ acclts(0:naccl)   _real [t]   # Time of start of gap field in acclet
 accldt(0:naccl)   _real [t]   # Delta t for gap field data in acclet
 acclol(0:naccl)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+egrdzs(0:negrd)   _real [m]   # Z starts of 3-D grid of E field data (EGRDdata)
+egrdze(0:negrd)   _real [m]   # Z ends of 3-D grid of E field data (EGRDdata)
+egrdxs(0:negrd)   _real [m]   # X starts of 3-D grid of E field data (EGRDdata)
+egrdys(0:negrd)   _real [m]   # Y starts of 3-D grid of E field data (EGRDdata)
+egrdap(0:negrd)   _real [m]   # Aperture in egrd elements
+egrdax(0:negrd)   _real [m]   # Aperture in egrd elements in x
+egrday(0:negrd)   _real [m]   # Aperture in egrd elements in y
+egrdox(0:negrd)   _real [m]   # Offset in x of egrd elements
+egrdoy(0:negrd)   _real [m]   # Offset in y of egrd elements
+egrdph(0:negrd)   _real [rad] # Phase angle of egrd elements 
+egrdsp(0:negrd)   _real [1]   # Sine   of egrdph (auto-set) 
+egrdcp(0:negrd)   _real [1]   # Cosine of egrdph (auto-set) 
+egrdid(0:negrd)   _integer    # Index of to 3-D E field data sets (EGRDdata)
+egrdsf(0:negrd) _real [1] /0./ # Scale factor to multiply 3-D E field data set
+                               # EGRDdata. Field is scaled by (egrdsc+egrdsf)
+egrdsc(0:negrd) _real [1] /1./ # Scale factor to multiply 3-D E field data set
+                               # EGRDdata. Field is scaled by (egrdsc+egrdsf)
+egrdsy(0:negrd) _integer /0/   # Level of symmetry in the egrd data.
+                               # (0, no symmetry; 2, quadrupole)
+                               # Defaul is no symmetry.
+egrdol(0:negrd)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
@@ -471,6 +494,7 @@ heles     logical             # Flag for exist. of hard-edge mults (auto set)
 accls     logical             # Flag for existence of accel (auto set)
 emlts     logical             # Flag for existence of emlts (auto set)
 mmlts     logical             # Flag for existence of mmlts (auto set)
+egrds     logical             # Flag for existence of egrds (auto set)
 bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
@@ -516,6 +540,23 @@ msmmltphp(0:nzmmltmax,nmsmult,nmmltsets) _real
                                # autoset via finite difference of msmmltph.
 mmlt_n(nmsmult)   _real [1]    # Harmonic number of magnetic multipoles
 mmlt_v(nmsmult)   _real [1]    # Order of pseudomultipole of magnetic multipoles
+
+******** EGRDdata dump:
+# Data for the 3-D E field lattice element
+egrdnx integer /0/ # Number of X cells
+egrdny integer /0/ # Number of Y cells
+egrdnz integer /0/ # Number of Z cells
+egrdns integer /0/ # Number of data sets
+egrdnc integer /0/ # Number of components stored in egrd
+egrddx(egrdns)                      _real [m]   # X cell size
+egrddy(egrdns)                      _real [m]   # Y cell size
+egrddz(egrdns)                      _real [m]   # Z cell size
+egrddxi(egrdns)                     _real [1/m] # 1 over X cell size (autoset)
+egrddyi(egrdns)                     _real [1/m] # 1 over Y cell size (autoset)
+egrddzi(egrdns)                     _real [1/m] # 1 over Z cell size (autoset)
+egrdex(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ex
+egrdey(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ey
+egrdez(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ez
 
 ******** BGRDdata dump:
 # Data for the 3-D B field lattice element
@@ -626,6 +667,11 @@ oaccloi(0:naccl)   _integer     # Overlap indices for accl elements
 oacclio(0:naccl)   _integer     # Overlap indices for accl elements
 oacclii(nacclol)   _integer     # Overlap indices for accl elements
 oacclnn(nacclol)   _integer     # Number of accl elements in overlap levels
+negrdol            integer /0/ # Maximum level of overlapping egrd elements
+oegrdoi(0:negrd)   _integer     # Overlap indices for egrd elements
+oegrdio(0:negrd)   _integer     # Overlap indices for egrd elements
+oegrdii(negrdol)   _integer     # Overlap indices for egrd elements
+oegrdnn(negrdol)   _integer     # Number of egrd elements in overlap levels
 nbgrdol            integer /0/ # Maximum level of overlapping bgrd elements
 obgrdoi(0:nbgrd)   _integer     # Overlap indices for bgrd elements
 obgrdio(0:nbgrd)   _integer     # Overlap indices for bgrd elements
@@ -698,6 +744,9 @@ cacclez(0:nzlmax,nacclol)    _real [V/m]   # by z, const Ez's of accl gaps
 cacclxw(0:nzlmax,nacclol)    _real [V/m^2] # by z, x-weights for accl gap Ez's 
 cacclsw(0:nzlmax,nacclol)    _real [1]     # by z, switch for grid accel by gap
 cacclid(0:nzlmax,nacclol) _integer         # by z, Index of accl arrays
+cegrdzs(0:nzlmax,negrdol)    _real [m]     # by z, Z's of 3-D E field start
+cegrdze(0:nzlmax,negrdol)    _real [m]     # by z, Z's of 3-D E field end
+cegrdid(0:nzlmax,negrdol) _integer [1]     # by z, Index of egrd arrays
 cbgrdzs(0:nzlmax,nbgrdol)    _real [m]     # by z, Z's of 3-D B field start
 cbgrdze(0:nzlmax,nbgrdol)    _real [m]     # by z, Z's of 3-D B field end
 cbgrdid(0:nzlmax,nbgrdol) _integer [1]     # by z, Index of bgrd arrays
@@ -716,6 +765,7 @@ linhele(0:nheleol)        _logical         # Flag for when hele element in mesh
 linemlt(0:nemltol)        _logical         # Flag for when emlt element in mesh
 linmmlt(0:nmmltol)        _logical         # Flag for when mmlt element in mesh
 linaccl(0:nacclol)        _logical         # Flag for when accl element in mesh
+linegrd(0:negrdol)        _logical         # Flag for when egrd element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 linbsqgrad(0:nbsqgradol)        _logical         # Flag for when bsqgrad element in mesh
@@ -1192,13 +1242,20 @@ linj_includebz0 logical /.false./ # Include the solenoidal field bz0, giving
                                   # Larmor frequency
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
-nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
-nztinjmx(ntinj)   _integer # Maximum z extent of transverse injection.
+ztinjmn(ntinj)    _real # Minimum z extent of transverse injection.
+ztinjmx(ntinj)    _real # Maximum z extent of transverse injection.
+dztinj(ntinj)     _real    # Step size in z of the transverse injection arrays
+nztinj(ntinj) _integer     # Number of longitudinal points for transverse injection
 nztmax         integer /0/ # Maximum length (in z grid cells) of
                            # transverse injection surfaces
-rtinject(0:nztmax,ntinj) _real
-                           # Radius as a function of z of transverse
+atinject(0:nztmax,ntinj) _real /-1./
+                           # X Radius as a function of z of transverse
                            # emitting surface.
+btinject(0:nztmax,ntinj) _real /-1./
+                           # Y Radius as a function of z of transverse
+                           # emitting surface.
+ltinj_outward(ntinj) _logical /1/ # When true, the direction of injection is
+                                  # outward, otherwise inward.
 nttinjmax      integer /0/ # Max number of trasnversely injected particles
 nttinj(ntinj)     _integer # Number of azimuthal points that transverse
                            # injection is broken down into.
@@ -1211,7 +1268,7 @@ vztinject(ntinj) _real /0./ [m/s] # Starting velocity.
                                   # For inject == 1, autoset to vbeam
 ntinject(ns)      _integer # Number of particles injected off of the
                            # transverse injection sources.
-jmaxtinj(ntinj)    _real   # Maximum injected current for transverse injection.
+jmaxtinj(ntinj)  _real /LARGEPOS/ # Maximum injected current for transverse injection.
 tinj_phi(0:nttinjmax,0:nztmax,ntinj) _real
    # Grid holding the potential drop for transverse emitting surfaces
 tinjprev(0:nttinjmax,0:nztmax,ntinj) _real
@@ -2110,6 +2167,7 @@ resetlathele() subroutine # Resizes hele lattice arrays to their true lengths
 resetlataccl() subroutine # Resizes accl lattice arrays to their true lengths
 resetlatemlt() subroutine # Resizes emlt lattice arrays to their true lengths
 resetlatmmlt() subroutine # Resizes mmlt lattice arrays to their true lengths
+resetlategrd() subroutine # Resizes egrd lattice arrays to their true lengths
 resetlatbgrd() subroutine # Resizes bgrd lattice arrays to their true lengths
 resetlatpgrd() subroutine # Resizes pgrd lattice arrays to their true lengths
 resetlatbsqgrad() subroutine # Resizes bsqgrad lattice arrays to their true lengths
