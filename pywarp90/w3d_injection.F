@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.73 $, $Date: 2006/09/11 19:42:48 $
+c@(#) File w3d_injection.F, version $Revision: 1.74 $, $Date: 2006/09/11 19:56:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2150,6 +2150,17 @@ c In case there is no axial injection, set the particle weight.
      &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
      &                    pgroup%sq(is))/ntinject(isid)
       enddo
+
+c Set up ftinject array if not set by the user (if sum of ftinject = 0).
+c Give each injection source the same distribution of species.
+      total_frac = sum(ftinject)
+      if (total_frac == 0.) then
+        do is=1,ns
+          do ij=1,ntinj
+            ftinject(ij,is) = sp_fract(is)
+          enddo
+        enddo
+      endif
 
 c Determine what the value of inj_ns should be. It can either be 1 or
 c ns: if only one species will be injected from each source, the it is 1,
