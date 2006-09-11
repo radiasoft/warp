@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.287 $, $Date: 2006/09/08 20:41:40 $
+c@(#) File W3D.F, version $Revision: 3.288 $, $Date: 2006/09/11 19:41:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -989,6 +989,9 @@ c     --- handle electrostatic multipole components
 
 c     --- handle magnetostatic multipole components
       call applymmlt(np,xp,yp,np,zp,dtl,dtr,dt,.false.,bx,by,bz)
+
+c     --- handle electric fields from 3-D grid
+      call applyegrd(np,xp,yp,np,zp,.false.,ex,ey,ez)
 
 c     --- handle magnetic fields from 3-D grid
       call applybgrd(np,xp,yp,np,zp,.false.,bx,by,bz)
