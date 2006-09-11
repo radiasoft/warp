@@ -1,5 +1,5 @@
 from warp import *
-errorcheck_version = "$Id: errorcheck.py,v 1.8 2004/07/22 23:38:35 dave Exp $"
+errorcheck_version = "$Id: errorcheck.py,v 1.9 2006/09/11 19:38:03 dave Exp $"
 
 def errorcheckdoc():
   print """
@@ -139,30 +139,4 @@ def _overlapcheck(elem):
     ii=compress(logical_and(greater(ze,zs[i]),less(zs,ze[i])),iota(0,len(zs)-1))
     if len(ii) > 1: return ii
   return [0]
-def checkoverlappingelements():
-  """Make sure that there are no overlapping lattice elements.
-This check is obsolete since the code now accepts overlapping elements.
-  """
-  ii = _overlapcheck('drftz')
-  if len(ii) > 1: print "ERROR: drft elements ",ii," overlap"
-  ii = _overlapcheck('bendz')
-  if len(ii) > 1: print "ERROR: bend elements ",ii," overlap"
-  ii = _overlapcheck('dipoz')
-  if len(ii) > 1: print "ERROR: dipo elements ",ii," overlap"
-  ii = _overlapcheck('quadz')
-  if len(ii) > 1: print "ERROR: quad elements ",ii," overlap"
-  ii = _overlapcheck('sextz')
-  if len(ii) > 1: print "ERROR: sext elements ",ii," overlap"
-  ii = _overlapcheck('helez')
-  if len(ii) > 1: print "ERROR: hele elements ",ii," overlap"
-  ii = _overlapcheck('acclz')
-  if len(ii) > 1: print "ERROR: accl elements ",ii," overlap"
-  ii = _overlapcheck('emltz')
-  if len(ii) > 1: print "ERROR: emlt elements ",ii," overlap"
-  ii = _overlapcheck('mmltz')
-  if len(ii) > 1: print "ERROR: mmlt elements ",ii," overlap"
-  ii = _overlapcheck('bgrdz')
-  if len(ii) > 1: print "ERROR: bgrd elements ",ii," overlap"
-  ii = _overlapcheck('pgrdz')
-  if len(ii) > 1: print "ERROR: pgrd elements ",ii," overlap"
 
