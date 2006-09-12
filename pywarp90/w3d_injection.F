@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.76 $, $Date: 2006/09/11 23:19:44 $
+c@(#) File w3d_injection.F, version $Revision: 1.77 $, $Date: 2006/09/12 02:03:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -41,7 +41,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: is,isid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,i1,i2
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
-      real(kind=8):: rr,vhalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
+      real(kind=8):: rr,vavez,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
       real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
@@ -50,8 +50,9 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: vtx,vty,larmorfreq
       real(kind=8):: fulldt_s
       real(kind=8):: zmid,zleni,ztilt,gamma
-      real(kind=8):: p2x,p2y,p2z,w2x,w2y,w2z,area
-      integer(ISZ):: i2x,i2y,i2z
+      real(kind=8):: p1x,p1y,p1z,p2x,p2y,p2z,w1x,w1y,w1z,area,circum
+      real(kind=8):: ellipseperimeter
+      integer(ISZ):: i1x,i1y,i1z
       real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(pgroup%ns),jton(pgroup%ns),vzconst(pgroup%ns)
@@ -1406,10 +1407,6 @@ c         --- zero ntinject for inject = 2 or 3
             enddo
           endif
 
-c         --- Set up arrays to be used to fetch phi for the calculation of
-c         --- vznorm
-          allocate(xx(2),yy(2),zz(2),ppvz(2))
-
 c         --- Loop over injection sources
           do ij=1,ntinj
 
@@ -1438,13 +1435,21 @@ c             --- only if there is a positive number of injected particles.
                 endif
 
 c               --- Area of section of emitting surface.
-                area = dztinj(ij)*sqrt(ainj*binj)*2.*pi/nttinj(ij)
+                circum = ellipseperimeter(ainj,binj)
+                area = dztinj(ij)*circum/nttinj(ij)
 
                 do ith=0,nttinj(ij)-1
 
 c                 --- angle of point in transverse plane
                   aa = ith*2.*pi/nttinj(ij)
-                  rinj = sqrt((ainj*cos(aa))**2 + (binj*sin(aa))**2)
+                  p1x = ainj*cos(aa)
+                  p1y = binj*sin(aa)
+c                 rinj = sqrt(p1x**2 + p1y**2)
+c                 --- For an ellipse, the larger the axis, the smaller the curvature,
+c                 --- so as an adhoc fix for the cylindrical correction to CL,
+c                 --- swap x and y to estimate the radius of curvature. This has
+c                 --- no effect on a circle.
+                  rinj = sqrt((ainj*sin(aa))**2 + (binj*cos(aa))**2)
                   rinji = 1./rinj
 
 c                 --- Find coordinates of the point on the virtual surface
@@ -1453,29 +1458,22 @@ c                 --- Also calculate the distance of that point from the surface
 c                 --- Note that dx, dy, and dz are used since these relate to
 c                 --- the field grid, not the injection grid.
                   p2x = (ainj + rsign*inj_dx)*cos(aa)
-                  p2y = (binj + rsign*inj_dy)*sin(aa)
-                  dr = sqrt(p2x**2 + p2y**2) - rinj
+                  p2y = (binj + rsign*inj_dx*ainj/binj)*sin(aa)
+                  dr = rsign*sqrt((p2x-p1x)**2 + (p2y-p1y)**2)
                   dri = 1./dr
-                  p2x = xtinject(ij) + p2x - xmmin
-                  p2y = ytinject(ij) + p2y - ymmin
 
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface, averaging over z
-                  vhalf = 0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
+                  vavez = 0.5*(tinj_phi(ith,iz,ij)+tinj_phi(ith,iz+1,ij))
 
 c                 --- normal velocity
-                  vnorm = fulldt_s*qoverm*vhalf*dri
+                  vnorm = fulldt_s*qoverm*vavez*dri
 
 c                 --- Axial velocity
 c                 --- Calculated using axial E field on virtual surface.
 c                 --- This does not take into account any variation in a and btinject
-c                 --- fetchphi is used to allow other geometries.
-c                 xx = (/p2x,p2x/)
-c                 yy = (/p2y,p2y/)
-c                 zz = (/zm,zm+dztinj(ij)/)
-c                 call fetchphi(2,xx,yy,zz,ppvz)
-c                 vznorm = fulldt_s*qoverm*(ppvz(1) - ppvz(2))/dztinj(ij)
-                  vznorm = fulldt_s*qoverm*(tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
+                  vznorm = fulldt_s*qoverm*
+     &                     (tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
 
 c                 --- number of particles injected in grid cell
                   if (inject == 1) then
@@ -1489,32 +1487,32 @@ c                   --- Concentric Spheres", PhysRev, 1924.
      &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &                      (1. - 0.8*dr*rinji + 0.66*(dr*rinji)**2)
                     tinjprev(ith,iz,ij) = ftinject(isid,ij)*(
-     &                                    inj_param*const*abs(vhalf)**1.5 +
+     &                                    inj_param*const*abs(vavez)**1.5 +
      &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
                     rnn = tinjprev(ith,iz,ij)
                     if (ith == 0) tinjprev(nttinj(ij),iz,ij) = tinjprev(ith,iz,ij)
                   elseif (inject == 3) then
 c                   --- Find coordinates of the point.
 c                   --- This only works with basic 3d and RZ solvers
-                    p2x = abs(xtinject(ij) + ainj*cos(aa) - xmmin)/dx
-                    p2y = abs(ytinject(ij) + binj*sin(aa) - ymmin)/dy
-                    p2z = (zm - zmmin)/dz
-                    i2x = p2x
-                    i2y = p2y
-                    i2z = p2z
-                    w2x = p2x - i2x
-                    w2y = p2y - i2y
-                    w2z = p2z - i2z
+                    p1x = abs(xtinject(ij) + p1x - xmmin)/dx
+                    p1y = abs(ytinject(ij) + p1y - ymmin)/dy
+                    p1z = (zm - zmmin)/dz
+                    i1x = p1x
+                    i1y = p1y
+                    i1z = p1z
+                    w1x = p1x - i1x
+                    w1y = p1y - i1y
+                    w1z = p1z - i1z
 c                   --- get charge density at injection point
-                    rr = rhop(i2x  ,i2y  ,i2z  )*(1.-w2x)*(1.-w2y)*(1.-w2z) +
-     &                   rhop(i2x  ,i2y+1,i2z  )*(1.-w2x)*    w2y *(1.-w2z) +
-     &                   rhop(i2x+1,i2y  ,i2z  )*    w2x *(1.-w2y)*(1.-w2z) +
-     &                   rhop(i2x+1,i2y+1,i2z  )*    w2x *    w2y *(1.-w2z) +
-     &                   rhop(i2x  ,i2y  ,i2z+1)*(1.-w2x)*(1.-w2y)*    w2z  +
-     &                   rhop(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  +
-     &                   rhop(i2x+1,i2y  ,i2z+1)*    w2x *(1.-w2y)*    w2z  +
-     &                   rhop(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
-                    rnn=(eps0*vhalf*dri - rr*abs(dr))*area/
+                    rr = rhop(i1x  ,i1y  ,i1z  )*(1.-w1x)*(1.-w1y)*(1.-w1z) +
+     &                   rhop(i1x  ,i1y+1,i1z  )*(1.-w1x)*    w1y *(1.-w1z) +
+     &                   rhop(i1x+1,i1y  ,i1z  )*    w1x *(1.-w1y)*(1.-w1z) +
+     &                   rhop(i1x+1,i1y+1,i1z  )*    w1x *    w1y *(1.-w1z) +
+     &                   rhop(i1x  ,i1y  ,i1z+1)*(1.-w1x)*(1.-w1y)*    w1z  +
+     &                   rhop(i1x  ,i1y+1,i1z+1)*(1.-w1x)*    w1y *    w1z  +
+     &                   rhop(i1x+1,i1y  ,i1z+1)*    w1x *(1.-w1y)*    w1z  +
+     &                   rhop(i1x+1,i1y+1,i1z+1)*    w1x *    w1y *    w1z
+                    rnn=(eps0*vavez*dri - rr*abs(dr))*area/
      &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(isid,ij)
                   endif
                   rnn = min(rnn,
@@ -1538,9 +1536,9 @@ c                   --- calculate position of new particle
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
                     pgroup%xp(ii) = xtinject(ij) + (ainj*(1.-wz) + ainjp1*wz)*cos(t)
                     pgroup%yp(ii) = ytinject(ij) + (binj*(1.-wz) + binjp1*wz)*sin(t)
-                    vtx = 0.5*vztinject(ij)*emitx_s(isid)/sqrt(ainj*binj) + 
+                    vtx = 0.5*vztinject(ij)*emitx_s(isid)/(circum/(2.*pi)) + 
      &                    vthperp_s(isid)
-                    vty = 0.5*vztinject(ij)*emity_s(isid)/sqrt(ainj*binj) + 
+                    vty = 0.5*vztinject(ij)*emity_s(isid)/(circum/(2.*pi)) + 
      &                    vthperp_s(isid)
                     pgroup%uxp(ii) = vnorm*cos(t) +
      &                    vtx*wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
@@ -1586,9 +1584,6 @@ c           --- end loop over species
 
 c         --- end loop over transverse injection sources
           enddo
-
-c         --- Clean up temp arrays
-          deallocate(xx,yy,zz,ppvz)
 
 c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
@@ -1905,6 +1900,7 @@ c=============================================================================
       real(kind=8):: maxab1,maxab2,minab1,minab2
       real(kind=8):: circum
       integer(ISZ), external :: oneiftrue, nextpid
+      real(kind=8):: ellipseperimeter
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -2133,12 +2129,13 @@ c Set the z cell size and number for transverse injection. The user can set nzti
 c Set the default values of atinject and btinject and calculate the number of theta
 c points if not already set.
       do ij=1,ntinj
+        circum = 0.
         do iz=0,nztmax
           if (atinject(iz,ij) == -1.) atinject(iz,ij) = a0
           if (btinject(iz,ij) == -1.) btinject(iz,ij) = b0
+          circum = max(circum,ellipseperimeter(atinject(:,ij),btinject(:,ij)))
         enddo
-        circum = maxval(sqrt(atinject(:,ij)*btinject(:,ij)))
-        if (nttinj(ij) == 0) nttinj(ij) = nint(circum*2.*pi/min(inj_dx,inj_dy))
+        if (nttinj(ij) == 0) nttinj(ij) = nint(circum/min(inj_dx,inj_dy))
         nttinjmax = max(nttinjmax,nttinj(ij))
       enddo
       call gchange("InjectVars",0)
@@ -4557,7 +4554,7 @@ c Calculate potential drop from transverse emitting surface at distance
 c of dx from the surface.
 
       integer(ISZ):: ij,iz,ith
-      real(kind=8):: aa,rsign
+      real(kind=8):: aa,rsign,aoverb
       real(kind=8):: xx((1+nttinjmax)*(1+nztmax)*ntinj)
       real(kind=8):: yy((1+nttinjmax)*(1+nztmax)*ntinj)
       real(kind=8):: zz((1+nttinjmax)*(1+nztmax)*ntinj)
@@ -4594,8 +4591,9 @@ c     --- data and i2 is the location of the last data point.
             else
               rsign = -1.
             endif
+            aoverb = atinject(iz,ij)/btinject(iz,ij)
             xx(i2) = xtinject(ij) + (atinject(iz,ij) + rsign*inj_dx)*cos(aa)
-            yy(i2) = ytinject(ij) + (btinject(iz,ij) + rsign*inj_dy)*sin(aa)
+            yy(i2) = ytinject(ij) + (btinject(iz,ij) + rsign*inj_dx*aoverb)*sin(aa)
             zz(i2) = ztinjmn(ij) + iz*dztinj(ij)
 
 c           --- Save coordinates relative to injection grid.
@@ -4675,8 +4673,8 @@ c any conductor surface.
       real(kind=8):: xx,yy,zz
       integer(ISZ):: ijp
       integer(ISZ):: ip,iz,ith,ij
-      real(kind=8):: ainj,binj,ainjp1,binjp1
-      real(kind=8):: p2x,p2y
+      real(kind=8):: ainj,binj,ainjp1,binjp1,aoverb
+      real(kind=8):: p1x,p1y,p2x,p2y
       real(kind=8):: dr,rr,dd,rsign,dzi,rinj
       real(kind=8):: aa,wt,wz,en
       real(kind=8):: sx,sy
@@ -4706,16 +4704,22 @@ c       --- duty and has other information stored in the fractional part.
         zz = zp(ip) - ztinjmn(ij)
 
         iz = zz/dztinj(ij)
+        if (iz < 0. .or. iz >= nztinj(ij)) cycle
         wz = zz/dztinj(ij) - iz
+        
+        ainj = atinject(iz,ij)
+        binj = btinject(iz,ij)
+        ainjp1 = atinject(iz+1,ij)
+        binjp1 = btinject(iz+1,ij)
+        aoverb = ainj/binj
+
         if(.not.l_inj_rz) then
-          aa = atan2(yy,xx)
+          aa = atan2(yy*aoverb,xx)
         else
           aa = 0.
         endif
         if (aa < 0.) aa = aa + 2*pi
         ith = aa/(2.*pi)*nttinj(ij)
-
-        if (iz < 0. .or. iz >= nztinj(ij)) cycle
 
         if (ltinj_outward(ij)) then
           rsign = +1.
@@ -4724,17 +4728,12 @@ c       --- duty and has other information stored in the fractional part.
         endif
 
 c       --- Calculate distance of particle from the emitting surface
-        rr = sqrt(xx**2 + yy**2)
-        ainj = atinject(iz,ij)
-        binj = btinject(iz,ij)
-        ainjp1 = atinject(iz+1,ij)
-        binjp1 = btinject(iz+1,ij)
-        p2x = (ainj*(1.-wz) + ainjp1*wz)*cos(aa)
-        p2y = (binj*(1.-wz) + binjp1*wz)*sin(aa)
-        rinj = sqrt(p2x**2 + p2y**2)
-        p2x = p2x + rsign*inj_dx*cos(aa)
-        p2y = p2y + rsign*inj_dy*sin(aa)
-        dr = sqrt(p2x**2 + p2y**2) - rinj
+        rr = sqrt(xx**2 + (yy*aoverb)**2)
+        p1x = (ainj*(1.-wz) + ainjp1*wz)*cos(aa)
+        p1y = (binj*(1.-wz) + binjp1*wz)*sin(aa)
+        p2x = p1x + rsign*inj_dx*cos(aa)
+        p2y = p1y + rsign*inj_dx*aoverb*sin(aa)
+        dr = sqrt((p2x - p1x)**2 + (p2y - p1y)**2)
         dd = (rr - rinj)/dr
 
 c       --- Only calculate E-field if particle close to emitting surface.
@@ -4759,7 +4758,7 @@ c           --- Scale the normal E field to match the Child-Langmuir solution
 
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
-          if(l_inj_rz) aa = atan2(yy,dvnz(xx))
+          if(l_inj_rz) aa = atan2(yy*aoverb,dvnz(xx))
           ex(ip) = -en*cos(aa)
           ey(ip) = -en*sin(aa)
           if (linj_eperp) then
@@ -4781,6 +4780,19 @@ c         --- electric fields.
 !$OMP MASTER
       if (lw3dtimesubs) timetinj_sete3d = timetinj_sete3d + wtime() - substarttime
 !$OMP END MASTER
+      return
+      end
+c=============================================================================
+      real(kind=8) function ellipseperimeter(a,b)
+      use Constant
+      real(kind=8):: a,b
+c Use several terms of Gauss-Kummer series to get good accuracy.
+      real(kind=8):: h,p
+
+      h = (a-b)**2/(a+b)**2
+      p = pi*(a+b)*(1 + h/4 + h**2/64 + h**3/256 + 25*h**4/16384 + 49*h**5/65536)
+      ellipseperimeter = p
+
       return
       end
 c=============================================================================
