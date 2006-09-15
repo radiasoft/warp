@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.136 2006/09/15 20:43:12 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.137 2006/09/15 22:42:03 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1061,11 +1061,35 @@ dx,dy,dz: the grid cell sizes
     """
     self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
     if neumann:
-      # --- Make sure that there are no points within roundoff of dels=1. since these
-      # --- are likely duplicating neighboring points with dels=0.
+      # --- For points that are within fuzz of 0 or 1, force them to be 0 or 1.
+      # --- For Neumann boundaries, dels=0 is a valid value and this deals
+      # --- with roundoff problems since a conductor that is aligned with the
+      # --- grid should be producing subgrid points (with dels=0) and not
+      # --- interior points, which would happen if dels=-fuzz. (The Neumann
+      # --- method ignores all interior points.)
+      # --- For points near 1, force them to one since they may be duplicating
+      # --- neighboring points with dels=0. Neumann ignores points with
+      # --- dels==1.
       fuzz = 1.e-13
-      self.dels[:,:] = where((1.-fuzz < -self.dels[:,:])&(-self.dels[:,:] < 1.),
-                             -1.,self.dels[:,:])
+      self.fixneumannzeros(0,1,fuzz)
+      self.fixneumannzeros(1,0,fuzz)
+      self.fixneumannzeros(2,3,fuzz)
+      self.fixneumannzeros(3,2,fuzz)
+      self.fixneumannzeros(4,5,fuzz)
+      self.fixneumannzeros(5,4,fuzz)
+      self.dels[:,:] = where((1.-fuzz < self.dels[:,:])&(self.dels[:,:] < 1.),
+                             1.,self.dels[:,:])
+
+  def fixneumannzeros(self,i0,i1,fuzz):
+    # --- If a point is between -fuzz and 0, make sure it gets put on the
+    # --- conductor surface (i.e. set del = 0). Note that the direction
+    # --- of the point must be switched (between plus and minus) since
+    # --- the point is being moved from inside the surface to on the
+    # --- surface.
+    self.dels[i0,:] = where((-fuzz < self.dels[i1,:])&(self.dels[i1,:] < 0.),
+                            0.,self.dels[i0,:])
+    self.dels[i1,:] = where((-fuzz < self.dels[i1,:])&(self.dels[i1,:] < 0.),
+                            -2.,self.dels[i1,:])
 
   def setparity(self,dfill,fuzzsign):
     """
