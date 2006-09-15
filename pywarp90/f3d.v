@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.154 $, $Date: 2006/08/16 18:48:29 $
+#@(#) File F3D.V, version $Revision: 3.155 $, $Date: 2006/09/15 20:41:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.154 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.155 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -711,7 +711,7 @@ vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
 ******** ConductorGeometryGenerators:
 solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4:complex) subroutine
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
-                   dels:real,parity:integer,fuzz:real,fuzzsign:integer,
+                   dels:real,parity:integer,fuzz0:real,fuzz1:real,fuzzsign:integer,
                    dfill:real) subroutine
 zplaneconductorf(zcent:real,zsign:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,

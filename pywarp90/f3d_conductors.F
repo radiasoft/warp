@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.56 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -9,11 +9,11 @@ c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
 c=======================================================================
-      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz,fuzzsign,dfill)
+      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz0,fuzz1,fuzzsign,dfill)
       integer(ISZ):: nn
       integer(ISZ):: ix(nn),iy(nn),iz(nn),parity(nn)
       real(kind=8):: dels(0:5,nn)
-      real(kind=8):: fuzz
+      real(kind=8):: fuzz0,fuzz1
       integer(ISZ):: fuzzsign
       real(kind=8):: dfill
 
@@ -36,17 +36,17 @@ c  dels(5,:) -> delpz
         parity(i) = outside
 
         iparity = mod(ix(i)+iy(i)+iz(i),2)
-        if (dels(0,i) < 1.+fuzzsign*fuzz) then
+        if (dels(0,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
-        elseif (dels(1,i) < 1.+fuzzsign*fuzz) then
+        elseif (dels(1,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
-        elseif (dels(2,i) < 1.+fuzzsign*fuzz) then
+        elseif (dels(2,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
-        elseif (dels(3,i) < 1.+fuzzsign*fuzz) then
+        elseif (dels(3,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
-        elseif (dels(4,i) < 1.+fuzzsign*fuzz) then
+        elseif (dels(4,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
-        elseif (dels(5,i) < 1.+fuzzsign*fuzz) then
+        elseif (dels(5,i) < 1.+fuzzsign*fuzz1) then
           parity(i) = iparity
         endif
 
@@ -54,17 +54,17 @@ c       --- If one direction is negative, all are negative. However,
 c       --- because of the fuzz factor, each direction must be checked
 c       --- since if one direction is between 0 and fuzz, the others
 c       --- will all be positive.
-        if (dels(0,i) < 0.+fuzz) then
+        if (dels(0,i) < 0.+fuzz0) then
           parity(i) = -1
-        elseif (dels(1,i) < 0.+fuzz) then
+        elseif (dels(1,i) < 0.+fuzz0) then
           parity(i) = -1
-        elseif (dels(2,i) < 0.+fuzz) then
+        elseif (dels(2,i) < 0.+fuzz0) then
           parity(i) = -1
-        elseif (dels(3,i) < 0.+fuzz) then
+        elseif (dels(3,i) < 0.+fuzz0) then
           parity(i) = -1
-        elseif (dels(4,i) < 0.+fuzz) then
+        elseif (dels(4,i) < 0.+fuzz0) then
           parity(i) = -1
-        elseif (dels(5,i) < 0.+fuzz) then
+        elseif (dels(5,i) < 0.+fuzz0) then
           parity(i) = -1
         endif
 
@@ -72,9 +72,10 @@ c       --- To minimize the amount of conductor data, points deep inside the
 c       --- conductor can be skipped. The depth is set by the input dfill.
 c       --- The point must be at the depth in all directions to be skipped.
 c       --- dfill is assumed to be passed in as a positive number.
-        if (dels(0,i) <= -dfill .and. dels(1,i) <= -dfill .and.
-     &      dels(2,i) <= -dfill .and. dels(3,i) <= -dfill .and.
-     &      dels(4,i) <= -dfill .and. dels(5,i) <= -dfill) parity(i) = outside
+        if (dels(0,i) < -dfill .and. dels(1,i) < -dfill .and.
+     &      dels(2,i) < -dfill .and. dels(3,i) < -dfill .and.
+     &      dels(4,i) < -dfill .and. dels(5,i) < -dfill) parity(i) = outside
+       if (parity(i) == -1) print*,"D ",dels(:,i)
 
       enddo
 
@@ -658,8 +659,8 @@ c         --- It was not meant to be confusing, but that is how it turned out.
       end
 c=======================================================================
       subroutine BoxConductorF(xsize,ysize,zsize,xcent,ycent,zcent,
-     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                            fuzz)
+     &                         n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                         fuzz)
       real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -693,42 +694,48 @@ c The notation is that a negative distance means that the point is inside.
         if (xmin - fuzz <= x(i) .and. x(i) <= xmax + fuzz .and.
      &      ymin - fuzz <= y(i) .and. y(i) <= ymax + fuzz) then
 
-          if (z(i) < zmin) then
+          if (z(i) < zmin - fuzz) then
             delpz(i) = zmin - z(i)
-          else if (zmin <= z(i) .and. z(i) <= zmax) then
+          else if (zmin - fuzz <= z(i) .and. z(i) <= zmax + fuzz) then
             delmz(i) = zmin - z(i)
             delpz(i) = z(i) - zmax
-          else if (zmax < z(i)) then
+          else if (zmax + fuzz < z(i)) then
             delmz(i) = z(i) - zmax
           endif
+          if (0 < delmz(i) .and. delmz(i) < fuzz) delmz(i) = 0.
+          if (0 < delpz(i) .and. delpz(i) < fuzz) delpz(i) = 0.
 
         endif
 
         if (ymin - fuzz <= y(i) .and. y(i) <= ymax + fuzz .and.
      &      zmin - fuzz <= z(i) .and. z(i) <= zmax + fuzz) then
 
-          if (x(i) < xmin) then
+          if (x(i) < xmin - fuzz) then
             delpx(i) = xmin - x(i)
-          else if (xmin <= x(i) .and. x(i) <= xmax) then
+          else if (xmin - fuzz <= x(i) .and. x(i) <= xmax + fuzz) then
             delmx(i) = xmin - x(i)
             delpx(i) = x(i) - xmax
-          else if (xmax < x(i)) then
+          else if (xmax + fuzz < x(i)) then
             delmx(i) = x(i) - xmax
           endif
+          if (0 < delmx(i) .and. delmx(i) < fuzz) delmx(i) = 0.
+          if (0 < delpx(i) .and. delpx(i) < fuzz) delpx(i) = 0.
 
         endif
 
         if (zmin - fuzz <= z(i) .and. z(i) <= zmax + fuzz .and.
      &      xmin - fuzz <= x(i) .and. x(i) <= xmax + fuzz) then
 
-          if (y(i) < ymin) then
+          if (y(i) < ymin - fuzz) then
             delpy(i) = ymin - y(i)
-          else if (ymin <= y(i) .and. y(i) <= ymax) then
+          else if (ymin - fuzz <= y(i) .and. y(i) <= ymax + fuzz) then
             delmy(i) = ymin - y(i)
             delpy(i) = y(i) - ymax
-          else if (ymax < y(i)) then
+          else if (ymax + fuzz < y(i)) then
             delmy(i) = y(i) - ymax
           endif
+          if (0 < delmy(i) .and. delmy(i) < fuzz) delmy(i) = 0.
+          if (0 < delpy(i) .and. delpy(i) < fuzz) delpy(i) = 0.
 
         endif
 

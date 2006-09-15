@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.113 $, $Date: 2006/08/25 21:46:33 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.114 $, $Date: 2006/09/15 20:41:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -283,6 +283,8 @@ c       --- correction form since it is operating on the error.
         if (mgform == 2) then
           call cond_potmg(conductors%interior,
      &                    nx,ny,nz,phisave,0,mgform,.true.)
+          call condbndymgint(conductors%evensubgrid,nx,ny,nz,phisave,bounds,0,icndbndy)
+          call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phisave,bounds,0,icndbndy)
           call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
@@ -1215,6 +1217,8 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
      &                nx,ny,nz,phi,mglevel,mgform,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel,icndbndy)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -1546,6 +1550,8 @@ c     --- surface of the conductor boundaries.
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
      &                nx,ny,nz,phi,mglevel,mgform,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel,icndbndy)
 
 c     --- set phi in the z guard planes
       if (bounds(4) == 1) phi(:,:,izl-2) = phi(:,:,izl)
@@ -1880,6 +1886,111 @@ c Set rho to zero inside conductor points.
       return
       end
 c=============================================================================
+      subroutine handlesubgrid2(im,ip,pm,pp,rd2cos,ic,dels,volt,voltfac,
+     &                          denom,ppp)
+      integer(ISZ):: im,ip
+      real(kind=8):: pm,pp,rd2cos
+      integer(ISZ):: ic
+      real(kind=8):: dels(0:5,*),volt(0:5,*),voltfac,denom
+      real(kind=8):: ppp
+
+      real(kind=8):: adel
+
+      if (0. < dels(im,ic) .and. dels(im,ic) < +1. .and.
+     &    0. < dels(ip,ic) .and. dels(ip,ic) < +1.) then
+c       --- Both terms are Dirichlet subgrid
+        pm = voltfac*volt(im,ic)*2./(dels(im,ic)*(dels(ip,ic)+dels(im,ic)))
+        pp = voltfac*volt(ip,ic)*2./(dels(ip,ic)*(dels(ip,ic)+dels(im,ic)))
+        denom = denom +
+     &        2.*(1.-dels(ip,ic)*dels(im,ic))/(dels(ip,ic)*dels(im,ic))*rd2cos
+        ppp = min(ppp,dels(im,ic))
+        ppp = min(ppp,dels(ip,ic))
+      else if (0. >= dels(im,ic) .and. dels(im,ic) > -1. .and.
+     &         0. >= dels(ip,ic) .and. dels(ip,ic) > -1.) then
+c       --- Both terms are Neumann subgrid
+        pm = 0.
+        pp = 0.
+        denom = denom - 2.*rd2cos
+        if (abs(dels(im,ic) > 0.)) then
+          ppp = min(ppp,abs(dels(im,ic)))
+        else
+          ppp = min(ppp,1.-1.e-9)
+        endif
+        if (abs(dels(ip,ic) > 0.)) then
+          ppp = min(ppp,abs(dels(ip,ic)))
+        else
+          ppp = min(ppp,1.-1.e-9)
+        endif
+      else if (0. <  dels(im,ic) .and. dels(im,ic) < +1. .and.
+     &         0. >= dels(ip,ic) .and. dels(ip,ic) > -1.) then
+c       --- Minus term is Dirichlet and plus term is Neumann subgrid
+        adel = abs(dels(ip,ic))
+        pm = voltfac*volt(im,ic)/(dels(im,ic)*(adel+0.5*dels(im,ic)))
+        pp = 0.
+        denom = denom + (1.-2.*dels(im,ic)*adel-dels(im,ic))/
+     &                  (dels(im,ic)*(adel+0.5*dels(im,ic)))*rd2cos
+        ppp = min(ppp,dels(im,ic))
+        if (adel > 0.) then
+          ppp = min(ppp,adel)
+        else
+          ppp = min(ppp,1.-1.e-9)
+        endif
+      else if (0. >= dels(im,ic) .and. dels(im,ic) > -1. .and.
+     &         0. <  dels(ip,ic) .and. dels(ip,ic) < +1.) then
+c       --- Minus term is Neumann and plus term is Dirichlet subgrid
+        adel = abs(dels(im,ic))
+        pm = 0.
+        pp = voltfac*volt(ip,ic)/(dels(ip,ic)*(adel+0.5*dels(ip,ic)))
+        denom = denom + (1.-2.*dels(ip,ic)*adel-dels(ip,ic))/
+     &                  (dels(ip,ic)*(adel+0.5*dels(ip,ic)))*rd2cos
+        if (adel > 0.) then
+          ppp = min(ppp,adel)
+        else
+          ppp = min(ppp,1.-1.e-9)
+        endif
+        ppp = min(ppp,dels(ip,ic))
+      else
+        if (0. < dels(im,ic) .and. dels(im,ic) < +1.) then
+c         --- Minus term is Dirichlet subgrid and plus term is in bulk
+          pm = voltfac*volt(im,ic)*2./(dels(im,ic)*(1.+dels(im,ic)))
+          pp = pp*(2./(1.+dels(im,ic)))
+          denom = denom + 2.*(1.-dels(im,ic))/dels(im,ic)*rd2cos
+          ppp = min(ppp,dels(im,ic))
+        else if (0. >= dels(im,ic) .and. dels(im,ic) > -1.) then
+c         --- Minus term is Neumann subgrid and plus term is in bulk
+          adel = abs(dels(im,ic))
+          pm = 0.
+          pp = pp/(0.5+adel)
+          denom = denom - 2.*adel/(adel + 0.5)*rd2cos
+          if (adel > 0.) then
+            ppp = min(ppp,adel)
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
+        endif
+        if (0. < dels(ip,ic) .and. dels(ip,ic) < +1.) then
+c         --- Minus term is in bulk and plus term is Dirichlet subgrid
+          pp = voltfac*volt(ip,ic)*2./(dels(ip,ic)*(1.+dels(ip,ic)))
+          pm = pm*(2./(1.+dels(ip,ic)))
+          denom = denom + 2.*(1.-dels(ip,ic))/dels(ip,ic)*rd2cos
+          ppp = min(ppp,dels(ip,ic))
+        else if (0. >= dels(ip,ic) .and. dels(ip,ic) > -1.) then
+c         --- Minus term is in bulk and plus term is Neumann subgrid
+          adel = abs(dels(ip,ic))
+          pp = 0.
+          pm = pm/(0.5+adel)
+          denom = denom - 2.*adel/(adel + 0.5)*rd2cos
+          if (adel > 0.) then
+            ppp = min(ppp,adel)
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
+        endif
+      endif
+
+      return
+      end
+c=============================================================================
       subroutine condbndymg(subgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
      &                      bounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
@@ -1905,7 +2016,8 @@ c points on the boundary.
       real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
       real(kind=8):: voltfac
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz,il
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: ppp
       logical(ISZ):: dosubgrid
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
@@ -1968,37 +2080,37 @@ c       --- coarser levels since solver for the residuals.
         endif
 
 c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
+        if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = voltfac*volt(0,ic)/dels(0,ic)
           denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2cos
           dosubgrid = .true.
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
+        if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = voltfac*volt(1,ic)/dels(1,ic)
           denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
           dosubgrid = .true.
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
           pym = voltfac*volt(2,ic)/dels(2,ic)
           denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2cos
           dosubgrid = .true.
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
           pyp = voltfac*volt(3,ic)/dels(3,ic)
           denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2cos
           dosubgrid = .true.
         endif
 c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
+        if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = voltfac*volt(4,ic)/dels(4,ic)
           denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdz2cos
           dosubgrid = .true.
         endif
 c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
+        if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = voltfac*volt(5,ic)/dels(5,ic)
           denom = denom + (1.-dels(5,ic))/dels(5,ic)*rdz2cos
           dosubgrid = .true.
@@ -2064,82 +2176,103 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-c       --- If both points in x are inside the conductor, both terms change
-        if (dels(0,ic) < 1. .and. dels(1,ic) < 1.) then
-          pxm = voltfac*volt(0,ic)*2./(dels(0,ic)*(dels(1,ic)+dels(0,ic)))
-          pxp = voltfac*volt(1,ic)*2./(dels(1,ic)*(dels(1,ic)+dels(0,ic)))
-          denom = denom +
-     &          2.*(1.-dels(1,ic)*dels(0,ic))/(dels(1,ic)*dels(0,ic))*rdx2cos
-          dosubgrid = .true.
-        else
-c         --- the point lower in x is inside the conductor
-          if (dels(0,ic) < 1.) then
-            pxm = voltfac*volt(0,ic)*2./(dels(0,ic)*(1.+dels(0,ic)))
-            pxp = pxp*(2./(1.+dels(0,ic)))
-            denom = denom + 2.*(1.-dels(0,ic))/dels(0,ic)*rdx2cos
-            dosubgrid = .true.
-          endif
-c         --- the point higher in x is inside the conductor
-          if (dels(1,ic) < 1.) then
-            pxp = voltfac*volt(1,ic)*2./(dels(1,ic)*(1.+dels(1,ic)))
-            pxm = pxm*(2./(1.+dels(1,ic)))
-            denom = denom + 2.*(1.-dels(1,ic))/dels(1,ic)*rdx2cos
-            dosubgrid = .true.
-          endif
-        endif
-c       --- If both points in y are inside the conductor, both terms change
-        if (dels(2,ic) < 1. .and. dels(3,ic) < 1.) then
-          pym = voltfac*volt(2,ic)*2./(dels(2,ic)*(dels(3,ic)+dels(2,ic)))
-          pyp = voltfac*volt(3,ic)*2./(dels(3,ic)*(dels(3,ic)+dels(2,ic)))
-          denom = denom +
-     &          2.*(1.-dels(3,ic)*dels(2,ic))/(dels(3,ic)*dels(2,ic))*rdy2cos
-          dosubgrid = .true.
-        else
-c         --- the point lower in y is inside the conductor
-          if (dels(2,ic) < 1.) then
-            pym = voltfac*volt(2,ic)*2./(dels(2,ic)*(1.+dels(2,ic)))
-            pyp = pyp*(2./(1.+dels(2,ic)))
-            denom = denom + 2.*(1.-dels(2,ic))/dels(2,ic)*rdy2cos
-            dosubgrid = .true.
-          endif
-c         --- the point higher in y is inside the conductor
-          if (dels(3,ic) < 1.) then
-            pyp = voltfac*volt(3,ic)*2./(dels(3,ic)*(1.+dels(3,ic)))
-            pym = pym*(2./(1.+dels(3,ic)))
-            denom = denom + 2.*(1.-dels(3,ic))/dels(3,ic)*rdy2cos
-            dosubgrid = .true.
-          endif
-        endif
-c       --- If both points in z are inside the conductor, both terms change
-        if (dels(4,ic) < 1. .and. dels(5,ic) < 1.) then
-          pzm = voltfac*volt(4,ic)*2./(dels(4,ic)*(dels(5,ic)+dels(4,ic)))
-          pzp = voltfac*volt(5,ic)*2./(dels(5,ic)*(dels(5,ic)+dels(4,ic)))
-          denom = denom +
-     &          2.*(1.-dels(5,ic)*dels(4,ic))/(dels(5,ic)*dels(4,ic))*rdz2cos
-          dosubgrid = .true.
-        else
-c         --- the point lower in z is inside the conductor
-          if (dels(4,ic) < 1.) then
-            pzm = voltfac*volt(4,ic)*2./(dels(4,ic)*(1.+dels(4,ic)))
-            pzp = pzp*(2./(1.+dels(4,ic)))
-            denom = denom + 2.*(1.-dels(4,ic))/dels(4,ic)*rdz2cos
-            dosubgrid = .true.
-          endif
-c         --- the point higher in z is inside the conductor
-          if (dels(5,ic) < 1.) then
-            pzp = voltfac*volt(5,ic)*2./(dels(5,ic)*(1.+dels(5,ic)))
-            pzm = pzm*(2./(1.+dels(5,ic)))
-            denom = denom + 2.*(1.-dels(5,ic))/dels(5,ic)*rdz2cos
-            dosubgrid = .true.
-          endif
-        endif
+        call handlesubgrid2(0,1,pxm,pxp,rdx2cos,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(2,3,pym,pyp,rdy2cos,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,rdz2cos,ic,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the new phi based on the boundary conditions
-        if (dosubgrid) then
+        if (ppp < 1.) then
           phi(ix,iy,iz) = (rho(ix,iy,iz) +
      &      (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
      &      spm1*subgrid%prevphi(ic)
+
         endif
+
+      enddo
+!$OMP END DO
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine condbndymgint(subgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
+      integer(ISZ):: nx,ny,nz,mglevel
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: bounds(0:5),icndbndy
+
+c Uses adjusted difference equation to enforce sub-grid level placement of 
+c conductor boundaries for points near conductor surface.
+c NOTE that rdx2cos and rdy2cos are rdx2c and rdy2c over mgparam.
+c
+c Temporary variables pxm, pym, pzm, pxp, pyp, and pzp hold phi at minus
+c and plus one in each direction from the current point.
+c These are changed when the finite difference in the appropriate direction
+c includes the boundary condition.
+c
+c Note that care has been taken with the boundaries.  Temps are set up
+c to hold ix-1, ix+1 etc which are are adjusted appopriately for
+c points on the boundary.
+
+      integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
+      integer(ISZ):: ix,iy,iz
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      dels => subgrid%dels
+      volt => subgrid%volt
+
+      if (icndbndy == 1) then
+c     --- Linear interpolation
+        return
+
+      elseif (icndbndy == 2) then
+c     --- Quadratic interpolation
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
+        iz = subgrid%indx(2,ic)
+
+c       --- set temporaries for boundaries
+        ixp1 = ix + 1
+        ixm1 = ix - 1
+        iyp1 = iy + 1
+        iym1 = iy - 1
+        izp1 = iz + 1
+        izm1 = iz - 1
+
+        if (ixm1 == 0 .and. bounds(0) == 0) cycle
+        if (ixm1 == -1 .and. bounds(0) == 1) cycle
+        if (ixm1 == -1 .and. bounds(0) == 2) cycle
+        if (ixp1 == nx .and. bounds(1) == 0) cycle
+        if (ixp1 == nx+1 .and. bounds(1) == 1) cycle
+        if (ixp1 == nx+1 .and. bounds(1) == 2) cycle
+        if (ixm1 == -1 .or. ixp1 == nx+1) cycle
+
+        if (iym1 == 0 .and. bounds(2) == 0) cycle
+        if (iym1 == -1 .and. bounds(2) == 1) cycle
+        if (iym1 == -1 .and. bounds(2) == 2) cycle
+        if (iyp1 == ny .and. bounds(3) == 0) cycle
+        if (iyp1 == ny+1 .and. bounds(3) == 1) cycle
+        if (iyp1 == ny+1 .and. bounds(3) == 2) cycle
+        if (iym1 == -1 .or. iyp1 == ny+1) cycle
+
+        if (izm1 == 0 .and. bounds(4) == 0) cycle
+        if (izp1 == nz .and. bounds(5) == 0) cycle
+        if (iz == 0  .and. bounds(4) < 1) cycle
+        if (iz == nz .and. bounds(5) < 1) cycle
+
+        if (0. >= dels(0,ic) .and. dels(0,ic) > -1.) phi(ixm1,iy,iz)=phi(ix,iy,iz)
+        if (0. >= dels(1,ic) .and. dels(1,ic) > -1.) phi(ixp1,iy,iz)=phi(ix,iy,iz)
+        if (0. >= dels(2,ic) .and. dels(2,ic) > -1.) phi(ix,iym1,iz)=phi(ix,iy,iz)
+        if (0. >= dels(3,ic) .and. dels(3,ic) > -1.) phi(ix,iyp1,iz)=phi(ix,iy,iz)
+        if (0. >= dels(4,ic) .and. dels(4,ic) > -1.) phi(ix,iy,izm1)=phi(ix,iy,iz)
+        if (0. >= dels(5,ic) .and. dels(5,ic) > -1.) phi(ix,iy,izp1)=phi(ix,iy,iz)
 
       enddo
 !$OMP END DO
@@ -2159,7 +2292,7 @@ c=============================================================================
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
-      integer(ISZ):: bounds(0:5),cstart(0:100),mgform,icndbndy
+      integer(ISZ):: bounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -2193,7 +2326,7 @@ c points on the boundary.
       real(kind=8):: voltfac
       real(kind=8):: rdx2cs,rdy2cs,rdz2cs,ppp
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz,il
+      integer(ISZ):: ix,iy,iz
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
       const = 0.5/(rdx2+rdy2+rdz2)
@@ -2259,37 +2392,37 @@ c       --- coarser levels since solver for the residuals.
         endif
 
 c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
+        if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = voltfac*volt(0,ic)/dels(0,ic)
           denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2c
           ppp = min(ppp,dels(0,ic))
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
+        if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = voltfac*volt(1,ic)/dels(1,ic)
           denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2c
           ppp = min(ppp,dels(1,ic))
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
           pym = voltfac*volt(2,ic)/dels(2,ic)
           denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2c
           ppp = min(ppp,dels(2,ic))
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
           pyp = voltfac*volt(3,ic)/dels(3,ic)
           denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2c
           ppp = min(ppp,dels(3,ic))
         endif
 c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
+        if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = voltfac*volt(4,ic)/dels(4,ic)
           denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdz2c
           ppp = min(ppp,dels(4,ic))
         endif
 c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
+        if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = voltfac*volt(5,ic)/dels(5,ic)
           denom = denom + (1.-dels(5,ic))/dels(5,ic)*rdz2c
           ppp = min(ppp,dels(5,ic))
@@ -2359,78 +2492,9 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-c       --- If both points in x are inside the conductor, change both sides
-        if (dels(0,ic) < 1. .and. dels(1,ic) < 1.) then
-          pxm = voltfac*volt(0,ic)*2./(dels(0,ic)*(dels(1,ic)+dels(0,ic)))
-          pxp = voltfac*volt(1,ic)*2./(dels(1,ic)*(dels(1,ic)+dels(0,ic)))
-          denom = denom +
-     &          2.*(1.-dels(1,ic)*dels(0,ic))/(dels(1,ic)*dels(0,ic))*rdx2c
-          ppp = min(ppp,dels(0,ic))
-          ppp = min(ppp,dels(1,ic))
-        else
-c         --- the point lower in x is inside the conductor
-          if (dels(0,ic) < 1.) then
-            pxm = voltfac*volt(0,ic)*2./(dels(0,ic)*(1.+dels(0,ic)))
-            pxp = pxp*(2./(1.+dels(0,ic)))
-            denom = denom + 2.*(1.-dels(0,ic))/dels(0,ic)*rdx2c
-            ppp = min(ppp,dels(0,ic))
-          endif
-c         --- the point higher in x is inside the conductor
-          if (dels(1,ic) < 1.) then
-            pxp = voltfac*volt(1,ic)*2./(dels(1,ic)*(1.+dels(1,ic)))
-            pxm = pxm*(2./(1.+dels(1,ic)))
-            denom = denom + 2.*(1.-dels(1,ic))/dels(1,ic)*rdx2c
-            ppp = min(ppp,dels(1,ic))
-          endif
-        endif
-c       --- If both points in y are inside the conductor, change both sides
-        if (dels(2,ic) < 1. .and. dels(3,ic) < 1.) then
-          pym = voltfac*volt(2,ic)*2./(dels(2,ic)*(dels(3,ic)+dels(2,ic)))
-          pyp = voltfac*volt(3,ic)*2./(dels(3,ic)*(dels(3,ic)+dels(2,ic)))
-          denom = denom +
-     &          2.*(1.-dels(3,ic)*dels(2,ic))/(dels(3,ic)*dels(2,ic))*rdy2c
-          ppp = min(ppp,dels(2,ic))
-          ppp = min(ppp,dels(3,ic))
-        else
-c         --- the point lower in y is inside the conductor
-          if (dels(2,ic) < 1.) then
-            pym = voltfac*volt(2,ic)*2./(dels(2,ic)*(1.+dels(2,ic)))
-            pyp = pyp*(2./(1.+dels(2,ic)))
-            denom = denom + 2.*(1.-dels(2,ic))/dels(2,ic)*rdy2c
-            ppp = min(ppp,dels(2,ic))
-          endif
-c         --- the point higher in y is inside the conductor
-          if (dels(3,ic) < 1.) then
-            pyp = voltfac*volt(3,ic)*2./(dels(3,ic)*(1.+dels(3,ic)))
-            pym = pym*(2./(1.+dels(3,ic)))
-            denom = denom + 2.*(1.-dels(3,ic))/dels(3,ic)*rdy2c
-            ppp = min(ppp,dels(3,ic))
-          endif
-        endif
-c       --- If both points in z are inside the conductor, change both sides
-        if (dels(4,ic) < 1. .and. dels(5,ic) < 1.) then
-          pzm = voltfac*volt(4,ic)*2./(dels(4,ic)*(dels(5,ic)+dels(4,ic)))
-          pzp = voltfac*volt(5,ic)*2./(dels(5,ic)*(dels(5,ic)+dels(4,ic)))
-          denom = denom +
-     &          2.*(1.-dels(5,ic)*dels(4,ic))/(dels(5,ic)*dels(4,ic))*rdz2c
-          ppp = min(ppp,dels(4,ic))
-          ppp = min(ppp,dels(5,ic))
-        else
-c         --- the point lower in z is inside the conductor
-          if (dels(4,ic) < 1.) then
-            pzm = voltfac*volt(4,ic)*2./(dels(4,ic)*(1.+dels(4,ic)))
-            pzp = pzp*(2./(1.+dels(4,ic)))
-            denom = denom + 2.*(1.-dels(4,ic))/dels(4,ic)*rdz2c
-            ppp = min(ppp,dels(4,ic))
-          endif
-c         --- the point higher in z is inside the conductor
-          if (dels(5,ic) < 1.) then
-            pzp = voltfac*volt(5,ic)*2./(dels(5,ic)*(1.+dels(5,ic)))
-            pzm = pzm*(2./(1.+dels(5,ic)))
-            denom = denom + 2.*(1.-dels(5,ic))/dels(5,ic)*rdz2c
-            ppp = min(ppp,dels(5,ic))
-          endif
-        endif
+        call handlesubgrid2(0,1,pxm,pxp,rdx2c,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(2,3,pym,pyp,rdy2c,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,rdz2c,ic,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the residual based on the boundary conditions
         if (ppp < 1.) then
@@ -2441,6 +2505,14 @@ c       --- calculate the residual based on the boundary conditions
           res(ix,iy,iz) = ppp*(rho(ix,iy,iz)
      &           + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
      &           - phi(ix,iy,iz)*mgparam*denom)
+
+          if (0. >= dels(0,ic) .and. dels(0,ic) >= -1.) res(ixm1,iy,iz) = 0.
+          if (0. >= dels(1,ic) .and. dels(1,ic) >= -1.) res(ixp1,iy,iz) = 0.
+          if (0. >= dels(2,ic) .and. dels(2,ic) >= -1.) res(ix,iym1,iz) = 0.
+          if (0. >= dels(3,ic) .and. dels(3,ic) >= -1.) res(ix,iyp1,iz) = 0.
+          if (0. >= dels(4,ic) .and. dels(4,ic) >= -1.) res(ix,iy,izm1) = 0.
+          if (0. >= dels(5,ic) .and. dels(5,ic) >= -1.) res(ix,iy,izp1) = 0.
+
         endif
       enddo
 !$OMP END DO
@@ -2537,7 +2609,7 @@ c     --- Calculate the residual.
 
 c     --- Zero the residual inside conductors.
       call cond_potmgres(conductors%interior,
-     &                nx,ny,nz,res,mglevel,mgform,.false.)
+     &                   nx,ny,nz,res,mglevel,mgform,.false.)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
@@ -3428,8 +3500,8 @@ c       --- of the two points.
 c       --- For each direction, check if a conductor is nearer to this point
 c       --- than the other point. If so, reset data for the other point.
         do id=0,5
-          if (evensubgrid%dels(id,ic) < 1. .and.
-     &        evensubgrid%dels(id,ic) < evensubgrid%dels(id,i)) then
+          if (abs(evensubgrid%dels(id,ic)) < 1. .and.
+     &        abs(evensubgrid%dels(id,ic)) < abs(evensubgrid%dels(id,i))) then
             evensubgrid%dels(id,i)  = evensubgrid%dels(id,ic)
             evensubgrid%volt(id,i) = evensubgrid%volt(id,ic)
             evensubgrid%numb(id,i) = evensubgrid%numb(id,ic)
@@ -3492,8 +3564,8 @@ c       --- of the two points.
 c       --- For each direction, check if a conductor is nearer to this point
 c       --- than the other point. If so, reset data for the other point.
         do id=0,5
-          if (oddsubgrid%dels(id,ic) < 1. .and.
-     &        oddsubgrid%dels(id,ic) < oddsubgrid%dels(id,i)) then
+          if (abs(oddsubgrid%dels(id,ic)) < 1. .and.
+     &        abs(oddsubgrid%dels(id,ic)) < abs(oddsubgrid%dels(id,i))) then
             oddsubgrid%dels(id,i)  = oddsubgrid%dels(id,ic)
             oddsubgrid%volt(id,i) = oddsubgrid%volt(id,ic)
             oddsubgrid%numb(id,i) = oddsubgrid%numb(id,ic)
