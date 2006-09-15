@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.45 2006/09/01 19:40:11 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.46 2006/09/15 17:56:41 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -81,6 +81,8 @@ conductors are an argument.
       self.zoldpid=top.zoldpid - 1
       setuppgroup(top.pgroup)
     self.l_print_timing=0
+    # --- If the user specified the grid, then add the conductors
+    if self.usergrid: self.updateconductors()
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
 
