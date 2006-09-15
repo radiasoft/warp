@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.114 $, $Date: 2006/09/15 20:41:15 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.115 $, $Date: 2006/09/15 21:31:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1893,6 +1893,39 @@ c=============================================================================
       integer(ISZ):: ic
       real(kind=8):: dels(0:5,*),volt(0:5,*),voltfac,denom
       real(kind=8):: ppp
+
+c Handle the special coding needed for subgrid points, for icndbndy=2.
+c
+c For Dirichlet points, this method uses the first order, non-symmetric
+c finite difference form of the discrete Poisson equation. In 1-d, with grid
+c cell size D, for a conductor a distance d below point i, Poisson's equation
+c is written as
+c
+c ((phiC - phi_i)/d - (phi_i - phi_i+1)/D)/((d+D)/2)
+c
+c where phiC is the voltage on the conductor. Each direction is treated
+c independently. This is then solved for phi_i.
+c
+c For Neumann points, the equations can be derived in two ways. For the first,
+c with the same situation as above, the first finite difference derivative is
+c centered about d, and phiC becomes the potential at a virtual point 2*d below
+c point i. The equation becomes
+c
+c ((phiC - phi_i)/(2*d) - (phi_i - phi_i+1)/D)/(d+D/2)
+c
+c By the definition of the Neumann boundary, the first finite difference term
+c is zero, so the equation reduces to
+c
+c (- (phi_i - phi_i+1)/D)/(d+D/2)
+c
+c This expression can also be obtained by fitting a parabola through the
+c three points, i-d, i, i+1, where phi_i and phi_i+1 are known, and the
+c derivative at i-d is zero by definition. The value at phi_i-1 is obtained
+c and plugged into the standard for of the finit difference equation. Doing
+c the algebra produces the same result.
+c
+c Note that special cases are needed when there are Dirichlet and/or Neumann
+c subgrid points on both sides of phi_i.
 
       real(kind=8):: adel
 
