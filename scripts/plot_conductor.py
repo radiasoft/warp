@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.101 2006/02/16 21:30:31 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.102 2006/09/15 20:43:11 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -96,10 +96,10 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]
     if iz == 2: izc = izc + conductors.leveliz[mglevel]
-    delmx = subgrid.dels[2*ix  ]
-    delpx = subgrid.dels[2*ix+1]
-    delmy = subgrid.dels[2*iy  ]
-    delpy = subgrid.dels[2*iy+1]
+    delmx = abs(subgrid.dels[2*ix  ])
+    delpx = abs(subgrid.dels[2*ix+1])
+    delmy = abs(subgrid.dels[2*iy  ])
+    delpy = abs(subgrid.dels[2*iy+1])
     numbmx = subgrid.numb[2*ix  ]
     numbpx = subgrid.numb[2*ix+1]
     numbmy = subgrid.numb[2*iy  ]
@@ -215,10 +215,10 @@ by the conductor number.
     iexs = evensubgrid.indx[ix,:ne]
     ieys = evensubgrid.indx[iy,:ne]
     iezs = evensubgrid.indx[iz,:ne] 
-    ecdelmx = evensubgrid.dels[2*ix  ,:ne]
-    ecdelpx = evensubgrid.dels[2*ix+1,:ne]
-    ecdelmy = evensubgrid.dels[2*iy  ,:ne]
-    ecdelpy = evensubgrid.dels[2*iy+1,:ne]
+    ecdelmx = abs(evensubgrid.dels[2*ix  ,:ne])
+    ecdelpx = abs(evensubgrid.dels[2*ix+1,:ne])
+    ecdelmy = abs(evensubgrid.dels[2*iy  ,:ne])
+    ecdelpy = abs(evensubgrid.dels[2*iy+1,:ne])
     enumbmx = evensubgrid.numb[2*ix  ,:ne]
     enumbpx = evensubgrid.numb[2*ix+1,:ne]
     enumbmy = evensubgrid.numb[2*iy  ,:ne]
@@ -241,10 +241,10 @@ by the conductor number.
     ioxs = oddsubgrid.indx[ix,:no]
     ioys = oddsubgrid.indx[iy,:no]
     iozs = oddsubgrid.indx[iz,:no] 
-    ocdelmx = oddsubgrid.dels[2*ix  ,:no]
-    ocdelpx = oddsubgrid.dels[2*ix+1,:no]
-    ocdelmy = oddsubgrid.dels[2*iy  ,:no]
-    ocdelpy = oddsubgrid.dels[2*iy+1,:no]
+    ocdelmx = abs(oddsubgrid.dels[2*ix  ,:no])
+    ocdelpx = abs(oddsubgrid.dels[2*ix+1,:no])
+    ocdelmy = abs(oddsubgrid.dels[2*iy  ,:no])
+    ocdelpy = abs(oddsubgrid.dels[2*iy+1,:no])
     onumbmx = oddsubgrid.numb[2*ix  ,:no]
     onumbpx = oddsubgrid.numb[2*ix+1,:no]
     onumbmy = oddsubgrid.numb[2*iy  ,:no]
@@ -2777,14 +2777,16 @@ Sets the voltage on a conductor, given an id.
       # --- For conductors to the left, find the location of the conductor
       # --- and linear interpolate from the voltage data. If the discrete flag
       # --- is set, then round down to the nearest grid point.
-      ecmz = iecz + where(evensubgrid.dels[4,:] < 1.,-evensubgrid.dels[4,:],0)*iecl
+      ecmz = iecz + where(0 < evensubgrid.dels[4,:] < 1.,
+                          -evensubgrid.dels[4,:],0)*iecl
       iecmz = ecmz.astype(Int)
       if discrete: wecmz = 0.
       else:        wecmz = ecmz - iecmz
       ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
 
       # --- Same for conductors to the right. If discrete is set, round up.
-      ecpz = iecz + where(evensubgrid.dels[5,:] < 1.,-evensubgrid.dels[5,:],0)*iecl
+      ecpz = iecz + where(0 < evensubgrid.dels[5,:] < 1.,
+                          -evensubgrid.dels[5,:],0)*iecl
       iecpz = ecpz.astype(Int)
       if discrete: wecpz = 1.
       else:        wecpz = ecpz - iecpz
@@ -2802,13 +2804,15 @@ Sets the voltage on a conductor, given an id.
       ocvmy = ocv
       ocvpy = ocv
 
-      ocmz = iocz + where(oddsubgrid.dels[4,:] < 1.,-oddsubgrid.dels[4,:],0)*iocl
+      ocmz = iocz + where(0 < oddsubgrid.dels[4,:] < 1.,
+                          -oddsubgrid.dels[4,:],0)*iocl
       iocmz = ocmz.astype(Int)
       if discrete: wocmz = 0.
       else:        wocmz = ocmz - iocmz
       ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
-      ocpz = iocz + where(oddsubgrid.dels[5,:] < 1.,-oddsubgrid.dels[5,:],0)*iocl
+      ocpz = iocz + where(0 < oddsubgrid.dels[5,:] < 1.,
+                          -oddsubgrid.dels[5,:],0)*iocl
       iocpz = ocpz.astype(Int)
       if discrete: wocpz = 1.
       else:        wocpz = ocpz - iocpz
@@ -2839,12 +2843,12 @@ Sets the voltage on a conductor, given an id.
                                 take(conductors.leveliz,evensubgrid.ilevel))
 
       edels = evensubgrid.dels
-      ecxmx = ecx - where(edels[0,:] < 1.,edels[0,:],0)*ieclx*w3d.dx
-      ecxpx = ecx + where(edels[1,:] < 1.,edels[1,:],0)*ieclx*w3d.dx
-      ecymy = ecy - where(edels[2,:] < 1.,edels[2,:],0)*iecly*w3d.dy
-      ecypy = ecy + where(edels[3,:] < 1.,edels[3,:],0)*iecly*w3d.dy
-      eczmz = ecz - where(edels[4,:] < 1.,edels[4,:],0)*ieclz*w3d.dz
-      eczpz = ecz + where(edels[5,:] < 1.,edels[5,:],0)*ieclz*w3d.dz
+      ecxmx = ecx - where(0 < edels[0,:] < 1.,edels[0,:],0)*ieclx*w3d.dx
+      ecxpx = ecx + where(0 < edels[1,:] < 1.,edels[1,:],0)*ieclx*w3d.dx
+      ecymy = ecy - where(0 < edels[2,:] < 1.,edels[2,:],0)*iecly*w3d.dy
+      ecypy = ecy + where(0 < edels[3,:] < 1.,edels[3,:],0)*iecly*w3d.dy
+      eczmz = ecz - where(0 < edels[4,:] < 1.,edels[4,:],0)*ieclz*w3d.dz
+      eczpz = ecz + where(0 < edels[5,:] < 1.,edels[5,:],0)*ieclz*w3d.dz
       ecvmx = voltage(ecxmx,ecy  ,ecz  )
       ecvpx = voltage(ecxpx,ecy  ,ecz  )
       ecvmy = voltage(ecx  ,ecymy,ecz  )
@@ -2862,12 +2866,12 @@ Sets the voltage on a conductor, given an id.
                                 take(conductors.leveliz,oddsubgrid.ilevel))
 
       odels = oddsubgrid.dels
-      ocxmx = ocx - where(odels[0,:] < 1.,odels[0,:],0)*ioclx*w3d.dx
-      ocxpx = ocx + where(odels[1,:] < 1.,odels[1,:],0)*ioclx*w3d.dx
-      ocymy = ocy - where(odels[2,:] < 1.,odels[2,:],0)*iocly*w3d.dy
-      ocypy = ocy + where(odels[3,:] < 1.,odels[3,:],0)*iocly*w3d.dy
-      oczmz = ocz - where(odels[4,:] < 1.,odels[4,:],0)*ioclz*w3d.dz
-      oczpz = ocz + where(odels[5,:] < 1.,odels[5,:],0)*ioclz*w3d.dz
+      ocxmx = ocx - where(0 < odels[0,:] < 1.,odels[0,:],0)*ioclx*w3d.dx
+      ocxpx = ocx + where(0 < odels[1,:] < 1.,odels[1,:],0)*ioclx*w3d.dx
+      ocymy = ocy - where(0 < odels[2,:] < 1.,odels[2,:],0)*iocly*w3d.dy
+      ocypy = ocy + where(0 < odels[3,:] < 1.,odels[3,:],0)*iocly*w3d.dy
+      oczmz = ocz - where(0 < odels[4,:] < 1.,odels[4,:],0)*ioclz*w3d.dz
+      oczpz = ocz + where(0 < odels[5,:] < 1.,odels[5,:],0)*ioclz*w3d.dz
       ocvmx = voltage(ocxmx,ocy  ,ocz  )
       ocvpx = voltage(ocxpx,ocy  ,ocz  )
       ocvmy = voltage(ocx  ,ocymy,ocz  )
@@ -2955,44 +2959,44 @@ Returns the scene use to draw the image
     iecndx = f.indx[0,ie:ne]
     iecndy = f.indx[1,ie:ne]
     iecndz = f.indx[2,ie:ne]
-    ecdelmx = f.dels[0,ie:ne]
-    ecdelpx = f.dels[1,ie:ne]
-    ecdelmy = f.dels[2,ie:ne]
-    ecdelpy = f.dels[3,ie:ne]
-    ecdelmz = f.dels[4,ie:ne]
-    ecdelpz = f.dels[5,ie:ne]
+    ecdelmx = abs(f.dels[0,ie:ne])
+    ecdelpx = abs(f.dels[1,ie:ne])
+    ecdelmy = abs(f.dels[2,ie:ne])
+    ecdelpy = abs(f.dels[3,ie:ne])
+    ecdelmz = abs(f.dels[4,ie:ne])
+    ecdelpz = abs(f.dels[5,ie:ne])
     f = conductors.oddsubgrid
     iocndx = f.indx[0,io:no]
     iocndy = f.indx[1,io:no]
     iocndz = f.indx[2,io:no]
-    ocdelmx = f.dels[0,io:no]
-    ocdelpx = f.dels[1,io:no]
-    ocdelmy = f.dels[2,io:no]
-    ocdelpy = f.dels[3,io:no]
-    ocdelmz = f.dels[4,io:no]
-    ocdelpz = f.dels[5,io:no]
+    ocdelmx = abs(f.dels[0,io:no])
+    ocdelpx = abs(f.dels[1,io:no])
+    ocdelmy = abs(f.dels[2,io:no])
+    ocdelpy = abs(f.dels[3,io:no])
+    ocdelmz = abs(f.dels[4,io:no])
+    ocdelpz = abs(f.dels[5,io:no])
   else:
     # --- Get only points matching the specified condid
     f = conductors.evensubgrid
     iecndx = compress(f.numb[0,ie:ne]==condid,f.indx[0,ie:ne])
     iecndy = compress(f.numb[0,ie:ne]==condid,f.indx[1,ie:ne])
     iecndz = compress(f.numb[0,ie:ne]==condid,f.indx[2,ie:ne])
-    ecdelmx = compress(f.numb[0,ie:ne]==condid,f.dels[0,ie:ne])
-    ecdelpx = compress(f.numb[1,ie:ne]==condid,f.dels[1,ie:ne])
-    ecdelmy = compress(f.numb[2,ie:ne]==condid,f.dels[2,ie:ne])
-    ecdelpy = compress(f.numb[3,ie:ne]==condid,f.dels[3,ie:ne])
-    ecdelmz = compress(f.numb[4,ie:ne]==condid,f.dels[4,ie:ne])
-    ecdelpz = compress(f.numb[5,ie:ne]==condid,f.dels[5,ie:ne])
+    ecdelmx = compress(f.numb[0,ie:ne]==condid,f.abs(dels[0,ie:ne]))
+    ecdelpx = compress(f.numb[1,ie:ne]==condid,f.abs(dels[1,ie:ne]))
+    ecdelmy = compress(f.numb[2,ie:ne]==condid,f.abs(dels[2,ie:ne]))
+    ecdelpy = compress(f.numb[3,ie:ne]==condid,f.abs(dels[3,ie:ne]))
+    ecdelmz = compress(f.numb[4,ie:ne]==condid,f.abs(dels[4,ie:ne]))
+    ecdelpz = compress(f.numb[5,ie:ne]==condid,f.abs(dels[5,ie:ne]))
     f = conductors.oddsubgrid
     iocndx = compress(f.numb[0,io:no]==condid,f.indx[0,io:no])
     iocndy = compress(f.numb[0,io:no]==condid,f.indx[1,io:no])
     iocndz = compress(f.numb[0,io:no]==condid,f.indx[2,io:no])
-    ocdelmx = compress(f.numb[0,io:no]==condid,f.dels[0,io:no])
-    ocdelpx = compress(f.numb[1,io:no]==condid,f.dels[1,io:no])
-    ocdelmy = compress(f.numb[2,io:no]==condid,f.dels[2,io:no])
-    ocdelpy = compress(f.numb[3,io:no]==condid,f.dels[3,io:no])
-    ocdelmz = compress(f.numb[4,io:no]==condid,f.dels[4,io:no])
-    ocdelpz = compress(f.numb[5,io:no]==condid,f.dels[5,io:no])
+    ocdelmx = compress(f.numb[0,io:no]==condid,f.abs(dels[0,io:no]))
+    ocdelpx = compress(f.numb[1,io:no]==condid,f.abs(dels[1,io:no]))
+    ocdelmy = compress(f.numb[2,io:no]==condid,f.abs(dels[2,io:no]))
+    ocdelpy = compress(f.numb[3,io:no]==condid,f.abs(dels[3,io:no]))
+    ocdelmz = compress(f.numb[4,io:no]==condid,f.abs(dels[4,io:no]))
+    ocdelpz = compress(f.numb[5,io:no]==condid,f.abs(dels[5,io:no]))
 
   nn = len(iecndx) + len(iocndx)
   if nn == 0: return

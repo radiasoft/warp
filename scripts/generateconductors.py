@@ -55,7 +55,7 @@ Surfaces of revolution:
 
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
-name=None,material='SS',laccuimagecharge=0
+name=None,material='SS',laccuimagecharge=0,neumann=0
 
 installconductors(a,...): generates the data needed for the fieldsolve
                           See its documentation for the additional arguments.
@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.135 2006/09/01 19:41:34 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.136 2006/09/15 20:43:12 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -182,7 +182,7 @@ Should never be directly created by the user.
   zcent = 0.
   nextcondid = 1
 
-  __inputs__ = {'name':None,'material':'SS','laccuimagecharge':0}
+  __inputs__ = {'name':None,'material':'SS','laccuimagecharge':0,'neumann':0}
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
                     generatorf=None,generatord=None,generatori=None,kw={}):
@@ -244,7 +244,8 @@ Should never be directly created by the user.
 
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
-                   generator=self.generatorf,kwlist=self.getkwlist())
+                   generator=self.generatorf,neumann=self.neumann,
+                   kwlist=self.getkwlist())
     return result
 
   def distance(self,xx,yy,zz):
@@ -534,7 +535,7 @@ AssemblyNot class.  Represents 'not' of assemblies.
   """
   def __init__(self,l):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material,'name':l.name})
+                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
     self.left = l
   def getextent(self):
     return (-self.left.getextent())
@@ -559,7 +560,7 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material,'name':l.name})
+                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
@@ -592,7 +593,7 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material,'name':l.name})
+                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
@@ -625,7 +626,7 @@ AssemblyMinus class.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                           kw={'material':l.material,'name':l.name})
+                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
@@ -980,9 +981,11 @@ distances to outside the surface are positive, inside negative.
   """
 
   def __init__(self,ix=None,iy=None,iz=None,xx=None,yy=None,zz=None,
-                    dels=None,vs=None,ns=None,
-                    parity=None,voltage=0.,condid=1,generator=None,kwlist=[]):
+                    dels=None,vs=None,ns=None,parity=None,
+                    voltage=0.,condid=1,generator=None,neumann=0,
+                    kwlist=[]):
     self.datalist = []
+    self.neumann = neumann
     if ix is None:
       self.ndata = 0
       self.ix = None
@@ -1057,6 +1060,12 @@ Normalizes the data with respect to the grid cell sizes.
 dx,dy,dz: the grid cell sizes
     """
     self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
+    if neumann:
+      # --- Make sure that there are no points within roundoff of dels=1. since these
+      # --- are likely duplicating neighboring points with dels=0.
+      fuzz = 1.e-13
+      self.dels[:,:] = where((1.-fuzz < -self.dels[:,:])&(-self.dels[:,:] < 1.),
+                             -1.,self.dels[:,:])
 
   def setparity(self,dfill,fuzzsign):
     """
@@ -1070,10 +1079,13 @@ grid cell sizes.
     self.parity = zeros(self.ndata)
     add(self.parity,999,self.parity)
     self.fuzzsign = fuzzsign
-    fuzz = 1.e-9
+    if self.neumann: fuzz0 = 0.
+    else:            fuzz0 = +1.e-9
+    fuzz1 = 1.e-9
+    if self.neumann: dfill = 0.
     # --- A compiled routine is called for optimization
     setconductorparity(self.ndata,self.ix,self.iy,self.iz,
-                       self.dels,self.parity,fuzz,fuzzsign,dfill)
+                       self.dels,self.parity,fuzz0,fuzz1,fuzzsign,dfill)
 
   def clean(self):
     """
@@ -1105,6 +1117,8 @@ Installs the data into the WARP database
     if conductors is None: conductors = f3d.conductors
 
     conductors.fuzzsign = self.fuzzsign
+    if self.neumann: delssign = -1
+    else:            delssign = +1
 
     # --- If the RZ solver is being used and the data is to be installed,
     # --- then clear out an existing conductor data in the database first.
@@ -1174,7 +1188,7 @@ Installs the data into the WARP database
         conductors.evensubgrid.indx[0,ne:ne+nenew] = take(data.ix,ii)
         conductors.evensubgrid.indx[1,ne:ne+nenew] = take(data.iy,ii)
         conductors.evensubgrid.indx[2,ne:ne+nenew] = take(data.iz,ii)
-        conductors.evensubgrid.dels[:,ne:ne+nenew] = take(data.dels,ii,1)
+        conductors.evensubgrid.dels[:,ne:ne+nenew] = take(data.dels,ii,1)*delssign
         conductors.evensubgrid.volt[:,ne:ne+nenew] = take(data.vs,ii,1)
         conductors.evensubgrid.numb[:,ne:ne+nenew] = take(data.ns,ii,1)
         conductors.evensubgrid.ilevel[ne:ne+nenew] = take(data.mglevel,ii)
@@ -1186,7 +1200,7 @@ Installs the data into the WARP database
         conductors.oddsubgrid.indx[0,no:no+nonew] = take(data.ix,ii)
         conductors.oddsubgrid.indx[1,no:no+nonew] = take(data.iy,ii)
         conductors.oddsubgrid.indx[2,no:no+nonew] = take(data.iz,ii)
-        conductors.oddsubgrid.dels[:,no:no+nonew] = take(data.dels,ii,1)
+        conductors.oddsubgrid.dels[:,no:no+nonew] = take(data.dels,ii,1)*delssign
         conductors.oddsubgrid.volt[:,no:no+nonew] = take(data.vs,ii,1)
         conductors.oddsubgrid.numb[:,no:no+nonew] = take(data.ns,ii,1)
         conductors.oddsubgrid.ilevel[no:no+nonew] = take(data.mglevel,ii)
@@ -1205,32 +1219,38 @@ Installs the data into the WARP database
   def __neg__(self):
     "Delta not operator."
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
-                 -self.dels,self.vs,self.ns)
+                 -self.dels,self.vs,self.ns,neumann=self.neumann)
 
   def __mul__(self,right):
     "'and' operator, returns maximum of distances to surfaces."
+    assert self.neumann == right.neumann,\
+      "Neumann objects cannot be mixed with Dirichlet objects"
     c = less(self.dels,right.dels)
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                  choose(c,(self.dels,right.dels)),
                  choose(c,(self.vs  ,right.vs)),
-                 choose(c,(self.ns  ,right.ns)))
+                 choose(c,(self.ns  ,right.ns)),neumann=right.neumann)
 
   def __add__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
+    assert self.neumann == right.neumann,\
+      "Neumann objects cannot be mixed with Dirichlet objects"
     c = greater(self.dels,right.dels)
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                  choose(c,(self.dels,right.dels)),
                  choose(c,(self.vs  ,right.vs)),
-                 choose(c,(self.ns  ,right.ns)))
+                 choose(c,(self.ns  ,right.ns)),neumann=right.neumann)
 
   def __sub__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
+    assert self.neumann == right.neumann,\
+      "Neumann objects cannot be mixed with Dirichlet objects"
     rdels = -right.dels
     c = less(self.dels,rdels)
     result = Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                    choose(c,(self.dels,rdels)),
                    choose(c,(self.vs  ,right.vs)),
-                   choose(c,(self.ns  ,right.ns)))
+                   choose(c,(self.ns  ,right.ns)),neumann=right.neumann)
     # --- This is a kludgy fix for problems with subtracting elements.
     # --- If the subtractee has surfaces in common with the subtractor,
     # --- the above algorithm leaves a zero thickness shell there.
@@ -1261,7 +1281,6 @@ The attribute 'distance' holds the calculated distance.
       self.yy = yy
       self.zz = zz
       self.distance = zeros(self.ndata,'d')
-      fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.distance[:]])
     else:
@@ -1348,7 +1367,6 @@ The attribute 'isinside' holds the flag specifying whether a point is in or out
       self.condid = condid
       self.aura = aura
       distance = zeros(self.ndata,'d')
-      fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 distance[:]])
       self.isinside = where(distance <= aura,condid,0.)
@@ -1753,7 +1771,7 @@ Assembly on this grid.
         if timeit: tt1 = wtime()
         if dall is None:
           # --- Only create the Delta instance if it is actually needed.
-          dall = Delta()
+          dall = Delta(neumann=a.neumann)
           self.dlist.append(dall)
         dall.append(d)
         if timeit: tt2[7] = tt2[7] + wtime() - tt1
