@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.58 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -54,18 +54,20 @@ c       --- If one direction is negative, all are negative. However,
 c       --- because of the fuzz factor, each direction must be checked
 c       --- since if one direction is between 0 and fuzz, the others
 c       --- will all be positive.
-        if (dels(0,i) < 0.+fuzz0) then
-          parity(i) = -1
-        elseif (dels(1,i) < 0.+fuzz0) then
-          parity(i) = -1
-        elseif (dels(2,i) < 0.+fuzz0) then
-          parity(i) = -1
-        elseif (dels(3,i) < 0.+fuzz0) then
-          parity(i) = -1
-        elseif (dels(4,i) < 0.+fuzz0) then
-          parity(i) = -1
-        elseif (dels(5,i) < 0.+fuzz0) then
-          parity(i) = -1
+        if (fuzz0 > 0.) then
+          if (dels(0,i) < 0.+fuzz0) then
+            parity(i) = -1
+          elseif (dels(1,i) < 0.+fuzz0) then
+            parity(i) = -1
+          elseif (dels(2,i) < 0.+fuzz0) then
+            parity(i) = -1
+          elseif (dels(3,i) < 0.+fuzz0) then
+            parity(i) = -1
+          elseif (dels(4,i) < 0.+fuzz0) then
+            parity(i) = -1
+          elseif (dels(5,i) < 0.+fuzz0) then
+            parity(i) = -1
+          endif
         endif
 
 c       --- To minimize the amount of conductor data, points deep inside the
