@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.57 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -75,7 +75,6 @@ c       --- dfill is assumed to be passed in as a positive number.
         if (dels(0,i) < -dfill .and. dels(1,i) < -dfill .and.
      &      dels(2,i) < -dfill .and. dels(3,i) < -dfill .and.
      &      dels(4,i) < -dfill .and. dels(5,i) < -dfill) parity(i) = outside
-       if (parity(i) == -1) print*,"D ",dels(:,i)
 
       enddo
 
