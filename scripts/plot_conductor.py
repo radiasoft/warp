@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.102 2006/09/15 20:43:11 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.103 2006/09/15 22:39:50 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -76,7 +76,7 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,yscale,xscale,
   plp(yy,xx,color=color,local=local)
 
 def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
-                yscale,xscale,conductors,local):
+                yscale,xscale,inverted,conductors,local):
   if conductors is None: return
   evensubgrid = conductors.evensubgrid
   oddsubgrid = conductors.oddsubgrid
@@ -159,15 +159,25 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
   # --- This code combines all of the individual lines into the list pp.
   # --- This vectorized code avoids slower explicit loops.
   pp = []
-  for mapfunc,xx,yy,dl,dd in [(lambda x,y,d:[y,y-d,x,x],xxmy,yymy,delmy,dy),
-                              (lambda x,y,d:[y,y,x,x-d],xxmx,yymy,delmx,dx),
-                              (lambda x,y,d:[y,y+d,x,x],xxpy,yypy,delpy,dy),
-                              (lambda x,y,d:[y,y,x,x+d],xxpx,yypx,delpx,dx)]:
+  if inverted:
+    sgmy = lambda x,y,d,dy:[y,y-d,x,x]
+    sgmx = lambda x,y,d,dx:[y,y,x,x-d]
+    sgpy = lambda x,y,d,dy:[y,y+d,x,x]
+    sgpx = lambda x,y,d,dx:[y,y,x,x+d]
+  else:
+    sgmy = lambda x,y,d,dy:[y-dy,y-d,x,x]
+    sgmx = lambda x,y,d,dx:[y,y,x-dx,x-d]
+    sgpy = lambda x,y,d,dy:[y+dy,y+d,x,x]
+    sgpx = lambda x,y,d,dx:[y,y,x+dx,x+d]
+  for mapfunc,xx,yy,dl,dd in [(sgmy,xxmy,yymy,delmy,dy),
+                              (sgmx,xxmx,yymy,delmx,dx),
+                              (sgpy,xxpy,yypy,delpy,dy),
+                              (sgpx,xxpx,yypx,delpx,dx)]:
     ii = compress(less(abs(dl),dd*subgridlen),arange(len(xx)))
     xx = take(xx,ii)
     yy = take(yy,ii)
     dl = take(dl,ii)
-    pp = pp + map(mapfunc,xx,yy,dl)
+    pp = pp + map(mapfunc,xx,yy,dl,dd*ones(len(xx)))
   # --- Convert the list to an array and plot it
   # --- If the length is zero, create an empty array that conforms
   if len(pp) == 0: pp = transpose(array([[],[],[],[]],typecode='d'))
@@ -746,7 +756,7 @@ def pfxy(iz=None,izf=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,kwdict=None,**kw):
+         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=nint(-zmmin/dz): z index of plane
@@ -769,6 +779,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - inverted=0: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -861,23 +872,23 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                -yscale,-xscale,conductors,local)
   if plotsg:
     plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,yscale,-xscale,conductors,local)
+                  subgridlen,mglevel,yscale,-xscale,inverted,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,yscale,-xscale,conductors,local)
+                  subgridlen,mglevel,yscale,-xscale,inverted,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-yscale,-xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,-xscale,inverted,conductors,local)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-yscale,-xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,-xscale,inverted,conductors,local)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
@@ -885,7 +896,7 @@ def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,kwdict=None,**kw):
+         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=nint(-ymmin/dy): y index of plane
@@ -909,6 +920,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - inverted=0: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -979,14 +991,14 @@ Plots conductors and contours of electrostatic potential in Z-X plane
                    local)
   if plotsg:
     plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
       plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
   if cond:
     plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,yscale,xscale,
              conductors,local)
@@ -1005,7 +1017,7 @@ def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,kwdict=None,**kw):
+         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=nint(-xmmin/dx): x index of plane
@@ -1029,6 +1041,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - inverted=0: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -1105,14 +1118,14 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
                conductors,local)
   if plotsg:
     plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                subgridlen,mglevel,yscale,xscale,conductors,local)
+                subgridlen,mglevel,yscale,xscale,inverted,conductors,local)
     if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
       plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                  subgridlen,mglevel,-yscale,xscale,conductors,local)
+                  subgridlen,mglevel,-yscale,xscale,inverted,conductors,local)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -1495,7 +1508,7 @@ def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors,
 
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
           scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
-          conductors=f3d.conductors,solver=w3d,local=0):
+          inverted=0,conductors=f3d.conductors,solver=w3d,local=0):
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
   if colors is None: colors = color
@@ -1519,19 +1532,19 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1,conductors,local)
+                colors[i%ncolor],subgridlen,mglevel,1,1,inverted,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors,local)
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,inverted,conductors,local)
   nlist = gatherarray(conductors.oddsubgrid.numb[0,:conductors.oddsubgrid.n])
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1,conductors,local)
+                colors[i%ncolor],subgridlen,mglevel,1,1,inverted,conductors,local)
     if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1,conductors,local)
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,inverted,conductors,local)
 
 
 ############################################################################
