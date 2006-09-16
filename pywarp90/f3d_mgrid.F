@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.115 $, $Date: 2006/09/15 21:31:32 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.116 $, $Date: 2006/09/16 00:13:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1944,12 +1944,12 @@ c       --- Both terms are Neumann subgrid
         pm = 0.
         pp = 0.
         denom = denom - 2.*rd2cos
-        if (abs(dels(im,ic) > 0.)) then
+        if (abs(dels(im,ic)) > 0.) then
           ppp = min(ppp,abs(dels(im,ic)))
         else
           ppp = min(ppp,1.-1.e-9)
         endif
-        if (abs(dels(ip,ic) > 0.)) then
+        if (abs(dels(ip,ic)) > 0.) then
           ppp = min(ppp,abs(dels(ip,ic)))
         else
           ppp = min(ppp,1.-1.e-9)
