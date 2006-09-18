@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.20 $, $Date: 2006/08/24 19:37:11 $
+c version $Revision: 1.21 $, $Date: 2006/09/18 17:52:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -882,6 +882,7 @@ c       --- grid refinement.
           endif
         endif
 
+        print*,"relax ",loc(regionid)
 !$OMP DO
         do iz=izmin,izmax
           izm1 = iz - 1
@@ -1113,52 +1114,106 @@ c       --- Set temporaries with initial values.
         ppp = 1.
 
 c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
+        if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = (volt(0,ic) - pijk)/dels(0,ic)
           Cx = Cx - 1. + 1./dels(0,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(0,ic)
           ppp = min(ppp,dels(0,ic))
+        else if (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          pxm = 0.
+          Cx = Cx - 1.
+          delx = delx - 0.5 + (-dels(0,ic))
+          if (-dels(0,ic) > 0.) then
+            ppp = min(ppp,-dels(0,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
+        if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = (volt(1,ic) - pijk)/dels(1,ic)
           Cx = Cx - 1. + 1./dels(1,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(1,ic)
           ppp = min(ppp,dels(1,ic))
+        else if (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          pxp = 0.
+          Cx = Cx - 1.
+          delx = delx - 0.5 + (-dels(1,ic))
+          if (-dels(1,ic) > 0.) then
+            ppp = min(ppp,-dels(1,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
           pym = (volt(2,ic) - pijk)/dels(2,ic)
           Cy = Cy - 1. + 1./dels(2,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(2,ic)
           ppp = min(ppp,dels(2,ic))
+        else if (-1. < dels(2,ic) .and. dels(2,ic) <= 0.) then
+          pym = 0.
+          Cy = Cy - 1.
+          dely = dely - 0.5 + (-dels(2,ic))
+          if (-dels(2,ic) > 0.) then
+            ppp = min(ppp,-dels(2,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
           pyp = (volt(3,ic) - pijk)/dels(3,ic)
           Cy = Cy - 1. + 1./dels(3,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(3,ic)
           ppp = min(ppp,dels(3,ic))
+        else if (-1. < dels(3,ic) .and. dels(3,ic) <= 0.) then
+          pyp = 0.
+          Cy = Cy - 1.
+          dely = dely - 0.5 + (-dels(3,ic))
+          if (-dels(3,ic) > 0.) then
+            ppp = min(ppp,-dels(3,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
+        if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = (volt(4,ic) - pijk)/dels(4,ic)
           Cz = Cz - 1. + 1./dels(4,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(4,ic)
           ppp = min(ppp,dels(4,ic))
+        else if (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          pzm = 0.
+          Cz = Cz - 1.
+          delz = delz - 0.5 + (-dels(4,ic))
+          if (-dels(4,ic) > 0.) then
+            ppp = min(ppp,-dels(4,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
+        if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = (volt(5,ic) - pijk)/dels(5,ic)
           Cz = Cz - 1. + 1./dels(5,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(5,ic)
           ppp = min(ppp,dels(5,ic))
+        else if (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          pzp = 0.
+          Cz = Cz - 1.
+          delz = delz - 0.5 + (-dels(5,ic))
+          if (-dels(5,ic) > 0.) then
+            ppp = min(ppp,-dels(5,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
         if (mglevel == 0) ppp = 1.
 c       --- calculate the new phi based on the boundary conditions
-        delxsqi = dxsqi/delx
-        delysqi = dysqi/dely
-        delzsqi = dzsqi/delz
+        delxsqi = dxsqi/dvnz(delx)
+        delysqi = dysqi/dvnz(dely)
+        delzsqi = dzsqi/dvnz(delz)
         rhoe = 0.
         denom = -(Cx*delxsqi+Cy*delysqi+Cz*delzsqi)
         if (regionid(ix,iy,iz) > 0) then
@@ -1229,6 +1284,7 @@ c     --- Set the loop limits, including edges when appropriate.
 
       lphi = 0.
 c     --- Calculate the Lphi.
+      print*,"Lphibe ",loc(regionid)
 !$OMP DO
       do iz=izmin,izmax
         izm1 = iz - 1
@@ -1413,45 +1469,93 @@ c       --- Set temporaries with initial values.
         ppp = 1.
 
 c       --- the point lower in x is inside the conductor
-        if (dels(0,ic) < 1.) then
+        if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = (volt(0,ic) - pijk)/dels(0,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(0,ic)
           ppp = min(ppp,dels(0,ic))
+        else if (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          pxm = 0.
+          delx = delx - 0.5 + (-dels(0,ic))
+          if (-dels(0,ic) > 0.) then
+            ppp = min(ppp,-dels(0,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(1,ic) < 1.) then
+        if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = (volt(1,ic) - pijk)/dels(1,ic)
           if (icndbndy == 2) delx = delx - 0.5 + 0.5*dels(1,ic)
           ppp = min(ppp,dels(1,ic))
+        else if (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          pxp = 0.
+          delx = delx - 0.5 + (-dels(1,ic))
+          if (-dels(1,ic) > 0.) then
+            ppp = min(ppp,-dels(1,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
           pym = (volt(2,ic) - pijk)/dels(2,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(2,ic)
           ppp = min(ppp,dels(2,ic))
+        else if (-1. < dels(2,ic) .and. dels(2,ic) <= 0.) then
+          pym = 0.
+          dely = dely - 0.5 + (-dels(2,ic))
+          if (-dels(2,ic) > 0.) then
+            ppp = min(ppp,-dels(2,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
           pyp = (volt(3,ic) - pijk)/dels(3,ic)
           if (icndbndy == 2) dely = dely - 0.5 + 0.5*dels(3,ic)
           ppp = min(ppp,dels(3,ic))
+        else if (-1. < dels(3,ic) .and. dels(3,ic) <= 0.) then
+          pyp = 0.
+          dely = dely - 0.5 + (-dels(3,ic))
+          if (-dels(3,ic) > 0.) then
+            ppp = min(ppp,-dels(3,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point lower in z is inside the conductor
-        if (dels(4,ic) < 1.) then
+        if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = (volt(4,ic) - pijk)/dels(4,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(4,ic)
           ppp = min(ppp,dels(4,ic))
+        else if (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          pzm = 0.
+          delz = delz - 0.5 + (-dels(4,ic))
+          if (-dels(4,ic) > 0.) then
+            ppp = min(ppp,-dels(4,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- the point higher in z is inside the conductor
-        if (dels(5,ic) < 1.) then
+        if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = (volt(5,ic) - pijk)/dels(5,ic)
           if (icndbndy == 2) delz = delz - 0.5 + 0.5*dels(5,ic)
           ppp = min(ppp,dels(5,ic))
+        else if (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          pzp = 0.
+          delz = delz - 0.5 + (-dels(5,ic))
+          if (-dels(5,ic) > 0.) then
+            ppp = min(ppp,-dels(5,ic))
+          else
+            ppp = min(ppp,1.-1.e-9)
+          endif
         endif
 c       --- calculate the new phi based on the boundary conditions
-        delxsqi = dxsqi/delx
-        delysqi = dysqi/dely
-        delzsqi = dzsqi/delz
+        delxsqi = dxsqi/dvnz(delx)
+        delysqi = dysqi/dvnz(dely)
+        delzsqi = dzsqi/dvnz(delz)
         rhoe = 0.
         if (regionid(ix,iy,iz) > 0) then
           id = regionid(ix,iy,iz)
@@ -1623,7 +1727,13 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
 
       integer(ISZ):: id,ixmin,ixmax,iymin,iymax,izmin,izmax,ix,iy,iz
 
-      regionid = 0
+      do izmin=0,nz
+        do iymin=0,ny
+          do ixmin=0,nx
+            regionid(ixmin,iymin,izmin) = 0
+          enddo
+        enddo
+      enddo
       do id=1,nberegions
         ixmin = (max(0.,xbemin(id) - xmmin))/dx
         ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx

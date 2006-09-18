@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.231 $, $Date: 2006/08/25 21:50:54 $
+#@(#) File W3D.V, version $Revision: 3.232 $, $Date: 2006/09/18 17:52:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.231 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.232 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -434,13 +434,13 @@ grid(0:nx,0:ny) _real
 # Parameters controlling the Boltzmann-Electrons.
 nberegions       integer /1/
      # Number of regions where Boltzmann-Electrons are
-iondensity(nberegions)          _real  
+iondensity(nberegions)  /0./    _real  
      # Base ion charge density, multiplier on Boltzmann
      # exponential for field solvers including Boltzmann electrons
-electrontemperature(nberegions) _real [eV]
+electrontemperature(nberegions) _real /0./ [eV]
      # Electron temperature in units of eV
      # for field solvers including Boltzmann electrons
-plasmapotential(nberegions)     _real     
+plasmapotential(nberegions) /0./     _real     
      # Potential of plasma for field solvers including Boltzmann electrons
 electrondensitymaxscale(nberegions) _real /2./
      # Limit of electron density relative to iondensity. This should be large
