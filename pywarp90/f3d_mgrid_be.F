@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.21 $, $Date: 2006/09/18 17:52:25 $
+c version $Revision: 1.22 $, $Date: 2006/09/18 18:59:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -882,7 +882,6 @@ c       --- grid refinement.
           endif
         endif
 
-        print*,"relax ",loc(regionid)
 !$OMP DO
         do iz=izmin,izmax
           izm1 = iz - 1
@@ -1284,7 +1283,6 @@ c     --- Set the loop limits, including edges when appropriate.
 
       lphi = 0.
 c     --- Calculate the Lphi.
-      print*,"Lphibe ",loc(regionid)
 !$OMP DO
       do iz=izmin,izmax
         izm1 = iz - 1
@@ -1308,6 +1306,7 @@ c     --- Calculate the Lphi.
 
             rhoe = 0.
             if (regionid(ix,iy,iz) > 0) then
+              id = regionid(ix,iy,iz)
               if (iondensity(id) .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (phi(ix,iy,iz) - plasmapotential(id))/electrontemperature(id)
@@ -1725,15 +1724,9 @@ c=============================================================================
 
 c Sets id of regions where the Boltzmann-electron distribution is used.
 
-      integer(ISZ):: id,ixmin,ixmax,iymin,iymax,izmin,izmax,ix,iy,iz
+      integer(ISZ):: id,ixmin,ixmax,iymin,iymax,izmin,izmax
 
-      do izmin=0,nz
-        do iymin=0,ny
-          do ixmin=0,nx
-            regionid(ixmin,iymin,izmin) = 0
-          enddo
-        enddo
-      enddo
+      regionid = 0
       do id=1,nberegions
         ixmin = (max(0.,xbemin(id) - xmmin))/dx
         ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx
