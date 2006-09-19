@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.103 2006/09/15 22:39:50 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.104 2006/09/19 01:32:18 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -159,21 +159,23 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
   # --- This code combines all of the individual lines into the list pp.
   # --- This vectorized code avoids slower explicit loops.
   pp = []
+  dx = dx*xscale
+  dy = dy*yscale
   if inverted:
-    sgmy = lambda x,y,d,dy:[y,y-d,x,x]
-    sgmx = lambda x,y,d,dx:[y,y,x,x-d]
-    sgpy = lambda x,y,d,dy:[y,y+d,x,x]
-    sgpx = lambda x,y,d,dx:[y,y,x,x+d]
+    sgmy = lambda x,y,d,dg:[y,y-d,x,x]
+    sgmx = lambda x,y,d,dg:[y,y,x,x-d]
+    sgpy = lambda x,y,d,dg:[y,y+d,x,x]
+    sgpx = lambda x,y,d,dg:[y,y,x,x+d]
   else:
-    sgmy = lambda x,y,d,dy:[y-dy,y-d,x,x]
-    sgmx = lambda x,y,d,dx:[y,y,x-dx,x-d]
-    sgpy = lambda x,y,d,dy:[y+dy,y+d,x,x]
-    sgpx = lambda x,y,d,dx:[y,y,x+dx,x+d]
+    sgmy = lambda x,y,d,dg:[y-dg*ceil(abs(d)),y-d,x,x]
+    sgmx = lambda x,y,d,dg:[y,y,x-dg*ceil(abs(d)),x-d]
+    sgpy = lambda x,y,d,dg:[y+dg*ceil(abs(d)),y+d,x,x]
+    sgpx = lambda x,y,d,dg:[y,y,x+dg*ceil(abs(d)),x+d]
   for mapfunc,xx,yy,dl,dd in [(sgmy,xxmy,yymy,delmy,dy),
-                              (sgmx,xxmx,yymy,delmx,dx),
+                              (sgmx,xxmx,yymx,delmx,dx),
                               (sgpy,xxpy,yypy,delpy,dy),
                               (sgpx,xxpx,yypx,delpx,dx)]:
-    ii = compress(less(abs(dl),dd*subgridlen),arange(len(xx)))
+    ii = compress(less(abs(dl),abs(dd)*subgridlen),arange(len(xx)))
     xx = take(xx,ii)
     yy = take(yy,ii)
     dl = take(dl,ii)
