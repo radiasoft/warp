@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.105 2006/09/20 17:28:21 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.106 2006/09/20 20:29:26 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -758,7 +758,7 @@ def pfxy(iz=None,izf=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
+         inverted=1,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=nint(-zmmin/dz): z index of plane
@@ -781,7 +781,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
-  - inverted=0: when false, draws subgrid lines starting inside the conductor
+  - inverted=1: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -898,7 +898,7 @@ def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
+         inverted=1,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=nint(-ymmin/dy): y index of plane
@@ -922,7 +922,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
-  - inverted=0: when false, draws subgrid lines starting inside the conductor
+  - inverted=1: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -1019,7 +1019,7 @@ def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         inverted=0,conductors=None,solver=None,kwdict=None,**kw):
+         inverted=1,conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=nint(-xmmin/dx): x index of plane
@@ -1043,7 +1043,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
-  - inverted=0: when false, draws subgrid lines starting inside the conductor
+  - inverted=1: when false, draws subgrid lines starting inside the conductor
   - Arguments to the pcphi and pcrho routine are also valid
   """
   if kwdict is None: kwdict = {}
@@ -1139,7 +1139,7 @@ def pfxyg(iz=None,izf=None,fullplane=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           phicolor=blue,rhocolor=red,selfecolor=green,
           subgridlen=1.,condcolor='fg',oddcolor=red,evencolor=green,
-          numb=None,mglevel=0,inverted=0,conductors=None,solver=None,**kw):
+          numb=None,mglevel=0,inverted=1,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
@@ -1159,7 +1159,7 @@ def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          inverted=0,conductors=None,solver=None,**kw):
+          inverted=1,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
@@ -1183,7 +1183,7 @@ def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          inverted=0,conductors=None,solver=None,**kw):
+          inverted=1,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
@@ -1513,7 +1513,7 @@ def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors,
 
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
           scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
-          inverted=0,conductors=f3d.conductors,solver=w3d,local=0):
+          inverted=1,conductors=f3d.conductors,solver=w3d,local=0):
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if iy < 0 or solver.ny < iy: return
   if colors is None: colors = color
