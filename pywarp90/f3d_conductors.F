@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.59 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.60 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -961,8 +961,8 @@ c       --- Point inside the cylinder
           delpx(i) = -(sqrt(rad**2 - yy**2) - xx)
           delmy(i) = -(sqrt(rad**2 - xx**2) + yy)
           delpy(i) = -(sqrt(rad**2 - xx**2) - yy)
-          delmz(i) = zmin - z(i)
-          delpz(i) = z(i) - zmax
+          delmz(i) = min(0.,zmin - z(i))
+          delpz(i) = min(0.,z(i) - zmax)
           cycle
         endif
 
@@ -980,12 +980,22 @@ c       --- Point is outside the cylinder
         endif
 
 c       --- The point is on the cylinder exactly.
-        delmx(i) = 0.
-        delpx(i) = 0.
-        delmy(i) = 0.
-        delpy(i) = 0.
-        delmz(i) = 0.
-        delpz(i) = 0.
+        if (xx > 0.) then
+          delmx(i) = -(sqrt(max(0.,rad**2 - yy**2)) + xx)
+          delpx(i) = 0.
+        else
+          delmx(i) = 0.
+          delpx(i) = -(sqrt(max(0.,rad**2 - yy**2)) - xx)
+        endif
+        if (yy > 0.) then
+          delmy(i) = -(sqrt(max(0.,rad**2 - xx**2)) + yy)
+          delpy(i) = 0.
+        else
+          delmy(i) = 0.
+          delpy(i) = -(sqrt(max(0.,rad**2 - xx**2)) - yy)
+        endif
+        delmz(i) = min(0.,zmin - z(i))
+        delpz(i) = min(0.,z(i) - zmax)
 
       enddo
 
@@ -1190,8 +1200,8 @@ c       --- If point is not within the z extent of the cylinder
               delmz(i) = z(i) - zmax + rad2 - zround
             endif
           else
-            delmz(i) = zmin - z(i)
-            delpz(i) = z(i) - zmax
+            delmz(i) = min(0.,zmin - z(i))
+            delpz(i) = min(0.,z(i) - zmax)
           endif
         endif
 
@@ -1232,12 +1242,22 @@ c       --- Point is outside the cylinder
         endif
 
 c       --- The point is on the cylinder exactly.
-        delmx(i) = 0.
-        delpx(i) = 0.
-        delmy(i) = 0.
-        delpy(i) = 0.
-        delmz(i) = 0.
-        delpz(i) = 0.
+        if (xx > 0.) then
+          delmx(i) = -(sqrt(max(0.,r**2 - yy**2)) + xx)
+          delpx(i) = 0.
+        else
+          delmx(i) = 0.
+          delpx(i) = -(sqrt(max(0.,r**2 - yy**2)) - xx)
+        endif
+        if (yy > 0.) then
+          delmy(i) = -(sqrt(max(0.,r**2 - xx**2)) + yy)
+          delpy(i) = 0.
+        else
+          delmy(i) = 0.
+          delpy(i) = -(sqrt(max(0.,r**2 - xx**2)) - yy)
+        endif
+        delmz(i) = min(0.,zmin - z(i))
+        delpz(i) = min(0.,z(i) - zmax)
 
       enddo
 
@@ -1372,18 +1392,24 @@ c       --- Point is outside the cylinder
             if (yy > 0) delmy(i) = -( yy - sqrt(max(0.,rad**2 - xx**2)))
             if (yy < 0) delpy(i) = -(-yy - sqrt(max(0.,rad**2 - xx**2)))
           endif
-          delmz(i) = zmin - z(i)
-          delpz(i) = z(i) - zmax
+          delmz(i) = min(0.,zmin - z(i))
+          delpz(i) = min(0.,z(i) - zmax)
           cycle
         endif
 
 c       --- The point is on the cylinder exactly.
-        delmx(i) = 0.
-        delpx(i) = 0.
-        delmy(i) = 0.
-        delpy(i) = 0.
-        delmz(i) = 0.
-        delpz(i) = 0.
+        if (xx > 0.) then
+          delmx(i) = 0.
+        else
+          delpx(i) = 0.
+        endif
+        if (yy > 0.) then
+          delmy(i) = 0.
+        else
+          delpy(i) = 0.
+        endif
+        delmz(i) = min(0.,zmin - z(i))
+        delpz(i) = min(0.,z(i) - zmax)
 
       enddo
 
@@ -1588,8 +1614,8 @@ c       --- If point is not within the z extent of the cylinder
               delmz(i) = z(i) - zmax + rad2 - zround
             endif
           else
-            delmz(i) = zmin - z(i)
-            delpz(i) = z(i) - zmax
+            delmz(i) = min(0.,zmin - z(i))
+            delpz(i) = min(0.,z(i) - zmax)
           endif
         endif
 
@@ -1634,12 +1660,18 @@ c       --- Point is outside the cylinder
         endif
 
 c       --- The point is on the cylinder exactly.
-        delmx(i) = 0.
-        delpx(i) = 0.
-        delmy(i) = 0.
-        delpy(i) = 0.
-        delmz(i) = 0.
-        delpz(i) = 0.
+        if (xx > 0.) then
+          delmx(i) = 0.
+        else
+          delpx(i) = 0.
+        endif
+        if (yy > 0.) then
+          delmy(i) = 0.
+        else
+          delpy(i) = 0.
+        endif
+        delmz(i) = min(0.,zmin - z(i))
+        delpz(i) = min(0.,z(i) - zmax)
 
       enddo
 
@@ -1766,12 +1798,27 @@ c       --- Point outside the sphere
 
 c       --- The point is on the sphere exactly.
         if (rsq == rad**2) then
-          delmx(i) = 0.
-          delpx(i) = 0.
-          delmy(i) = 0.
-          delpy(i) = 0.
-          delmz(i) = 0.
-          delpz(i) = 0.
+          if (xx > 0.) then
+            delmx(i) = -(sqrt(max(0.,rad**2 - yy**2 - zz**2)) + xx)
+            delpx(i) = 0.
+          else
+            delpx(i) = -(sqrt(max(0.,rad**2 - yy**2 - zz**2)) - xx)
+            delmx(i) = 0.
+          endif
+          if (yy > 0.) then
+            delmy(i) = -(sqrt(max(0.,rad**2 - xx**2 - zz**2)) + yy)
+            delpy(i) = 0.
+          else
+            delmy(i) = 0.
+            delpy(i) = -(sqrt(max(0.,rad**2 - xx**2 - zz**2)) - yy)
+          endif
+          if (zz > 0.) then
+            delmz(i) = -(sqrt(max(0.,rad**2 - xx**2 - yy**2)) + zz)
+            delpz(i) = 0.
+          else
+            delmz(i) = 0.
+            delpz(i) = -(sqrt(max(0.,rad**2 - xx**2 - yy**2)) - zz)
+          endif
         endif
 
       enddo
