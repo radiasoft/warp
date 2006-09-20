@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.104 2006/09/19 01:32:18 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.105 2006/09/20 17:28:21 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1139,7 +1139,7 @@ def pfxyg(iz=None,izf=None,fullplane=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           phicolor=blue,rhocolor=red,selfecolor=green,
           subgridlen=1.,condcolor='fg',oddcolor=red,evencolor=green,
-          numb=None,mglevel=0,conductors=None,solver=None,**kw):
+          numb=None,mglevel=0,inverted=0,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
@@ -1151,14 +1151,15 @@ Same arguments as pfxy
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
-       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
+       numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
+       solver=w3d,kwdict=kw)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=None,solver=None,**kw):
+          inverted=0,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
@@ -1171,7 +1172,8 @@ Same arguments as pfzx
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
-       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
+       numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
+       solver=w3d,kwdict=kw)
 
 # z-r plane
 pfzrg = pfzxg
@@ -1181,7 +1183,7 @@ def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=None,solver=None,**kw):
+          inverted=0,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
@@ -1194,7 +1196,8 @@ Same arguments as pfzy
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
-       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
+       numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
+       solver=w3d,kwdict=kw)
 
 ######################################################################
 
