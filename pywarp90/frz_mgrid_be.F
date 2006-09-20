@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.15 $, $Date: 2006/06/20 18:11:41 $
+c version $Revision: 1.16 $, $Date: 2006/09/20 22:20:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -904,7 +904,6 @@ c not include Lphi.
       real(kind=8):: delxsqi,delzsqi
       integer(ISZ):: ic,ii,i1,i2
       integer(ISZ):: ix,iz,id
-      logical(ISZ):: dosubgrid
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
       real(kind=8):: iondensitytmp
 
@@ -962,7 +961,6 @@ c         --- Set temporaries with initial values.
           delx = 1.
           delz = 1.
           ppp = 1.
-          dosubgrid = .false.
 
           dxm = cnd%dxm(ii)*dxi
           dxp = cnd%dxp(ii)*dxi
@@ -970,25 +968,32 @@ c         --- Set temporaries with initial values.
           dzp = cnd%dzp(ii)*dzi
 
 c         --- the point lower in x is inside the conductor
-          if (dxm < 1.) then
+          if (0. < dxm .and. dxm < 1.) then
             if (lrz) then
               if (rr > 0.) then
                 pxm = (1.-0.5/rr)*(cnd%volt0xm(ii) - pik)/dxm
                 Cx = Cx + (1.-0.5/rr)*(1./dxm - 1.)
                 if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
                 ppp = min(ppp,dxm)
-                dosubgrid = .true.
               endif
             else
               pxm = (cnd%volt0xm(ii) - pik)/dxm
               Cx = Cx - 1. + 1./dxm
               if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
               ppp = min(ppp,dxm)
-              dosubgrid = .true.
+            endif
+          else if (-1. < dxm .and. dxm <= 0.) then
+            pxm = 0.
+            Cx = Cx - 1.
+            delx = delx - 0.5 + (-dxm)
+            if (-dxm > 0.) then
+              ppp = min(ppp,-dxm)
+            else
+              ppp = min(ppp,1.-1.e-9)
             endif
           endif
 c         --- the point higher in x is inside the conductor
-          if (dxp < 1.) then
+          if (0. < dxp .and. dxp < 1.) then
             if (lrz) then
               if (rr == 0.) then
                 pxp = 4.*(cnd%volt0xp(ii) - pik)/dxp
@@ -1003,29 +1008,53 @@ c         --- the point higher in x is inside the conductor
             endif
             if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxp
             ppp = min(ppp,dxp)
-            dosubgrid = .true.
+          else if (-1. < dxp .and. dxp <= 0.) then
+            pxp = 0.
+            Cx = Cx - 1.
+            delx = delx - 0.5 + (-dxp)
+            if (-dxp > 0.) then
+              ppp = min(ppp,-dxp)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
 c         --- the point lower in z is inside the conductor
-          if (dzm < 1.) then
+          if (0. < dzm .and. dzm < 1.) then
             pzm = (cnd%volt0zm(ii) - pik)/dzm
             Cz = Cz - 1. + 1./dzm
             if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzm
             ppp = min(ppp,dzm)
-            dosubgrid = .true.
+          else if (-1. < dzm .and. dzm <= 0.) then
+            pzm = 0.
+            Cz = Cz - 1.
+            delz = delz - 0.5 + (-dzm)
+            if (-dzm > 0.) then
+              ppp = min(ppp,-dzm)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
 c         --- the point higher in z is inside the conductor
-          if (dzp < 1.) then
+          if (0. < dzp .and. dzp < 1.) then
             pzp = (cnd%volt0zp(ii) - pik)/dzp
             Cz = Cz - 1. + 1./dzp
             if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzp
             ppp = min(ppp,dzp)
-            dosubgrid = .true.
+          else if (-1. < dzp .and. dzp <= 0.) then
+            pzp = 0.
+            Cz = Cz - 1.
+            delz = delz - 0.5 + (-dzp)
+            if (-dzp > 0.) then
+              ppp = min(ppp,-dzp)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
           if (mglevel == 0) ppp = 1.
 c         --- calculate the new phi based on the boundary conditions
-          if (dosubgrid) then
-            delxsqi = dxsqi/delx
-            delzsqi = dzsqi/delz
+          if (ppp < 1.) then
+            delxsqi = dxsqi/dvnz(delx)
+            delzsqi = dzsqi/dvnz(delz)
             rhoe = 0.
             denom = - Cx*delxsqi - Cz*delzsqi
             if (regionid(ix,iz) > 0) then
@@ -1215,7 +1244,6 @@ c points on the boundary.
       real(kind=8):: rr
       integer(ISZ):: ic,ii
       integer(ISZ):: ix,iz,id
-      logical(ISZ):: dosubgrid
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
       real(kind=8):: iondensitytmp
 
@@ -1259,7 +1287,6 @@ c         --- Set temporaries with initial values.
           pzp = phi(ix  ,iz+1) - pik
           delx = 1.
           delz = 1.
-          dosubgrid = .false.
           ppp = 1.
 
           dxm = cnd%dxm(ii)*dxi
@@ -1268,23 +1295,29 @@ c         --- Set temporaries with initial values.
           dzp = cnd%dzp(ii)*dzi
 
 c         --- the point lower in x is inside the conductor
-          if (dxm < 1.) then
+          if (0. < dxm .and. dxm < 1.) then
             if (lrz) then
               if (rr > 0.) then
                 pxm = (1.-0.5/rr)*(cnd%volt0xm(ii) - pik)/dxm
                 if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
                 ppp = min(ppp,dxm)
-                dosubgrid = .true.
               endif
             else
               pxm = (cnd%volt0xm(ii) - pik)/dxm
               if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxm
               ppp = min(ppp,dxm)
-              dosubgrid = .true.
+            endif
+          else if (-1. < dxm .and. dxm <= 0.) then
+            pxm = 0.
+            delx = delx - 0.5 + (-dxm)
+            if (-dxm > 0.) then
+              ppp = min(ppp,-dxm)
+            else
+              ppp = min(ppp,1.-1.e-9)
             endif
           endif
 c         --- the point higher in x is inside the conductor
-          if (dxp < 1.) then
+          if (0. < dxp .and. dxp < 1.) then
             if (lrz) then
               if (rr == 0.) then
                 pxp = 4.*(cnd%volt0xp(ii) - pik)/dxp
@@ -1296,26 +1329,47 @@ c         --- the point higher in x is inside the conductor
             endif
             if (icndbndy == 2) delx = delx - 0.5 + 0.5*dxp
             ppp = min(ppp,dxp)
-            dosubgrid = .true.
+          else if (-1. < dxp .and. dxp <= 0.) then
+            pxp = 0.
+            delx = delx - 0.5 + (-dxp)
+            if (-dxp > 0.) then
+              ppp = min(ppp,-dxp)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
 c         --- the point lower in z is inside the conductor
-          if (dzm < 1.) then
+          if (0. < dzm .and. dzm < 1.) then
             pzm = (cnd%volt0zm(ii) - pik)/dzm
             if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzm
             ppp = min(ppp,dzm)
-            dosubgrid = .true.
+          else if (-1. < dzm .and. dzm <= 0.) then
+            pzm = 0.
+            delz = delz - 0.5 + (-dzm)
+            if (-dzm > 0.) then
+              ppp = min(ppp,-dzm)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
 c         --- the point higher in z is inside the conductor
-          if (dzp < 1.) then
+          if (0. < dzp .and. dzp < 1.) then
             pzp = (cnd%volt0zp(ii) - pik)/dzp
             if (icndbndy == 2) delz = delz - 0.5 + 0.5*dzp
             ppp = min(ppp,dzp)
-            dosubgrid = .true.
+          else if (-1. < dzp .and. dzp <= 0.) then
+            pzp = 0.
+            delz = delz - 0.5 + (-dzp)
+            if (-dzp > 0.) then
+              ppp = min(ppp,-dzp)
+            else
+              ppp = min(ppp,1.-1.e-9)
+            endif
           endif
 c         --- calculate the new phi based on the boundary conditions
-          if (dosubgrid) then
-            delxsqi = dxsqi/delx
-            delzsqi = dzsqi/delz
+          if (ppp < 1.) then
+            delxsqi = dxsqi/dvnz(delx)
+            delzsqi = dzsqi/dvnz(delz)
             rhoe = 0.
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
