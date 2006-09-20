@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.22 $, $Date: 2006/09/18 18:59:04 $
+c version $Revision: 1.23 $, $Date: 2006/09/20 18:30:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -21,6 +21,7 @@ c=============================================================================
       use BoltzmannElectrons
       use Parallel
 c     use ifcore
+c     integer:: fsf
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -32,7 +33,7 @@ c     use ifcore
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
 
-c     call for_set_fpe(FPE_M_TRAP_INV)
+c     fsf = for_set_fpe(FPE_M_TRAP_INV+FPE_M_TRAP_DIV0+FPE_M_TRAP_OVF)
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -1686,6 +1687,7 @@ c     --- Longitudinal boundaries
       end
 c=============================================================================
       subroutine clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
+      use Constant
       use BoltzmannElectrons
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
@@ -1704,7 +1706,7 @@ c     --- and the ion particle density (rho).
               id = regionid(ix,iy,iz)
               if (iondensity(id) == 0. .and. electrontemperature(id) .ne. 0)
      &          cycle
-              rhomax = max(1.,-rho(ix,iy,iz)/iondensity(id))
+              rhomax = max(1.,-rho(ix,iy,iz)*eps0/iondensity(id))
               phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
               if (phi(ix,iy,iz) > phimax) phi(ix,iy,iz) = phimax
             endif
