@@ -244,19 +244,28 @@ class Species:
     density[...] = parallelsum(density)
     if dens is None:return density
   
-  def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false):
+  def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false,**kw):
       if js is None:
         js=self.jslist[0]
-      addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum)
+      addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum,**kw)
       
-  def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None):
+  def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
     x=xmin+(xmax-xmin)*RandomArray.random(np)
     y=ymin+(ymax-ymin)*RandomArray.random(np)
     z=zmin+(zmax-zmin)*RandomArray.random(np)
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
     vz=RandomArray.normal(vzmean,vthz,np)
-    self.addpart(x,y,z,vx,vy,vz,js=js)
+    self.addpart(x,y,z,vx,vy,vz,js=js,**kw)
+    
+  def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
+    x=RandomArray.normal(xmean,deltax,np)
+    y=RandomArray.normal(ymean,deltay,np)
+    z=RandomArray.normal(zmean,deltaz,np)
+    vx=RandomArray.normal(vxmean,vthx,np)
+    vy=RandomArray.normal(vymean,vthy,np)
+    vz=RandomArray.normal(vzmean,vthz,np)
+    self.addpart(x,y,z,vx,vy,vz,js=js,**kw)
     
   def getn(self,**kw):
     return getn(jslist=self.jslist,**kw)
