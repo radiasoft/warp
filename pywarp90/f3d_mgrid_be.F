@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.23 $, $Date: 2006/09/20 18:30:16 $
+c version $Revision: 1.24 $, $Date: 2006/09/21 17:43:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1704,8 +1704,7 @@ c     --- and the ion particle density (rho).
           do ix=0,nx
             if (regionid(ix,iy,iz) > 0) then
               id = regionid(ix,iy,iz)
-              if (iondensity(id) == 0. .and. electrontemperature(id) .ne. 0)
-     &          cycle
+              if (iondensity(id) == 0.) cycle
               rhomax = max(1.,-rho(ix,iy,iz)*eps0/iondensity(id))
               phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
               if (phi(ix,iy,iz) > phimax) phi(ix,iy,iz) = phimax
