@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.24 $, $Date: 2006/09/21 17:43:59 $
+c version $Revision: 1.25 $, $Date: 2006/09/21 23:42:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -204,8 +204,8 @@ c         --- calculate global sorerror
 c     --- For Dirichlet boundary conditions, copy data into guard planes
 c     --- For other boundary conditions, the guard planes are used during
 c     --- the solve are so are already set.
-      if (bounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
-      if (bounds(5) == 0) phi(:,:,nz+1) = phi(:,:,nz)
+      if (bounds(4) == 0) phi(:,:,-1) = 2.*phi(:,:,0)-phi(:,:,1)
+      if (bounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz)-phi(:,:,nz-1)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -412,8 +412,9 @@ c       --- Calculate the coarsened phi
      &                             my_index,nslaves,izfsslave,nzfsslave,
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
-        call restrictbe3d(nx,ny,nz,nzfull,lphi,1,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
+        phicoarse = 0.
+        call restrictbe3d(nx,ny,nz,nzfull,lphi,3,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,1,
      &                    localbounds,localboundsc,lzoffset,
      &                    my_index,nslaves,izfsslavec,nzfsslavec,
      &                    whosendingleftc,izsendingleftc,
@@ -423,7 +424,7 @@ c       --- Calculate the coarsened phi
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
-     &              mglevel,localbounds,mgparam,
+     &              mglevel,localbounds,
      &              lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslave,nzfsslave,
      &              whosendingleft,izsendingleft,
@@ -432,8 +433,8 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
      &                             my_index,nslaves,izfsslave,nzfsslave,
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
-        call restrictbe3d(nx,ny,nz,nzfull,lphi,0,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
+        call restrictbe3d(nx,ny,nz,nzfull,lphi,3,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,0,
      &                    localbounds,localbounds,lzoffset,
      &                    my_index,nslaves,izfsslavec,nzfsslavec,
      &                    whosendingleftc,izsendingleftc,
@@ -454,7 +455,7 @@ c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphibe(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &              dxcoarsesqi,dycoarsesqi,dzcoarsesqi,
      &              phicoarse,lphicoarse,regionidcoarse,
-     &              mglevel+1,localbounds,mgparam,
+     &              mglevel+1,localbounds,
      &              lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslavec,nzfsslavec,
      &              whosendingleftc,izsendingleftc,
@@ -512,23 +513,24 @@ c     --- Do final relaxation passes.
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
+        call clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
       enddo
-      call clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
 
       return
       end
 c=============================================================================
       subroutine restrictbe3d(nx,ny,nz,nzfull,u,delz,
      &                        nxcoarse,nycoarse,nzcoarse,nzfullcoarse,ucoarse,
+     &                        delcz,
      &                        bounds,boundscoarse,lzoffset,
      &                        my_index,nslaves,izfsslavec,nzfsslavec,
      &                        whosendingleftc,izsendingleftc,
      &                        whosendingrightc,izsendingrightc)
 
-      integer(ISZ):: nx,ny,nz,nzfull,delz
+      integer(ISZ):: nx,ny,nz,nzfull,delz,delcz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: u(-1:nx+1,-1:ny+1,-3:nz+3)
-      real(kind=8):: ucoarse(0:nxcoarse,0:nycoarse,-delz:nzcoarse+delz)
+      real(kind=8):: u(-1:nx+1,-1:ny+1,-delz:nz+delz)
+      real(kind=8):: ucoarse(0:nxcoarse,0:nycoarse,-delcz:nzcoarse+delcz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lzoffset
@@ -542,29 +544,19 @@ c Restrict to a coarser grid.
       integer(ISZ):: ix,iy,iz
       integer(ISZ):: ixcoarse,iycoarse,izcoarse
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
-      integer(ISZ):: izcoarsemin,izcoarsemax
       real(kind=8):: r,w,dx,dy,dz,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
 
 c     --- Set the loop limits, always including edges.
-      ixcoarsemin = 0
-      ixcoarsemax = nxcoarse
-      iycoarsemin = 0
-      iycoarsemax = nycoarse
-      izcoarsemin = 0
-      izcoarsemax = nzcoarse
-
       dx = 1.*nx/nxcoarse
       dy = 1.*ny/nycoarse
       dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
       dyi = 1.*nycoarse/ny
       dzi = 1.*nzfullcoarse/nzfull
-      w = dxi*dyi*dzi
 
 c     --- Do the loops.
 !$OMP DO
-      do izcoarse=izcoarsemin,izcoarsemax
+      do izcoarse=0,nzcoarse
         izmin = ((izcoarse-1)*nzfull - lzoffset + 4*nzfullcoarse)/nzfullcoarse-3
         izmax = ((izcoarse+1)*nzfull - lzoffset - 1)/nzfullcoarse
 
@@ -582,7 +574,7 @@ c     --- Do the loops.
           wz(0) = 2.
         endif
 
-        do iycoarse=iycoarsemin,iycoarsemax
+        do iycoarse=0,nycoarse
           iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
           iymax = int(floor((iycoarse+1)*dy - 1.e-10))
 
@@ -600,7 +592,7 @@ c     --- Do the loops.
             wy(0) = 2.
           endif
 
-          do ixcoarse=ixcoarsemin,ixcoarsemax
+          do ixcoarse=0,nxcoarse
             ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
             ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
 
@@ -619,14 +611,20 @@ c     --- Do the loops.
             endif
 
             r = 0.
+            w = 0.
             do iz=izmin,izmax
               do iy=iymin,iymax
                 do ix=ixmin,ixmax
                   r = r + wx(ix-ixmin)*wy(iy-iymin)*wz(iz-izmin)*u(ix,iy,iz)
+                  w = w + wx(ix-ixmin)*wy(iy-iymin)*wz(iz-izmin)
                 enddo
               enddo
             enddo
-            ucoarse(ixcoarse,iycoarse,izcoarse) = w*r
+            if (w > 0.) then
+              ucoarse(ixcoarse,iycoarse,izcoarse) = r/w
+            else
+              ucoarse(ixcoarse,iycoarse,izcoarse) = 0.
+            endif
 
           enddo
         enddo
@@ -637,9 +635,10 @@ c     --- Set appropriate boundary values
       if (boundscoarse(1) == 2) ucoarse(nxcoarse,:,:) = ucoarse(0,:,:)
       if (boundscoarse(3) == 2) ucoarse(:,nycoarse,:) = ucoarse(:,0,:)
 
-      if (delz == 1) then
-        if (boundscoarse(4) == 0) ucoarse(:,:,-1) = ucoarse(:,:,0)
-        if (boundscoarse(5) == 0) ucoarse(:,:,nzcoarse+1) = ucoarse(:,:,nzcoarse)
+      if (delcz == 1) then
+        if (boundscoarse(4) == 0) ucoarse(:,:,-1) = 2.*ucoarse(:,:,0)-ucoarse(:,:,1)
+        if (boundscoarse(5) == 0)
+     &    ucoarse(:,:,nzcoarse+1) = 2.*ucoarse(:,:,nzcoarse)-ucoarse(:,:,nzcoarse-1)
         if (boundscoarse(4) == 1) ucoarse(:,:,-1) = ucoarse(:,:,1)
         if (boundscoarse(5) == 1) ucoarse(:,:,nzcoarse+1) = ucoarse(:,:,nzcoarse-1)
 #ifndef MPIPARALLEL
@@ -949,10 +948,10 @@ c       --- Put desired potential onto conductors in phi array.
         if (bounds(3) == 2) phi(:,ny,:) = phi(:,0,:)
 
 c       --- set phi in the z guard planes
-        if (bounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
-        if (bounds(5) == 0) phi(:,:,nz+1)   = phi(:,:,nz)
+        if (bounds(4) == 0) phi(:,:,-1) = 2.*phi(:,:,0)-phi(:,:,1)
+        if (bounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz)-phi(:,:,nz-1)
         if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
-        if (bounds(5) == 1) phi(:,:,nz+1)   = phi(:,:,nz-1)
+        if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
 #ifndef MPIPARALLEL
         if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
         if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
@@ -1235,7 +1234,7 @@ c       --- calculate the new phi based on the boundary conditions
       end
 c=============================================================================
       subroutine Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
-     &                  mglevel,bounds,mgparam,
+     &                  mglevel,bounds,
      &                  lcndbndy,icndbndy,conductors,
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
@@ -1249,7 +1248,6 @@ c=============================================================================
       real(kind=8):: lphi(-1:nx+1,-1:ny+1,-3:nz+3)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
-      real(kind=8):: mgparam
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -1591,23 +1589,23 @@ c=============================================================================
       phiout(0:nx,0:ny,-1:nz+1) = phiin
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) phiout(-1,0:ny,:) = phiout(0,0:ny,:)
-      if (bounds(1) == 0) phiout(nx+1,0:ny,:) = phiout(nx,0:ny,:)
+      if (bounds(0) == 0) phiout(-1,0:ny,:) = 2.*phiout(0,0:ny,:)-phiout(1,0:ny,:)
+      if (bounds(1) == 0) phiout(nx+1,0:ny,:) = 2.*phiout(nx,0:ny,:)-phiout(nx-1,0:ny,:)
       if (bounds(0) == 1) phiout(-1,0:ny,:) = phiout(1,0:ny,:)
       if (bounds(1) == 1) phiout(nx+1,0:ny,:) = phiout(nx-1,0:ny,:)
       if (bounds(0) == 2) phiout(-1,0:ny,:) = phiout(nx-1,0:ny,:)
       if (bounds(1) == 2) phiout(nx:nx+1,0:ny,:) = phiout(0:1,0:ny,:)
 
-      if (bounds(2) == 0) phiout(:,-1,:) = phiout(:,0,:)
-      if (bounds(3) == 0) phiout(:,ny+1,:) = phiout(:,ny,:)
+      if (bounds(2) == 0) phiout(:,-1,:) = 2.*phiout(:,0,:)-phiout(:,1,:)
+      if (bounds(3) == 0) phiout(:,ny+1,:) = 2.*phiout(:,ny,:)-phiout(:,ny-1,:)
       if (bounds(2) == 1) phiout(:,-1,:) = phiout(:,1,:)
       if (bounds(3) == 1) phiout(:,ny+1,:) = phiout(:,ny-1,:)
       if (bounds(2) == 2) phiout(:,-1,:) = phiout(:,ny-1,:)
       if (bounds(3) == 2) phiout(:,ny:ny+1,:) = phiout(:,0:1,:)
 
 c     --- Longitudinal boundaries
-c     if (bounds(4) == 0) phiout(:,:,-1) = phiout(:,:,0)
-c     if (bounds(5) == 0) phiout(:,:,nz+1) = phiout(:,:,nz)
+c     if (bounds(4) == 0) phiout(:,:,-1) = 2.*phiout(:,:,0)-phiout(:,:,1)
+c     if (bounds(5) == 0) phiout(:,:,nz+1) = 2.*phiout(:,:,nz)-phiout(:,:,nz-1)
 c     if (bounds(4) == 1) phiout(:,:,-1) = phiout(:,:,1)
 c     if (bounds(5) == 1) phiout(:,:,nz+1) = phiout(:,:,nz-1)
 c     if (bounds(4) == 2 .and. nz == nzfull) phiout(:,:,-1) = phiout(:,:,nz-1)
@@ -1623,7 +1621,6 @@ c     if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
 #endif
-
 
       return
       end
@@ -1643,23 +1640,23 @@ c=============================================================================
       rhoout(0:nx,0:ny,0:nz) = rhoin - rhoout(0:nx,0:ny,0:nz)
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) rhoout(-1,0:ny,0:nz) = rhoout(0,0:ny,0:nz)
-      if (bounds(1) == 0) rhoout(nx+1,0:ny,0:nz) = rhoout(nx,0:ny,0:nz)
+      if (bounds(0) == 0) rhoout(-1,0:ny,0:nz) = 2.*rhoout(0,0:ny,0:nz)-rhoout(1,0:ny,0:nz)
+      if (bounds(1) == 0) rhoout(nx+1,0:ny,0:nz) = 2.*rhoout(nx,0:ny,0:nz)-rhoout(nx-1,0:ny,0:nz)
       if (bounds(0) == 1) rhoout(-1,0:ny,0:nz) = rhoout(1,0:ny,0:nz)
       if (bounds(1) == 1) rhoout(nx+1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
       if (bounds(0) == 2) rhoout(-1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
       if (bounds(1) == 2) rhoout(nx:nx+1,0:ny,0:nz) = rhoout(0:1,0:ny,0:nz)
 
-      if (bounds(2) == 0) rhoout(:,-1,0:nz) = rhoout(:,0,0:nz)
-      if (bounds(3) == 0) rhoout(:,ny+1,0:nz) = rhoout(:,ny,0:nz)
+      if (bounds(2) == 0) rhoout(:,-1,0:nz) = 2.*rhoout(:,0,0:nz)-rhoout(:,1,0:nz)
+      if (bounds(3) == 0) rhoout(:,ny+1,0:nz) = 2.*rhoout(:,ny,0:nz)-rhoout(:,ny-1,0:nz)
       if (bounds(2) == 1) rhoout(:,-1,0:nz) = rhoout(:,1,0:nz)
       if (bounds(3) == 1) rhoout(:,ny+1,0:nz) = rhoout(:,ny-1,0:nz)
       if (bounds(2) == 2) rhoout(:,-1,0:nz) = rhoout(:,ny-1,0:nz)
       if (bounds(3) == 2) rhoout(:,ny:ny+1,0:nz) = rhoout(:,0:1,0:nz)
 
 c     --- Longitudinal boundaries
-      if (bounds(4) == 0) rhoout(:,:,-1) = rhoout(:,:,0)
-      if (bounds(5) == 0) rhoout(:,:,nz+1) = rhoout(:,:,nz)
+      if (bounds(4) == 0) rhoout(:,:,-1) = 2.*rhoout(:,:,0)-rhoout(:,:,1)
+      if (bounds(5) == 0) rhoout(:,:,nz+1) = 2.*rhoout(:,:,nz)-rhoout(:,:,nz-1)
       if (bounds(4) == 1) rhoout(:,:,-1) = rhoout(:,:,1)
       if (bounds(5) == 1) rhoout(:,:,nz+1) = rhoout(:,:,nz-1)
 #ifndef MPIPARALLEL
