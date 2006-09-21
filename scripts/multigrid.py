@@ -237,6 +237,9 @@ class MultiGrid(object):
     if self.lzerorhointerior:
       cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
 
+  def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    pass
+
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
       self.rho[0,:,:] = self.rho[0,:,:] + self.rho[-1,:,:]
