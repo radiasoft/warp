@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.17 $, $Date: 2006/09/21 17:47:37 $
+c version $Revision: 1.18 $, $Date: 2006/09/21 23:43:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -388,8 +388,7 @@ c       --- Calculate the coarsened phi
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,phi,Lphi,regionid,
-     &                mglevel,bounds,mgparam,
-     &                lrz,lcndbndy,icndbndy,bnd)
+     &                mglevel,bounds,lrz,lcndbndy,icndbndy,bnd)
         Lphi(0:nx,0:nz) = rho - Lphi(0:nx,0:nz)
         call applytransversebcberz(nx,nz,Lphi,bounds)
         call applylongitudinalbcberz(nx,nz,nzfull,Lphi,bounds)
@@ -403,7 +402,7 @@ c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphiberz(nxcoarse,nzcoarse,nzfullcoarse,
      &                dxcoarsesqi,dzcoarsesqi,dxcoarse,dzcoarse,xminodxcoarse,
      &                phicoarse,Lphicoarse,regionidcoarse,
-     &                mglevel+1,bounds,mgparam,
+     &                mglevel+1,bounds,
      &                lrz,lcndbndy,icndbndy,bnd%next)
         rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nzcoarse)
         call cond_potmgbezerorz(bnd%next,nxcoarse,nzcoarse,rhocoarse,
@@ -479,7 +478,7 @@ c=============================================================================
       
 c Restrict to a coarser grid.
 c The withoutzeros option is for the restriction of the iondensity, so that
-c for a constant value, it stays constant within the region of the plasm
+c for a constant value, it stays constant within the region of the plasma
 c domain.
 
       integer(ISZ):: ix,iz
@@ -1080,7 +1079,7 @@ c         --- calculate the new phi based on the boundary conditions
 c=============================================================================
       subroutine Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,
      &                    phi,lphi,regionid,
-     &                    mglevel,bounds,mgparam,
+     &                    mglevel,bounds,
      &                    lrz,lcndbndy,icndbndy,bnd)
       use BNDtypemodule
       use BoltzmannElectrons
@@ -1090,7 +1089,6 @@ c=============================================================================
       real(kind=8):: lphi(-1:nx+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
-      real(kind=8):: mgparam
       logical(ISZ):: lrz,lcndbndy
       integer(ISZ):: icndbndy
       type(BNDtype):: bnd
