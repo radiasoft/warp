@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.16 $, $Date: 2006/09/20 22:20:15 $
+c version $Revision: 1.17 $, $Date: 2006/09/21 17:47:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -1050,9 +1050,9 @@ c         --- the point higher in z is inside the conductor
               ppp = min(ppp,1.-1.e-9)
             endif
           endif
-          if (mglevel == 0) ppp = 1.
 c         --- calculate the new phi based on the boundary conditions
           if (ppp < 1.) then
+            if (mglevel == 0) ppp = 1.
             delxsqi = dxsqi/dvnz(delx)
             delzsqi = dzsqi/dvnz(delz)
             rhoe = 0.
@@ -1439,12 +1439,10 @@ c     --- and the ion particle density (rho).
           if (regionid(ix,iz) > 0) then
             id = regionid(ix,iz)
             call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
-            if (iondensitytmp .ne. 0. .and.
-     &          electrontemperature(id) .ne. 0) then
-              rhomax = max(1.,-rho(ix,iz)/iondensitytmp)
-              phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
-              if (phi(ix,iz) > phimax) phi(ix,iz) = phimax
-            endif
+            if (iondensitytmp == 0.) cycle
+            rhomax = max(1.,-rho(ix,iz)/iondensitytmp)
+            phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
+            if (phi(ix,iz) > phimax) phi(ix,iz) = phimax
           endif
         enddo
       enddo
