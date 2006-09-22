@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.78 $, $Date: 2006/09/18 16:24:09 $
+c@(#) File w3d_injection.F, version $Revision: 1.79 $, $Date: 2006/09/22 23:28:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -154,6 +154,7 @@ c each particle was advanced from the plane of injection (i.e. all different).
 c         --- Zero out temp array.
           npinjtmp = 0
           npinje_s = 0
+          inj_prev = 0.
 
 c         --- loop over injection sources
           do ij=1,ninject
@@ -171,6 +172,7 @@ c         --- Loop over species.
           do is=1,pgroup%ns
             if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
             isid = pgroup%sid(is-1) + 1
+            inj_is = min(isid,inj_ns)
             vzinj = vzinject(ij,isid)
             if (.not. pgroup%ldts(is)) cycle
             fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
@@ -365,6 +367,14 @@ c               --- save time of creation if tpid > 0
                 if(tpid>0) pgroup%pid(ii,tpid) = time + fulldt_s
 c               --- increment particle counter
                 npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
+                inj_prev(ixx        ,iyy        ,ij,inj_is) =
+     &          inj_prev(ixx        ,iyy        ,ij,inj_is) + (1.-wxx)*(1.-wyy)
+                inj_prev(ixx+spreadx,iyy        ,ij,inj_is) =
+     &          inj_prev(ixx+spreadx,iyy        ,ij,inj_is) + (   wxx)*(1.-wyy)
+                inj_prev(ixx        ,iyy+spready,ij,inj_is) =
+     &          inj_prev(ixx        ,iyy+spready,ij,inj_is) + (1.-wxx)*(   wyy)
+                inj_prev(ixx+spreadx,iyy+spready,ij,inj_is) =
+     &          inj_prev(ixx+spreadx,iyy+spready,ij,inj_is) + (   wxx)*(   wyy)
               endif
             enddo
 
