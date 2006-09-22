@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.18 $, $Date: 2006/09/21 23:43:27 $
+c version $Revision: 1.19 $, $Date: 2006/09/22 23:24:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -170,7 +170,7 @@ c     --- Note that it needs to be a real number in case xmmin is not an
 c     --- integer multiple of dx.
       xminodx = xmmin/dx
 
-      allocate(phisave(-1:nx+1,-1:nz+1),stat=allocerror)
+      allocate(phisave(0:nx,0:nz),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigridrzsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,nz
@@ -189,7 +189,7 @@ c     --- very few iterations are done.
         mgiters = mgiters + 1
 
 c       --- Save current value of phi
-        phisave = phi
+        phisave = phi(0:nx,0:nz)
 
 c       --- Do one vcycle.
         call vcycleberz(0,nx,nz,nzfull,dx,dz,xminodx,phi,rho,regionid,
@@ -281,7 +281,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dzsqi
       logical(ISZ):: partialcoarsening
-c     real(kind=8),allocatable:: phisave(:,:)
       real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
       real(kind=8),allocatable:: Lphi(:,:),Lphicoarse(:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:)
@@ -303,9 +302,6 @@ c     real(kind=8),allocatable:: phisave(:,:)
 
       dxsqi = 1./dx**2
       dzsqi = 1./dz**2
-
-c     allocate(phisave(-1:nx+1,-1:nz+1),stat=allocerror)
-c     phisave = phi
 
 c     --- Do initial relaxation iterations
       do i=1,downpasses
@@ -433,8 +429,6 @@ c       --- Add in the correction term.
      &                  nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,lzoffset)
         call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
-c       call applytransversebcberz(nx,nz,phi,bounds)
-c       call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
 
         deallocate(Lphicoarse)
         deallocate(phicoarsesave)
@@ -453,12 +447,7 @@ c     --- Do final relaxation passes.
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
         call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
-c       call applytransversebcberz(nx,nz,phi,bounds)
-c       call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
       enddo
-
-c     print*,"phi diff ",maxval(abs(phi-phisave)),mglevel
-c     deallocate(phisave)
 
       return
       end
@@ -490,10 +479,6 @@ c domain.
       dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
       dzi = 1.*nzfullcoarse/nzfull
-
-c     --- Alternate definition of w. Other is more correct when points
-c     --- are left out.
-c     w = dx*dz
 
 c     --- Do the loops.
 !$OMP DO
@@ -555,16 +540,6 @@ c     --- Do the loops.
         enddo
       enddo
 !$OMP END DO
-
-c     --- Set appropriate boundary values
-c     if (delcx == 1) then
-c       call applytransversebcberz(nxcoarse,nzcoarse,ucoarse,boundscoarse)
-c     endif
-
-c     if (delcz == 1) then
-c       call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
-c    &                               ucoarse,boundscoarse)
-c     endif
 
       return
       end
@@ -672,6 +647,7 @@ c boundaries are periodic.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmgberz(bnd,nx,nz,phi,mglevel)
+      call condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -787,6 +763,7 @@ c       --- surface of the conductor boundaries.
 
 c       --- Put desired potential onto conductors in phi array.
         call cond_potmgberz(bnd,nx,nz,phi,mglevel)
+        call condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
 
 c       --- set phi in the guard planes
 c       --- This must be done inside the loop over parities so that the
@@ -884,10 +861,6 @@ c full finite difference of phi.
 c For icndbndy==1, these coefficients are just 1. For icndbndy==2, they
 c include the dels.
 c
-c Note that care has been taken with the boundaries.  Temps are set up
-c to hold ix-1, ix+1 etc which are are adjusted appopriately for
-c points on the boundary.
-
 c The ppp factor (the minimum of the dels at each grid point) is included
 c here to be consistent with its inclusion in the Lphi calculation.
 c Because of the structure of the solver, terms included in Lphi
@@ -930,12 +903,6 @@ c         --- black is odd
           ix = cnd%jj(ii) - 1
           iz = cnd%kk(ii) - 1
           rr = ix + xminodx
-
-          if (ix == 0  .and. bounds(0) < 1) cycle
-          if (ix == nx .and. bounds(1) < 1) cycle
-
-          if (iz == 0  .and. bounds(4) < 1) cycle
-          if (iz == nz .and. bounds(5) < 1) cycle
 
 c         --- Set temporaries with initial values.
           pik = cnd%phi0(ii)
@@ -1077,8 +1044,60 @@ c         --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
+      subroutine condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
+      use BNDtypemodule
+      use CONDtypemodule
+      type(BNDtype):: bnd
+      integer(ISZ):: nx,nz,mglevel
+      real(kind=8):: dx,dz
+      real(kind=8):: phi(-1:nx+1,-1:nz+1)
+      integer(ISZ):: bounds(0:5)
+
+c Set the potential at points just beyond an internal Neumann boundary.
+
+      type(CONDtype):: cnd
+      integer(ISZ):: ic,ii,i1,i2,ix,iz
+      real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
+
+c     --- These should really be passed in
+      dxi = 1./dx
+      dzi = 1./dz
+
+c     --- loop over points near surface of conductors
+      do ic = 1,bnd%nb_conductors
+        if (ic == 1) cnd = bnd%cndfirst
+        if (ic > 1) cnd = cnd%next
+
+!$OMP DO
+        do ii = 1,cnd%nbbnd
+
+          ix = cnd%jj(ii) - 1
+          iz = cnd%kk(ii) - 1
+
+          dxm = cnd%dxm(ii)*dxi
+          dxp = cnd%dxp(ii)*dxi
+          dzm = cnd%dzm(ii)*dzi
+          dzp = cnd%dzp(ii)*dzi
+
+          if (0. > dxm .and. dxm > -1.) phi(ix-1,iz) = phi(ix,iz)
+          if (0. > dxp .and. dxp > -1.) phi(ix+1,iz) = phi(ix,iz)
+          if (0. > dzm .and. dzm > -1.) phi(ix,iz-1) = phi(ix,iz)
+          if (0. > dzp .and. dzp > -1.) phi(ix,iz+1) = phi(ix,iz)
+
+          if (0. == dxm) phi(ix+1,iz) = phi(ix,iz)
+          if (0. == dxp) phi(ix-1,iz) = phi(ix,iz)
+          if (0. == dzm) phi(ix,iz+1) = phi(ix,iz)
+          if (0. == dzp) phi(ix,iz-1) = phi(ix,iz)
+
+        enddo
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
       subroutine Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,
-     &                    phi,lphi,regionid,
+     &                    phi,Lphi,regionid,
      &                    mglevel,bounds,
      &                    lrz,lcndbndy,icndbndy,bnd)
       use BNDtypemodule
@@ -1086,7 +1105,7 @@ c=============================================================================
       integer(ISZ):: nx,nz,nzfull
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
-      real(kind=8):: lphi(-1:nx+1,-1:nz+1)
+      real(kind=8):: Lphi(-1:nx+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
       logical(ISZ):: lrz,lcndbndy
@@ -1113,7 +1132,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
-      lphi = 0.
+      Lphi = 0.
 c     --- Calculate the Lphi.
       if (lrz) then
 c       --- RZ
@@ -1136,11 +1155,11 @@ c       --- RZ
 
             rr = ix + xminodx
             if (rr == 0.) then
-              lphi(ix,iz) = 4*(phi(1,iz) - phi(0,iz))*dxsqi
+              Lphi(ix,iz) = 4*(phi(1,iz) - phi(0,iz))*dxsqi
      &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*dzsqi
      &                   - rhoe
             else
-              lphi(ix,iz) = ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
+              Lphi(ix,iz) = ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
      &                      (rr+0.5)*phi(ix+1,iz))*dxsqi/rr
      &                   + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
      &                   - rhoe
@@ -1168,9 +1187,9 @@ c       --- XZ
               endif
             endif
 
-            lphi(ix,iz) = (phi(ix-1,iz) - 2.*phi(ix,iz) + phi(ix+1,iz))*dxsqi
-     &                 + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
-     &                 - rhoe
+            Lphi(ix,iz) = (phi(ix-1,iz) - 2.*phi(ix,iz) + phi(ix+1,iz))*dxsqi
+     &                  + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
+     &                  - rhoe
 
           enddo
         enddo
@@ -1178,41 +1197,41 @@ c       --- XZ
       endif
 
 c     --- Zero the Lphi inside conductors.
-      call cond_potmgbezerorz(bnd,nx,nz,lphi,mglevel,1,1)
+      call cond_potmgbezerorz(bnd,nx,nz,Lphi,mglevel,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
-        call condbndylphiberz(bnd,nx,nz,phi,lphi,regionid,dxsqi,dzsqi,
+        call condbndyLphiberz(bnd,nx,nz,phi,Lphi,regionid,dxsqi,dzsqi,
      &                        dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       endif
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) lphi(-1:0,:) = 0.
-      if (bounds(1) == 0) lphi(nx:nx+1,:) = 0.
-      if (bounds(0) == 1) lphi(-1,izmin:izmax) = lphi(1,izmin:izmax)
-      if (bounds(1) == 1) lphi(nx+1,izmin:izmax) = lphi(nx-1,izmin:izmax)
-      if (bounds(0) == 2) lphi(-1,izmin:izmax) = lphi(nx-1,izmin:izmax)
-      if (bounds(1) == 2) lphi(nx:nx+1,izmin:izmax) = lphi(0:1,izmin:izmax)
+      if (bounds(0) == 0) Lphi(-1:0,:) = 0.
+      if (bounds(1) == 0) Lphi(nx:nx+1,:) = 0.
+      if (bounds(0) == 1) Lphi(-1,izmin:izmax) = Lphi(1,izmin:izmax)
+      if (bounds(1) == 1) Lphi(nx+1,izmin:izmax) = Lphi(nx-1,izmin:izmax)
+      if (bounds(0) == 2) Lphi(-1,izmin:izmax) = Lphi(nx-1,izmin:izmax)
+      if (bounds(1) == 2) Lphi(nx:nx+1,izmin:izmax) = Lphi(0:1,izmin:izmax)
 
 c     --- Longitudinal boundaries
-      if (bounds(4) == 0) lphi(:,-1:0) = 0.
-      if (bounds(5) == 0) lphi(:,nz:nz+1) = 0.
-      if (bounds(4) == 1) lphi(:,-1) = lphi(:,1)
-      if (bounds(5) == 1) lphi(:,nz+1) = lphi(:,nz-1)
-      if (bounds(4) == 2 .and. nz == nzfull) lphi(:,-1) = lphi(:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) lphi(:,nz+1) = lphi(:,1)
+      if (bounds(4) == 0) Lphi(:,-1:0) = 0.
+      if (bounds(5) == 0) Lphi(:,nz:nz+1) = 0.
+      if (bounds(4) == 1) Lphi(:,-1) = Lphi(:,1)
+      if (bounds(5) == 1) Lphi(:,nz+1) = Lphi(:,nz-1)
+      if (bounds(4) == 2 .and. nz == nzfull) Lphi(:,-1) = Lphi(:,nz-1)
+      if (bounds(5) == 2 .and. nz == nzfull) Lphi(:,nz+1) = Lphi(:,1)
 
       return
       end
 c=============================================================================
-      subroutine condbndylphiberz(bnd,nx,nz,phi,lphi,regionid,dxsqi,dzsqi,
+      subroutine condbndyLphiberz(bnd,nx,nz,phi,Lphi,regionid,dxsqi,dzsqi,
      &                            dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       use BNDtypemodule
       use CONDtypemodule
       use BoltzmannElectrons
       type(BNDtype):: bnd
       integer(ISZ):: nx,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:nz+1), lphi(-1:nx+1,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:nz+1), Lphi(-1:nx+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:nz)
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       integer(ISZ):: bounds(0:5),icndbndy
@@ -1230,10 +1249,6 @@ c The delx and delz hold the denominator of the coefficients of the
 c full finite difference of phi.
 c For icndbndy==1, these coefficients are just 1. For icndbndy==2, they
 c include the dels.
-c
-c Note that care has been taken with the boundaries.  Temps are set up
-c to hold ix-1, ix+1 etc which are are adjusted appopriately for
-c points on the boundary.
 
       type(CONDtype):: cnd
       real(kind=8):: pik,pxm,pzm,pxp,pzp,denom,rhoe,ppp,expo
@@ -1260,12 +1275,6 @@ c     --- loop over points near surface of conductors
           ix = cnd%jj(ii) - 1
           iz = cnd%kk(ii) - 1
           rr = ix + xminodx
-
-          if (ix == 0  .and. bounds(0) < 1) cycle
-          if (ix == nx .and. bounds(1) < 1) cycle
-
-          if (iz == 0  .and. bounds(4) < 1) cycle
-          if (iz == nz .and. bounds(5) < 1) cycle
 
 c         --- Set temporaries with initial values.
           pik = phi(ix,iz)
@@ -1379,9 +1388,20 @@ c         --- calculate the new phi based on the boundary conditions
                 rhoe = iondensitytmp*exp(expo)
               endif
             endif
-            lphi(ix,iz) = (+ (pxm+pxp)*delxsqi
+            Lphi(ix,iz) = (+ (pxm+pxp)*delxsqi
      &                     + (pzm+pzp)*delzsqi
      &                     - rhoe)*ppp
+
+            if (0. > dxm .and. dxm >= -1.) Lphi(ix-1,iz  ) = 0.
+            if (0. > dxp .and. dxp >= -1.) Lphi(ix+1,iz  ) = 0.
+            if (0. > dzm .and. dzm >= -1.) Lphi(ix  ,iz-1) = 0.
+            if (0. > dzp .and. dzp >= -1.) Lphi(ix  ,iz+1) = 0.
+
+            if (0. == dxm) Lphi(ix+1,iz  ) = 0.
+            if (0. == dxp) Lphi(ix-1,iz  ) = 0.
+            if (0. == dzm) Lphi(ix  ,iz+1) = 0.
+            if (0. == dzp) Lphi(ix  ,iz-1) = 0.
+
           endif
         enddo
 !$OMP END DO
