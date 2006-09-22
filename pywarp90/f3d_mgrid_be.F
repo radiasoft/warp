@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.25 $, $Date: 2006/09/21 23:42:13 $
+c version $Revision: 1.26 $, $Date: 2006/09/22 23:27:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -109,6 +109,7 @@ c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
 
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
+      real(kind=8),allocatable:: phiwithbounds(:,:,:)
       integer(ISZ),allocatable:: regionid(:,:,:)
       real(kind=8),allocatable:: phisave(:,:,:)
       real(kind=8):: bendx((nx+1)*(ny+1))
@@ -145,7 +146,13 @@ c     --- converted and expanded for the multigrid solver.
 c     --- Prepare rho by dividing it by -eps0
       rho = -rho/eps0
 
-      allocate(phisave(0:nx,0:ny,-1:nz+1),stat=allocerror)
+      allocate(phiwithbounds(-1:nx+1,-1:ny+1,-1:nz+1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"multigrid3dsolve: allocation error ",allocerror,
+     &         ": could not allocate phiwithbounds to shape ",nx,ny,nz
+        stop
+      endif
+      allocate(phisave(0:nx,0:ny,0:nz),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,ny,nz
@@ -157,6 +164,25 @@ c     --- Create and setup array which holds the BE region ids
       call setupregionidsbe3d(regionid,nx,ny,nz,dx,dy,dz,
      &                        xmmin,ymmin,zmmin)
 
+c     --- Copy phi into phiwithbounds
+      phiwithbounds = 0.
+      phiwithbounds(0:nx,0:ny,-1:nz+1) = phi
+
+c     --- Fill the transverse boundaries guard cells
+      if (bounds(0) == 0) phiwithbounds(-1,:,:) = 2.*phiwithbounds(0,:,:)-phiwithbounds(1,:,:)
+      if (bounds(1) == 0) phiwithbounds(nx+1,:,:) = 2.*phiwithbounds(nx,:,:)-phiwithbounds(nx-1,:,:)
+      if (bounds(0) == 1) phiwithbounds(-1,:,:) = phiwithbounds(1,:,:)
+      if (bounds(1) == 1) phiwithbounds(nx+1,:,:) = phiwithbounds(nx-1,:,:)
+      if (bounds(0) == 2) phiwithbounds(-1,:,:) = phiwithbounds(nx-1,:,:)
+      if (bounds(1) == 2) phiwithbounds(nx:nx+1,:,:) = phiwithbounds(0:1,:,:)
+
+      if (bounds(2) == 0) phiwithbounds(:,-1,:) = 2.*phiwithbounds(:,0,:)-phiwithbounds(:,1,:)
+      if (bounds(3) == 0) phiwithbounds(:,ny+1,:) = 2.*phiwithbounds(:,ny,:)-phiwithbounds(:,ny-1,:)
+      if (bounds(2) == 1) phiwithbounds(:,-1,:) = phiwithbounds(:,1,:)
+      if (bounds(3) == 1) phiwithbounds(:,ny+1,:) = phiwithbounds(:,ny-1,:)
+      if (bounds(2) == 2) phiwithbounds(:,-1,:) = phiwithbounds(:,ny-1,:)
+      if (bounds(3) == 2) phiwithbounds(:,ny:ny+1,:) = phiwithbounds(:,0:1,:)
+
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
       mgiters = 0
@@ -165,10 +191,10 @@ c     --- very few iterations are done.
         mgiters = mgiters + 1
 
 c       --- Save current value of phi
-        phisave = phi
+        phisave = phiwithbounds(0:nx,0:ny,0:nz)
 
 c       --- Do one vcycle.
-        call vcyclebe(0,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,regionid,
+        call vcyclebe(0,nx,ny,nz,nzfull,dx,dy,dz,phiwithbounds,rho,regionid,
      &                xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
@@ -179,14 +205,14 @@ c       --- Calculate the change in phi.
 c       --- This line seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop below.
-c       mgerror = maxval(abs(phisave - phi))
+c       mgerror = maxval(abs(phisave - phiwithbounds))
 
         mgerror = 0.
 !$OMP DO REDUCTION(MAX:mgerror)
         do iz=0,nz
           do iy=0,ny
             do ix=0,nx
-              mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
+              mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phiwithbounds(ix,iy,iz)))
             enddo
           enddo
         enddo
@@ -201,11 +227,8 @@ c         --- calculate global sorerror
 
       enddo
 
-c     --- For Dirichlet boundary conditions, copy data into guard planes
-c     --- For other boundary conditions, the guard planes are used during
-c     --- the solve are so are already set.
-      if (bounds(4) == 0) phi(:,:,-1) = 2.*phi(:,:,0)-phi(:,:,1)
-      if (bounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz)-phi(:,:,nz-1)
+c     --- Copy phi back
+      phi = phiwithbounds(0:nx,0:ny,:)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -215,6 +238,7 @@ c     --- Make a print out.
   20  format("MultigridBE: Error converged to ",1pe11.3," in ",i5," v-cycles")
       call remark(errline)
 
+      deallocate(phiwithbounds)
       deallocate(phisave)
       deallocate(regionid)
 
@@ -241,7 +265,7 @@ c=============================================================================
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(-1:nx,-1:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: rstar(-1:nz+1)
@@ -261,7 +285,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
-      real(kind=8),allocatable:: lphi(:,:,:),lphicoarse(:,:,:)
+      real(kind=8),allocatable:: Lphi(:,:,:),Lphicoarse(:,:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:,:)
       integer(ISZ),allocatable:: regionidcoarse(:,:,:)
       integer(ISZ):: i,iszone=1
@@ -372,7 +396,7 @@ c       --- Get processor with which to exchange data on coarse grid
 #endif
 
 c       --- Alloate new work space
-        allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
+        allocate(phicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1),
      &           stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclebe: allocation error ",allocerror,
@@ -387,10 +411,18 @@ c       --- Alloate new work space
      &           nxcoarse,nycoarse,nzcoarse
           stop
         endif
-        allocate(lphi(-1:nx+1,-1:ny+1,-3:nz+3),stat=allocerror)
+        allocate(Lphi(-1:nx+1,-1:ny+1,-1:nz+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclebe: allocation error ",allocerror,
-     &           ": could not allocate lphi to shape ",nx,ny,nz
+     &           ": could not allocate Lphi to shape ",nx,ny,nz
+          stop
+        endif
+        allocate(Lphicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcyclebe: allocation error ",allocerror,
+     &           ": could not allocate Lphicoarse to shape ",
+     &           nxcoarse,nycoarse,nzcoarse
           stop
         endif
 
@@ -408,67 +440,67 @@ c     --- Create and setup array which holds the BE region ids
      &                          xmmin,ymmin,zmmin)
 
 c       --- Calculate the coarsened phi
-        call copyphiwithguardcells(nx,ny,nz,nzfull,phi,lphi,localbounds,
-     &                             my_index,nslaves,izfsslave,nzfsslave,
-     &                             whosendingleft,izsendingleft,
-     &                             whosendingright,izsendingright)
+c       call copyphiwithguardcells(nx,ny,nz,nzfull,phi,Lphi,localbounds,
+c    &                             my_index,nslaves,izfsslave,nzfsslave,
+c    &                             whosendingleft,izsendingleft,
+c    &                             whosendingright,izsendingright)
         phicoarse = 0.
-        call restrictbe3d(nx,ny,nz,nzfull,lphi,3,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,1,
+        call restrictbe3d(nx,ny,nz,nzfull,phi,1,1,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,
      &                    localbounds,localboundsc,lzoffset,
      &                    my_index,nslaves,izfsslavec,nzfsslavec,
      &                    whosendingleftc,izsendingleftc,
      &                    whosendingrightc,izsendingrightc)
         call cond_potmgbe(conductors%interior,nxcoarse,nycoarse,nzcoarse,
      &                    phicoarse,mglevel+1)
+        call applytransversebcbe3d(nxcoarse,nycoarse,nzcoarse,phicoarse,globalbounds)
+        call applylongitudinalbcbe3d(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                               phicoarse,globalbounds)
+
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
+        call Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,Lphi,regionid,
      &              mglevel,localbounds,
      &              lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslave,nzfsslave,
      &              whosendingleft,izsendingleft,
      &              whosendingright,izsendingright)
-        call copyrhowithguardcells(nx,ny,nz,nzfull,rho,lphi,localbounds,
+        Lphi(0:nx,0:ny,0:nz) = rho - Lphi(0:nx,0:ny,0:nz)
+        call applytransversebcbe3d(nx,ny,nz,Lphi,globalbounds)
+        call applylongitudinalbcbe3d(nx,ny,nz,nzfull,Lphi,globalbounds)
+#ifdef MPIPARALLEL
+        call copyrhowithguardcells(nx,ny,nz,nzfull,rhoin,rhoout,localbounds,
      &                             my_index,nslaves,izfsslave,nzfsslave,
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
-        call restrictbe3d(nx,ny,nz,nzfull,lphi,3,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,0,
+#endif
+        call restrictbe3d(nx,ny,nz,nzfull,Lphi,1,1,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,
      &                    localbounds,localbounds,lzoffset,
      &                    my_index,nslaves,izfsslavec,nzfsslavec,
      &                    whosendingleftc,izsendingleftc,
      &                    whosendingrightc,izsendingrightc)
 
-        deallocate(lphi)
-
-        allocate(lphicoarse(-1:nxcoarse+1,-1:nycoarse+1,-3:nzcoarse+3),
-     &           stat=allocerror)
-        if (allocerror /= 0) then
-          print*,"vcyclebe: allocation error ",allocerror,
-     &           ": could not allocate lphicoarse to shape ",
-     &           nxcoarse,nycoarse,nzcoarse
-          stop
-        endif
+        deallocate(Lphi)
 
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphibe(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &              dxcoarsesqi,dycoarsesqi,dzcoarsesqi,
-     &              phicoarse,lphicoarse,regionidcoarse,
+     &              phicoarse,Lphicoarse,regionidcoarse,
      &              mglevel+1,localbounds,
      &              lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslavec,nzfsslavec,
      &              whosendingleftc,izsendingleftc,
      &              whosendingrightc,izsendingrightc)
-        rhocoarse = rhocoarse + lphicoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
-        deallocate(lphicoarse)
+        rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
+        deallocate(Lphicoarse)
         call cond_potmgbezero(conductors%interior,
      &                        nxcoarse,nycoarse,nzcoarse,
      &                        rhocoarse,mglevel+1,0,0)
 
 c       --- Save the current coarsened phi since it is needed to apply
 c       --- the corrections after relaxations.
-        allocate(phicoarsesave(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
+        allocate(phicoarsesave(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1),
      &           stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclebe: allocation error ",allocerror,
@@ -498,7 +530,6 @@ c       --- Add in the correction term.
      &                  whosendingright,izsendingright)
         call clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
 
-
         deallocate(phicoarse,rhocoarse)
         deallocate(regionidcoarse)
 
@@ -519,18 +550,18 @@ c     --- Do final relaxation passes.
       return
       end
 c=============================================================================
-      subroutine restrictbe3d(nx,ny,nz,nzfull,u,delz,
+      subroutine restrictbe3d(nx,ny,nz,nzfull,u,delt,delz,
      &                        nxcoarse,nycoarse,nzcoarse,nzfullcoarse,ucoarse,
-     &                        delcz,
+     &                        delcx,delcz,
      &                        bounds,boundscoarse,lzoffset,
      &                        my_index,nslaves,izfsslavec,nzfsslavec,
      &                        whosendingleftc,izsendingleftc,
      &                        whosendingrightc,izsendingrightc)
 
-      integer(ISZ):: nx,ny,nz,nzfull,delz,delcz
+      integer(ISZ):: nx,ny,nz,nzfull,delt,delz,delcx,delcz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: u(-1:nx+1,-1:ny+1,-delz:nz+delz)
-      real(kind=8):: ucoarse(0:nxcoarse,0:nycoarse,-delcz:nzcoarse+delcz)
+      real(kind=8):: u(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
+      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcx:nycoarse+delcx,-delcz:nzcoarse+delcz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lzoffset
@@ -559,6 +590,8 @@ c     --- Do the loops.
       do izcoarse=0,nzcoarse
         izmin = ((izcoarse-1)*nzfull - lzoffset + 4*nzfullcoarse)/nzfullcoarse-3
         izmax = ((izcoarse+1)*nzfull - lzoffset - 1)/nzfullcoarse
+        if (izmin < -delz) izmin = -delz
+        if (izmax > nz+delz) izmax = nz+delz
 
         do iz=izmin,izmax
           wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzfullcoarse)*dzi)
@@ -577,6 +610,8 @@ c     --- Do the loops.
         do iycoarse=0,nycoarse
           iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
           iymax = int(floor((iycoarse+1)*dy - 1.e-10))
+          if (iymin < -delt) iymin = -delt
+          if (iymax > ny+delt) iymax = ny+delt
 
           do iy=iymin,iymax
             wy(iy-iymin) = 1. - abs(iycoarse - iy*dyi)
@@ -595,6 +630,8 @@ c     --- Do the loops.
           do ixcoarse=0,nxcoarse
             ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
             ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
+            if (ixmin < -delt) ixmin = -delt
+            if (ixmax > nx+delt) ixmax = nx+delt
 
             do ix=ixmin,ixmax
               wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
@@ -631,32 +668,6 @@ c     --- Do the loops.
       enddo
 !$OMP END DO
 
-c     --- Set appropriate boundary values
-      if (boundscoarse(1) == 2) ucoarse(nxcoarse,:,:) = ucoarse(0,:,:)
-      if (boundscoarse(3) == 2) ucoarse(:,nycoarse,:) = ucoarse(:,0,:)
-
-      if (delcz == 1) then
-        if (boundscoarse(4) == 0) ucoarse(:,:,-1) = 2.*ucoarse(:,:,0)-ucoarse(:,:,1)
-        if (boundscoarse(5) == 0)
-     &    ucoarse(:,:,nzcoarse+1) = 2.*ucoarse(:,:,nzcoarse)-ucoarse(:,:,nzcoarse-1)
-        if (boundscoarse(4) == 1) ucoarse(:,:,-1) = ucoarse(:,:,1)
-        if (boundscoarse(5) == 1) ucoarse(:,:,nzcoarse+1) = ucoarse(:,:,nzcoarse-1)
-#ifndef MPIPARALLEL
-        if (boundscoarse(4) == 2) ucoarse(:,:,-1) = ucoarse(:,:,nzcoarse-1)
-        if (boundscoarse(5) == 2) ucoarse(:,:,nzcoarse+1) = ucoarse(:,:,1)
-#else
-        call mgexchange_phi(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,ucoarse,
-     &                      bounds,-1,0,1,
-     &                      my_index,nslaves,izfsslavec,nzfsslavec,
-     &                      whosendingleftc,izsendingleftc,
-     &                      whosendingrightc,izsendingrightc)
-        call mgexchange_phiperiodic(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
-     &                              ucoarse,bounds,1,0,1,
-     &                              my_index,nslaves,izfsslavec,
-     &                              whosendingleftc,whosendingrightc)
-#endif
-      endif
-
       return
       end
 c=============================================================================
@@ -668,8 +679,8 @@ c=============================================================================
      &                      whosendingright,izsendingright)
       integer(ISZ):: nx,ny,nz,nzfull
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: phicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1)
       integer(ISZ):: lzoffset
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
@@ -687,14 +698,16 @@ c The expansion is only transverse.
       real(kind=8):: wx,wy,wz
 
 c     --- Set the loop limits, including edges when appropriate.
-      ixmin = 1
-      ixmax = nx-1
-      iymin = 1
-      iymax = ny-1
+      ixmin = 0
+      ixmax = nx
+      iymin = 0
+      iymax = ny
       izmin = 0
       izmax = nz
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(2) >  0) iymin = 0
+      if (bounds(0) == 0) ixmin = 1
+      if (bounds(1) == 0) ixmax = nx - 1
+      if (bounds(2) == 0) iymin = 1
+      if (bounds(3) == 0) iymax = ny - 1
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz - 1
 
@@ -726,48 +739,8 @@ c     --- Set the loop limits, including edges when appropriate.
         enddo
       enddo
 
-      if (bounds(1) > 0 .or. bounds(3) > 0) then
-        do iz=izmin,izmax
-          jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
-          wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
-          phi(nx,ny,iz) = phi(nx,ny,iz) +
-     &          (1.-wz)*phicoarse(nxcoarse,nycoarse,jz  ) +
-     &              wz *phicoarse(nxcoarse,nycoarse,jz+1)
-          if (bounds(1) > 0) then
-            do iy=0,ny-1
-              jy = int(iy*dy)
-              wy =     iy*dy - jy
-              phi(nx,iy,iz) = phi(nx,iy,iz) +
-     &                       (1.-wy)*(1.-wz)*phicoarse(nxcoarse,jy  ,jz  ) +
-     &                           wy *(1.-wz)*phicoarse(nxcoarse,jy+1,jz  ) +
-     &                       (1.-wy)*    wz *phicoarse(nxcoarse,jy  ,jz+1) +
-     &                           wy *    wz *phicoarse(nxcoarse,jy+1,jz+1)
-            enddo
-          endif
-          if (bounds(3) > 0) then
-            do ix=0,nx-1
-              jx = int(ix*dx)
-              wx =     ix*dx - jx
-              phi(ix,ny,iz) = phi(ix,ny,iz) +
-     &                       (1.-wx)*(1.-wz)*phicoarse(jx  ,nycoarse,jz  ) +
-     &                           wx *(1.-wz)*phicoarse(jx+1,nycoarse,jz  ) +
-     &                       (1.-wx)*    wz *phicoarse(jx  ,nycoarse,jz+1) +
-     &                           wx *    wz *phicoarse(jx+1,nycoarse,jz+1)
-            enddo
-          endif
-        enddo
-      endif
-
-      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
-      if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
-#ifndef MPIPARALLEL
-      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz+1) = phi(:,:,1)
-#else
-      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
-     &                            my_index,nslaves,izfsslave,
-     &                            whosendingleft,whosendingright)
-#endif
+      call applytransversebcbe3d(nx,ny,nz,phi,bounds)
+      call applylongitudinalbcbe3d(nx,ny,nz,nzfull,phi,bounds)
 
       return
       end
@@ -782,7 +755,7 @@ c=============================================================================
       use ConductorTypemodule
       use BoltzmannElectrons
       integer(ISZ):: mglevel,nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1),rho(0:nx,0:ny,0:nz)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
@@ -823,13 +796,15 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       integer(ISZ):: parity,s_parity,e_parity
       integer(ISZ):: ix,iy,iz,id
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
       integer(ISZ):: ix1
       integer(ISZ):: i1,i2,ic
       real(kind=8):: rhoe,denom,Lphi,expo
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
+      call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel)
+      call condbndymgintbe3d(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel)
+
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -841,18 +816,18 @@ c     --- Set starting and ending parity.
 #endif
 
 c     --- Set the loop limits, including edges when appropriate.
-      ixmin = 1
-      ixmax = nx-1
-      iymin = 1
-      iymax = ny-1
+      ixmin = 0
+      ixmax = nx
+      iymin = 0
+      iymax = ny
       izmin = 0
       izmax = nz
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(1) == 1) ixmax = nx
-      if (bounds(2) >  0) iymin = 0
-      if (bounds(3) == 1) iymax = ny
+      if (bounds(0) == 0) ixmin = 1
+      if (bounds(1) == 0) ixmax = nx - 1
+      if (bounds(2) == 0) iymin = 1
+      if (bounds(3) == 0) iymax = ny - 1
       if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nz-1
+      if (bounds(5) == 0) izmax = nz - 1
 
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
@@ -884,25 +859,11 @@ c       --- grid refinement.
 
 !$OMP DO
         do iz=izmin,izmax
-          izm1 = iz - 1
-          izp1 = iz + 1
 
           do iy=iymin,iymax
-            iym1 = iy - 1
-            if (iy==0 .and. bounds(2) == 1) iym1 = 1
-            if (iy==0 .and. bounds(2) == 2) iym1 = ny-1
-            iyp1 = iy + 1
-            if (iy == ny .and. bounds(3) == 1)  iyp1 = ny-1
-            if (iy == ny .and. bounds(3) == 2)  iyp1 = 1
 
             ix1 = ixmin + mod(ixmin + iy + iz + parity,2)
             do ix=ix1,ixmax,2
-              ixm1 = ix - 1
-              if (ix==0 .and. bounds(0) == 1) ixm1 = 1
-              if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
-              ixp1 = ix + 1
-              if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
-              if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
               rhoe = 0.
               denom = -2.*(dxsqi+dysqi+dzsqi)
@@ -916,9 +877,9 @@ c       --- grid refinement.
                   denom = denom - rhoe/eps0/electrontemperature(id)
                 endif
               endif
-              Lphi =  (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
-     &             +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
-     &             +  (phi(ix  ,iy  ,izm1)+phi(ix  ,iy  ,izp1))*dzsqi
+              Lphi =  (phi(ix-1,iy  ,iz  )+phi(ix+1,iy  ,iz  ))*dxsqi
+     &             +  (phi(ix  ,iy-1,iz  )+phi(ix  ,iy+1,iz  ))*dysqi
+     &             +  (phi(ix  ,iy  ,iz-1)+phi(ix  ,iy  ,iz+1))*dzsqi
      &              -  phi(ix,iy,iz)*2.*(dxsqi+dysqi+dzsqi) - rhoe/eps0
               phi(ix,iy,iz) = phi(ix,iy,iz) - mgparam*(Lphi - rho(ix,iy,iz))/denom
             enddo
@@ -943,19 +904,16 @@ c       --- surface of the conductor boundaries.
 
 c       --- Put desired potential onto conductors in phi array.
         call cond_potmgbe(conductors%interior,nx,ny,nz,phi,mglevel)
+        call condbndymgintbe3d(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel)
+        call condbndymgintbe3d(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel)
 
-        if (bounds(1) == 2) phi(nx,:,:) = phi(0,:,:)
-        if (bounds(3) == 2) phi(:,ny,:) = phi(:,0,:)
+c       --- set phi in the guard planes
+c       --- This must be done inside the loop over parities so that the
+c       --- guard planes are updated with the most recent values.
+        call applytransversebcbe3d(nx,ny,nz,phi,bounds)
+        call applylongitudinalbcbe3d(nx,ny,nz,nzfull,phi,bounds)
 
-c       --- set phi in the z guard planes
-        if (bounds(4) == 0) phi(:,:,-1) = 2.*phi(:,:,0)-phi(:,:,1)
-        if (bounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz)-phi(:,:,nz-1)
-        if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
-        if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
-#ifndef MPIPARALLEL
-        if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
-        if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
-#else
+#ifdef MPIPARALLEL
         call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
@@ -969,11 +927,11 @@ c     --- end of loop over even and odd points
       enddo
 
 #ifdef MPIPARALLEL
-c         --- Exchange phi in the z guard planes
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
+c       --- Exchange phi in the z guard planes
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
 #endif
 
       return
@@ -983,7 +941,7 @@ c=============================================================================
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
 
 c Set conductor points to the desired potential. The potential is used since
 c at all levels, phi is being operated on directly.
@@ -1032,7 +990,7 @@ c=============================================================================
       use BoltzmannElectrons
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1), rho(0:nx,0:ny,0:nz)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
@@ -1050,16 +1008,11 @@ c The delx, dely, and delz hold the denominator of the coefficients of the
 c full finite difference of phi.
 c For icndbndy==1, these coefficients are just 1. For icndbndy==2, they
 c include the dels.
-c
-c Note that care has been taken with the boundaries.  Temps are set up
-c to hold ix-1, ix+1 etc which are are adjusted appopriately for
-c points on the boundary.
-
+ 
       real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi,expo
       real(kind=8):: delx,dely,delz,Cx,Cy,Cz,ppp
       real(kind=8):: delxsqi,delysqi,delzsqi
-      integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz,id
+      integer(ISZ):: ic,ix,iy,iz,id
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
       dels => subgrid%dels
@@ -1073,37 +1026,14 @@ c     --- loop over points near surface of conductors
         iy = subgrid%indx(1,ic)
         iz = subgrid%indx(2,ic)
 
-c       --- set temporaries for boundaries
-        ixp1 = ix + 1
-        ixm1 = ix - 1
-        iyp1 = iy + 1
-        iym1 = iy - 1
-        izp1 = iz + 1
-        izm1 = iz - 1
-
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
-        if (ixm1 == -1 .or. ixp1 == nx+1) cycle
-
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
-        if (iym1 == -1 .or. iyp1 == ny+1) cycle
-
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
-
 c       --- Set temporaries with initial values.
         pijk = subgrid%prevphi(ic)
-        pxm = phi(ixm1,iy  ,iz  ) - pijk
-        pxp = phi(ixp1,iy  ,iz  ) - pijk
-        pym = phi(ix  ,iym1,iz  ) - pijk
-        pyp = phi(ix  ,iyp1,iz  ) - pijk
-        pzm = phi(ix  ,iy  ,izm1) - pijk
-        pzp = phi(ix  ,iy  ,izp1) - pijk
+        pxm = phi(ix-1,iy  ,iz  ) - pijk
+        pxp = phi(ix+1,iy  ,iz  ) - pijk
+        pym = phi(ix  ,iy-1,iz  ) - pijk
+        pyp = phi(ix  ,iy+1,iz  ) - pijk
+        pzm = phi(ix  ,iy  ,iz-1) - pijk
+        pzp = phi(ix  ,iy  ,iz+1) - pijk
         delx = 1.
         dely = 1.
         delz = 1.
@@ -1214,7 +1144,7 @@ c       --- calculate the new phi based on the boundary conditions
         delysqi = dysqi/dvnz(dely)
         delzsqi = dzsqi/dvnz(delz)
         rhoe = 0.
-        denom = -(Cx*delxsqi+Cy*delysqi+Cz*delzsqi)
+        denom = - Cx*delxsqi - Cy*delysqi - Cz*delzsqi
         if (regionid(ix,iy,iz) > 0) then
           id = regionid(ix,iy,iz)
           if (iondensity(id) .ne. 0. .and. electrontemperature(id) .ne. 0) then
@@ -1233,7 +1163,50 @@ c       --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,lphi,regionid,
+      subroutine condbndymgintbe3d(subgrid,nx,ny,nz,phi,bounds,mglevel)
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
+      integer(ISZ):: nx,ny,nz,mglevel
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      integer(ISZ):: bounds(0:5)
+
+c Sets the potential on points just beyond a Neumann boundary condition.
+
+      integer(ISZ):: ic,ix,iy,iz
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      dels => subgrid%dels
+      volt => subgrid%volt
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
+        iz = subgrid%indx(2,ic)
+
+        if (0. > dels(0,ic) .and. dels(0,ic) > -1.) phi(ix-1,iy,iz) = phi(ix,iy,iz)
+        if (0. > dels(1,ic) .and. dels(1,ic) > -1.) phi(ix+1,iy,iz) = phi(ix,iy,iz)
+        if (0. > dels(2,ic) .and. dels(2,ic) > -1.) phi(ix,iy-1,iz) = phi(ix,iy,iz)
+        if (0. > dels(3,ic) .and. dels(3,ic) > -1.) phi(ix,iy+1,iz) = phi(ix,iy,iz)
+        if (0. > dels(4,ic) .and. dels(4,ic) > -1.) phi(ix,iy,iz-1) = phi(ix,iy,iz)
+        if (0. > dels(5,ic) .and. dels(5,ic) > -1.) phi(ix,iy,iz+1) = phi(ix,iy,iz)
+
+        if (0. == dels(0,ic)) phi(ix+1,iy,iz) = phi(ix,iy,iz)
+        if (0. == dels(1,ic)) phi(ix-1,iy,iz) = phi(ix,iy,iz)
+        if (0. == dels(2,ic)) phi(ix,iy+1,iz) = phi(ix,iy,iz)
+        if (0. == dels(3,ic)) phi(ix,iy-1,iz) = phi(ix,iy,iz)
+        if (0. == dels(4,ic)) phi(ix,iy,iz+1) = phi(ix,iy,iz)
+        if (0. == dels(5,ic)) phi(ix,iy,iz-1) = phi(ix,iy,iz)
+
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine Lphibe(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,Lphi,regionid,
      &                  mglevel,bounds,
      &                  lcndbndy,icndbndy,conductors,
      &                  my_index,nslaves,izfsslave,nzfsslave,
@@ -1244,8 +1217,8 @@ c=============================================================================
       use BoltzmannElectrons
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: lphi(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: Lphi(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
       logical(ISZ):: lcndbndy
@@ -1264,44 +1237,29 @@ c is reached.
       real(kind=8):: rhoe,expo
       integer(ISZ):: ix,iy,iz,ic,id
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
 
 c     --- Set the loop limits, including edges when appropriate.
-      ixmin = 1
-      ixmax = nx-1
-      iymin = 1
-      iymax = ny-1
+      ixmin = 0
+      ixmax = nx
+      iymin = 0
+      iymax = ny
       izmin = 0
       izmax = nz
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(1) == 1) ixmax = nx
-      if (bounds(2) >  0) iymin = 0
-      if (bounds(3) == 1) iymax = ny
+      if (bounds(0) == 0) ixmin = 1
+      if (bounds(1) == 0) ixmax = nx-1
+      if (bounds(2) == 0) iymin = 1
+      if (bounds(3) == 0) iymax = ny-1
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
-      lphi = 0.
+      Lphi = 0.
 c     --- Calculate the Lphi.
 !$OMP DO
       do iz=izmin,izmax
-        izm1 = iz - 1
-        izp1 = iz + 1
 
         do iy=iymin,iymax
-          iym1 = iy - 1
-          if (iy==0 .and. bounds(2) == 1) iym1 = 1
-          if (iy==0 .and. bounds(2) == 2) iym1 = ny-1
-          iyp1 = iy + 1
-          if (iy == ny .and. bounds(3) == 1)  iyp1 = ny-1
-          if (iy == ny .and. bounds(3) == 2)  iyp1 = 1
 
           do ix=ixmin,ixmax
-            ixm1 = ix - 1
-            if (ix==0 .and. bounds(0) == 1) ixm1 = 1
-            if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
-            ixp1 = ix + 1
-            if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
-            if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
             rhoe = 0.
             if (regionid(ix,iy,iz) > 0) then
@@ -1313,9 +1271,9 @@ c     --- Calculate the Lphi.
                 rhoe = iondensity(id)*exp(expo)
               endif
             endif
-            lphi(ix,iy,iz) = (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqi
-     &                    +  (phi(ix  ,iym1,iz  )+phi(ix  ,iyp1,iz  ))*dysqi
-     &                    +  (phi(ix  ,iy  ,izm1)+phi(ix  ,iy  ,izp1))*dzsqi
+            Lphi(ix,iy,iz) = (phi(ix-1,iy  ,iz  )+phi(ix+1,iy  ,iz  ))*dxsqi
+     &                    +  (phi(ix  ,iy-1,iz  )+phi(ix  ,iy+1,iz  ))*dysqi
+     &                    +  (phi(ix  ,iy  ,iz-1)+phi(ix  ,iy  ,iz+1))*dzsqi
      &                    -  phi(ix,iy,iz)*2.*(dxsqi+dysqi+dzsqi)
      &                    - rhoe/eps0
           enddo
@@ -1324,72 +1282,71 @@ c     --- Calculate the Lphi.
 !$OMP END DO
 
 c     --- Zero the Lphi inside conductors.
-      call cond_potmgbezero(conductors%interior,nx,ny,nz,lphi,mglevel,1,1)
+      call cond_potmgbezero(conductors%interior,nx,ny,nz,Lphi,mglevel,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
-        call condbndylphibe(conductors%evensubgrid,nx,ny,nz,phi,lphi,regionid,
+        call condbndyLphibe(conductors%evensubgrid,nx,ny,nz,phi,Lphi,regionid,
      &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
-        call condbndylphibe(conductors%oddsubgrid,nx,ny,nz,phi,lphi,regionid,
+        call condbndyLphibe(conductors%oddsubgrid,nx,ny,nz,phi,Lphi,regionid,
      &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
       endif
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) lphi(-1:0,:,:) = 0.
-      if (bounds(1) == 0) lphi(nx:nx+1,:,:) = 0.
-c     if (bounds(0) == 1)
-c    &  lphi(-1,iymin:iymax,izmin:izmax) = lphi(1,iymin:iymax,izmin:izmax)
-c     if (bounds(1) == 1)
-c    &  lphi(nx+1,iymin:iymax,izmin:izmax) = lphi(nx-1,iymin:iymax,izmin:izmax)
-c     if (bounds(0) == 2)
-c    &  lphi(-1,iymin:iymax,izmin:izmax) = lphi(nx-1,iymin:iymax,izmin:izmax)
-c     if (bounds(1) == 2)
-c    &  lphi(nx:nx+1,iymin:iymax,izmin:izmax) = lphi(0:1,iymin:iymax,izmin:izmax)
+      if (bounds(0) == 0) Lphi(-1:0,:,:) = 0.
+      if (bounds(1) == 0) Lphi(nx:nx+1,:,:) = 0.
+      if (bounds(0) == 1)
+     &  Lphi(-1,iymin:iymax,izmin:izmax) = Lphi(1,iymin:iymax,izmin:izmax)
+      if (bounds(1) == 1)
+     &  Lphi(nx+1,iymin:iymax,izmin:izmax) = Lphi(nx-1,iymin:iymax,izmin:izmax)
+      if (bounds(0) == 2)
+     &  Lphi(-1,iymin:iymax,izmin:izmax) = Lphi(nx-1,iymin:iymax,izmin:izmax)
+      if (bounds(1) == 2)
+     &  Lphi(nx:nx+1,iymin:iymax,izmin:izmax) = Lphi(0:1,iymin:iymax,izmin:izmax)
 
-      if (bounds(2) == 0) lphi(:,-1:0,:) = 0.
-      if (bounds(3) == 0) lphi(:,ny:ny+1,:) = 0.
-c     if (bounds(2) == 1) lphi(:,-1,izmin:izmax) = lphi(:,1,izmin:izmax)
-c     if (bounds(3) == 1) lphi(:,ny+1,izmin:izmax) = lphi(:,ny-1,izmin:izmax)
-c     if (bounds(2) == 2) lphi(:,-1,izmin:izmax) = lphi(:,ny-1,izmin:izmax)
-c     if (bounds(3) == 2) lphi(:,ny:ny+1,izmin:izmax) = lphi(:,0:1,izmin:izmax)
+      if (bounds(2) == 0) Lphi(:,-1:0,:) = 0.
+      if (bounds(3) == 0) Lphi(:,ny:ny+1,:) = 0.
+      if (bounds(2) == 1) Lphi(:,-1,izmin:izmax) = Lphi(:,1,izmin:izmax)
+      if (bounds(3) == 1) Lphi(:,ny+1,izmin:izmax) = Lphi(:,ny-1,izmin:izmax)
+      if (bounds(2) == 2) Lphi(:,-1,izmin:izmax) = Lphi(:,ny-1,izmin:izmax)
+      if (bounds(3) == 2) Lphi(:,ny:ny+1,izmin:izmax) = Lphi(:,0:1,izmin:izmax)
 
 c     --- Longitudinal boundaries
-      if (bounds(4) == 0) lphi(:,:,-1:0) = 0.
-      if (bounds(5) == 0) lphi(:,:,nz:nz+1) = 0.
-c     if (bounds(4) == 1) lphi(:,:,-1) = lphi(:,:,1)
-c     if (bounds(5) == 1) lphi(:,:,nz+1) = lphi(:,:,nz-1)
-#ifndef MPIPARALLEL
-c     if (bounds(4) == 2 .and. nz == nzfull) lphi(:,:,-1) = lphi(:,:,nz-1)
-c     if (bounds(5) == 2 .and. nz == nzfull) lphi(:,:,nz+1) = lphi(:,:,1)
-#else
-c     call mgexchange_phi(nx,ny,nz,nzfull,lphi,bounds,-1,1,3,
-c    &                    my_index,nslaves,izfsslave,nzfsslave,
-c    &                    whosendingleft,izsendingleft,
-c    &                    whosendingright,izsendingright)
-c     call mgexchange_phi(nx,ny,nz,nzfull,lphi,bounds,-2,1,3,
-c    &                    my_index,nslaves,izfsslave,nzfsslave,
-c    &                    whosendingleft,izsendingleft,
-c    &                    whosendingright,izsendingright)
-c     call mgexchange_phi(nx,ny,nz,nzfull,lphi,bounds,-3,1,3,
-c    &                    my_index,nslaves,izfsslave,nzfsslave,
-c    &                    whosendingleft,izsendingleft,
-c    &                    whosendingright,izsendingright)
-c     call mgexchange_phiperiodic(nx,ny,nz,nzfull,lphi,localbounds,0,1,3,
-c    &                            my_index,nslaves,izfsslave,
-c    &                            whosendingleft,whosendingright)
+      if (bounds(4) == 0) Lphi(:,:,-1:0) = 0.
+      if (bounds(5) == 0) Lphi(:,:,nz:nz+1) = 0.
+      if (bounds(4) == 1) Lphi(:,:,-1) = Lphi(:,:,1)
+      if (bounds(5) == 1) Lphi(:,:,nz+1) = Lphi(:,:,nz-1)
+      if (bounds(4) == 2 .and. nz == nzfull) Lphi(:,:,-1) = Lphi(:,:,nz-1)
+      if (bounds(5) == 2 .and. nz == nzfull) Lphi(:,:,nz+1) = Lphi(:,:,1)
+#ifdef MPIPARALLEL
+      call mgexchange_phi(nx,ny,nz,nzfull,Lphi,bounds,-1,1,3,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
+      call mgexchange_phi(nx,ny,nz,nzfull,Lphi,bounds,-2,1,3,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
+      call mgexchange_phi(nx,ny,nz,nzfull,Lphi,bounds,-3,1,3,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,Lphi,localbounds,0,1,3,
+     &                            my_index,nslaves,izfsslave,
+     &                            whosendingleft,whosendingright)
 #endif
 
       return
       end
 c=============================================================================
-      subroutine condbndylphibe(subgrid,nx,ny,nz,phi,lphi,regionid,
+      subroutine condbndyLphibe(subgrid,nx,ny,nz,phi,Lphi,regionid,
      &                          dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
       use Constant
       use ConductorSubGridTypemodule
       use BoltzmannElectrons
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1), lphi(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1), Lphi(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqi,dysqi,dzsqi
       integer(ISZ):: bounds(0:5),icndbndy
@@ -1407,16 +1364,11 @@ c The delx, dely, and delz hold the denominator of the coefficients of the
 c full finite difference of phi.
 c For icndbndy==1, these coefficients are just 1. For icndbndy==2, they
 c include the dels.
-c
-c Note that care has been taken with the boundaries.  Temps are set up
-c to hold ix-1, ix+1 etc which are are adjusted appopriately for
-c points on the boundary.
-
+ 
       real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,ppp,expo
       real(kind=8):: delx,dely,delz
       real(kind=8):: delxsqi,delysqi,delzsqi
-      integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
-      integer(ISZ):: ix,iy,iz,id
+      integer(ISZ):: ic,ix,iy,iz,id
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
       dels => subgrid%dels
@@ -1430,37 +1382,14 @@ c     --- loop over points near surface of conductors
         iy = subgrid%indx(1,ic)
         iz = subgrid%indx(2,ic)
 
-c       --- set temporaries for boundaries
-        ixp1 = ix + 1
-        ixm1 = ix - 1
-        iyp1 = iy + 1
-        iym1 = iy - 1
-        izp1 = iz + 1
-        izm1 = iz - 1
-
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
-        if (ixm1 == -1 .or. ixp1 == nx+1) cycle
-
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
-        if (iym1 == -1 .or. iyp1 == ny+1) cycle
-
-        if (iz == 0  .and. bounds(4) == 0) cycle
-        if (iz == nz .and. bounds(5) == 0) cycle
-
 c       --- Set temporaries with initial values.
         pijk = phi(ix,iy,iz)
-        pxm = phi(ixm1,iy  ,iz  ) - pijk
-        pxp = phi(ixp1,iy  ,iz  ) - pijk
-        pym = phi(ix  ,iym1,iz  ) - pijk
-        pyp = phi(ix  ,iyp1,iz  ) - pijk
-        pzm = phi(ix  ,iy  ,izm1) - pijk
-        pzp = phi(ix  ,iy  ,izp1) - pijk
+        pxm = phi(ix-1,iy  ,iz  ) - pijk
+        pxp = phi(ix+1,iy  ,iz  ) - pijk
+        pym = phi(ix  ,iy-1,iz  ) - pijk
+        pyp = phi(ix  ,iy+1,iz  ) - pijk
+        pzm = phi(ix  ,iy  ,iz-1) - pijk
+        pzp = phi(ix  ,iy  ,iz+1) - pijk
         delx = 1.
         dely = 1.
         delz = 1.
@@ -1563,53 +1492,45 @@ c       --- calculate the new phi based on the boundary conditions
             rhoe = iondensity(id)*exp(expo)
           endif
         endif
-        lphi(ix,iy,iz) = (+ (pxm+pxp)*delxsqi
+        Lphi(ix,iy,iz) = (+ (pxm+pxp)*delxsqi
      &                    + (pym+pyp)*delysqi
      &                    + (pzm+pzp)*delzsqi
      &                    - rhoe/eps0)*ppp
+
+c       --- Zero out the Lphi in points just beyond a Neumann boundary
+        if (0. > dels(0,ic) .and. dels(0,ic) >= -1.) Lphi(ix-1,iy,iz) = 0.
+        if (0. > dels(1,ic) .and. dels(1,ic) >= -1.) Lphi(ix+1,iy,iz) = 0.
+        if (0. > dels(2,ic) .and. dels(2,ic) >= -1.) Lphi(ix,iy-1,iz) = 0.
+        if (0. > dels(3,ic) .and. dels(3,ic) >= -1.) Lphi(ix,iy+1,iz) = 0.
+        if (0. > dels(4,ic) .and. dels(4,ic) >= -1.) Lphi(ix,iy,iz-1) = 0.
+        if (0. > dels(5,ic) .and. dels(5,ic) >= -1.) Lphi(ix,iy,iz+1) = 0.
+
+        if (0. == dels(0,ic)) Lphi(ix+1,iy,iz) = 0.
+        if (0. == dels(1,ic)) Lphi(ix-1,iy,iz) = 0.
+        if (0. == dels(2,ic)) Lphi(ix,iy+1,iz) = 0.
+        if (0. == dels(3,ic)) Lphi(ix,iy-1,iz) = 0.
+        if (0. == dels(4,ic)) Lphi(ix,iy,iz+1) = 0.
+        if (0. == dels(5,ic)) Lphi(ix,iy,iz-1) = 0.
+
       enddo
 !$OMP END DO
 
       return
       end
 c=============================================================================
-c=============================================================================
       subroutine copyphiwithguardcells(nx,ny,nz,nzfull,phiin,phiout,bounds,
      &                                 my_index,nslaves,izfsslave,nzfsslave,
      &                                 whosendingleft,izsendingleft,
      &                                 whosendingright,izsendingright)
       integer(ISZ):: nx,ny,nz,nzfull,bounds(0:5)
-      real(kind=8):: phiin(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: phiout(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8):: phiin(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: phiout(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
 
-      phiout(0:nx,0:ny,-1:nz+1) = phiin
-
-c     --- Transverse boundaries
-      if (bounds(0) == 0) phiout(-1,0:ny,:) = 2.*phiout(0,0:ny,:)-phiout(1,0:ny,:)
-      if (bounds(1) == 0) phiout(nx+1,0:ny,:) = 2.*phiout(nx,0:ny,:)-phiout(nx-1,0:ny,:)
-      if (bounds(0) == 1) phiout(-1,0:ny,:) = phiout(1,0:ny,:)
-      if (bounds(1) == 1) phiout(nx+1,0:ny,:) = phiout(nx-1,0:ny,:)
-      if (bounds(0) == 2) phiout(-1,0:ny,:) = phiout(nx-1,0:ny,:)
-      if (bounds(1) == 2) phiout(nx:nx+1,0:ny,:) = phiout(0:1,0:ny,:)
-
-      if (bounds(2) == 0) phiout(:,-1,:) = 2.*phiout(:,0,:)-phiout(:,1,:)
-      if (bounds(3) == 0) phiout(:,ny+1,:) = 2.*phiout(:,ny,:)-phiout(:,ny-1,:)
-      if (bounds(2) == 1) phiout(:,-1,:) = phiout(:,1,:)
-      if (bounds(3) == 1) phiout(:,ny+1,:) = phiout(:,ny-1,:)
-      if (bounds(2) == 2) phiout(:,-1,:) = phiout(:,ny-1,:)
-      if (bounds(3) == 2) phiout(:,ny:ny+1,:) = phiout(:,0:1,:)
-
-c     --- Longitudinal boundaries
-c     if (bounds(4) == 0) phiout(:,:,-1) = 2.*phiout(:,:,0)-phiout(:,:,1)
-c     if (bounds(5) == 0) phiout(:,:,nz+1) = 2.*phiout(:,:,nz)-phiout(:,:,nz-1)
-c     if (bounds(4) == 1) phiout(:,:,-1) = phiout(:,:,1)
-c     if (bounds(5) == 1) phiout(:,:,nz+1) = phiout(:,:,nz-1)
-c     if (bounds(4) == 2 .and. nz == nzfull) phiout(:,:,-1) = phiout(:,:,nz-1)
-c     if (bounds(5) == 2 .and. nz == nzfull) phiout(:,:,nz+1) = phiout(:,:,1)
+      phiout(:,:,-1:nz+1) = phiin
 
 #ifdef MPIPARALLEL
       call mgexchange_phi(nx,ny,nz,nzfull,phiout,bounds,-2,1,3,
@@ -1631,38 +1552,13 @@ c=============================================================================
      &                                 whosendingright,izsendingright)
       integer(ISZ):: nx,ny,nz,nzfull,bounds(0:5)
       real(kind=8):: rhoin(0:nx,0:ny,0:nz)
-      real(kind=8):: rhoout(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8):: rhoout(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
 
-      rhoout(0:nx,0:ny,0:nz) = rhoin - rhoout(0:nx,0:ny,0:nz)
-
-c     --- Transverse boundaries
-      if (bounds(0) == 0) rhoout(-1,0:ny,0:nz) = 2.*rhoout(0,0:ny,0:nz)-rhoout(1,0:ny,0:nz)
-      if (bounds(1) == 0) rhoout(nx+1,0:ny,0:nz) = 2.*rhoout(nx,0:ny,0:nz)-rhoout(nx-1,0:ny,0:nz)
-      if (bounds(0) == 1) rhoout(-1,0:ny,0:nz) = rhoout(1,0:ny,0:nz)
-      if (bounds(1) == 1) rhoout(nx+1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
-      if (bounds(0) == 2) rhoout(-1,0:ny,0:nz) = rhoout(nx-1,0:ny,0:nz)
-      if (bounds(1) == 2) rhoout(nx:nx+1,0:ny,0:nz) = rhoout(0:1,0:ny,0:nz)
-
-      if (bounds(2) == 0) rhoout(:,-1,0:nz) = 2.*rhoout(:,0,0:nz)-rhoout(:,1,0:nz)
-      if (bounds(3) == 0) rhoout(:,ny+1,0:nz) = 2.*rhoout(:,ny,0:nz)-rhoout(:,ny-1,0:nz)
-      if (bounds(2) == 1) rhoout(:,-1,0:nz) = rhoout(:,1,0:nz)
-      if (bounds(3) == 1) rhoout(:,ny+1,0:nz) = rhoout(:,ny-1,0:nz)
-      if (bounds(2) == 2) rhoout(:,-1,0:nz) = rhoout(:,ny-1,0:nz)
-      if (bounds(3) == 2) rhoout(:,ny:ny+1,0:nz) = rhoout(:,0:1,0:nz)
-
-c     --- Longitudinal boundaries
-      if (bounds(4) == 0) rhoout(:,:,-1) = 2.*rhoout(:,:,0)-rhoout(:,:,1)
-      if (bounds(5) == 0) rhoout(:,:,nz+1) = 2.*rhoout(:,:,nz)-rhoout(:,:,nz-1)
-      if (bounds(4) == 1) rhoout(:,:,-1) = rhoout(:,:,1)
-      if (bounds(5) == 1) rhoout(:,:,nz+1) = rhoout(:,:,nz-1)
-#ifndef MPIPARALLEL
-      if (bounds(4) == 2 .and. nz == nzfull) rhoout(:,:,-1) = rhoout(:,:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) rhoout(:,:,nz+1) = rhoout(:,:,1)
-#else
+#ifdef MPIPARALLEL
       call mgexchange_phi(nx,ny,nz,nzfull,rhoout,bounds,-1,1,3,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
@@ -1683,11 +1579,54 @@ c     --- Longitudinal boundaries
       return
       end
 c=============================================================================
+      subroutine applytransversebcbe3d(nx,ny,nz,u,bounds)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: u(-1:nx+1,-1:ny+1,-1:nz+1)
+
+      if (bounds(0) == 0) u(-1,:,:)   = 2.*u(0,:,:) - u(1,:,:)
+      if (bounds(1) == 0) u(nx+1,:,:) = 2.*u(nx,:,:) - u(nx-1,:,:)
+      if (bounds(0) == 1) u(-1,:,:)   = u(1,:,:)
+      if (bounds(1) == 1) u(nx+1,:,:) = u(nx-1,:,:)
+      if (bounds(0) == 2) u(-1,:,:)   = u(nx-1,:,:)
+      if (bounds(1) == 2) u(nx+1,:,:) = u(1,:,:)
+
+      if (bounds(2) == 0) u(:,-1,:)   = 2.*u(:,0,:) - u(:,1,:)
+      if (bounds(3) == 0) u(:,ny+1,:) = 2.*u(:,ny,:) - u(:,ny-1,:)
+      if (bounds(2) == 1) u(:,-1,:)   = u(:,1,:)
+      if (bounds(3) == 1) u(:,ny+1,:) = u(:,ny-1,:)
+      if (bounds(2) == 2) u(:,-1,:)   = u(:,ny-1,:)
+      if (bounds(3) == 2) u(:,ny+1,:) = u(:,1,:)
+
+      return
+      end
+c=============================================================================
+      subroutine applylongitudinalbcbe3d(nx,ny,nz,nzfull,u,bounds)
+      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: u(-1:nx+1,-1:ny+1,-1:nz+1)
+      if (bounds(4) == 0) u(:,:,-1)   = 2.*u(:,:,0) - u(:,:,1)
+      if (bounds(5) == 0) u(:,:,nz+1) = 2.*u(:,:,nz) - u(:,:,nz-1)
+      if (bounds(4) == 1) u(:,:,-1)   = u(:,:,1)
+      if (bounds(5) == 1) u(:,:,nz+1) = u(:,:,nz-1)
+      if (nz == nzfull) then
+        if (bounds(4) == 2) u(:,:,-1)   = u(:,:,nz-1)
+        if (bounds(5) == 2) u(:,:,nz+1) = u(:,:,1)
+      endif
+#ifdef MPIPARALLEL
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
+     &                            my_index,nslaves,izfsslave,
+     &                            whosendingleft,whosendingright)
+#endif
+
+      return
+      end
+c=============================================================================
       subroutine clampphitophimaxbe3d(nx,ny,nz,phi,rho,regionid)
       use Constant
       use BoltzmannElectrons
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1),rho(0:nx,0:ny,0:nz)
       integer(ISZ):: regionid(0:nx,0:ny,0:nz)
 
       integer(ISZ):: ix,iy,iz,id
