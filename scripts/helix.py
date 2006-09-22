@@ -71,7 +71,7 @@ Creates helix with constant Ez in the pulse.
                   magnetostatic Poisson equation using the helix current.
                   This only works with model==2.
   """
-  def __init__(self,zs,ze,ap=None,length=None,V0=None,vz=None,ts=None,nz=10000,
+  def __init__(self,zs,ze,ap=None,length=None,V0=None,vz=None,ts=0.,nz=10000,
                     lengthfinal=None,
                     zoffset=0.,startgaplen=0.2,finalgaplen=0.2,
                     ezoft=None,ezduration=None,vvdata=None,vvdatatype='delta',
@@ -98,7 +98,7 @@ Creates helix with constant Ez in the pulse.
     if lengthfinal is None: self.lengthfinal = length
     else:                   self.lengthfinal = lengthfinal
     self.vz = vz
-    #self.ts = ts # --- Now set below
+    self.ts = ts # --- Maybe reset below based on other input data
     self.zoffset = zoffset
     self.startgaplen = startgaplen
     self.finalgaplen = finalgaplen
