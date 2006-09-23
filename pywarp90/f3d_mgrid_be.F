@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.28 $, $Date: 2006/09/23 00:27:45 $
+c version $Revision: 1.29 $, $Date: 2006/09/23 00:30:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1335,7 +1335,7 @@ c     --- Longitudinal boundaries
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
-      call mgexchange_phiperiodic(nx,ny,nz,nzfull,Lphi,localbounds,0,1,3,
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,Lphi,bounds,0,1,3,
      &                            my_index,nslaves,izfsslave,
      &                            whosendingleft,whosendingright)
 #endif
@@ -1618,9 +1618,9 @@ c=============================================================================
         if (bounds(5) == 2) u(:,:,nz+1) = u(:,:,1)
       endif
 #ifdef MPIPARALLEL
-      call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
-     &                            my_index,nslaves,izfsslave,
-     &                            whosendingleft,whosendingright)
+c     call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
+c    &                            my_index,nslaves,izfsslave,
+c    &                            whosendingleft,whosendingright)
 #endif
 
       return
