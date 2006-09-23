@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.53 2006/06/23 23:50:14 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.54 2006/09/23 00:26:09 dave Exp $"
 
 
 ##############################################################################
@@ -149,6 +149,13 @@ Performs steady-state iterations
   - currentiz=None: The iz grid location of top.curr that is used to get the
                     current for scaling the weights. Note that this can be a
                     slice instance - an average is taken over the given range.
+  - lvariabletimestep=0: When true, the particle time step is adjusted to
+                         minimize the number of steps while maintaining
+                         accuracy and stability
+  - fvariabletimestep=0.5: The time step is adjusted so that the particle
+                           step size advances toward the specified fraction
+                           of a z grid cell size (w3d.dz)
+  - dtscalechangemax=2.: Maximum change in the time step size in any one step
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
