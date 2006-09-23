@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.27 $, $Date: 2006/09/23 00:12:49 $
+c version $Revision: 1.28 $, $Date: 2006/09/23 00:27:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -470,7 +470,7 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
         call applytransversebcbe3d(nx,ny,nz,Lphi,globalbounds)
         call applylongitudinalbcbe3d(nx,ny,nz,nzfull,Lphi,globalbounds)
 #ifdef MPIPARALLEL
-        call copyrhowithguardcells(nx,ny,nz,nzfull,rhoin,rhoout,localbounds,
+        call copyrhowithguardcells(nx,ny,nz,nzfull,rho,Lphi,localbounds,
      &                             my_index,nslaves,izfsslave,nzfsslave,
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
