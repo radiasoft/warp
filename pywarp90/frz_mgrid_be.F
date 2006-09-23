@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.19 $, $Date: 2006/09/22 23:24:19 $
+c version $Revision: 1.20 $, $Date: 2006/09/23 00:12:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -262,6 +262,7 @@ c=============================================================================
       use GRIDtypemodule
       use BNDtypemodule
       use BoltzmannElectrons
+      use Multigrid3d_diagnostic
       integer(ISZ):: mglevel
       integer(ISZ):: nx,nz,nzfull
       real(kind=8):: dx,dz,xminodx
@@ -425,6 +426,9 @@ c       --- Continue at the next coarsest level.
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
+        if (lprintmgphimaxchange) then
+          print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
+        endif
         call expandberz(nx,nz,nzfull,phi,
      &                  nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  bounds,lzoffset)

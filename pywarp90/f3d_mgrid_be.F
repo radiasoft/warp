@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.26 $, $Date: 2006/09/22 23:27:08 $
+c version $Revision: 1.27 $, $Date: 2006/09/23 00:12:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -262,6 +262,7 @@ c=============================================================================
      &                              my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       use BoltzmannElectrons
+      use Multigrid3d_diagnostic
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -521,6 +522,9 @@ c       --- Continue at the next coarsest level.
 
 c       --- Add in the correction term.
         phicoarse = phicoarse - phicoarsesave
+        if (lprintmgphimaxchange) then
+          print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
+        endif
         deallocate(phicoarsesave)
         call expandbe3d(nx,ny,nz,nzfull,phi,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
