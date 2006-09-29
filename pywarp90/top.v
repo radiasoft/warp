@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.180 $, $Date: 2006/09/29 19:27:53 $
+#@(#) File TOP.V, version $Revision: 3.181 $, $Date: 2006/09/29 22:19:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.180 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.181 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2021,11 +2021,11 @@ nchdts_up(ns) _integer /0/ # Number of particles to change to group/species
 nchdts_down(ns) _integer /0/ # Number of particles to change to group/species 
                            # with smaller time step
 lvdtsmax  integer /1/  # maximum number of ndts levels
-iselfb(ns) _integer /-1/ # Group number for particles that are affected by
+iselfb(0:ns-1) _integer /-1/ # Group number for particles that are affected by
                          # their own magnetic field, using the 1/gamma**2
                          # approximation. The correction is not applied to
                          # group number -1.
-fselfb(ns) _real   /0./ # The scaling factor, 1/gamma**2
+fselfb(0:ns-1) _real   /0./ # The scaling factor, 1/gamma**2
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
@@ -2066,7 +2066,7 @@ nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
                            # It defaults to 1 which is what is needed if
                            # there are only groups with ndts==1. Otherwise
                            # it will be 2.
-setupSubcycling(ns:integer,ndts(0:ns-1):integer) subroutine
+setupSubcycling(pgroup:ParticleGroup):integer) subroutine
                         # Sets up data for particle subcycling
 getnsndtsforsubcycling()
              integer function # Get number of ndts groups to loop over
@@ -2080,7 +2080,7 @@ iselfb(ns) _integer /-1/ # Group number for particles that are affected by
                          # their own magnetic field, using the 1/gamma**2
                          # approximation. The correction is not applied to
                          # group number -1.
-setupSelfB(ns:integer,iselfb(0:ns-1):real,groupfselfb(0:ns-1):integer,sid:integer)
+setupSelfB(pgroup:ParticleGroup)
                         subroutine
                         # Sets up data for particle requiring self B correction
 
