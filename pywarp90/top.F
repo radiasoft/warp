@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.188 $, $Date: 2006/09/29 19:27:52 $
+c@(#) File TOP.F, version $Revision: 3.189 $, $Date: 2006/09/29 19:40:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3836,6 +3836,7 @@ c=============================================================================
       use SelfB
       integer(ISZ):: ns,groupiselfb(0:ns-1)
       real(kind=8):: groupfselfb(0:ns-1)
+      integer(ISZ):: sid(0:ns-1)
 
 c Setups in the bookkeepping variables and arrays for particle which require
 c the self B correction.
@@ -3854,7 +3855,7 @@ c     --- Find any new species with different fselfb.
             groupiselfb(js1) = js2
             iselfb(isid) = js2
           endif
-        endif
+        enddo
         if (lnew) then
           nsselfb = nsselfb + 1
           call gchange("SelfB",0)
