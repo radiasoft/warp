@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.116 $, $Date: 2006/09/16 00:13:44 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.117 $, $Date: 2006/09/29 19:22:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -490,6 +490,7 @@ c=============================================================================
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
+      use Multigrid3d_diagnostic
 c     use formggetarraysuminterface
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
@@ -694,6 +695,9 @@ c         --- Continue at the next coarsest level.
      &                my_index,nslaves,izfsslave,nzfsslave)
 
 c         --- Add in resulting error.
+          if (lprintmgphimaxchange) then
+            print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
+          endif
           call expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,localbounds)
 
           deallocate(phicoarse,rhocoarse)
