@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.289 $, $Date: 2006/09/29 19:27:53 $
+c@(#) File W3D.F, version $Revision: 3.290 $, $Date: 2006/09/29 22:17:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -239,7 +239,8 @@ c  so that by default izfsmax = nz (for full field solve).
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
       call gchange("Fields3d", 0)
-      call setupSubcycling(pgroup%ns,pgroup%ndts,it)
+      call setupSubcycling(pgroup)
+      call setupSelfB(pgroup)
       call setupFields3dParticles()
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
      &                     phipndts(:,:,:,0))
@@ -6407,7 +6408,8 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
-      call setupSubcycling(pgroup%ns,pgroup%ndts,it)
+      call setupSubcycling(pgroup)
+      call setupSelfB(pgroup)
 
       if(depos == 'none') return
 
@@ -6732,6 +6734,7 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use Subcycling,Only:nrhopndtscopies,nsndts,nsndtsphi
+      use SelfB,Only: nsselfb
       use w3d_interfaces
 #ifdef MPIPARALLEL
       use Parallel
