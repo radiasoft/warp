@@ -1,4 +1,5 @@
 from warp import *
+import gist
 import controllers
 import RandomArray
 import re
@@ -12,7 +13,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.176 2006/08/09 00:08:15 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.177 2006/09/29 16:23:33 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -139,7 +140,7 @@ Does the work needed to start writing plots to a file automatically
   if me > 0: return
   # --- Set cgmfilesize
   try:
-    pldefault(cgmfilesize=cgmfilesize)
+    gist.pldefault(cgmfilesize=cgmfilesize)
   except:
     pass
   # --- Get next available plot file name.
@@ -152,10 +153,10 @@ Does the work needed to start writing plots to a file automatically
   setup.pname = pname
   # --- Create window(0), but have it only dump to the file pname for now.
   # --- Note that only plots made to window(0) are dumped to the file.
-  window(0,display='',hcp=pname,dump=1)
+  gist.window(0,display='',hcp=pname,dump=1)
   print "Plot file name",pname
   # --- Set so all fma's dump plot to file.
-  hcpon()
+  gist.hcpon()
   if cgmlog:
     # --- Create plot log file and write heading to it.
     plogname = getnextfilename(prefix,'cgmlog')
@@ -191,10 +192,10 @@ Opens up an X window
     if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
       # --- If display isn't set, no X plot window will appear since window0
       # --- is already attached to a device (the plot file).
-      window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
+      gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
     else:
-      if xon: window(winnum,dpi=dpi)
-      else:   window(winnum,dpi=dpi,display='')
+      if xon: gist.window(winnum,dpi=dpi)
+      else:   gist.window(winnum,dpi=dpi,display='')
   else:
     # --- Check input errors
     try: setup.pname
@@ -210,9 +211,9 @@ Opens up an X window
     pname = pname + numb
     # --- Open window
     if xon:
-      window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
+      gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
     else:
-      window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
+      gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
 
 ##########################################################################
 # Plot run info to the current plot and plot info to the log file.
@@ -249,18 +250,12 @@ def plotruninfo():
 # with one that prints informative text at the bottom of each frame just
 # before the normal gist fma is called. Also created are alternate (Basis
 # like) names for fma and redraw.
-gistplg = plg
-gistplfc = plfc
-gistpldj = pldj
-gistplfp = plfp
-gistplc = plc
-gistpli = pli
-gistplf = plf
-gistplv = plv
-gistplt = plt
-gistfma = fma
-gisthcp = hcp
-gistplsys = plsys
+_plotpackage = gist
+def setplotpackage(plotpackage):
+  global _plotpackage
+  _plotpackage = plotpackage
+def getplotpackage():
+  return _plotpackage
 
 # --- This is a global switch which toggles between directly calling the gist
 # --- plotting routines and accumulating lists of things to plot, which are then
@@ -284,8 +279,9 @@ def makeplotsdirectly():
 # --- which actually does the plotting.
 _listofthingstoplot = []
 def addthingtoplot(pfunc,args,kw):
-  if type(pfunc) is not StringType: pfunc = pfunc.__name__
-  pfunc = 'gist' + pfunc
+  """pfunc: name of plotting routine
+     args: list of args
+     kw: dict of keyword args"""
   _listofthingstoplot.append([pfunc,args,kw])
 def callplotfunction(pfunc,args=[],kw={}):
   # --- Note that any None's need to be cleared out since some functions
@@ -294,7 +290,7 @@ def callplotfunction(pfunc,args=[],kw={}):
   if _accumulateplotlists:
     addthingtoplot(pfunc,args,kw)
   else:
-    pfunc(*args,**kw)
+    getattr(_plotpackage,pfunc)(*args,**kw)
 def plotlistofthings(lturnofflist=0):
   global _listofthingstoplot
   if not _accumulateplotlists: return
@@ -303,7 +299,7 @@ def plotlistofthings(lturnofflist=0):
   for things in listsofthings:
     for thing in things:
       pfunc = __main__.__dict__[thing[0]]
-      pfunc(*thing[1],**thing[2])
+      getattr(_plotpackage,thing[0])(*thing[1],**thing[2])
   if lturnofflist: makeplotsdirectly()
 
 def fma(legend=1):
@@ -316,7 +312,7 @@ for before and after plot commands.
   plotlistofthings()
   if legend: plotruninfo()
   controllers.callafterplotfuncs()
-  callplotfunction(gistfma)
+  callplotfunction("fma")
   controllers.callbeforeplotfuncs()
   oldlimits = limits()
 def hcp(legend=1):
@@ -328,7 +324,7 @@ copy file.
   controllers.callafterplotfuncs()
   if legend: plotruninfo()
   controllers.callbeforeplotfuncs()
-  callplotfunction(gisthcp)
+  callplotfunction("hcp")
 
 def refresh():
   """
@@ -347,7 +343,7 @@ sf = redraw
 # This routine allows plotting of multi-dimensioned arrays.
 # It replaces the plg from gist, which can only plot 1-d arrays.
 def pla(y,x=None,linetype="solid",local=1,**kw):
-  """This comment is replaced with gistplg.__doc__. The linetype argument is
+  """This comment is replaced with gist.plg.__doc__. The linetype argument is
   only needed for backward compatibility."""
   kw.setdefault('type',linetype)
   if type(y) in [FloatType,IntType]: y = [y]
@@ -402,9 +398,9 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
     n = shape(xx)[1]
     for i in xrange(yy.shape[1]):
       if len(yy[:,i]) > 0:
-        callplotfunction(gistplg,[yy[:,i],xx[:,i%n]],kw)
+        callplotfunction("plg",[yy[:,i],xx[:,i%n]],kw)
 
-pla.__doc__ = gistplg.__doc__
+pla.__doc__ = gist.plg.__doc__
 plg = pla
 
 # --- This replaces functions from gist, filtering through callplotfunction
@@ -415,8 +411,8 @@ def pldj(x0,y0,x1,y1,local=1,**kw):
     x1 = gatherarray(x1)
     y1 = gatherarray(y1)
   if size(x0) == 0 or size(y0) == 0 or size(x1) == 0 or size(y1) == 0: return
-  callplotfunction(gistpldj,[x0,y0,x1,y1],kw)
-pldj.__doc__ = gistpldj.__doc__
+  callplotfunction("pldj",[x0,y0,x1,y1],kw)
+pldj.__doc__ = gist.pldj.__doc__
 def plfp(z,y,x,n,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -424,8 +420,8 @@ def plfp(z,y,x,n,local=1,**kw):
     x = gatherarray(x)
     n = gatherarray(n)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(n) == 0: return
-  callplotfunction(gistplfp,[z,y,x,n],kw)
-plfp.__doc__ = gistplfp.__doc__
+  callplotfunction("plfp",[z,y,x,n],kw)
+plfp.__doc__ = gist.plfp.__doc__
 def plfc(z,y,x,ireg,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -433,8 +429,8 @@ def plfc(z,y,x,ireg,local=1,**kw):
     x = gatherarray(x)
     ireg = gatherarray(ireg)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(ireg) == 0: return
-  callplotfunction(gistplfc,[z,y,x,ireg],kw)
-plfc.__doc__ = gistplfc.__doc__
+  callplotfunction("plfc",[z,y,x,ireg],kw)
+plfc.__doc__ = gist.plfc.__doc__
 def plc(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -442,8 +438,8 @@ def plc(z,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
-  callplotfunction(gistplc,[z,y,x,ireg],kw)
-plc.__doc__ = gistplc.__doc__
+  callplotfunction("plc",[z,y,x,ireg],kw)
+plc.__doc__ = gist.plc.__doc__
 def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -452,8 +448,8 @@ def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
     if x1 is not None: x1 = gatherarray(x1)
     if y1 is not None: y1 = gatherarray(y1)
   if size(z) == 0: return
-  callplotfunction(gistpli,[z,x0,y0,x1,y1],kw)
-pli.__doc__ = gistpli.__doc__
+  callplotfunction("pli",[z,x0,y0,x1,y1],kw)
+pli.__doc__ = gist.pli.__doc__
 def plf(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     z = gatherarray(z)
@@ -461,8 +457,8 @@ def plf(z,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
-  callplotfunction(gistplf,[z,y,x,ireg],kw)
-plf.__doc__ = gistplf.__doc__
+  callplotfunction("plf",[z,y,x,ireg],kw)
+plf.__doc__ = gist.plf.__doc__
 def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
     vy = gatherarray(vy)
@@ -471,8 +467,8 @@ def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(vy) == 0 or size(vx) == 0: return
-  callplotfunction(gistplv,[vy,vx,y,x,ireg],kw)
-plv.__doc__ = gistplv.__doc__
+  callplotfunction("plv",[vy,vx,y,x,ireg],kw)
+plv.__doc__ = gist.plv.__doc__
 def plt(text,x,y,local=1,**kw):
   if not _accumulateplotlists and not local:
     textlist = gather(text)
@@ -483,12 +479,12 @@ def plt(text,x,y,local=1,**kw):
     xlist = [x]
     ylist = [y]
   for text,x,y in zip(textlist,xlist,ylist):
-    callplotfunction(gistplt,[text,x,y],kw)
-plt.__doc__ = gistplt.__doc__
+    callplotfunction("plt",[text,x,y],kw)
+plt.__doc__ = gist.plt.__doc__
 def plsys(n=None,**kw):
-  if n is None: return gistplsys()
-  callplotfunction(gistplsys,[n])
-plsys.__doc__ = gistplsys.__doc__
+  if n is None: return getattr(_plotpackage,"plsys")()
+  callplotfunction("plsys",[n])
+plsys.__doc__ = gist.plsys.__doc__
 
 ##########################################################################
 # --- Plot particles
@@ -639,6 +635,9 @@ def settitles(titlet="",titleb="",titlel="",titler=""):
 def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
   "Plots titles, either uses input or titles set by settitles"
   global framet,frameb,framel,framer
+  if "ptitles" in _plotpackage.__dict__:
+    _plotpackage.ptitles(titlet,titleb,titlel,titler,v)
+    return
   if v is None: v = plsys()
   if titlet=="" and default_titlet: titlet = default_titlet
   if titleb=="" and default_titleb: titleb = default_titleb
@@ -4411,7 +4410,7 @@ __main__.__dict__['psplotsseldom'] = psplotsseldom
 
 def gstyle():
     global gist_style
-    gist_style = get_style()
+    gist_style = gist.get_style()
     for i in range(0,len(gist_style['systems'])):
       gist_style['systems'][i]['legend']=''
 
@@ -4443,9 +4442,9 @@ def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
       # --- is needed to be consistent with the wrapped version of plsys
       # --- defined above.
       #systems = [plsys(plsys())-1]
-      view = plsys()
-      plsys(view)
-      view = plsys()
+      view = gist.plsys()
+      gist.plsys(view)
+      view = gist.plsys()
       systems = [view-1]
     else:
       if(system=='all'):
@@ -4513,7 +4512,7 @@ def aplq():
     l = 1
     i = 1
     while l>0:
-      d=wplq(i)
+      d=gist.wplq(i)
       l=len(d)
       if l>0:
         list=list+[d]
