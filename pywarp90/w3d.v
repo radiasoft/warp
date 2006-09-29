@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.233 $, $Date: 2006/09/29 19:27:54 $
+#@(#) File W3D.V, version $Revision: 3.234 $, $Date: 2006/09/29 22:17:14 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.233 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.234 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -350,12 +350,12 @@ phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
                  # for all groups, i.e. nsndtsphi==1.
 
 nsselfb3d integer # Copy of nsselfb from top
-rhopndts(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
+rhopselfb(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups which require correction for their self B.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsselfb3d-1) _real +fassign
+phipselfb(0:nxp,0:nyp,-1:nzp+1,0:nsselfb3d-1) _real +fassign
                  # Temporary copy of the potential from the particles
                  # for groups which require correction for their self B.
                  # This includes the effect of time averaged charge density
