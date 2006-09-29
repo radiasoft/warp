@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.35 $, $Date: 2006/08/09 01:27:14 $
+c W3DSLAVE.M, version $Revision: 1.36 $, $Date: 2006/09/29 23:39:23 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -884,7 +884,7 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      subroutine setrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
       use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nz
