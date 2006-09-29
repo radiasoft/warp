@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.232 $, $Date: 2006/09/18 17:52:25 $
+#@(#) File W3D.V, version $Revision: 3.233 $, $Date: 2006/09/29 19:27:54 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.232 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.233 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -317,30 +317,6 @@ phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch)
 xywork(2,0:nx,0:ny)    _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 
-*********** Subcycling dump:
-ndtsaveraging integer /0/ # Sets the type of averaging to do when using
-                          # subcycling. When 0, no averaging is done, only
-                          # the most recent charge density from each ndts
-                          # group is used. When 1, the averaging is done from
-                          # n-1/2 to n+1/2 and the two halves of the velocity
-                          # advance use the same self field. When 2, the
-                          # fields for the two velocity halves are different,
-                          # the first averaging from n-1/2 to n, the second
-                          # from n to n+1/2. Note that method 1 does not work
-                          # with even ndts step factors.
-ndtsmax integer /1/
-nsndts integer /0/
-nsndtsphi integer /0/
-ndtstorho(ndtsmax) _integer /-1/ #
-rhotondts(0:nsndts-1) _integer
-ldts(0:nsndts-1) _logical /1/
-itndts(0:nsndts-1) _integer /0/ # The time level of the position of the
-                                # ndts group
-nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
-                           # It defaults to 1 which is what is needed if
-                           # there are only groups with ndts==1. Otherwise
-                           # it will be 2.
-
 *********** Fields3dParticles parallel:
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
@@ -350,6 +326,9 @@ nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
                      # version.
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
+nrhopndtscopies3d integer # Copy of nrhopndtscopies from top
+nsndts3d          integer # Copy of nsndts from top
+nsndtsphi3d       integer # Copy of nsndtsphi from top
 phip(:,:,:) _real # Potential used by the particles to calculate
                   # the field from the solution of Poisson's equation.
                   # This will be pointed to each of the different ndts
@@ -357,18 +336,32 @@ phip(:,:,:) _real # Potential used by the particles to calculate
 rhop(:,:,:) _real # Charge density from the particles.
                   # This will be pointed to each of the different ndts
                   # groups as needed.
-rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies,0:nsndts-1)    _real +fassign
-                 # Temporary copy of the charge density from the particles
-                 # for species with different time step sizes.
+rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies3d,0:nsndts3d-1) _real +fassign
+                 # Charge density from the particles
+                 # for groups with different time step sizes.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi-1)    _real +fassign
-                 # Temporary copy of the potential from the particles
-                 # for species with different time step sizes.
+phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
+                 # Potential from the particles
+                 # for groups with different time step sizes.
                  # This includes the effect of time averaged charge density
                  # from faster particles and the old rho from the slower
                  # particles. With only sampling, the same phip is used
                  # for all groups, i.e. nsndtsphi==1.
+
+nsselfb3d integer # Copy of nsselfb from top
+rhopndts(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
+                 # Charge density from the particles
+                 # for groups which require correction for their self B.
+                 # This includes the time averaged charge density from
+                 # faster particles and the old rho from the slower particles.
+phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsselfb3d-1) _real +fassign
+                 # Temporary copy of the potential from the particles
+                 # for groups which require correction for their self B.
+                 # This includes the effect of time averaged charge density
+                 # from faster particles and the old rho from the slower
+                 # particles.
+
 nxc  integer /0/ # Number of grid cells in x axis for isnearbycond
 nyc  integer /0/ # Number of grid cells in y axis for isnearbycond
 nzc  integer /0/ # Number of grid cells in z axis for isnearbycond
@@ -808,8 +801,6 @@ fetchphi(n:integer,x(n):real,y(n):real,z(n):real,p(n):real)
                         # field solver that is active.
 setupfields3dparticles(ns:integer,ndts:integer,it:integer)
              subroutine # Sets up the Fields3dParticles group
-getnsndtsforsubcycling() 
-             integer function # Get number of ndts groups to loop over
 getrhoforfieldsolve()
              subroutine # Copies data from rhop to rho - mainly for parallel
 getrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,

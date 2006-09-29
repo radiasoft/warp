@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.11 $, $Date: 2006/08/23 00:08:49 $
+c@(#) File w3d_utilities.F, version $Revision: 1.12 $, $Date: 2006/09/29 19:27:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -599,28 +599,6 @@ c array.
 
       call Grid2dtypechange(grid)
 
-      return
-      end
-c=============================================================================
-      integer(ISZ) function getnsndtsforsubcycling()
-      use InGen3d,Only: solvergeom,XYZgeom
-      use Subcycling,Only: ndtsaveraging,nsndts
-
-      integer(ISZ):: tmpnsndts
-
-      if (solvergeom == XYZgeom) then
-        if (ndtsaveraging == 0) then
-          tmpnsndts = 1
-        elseif (ndtsaveraging == 1) then
-          tmpnsndts = nsndts
-        elseif (ndtsaveraging == 2) then
-          tmpnsndts = nsndts
-        endif
-      else
-        tmpnsndts = 1
-      endif
-
-      getnsndtsforsubcycling = tmpnsndts
       return
       end
 c=============================================================================

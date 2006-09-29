@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.187 $, $Date: 2006/08/17 16:40:38 $
+c@(#) File TOP.F, version $Revision: 3.188 $, $Date: 2006/09/29 19:27:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3562,6 +3562,83 @@ c=============================================================================
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine setupSubcycling(ns,ndts)
+      use Subcycling
+      integer(ISZ):: ns,ndts(0:ns-1)
+
+c Setups in the bookkeepping variables and arrays for particle subcycling.
+c These are generic and can be used by any field solver.
+
+      integer(ISZ):: js,i,nsndtstemp,newndts
+
+c     --- If there are no particle species, then do nothing
+      if (ns == 0) return
+
+c     --- Find maximum value of ndts and use it to size the ndtstorho array
+      ndtsmax = max(ndtsmax,maxval(ndts))
+      nsndts = max(1,nsndts)
+      call gchange("Subcycling",0)
+
+c     --- Force the first subcycling group to be the one which advances
+c     --- every time step (even if no such group exists).
+      ndtstorho(1) = 0
+      rhotondts(0) = 1
+
+c     --- Find any new time step sizes which havn't been included and add
+c     --- space to the rhopndts array.
+      newndts = 0
+      do js = 0, ns-1
+        if (ndtstorho(ndts(js)) == -1) then
+          ndtstorho(ndts(js)) = -2
+          newndts = newndts + 1
+        endif
+      enddo
+      if (newndts > 0) then
+        nsndtstemp = nsndts
+        nsndts = nsndts + newndts
+        if (ndtsmax > 1) nrhopndtscopies = 2
+        call gchange("Subcycling",0)
+        do js = 0, ns-1
+          if (ndtstorho(ndts(js)) == -2) then
+            ndtstorho(ndts(js)) = nsndtstemp
+            rhotondts(nsndtstemp) = ndts(js)
+            nsndtstemp = nsndtstemp + 1
+          endif
+        enddo
+      endif
+
+c     --- Make sure that nsndtsphi is set properly, and call the gchange
+c     --- to allocate phipndts.
+      if (ndtsaveraging == 0) then
+        nsndtsphi = 1
+      else
+        nsndtsphi = nsndts
+      endif
+      call gchange("Subcycling",0)
+
+      return
+      end
+c=============================================================================
+      integer(ISZ) function getnsndtsforsubcycling()
+      use Subcycling,Only: ndtsaveraging,nsndts
+
+      integer(ISZ):: tmpnsndts
+
+      if (ndtsaveraging == 0) then
+        tmpnsndts = 1
+      elseif (ndtsaveraging == 1) then
+        tmpnsndts = nsndts
+      elseif (ndtsaveraging == 2) then
+        tmpnsndts = nsndts
+      endif
+
+      getnsndtsforsubcycling = tmpnsndts
+      return
+      end
+c=============================================================================
+c=============================================================================
       subroutine chgparticlesdts(pgroup)
       use ParticleGroupmodule
       use Particles, only: chdtspid,spid
@@ -3752,6 +3829,42 @@ c --- zero out down and up arrays
       pgroup%nchdts_up  =0
       pgroup%nchdts_down=0
 
+      end
+c=============================================================================
+c=============================================================================
+      subroutine setupSelfB(ns,groupiselfb,groupfselfb,sid)
+      use SelfB
+      integer(ISZ):: ns,groupiselfb(0:ns-1)
+      real(kind=8):: groupfselfb(0:ns-1)
+
+c Setups in the bookkeepping variables and arrays for particle which require
+c the self B correction.
+c These are generic and can be used by any field solver.
+
+      integer(ISZ):: js1,js2,isid
+      logical(ISZ):: lnew
+
+c     --- Find any new species with different fselfb.
+      do js1=0,ns-1
+        isid = sid(js1) + 1
+        lnew = .true.
+        do js2=0,nsselfb-1
+          if (groupfselfb(js1) == fselfb(js2)) then
+            lnew = .false.
+            groupiselfb(js1) = js2
+            iselfb(isid) = js2
+          endif
+        endif
+        if (lnew) then
+          nsselfb = nsselfb + 1
+          call gchange("SelfB",0)
+          groupiselfb(js1) = nsselfb
+          iselfb(isid) = nsselfb
+          fselfb(nsselfb) = groupfselfb(js1)
+        endif
+      enddo
+
+      return
       end
 c=============================================================================
 c Routines for handling particle groups

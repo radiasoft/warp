@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.288 $, $Date: 2006/09/11 19:41:26 $
+c@(#) File W3D.F, version $Revision: 3.289 $, $Date: 2006/09/29 19:27:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6267,6 +6267,15 @@ c         endif
       return
       end
 c=============================================================================
+      subroutine zerorhowithselfb()
+      use SelfB
+      use Fields3dParticles
+
+      rhopselfb = 0.
+
+      return
+      end
+c=============================================================================
       subroutine averagerhowithfullvsubcycling()
       use Subcycling
       use Fields3dParticles
@@ -6420,6 +6429,7 @@ c           --- are advanced.
             elseif (ndtsaveraging == 2) then
               call zerorhowithhalfvsubcycling()
             endif
+            call zerorhowithselfb()
           endif
           if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
      &       solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
@@ -6716,70 +6726,12 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine setupSubcycling(ns,ndts,it)
-      use Picglb3d
-      use Subcycling
-      integer(ISZ):: ns,ndts(0:ns-1),it
-
-c Setups in the bookkeepping variables and arrays for particle subcycling.
-c These are generic and can be used by any field solver.
-
-      integer(ISZ):: js,i,nsndtstemp,newndts
-
-c     --- If there are no particle species, then do nothing
-      if (ns == 0) return
-
-c     --- Find maximum value of ndts and use it to size the ndtstorho array
-      ndtsmax = max(ndtsmax,maxval(ndts))
-      nsndts = max(1,nsndts)
-      call gchange("Subcycling",0)
-
-c     --- Force the first subcycling group to be the one which advances
-c     --- every time step (even if no such group exists).
-      ndtstorho(1) = 0
-      rhotondts(0) = 1
-
-c     --- Find any new time step sizes which havn't been included and add
-c     --- space to the rhopndts array.
-      newndts = 0
-      do js = 0, ns-1
-        if (ndtstorho(ndts(js)) == -1) then
-          ndtstorho(ndts(js)) = -2
-          newndts = newndts + 1
-        endif
-      enddo
-      if (newndts > 0) then
-        nsndtstemp = nsndts
-        nsndts = nsndts + newndts
-        if (ndtsmax > 1) nrhopndtscopies = 2
-        call gchange("Subcycling",0)
-        do js = 0, ns-1
-          if (ndtstorho(ndts(js)) == -2) then
-            ndtstorho(ndts(js)) = nsndtstemp
-            rhotondts(nsndtstemp) = ndts(js)
-            nsndtstemp = nsndtstemp + 1
-          endif
-        enddo
-      endif
-
-c     --- Make sure that nsndtsphi is set properly, and call the gchange
-c     --- to allocate phipndts.
-      if (ndtsaveraging == 0) then
-        nsndtsphi = 1
-      else
-        nsndtsphi = nsndts
-      endif
-      call gchange("Subcycling",0)
-
-      return
-      end
-c=============================================================================
       subroutine setupFields3dParticles()
       use Picglb3d
       use InMesh3d
       use Fields3d
       use Fields3dParticles
-      use Subcycling,Only:nrhopndtscopies
+      use Subcycling,Only:nrhopndtscopies,nsndts,nsndtsphi
       use w3d_interfaces
 #ifdef MPIPARALLEL
       use Parallel
@@ -6799,6 +6751,10 @@ c Ensures that the phip and rhop arrays are setup properly.
       zmmaxp = zmminp + nzp*dz
 #endif
 
+      nrhopndtscopies3d = nrhopndtscopies
+      nsndts3d = nsndts
+      nsndtsphi3d = nsndtsphi
+      nsselfb3d = nsselfb
       call gchange("Fields3dParticles",0)
 
 c     --- If either rhop of phip are not associated or either does not have

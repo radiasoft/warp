@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.179 $, $Date: 2006/09/11 19:42:37 $
+#@(#) File TOP.V, version $Revision: 3.180 $, $Date: 2006/09/29 19:27:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.179 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.180 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2021,13 +2021,14 @@ nchdts_up(ns) _integer /0/ # Number of particles to change to group/species
 nchdts_down(ns) _integer /0/ # Number of particles to change to group/species 
                            # with smaller time step
 lvdtsmax  integer /1/  # maximum number of ndts levels
+iselfb(ns) _integer /-1/ # Group number for particles that are affected by
+                         # their own magnetic field, using the 1/gamma**2
+                         # approximation. The correction is not applied to
+                         # group number -1.
+fselfb(ns) _real   /0./ # The scaling factor, 1/gamma**2
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
-lselfb(ns) _logical    # Flag determining whether particles are affected by
-                       # their own magnetic field, using the 1/gamma**2
-                       # approximation.
-fselfb(ns) _real   /0./
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
 xp(npmax)       _real [m]       # X-positions of particles
 yp(npmax)       _real [m]       # Y-positions of particles
@@ -2036,6 +2037,52 @@ uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
 uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
+
+*********** Subcycling dump:
+ndtsaveraging integer /0/ # Sets the type of averaging to do when using
+                          # subcycling. When 0, no averaging is done, only
+                          # the most recent charge density from each ndts
+                          # group is used. When 1, the averaging is done from
+                          # n-1/2 to n+1/2 and the two halves of the velocity
+                          # advance use the same self field. When 2, the
+                          # fields for the two velocity halves are different,
+                          # the first averaging from n-1/2 to n, the second
+                          # from n to n+1/2. Note that method 1 does not work
+                          # with even ndts step factors.
+ndtsmax integer /1/       # Maximum step size factor
+nsndts integer /0/        # Number of different step size factors
+nsndtsphi integer /0/     # The number of extra copies of the phi array.
+                          # Either 1 or same as nsndts depending on the type
+                          # of subcycling.
+ndtstorho(ndtsmax) _integer /-1/ # Converts the step size factor to the
+                                 # rho array index to use.
+rhotondts(0:nsndts-1) _integer   # Converts the rho index to the step
+                                 # factor used.
+ldts(0:nsndts-1) _logical /1/    # Set to true when the particle positions
+                                 # have been advanced (and the rho updated)
+itndts(0:nsndts-1) _integer /0/  # The time level of the position of the
+                                 # ndts group
+nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
+                           # It defaults to 1 which is what is needed if
+                           # there are only groups with ndts==1. Otherwise
+                           # it will be 2.
+setupSubcycling(ns:integer,ndts(0:ns-1):integer) subroutine
+                        # Sets up data for particle subcycling
+getnsndtsforsubcycling()
+             integer function # Get number of ndts groups to loop over
+
+
+*********** SelfB:
+nsselfb integer /0/     # Number of groups with different gammas that
+                        # require the 1/gamma**2 correction.
+fselfb(nsselfb) _real /0./ # The scaling factor, 1/gamma**2
+iselfb(ns) _integer /-1/ # Group number for particles that are affected by
+                         # their own magnetic field, using the 1/gamma**2
+                         # approximation. The correction is not applied to
+                         # group number -1.
+setupSelfB(ns:integer,iselfb(0:ns-1):real,groupfselfb(0:ns-1):integer,sid:integer)
+                        subroutine
+                        # Sets up data for particle requiring self B correction
 
 *********** Scraped_Particles dump:
 # Arrays for scraped particles
