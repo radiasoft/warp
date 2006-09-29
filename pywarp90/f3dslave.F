@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.28 $, $Date: 2006/08/09 01:27:13 $
+c F3DSLAVE.M, version $Revision: 1.29 $, $Date: 2006/09/29 19:23:38 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1441,7 +1441,7 @@ c more robust to future changes.
       integer(MPIISZ):: left_pe,right_pe
       integer(MPIISZ):: left_iz,right_iz,left_nz,right_nz,nn
       integer(MPIISZ):: ix,iy,iz
-      integer(ISZ),allocatable:: buffer(:,:,:,:)
+      real(kind=8),allocatable:: buffer(:,:,:,:)
       include "mpif.h"
       integer(MPIISZ):: messid = 50
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
