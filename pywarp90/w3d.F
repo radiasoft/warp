@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.290 $, $Date: 2006/09/29 22:17:59 $
+c@(#) File W3D.F, version $Revision: 3.291 $, $Date: 2006/09/29 22:21:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -20,6 +20,11 @@ c=============================================================================
       real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
       end subroutine assignrhopandphip
+      subroutine setrhoandphiforfieldsolve(rhopindts,phipindts)
+      use Fields3dParticles
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
+      end subroutine setrhoandphiforfieldsolve
       end interface
       end module w3d_interfaces
 c=============================================================================
@@ -6647,13 +6652,6 @@ c        --- Point rho to the block for the currently active ndts group.
 
 #else
 
-      if (solvergeom==XYZgeom) then
-c       --- The rho and phi arrays need to be allocated if they havn't already
-c       --- been.
-        if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
-        if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
-      endif
-
 #endif
 
       return
@@ -6680,7 +6678,7 @@ c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve(indts,rhopindts)
+      subroutine setrhoandphiforfieldsolve(rhopindts,phipindts)
       use InGen
       use InGen3d
       use InMesh3d
@@ -6688,10 +6686,18 @@ c=============================================================================
       use Fields3d
       use Subcycling
       use Fields3dParticles
-      integer(ISZ):: indts
-      real(kind=8):: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
 
-#ifdef MPIPARALLEL
+#ifndef MPIPARALLEL
+
+      if (solvergeom==XYZgeom) then
+c        --- Point rho to the block for the currently active ndts group.
+         rho => rhopindts
+         phi => phipindts
+      endif
+
+#else
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -6703,6 +6709,10 @@ c  whose field solve region overlap its particle region.
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho)
       elseif (solvergeom==XYZgeom) then
+c       --- The rho and phi arrays need to be allocated if they havn't already
+c       --- been.
+        if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
+        if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
         call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhopindts,nzpguard)
       end if
 
@@ -6781,7 +6791,7 @@ c         call gallot('Fields3dParticles',0)
 c       endif
 c     endif
 
-c     --- rhop and phip have the special values for the speices which are
+c     --- rhop and phip have the special values for the species which are
 c     --- incremented every time step.
       call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies,0),
      &                       phipndts(:,:,:,0))
@@ -8135,12 +8145,10 @@ c     --- for the speices with the smallest timestep.
 
 c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.
-        call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,indts),
-     &                       phipndts(:,:,:,indts))
-
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
-        call getrhoforfieldsolve(indts,rhopndts(:,:,:,nrhopndtscopies,indts))
+        call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies,indts),
+     &                                 phipndts(:,:,:,indts))
 
 c       --- enforce periodicity
 c       --- This is done on the rho array, rather than rhop, since that will
