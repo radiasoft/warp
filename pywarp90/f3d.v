@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.156 $, $Date: 2006/09/23 00:12:49 $
+#@(#) File F3D.V, version $Revision: 3.157 $, $Date: 2006/09/30 01:43:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.156 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.157 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -509,13 +509,14 @@ bvp3d(iwhich:integer,bfstype:integer)
              subroutine #
 
 *********** AMR3droutines:
-gatherrhofromchild(rho:real,nn:integer,childrho:real,cnn:integer,
+gatherrhofromchild(rho:real,nn:integer,nextra:integer,childrho:real,cnn:integer,
                    l:integer,u:integer,fulllower:integer,
                    childlower:integer,childupper:integer,
                    r:integer,weights:real,
                    dobounds:integer,bounds:integer,rootdims:integer)
       subroutine
-gatherphifromparents(phi:real,nn:integer,l:integer,u:integer,fulllower:integer,
+gatherphifromparents(phi:real,nn:integer,nextra:integer,l:integer,u:integer,
+                     fulllower:integer,
                      parentphi:real,pnn:integer,parentlower:integer,r:integer)
       subroutine
 gatherafromparents(a:real,nn:integer,l:integer,u:integer,fulllower:integer,
