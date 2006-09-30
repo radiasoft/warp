@@ -4,6 +4,7 @@
 #  - incorporate instances into the particle mover, so charge is deposited and
 #    the E fields gather appropriately.
 from warp import *
+from fieldsolver import FieldSolver
 from generateconductors import installconductors
 from find_mgparam import find_mgparam
 import MA
@@ -14,7 +15,7 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGrid(object):
+class MultiGrid(FieldSolver):
   
   __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
@@ -182,8 +183,6 @@ class MultiGrid(object):
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
-    self.rho = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
-    self.phi = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
     self.rstar = fzeros(3+self.nz,'d')
     if self.efetch == 3:
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
@@ -195,50 +194,57 @@ class MultiGrid(object):
       self.nx_selfe = 0
       self.ny_selfe = 0
       self.nz_selfe = 0
-    self.rhop = self.rho
-    self.phip = self.phi
+
+  def getpdims(self):
+    # --- Returns the dimensions of the rhop and phip arrays
+    return ((1+self.nxp,1+self.nyp,1+self.nzp),
+            (1+self.nxp,1+self.nyp,3+self.nzp))
+
+  def getdims(self):
+    # --- Returns the dimensions of the rhop and phip arrays
+    return ((1+self.nx,1+self.ny,1+self.nz),
+            (1+self.nx,1+self.ny,3+self.nz))
 
   def setrho(self,x,y,z,uz,q,w):
     n = len(x)
     if n == 0: return
-    setrho3d(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+    setrho3d(self.rhop,self.rhop,n,x,y,z,top.zgrid,uz,q,w,top.depos,
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
-
-  def setrhoselect(self,x,y,z,uz,q,w):
-    n = len(x)
-    if n == 0: return
-    setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
-             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+    if self.lzerorhointerior:
+      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,
+                           self.rhop)
 
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     n = len(x)
     if n == 0: return
-    sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
+    sete3d(self.phip,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
-    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phip[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
               self.l2symtry,self.l4symtry)
 
-  def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
-    if lzero: self.rho[...] = 0.
-    for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
-                       top.pgroup.sq,top.pgroup.sw):
-      self.setrho(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
-                  top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],q,w)
-    self.makerhoperiodic()
-    self.getrhoforfieldsolve()
-    if self.lzerorhointerior:
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,self.rho)
+  def setrhoandphiforfieldsolve(self,*args):
+    if npes == 0:
+      FieldSolver.setrhoandphiforfieldsolve(self,*args)
+    else:
+      # --- This is probably not correct
+      rhodims,phidims = self.getdims()
+      if 'rho' not in self.__dict__: self.rho = fzeros(rhodims,'d')
+      if 'phi' not in self.__dict__: self.phi = fzeros(phidims,'d')
+      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
+                            self.nx,self.ny,self.nz,self.rhop,self.nzpguard)
 
-  def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
-    pass
+  def getphipforparticles(self,*args):
+    if npes > 0:
+      getphiforparticles3d(self.nx,self.ny,self.nz,self.phi,
+                           self.nxp,self.nyp,self.nzp,self.phip)
+    FieldSolver.getphipforparticles(self,*args)
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -262,11 +268,6 @@ class MultiGrid(object):
     if self.pbounds[4] == 1: self.rho[:,:,0] = 2.*self.rho[:,:,0]
     if self.pbounds[5] == 1: self.rho[:,:,-1] = 2.*self.rho[:,:,-1]
 
-  def getrhoforfieldsolve(self):
-    if self.nslaves > 1:
-      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nx,self.ny,self.nz,self.rho,self.nzpguard)
-
   def makerhoperiodic_parallel(self):
     tag = 70
     if me == self.nslaves-1:
@@ -278,14 +279,6 @@ class MultiGrid(object):
       request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
     if me == 0 or me == self.nslaves-1:
       status = request.wait()
-
-  def fetche(self):
-    if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
   def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
@@ -325,7 +318,7 @@ class MultiGrid(object):
   def optimizeconvergence(self,resetpasses=1):
     find_mgparam(resetpasses=resetpasses,solver=self)
 
-  def solve(self,iwhich=0):
+  def dosolve(self,iwhich=0):
     # --- Setup data for bends.
     if top.bends:
 
@@ -368,7 +361,7 @@ class MultiGrid(object):
                          self.plasmapotential,self.electrondensitymaxscale)
 
     if self.efetch == 3:
-      MultiGrid.getselfe(self,recalculate=1)
+      self.getselfe(self,recalculate=1)
 
   ##########################################################################
   # Define the basic plot commands
