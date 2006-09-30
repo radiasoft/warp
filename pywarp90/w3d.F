@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.292 $, $Date: 2006/09/29 23:39:24 $
+c@(#) File W3D.F, version $Revision: 3.293 $, $Date: 2006/09/30 01:32:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8148,7 +8148,7 @@ c       --- appropriate arrays for the current ndts group.
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
         call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies,indts),
-     &                                 phipndts(:,:,:,indts))
+     &                                 phipndts(:,:,:,min(indts,nsndtsphi3d-1)))
 
 c       --- enforce periodicity
 c       --- This is done on the rho array, rather than rhop, since that will
