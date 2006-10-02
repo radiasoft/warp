@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.293 $, $Date: 2006/09/30 01:32:33 $
+c@(#) File W3D.F, version $Revision: 3.294 $, $Date: 2006/10/02 21:50:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1385,21 +1385,21 @@ c  The synchv is done on the last.
 c
 c  Note that (it-1) is used since it is advanced before this point.
 
-      if (mod(it-1,pgroup%ndts(is)) == 0 .and.
+      if (mod(it-1,pgroup%ndts(is-1)) == 0 .and.
      &    (center_in=="fullv" .or. center_in=="halfv")) then
         center = center_in
         pgroup%ldts(is) = .true.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        if (itndts(ndtstorho(pgroup%ndts(is))) == it-1) then
-          itndts(ndtstorho(pgroup%ndts(is))) =
-     &          itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
+        if (itndts(ndtstorho(pgroup%ndts(is-1))) == it-1) then
+          itndts(ndtstorho(pgroup%ndts(is-1))) =
+     &          itndts(ndtstorho(pgroup%ndts(is-1))) + pgroup%ndts(is-1)
         endif
-      elseif ((mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
+      elseif ((mod(it-1,pgroup%ndts(is-1)) == pgroup%ndts(is-1) - 1 .and.
      &        center_in=="synchv") .or. center_in == "gen") then
         center = center_in
       else
         pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
         lcycle = .true.
         if (center_in == "gen") lcycle = .false.
       endif
@@ -1435,23 +1435,23 @@ c  field solve which will include that time centered rho average.
 
       integer(ISZ):: ndtstmp
 
-      ndtstmp = pgroup%ndts(is) - mod(pgroup%ndts(is),2)
-      if (mod(it-1,pgroup%ndts(is)) == ndtstmp/2 .and.
+      ndtstmp = pgroup%ndts(is-1) - mod(pgroup%ndts(is-1),2)
+      if (mod(it-1,pgroup%ndts(is-1)) == ndtstmp/2 .and.
      &        (center_in=="fullv" .or. center_in=="halfv")) then
         center = center_in
         pgroup%ldts(is) = .true.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
-        if (itndts(ndtstorho(pgroup%ndts(is))) < it) then
-          itndts(ndtstorho(pgroup%ndts(is))) =
-     &               itndts(ndtstorho(pgroup%ndts(is))) + pgroup%ndts(is)
+        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
+        if (itndts(ndtstorho(pgroup%ndts(is-1))) < it) then
+          itndts(ndtstorho(pgroup%ndts(is-1))) =
+     &               itndts(ndtstorho(pgroup%ndts(is-1))) + pgroup%ndts(is-1)
         endif
-      elseif ((pgroup%ndts(is) == 1 .or.
-     &        (mod(it-1,pgroup%ndts(is)) == ndtstmp/2-1) .and.
+      elseif ((pgroup%ndts(is-1) == 1 .or.
+     &        (mod(it-1,pgroup%ndts(is-1)) == ndtstmp/2-1) .and.
      &         center_in=="synchv") .or. center_in == "gen") then
         center = center_in
       else
         pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is))) = pgroup%ldts(is)
+        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
         lcycle = .true.
         if (center_in == "gen") lcycle = .false.
       endif
@@ -1634,9 +1634,9 @@ c  Set storage for field arrays if not adequate already
 c  Set lvdts array
       if (ndtsaveraging == 0) then
         do is=1,pgroup%ns
-          if (pgroup%ndts(is) == 1) then
+          if (pgroup%ndts(is-1) == 1) then
             pgroup%lvdts(is) = .true.
-          elseif (mod(it-1,pgroup%ndts(is)) == pgroup%ndts(is) - 1 .and.
+          elseif (mod(it-1,pgroup%ndts(is-1)) == pgroup%ndts(is-1) - 1 .and.
      &      center_in=="synchv") then
             pgroup%lvdts(is) = .true.
           else
@@ -1665,7 +1665,7 @@ c  Loop over species
 
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
-        fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+        fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
         halfdt_s = 0.5*fulldt_s
 
 c If this species involves drift-kinetic interpolation, allocate
@@ -2085,7 +2085,7 @@ c       --- This is only done after the positions have been advanced,
 c       --- in which case ldts will be true.
 c       --- Include time step size scaling for steady-state and slice modes.
         if (pgroup%ldts(is)) then
-          fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+          fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
           halfdt_s = 0.5*fulldt_s
 
           ipmin = pgroup%ins(is)
@@ -2493,7 +2493,7 @@ c with appropriate time step.
       if (lw3dtimesubs) substarttime = wtime()
 
         ndtsmax = 2**(pgroup%lvdtsmax-1)
-        myndts  = pgroup%ndts(is)
+        myndts  = pgroup%ndts(is-1)
         ipmin0=ipmin-1
         if (nxc>0) then
           call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
@@ -2529,8 +2529,8 @@ c with appropriate time step.
           if (myndts<ndtsmax) then
 c           --- the threshold on field change is lower for increasing time step in order to 
 c           --- minimize particles changing time steps back and forth due to constant crossing of threshold
-            denorm_up = denorm*real(pgroup%ndts(is))/pgroup%ndts(is+1)
-            dbnorm_up = dbnorm*real(pgroup%ndts(is))/pgroup%ndts(is+1)
+            denorm_up = denorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
+            dbnorm_up = dbnorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
             ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and. 
      &                                   dbx<=dbnorm_up .and. dby<=dbnorm_up .and. dbz<=dbnorm_up
           endif
@@ -6483,7 +6483,7 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
              if (nps_u > 0) then
                if (pgroup%ldts(is)) then
 c                --- Only load the rho if the positions have been advanced.
-                 indts = ndtstorho(pgroup%ndts(is))
+                 indts = ndtstorho(pgroup%ndts(is-1))
                  call setrho3d(rhopndts(:,:,:,1,indts),
      &                         rhopndts(:,:,:,1,indts),nps_u,
      &                      pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
@@ -6882,7 +6882,7 @@ c       --- and the data needs to be copied around.
 #endif
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
-        indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is)))
+        indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
@@ -7063,8 +7063,8 @@ c     --- absorb particles passing through semitransparent disc
       do is=1,ns
 c       --- do it only if species was advanced on this time step
         if (pgroup%ldts(is)) then
-          call processlostpart(pgroup,is,clearlostpart,time+dt*pgroup%ndts(is),
-     &                         zbeam)
+          call processlostpart(pgroup,is,clearlostpart,
+     &                         time+dt*pgroup%ndts(is-1),zbeam)
         endif
       enddo
       

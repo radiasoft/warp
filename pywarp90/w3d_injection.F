@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.79 $, $Date: 2006/09/22 23:28:00 $
+c@(#) File w3d_injection.F, version $Revision: 1.80 $, $Date: 2006/10/02 21:50:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -175,7 +175,7 @@ c         --- Loop over species.
             inj_is = min(isid,inj_ns)
             vzinj = vzinject(ij,isid)
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             if (l_inj_user_particles) then
 
@@ -404,7 +404,7 @@ c             --- and the particle arrays are unallocated.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is),nn,
+              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,
      &                                   pgroup%xp(i1:i2),
      &                                   pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),at,bt,apt)
@@ -513,7 +513,7 @@ c         loop over species and injection sources
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             ipmin = pgroup%ins(is)
             nn = 0
@@ -531,7 +531,7 @@ c             --- Make sure there is enough temp space
 
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
-                call fetche3dfrompositions(is,pgroup%ndts(is),nn,
+                call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,
      &                                     pgroup%xp(ipmin),
      &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     at,bt,apt)
@@ -696,7 +696,7 @@ c           --- calculated by a call to getinj_phi from padvnc3d.
 
 c             --- Don't bother doing anything if finject is 0.
               if (.not. pgroup%ldts(is) .or. finject(ij,isid) == 0.) cycle
-              fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+              fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
@@ -1146,7 +1146,7 @@ c         --- size, uniformly distributed between 0 and dt.
             isid = pgroup%sid(is-1) + 1
 c           --- Skip this if no particles of this species were injected.
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
             if(npinje_s(isid)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -1194,7 +1194,7 @@ c           --- and to make the following code look cleaner.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
@@ -1237,7 +1237,7 @@ c         --- loop over species
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
@@ -1339,7 +1339,7 @@ c           --- only particles that have been injected this time step.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
@@ -1424,7 +1424,7 @@ c           --- loop over species
             do is=1,pgroup%ns
               isid = pgroup%sid(is-1) + 1
               if (.not. pgroup%ldts(is)) cycle
-              fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+              fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
               nti = 0
               qoverm = pgroup%sq(is)/pgroup%sm(is)
 
@@ -1634,7 +1634,7 @@ c         --- size, uniformly distributed between 0 and dt.
             isid = pgroup%sid(is-1) + 1
 c           --- Skip this if no particles of this species were injected.
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s    = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
             if(ntinject(isid)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -1682,7 +1682,7 @@ c           --- and to make the following code look cleaner.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
@@ -1720,7 +1720,7 @@ c         --- loop over species
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
             if (.not. pgroup%ldts(is)) cycle
-            fulldt_s = dt*pgroup%ndts(is)*pgroup%dtscale(is)
+            fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
@@ -1822,7 +1822,7 @@ c           --- only particles that have been injected this time step.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is),nn,xx,yy,zz,
+              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
               call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
             endif
@@ -2084,7 +2084,7 @@ c Also set particle parameters: charge, mass and weight
         endif
         if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(isid)*echarge
         if (pgroup%sw(is) == 0. .and. npinje_s(isid) > 0)
-     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
+     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is-1)/
      &                    pgroup%sq(is))/npinje_s(isid)
         if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(isid)*amu
       enddo
@@ -2154,7 +2154,7 @@ c In case there is no axial injection, set the particle weight.
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
         if (pgroup%sw(is) == 0. .and. ntinject(isid) > 0) then
-          pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is)/
+          pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is-1)/
      &                     pgroup%sq(is))/ntinject(isid)
         endif
       enddo

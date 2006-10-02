@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.20 $, $Date: 2006/08/16 18:47:42 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.21 $, $Date: 2006/10/02 21:50:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -202,10 +202,10 @@ c         --- mode, it is assumed that dtscale has not been changed from 1.
           if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
             ipmin = ins_u
             if (nps_u > 0) then
-              if (pgroup%ndts(is)>1) then
+              if (pgroup%ndts(is-1)>1) then
 c               --- This code would be better if it were in setj3d, but since
 c               --- jp is passed into it, this must be done here.
-                if (mod(it+1,pgroup%ndts(is))==0) then
+                if (mod(it+1,pgroup%ndts(is-1))==0) then
 c                  --- If this species is being advanced this step, then
 c                  --- deposit its j into jptmp.
                    jpcopy => bfieldp%j
@@ -246,7 +246,7 @@ c               --- zeros.
      &                      pgroup%sq(is)*swtmp(1),nps_u,pidtmp,
      &                      depos,l2symtry,l4symtry)
               endif
-              if (pgroup%ndts(is)>1 .and. mod(it+1,pgroup%ndts(is))==0) then
+              if (pgroup%ndts(is-1)>1 .and. mod(it+1,pgroup%ndts(is-1))==0) then
 c               --- If this species is being advanced this step, then restore
 c               --- jp and copy its j into jp.
                 bfieldp%j => jpcopy

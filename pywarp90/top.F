@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.190 $, $Date: 2006/09/29 22:20:29 $
+c@(#) File TOP.F, version $Revision: 3.191 $, $Date: 2006/10/02 21:50:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2436,7 +2436,7 @@ c Parallel version makes call to special routine zpartbnd_slave
 c     --- periodic boundary condition
         syslen = zmmax - zmmin
         do is=1,pgroup%ns
-          if (mod(it,pgroup%ndts(is))/=0) cycle
+          if (mod(it,pgroup%ndts(is-1))/=0) cycle
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             if (pgroup%zp(ip) < zgrid + zmmin) then
               pgroup%zp(ip) = pgroup%zp(ip) +
@@ -2451,7 +2451,7 @@ c     --- periodic boundary condition
       else
 c     --- other boundary condition (particles absorbed or reflected)
         do is=1,pgroup%ns
-          if (mod(it,pgroup%ndts(is))/=0) cycle
+          if (mod(it,pgroup%ndts(is-1))/=0) cycle
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             if ((pgroup%zp(ip)-zgrid) >= zmmax) then
               if(pboundnz==absorb) then
@@ -2563,7 +2563,7 @@ c of semi-transparent disc location are checked for disc crossing.
 c     --- loop on species
       do is=1,pgroup%ns
 c       --- do it only if species was advanced on this time step
-        if (mod(it,pgroup%ndts(is))/=0) cycle
+        if (mod(it,pgroup%ndts(is-1))/=0) cycle
 c       --- loop on particles
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
 c         --- loop on number of discs
