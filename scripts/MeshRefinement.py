@@ -752,19 +752,7 @@ from gatherrhofromchildren.
   # --- Methods to carry out the field solve
   #--------------------------------------------------------------------------
 
-  def setrhoandphiforfieldsolve(self,*args):
-    for block in self.listofblocks:
-      FieldSolver.setrhoandphiforfieldsolve(block,*args)
-
-  def getphipforparticles(self,*args):
-    for block in self.listofblocks:
-      FieldSolver.getphipforparticles(block,*args)
-
-  def selfbcorrection(self,*args):
-    for block in self.listofblocks:
-      FieldSolver.selfbcorrection(block,*args)
-
-  def solve(self,iwhich=0):
+  def dosolve(self,iwhich=0,*args):
 
     # --- Make sure that the final setup was done.
     self.finalize()
@@ -774,30 +762,24 @@ from gatherrhofromchildren.
     # --- which is needed on the boundaries will be up to date.
     if not self.islastcall(): return
 
-    # solve on phi
+    # --- solve on phi, first getting phi from the parents - both the
+    # --- boundary conditions and the interior values as the initial
+    # --- value.
     self.setphifromparents()
-    FieldSolver.solve(self,iwhich)
+    Multigrid.dosolve(self,iwhich)
 
-    # solve for children
+    # --- solve for children, using the routine which does the correct
+    # --- referencing for subcycling and self-B correction
     for child in self.children:
-      child.solve(iwhich)
-
-  def pointphitophispecies(self,js,lselfonly=0):
-    # make phicopy point to phi, phi point to phispecies[js] 
-    self.phi = self.phispecies[js]
-    if not lselfonly:
-      for child in self.children:
-        child.pointphitophispecies(js)
+      child.dosolveonphi(iwhich,*args)
 
   def setphifromparents(self):
     """
 Sets phi, using the values from the parent grid. Setting the full phi array
 gives a better initial guess for the field solver.
     """
-    phi = self.getphi()
     for parentnumber in self.parents:
       parent = self.getblockfromnumber(parentnumber)
-      parentphi = parent.getphi()
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
@@ -805,73 +787,9 @@ gives a better initial guess for the field solver.
       u = minimum(parent.fullupper*self.refinement,self.fullupper)
       # --- The full phi arrays are passed in to avoid copying the subsets
       # --- since the fortran needs contiguous arrays.
-      nextra = shape(phi)[-1]
-      gatherphifromparents(phi,self.dims,nextra,l,u,self.fulllower,
-                           phiparent,parent.dims,parent.fulllower,
+      gatherphifromparents(self.phi,self.dims,l,u,self.fulllower,
+                           parent.phi,parent.dims,parent.fulllower,
                            self.refinement)
-
-  def setphiboundaries(self):
-    """
-Sets phi on the boundaries, using the values from the parent grid
-    """
-    if len(self.parents) == 0: return
-    for parentnumber in self.parents:
-      parent = self.getblockfromnumber(parentnumber)
-      # --- Coordinates of mesh relative to parent's mesh location
-      # --- and refinement. The minimum and maximum are needed in case
-      # --- this mesh extends beyond the parent's.
-      pl = maximum(parent.fulllower,self.fullloweroverrefinement)
-      pu = minimum(parent.fullupper,self.fullupperoverrefinement)
-      l = pl*self.refinement
-      u = pu*self.refinement
-      sphi = self.getphi(l,u)
-      pphi = parent.getphi(pl,pu)
-      r = self.refinement
-      if l[0] == self.fulllower[0]: sphi[ 0    ,::r[1],::r[2]] = pphi[ 0,:,:]
-      if u[0] == self.fullupper[0]: sphi[-1    ,::r[1],::r[2]] = pphi[-1,:,:]
-      if l[1] == self.fulllower[1]: sphi[::r[0], 0    ,::r[2]] = pphi[:, 0,:]
-      if u[1] == self.fullupper[1]: sphi[::r[0],-1    ,::r[2]] = pphi[:,-1,:]
-      if l[2] == self.fulllower[2]: sphi[::r[0],::r[1], 0    ] = pphi[:,:, 0]
-      if u[2] == self.fullupper[2]: sphi[::r[0],::r[1],-1    ] = pphi[:,:,-1]
-
-    # --- Do remaining points where interpolation is needed.
-    # --- This can be done, now that all of the contributions from the parents
-    # --- is done.
-    sphi = self.phi[:,:,1:-1]
-    self.setslice(sphi[ 0,:,:],self.refinement[1:])
-    self.setslice(sphi[-1,:,:],self.refinement[1:])
-    self.setslice(sphi[:, 0,:],self.refinement[0::2])
-    self.setslice(sphi[:,-1,:],self.refinement[0::2])
-    self.setslice(sphi[:,:, 0],self.refinement[:2])
-    self.setslice(sphi[:,:,-1],self.refinement[:2])
-
-  def setslice(self,slice,r):
-    # --- Does interpolation from cells coincident with the parent to the
-    # --- other cells.
-    for j in range(r[1]):
-      w1 = 1.*j/r[1]
-      for i in range(r[0]):
-        w0 = 1.*i/r[0]
-        if i == 0 and j == 0: continue
-        slice[i:-1:r[0],j:-1:r[1]] = (
-           slice[    :-1:r[0],    :-1:r[1]]*(1.-w0)*(1.-w1) +
-           slice[r[0]:  :r[0],    :-1:r[1]]*    w0 *(1.-w1) +
-           slice[    :-1:r[0],r[1]:  :r[1]]*(1.-w0)*    w1  +
-           slice[r[0]:  :r[0],r[1]:  :r[1]]*    w0 *    w1)
-
-    w1 = 1.
-    for i in range(1,r[0]):
-      w0 = 1.*i/r[0]
-      slice[i::r[0],-1] = (
-         slice[    :-1:r[0],-1]*(1.-w0)*    w1  +
-         slice[r[0]:  :r[0],-1]*    w0 *    w1)
-
-    w0 = 1.
-    for j in range(1,r[1]):
-      w1 = 1.*j/r[1]
-      slice[-1,j::r[1]] = (
-         slice[-1,    :-1:r[1]]*    w0 *(1.-w1) +
-         slice[-1,r[1]:  :r[1]]*    w0 *    w1)
 
   def optimizeconvergence(self,resetpasses=1):
     if not self.isfirstcall(): return
