@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.119 $, $Date: 2006/09/30 01:43:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.120 $, $Date: 2006/10/02 20:12:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3696,15 +3696,15 @@ c                   --- Adjust for symmetries
       return
       end
 c=============================================================================
-      subroutine gatherphifromparents(phi,nn,nextra,l,u,fulllower,
+      subroutine gatherphifromparents(phi,nn,l,u,fulllower,
      &                                parentphi,pnn,parentfulllower,r)
       use Subtimersf3d
       integer(ISZ):: nn(0:2),pnn(0:2)
       integer(ISZ):: r(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
-      real(kind=8):: phi(0:nn(0),0:nn(1),-1:nn(2)+1,nextra)
-      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),-1:pnn(2)+1,nextra)
+      real(kind=8):: phi(0:nn(0),0:nn(1),-1:nn(2)+1)
+      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),-1:pnn(2)+1)
 
       integer(ISZ):: ix0,iy0,iz0
       integer(ISZ):: ix,iy,iz
@@ -3747,15 +3747,15 @@ c=============================================================================
               ixp2 = ixp1 + 1
             endif
 
-            phi(ix,iy,iz,:) = 0.
+            phi(ix,iy,iz) = 0.
 
             do izp=izp1,izp2
               do iyp=iyp1,iyp2
                 do ixp=ixp1,ixp2
 
-                  phi(ix,iy,iz,:) = phi(ix,iy,iz,:) + 
+                  phi(ix,iy,iz) = phi(ix,iy,iz) + 
      &              wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
-     &              parentphi(ixp,iyp,izp,:)
+     &              parentphi(ixp,iyp,izp)
 
                 enddo
               enddo
