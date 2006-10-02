@@ -239,7 +239,7 @@ of the rho and field arrays"""
             (top.it-1)%top.rhotondts[in1] == 0):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
         else:
-          rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
+          rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,1,in1])
       else:
         # --- When ndts is even, at the mid point of the step, take the
         # --- average of the old and the new
