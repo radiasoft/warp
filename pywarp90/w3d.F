@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.294 $, $Date: 2006/10/02 21:50:41 $
+c@(#) File W3D.F, version $Revision: 3.295 $, $Date: 2006/10/02 23:26:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6277,7 +6277,7 @@ c=============================================================================
       use SelfB
       use Fields3dParticles
 
-      rhopselfb = 0.
+      if (nsselfb3d > 0) rhopselfb = 0.
 
       return
       end
