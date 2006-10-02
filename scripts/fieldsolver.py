@@ -117,9 +117,16 @@ class FieldSolver(object):
       phipselfb[...,iselfb] = self.phi[...]
 
   def selfbcorrection(self,js):
-    # scale phispecies by -(1-1/gamma*2) store into top.fselfb
+    "scale phispecies by -(1-1/gamma*2) store into top.fselfb"
     phipselfb = self.getphi(lselfb=1)
     phipselfb[...,js] *= top.fselfb[js]
+
+  def dosolveonphi(self,iwhich,irhopndtscopies,indts,iselfb):
+    "points rho and phi appropriately and call the solving routine"
+    self.setrhoandphiforfieldsolve(irhopndtscopies,indts,iselfb)
+    self.dosolve(iwhich,irhopndtscopies,indts,iselfb)
+    if iselfb is not None: self.selfbcorrection(iselfb)
+    self.getphipforparticles(indts,iselfb)
 
   def solve(self,iwhich=0):
     # --- Loop over the subcyling groups and do any field solves that
@@ -130,17 +137,11 @@ class FieldSolver(object):
     for indts in range(tmpnsndts-1,-1,-1):
       if (not top.ldts[indts] and
           (top.ndtsaveraging == 0 and not sum(top.ldts))): continue
-      self.setrhoandphiforfieldsolve(top.nrhopndtscopies-1,indts,None)
-      self.dosolve()
-      self.getphipforparticles(indts,None)
+      self.dosolveonphi(iwhich,top.nrhopndtscopies-1,indts,None)
 
     # --- Solve for phi for groups which require the self B correction
-    phipselfb = self.getphi(lselfb=1)
     for js in range(top.nsselfb):
-      self.setrhoandphiforfieldsolve(None,None,js)
-      self.dosolve()
-      self.selfbcorrection(js)
-      self.getphipforparticles(None,js)
+      self.dosolveonphi(iwhich,None,None,js)
 
   def installconductor(self,conductor):
     'Installs conductor. Does nothing if not defined'
@@ -229,13 +230,13 @@ of the rho and field arrays"""
     # --- Save the rho where the fastest particle's rho is. For now,
     # --- assume that this is in1=0
     for in1 in range(1,top.nsndts):
-      if it == 0:
-        # --- At it==0, before the first step, always add the new rho.
+      if top.it == 0:
+        # --- At top.it==0, before the first step, always add the new rho.
         rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
       elif top.rhotondts[in1]%2 == 1:
         # --- Use the rho that is closest in time to the current time.
-        if ((it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
-            (it-1)%top.rhotondts[in1] == 0):
+        if ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
+            (top.it-1)%top.rhotondts[in1] == 0):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
         else:
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
@@ -244,11 +245,11 @@ of the rho and field arrays"""
         # --- average of the old and the new
         # --- Otherwise, use the rho that is closest in time to the currentc
         # --- time.
-        if (it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2:
+        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2:
           rhopndts[...,1,0] = (rhopndts[...,1,0] +
                0.5*(rhopndts[...,0,in1] + rhopndts[...,1,in1]))
-        elif ((it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
-              (it-1)%top.rhotondts[in1] == 0):
+        elif ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
+              (top.it-1)%top.rhotondts[in1] == 0):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
         else:
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,1,in1])
