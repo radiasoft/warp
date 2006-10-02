@@ -233,12 +233,18 @@ class MultiGrid(FieldSolver):
     if npes == 0:
       FieldSolver.setrhoandphiforfieldsolve(self,*args)
     else:
-      # --- This is probably not correct
+      # --- This needs checking.
       rhodims,phidims = self.getdims()
       if 'rho' not in self.__dict__: self.rho = fzeros(rhodims,'d')
       if 'phi' not in self.__dict__: self.phi = fzeros(phidims,'d')
-      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nx,self.ny,self.nz,self.rhop,self.nzpguard)
+      self.rhotemp = self.rho
+      self.phitemp = self.phi
+      FieldSolver.setrhoandphiforfieldsolve(self,*args)
+      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rhotemp,
+                            self.nx,self.ny,self.nz,self.rho,self.nzpguard)
+      self.rho = self.rhotemp
+      self.phi = self.phitemp
+      del self.rhotemp,self.phitemp
 
   def getphipforparticles(self,*args):
     if npes > 0:
@@ -318,7 +324,7 @@ class MultiGrid(FieldSolver):
   def optimizeconvergence(self,resetpasses=1):
     find_mgparam(resetpasses=resetpasses,solver=self)
 
-  def dosolve(self,iwhich=0):
+  def dosolve(self,iwhich=0,*args):
     # --- Setup data for bends.
     if top.bends:
 
