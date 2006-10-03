@@ -2,6 +2,7 @@
 """
 from warp import *
 from multigrid import MultiGrid
+from fieldsolver import FieldSolver
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
@@ -37,7 +38,7 @@ Implements adaptive mesh refinement in 3d
                     nguard=1,
                     children=None,lreducedpickle=1,**kw):
 
-    # --- Pass the input value of lreducedpickle into the Multigrid class
+    # --- Pass the input value of lreducedpickle into the MultiGrid class
     kw['lreducedpickle'] = lreducedpickle
 
     if parent is None:
@@ -68,6 +69,7 @@ Implements adaptive mesh refinement in 3d
     # --- Two separate lists is likely only a small optimization.
     self.overlapslower = {}
     self.overlapshigher = {}
+    self.overlapsparallel = {}
     self.nguard = nguard
 
     if parent is None:
@@ -203,7 +205,7 @@ Implements adaptive mesh refinement in 3d
       self.fulllower = zeros(3)
       self.fullupper = self.dims
       self.rootdims = self.dims
-      self.mirrorarraystow3d()
+#     self.mirrorarraystow3d()
 
     # --- childdomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
@@ -271,7 +273,7 @@ it knows whether to re-register itself.
       installafterrestart(self.loadrho)
       installafterrestart(self.solve)
       # --- Do this after the restart since it has check for grid sizes.
-      installafterrestart(self.mirrorarraystow3d)
+#     installafterrestart(self.mirrorarraystow3d)
 
   def makefortranordered(self,vname):
     a = getattr(self,vname)
@@ -460,7 +462,9 @@ This is faster than the original routine since each pair of blocks is checked
 only once, rather than twice for each parent as in the original.
     """
     # --- When the list is empty, there are no blocks, so just return.
-    if len(blocklists[0]) == 0: return
+    if (len(blocklists[0]) == 0 and
+        len(blocklistsleft[0]) == 0 and
+        len(blocklistsright[0]) == 0): return
     # --- Make the call for the next level.
     self.findoverlappingsiblings(blocklists[1:],
                                  blocklistsleft[1:],blocklistsright[1:])
@@ -481,12 +485,28 @@ only once, rather than twice for each parent as in the original.
         su = minimum(sibling.fullupper,block.fullupper)
         if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
 
+        # --- The ordering ofthe blocks in the list matter since lower blocks
+        # --- get precedence, and the rho is accumualated there.
         if block.blocknumber < sibling.blocknumber:
           block.overlapshigher[sibling.blocknumber] = [sl,su]
           sibling.overlapslower[block.blocknumber] = [sl,su]
         else:
           block.overlapslower[sibling.blocknumber] = [sl,su]
           sibling.overlapshigher[block.blocknumber] = [sl,su]
+
+    # --- Now find overlapping blocks in neighboring processors. 
+    # --- For the precedence, even numbered processors get precdence
+    # --- over odd numbered processors. Otherwise, the logic is the same
+    # --- as above.
+    for blocklists,pe in zip([blocklistsleft[0],blocklistsright[0]],[me-1,me+1]):
+      blocklistscopy = copy.copy(blocklists)
+      for block in blocklists:
+        del blocklistscopy[0]
+        for sibling in blocklistscopy:
+          sl = maximum(sibling.fulllower,block.fulllower)
+          su = minimum(sibling.fullupper,block.fullupper)
+          if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
+          block.overlapsparallel[sibling.blocknumber] = [sl,su,pe]
 
   def clearinactiveregions(self,nbcells,parent=None,level=1):
     """
@@ -552,76 +572,28 @@ not be fetched from there (it is set negative).
   # --- The next several methods handle the charge density calculation.
   #--------------------------------------------------------------------------
 
-  def loadrho(self,lzero=true,depositallparticles=0):
-    """
-Loads the charge density from the particles. This should only be called for
-the top level grid.
-    """
-    # --- Make sure that the final setup was done.
-    self.finalize()
-
-    # --- Load rho in all of the blocks
-    FieldSolver.loadrho(self,lzero=lzero)
-
-    # --- distribute charge density among blocks
-    if lzero:
-      self.propagaterhobetweenpatches(depositallparticles)
-
-  def propagaterhobetweenpatches(self,depositallparticles):
-      self.getrhofromoverlaps()
-      if not depositallparticles:
-        self.gatherrhofromchildren()
-      self.restorerhoinoverlaps()
-
-  def zerorhointerior(self,lrootonly=0):
-    if not self.isfirstcall(): return
-    rho = self.getrho()
-    for i in range(shape(rho)[-1]):
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,
-                           rho[...,i])
-    if not lrootonly:
-      for child in self.children:
-        child.zerorhointerior()
+  def setrhopforparticles(self,*args):
+    for block in self.listofblocks:
+      FieldSolver.setrhopforparticles(block,*args)
 
   def allocatedataarrays(self):
+    # --- Make sure that the final setup was done. This is put here
+    # --- since this routine is called by loadrho and solve, which
+    # --- call finalize anyway.
+    self.finalize()
+    # --- Now loop over blocks, calling allocatedataarrays
     for block in self.listofblocks:
       FieldSolver.allocatedataarrays(block)
 
-  def zerorho(self):
+  def zerorhop(self):
     for block in self.listofblocks:
-      FieldSolver.zerorho(block)
+      FieldSolver.zerorhop(block)
 
-  def averagerhowithsubcycling(self):
+  def averagerhopwithsubcycling(self):
     for block in self.listofblocks:
-      FieldSolver.averagerhowithsubcycling(block)
+      FieldSolver.averagerhopwithsubcycling(block)
 
-  def sortbyichild(self,ichild,x,y,z,uz):
-    xout,yout,zout,uzout = zeros((4,len(x)),'d')
-    nperchild = zeros(self.root.totalnumberofblocks)
-    sortparticlesbyindex(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
-                         xout,yout,zout,uzout,nperchild)
-    return xout,yout,zout,uzout,nperchild
-
-  def getichild(self,x,y,z,ichild):
-    """
-Gathers the ichild for the setrho_allsort.
-    """
-    # --- This must wait until all of the parents have have set ichild
-    # --- so that the value in the children takes precedence.
-    if not self.islastcall(): return
-    if len(x) == 0: return
-    if len(self.children) > 0:
-      # --- Find out whether the particles are in the local domain or one of
-      # --- the children's.
-      getichild(self.blocknumber,len(x),x,y,z,ichild,
-                self.nx,self.ny,self.nz,self.childdomains,
-                self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                self.zmmin,self.zmmax,top.zgrid,
-                self.l2symtry,self.l4symtry)
-      for child in self.children:
-        child.getichild(x,y,z,ichild)
-
-  def setrho(self,x,y,z,uz,q,w,lrootonly):
+  def setrhop(self,x,y,z,uz,q,w,lrootonly=0):
     """
 Given the list of particles, a charge and a weight, deposits the charge
 density of the mesh structure.
@@ -638,33 +610,135 @@ relative to the parent.
       self.getichild(x,y,z,ichild)
 
       x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
-      blocklist = self.root.listofblocks
 
     else:
       nperchild = [len(x)]
-      blocklist = [self]
 
     # --- For each block, pass to it the particles in it's domain.
     i = 0
-    for block,n in zip(blocklist,nperchild):
-      MultiGrid.setrho(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
+    for block,n in zip(self.root.listofblocks,nperchild):
+      MultiGrid.setrhop(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
       i = i + n
 
-  def gatherrhofromchildren(self):
+  def aftersetrhop(self,lzero):
+    # --- distribute charge density among blocks
+    if lzero:
+      # --- propagate rhop between patches
+      self.exchangerhopwithneighbors()
+      self.getrhopfromoverlaps()
+      self.gatherrhopfromchildren()
+      self.restorerhopinoverlaps()
+
+  def exchangerhopwithneighbors(self):
+    """
+Exchange rhop in blocks overlapping blocks on neighboring processors.
+    """
+    assert self is self.root,"This should only be called by the root block"
+    if npes == 0: return
+
+    # --- All blocks first send the overlapping rhop to the neighbors.
+    # --- Note that the precedences for rhop is handled locally so
+    # --- here, all exchanges are made.
+    self.root.parallelwaitlist = [] # --- Filled in by the calls to sendrhop
+    for block in self.listofblocks:
+      for othernumber,overlapdomain,pe in block.overlapsparallel.items():
+        l,u = overlapdomain
+        block.sendrhop(l,u,pe=pe,number=othernumber)
+
+    # --- The parallel receives are done afterward since they are blocking. At
+    # --- this point, all of the sends have been made so there should be little
+    # --- waiting and no contention.
+    for block in self.listofblocks:
+      for othernumber,overlapdomain,pe in block.overlapsparallel.items():
+        l,u = overlapdomain
+        srhop = block.getrhop(l,u)
+        orhop = block.recvrhop(pe=pe,number=othernumber)
+        add(srhop,orhop,srhop)
+
+    # --- This is not really necessary, but helps keeps things clean.
+    if len(self.root.parallelwaitlist) > 0: mpi.wait_all(self.root.parallelwaitlist)
+    del self.root.parallelwaitlist
+
+  def getrhopfromoverlaps(self):
+    """
+Add in the rhop from overlaping areas. The rhop is gathered into the block with
+the lowerest number. Later on, the rhop will be copied back to the higher
+numbered blocks. Note that overlaps from neighboring processors has already
+been taken care of. This should only ever be called by the root block.
+    """
+    assert self is self.root,"This should only be called by the root block"
+
+    # --- This loops over the blocks in ascending order to ensure that in any
+    # --- area with overlap, the block with the lowest number is the one that
+    # --- gets the rhop. This avoids problems of double counting rhop. This
+    # --- could also be done be zeroing out orhop, but that is extra
+    # --- (unecessary) computational work, since it already will be done
+    # --- at the end of gatherrhopfromchildren.
+    for block in self.listofblocks:
+      for othernumber,overlapdomain in block.overlapshigher.items():
+        other = block.getblockfromnumber(othernumber)
+        l,u = overlapdomain
+        srhop = block.getrhop(l,u)
+        orhop = other.getrhop(l,u)
+        add(srhop,orhop,srhop)
+
+  def sortbyichild(self,ichild,x,y,z,uz):
+    xout,yout,zout,uzout = zeros((4,len(x)),'d')
+    nperchild = zeros(self.root.totalnumberofblocks)
+    sortparticlesbyindex(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
+                         xout,yout,zout,uzout,nperchild)
+    return xout,yout,zout,uzout,nperchild
+
+  def getichild(self,x,y,z,ichild):
+    """
+Gathers the ichild for the setrhop.
+    """
+    # --- This must wait until all of the parents have have set ichild
+    # --- so that the value in the children takes precedence.
+    if not self.islastcall(): return
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      getichild(self.blocknumber,len(x),x,y,z,ichild,
+                self.nx,self.ny,self.nz,self.childdomains,
+                self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                self.zmmin,self.zmmax,top.zgrid,
+                self.l2symtry,self.l4symtry)
+      for child in self.children:
+        child.getichild(x,y,z,ichild)
+
+  def zerorhopinoverlap(self):
+    """
+This zeros out rhop in overlapping regions for higher numbered blocks.  When
+rhop is passed from child to parent, in any overlapping regions only one child
+needs to pass the data to the parent.  The choice as to which does the
+passing is determined by the blocknumber - the lower gets to do the passing.
+For the others, the rhop in the overlapping region is cleared out. That rhop
+will be restored later by a call to restorerhopinoverlaps.
+Note that this is not recursive, since it is called separately by each block
+from gatherrhopfromchildren.
+    """
+    for othernumber,overlapdomain in self.overlapslower.items():
+      l,u = overlapdomain
+      srhop = self.getrhop(l,u)
+      srhop[...] = 0.
+
+  def gatherrhopfromchildren(self):
     """
 Fortran version
     """
     # --- Do this only the first time this is called. This should only be
     # --- done once and since each parent requires that this be done
-    # --- before it can get its rho from here, it must be done on the
+    # --- before it can get its rhop from here, it must be done on the
     # --- first call.
     if not self.isfirstcall(): return
 
     # --- Loop over the children
     for child in self.children:
 
-      # --- Make sure that the child has gathered rho from its children.
-      child.gatherrhofromchildren()
+      # --- Make sure that the child has gathered rhop from its children.
+      child.gatherrhopfromchildren()
 
       # --- Get coordinates of child relative to this domain
       l = maximum(child.fullloweroverrefinement,self.fulllower)
@@ -682,71 +756,31 @@ Fortran version
                    u[1] == self.rootdims[1] or
                    u[2] == self.rootdims[2]))
 
-      w = self.getwarrayforrho(child.refinement)
-      selfrho = self.getrho()
-      childrho = child.getrho()
-      gatherrhofromchild(selfrho,self.dims,shape(rho)[-1],childrho,child.dims,
+      w = self.getwarrayforrhop(child.refinement)
+      gatherrhofromchild(self.rhop,self.dims,child.rhop,child.dims,
                          l,u,self.fulllower,child.fulllower,child.fullupper,
                          child.refinement,w,
                          dopbounds,child.pbounds,self.rootdims)
 
-    # --- zerorhoinoverlap is call here so that any contribution from
+    # --- zerorhopinoverlap is call here so that any contribution from
     # --- the children in the overlap regions will get zeroed as necessary.
-    self.zerorhoinoverlap()
+    self.zerorhopinoverlap()
 
-  def getrhofromoverlaps(self):
+  def restorerhopinoverlaps(self):
     """
-Add in the rho from overlaping areas. The rho is gathered into the block with
-the lowerest number. Later on, the rho will be copied back to the higher
-numbered blocks. This should only ever be called by the root block.
-    """
-    assert self is self.root,"This should only be called by the root block"
-    # --- This loops over the blocks in ascending order to ensure that in any
-    # --- area with overlap, the block with the lowest number is the one that
-    # --- gets the rho. This avoids problems of double counting rho. This
-    # --- could also be done be zeroing out orho, but that is extra
-    # --- (unecessary) computational work, since it already will be done
-    # --- at the end of gatherrhofromchildren.
-    for block in self.listofblocks:
-      for othernumber,overlapdomain in block.overlapshigher.items():
-        other = block.getblockfromnumber(othernumber)
-        l,u = overlapdomain
-        srho = block.getrho(l,u)
-        orho = other.getrho(l,u)
-        add(srho,orho,srho)
-
-  def restorerhoinoverlaps(self):
-    """
-Restore rho in overlapping areas for blocks which had the rho zeroed out, the
+Restore rhop in overlapping areas for blocks which had the rhop zeroed out, the
 higher numbered blocks. This should only ever be called by the root block.
     """
     assert self is self.root,"This should only be called by the root block"
     # --- The loop does not need to be in ascending order, but this just
-    # --- matches the getrhofromoverlaps routine.
+    # --- matches the getrhopfromoverlaps routine.
     for block in self.listofblocks:
       for othernumber,overlapdomain in block.overlapslower.items():
         other = block.getblockfromnumber(othernumber)
         l,u = overlapdomain
-        srho = block.getrho(l,u)
-        orho = other.getrho(l,u)
-        srho[...] = orho
-
-  def zerorhoinoverlap(self):
-    """
-This zeros out rho in overlapping regions for higher numbered blocks.  When
-rho is passed from child to parent, in any overlapping regions only one child
-needs to pass the data to the parent.  The choice as to which does the
-passing is determined by the blocknumber - the lower gets to do the passing.
-For the others, the rho in the overlapping region is cleared out. That rho
-will be restored later by a call to restorerhoinoverlaps.
-Note that this is not recursive, since it is called separately by each block
-from gatherrhofromchildren.
-    """
-    for othernumber,overlapdomain in self.overlapslower.items():
-      other = self.getblockfromnumber(othernumber)
-      l,u = overlapdomain
-      srho = self.getrho(l,u)
-      srho[...] = 0.
+        srhop = block.getrhop(l,u)
+        orhop = other.getrhop(l,u)
+        srhop[...] = orhop
 
   #--------------------------------------------------------------------------
   # --- Methods to carry out the field solve
@@ -766,7 +800,7 @@ from gatherrhofromchildren.
     # --- boundary conditions and the interior values as the initial
     # --- value.
     self.setphifromparents()
-    Multigrid.dosolve(self,iwhich)
+    MultiGrid.dosolve(self,iwhich)
 
     # --- solve for children, using the routine which does the correct
     # --- referencing for subcycling and self-B correction
@@ -814,15 +848,34 @@ gives a better initial guess for the field solver.
     for block in self.listofblocks:
       FieldSolver.setphipforparticles(block,*args)
 
+  def getichild_positiveonly(self,x,y,z,ichild):
+    """
+Gathers the ichild for the fetche_allsort.
+    """
+    # --- This must wait until all of the parents have have set ichild
+    # --- so that the value in the children takes precedence.
+    if not self.islastcall(): return
+    if len(x) == 0: return
+    if len(self.children) > 0:
+
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
+                            self.nx,self.ny,self.nz,self.childdomains,
+                            self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                            self.zmmin,self.zmmax,top.zgridprv,
+                            self.l2symtry,self.l4symtry)
+      for child in self.children:
+        child.getichild_positiveonly(x,y,z,ichild)
+
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
 to be deposited. This is then sorted once. The loop is then over the list
 of blocks, rather than walking through the tree structure.
-This is about as fast as the setrho_select using the python sort. The sort
-takes up about 40% of the time. It is significantly faster using the fortran
-sort.
+The sort takes up about 40% of the time. It is significantly faster
+using the fortran sort.
 Note that this depends on having ichilddomains filled with the
 blocknumber rather than the child number relative to the parent.
     """
@@ -955,8 +1008,8 @@ Fetches the potential, given a list of positions
       memtot = memtot + child.getmem()
     return memtot
       
-  def getwarrayforrho(self,r):
-    # --- Create weight array needed for rho deposition.
+  def getwarrayforrhop(self,r):
+    # --- Create weight array needed for rhop deposition.
     # --- Is linear falloff in the weights correct for r > 2?
     wi = [0,0,0]
     for i in range(3):
@@ -969,19 +1022,34 @@ Fetches the potential, given a list of positions
     result[...] = w
     return result
 
-  def getphi(self,lower,upper,**kw):
-    phi = FieldSolver.getphi(**kw)
+  def getphip(self,lower=None,upper=None,**kw):
+    if len(kw) > 0: return FieldSolver.getphip(self,**kw)
+#   if lower is None: lower = self.fulllower - array([0,0,1])
+#   if upper is None: upper = self.fullupper + array([0,0,1])
     # --- Note that this takes into account the guard cells in z.
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1 
     iz1 = iz1 + 1
     iz2 = iz2 + 1
-    return phi[ix1:ix2,iy1:iy2,iz1:iz2,...]
-  def getrho(self,lower,upper,r=[1,1,1],**kw):
-    rho = FieldSolver.getrho(**kw)
+    return self.phip[ix1:ix2,iy1:iy2,iz1:iz2,...]
+  def getrhop(self,lower=None,upper=None,r=[1,1,1],**kw):
+    if len(kw) > 0: return FieldSolver.getrhop(self,**kw)
+#   if lower is None: lower = self.fulllower
+#   if upper is None: upper = self.fullupper
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
-    return rho[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2],...]
+    return self.rhop[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2],...]
+  def getphi(self,lower,upper):
+    # --- Note that this takes into account the guard cells in z.
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1 
+    iz1 = iz1 + 1
+    iz2 = iz2 + 1
+    return self.phi[ix1:ix2,iy1:iy2,iz1:iz2]
+  def getrho(self,lower,upper,r=[1,1,1]):
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1
+    return self.rho[ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
   def getselfe(self,lower=None,upper=None,comp=slice(None),r=[1,1,1]):
     if lower is None: lower = self.lower
     if upper is None: upper = self.upper
@@ -1061,6 +1129,19 @@ contribute within their domains of ownership.
       result = op(result,cresult)
     return result
 
+
+# ---------------------------------------------------------------------------
+# --- Parallel routines
+  def sendrhop(l,u,pe,number):
+    srhop = getrhop(l,u)
+    request = mpi.isend(srhop,pe,number)
+    root.parallelwaitlist.append(request)
+
+  def recvrhop(pe,number):
+    return mpi.recv(pe,number)
+
+# ---------------------------------------------------------------------------
+# --- Routines used for plotting
   def getphislicemin(self,ip,idim):
     """
 Finds the minimum value of phi at the specified plane. The blocks only
@@ -1623,8 +1704,8 @@ Create DX object drawing the object.
 
     # --- Make a print out.
     if (self.mgerror[0] > self.mgtol):
-      print "Multigrid: Maximum number of iterations reached"
-    print ("Multigrid: Error converged to %11.3e in %4d v-cycles"%
+      print "MultiGrid: Maximum number of iterations reached"
+    print ("MultiGrid: Error converged to %11.3e in %4d v-cycles"%
            (self.mgerror[0],self.mgiters[0]))
 
     # --- If using residual correction form, restore saved rho
