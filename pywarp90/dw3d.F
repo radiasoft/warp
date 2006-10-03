@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.154 $, $Date: 2006/04/15 00:09:46 $
+c@(#) File DW3D.F, version $Revision: 3.155 $, $Date: 2006/10/03 23:44:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -91,6 +91,133 @@ c  Write to text output file
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine rhodia
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call rhodia3d
+      end if
+      return
+      end
+c=============================================================================
+      subroutine gtlchg
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call gtlchg3d
+      else if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+        call gtlchgrz
+      end if
+      return
+      end
+c=============================================================================
+      subroutine srhoax
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call srhoax3d
+      end if
+      return
+      end
+c=============================================================================
+      subroutine getese
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call getese3d
+      end if
+      return
+      end
+c=============================================================================
+      subroutine sphiax
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call sphiax3d
+      end if
+      return
+      end
+c=============================================================================
+      subroutine  sezax
+      use InGen3d
+      if(solvergeom==XYZgeom) then
+        call sezax3d
+      end if
+      return
+      end
+c=============================================================================
+      subroutine gtlchg3d
+      use Subtimers3d
+      use Picglb
+      use InGen3d
+      use Picglb3d
+      use InMesh3d
+      use Fields3d
+      use Z_arrays
+      use InDiag3d
+
+c  Calculates the line charge density from rho.
+
+      real(kind=8):: zz,zg,wzg,dzi
+      integer(ISZ):: ix,iy,iz,izg
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+      if (.not. lgtlchg3d .or. .not. associated(rho)) return
+
+      dzi = 1./dz
+
+c     conversion factor to go from grid frame to beam frame
+      zz = zgrid + zmmin - zzmin - zbeam
+
+c First, sum up the charge density in each axial plane.
+
+!$OMP PARALLEL DO
+      do iz=0,nz
+
+        if (l2symtry) then
+c         --- 2-fold: account for only one side of rho being stored
+          scrtch(iz,0) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
+
+        elseif (l4symtry) then
+c         --- 4-fold: account for only one quadrant of rho being stored
+          scrtch(iz,0) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
+     &                   2.*sum(rho(1:,0,iz)) + 2.*sum(rho(0,1:,iz))
+
+        else
+c         --- no symmetries...
+          scrtch(iz,0) = sum(rho(:,:,iz))
+
+        endif
+
+      enddo
+!$OMP END PARALLEL DO
+
+c Then, linearly interpolate the data into the beam frame array, linechg.
+
+      do iz=0,nzzarr
+
+        zg = (iz*dzz - zz)*dzi
+        izg = int(zg + nz) - nz
+        wzg = zg - izg
+
+        if (0 <= izg .and. izg <= nz) then
+          linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
+        else
+          linechg(iz) = 0.
+        endif
+        if (0 <= izg+1 .and. izg+1 <= nz) then
+          linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
+        endif
+
+      enddo
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(linechg,nzzarr+1)
+#endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
       subroutine rhodia3d
       use InGen3d
       use InDiag
@@ -107,7 +234,7 @@ c=============================================================================
 
 c  Sets rho window diagnostics (they need data from the 3d mesh)
 
-      if (.not. lrhodia3d) return
+      if (.not. lrhodia3d .or. .not. associated(rho)) return
 
 !$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
       do iwin = 0,NWINDOWS
@@ -171,32 +298,6 @@ c       --- max rho at each z (vectorized)
       return
       end
 c=============================================================================
-      subroutine pltfld3d(fld,freqflag)
-      use InDiag3d
-      use InPltCtl3d
-      use Timers
-      character(3):: fld
-      integer(ISZ):: freqflag
-
-c  Master control for doing field plots
-
-
-      real(kind=8):: timetemp,wtime
-      integer(ISZ):: i
-
-      timetemp = wtime()
-
-      if (lpltfld3d) then
-        if (freqflag == ALWAYS) call parsestr("pltfld3d(1,always)")
-        if (freqflag == SELDOM) call parsestr("pltfld3d(2,seldom)")
-        return
-      endif
-
-      plottime = plottime + (wtime() - timetemp)
-
-      return
-      end
-c=============================================================================
       subroutine srhoax3d
 c  Sets 1d array for the charge density on the axis
       use InGen3d
@@ -213,7 +314,7 @@ c  Sets 1d array for the charge density on the axis
       integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: zz,wzg,dzi
 
-      if(.not. lsrhoax3d) return
+      if(.not. lsrhoax3d .or. .not. associated(rho)) return
 
       dzi = 1./dz
 
@@ -253,6 +354,119 @@ c  Sets 1d array for the charge density on the axis
       return
       end
 c=============================================================================
+      subroutine getese3d
+      use Subtimers3d
+      use Beam_acc
+      use Picglb
+      use Picglb3d
+      use InMesh3d
+      use Fields3d
+      use Moments
+      use InPart
+      use InGen
+      use InGen3d
+      use Z_arrays
+      use InDiag3d
+
+c Calculate the electrostatic energy, sum of rho*phi*dx*dy*dz/2
+c Includes external fields: Uniform focusing and eears for cigars
+c This does it in a partially vectorized manner.
+
+      integer(ISZ):: ix,iy,iz,izb
+      real(kind=8):: zm,zz,phiextun,wzb
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if (.not. lgetese3d .or.
+     &    .not. associated(rho) .or. .not. associated(phi)) then
+!$OMP MASTER
+        if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+!$OMP END MASTER
+        return
+      endif
+
+      ese = 0.
+      zm = (zimax - zimin)*(1. - straight)*0.5
+
+c     conversion factor to go from grid frame to beam frame
+      zz = zmmin + zgrid - zbeam
+
+      do iy=0,ny
+        do ix=0,nx
+          scrtch(ix,iy) = 0.0
+        enddo
+      enddo
+
+c     --- Loop order switched for the OpenMP parallel version - this
+c     --- avoids requiring the accumulation into scrtch to be put
+c     --- into a critical section.
+!$OMP PARALLEL
+!$OMP DO PRIVATE(phiextun,izb,wzb,ix,iy,iz)
+#ifdef _OPENMP
+      do iy=0,ny
+#endif
+      do iz=izfsmin,izfsmax-1
+        phiextun = 0.
+        if (ifeears == 1) then
+          if (iz*dz+zz < -zm) phiextun=eears*.5*(iz*dz+zz+zm)**2
+          if (iz*dz+zz >  zm) phiextun=eears*.5*(iz*dz+zz-zm)**2
+        elseif (ifeears == 2) then
+c         --- This is not quite right for the parallel version since
+c         --- the longitudinal extent of eearsofz (the same as the extent
+c         --- of the particles) will not necessarily overlap the extent of
+c         --- the field solver.
+          izb = (iz*dz+zz-zzmin)*dzzi
+          wzb = (iz*dz+zz-zzmin)*dzzi - izb
+          if (0 <= iz .and. iz < nzzarr)
+     &      phiextun = eearsofz(izb)*(1. - wzb) + eearsofz(izb+1)*wzb
+        endif
+#ifndef _OPENMP
+        do iy=0,ny
+#endif
+          do ix=0,nx
+            scrtch(ix,iy) = scrtch(ix,iy) + rho(ix,iy,iz)*(phi(ix,iy,iz)
+     &                       - dedr*.5*((ix*dx+xmmin)**2 + (iy*dy+ymmin)**2)
+     &                       - dexdx*.5*(ix*dx+xmmin)**2 
+     &                       - deydy*.5*(iy*dy+ymmin)**2
+     &                       + phiextun)
+          enddo
+        enddo
+      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+c     --- Apply appropriate multiplication factors for symmetries
+      if (l4symtry) then
+c       --- Center point is unchanged
+c       --- Edges are doubled
+c       --- Bulk is quadrupoled
+        scrtch(0,1:ny) = 2.*scrtch(0,1:ny)
+        scrtch(1:nx,0) = 2.*scrtch(1:nx,0)
+        scrtch(1:nx,1:ny) = 4.*scrtch(1:nx,1:ny)
+      else if (l2symtry) then
+c       --- Edge is unchanged
+c       --- Bulk is doubled
+        scrtch(1:nx,0:ny) = 2.*scrtch(1:nx,0:ny)
+      endif
+
+      do iy=1,ny
+        do ix=0,nx
+          scrtch(ix,0) = scrtch(ix,0) + scrtch(ix,iy)
+        enddo
+      enddo
+
+      do ix=0,nx
+        ese = ese + scrtch(ix,0)
+      enddo
+
+      ese = dx*dy*dz*0.5*ese
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
       subroutine sphiax3d
 c  Sets 1d array for the potential on the axis
       use InGen3d
@@ -269,7 +483,7 @@ c  Sets 1d array for the potential on the axis
       integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: zz,wzg,dzi
 
-      if(.not. lsphiax3d) return
+      if(.not. lsphiax3d .or. .not. associated(phi)) return
 
       dzi = 1./dz
 
@@ -323,7 +537,7 @@ c  Sets 1d array for the space charge E field on the axis
       integer(ISZ):: ix,iy,iz,iz0,izg
       real(kind=8):: wx,wy,zz,wzg,wx1,wy1,dzi
 
-      if(.not. lsezax3d) return
+      if(.not. lsezax3d .or. .not. associated(phi)) return
 
       dzi = 1./dz
 
@@ -383,6 +597,32 @@ c  Sets 1d array for the space charge E field on the axis
 #ifdef MPIPARALLEL
       call parallelnonzerorealarray(ezax,nzzarr+1)
 #endif
+
+      return
+      end
+c=============================================================================
+      subroutine pltfld3d(fld,freqflag)
+      use InDiag3d
+      use InPltCtl3d
+      use Timers
+      character(3):: fld
+      integer(ISZ):: freqflag
+
+c  Master control for doing field plots
+
+
+      real(kind=8):: timetemp,wtime
+      integer(ISZ):: i
+
+      timetemp = wtime()
+
+      if (lpltfld3d) then
+        if (freqflag == ALWAYS) call parsestr("pltfld3d(1,always)")
+        if (freqflag == SELDOM) call parsestr("pltfld3d(2,seldom)")
+        return
+      endif
+
+      plottime = plottime + (wtime() - timetemp)
 
       return
       end

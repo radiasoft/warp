@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.298 $, $Date: 2006/10/03 22:34:42 $
+c@(#) File W3D.F, version $Revision: 3.299 $, $Date: 2006/10/03 23:44:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -118,17 +118,9 @@ c  Put ny to zero for RZ geometry and setup a few flags
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
         if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
-        lsezax3d = .false.
-        lsrhoax3d = .false.
-        lsphiax3d = .false.
-        lrhodia3d = .false.
       elseif(solvergeom==XYgeom) then
         nz = 0
         if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 10
-        lsezax3d = .false.
-        lsrhoax3d = .false.
-        lsphiax3d = .false.
-        lrhodia3d = .false.
       elseif(solvergeom==Zgeom) then
         nx = 0
         ny = 0
@@ -247,16 +239,7 @@ c  so that by default izfsmax = nz (for full field solve).
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
       call setupFields3dParticles()
-      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
-     &                     phipndts(:,:,:,0))
       vbeamfrm = vbeam
-      if(solvergeom /= XYZgeom) then
-c       --- If not using the 3d mover (which has special set up for rho
-c       --- and phi because of subcycling, the rho and phi arrays need to
-c       --- be explicitly allocated.
-        allocate(rho(0:nx,0:ny,0:nz))
-        allocate(phi(0:nx,0:ny,-1:nz+1))
-      endif
       if(solvergeom==XYZgeom   .or. solvergeom==XYgeom) then
         if (l2symtry) then
           ymmin = 0.
@@ -894,21 +877,21 @@ c  Finalize the moments calculation and do other diagnostics.
      &              0.,0.,0.,0.,0.,3,nplive,0.,0.,0.,
      &              1,1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
       call getlabwn()
-      call rhodia3d
+      call rhodia
 
 c  Gather moments used in diagnostics at "special" timesteps only. 
 c  Compute mean beam z velocity from current and line charge density 
-c  on a 1-d mesh.  Also, calculate the electrostatic energy (getese3d), 
-c  electrostatic potential on axis (sphiax3d), and the axial electric 
-c  field (sezax3d).  
+c  on a 1-d mesh.  Also, calculate the electrostatic energy (getese), 
+c  electrostatic potential on axis (sphiax), and the axial electric 
+c  field (sezax).  
 
       if (lspecial) then
         if (lgetvzofz) call getvzofz
-        call gtlchg3d
-        call srhoax3d
-        call getese3d 
-        call sphiax3d 
-        call  sezax3d
+        call gtlchg
+        call srhoax
+        call getese
+        call sphiax 
+        call sezax
       endif 
 
 c  Electrostatic potential contour plot diagnostics 
@@ -1096,198 +1079,6 @@ c     --- azimuthal magnetic field
 
 !$OMP MASTER
       if (lw3dtimesubs) timeothere3d = timeothere3d + wtime() - substarttime
-!$OMP END MASTER
-      return
-      end
-c=============================================================================
-      subroutine getese3d
-      use Subtimers3d
-      use Beam_acc
-      use Picglb
-      use Picglb3d
-      use InMesh3d
-      use Fields3d
-      use Moments
-      use InPart
-      use InGen
-      use InGen3d
-      use Z_arrays
-      use InDiag3d
-
-c Calculate the electrostatic energy, sum of rho*phi*dx*dy*dz/2
-c Includes external fields: Uniform focusing and eears for cigars
-c This does it in a partially vectorized manner.
-
-      integer(ISZ):: ix,iy,iz,izb
-      real(kind=8):: zm,zz,phiextun,wzb
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if (.not. lgetese3d) then
-!$OMP MASTER
-        if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
-!$OMP END MASTER
-        return
-      endif
-
-      ese = 0.
-      zm = (zimax - zimin)*(1. - straight)*0.5
-
-c     conversion factor to go from grid frame to beam frame
-      zz = zmmin + zgrid - zbeam
-
-      do iy=0,ny
-        do ix=0,nx
-          scrtch(ix,iy) = 0.0
-        enddo
-      enddo
-
-c     --- Loop order switched for the OpenMP parallel version - this
-c     --- avoids requiring the accumulation into scrtch to be put
-c     --- into a critical section.
-!$OMP PARALLEL
-!$OMP DO PRIVATE(phiextun,izb,wzb,ix,iy,iz)
-#ifdef _OPENMP
-      do iy=0,ny
-#endif
-      do iz=izfsmin,izfsmax-1
-        phiextun = 0.
-        if (ifeears == 1) then
-          if (iz*dz+zz < -zm) phiextun=eears*.5*(iz*dz+zz+zm)**2
-          if (iz*dz+zz >  zm) phiextun=eears*.5*(iz*dz+zz-zm)**2
-        elseif (ifeears == 2) then
-c         --- This is not quite right for the parallel version since
-c         --- the longitudinal extent of eearsofz (the same as the extent
-c         --- of the particles) will not necessarily overlap the extent of
-c         --- the field solver.
-          izb = (iz*dz+zz-zzmin)*dzzi
-          wzb = (iz*dz+zz-zzmin)*dzzi - izb
-          if (0 <= iz .and. iz < nzzarr)
-     &      phiextun = eearsofz(izb)*(1. - wzb) + eearsofz(izb+1)*wzb
-        endif
-#ifndef _OPENMP
-        do iy=0,ny
-#endif
-          do ix=0,nx
-            scrtch(ix,iy) = scrtch(ix,iy) + rho(ix,iy,iz)*(phi(ix,iy,iz)
-     &                       - dedr*.5*((ix*dx+xmmin)**2 + (iy*dy+ymmin)**2)
-     &                       - dexdx*.5*(ix*dx+xmmin)**2 
-     &                       - deydy*.5*(iy*dy+ymmin)**2
-     &                       + phiextun)
-          enddo
-        enddo
-      enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-c     --- Apply appropriate multiplication factors for symmetries
-      if (l4symtry) then
-c       --- Center point is unchanged
-c       --- Edges are doubled
-c       --- Bulk is quadrupoled
-        scrtch(0,1:ny) = 2.*scrtch(0,1:ny)
-        scrtch(1:nx,0) = 2.*scrtch(1:nx,0)
-        scrtch(1:nx,1:ny) = 4.*scrtch(1:nx,1:ny)
-      else if (l2symtry) then
-c       --- Edge is unchanged
-c       --- Bulk is doubled
-        scrtch(1:nx,0:ny) = 2.*scrtch(1:nx,0:ny)
-      endif
-
-      do iy=1,ny
-        do ix=0,nx
-          scrtch(ix,0) = scrtch(ix,0) + scrtch(ix,iy)
-        enddo
-      enddo
-
-      do ix=0,nx
-        ese = ese + scrtch(ix,0)
-      enddo
-
-      ese = dx*dy*dz*0.5*ese
-
-!$OMP MASTER
-      if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
-!$OMP END MASTER
-      return
-      end
-c=============================================================================
-      subroutine gtlchg3d
-      use Subtimers3d
-      use Picglb
-      use InGen3d
-      use Picglb3d
-      use InMesh3d
-      use Fields3d
-      use Z_arrays
-      use InDiag3d
-
-c  Calculates the line charge density from rho.
-
-      real(kind=8):: zz,zg,wzg,dzi
-      integer(ISZ):: ix,iy,iz,izg
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-      if (.not. lgtlchg3d) return
-
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call gtlchgrz
-        return
-      end if
-
-      dzi = 1./dz
-
-c     conversion factor to go from grid frame to beam frame
-      zz = zgrid + zmmin - zzmin - zbeam
-
-c First, sum up the charge density in each axial plane.
-
-!$OMP PARALLEL DO
-      do iz=0,nz
-
-        if (l2symtry) then
-c         --- 2-fold: account for only one side of rho being stored
-          scrtch(iz,0) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
-
-        elseif (l4symtry) then
-c         --- 4-fold: account for only one quadrant of rho being stored
-          scrtch(iz,0) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
-     &                   2.*sum(rho(1:,0,iz)) + 2.*sum(rho(0,1:,iz))
-
-        else
-c         --- no symmetries...
-          scrtch(iz,0) = sum(rho(:,:,iz))
-
-        endif
-
-      enddo
-!$OMP END PARALLEL DO
-
-c Then, linearly interpolate the data into the beam frame array, linechg.
-
-      do iz=0,nzzarr
-
-        zg = (iz*dzz - zz)*dzi
-        izg = int(zg + nz) - nz
-        wzg = zg - izg
-
-        if (0 <= izg .and. izg <= nz) then
-          linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
-        else
-          linechg(iz) = 0.
-        endif
-        if (0 <= izg+1 .and. izg+1 <= nz) then
-          linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
-        endif
-
-      enddo
-
-#ifdef MPIPARALLEL
-      call parallelnonzerorealarray(linechg,nzzarr+1)
-#endif
-
-!$OMP MASTER
-      if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -6697,13 +6488,16 @@ c=============================================================================
 
 #ifndef MPIPARALLEL
 
-      if (solvergeom==XYZgeom) then
-c        --- Point rho to the block for the currently active ndts group.
-         rho => rhopin
-         phi => phipin
-      endif
+c      --- Point rho to the block for the currently active ndts group.
+       rho => rhopin
+       phi => phipin
 
 #else
+
+c     --- The rho and phi arrays need to be allocated if they havn't already
+c     --- been.
+      if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
+      if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -6715,10 +6509,6 @@ c  whose field solve region overlap its particle region.
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho)
       elseif (solvergeom==XYZgeom) then
-c       --- The rho and phi arrays need to be allocated if they havn't already
-c       --- been.
-        if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
-        if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
         call setrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhopin,nzpguard)
       end if
 
@@ -6745,6 +6535,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine setupFields3dParticles()
+      use InGen,Only: fstype
       use Picglb3d
       use InMesh3d
       use Fields3d
@@ -6757,6 +6548,8 @@ c=============================================================================
 #endif
 
 c Ensures that the phip and rhop arrays are setup properly.
+
+      if (fstype == 12) return
 
       nxp = nx
       nyp = ny
@@ -8136,6 +7929,15 @@ c         The loop is in bendfieldsol3d
 c     --- If no field solve, return 
       if ( fstype == -1) return 
 
+c     --- If a field solver is registered, call it and return.
+      if (fstype == 12) then
+        call execuser('fieldsolregistered')
+!$OMP MASTER
+        if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+!$OMP END MASTER
+        return
+      endif
+
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
       if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
@@ -8166,8 +7968,7 @@ c       --- periodicity can never be enforced on rho which does cover the full
 c       --- system.
         call perrho3d()
 
-        if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
-     &      .or. fstype == 13) then
+        if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 13) then
 c         --- SOR and multigrid field solvers - deal with bends directly and
 c         --- set axial boundary conditions (call to perphi3d is not needed)
 c         --- Chombo knows nothing of bends and does its own b.c.'s
@@ -8487,7 +8288,7 @@ c         --- put forward by Lantz
 
 #endif
       elseif (fstype == 10) then
-c         --- RZ full-multigrid solver
+c       --- RZ full-multigrid solver
        if (solvergeom==RZgeom .or. solvergeom==XZgeom) then
          call multigridrzf(iwhich,phi,rho,nx,nz)
        elseif (solvergeom==XYgeom) then
