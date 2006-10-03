@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.120 $, $Date: 2006/10/02 20:12:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.121 $, $Date: 2006/10/03 18:53:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3618,7 +3618,7 @@ c       --- than the other point. If so, reset data for the other point.
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine gatherrhofromchild(rho,nn,nextra,childrho,cnn,
+      subroutine gatherrhofromchild(rho,nn,childrho,cnn,
      &                              l,u,fulllower,childlower,childupper,
      &                              r,weights,dopbounds,pbounds,rootdims)
       use Subtimersf3d
@@ -3628,14 +3628,14 @@ c=============================================================================
       integer(ISZ):: childlower(0:2),childupper(0:2)
       integer(ISZ):: r(0:2)
       integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
-      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2),nextra)
-      real(kind=8):: childrho(0:cnn(0),0:cnn(1),0:cnn(2),nextra)
+      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: childrho(0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
       integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
-      real(kind=8):: wrho(nextra)
+      real(kind=8):: wrho
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -3664,7 +3664,7 @@ c=============================================================================
             do iwz=iwz1,iwz2
               do iwy=iwy1,iwy2
                 do iwx=iwx1,iwx2
-                  wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz,:)
+                  wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
 
 c                   --- Adjust for symmetries
                     if (dopbounds == 1) then
@@ -3681,7 +3681,7 @@ c                   --- Adjust for symmetries
                     if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
      &                wrho = 2*wrho
                   endif
-                  rho(ix0,iy0,iz0,:) = rho(ix0,iy0,iz0,:) + wrho
+                  rho(ix0,iy0,iz0) = rho(ix0,iy0,iz0) + wrho
 
                 enddo
               enddo
