@@ -1,6 +1,6 @@
 """Class for doing complete multigrid field solve"""
 # ToDo:
-#  - modify setrho to check if particles are within grid
+#  - modify setrhop to check if particles are within grid
 #  - incorporate instances into the particle mover, so charge is deposited and
 #    the E fields gather appropriately.
 from warp import *
@@ -205,7 +205,7 @@ class MultiGrid(FieldSolver):
     return ((1+self.nx,1+self.ny,1+self.nz),
             (1+self.nx,1+self.ny,3+self.nz))
 
-  def setrho(self,x,y,z,uz,q,w):
+  def setrhop(self,x,y,z,uz,q,w):
     n = len(x)
     if n == 0: return
     setrho3d(self.rhop,self.rhop,n,x,y,z,top.zgrid,uz,q,w,top.depos,
