@@ -4,13 +4,22 @@ from warp import *
 
 class FieldSolver(object):
 
+  def setrhopforparticles(self,irhopndtscopies,indts,iselfb):
+    if irhopndtscopies is not None:
+      rhopndts = self.getrhop(lndts=1)
+      self.rhop = rhopndts[...,irhopndtscopies,indts]
+    else:
+      rhopselfb = self.getrhop(lselfb=1)
+      self.rhop = rhopselfb[...,iselfb]
+
+  def aftersetrhop(self,lzero):
+    "Anything that needs to be done to rhop after the deposition"
+    pass
+
   def loadrho(self,lzero=true,**kw):
     'Charge deposition, uses particles from top directly'
     self.allocatedataarrays()
-    if lzero: self.zerorho()
-
-    rhopndts = self.getrho(lndts=1)
-    rhopselfb = self.getrho(lselfb=1)
+    if lzero: self.zerorhop()
 
     for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,
                           top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
@@ -20,32 +29,35 @@ class FieldSolver(object):
                 q,w*top.pgroup.dtscale[js]]
         if top.pgroup.ldts[js]:
           indts = top.ndtstorho[top.pgroup.ndts[js]-1]
-          self.rhop = rhopndts[...,0,indts]
-          self.setrho(*args,**kw)
+          self.setrhopforparticles(0,indts,None)
+          self.setrhop(*args)
+          self.aftersetrhop(lzero)
         if top.pgroup.iselfb[js] > -1:
-          self.rhop = rhopselfb[...,top.pgroup.iselfb[js]]
-          self.setrho(*args,**kw)
+          iselfb = top.pgroup.iselfb[js]
+          self.setrhopforparticles(None,None,iselfb)
+          self.setrhop(*args)
+          self.aftersetrhop(lzero)
 
-    self.averagerhowithsubcycling()
+    self.averagerhopwithsubcycling()
 
-  def getphi(self,lndts=None,lselfb=None):
+  def getphip(self,lndts=None,lselfb=None):
     if lndts is None and lselfb is None:
-      return self.phiarray
+      return self.phiparray
     elif lndts is not None:
       return self.phiparray[...,:top.nsndtsphi]
     elif lselfb is not None:
       return self.phiparray[...,top.nsndtsphi:]
 
-  def getrho(self,lndts=None,lselfb=None):
+  def getrhop(self,lndts=None,lselfb=None):
     if lndts is None and lselfb is None:
-      return self.rhoarray
+      return self.rhoparray
     elif lndts is not None:
-      rho = self.rhoparray[...,:top.nrhopndtscopies*top.nsndts]
-      trho = transpose(rho)
-      sss = list(shape(rho)[:-1])+[top.nrhopndtscopies,top.nsndts]
+      rhop = self.rhoparray[...,:top.nrhopndtscopies*top.nsndts]
+      trhop = transpose(rhop)
+      sss = list(shape(rhop)[:-1])+[top.nrhopndtscopies,top.nsndts]
       sss.reverse()
-      trho.shape = sss
-      return transpose(trho)
+      trhop.shape = sss
+      return transpose(trhop)
     elif lselfb is not None:
       return self.rhoparray[...,top.nrhopndtscopies*top.nsndts:]
 
@@ -55,10 +67,10 @@ class FieldSolver(object):
 
   def setphipforparticles(self,indts,iselfb):
     if indts is not None:
-      phipndts = self.getphi(lndts=1)
+      phipndts = self.getphip(lndts=1)
       self.phip = phipndts[...,min(indts,w3d.nsndtsphi3d-1)]
     else:
-      phipselfb = self.getphi(lselfb=1)
+      phipselfb = self.getphip(lselfb=1)
       self.phip = phipselfb[...,iselfb]
 
   def fetche(self,**kw):
@@ -98,27 +110,27 @@ class FieldSolver(object):
 
   def setrhoandphiforfieldsolve(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
-      rhopndts = self.getrho(lndts=1)
-      phipndts = self.getphi(lndts=1)
+      rhopndts = self.getrhop(lndts=1)
+      phipndts = self.getphip(lndts=1)
       self.rho = rhopndts[...,irhopndtscopies,indts]
       self.phi = phipndts[...,min(indts,w3d.nsndtsphi3d-1)]
     else:
-      rhopselfb = self.getrho(lselfb=1)
-      phipselfb = self.getphi(lselfb=1)
+      rhopselfb = self.getrhop(lselfb=1)
+      phipselfb = self.getphip(lselfb=1)
       self.rho = rhopselfb[...,iselfb]
       self.phi = phipselfb[...,iselfb]
 
   def getphipforparticles(self,indts,iselfb):
     if indts is not None:
-      phipndts = self.getphi(lndts=1)
+      phipndts = self.getphip(lndts=1)
       phipndts[...,min(indts,w3d.nsndtsphi3d-1)] = self.phi[...]
     else:
-      phipselfb = self.getphi(lselfb=1)
+      phipselfb = self.getphip(lselfb=1)
       phipselfb[...,iselfb] = self.phi[...]
 
   def selfbcorrection(self,js):
     "scale phispecies by -(1-1/gamma*2) store into top.fselfb"
-    phipselfb = self.getphi(lselfb=1)
+    phipselfb = self.getphip(lselfb=1)
     phipselfb[...,js] *= top.fselfb[js]
 
   def dosolveonphi(self,iwhich,irhopndtscopies,indts,iselfb):
@@ -129,6 +141,7 @@ class FieldSolver(object):
     self.getphipforparticles(indts,iselfb)
 
   def solve(self,iwhich=0):
+    self.allocatedataarrays()
     # --- Loop over the subcyling groups and do any field solves that
     # --- are necessary.
     # --- Do loop in reverse order so that rho and phi end up with the arrays
@@ -177,8 +190,8 @@ of the rho and field arrays"""
     setupSubcycling(top.pgroup)
     setupSelfB(top.pgroup)
 
-    extrarhodim = top.nrhopndtscopies*top.nsndts + top.nsselfb
-    dims = list(rhopdims) + [extrarhodim]
+    extrarhopdim = top.nrhopndtscopies*top.nsndts + top.nsselfb
+    dims = list(rhopdims) + [extrarhopdim]
     if 'rhoparray' not in self.__dict__ or shape(self.rhoparray) != tuple(dims):
       self.rhoparray = fzeros(dims,'d')
 
@@ -187,54 +200,58 @@ of the rho and field arrays"""
     if 'phiparray' not in self.__dict__ or shape(self.phiparray) != tuple(dims):
       self.phiparray = fzeros(dims,'d')
 
-  def zerorho(self):
+  def zerorhop(self):
     if top.ndtsaveraging == 0:
-      self.zerorhowithsampledsubcycling()
+      self.zerorhopwithsampledsubcycling()
     elif top.ndtsaveraging == 1:
-      self.zerorhowithfullvsubcycling()
+      self.zerorhopwithfullvsubcycling()
     elif top.ndtsaveraging == 2:
-      self.zerorhowithhalfvsubcycling()
+      self.zerorhopwithhalfvsubcycling()
     self.zerorhopselfb()
 
-  def zerorhowithsampledsubcycling(self):
-    # --- Zero the rho copy for species when the positions
+  def zerorhopwithsampledsubcycling(self):
+    # --- Zero the rhop copy for species when the positions
     # --- are advanced.
-    # --- rhopndts(...,2,in1) holds the old rho which is still needed
+    # --- rhopndts(...,2,in1) holds the old rhop which is still needed
     # --- for the faster advanced groups.
-    rhopndts = self.getrho(lndts=1)
+    rhopndts = self.getrhop(lndts=1)
     for in1 in range(top.nsndts):
       if top.ldts[in1]:
         if top.nrhopndtscopies == 2:
           rhopndts[...,1,in1] = rhopndts[...,0,in1]
         rhopndts[...,0,in1] = 0.
 
-  def zerorhowithfullvsubcycling(self):
+  def zerorhopwithfullvsubcycling(self):
     raise "fullv subcycling not yet implemented"
 
-  def zerorhowithhalfvsubcycling(self):
+  def zerorhopwithhalfvsubcycling(self):
     raise "halfv subcycling not yet implemented"
 
-  def averagerhowithsubcycling(self):
+  def averagerhopwithsubcycling(self):
     if top.ndtsaveraging == 0:
-      self.averagerhowithsampledsubcycling()
+      self.averagerhopwithsampledsubcycling()
     elif top.ndtsaveraging == 1:
-      self.averagerhowithfullvsubcycling()
+      self.averagerhopwithfullvsubcycling()
     elif top.ndtsaveraging == 2:
-      self.averagerhowithhalfvsubcycling()
+      self.averagerhopwithhalfvsubcycling()
 
-  def averagerhowithsampledsubcycling(self):
+  def averagerhopwithsampledsubcycling(self):
     if top.ndtsmax == 1: return
 
-    rhopndts = self.getrho(lndts=1)
+    rhopndts = self.getrhop(lndts=1)
 
-    # --- Save the rho where the fastest particle's rho is. For now,
+    # --- During the generate, do the copy of the new rhop to the old rhop
+    # --- for group 0, which is normally done during the zerorhop call.
+    if top.it == 0: rhopndts[...,1,0] = rhopndts[...,0,0]
+
+    # --- Save the rhop where the fastest particle's rhop is. For now,
     # --- assume that this is in1=0
     for in1 in range(1,top.nsndts):
       if top.it == 0:
-        # --- At top.it==0, before the first step, always add the new rho.
+        # --- At top.it==0, before the first step, always add the new rhop.
         rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
       elif top.rhotondts[in1]%2 == 1:
-        # --- Use the rho that is closest in time to the current time.
+        # --- Use the rhop that is closest in time to the current time.
         if ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
             (top.it-1)%top.rhotondts[in1] == 0):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
@@ -243,7 +260,7 @@ of the rho and field arrays"""
       else:
         # --- When ndts is even, at the mid point of the step, take the
         # --- average of the old and the new
-        # --- Otherwise, use the rho that is closest in time to the currentc
+        # --- Otherwise, use the rhop that is closest in time to the currentc
         # --- time.
         if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2:
           rhopndts[...,1,0] = (rhopndts[...,1,0] +
@@ -255,6 +272,6 @@ of the rho and field arrays"""
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,1,in1])
 
   def zerorhopselfb(self):
-    rhopselfb = self.getrho(lselfb=1)
+    rhopselfb = self.getrhop(lselfb=1)
     rhopselfb[...] = 0.
 
