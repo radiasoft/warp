@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.296 $, $Date: 2006/10/03 18:54:22 $
+c@(#) File W3D.F, version $Revision: 3.297 $, $Date: 2006/10/03 22:00:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8127,6 +8127,7 @@ c         The loop is in bendfieldsol3d
       real(kind=8):: timetemp
       real(kind=8):: substarttime,wtime
       integer(ISZ):: izmin,izmax,tnz,indts,tmpnsndts,getnsndtsforsubcycling
+      integer(ISZ):: isndts
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
 
@@ -8143,6 +8144,7 @@ c     --- Do loop in reverse order so that rho and phi end up with the arrays
 c     --- for the speices with the smallest timestep.
       tmpnsndts = getnsndtsforsubcycling()
       do indts=tmpnsndts-1,0,-1
+        isndts = min(indts,nsndtsphi3d-1)
 
         if (.not. ldts(indts) .and.
      &      (ndtsaveraging == 0 .and. .not. any(ldts))) cycle
@@ -8152,7 +8154,7 @@ c       --- appropriate arrays for the current ndts group.
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
         call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies,indts),
-     &                                 phipndts(:,:,:,min(indts,nsndtsphi3d-1)))
+     &                                 phipndts(:,:,:,isndts))
 
 c       --- enforce periodicity
 c       --- This is done on the rho array, rather than rhop, since that will
@@ -8160,7 +8162,8 @@ c       --- be used for the field solve. Also, in some cases, the rhop array
 c       --- will not cover the full axial extent of the system, so 
 c       --- periodicity can never be enforced on rho which does cover the full
 c       --- system.
-        call perrho3d(rho,nx,ny,nz,bound0,boundxy)
+        call perrho3d(rhopndts(:,:,:,nrhopndtscopies,indts),
+     &                nx,ny,nz,bound0,boundxy)
 
         if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
      &      .or. fstype == 13) then
@@ -8181,17 +8184,19 @@ c         --- If not in bend, call VP3D
             if (boundnz == neumann)   izmax = nz
             if (boundnz == periodic)  izmax = nz
             tnz = izmax - izmin + 1
-            call copyarry(rho(0,0,izmin),phi(0,0,izmin),(nx+1)*(ny+1)*(tnz))
+            call copyarry(rhopndts(:,:,imzin,nrhopndtscopies,indts),
+     &                    phipndts(:,:,izmin,isndts),
+     &                    (nx+1)*(ny+1)*(tnz))
           endif
           call vp3d(iwhich)
           call getphiforfields()
-          if (bound0==periodic) call perphi3d(phi,nx,ny,nz)
+          if (bound0==periodic) call perphi3d(phipndts(:,:,:,isndts),nx,ny,nz)
 
         else
 c         --- Call perturbative bent beam field solver
           call bendfieldsol3d()
           call getphiforfields()
-          if (bound0==periodic) call perphi3d(phi,nx,ny,nz)
+          if (bound0==periodic) call perphi3d(phipndts(:,:,:,isndts),nx,ny,nz)
 
         endif
 
