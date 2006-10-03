@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.295 $, $Date: 2006/10/02 23:26:26 $
+c@(#) File W3D.F, version $Revision: 3.296 $, $Date: 2006/10/03 18:54:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6200,6 +6200,10 @@ c=============================================================================
       real(kind=8):: wranf,oldornew
 
       if (ndtsmax == 1) return
+
+c     --- During the generate, do the copy of the new rhop to the old rhop
+c     --- for group 0, which is normally done during the zerorhop call.
+      if (it == 0) rhopndts(:,:,:,2,0) = rhopndts(:,:,:,1,0)
 
 c     --- Save the rho where the fastest particle's rho is. For now,
 c     --- assume that this is in1=0
