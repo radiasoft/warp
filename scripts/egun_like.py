@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.54 2006/09/23 00:26:09 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.55 2006/10/03 22:37:05 dave Exp $"
 
 
 ##############################################################################
@@ -382,6 +382,7 @@ set when a current is specified"""
     # --- check if any particles were injected
     npssum = sum(parallelsum(top.pgroup.nps))
     if (npssum == 0): raise 'No particles injected'
+#   if (npssum == 0): break
 
     # --- only save particles on last iteration
     allpgroups = []
@@ -507,7 +508,7 @@ set when a current is specified"""
     # --- The call to perrho3d is primarily needed for the parallel version.
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = false
-    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,w3d.bound0,w3d.boundxy)
+    perrho3d()
     if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
       frz.l_distribute = true
 
