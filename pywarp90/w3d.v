@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.235 $, $Date: 2006/09/29 23:39:23 $
+#@(#) File W3D.V, version $Revision: 3.236 $, $Date: 2006/10/03 22:34:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.235 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.236 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -813,10 +813,9 @@ getphiforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
-perphi3d(phi(0:nx,0:ny,-1:nz+1):real,nx,ny,nz)
+perphi3d()
              subroutine # Equates end slices of phi for periodicity
-perrho3d(rho(0:nx,0:ny,0:nz):real,nx:integer,ny:integer,nz:integer,
-         bound0:integer,boundxy:integer)
+perrho3d()
              subroutine # Sums end slices of rho for periodicity
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())

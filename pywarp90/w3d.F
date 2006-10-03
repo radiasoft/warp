@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.297 $, $Date: 2006/10/03 22:00:01 $
+c@(#) File W3D.F, version $Revision: 3.298 $, $Date: 2006/10/03 22:34:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2099,18 +2099,19 @@ c       --- Include time step size scaling for steady-state and slice modes.
       return
       end
 c=============================================================================
-      subroutine perphi3d(phi,nx,ny,nz)
+      subroutine perphi3d()
       use Subtimers3d
       use InGen3d
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      integer(ISZ):: ix,iy
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
+      use InMesh3d
+      use Fields3d
 
 c  Sets the slices on the exterior of phi for periodicity
 c  sets slice at -1 equal to the slice at nz-1
 c  sets slice at nz+1 equal to the slice at 1
+
+      integer(ISZ):: ix,iy
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call perphirz()
@@ -2135,19 +2136,20 @@ c  sets slice at nz+1 equal to the slice at 1
       return
       end
 c=============================================================================
-      subroutine perrho3d(rho,nx,ny,nz,bound0,boundxy)
+      subroutine perrho3d()
       use GlobalVars
       use Subtimers3d
       use InGen,Only: fstype
       use InGen3d
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      integer(ISZ):: bound0,boundxy
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
+      use InMesh3d
+      use Fields3d,Only: rho
+      use GridBoundary3d
 
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       if (fstype == 12) return
       if (solvergeom==AMRgeom) return
@@ -8162,8 +8164,7 @@ c       --- be used for the field solve. Also, in some cases, the rhop array
 c       --- will not cover the full axial extent of the system, so 
 c       --- periodicity can never be enforced on rho which does cover the full
 c       --- system.
-        call perrho3d(rhopndts(:,:,:,nrhopndtscopies,indts),
-     &                nx,ny,nz,bound0,boundxy)
+        call perrho3d()
 
         if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12
      &      .or. fstype == 13) then
@@ -8184,19 +8185,23 @@ c         --- If not in bend, call VP3D
             if (boundnz == neumann)   izmax = nz
             if (boundnz == periodic)  izmax = nz
             tnz = izmax - izmin + 1
-            call copyarry(rhopndts(:,:,imzin,nrhopndtscopies,indts),
+#ifndef MPIPARALLEL
+            call copyarry(rhopndts(:,:,izmin,nrhopndtscopies,indts),
      &                    phipndts(:,:,izmin,isndts),
      &                    (nx+1)*(ny+1)*(tnz))
+#else
+            call copyarry(rho(:,:,izmin),phi(:,:,izmin),(nx+1)*(ny+1)*(tnz))
+#endif
           endif
           call vp3d(iwhich)
           call getphiforfields()
-          if (bound0==periodic) call perphi3d(phipndts(:,:,:,isndts),nx,ny,nz)
+          if (bound0==periodic) call perphi3d()
 
         else
 c         --- Call perturbative bent beam field solver
           call bendfieldsol3d()
           call getphiforfields()
-          if (bound0==periodic) call perphi3d(phipndts(:,:,:,isndts),nx,ny,nz)
+          if (bound0==periodic) call perphi3d()
 
         endif
 
