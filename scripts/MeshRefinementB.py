@@ -1272,34 +1272,36 @@ be plotted.
 
       accumulateplotlists()
 
-    # --- Only make the plot if the plane is included in the domain.
-    # --- Even if there is no overlap, the children must be called since
-    # --- they may overlap (in the domain of a different parent).
-    # --- Note that the full extent is used so that the childdomains slice
-    # --- will have the same shape as ireg.
-    if self.fulllower[idim] <= ip and ip <= self.fullupper[idim]:
-      if self.childdomains is not None:
-        # --- Create the ireg array, which will be set to zero in the domain
-        # --- of the children.
-        ss = list(shape(self.bfield.j[0,...]))
-        del ss[idim]
-        ireg = zeros(ss)
-        ii = [slice(-1),slice(-1),slice(-1)]
-        ii[idim] = ip - self.fulllower[idim]
-        ix,iy,iz = ii
-        ireg[1:,1:]=equal(self.childdomains[ix,iy,iz],self.blocknumber)
-        if idim != 2: ireg = transpose(ireg)
-        kw['ireg'] = ireg
-      else:
-        kw['ireg'] = None
-      MagnetostaticMG.genericpf(self,kw,pffunc)
-      kw['titles'] = 0
-      kw['lcolorbar'] = 0
+    try:
+      # --- Only make the plot if the plane is included in the domain.
+      # --- Even if there is no overlap, the children must be called since
+      # --- they may overlap (in the domain of a different parent).
+      # --- Note that the full extent is used so that the childdomains slice
+      # --- will have the same shape as ireg.
+      if self.fulllower[idim] <= ip and ip <= self.fullupper[idim]:
+        if self.childdomains is not None:
+          # --- Create the ireg array, which will be set to zero in the domain
+          # --- of the children.
+          ss = list(shape(self.bfield.j[0,...]))
+          del ss[idim]
+          ireg = zeros(ss)
+          ii = [slice(-1),slice(-1),slice(-1)]
+          ii[idim] = ip - self.fulllower[idim]
+          ix,iy,iz = ii
+          ireg[1:,1:]=equal(self.childdomains[ix,iy,iz],self.blocknumber)
+          if idim != 2: ireg = transpose(ireg)
+          kw['ireg'] = ireg
+        else:
+          kw['ireg'] = None
+        MagnetostaticMG.genericpf(self,kw,pffunc)
+        kw['titles'] = 0
+        kw['lcolorbar'] = 0
 
-    for child in self.children:
-      child.genericpf(getdataname,kw,idim,pffunc,ip)
+      for child in self.children:
+        child.genericpf(getdataname,kw,idim,pffunc,ip)
 
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def pcaxy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
@@ -1377,13 +1379,15 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.a[comp,ix-self.fulllower[0]+1,iy-self.fulllower[1]+1,1:-1],self.zmeshlocal,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.plaz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.a[comp,ix-self.fulllower[0]+1,iy-self.fulllower[1]+1,1:-1],self.zmeshlocal,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.plaz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plax(self,iy=None,iz=None,comp=2,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
@@ -1391,13 +1395,15 @@ be plotted.
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.a[comp,1:-1,iy-self.fulllower[1]+1,iz-self.fulllower[2]+1],self.xmesh,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.plax(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.a[comp,1:-1,iy-self.fulllower[1]+1,iz-self.fulllower[2]+1],self.xmesh,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.plax(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def play(self,ix=None,iz=None,comp=2,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1405,13 +1411,15 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.a[comp,ix-self.fulllower[0]+1,1:-1,iz-self.fulllower[2]+1],self.ymesh,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.play(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.a[comp,ix-self.fulllower[0]+1,1:-1,iz-self.fulllower[2]+1],self.ymesh,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.play(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def pljz(self,ix=None,iy=None,comp=2,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1419,13 +1427,15 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.j[comp,ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmeshlocal,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.pljz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.j[comp,ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmeshlocal,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.pljz(ix*child.refinement[0],iy*child.refinement[1],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def pljx(self,iy=None,iz=None,comp=2,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
@@ -1433,13 +1443,15 @@ be plotted.
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.j[comp,:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.pljx(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.j[comp,:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.pljx(iy*child.refinement[1],iz*child.refinement[2],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def pljy(self,ix=None,iz=None,comp=2,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
@@ -1447,13 +1459,15 @@ be plotted.
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.j[comp,ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
-        color=color)
-    if not selfonly:
-      for child in self.children:
-        child.pljy(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
-                   color=color)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.j[comp,ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
+          color=color)
+      if not selfonly:
+        for child in self.children:
+          child.pljy(ix*child.refinement[0],iz*child.refinement[2],comp=comp,
+                     color=color)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plbz(self,ix=None,iy=None,comp=2,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1468,13 +1482,15 @@ be plotted.
     if ix > upper[0]: return
     if iy > upper[1]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.b[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
-        self.zmeshlocal[iz],color=color)
-    if not selfonly:
-      for child in self.children:
-        child.plbz(comp,ix*child.refinement[0],iy*child.refinement[1],
-                       color=color,withguard=withguard)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.b[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
+          self.zmeshlocal[iz],color=color)
+      if not selfonly:
+        for child in self.children:
+          child.plbz(comp,ix*child.refinement[0],iy*child.refinement[1],
+                         color=color,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plbx(self,iy=None,iz=None,comp=2,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1489,13 +1505,15 @@ be plotted.
     if iy > upper[1]: return
     if iz > upper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.b[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
-                   self.xmesh[ix],color=color)
-    if not selfonly:
-      for child in self.children:
-        child.plbx(comp,iy*child.refinement[1],iz*child.refinement[2],
-                       color=color,withguard=withguard)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.b[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
+                     self.xmesh[ix],color=color)
+      if not selfonly:
+        for child in self.children:
+          child.plbx(comp,iy*child.refinement[1],iz*child.refinement[2],
+                         color=color,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def plby(self,ix=None,iz=None,comp=2,color='fg',selfonly=0,withguard=1):
     if withguard:
@@ -1510,13 +1528,15 @@ be plotted.
     if ix > upper[0]: return
     if iz > upper[2]: return
     if self is self.root: accumulateplotlists()
-    plg(self.bfield.b[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
-        self.ymesh[iy],color=color)
-    if not selfonly:
-      for child in self.children:
-        child.plby(comp,ix*child.refinement[0],iz*child.refinement[2],
-                       color=color,withguard=withguard)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(self.bfield.b[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
+          self.ymesh[iy],color=color)
+      if not selfonly:
+        for child in self.children:
+          child.plby(comp,ix*child.refinement[0],iz*child.refinement[2],
+                         color=color,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
@@ -1541,12 +1561,14 @@ be plotted.
     else:
       xx = array(xx) + top.zbeam
     if self is self.root: accumulateplotlists()
-    plg(yy,xx,color=color[0])
-    if not selfonly:
-      for child in self.children:
-        child.drawbox(ip=ip*child.refinement[idim],idim=idim,
-                      withguards=withguards,color=color[1:])
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plg(yy,xx,color=color[0])
+      if not selfonly:
+        for child in self.children:
+          child.drawbox(ip=ip*child.refinement[idim],idim=idim,
+                        withguards=withguards,color=color[1:])
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def drawboxzy(self,ix=None,withguards=1,color=[],selfonly=0):
     self.drawbox(ip=ix,idim=0,withguards=withguards,color=color,
@@ -1579,12 +1601,14 @@ be plotted.
     if ibox is None: ibox = ones(1,'b')
     else:            ibox = (ibox+1).astype('b')
     if self is self.root: accumulateplotlists()
-    plfp(ibox,yy,xx,[5])
-    if not selfonly:
-      for child in self.children:
-        child.drawfilledbox(ip=ip*child.refinement[idim],idim=idim,
-                            withguards=withguards,ibox=ibox)
-    if self is self.root: plotlistofthings(lturnofflist=1)
+    try:
+      plfp(ibox,yy,xx,[5])
+      if not selfonly:
+        for child in self.children:
+          child.drawfilledbox(ip=ip*child.refinement[idim],idim=idim,
+                              withguards=withguards,ibox=ibox)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
 
   def createdxobject(self,kwdict={},**kw):
     """
