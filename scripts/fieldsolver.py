@@ -1,8 +1,397 @@
 """Generic class describing the interface needed for a field solver.
 """
 from warp import *
+import __main__
 
+#=============================================================================
+def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  """
+loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+This routine provides a simple call from the interpreter to load the
+rho array.  All of the arguments are optional.
+If the species is not specified, all species are loaded, except
+when ins or nps are specified, then only species 1 is loaded.
+lzero is used to set whether or not rho is zeroed before the load.
+The default is to zero out rho.
+  """
+
+  # --- Use top.pgroup as the default
+  if pgroup is None: pgroup = top.pgroup
+
+  # --- if particle location is specified but species is not, set so
+  # --- only species number 1 is included
+  if (ins_i != -1 and is_i == -1): is_i = 1
+
+  # --- set number of particles
+  if (ins_i != -1 and nps_i == -1):
+    # --- if particle number is omitted but particle location is specified,
+    # --- set nps to get rest of active particles of species
+    nps_i = pgroup.nps[is_i] + pgroup.ins[is_i] - ins_i
+
+  # --- if particle number is specified but species is not, set so
+  # --- only species number 1 is included
+  if (nps_i != -1 and is_i == -1): is_i = 1
+
+  # --- Now call the appropriate compiled interface routine based on the
+  # --- current package
+  currpkg = package()[0]
+  if (currpkg == "w3d"):
+    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
+  elif (currpkg == "wxy"):
+    loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+
+#=============================================================================
+def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
+  """
+This routine provides a simple call from the interpreter to do the fieldsol.
+It calls the appropriate compiled interface routine based on the current
+package. Only w3d and wxy have field solves defined.
+ - iwhich=0: specifies what action to take
+ - lbeforefs=false: when true, call functions installed be installbeforefs
+ - lafterfs=false:  when true, call functions installed be installafterfs
+  """
+  if lbeforefs: controllers.beforefs()
+  currpkg = package()[0]
+  if   (currpkg == "w3d"): fieldsol3d(iwhich)
+  elif (currpkg == "wxy"): fieldsolxy(iwhich)
+  if lafterfs: controllers.afterfs()
+  # --- Now do extra work, updating arrays which depend directly on phi,
+  # --- but only when a complete field solve was done.
+  if iwhich == -1 or iwhich == 0:
+    if (top.efetch == 3 and
+        (w3d.solvergeom == w3d.XYZgeom or
+         w3d.solvergeom == w3d.RZgeom or
+         w3d.solvergeom == w3d.XZgeom or
+         w3d.solvergeom == w3d.Rgeom  or
+         w3d.solvergeom == w3d.Zgeom)):
+      getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+                 w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
+                 w3d.dx,w3d.dy,w3d.dz,
+                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
+    if top.inject > 0:
+      try:
+        # --- This routine is not defined in pywarp77
+        getinj_phi()
+      except NameError:
+        pass
+
+#=============================================================================
+def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+  """
+loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
+This routine provides a simple call from the interpreter to load the
+current density.  All of the arguments are optional.
+If the species is not specified, all species are loaded, except
+when ins or nps are specified, then only species 1 is loaded.
+lzero is used to set whether or not rho is zeroed before the load.
+The default is to zero out rho.
+  """
+
+  # --- if particle location is specified but species is not, set so
+  # --- only species number 1 is included
+  if (ins_i != -1 and is_i == -1): is_i = 1
+
+  # --- set number of particles
+  if (ins_i != -1 and nps_i == -1):
+    # --- if particle number is omitted but particle location is specified,
+    # --- set nps to get rest of active particles of species
+    nps_i = pgroup.nps[is_i] + pgroup.ins[is_i] - ins_i
+
+  # --- if particle number is specified but species is not, set so
+  # --- only species number 1 is included
+  if (nps_i != -1 and is_i == -1): is_i = 1
+
+  # --- If pgroup is not given, then use the default one in top.
+  if pgroup is None: pgroup = top.pgroup
+
+  # --- Now call the appropriate compiled interface routine based on the
+  # --- current package
+  currpkg = package()[0]
+  if (currpkg == "w3d"):
+    loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
+  elif (currpkg == "wxy"):
+    #loadrhoxy(ins_i,nps_i,is_i,lzero)
+    print "loadj  not support in wxy yet"
+
+#=============================================================================
+# --- Setup routines which give access to fortran any field solver
+_fieldsolvers = []
+def registersolver(solver):
+  """
+Registers solvers to be used in the particle simulation.
+ - solver: is the solver object. It must have the methods loadrho, solve, and
+           fetche defined. fetchb and fetchphi will also be needed in some
+           cases.
+
+  """
+  _fieldsolvers.append(solver)
+  top.fstype = 12
+def getregisteredsolver(i=0):
+  if len(_fieldsolvers) == 0: return None
+  return _fieldsolvers[i]
+def unregistersolver(solver):
+  assert solver in _fieldsolvers,"Specified solver was not registered"
+  _fieldsolvers.remove(solver)
+def loadrhoregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.loadrho(lzero=not top.laccumulate_rho)
+def loadjregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.loadj(lzero=not top.laccumulate_rho)
+def fieldsolregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.solve()
+def fetcheregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetche()
+def fetchbregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetchb()
+def fetchphiregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetchphi()
+def fetcharegistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.fetcha()
+def rhodiaregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.rhodia()
+def gtlchgregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.gtlchg()
+def srhoaxregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.srhoax()
+def geteseregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.getese()
+def sphiaxregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.sphiax()
+def sezaxregistered():
+  assert len(_fieldsolvers) > 0,"No solver has been registered"
+  for f in _fieldsolvers:
+    f.sezax()
+
+def initfieldsolver():
+    if w3d.AMRlevels>0:
+      if 'AMRtree' not in __main__.__dict__:
+        import AMR
+        AMRtree=AMR.AMRTree()
+        __main__.__dict__['AMRtree'] = AMRtree
+        gchange('AMR')
+__main__.__dict__['loadrhoregistered'] = loadrhoregistered
+__main__.__dict__['loadjregistered'] = loadjregistered
+__main__.__dict__['fieldsolregistered'] = fieldsolregistered
+__main__.__dict__['fetcheregistered'] = fetcheregistered
+__main__.__dict__['fetchbregistered'] = fetchbregistered
+__main__.__dict__['fetchphiregistered'] = fetchphiregistered
+__main__.__dict__['fetcharegistered'] = fetcharegistered
+__main__.__dict__['rhodiaregistered'] = rhodiaregistered
+__main__.__dict__['gtlchgregistered'] = gtlchgregistered
+__main__.__dict__['srhoaxregistered'] = srhoaxregistered
+__main__.__dict__['geteseregistered'] = geteseregistered
+__main__.__dict__['sphiaxregistered'] = sphiaxregistered
+__main__.__dict__['sezaxregistered'] = sezaxregistered
+__main__.__dict__['initfieldsolver'] = initfieldsolver
+
+#=============================================================================
+# --- Setup routines which give access to fortran any B field solver
+_bfieldsolver = [None]
+def registerbsolver(bsolver):
+  """
+Registers the B field solver to be used in the particle simulation.
+ - bsolver: is the solver object. It must have the methods loadj, solve, and
+            fetchb defined. fetcha and fetchj will also be needed in some
+            cases.
+
+  """
+  _bfieldsolver[0] = bsolver
+  top.bfstype = 12
+def getregisteredbsolver():
+  return _bfieldsolver[0]
+def bloadjregistered():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].loadj(lzero=not top.laccumulate_rho)
+def bfieldsolregistered():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].solve()
+def bfetchbregistered():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].fetchb()
+def bfetcharegistered():
+  assert _bfieldsolver[0] is not None,"No B solver has been registered"
+  _bfieldsolver[0].fetcha()
+def initbfieldsolver():
+   pass
+__main__.__dict__['bloadjregistered'] = bloadjregistered
+__main__.__dict__['bfieldsolregistered'] = bfieldsolregistered
+__main__.__dict__['bfetchbregistered'] = bfetchbregistered
+__main__.__dict__['bfetcharegistered'] = bfetcharegistered
+__main__.__dict__['initbfieldsolver'] = initbfieldsolver
+
+#=============================================================================
+#=============================================================================
+#=============================================================================
 class FieldSolver(object):
+  """
+Base class for a field solver that can be registered with Warp.  The
+first block of routines must be defined since they are called by Warp
+during a time step. Note that the load and fetch routines are written
+out and can be used, but the methods called by them (which are shown at
+the bottom of the class) must be redefined.  They are primarily written
+out to show how to access the particle data and where to put the results
+for the fetch routines.
+
+The installconductor routine only needs to be redefined if the
+conductors are used. The diagnostic routines only need to be defined if
+the diagnostic is of interest and is meaningfull.
+  """
+
+  # ---------------------------------------------------------------------
+  # --- These routines must at least be defined.
+  def loadrho(self,lzero=true,**kw):
+    'Charge deposition, uses particles from top directly'
+    if lzero: self.zerorhop()
+
+    for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,
+                          top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
+      if n > 0:
+        self.setrhop(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
+                     top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],
+                     q,w*top.pgroup.dtscale[js])
+
+  def loadj(self,lzero=true,**kw):
+    'Charge deposition, uses particles from top directly'
+    if lzero: self.zeroj()
+    for js in range(top.pgroup.ns):
+      i = top.pgroup.ins-1
+      n = top.pgroup.nps
+      q = top.pgroup.sq
+      w = top.pgroup.sw
+      x = top.pgroup.xp[i:i+n]
+      y = top.pgroup.yp[i:i+n]
+      z = top.pgroup.zp[i:i+n]
+      ux = top.pgroup.uxp[i:i+n]
+      uy = top.pgroup.uyp[i:i+n]
+      uz = top.pgroup.uzp[i:i+n]
+      gaminv = top.pgroup.gaminv[i:i+n]
+      if top.wpid > 0: wght = top.pgroup[i:i+n,top.wpid-1]
+      else:            wght = None
+      self.setj(x,y,z,ux,uy,uz,gaminv,wght,q,w)
+    self.makejperiodic()
+    self.getjforfieldsolve()
+
+  def fetche(self,**kw):
+    'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
+    if w3d.api_xlf2:
+      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+
+  def fetchb(self):
+    'Fetches the B field, uses arrays from w3d module FieldSolveAPI'
+    if w3d.api_xlf2:
+      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+    self.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                             w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+
+  def fetchphi(self):
+    'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
+    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
+
+  def fetcha(self):
+    'Fetches the magnetostatic potential, uses arrays from w3d module FieldSolveAPI'
+    self.fetchafrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.afsapi)
+
+  def solve(self,iwhich=0):
+    'do the field solve'
+    pass
+
+  def installconductor(self,conductor):
+    pass
+
+  # --- Diagnostic routines
+  def rhodia(self):
+    pass
+  def gtlchg(self):
+    pass
+  def srhoax(self):
+    pass
+  def getese(self):
+    pass
+  def sphiax(self):
+    pass
+  def sezax(self):
+    pass
+
+  def pfzx(self,**kw):
+    'Plots potential in z-x plane. Does nothing if not defined.'
+    pass
+  def pfzy(self,**kw):
+    'Plots potential in z-y plane. Does nothing if not defined.'
+    pass
+  def pfxy(self,**kw):
+    'Plots potential in x-y plane. Does nothing if not defined.'
+    pass
+
+  # ---------------------------------------------------------------------
+  # --- These can optionally be defined, making use of some of the above
+  # --- routines.
+  def zerorhop(self):
+    pass
+
+  def setrhop(self,x,y,z,vz,q,w,**kw):
+    pass
+
+  def zeroj(self):
+    pass
+
+  def setj(self,x,y,z,ux,uy,uz,gaminv,wght,q,w):
+    pass
+
+  def makejperiodic(self):
+    pass
+
+  def getjforfieldsolve(self):
+    pass
+
+  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+    'Fetches E at the given positions'
+    pass
+
+  def fetchbfrompositions(self,x,y,z,bx,by,bz):
+    'Fetches B at the given positions'
+    pass
+
+  def fetchphifrompositions(self,x,y,z,phi):
+    'Fetches the potential, given a list of positions'
+    pass
+
+  def fetchafrompositions(self,x,y,z,a):
+    'Fetches the magnetostatic potential, given a list of positions'
+    pass
+
+#=============================================================================
+#=============================================================================
+#=============================================================================
+class SubcycledPoissonSolver(FieldSolver):
 
   def setrhopforparticles(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
@@ -40,6 +429,9 @@ class FieldSolver(object):
 
     self.averagerhopwithsubcycling()
 
+  def loadj(self,lzero=true,**kw):
+    pass
+
   def getphip(self,lndts=None,lselfb=None):
     if lndts is None and lselfb is None:
       return self.phiparray
@@ -61,10 +453,6 @@ class FieldSolver(object):
     elif lselfb is not None:
       return self.rhoparray[...,top.nrhopndtscopies*top.nsndts:]
 
-  def loadj(self,lzero=true,**kw):
-    'Charge deposition, uses particles from top directly'
-    pass
-
   def setphipforparticles(self,indts,iselfb):
     if indts is not None:
       phipndts = self.getphip(lndts=1)
@@ -76,21 +464,23 @@ class FieldSolver(object):
   def fetche(self,**kw):
     'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
     if w3d.api_xlf2:
-      w3d.xfsapi = top.pgroup.xp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.yfsapi = top.pgroup.yp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
-      w3d.zfsapi = top.pgroup.zp[w3d.ipminapi-1:w3d.ipminapi-1+w3d.ipapi]
+      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
     args = [w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi]
 
-    js = w3d.jsapi
+    js = w3d.jsfsapi
+    if js < 0: ndtstorho = 0
+    else:      ndtstorho = top.ndtstorho[top.pgroup.ndts[js]-1]
 
     tmpnsndts = getnsndtsforsubcycling()
-    indts = min(tmpnsndts-1,top.ndtstorho[top.pgroup.ndts[js]-1])
+    indts = min(tmpnsndts-1,ndtstorho)
     self.setphipforparticles(indts,None)
     self.fetchefrompositions(*args,**kw)
 
     # add self B correction as needed
-    if top.pgroup.iselfb[js] > -1:
+    if js >= 0 and top.pgroup.iselfb[js] > -1:
       exfsapispecies = zeros(shape(w3d.exfsapi),'d')
       eyfsapispecies = zeros(shape(w3d.eyfsapi),'d')
       ezfsapispecies = zeros(shape(w3d.ezfsapi),'d')
@@ -101,12 +491,15 @@ class FieldSolver(object):
       w3d.exfsapi[...] += exfsapispecies
       w3d.eyfsapi[...] += eyfsapispecies
 
-  def fetchb(self):
-    'Fetches the B field, uses arrays from w3d module FieldSolveAPI'
-    pass
   def fetchphi(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
-    pass
+    js = w3d.jsfsapi
+    if js < 0: ndtstorho = 0
+    else:      ndtstorho = top.ndtstorho[top.pgroup.ndts[js]-1]
+    tmpnsndts = getnsndtsforsubcycling()
+    indts = min(tmpnsndts-1,ndtstorho)
+    self.setphipforparticles(indts,None)
+    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def setrhoandphiforfieldsolve(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
@@ -155,27 +548,6 @@ class FieldSolver(object):
     # --- Solve for phi for groups which require the self B correction
     for js in range(top.nsselfb):
       self.dosolveonphi(iwhich,None,None,js)
-
-  def installconductor(self,conductor):
-    'Installs conductor. Does nothing if not defined'
-    pass
-
-  def getlinecharge(self):
-    'Gets line-charge'
-    raise 'getlinecharge must be defined'
-  def getese(self):
-    'Gets electrostatic energy, rho*phi'
-    raise 'getese must be defined'
-
-  def pfzx(self,**kw):
-    'Plots potential in z-x plane. Does nothing if not defined.'
-    pass
-  def pfzy(self,**kw):
-    'Plots potential in z-y plane. Does nothing if not defined.'
-    pass
-  def pfxy(self,**kw):
-    'Plots potential in x-y plane. Does nothing if not defined.'
-    pass
 
   def getpdims(self):
     raise """getpdims must be supplied - it should return a list of the dimensions
