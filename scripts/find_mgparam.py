@@ -1,7 +1,7 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.20 2006/08/29 01:36:47 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.21 2006/10/04 21:28:57 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -34,6 +34,11 @@ time.
                    starting point for the field solver, rather than zeroing
                    out phi.
   """
+  if solver is None:
+    solver = getregisteredsolver()
+    if solver is not None:
+      solver.find_mgparam()
+      return
   if solver is None:
     if(w3d.solvergeom == w3d.XYZgeom and top.fstype not in [7,13]):
       print "The fstype must be set to 7 or 13"
@@ -131,8 +136,7 @@ def field_solve(phisave,solver,pkg3d):
     pkg3d.phi[:,:,:] = phisave
     
   beforetime = time.time()
-  if solver == f3d: vp3d(-1)
-  else:             solver.solve()
+  vp3d(-1)
   aftertime = time.time()
   return globalsum(aftertime - beforetime)
 
