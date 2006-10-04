@@ -3,6 +3,7 @@
 from warp import *
 from multigrid import MultiGrid
 from fieldsolver import SubcycledPoissonSolver
+from find_mgparam import find_mgparam
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
@@ -1077,6 +1078,7 @@ f3d.mgtol.
     self.mgtol = mgtol
     for child in self.children:
       child.setmgtol(mgtol)
+
   def setmgmaxiters(self,mgmaxiters=None):
     """
 Sets the maximum number of iterations for all blocks. If mgmaxiters is
@@ -1086,6 +1088,12 @@ not given, it uses f3d.mgmaxiters.
     self.mgmaxiters = mgmaxiters
     for child in self.children:
       child.setmgmaxiters(mgmaxiters)
+
+  def find_mgparam(self,lsavephi=false,resetpasses=0):
+    for block in self.listofblocks:
+      print "Finding mgparam for block number ",block.blocknumber
+      find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+                   solver=self,pkg3d=self)
 
   def arraysliceoperation(self,ip,idim,arraystring,op,opnd,null,comp=None):
     """
@@ -1607,10 +1615,10 @@ Create DX object drawing the object.
     # --- Calculate the change in phi.
     subtract(self.phisave,self.phi,self.phisave)
     absolute(self.phisave,self.phisave)
-    self.mgerror[0] = MA.maximum(self.phisave)
-    print self.mgerror[0],childrenserror
-    print 'err = ',self.mgerror[0]
-    return max(childrenserror,self.mgerror[0])
+    self.mgerror = MA.maximum(self.phisave)
+    print self.mgerror,childrenserror
+    print 'err = ',self.mgerror
+    return max(childrenserror,self.mgerror)
 
   #===========================================================================
   def solve2init(self):
@@ -1660,10 +1668,10 @@ Create DX object drawing the object.
 
     # --- Main multigrid v-cycle loop. Calculate error each iteration since
     # --- very few iterations are done.
-    self.mgiters[0] = 0
-    self.mgerror[0] = 2.*self.mgtol + 1.
-    while (self.mgerror[0] > self.mgtol and self.mgiters[0] < self.mgmaxiters):
-      self.mgiters[0] = self.mgiters[0] + 1
+    self.mgiters = 0
+    self.mgerror = 2.*self.mgtol + 1.
+    while (self.mgerror > self.mgtol and self.mgiters < self.mgmaxiters):
+      self.mgiters = self.mgiters + 1
  
       self.solve2down()
 
@@ -1677,7 +1685,7 @@ Create DX object drawing the object.
                   self.downpasses,self.uppasses,self.lcndbndy,
                   self.icndbndy,self.conductors)
 
-      self.mgerror[0] = self.solve2up()
+      self.mgerror = self.solve2up()
 
       #else
       # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
@@ -1697,10 +1705,10 @@ Create DX object drawing the object.
     if (self.boundnz == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
 
     # --- Make a print out.
-    if (self.mgerror[0] > self.mgtol):
+    if (self.mgerror > self.mgtol):
       print "MultiGrid: Maximum number of iterations reached"
     print ("MultiGrid: Error converged to %11.3e in %4d v-cycles"%
-           (self.mgerror[0],self.mgiters[0]))
+           (self.mgerror,self.mgiters))
 
     # --- If using residual correction form, restore saved rho
     self.rho[:,:,:] = self.rhosave
@@ -1803,9 +1811,9 @@ Create DX object drawing the object.
     # --- Calculate the change in phi.
     subtract(self.phisave,self.phi,self.phisave)
     absolute(self.phisave,self.phisave)
-    self.mgerror[0] = MA.maximum(self.phisave)
-    print 'err= ',self.mgerror[0]
-    return max(childrenserror,self.mgerror[0])
+    self.mgerror = MA.maximum(self.phisave)
+    print 'err= ',self.mgerror
+    return max(childrenserror,self.mgerror)
 
 # --- This can only be done after MRBlock is defined.
 try:
