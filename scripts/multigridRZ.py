@@ -183,10 +183,8 @@ class MultiGridRZ(object):
 
     if w3d.solvergeom==w3d.Zgeom:
       self.nguardx = 0
-    END if
     if w3d.solvergeom==w3d.Rgeom:
       self.nguardz = 0
-    END if
 
     bg.nzp = self.nz
     bg.nrpar = 0
