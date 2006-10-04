@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.155 $, $Date: 2006/10/03 23:44:07 $
+c@(#) File DW3D.F, version $Revision: 3.156 $, $Date: 2006/10/04 01:43:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -94,16 +94,22 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine rhodia
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("rhodiaregistered")
+      else if(solvergeom==XYZgeom) then
         call rhodia3d
       end if
       return
       end
 c=============================================================================
       subroutine gtlchg
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("gtlchgregistered")
+      else if(solvergeom==XYZgeom) then
         call gtlchg3d
       else if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call gtlchgrz
@@ -112,32 +118,44 @@ c=============================================================================
       end
 c=============================================================================
       subroutine srhoax
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("srhoaxregistered")
+      else if(solvergeom==XYZgeom) then
         call srhoax3d
       end if
       return
       end
 c=============================================================================
       subroutine getese
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("geteseregistered")
+      else if(solvergeom==XYZgeom) then
         call getese3d
       end if
       return
       end
 c=============================================================================
       subroutine sphiax
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("sphiaxregistered")
+      else if(solvergeom==XYZgeom) then
         call sphiax3d
       end if
       return
       end
 c=============================================================================
-      subroutine  sezax
+      subroutine sezax
+      use InGen,Only: fstype
       use InGen3d
-      if(solvergeom==XYZgeom) then
+      if (fstype == 12) then
+        call execuser("sezaxregistered")
+      else if(solvergeom==XYZgeom) then
         call sezax3d
       end if
       return
