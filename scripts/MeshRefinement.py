@@ -2,7 +2,7 @@
 """
 from warp import *
 from multigrid import MultiGrid
-from fieldsolver import FieldSolver
+from fieldsolver import SubcycledPoissonSolver
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
@@ -574,7 +574,7 @@ not be fetched from there (it is set negative).
 
   def setrhopforparticles(self,*args):
     for block in self.listofblocks:
-      FieldSolver.setrhopforparticles(block,*args)
+      SubcycledPoissonSolver.setrhopforparticles(block,*args)
 
   def allocatedataarrays(self):
     # --- Make sure that the final setup was done. This is put here
@@ -583,15 +583,15 @@ not be fetched from there (it is set negative).
     self.finalize()
     # --- Now loop over blocks, calling allocatedataarrays
     for block in self.listofblocks:
-      FieldSolver.allocatedataarrays(block)
+      SubcycledPoissonSolver.allocatedataarrays(block)
 
   def zerorhop(self):
     for block in self.listofblocks:
-      FieldSolver.zerorhop(block)
+      SubcycledPoissonSolver.zerorhop(block)
 
   def averagerhopwithsubcycling(self):
     for block in self.listofblocks:
-      FieldSolver.averagerhopwithsubcycling(block)
+      SubcycledPoissonSolver.averagerhopwithsubcycling(block)
 
   def setrhop(self,x,y,z,uz,q,w,lrootonly=0):
     """
@@ -846,7 +846,7 @@ gives a better initial guess for the field solver.
 
   def setphipforparticles(self,*args):
     for block in self.listofblocks:
-      FieldSolver.setphipforparticles(block,*args)
+      SubcycledPoissonSolver.setphipforparticles(block,*args)
 
   def getichild_positiveonly(self,x,y,z,ichild):
     """
@@ -910,12 +910,6 @@ blocknumber rather than the child number relative to the parent.
       #put(ez,isort,tez)
       n = len(x)
       putsortedefield(len(tex),isort,tex,tey,tez,ex[:n],ey[:n],ez[:n])
-
-  def fetchphi(self):
-    """
-Fetches the potential. This should only be called at the root level grid.
-    """
-    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def fetchphifrompositions(self,x,y,z,phi):
     """
@@ -1023,7 +1017,7 @@ Fetches the potential, given a list of positions
     return result
 
   def getphip(self,lower=None,upper=None,**kw):
-    if len(kw) > 0: return FieldSolver.getphip(self,**kw)
+    if len(kw) > 0: return SubcycledPoissonSolver.getphip(self,**kw)
 #   if lower is None: lower = self.fulllower - array([0,0,1])
 #   if upper is None: upper = self.fullupper + array([0,0,1])
     # --- Note that this takes into account the guard cells in z.
@@ -1033,7 +1027,7 @@ Fetches the potential, given a list of positions
     iz2 = iz2 + 1
     return self.phip[ix1:ix2,iy1:iy2,iz1:iz2,...]
   def getrhop(self,lower=None,upper=None,r=[1,1,1],**kw):
-    if len(kw) > 0: return FieldSolver.getrhop(self,**kw)
+    if len(kw) > 0: return SubcycledPoissonSolver.getrhop(self,**kw)
 #   if lower is None: lower = self.fulllower
 #   if upper is None: upper = self.fullupper
     ix1,iy1,iz1 = lower - self.fulllower
