@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.299 $, $Date: 2006/10/03 23:44:07 $
+c@(#) File W3D.F, version $Revision: 3.300 $, $Date: 2006/10/04 01:42:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1440,7 +1440,6 @@ c  Set lvdts array
 c  Loop over species
       do is=1,pgroup%ns
         isid = pgroup%sid(is-1) + 1
-        jsapi=is-1
         lcycle = .false.
         if (ndtsaveraging == 0) then
           call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
@@ -6630,7 +6629,7 @@ c     --- Obtain the self-field from the electrostatic potential
       if (lw3dtimesubs) substarttime = wtime()
 
       if(fstype == 12) then
-        isfsapi = is
+        jsfsapi = is - 1
 #ifdef XLF
 c       --- The pointer assignment breaks with the xlf compilers, so instead
 c       --- new arrays are allocated and those are used as the work space.
@@ -6644,8 +6643,8 @@ c       --- and the data needs to be copied around.
 #else
 #ifdef XLF2
         api_xlf2 = .true.
-        ipapi    = ip
-        ipminapi = ipmin
+        ipfsapi    = ip
+        ipminfsapi = ipmin
         allocate(exfsapi(ip),eyfsapi(ip),ezfsapi(ip))
 #else
         xfsapi => pgroup%xp(ipmin:ipmin+ip-1)
@@ -6657,7 +6656,7 @@ c       --- and the data needs to be copied around.
 #endif
 #endif
         call execuser("fetcheregistered")
-        isfsapi = -1
+        jsfsapi = -1
 #ifdef XLF
         ex(1:ip) = exfsapi
         ey(1:ip) = eyfsapi
@@ -6749,7 +6748,7 @@ c       --- and the data needs to be copied around.
         yfsapi = y
         zfsapi = z
 #else
-        isfsapi = is
+        jsfsapi = is - 1
         xfsapi => x
         yfsapi => y
         zfsapi => z
@@ -6758,7 +6757,7 @@ c       --- and the data needs to be copied around.
         ezfsapi => ez
 #endif
         call execuser("fetcheregistered")
-        isfsapi = -1
+        jsfsapi = -1
 #if defined(XLF) || defined(XLF2)
         ex(1:n) = exfsapi
         ey(1:n) = eyfsapi

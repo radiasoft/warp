@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.21 $, $Date: 2006/10/02 21:50:43 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.22 $, $Date: 2006/10/04 01:42:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1710,7 +1710,7 @@ c       --- and the data needs to be copied around.
         yfsapi = y
         zfsapi = z
 #else
-        isfsapi = is
+        jsfsapi = is - 1
         xfsapi => x
         yfsapi => y
         zfsapi => z
@@ -1723,7 +1723,7 @@ c       --- and the data needs to be copied around.
         else
           call execuser("bfetchbregistered")
         endif
-        isfsapi = -1
+        jsfsapi = -1
 #if defined(XLF) || defined(XLF2)
         bx(1:n) = bxfsapi
         by(1:n) = byfsapi
