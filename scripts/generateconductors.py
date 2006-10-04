@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.137 2006/09/15 22:42:03 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.138 2006/10/04 18:36:34 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -389,12 +389,15 @@ Should never be directly created by the user.
     # get extents
     mins = self.getextent().mins
     maxs = self.getextent().maxs
-    try:
-      g=self.grid
-      interior = g.conductors.interior
-    except:
-      g=w3d
+    g = getregisteredsolver()
+    if g is None:
+      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]:
+        g = frz.basegrid
+      else:
+        g = w3d
       interior = f3d.conductors.interior
+    else:
+      interior = g.conductors.interior
 
     # compute mins and maxs
     xmin = max(g.xmmin,mins[0])
