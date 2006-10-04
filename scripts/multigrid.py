@@ -4,7 +4,7 @@
 #  - incorporate instances into the particle mover, so charge is deposited and
 #    the E fields gather appropriately.
 from warp import *
-from fieldsolver import FieldSolver
+from fieldsolver import SubcycledPoissonSolver
 from generateconductors import installconductors
 from find_mgparam import find_mgparam
 import MA
@@ -15,7 +15,7 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGrid(FieldSolver):
+class MultiGrid(SubcycledPoissonSolver):
   
   __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
@@ -231,7 +231,7 @@ class MultiGrid(FieldSolver):
 
   def setrhoandphiforfieldsolve(self,*args):
     if npes == 0:
-      FieldSolver.setrhoandphiforfieldsolve(self,*args)
+      SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
     else:
       # --- This needs checking.
       rhodims,phidims = self.getdims()
@@ -239,7 +239,7 @@ class MultiGrid(FieldSolver):
       if 'phi' not in self.__dict__: self.phi = fzeros(phidims,'d')
       self.rhotemp = self.rho
       self.phitemp = self.phi
-      FieldSolver.setrhoandphiforfieldsolve(self,*args)
+      SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
       getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rhotemp,
                             self.nx,self.ny,self.nz,self.rho,self.nzpguard)
       self.rho = self.rhotemp
@@ -250,7 +250,7 @@ class MultiGrid(FieldSolver):
     if npes > 0:
       getphiforparticles3d(self.nx,self.ny,self.nz,self.phi,
                            self.nxp,self.nyp,self.nzp,self.phip)
-    FieldSolver.getphipforparticles(self,*args)
+    SubcycledPoissonSolver.getphipforparticles(self,*args)
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -285,9 +285,6 @@ class MultiGrid(FieldSolver):
       request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
     if me == 0 or me == self.nslaves-1:
       status = request.wait()
-
-  def fetchphi(self):
-    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def fetcha(self):
     pass
