@@ -327,6 +327,10 @@ the diagnostic is of interest and is meaningfull.
   def installconductor(self,conductor):
     pass
 
+  def find_mgparam(self,lsavephi=false,resetpasses=0):
+    find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+                 solver=self,pkg3d=self)
+
   # --- Diagnostic routines
   def rhodia(self):
     pass
