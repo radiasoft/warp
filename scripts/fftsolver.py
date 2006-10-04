@@ -591,7 +591,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
 
   def fetche(self):
 
-    if w3d.isfsapi-1 == self.beamspecies:
+    if w3d.jsfsapi == self.beamspecies:
       self.beamsolver.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                           w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
       if self.ignorebeamez: w3d.ezfsapi = 0.
@@ -604,7 +604,7 @@ Transverse 2-D field solver, ignores self Ez and Bz.
 
   def fetchb(self):
 
-    if w3d.isfsapi-1 == self.beamspecies:
+    if w3d.jsfsapi == self.beamspecies:
       if self.useselfb:
         self.beamsolver.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                           w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
