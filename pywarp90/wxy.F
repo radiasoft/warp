@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.72 $, $Date: 2006/09/11 19:41:26 $
+c@(#) File WXY.M, version $Revision: 3.73 $, $Date: 2006/10/05 20:12:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -46,8 +46,6 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
-      use Subcycling,Only:nrhopndtscopies
-      use Fields3dParticles
       use Efields3d
       use Io
       use Lattice
@@ -190,10 +188,9 @@ c  so that by default izfsmax = nz (for full field solve).
       if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
+      allocate(rho(0:nx,0:ny,0:nz))
+      allocate(phi(0:nx,0:ny,-1:nz+1))
       call gallot("Fields3d", 0)
-      call setupFields3dParticles()
-      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
-     &                     phipndts(:,:,:,0))
 
       if (efetch == 3) call gallot("Efields3d",0)
       vbeamfrm = vbeam
@@ -896,7 +893,6 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use Fields3d
-      use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
       type(ParticleGroup):: pgroup
@@ -911,7 +907,7 @@ c         --- to avoid any possible funny business with rounding.
 c         --- ds is passed in for dz since that is the distance between
 c         --- the locations where phi is known.
           zpo = 0.
-          call sete3d(phi(0,0,-1),selfe,ip,
+          call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
      &                efetch,ex,ey,ez,l2symtry,l4symtry)
@@ -919,7 +915,7 @@ c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(ipmin:ipmin+ip-1) = zpo
         else
-          call sete3d(phi(0,0,-1),selfe,ip,
+          call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
      &                efetch,ex,ey,ez,l2symtry,l4symtry)
@@ -2343,10 +2339,6 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ip,ipmin,is
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
-
-      if(solvergeom/=XYgeom) then
-        call setupFields3dParticles(pgroup%ns,pgroup%ndts,it)
-      endif
 
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
