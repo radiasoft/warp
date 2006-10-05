@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.301 $, $Date: 2006/10/04 23:31:21 $
+c@(#) File W3D.F, version $Revision: 3.302 $, $Date: 2006/10/05 20:13:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6268,6 +6268,7 @@ c          --- cleared out.
 c          --- get loop limits for particles if needed
            if (ins_i == -1) ins_u = pgroup%ins(is)
            if (nps_i == -1) nps_u = pgroup%nps(is)
+           if (nps_u == 0) cycle
 
 c          --- Scale the weight, sw, by the time step scale size. This only
 c          --- makes sense for steady-state and slice modes. In time-dependent
@@ -6276,17 +6277,15 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
   
            if(solvergeom==XYZgeom) then
              ipmin = ins_u
-             if (nps_u > 0) then
-               if (pgroup%ldts(is)) then
-c                --- Only load the rho if the positions have been advanced.
-                 indts = ndtstorho(pgroup%ndts(is-1))
-                 call setrho3d(rhopndts(:,:,:,1,indts),
-     &                         rhopndts(:,:,:,1,indts),nps_u,
-     &                      pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                      zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
-     &                      nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
-     &                      l2symtry,l4symtry)
-               endif
+             if (pgroup%ldts(is)) then
+c              --- Only load the rho if the positions have been advanced.
+               indts = ndtstorho(pgroup%ndts(is-1))
+               call setrho3d(rhopndts(:,:,:,1,indts),
+     &                       rhopndts(:,:,:,1,indts),nps_u,
+     &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                    zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
+     &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                    l2symtry,l4symtry)
              endif
            elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
 c            --- loop over particle blocks
