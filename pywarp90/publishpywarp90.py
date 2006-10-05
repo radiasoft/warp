@@ -3,7 +3,7 @@ import os
 import sys
 import time
 t = time.localtime(time.time())
-date = "%s%02d%02d"%(t[0],int(t[1]),int(t[2]))
+date = "%04d%02d%02d%02d%02d%02d"%tuple(t[:6])
 
 if len(sys.argv) > 1:
   pubhomes = sys.argv[1:]
