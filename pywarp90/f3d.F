@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.120 $, $Date: 2006/08/16 18:47:42 $
+c@(#) File F3D.M, version $Revision: 3.121 $, $Date: 2006/10/06 21:00:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3606,7 +3606,7 @@ c=======================================================================
       real(kind=8):: xlen, ylen, zlen, piperadi
       integer(ISZ):: pipen,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1), pipey(pipen+1), cap3d(pipen,pipe8th,0:pipenz2)
-      real(kind=8):: kpvt(pipen)
+      integer(ISZ):: kpvt(pipen)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: bound0,boundnz,boundxy
 
@@ -3787,7 +3787,7 @@ c==============================================================================
       real(kind=8):: xlen,ylen,zlen,piperadi
       integer(ISZ):: pipen,pipenz,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1),pipey(pipen+1),cap3d(pipen,pipe8th,0:pipenz2)
-      real(kind=8):: kpvt(pipen)
+      integer(ISZ):: kpvt(pipen)
       real(kind=8):: pipephi(pipen,0:pipenz-1),pipeq(pipen,0:pipenz-1)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: bound0,boundnz,boundxy
@@ -6258,7 +6258,7 @@ c       --- out of bounds.
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
      &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry,0)
+     &                    ix_axis,iy_axis,0.,0.,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
         endif
@@ -6290,7 +6290,7 @@ c       --- out of bounds.
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
      &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry,0)
+     &                    ix_axis,iy_axis,0.,0.,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
         endif
