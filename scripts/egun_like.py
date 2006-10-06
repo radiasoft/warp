@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.55 2006/10/03 22:37:05 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.56 2006/10/06 22:15:38 dave Exp $"
 
 
 ##############################################################################
@@ -536,7 +536,6 @@ set when a current is specified"""
 
     # --- Do field solve including newly accumulated charge density.
     top.fstype = _ofstype
-    getrhoforfieldsolve()
     fieldsol(-1,lbeforefs=1,lafterfs=1)
     top.fstype = -1
 
