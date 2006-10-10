@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.106 2006/09/20 20:29:26 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.107 2006/10/10 16:31:38 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -893,7 +893,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                   subgridlen,mglevel,-yscale,-xscale,inverted,conductors,local)
 
 # z-x plane
-def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
+def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=0,
          cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
@@ -903,7 +903,7 @@ def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=nint(-ymmin/dy): y index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - cond=1: when true, plot grid point inside of conductors
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
@@ -1014,7 +1014,7 @@ def pfzr(**kw):
   pfzx(**kw)
 
 # z-y plane
-def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
+def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=0,
          cond=1,plotsg=1,fill=0,scale=1,
          plotphi=1,plotrho=0,plotselfe=0,comp='z',
          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
@@ -1024,7 +1024,7 @@ def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=nint(-xmmin/dx): x index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
-  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - lbeamframe=0: when true, plot relative to beam frame, otherwise lab frame
   - cond=1: when true, plot grid point inside of conductors
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
@@ -1155,7 +1155,7 @@ Same arguments as pfxy
        solver=w3d,kwdict=kw)
 
 # z-x plane
-def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
+def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=0,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
@@ -1179,7 +1179,7 @@ Same arguments as pfzx
 pfzrg = pfzxg
 
 # z-y plane
-def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
+def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=0,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
           subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
           condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
