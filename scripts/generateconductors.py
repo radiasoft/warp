@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.138 2006/10/04 18:36:34 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.139 2006/10/18 17:38:10 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -328,7 +328,7 @@ Should never be directly created by the user.
       if tmin is None:tmine=min(te)
       if tmax is None:tmaxe=max(te)
       if js is not None:
-        je = datal[:,3].copy()
+        je = datae[:,3].copy()
         qe = compress(je==js,qe)
         te = compress(je==js,te)
       ne = shape(qe)[0]
