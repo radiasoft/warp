@@ -424,12 +424,17 @@ class SubcycledPoissonSolver(FieldSolver):
           indts = top.ndtstorho[top.pgroup.ndts[js]-1]
           self.setrhopforparticles(0,indts,None)
           self.setrhop(*args)
-          self.aftersetrhop(lzero)
         if top.pgroup.iselfb[js] > -1:
           iselfb = top.pgroup.iselfb[js]
           self.setrhopforparticles(None,None,iselfb)
           self.setrhop(*args)
-          self.aftersetrhop(lzero)
+
+    for indts in range(top.nsndts):
+      self.setrhopforparticles(0,indts,None)
+      self.aftersetrhop(lzero)
+    for iselfb in range(top.nsselfb):
+      self.setrhopforparticles(None,None,iselfb)
+      self.aftersetrhop(lzero)
 
     self.averagerhopwithsubcycling()
 
