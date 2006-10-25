@@ -16,7 +16,7 @@ class EM2D(object):
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __em2dinputs__ = ['l_onegrid','l_copyfields','l_moving_window',
-                    'tmin_moving_main_window',
+                    'tmin_moving_main_window','l_smoothdensity',
                     'l_elaser_out_plane','ndelta_t',
                    'ntamp_scatter','ntamp_gather']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,
@@ -30,8 +30,10 @@ class EM2D(object):
     top.lcallfetchb = true
     #top.bfstype = 12
     top.lcallfetchb = true
+    top.lgridqnt = true
+    self.zgridprv=top.zgrid
     # --- Make sure the refinement is turned off
-    em2d.l_onegrid = true
+#    em2d.l_onegrid = true
 
     # --- Save input parameters
     for name in EM2D.__w3dinputs__:
@@ -81,28 +83,31 @@ class EM2D(object):
     assert self.solvergeom == w3d.XZgeom or not self.l_moving_window,"The moving window can only be used with XZ geometry"
 
     # --- Calculate mesh sizes
-    # --- All cases use X
-    self.dx = (self.xmmax - self.xmmin)/self.nx
-    self.xsymmetryplane = 0.
-    self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     if self.solvergeom in [w3d.XYgeom]:
       # --- When Y is used, nothing special is done
+      self.dx = (self.xmmax - self.xmmin)/self.nx
+      self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
       self.dy = (self.ymmax - self.ymmin)/self.ny
       self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-      self.ysymmetryplane = 0.
     if self.solvergeom in [w3d.XZgeom]:
       # --- When Z is used, set Z quantities, and set Y quantities to the same
       # --- values. Internally, the class always uses x and y. The user
       # --- interface will depend on solvergeom
+      self.ny = self.nx
+      self.ymmin = self.xmmin
+      self.ymmax = self.xmmax
+      self.dy = (self.ymmax - self.ymmin)/self.ny
+      self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
       self.dz = (self.zmmax - self.zmmin)/self.nz
       self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
       self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
-      self.ny = self.nz
-      self.dy = self.dz
-      self.ymesh = self.zmeshlocal
-      self.ymmin = self.zmmin
-      self.bounds[2] = self.bounds[4]
-      self.bounds[3] = self.bounds[5]
+      self.nx = self.nz
+      self.dx = self.dz
+      self.xmesh = self.zmeshlocal
+      self.xmmin = self.zmmin
+      self.xmmax = self.zmmax
+      self.bounds[0] = self.bounds[4]
+      self.bounds[1] = self.bounds[5]
 #     self.ndelta_t = top.vbeam*top.dt/w3d.dz
 #     em2d.ndelta_t = self.ndelta_t
 #     assert (self.ndelta_t - top.vbeam*top.dt/w3d.dz) < 1.e-6,"The input ndelta_t is not commensurate with the values of top.vbeam, top.dt, and w3d.dz"
@@ -128,6 +133,45 @@ class EM2D(object):
                 self.xmmin,self.ymmin,1,
                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
     self.field.js = self.laser_source
+    self.fpatches  = []
+
+
+  def addpatch(self,ixpatch,iypatch,nxpatch,nypatch,rap):
+    # --- Initializes refinement patch
+    em2d.l_onegrid = false
+    self.l_onegrid = em2d.l_onegrid
+    self.fpatches.append([EM2D_FIELDtype(),EM2D_FIELDtype()])
+    self.fpatchcoarse = self.fpatches[-1][0]
+    self.fpatchfine   = self.fpatches[-1][1]
+    self.fpatchfine.rap = rap
+    xlb = xrb = ylb = yrb = absorb
+    if ixpatch==0:xlb = self.bounds[0]
+    if iypatch==0:ylb = self.bounds[1]
+    if ixpatch+nxpatch==self.nx:xrb = self.bounds[2]
+    if iypatch+nypatch==self.ny:yrb = self.bounds[3]
+    init_fields(self.fpatchcoarse,nxpatch,nypatch,self.nbndx,self.nbndx,top.dt,
+                self.dx,self.dy,clight,mu0,
+                self.xmmin+ixpatch*self.dx,self.ymmin+iypatch*self.dy,1,
+                xlb,ylb,xrb,yrb)
+    init_fields(self.fpatchfine,nxpatch*rap,nypatch*rap,self.nbndx,self.nbndx,top.dt,
+                self.dx/rap,self.dy/rap,clight,mu0,
+                self.xmmin+ixpatch*self.dx,self.ymmin+iypatch*self.dy,rap,
+                xlb,ylb,xrb,yrb)
+    self.fpatchcoarse.js = self.laser_source
+    self.fpatchfine.js = self.laser_source*rap
+    self.fpatchfine.xminpatch_scatter = self.fpatchfine.xmin+em2d.ntamp_scatter*rap*self.fpatchfine.dx
+    self.fpatchfine.xmaxpatch_scatter = self.fpatchfine.xmax-em2d.ntamp_scatter*rap*self.fpatchfine.dx
+    self.fpatchfine.yminpatch_scatter = self.fpatchfine.ymin+em2d.ntamp_scatter*rap*self.fpatchfine.dy
+    self.fpatchfine.ymaxpatch_scatter = self.fpatchfine.ymax-em2d.ntamp_scatter*rap*self.fpatchfine.dy
+    self.fpatchfine.xminpatch_gather = self.fpatchfine.xmin+em2d.ntamp_gather*rap*self.fpatchfine.dx
+    self.fpatchfine.xmaxpatch_gather = self.fpatchfine.xmax-em2d.ntamp_gather*rap*self.fpatchfine.dx
+    self.fpatchfine.yminpatch_gather = self.fpatchfine.ymin+em2d.ntamp_gather*rap*self.fpatchfine.dy
+    self.fpatchfine.ymaxpatch_gather = self.fpatchfine.ymax-em2d.ntamp_gather*rap*self.fpatchfine.dy
+    self.fpatchfine.nxfsum = self.fpatchfine.nx
+    self.fpatchfine.nyfsum = self.fpatchfine.ny
+    self.fpatchfine.gchange()
+    self.setuplaser_profile(self.fpatchcoarse)
+    self.setuplaser_profile(self.fpatchfine)
 
   def setuplaser(self):
     if self.laser_profile is not None:
@@ -150,17 +194,21 @@ class EM2D(object):
       self.laser_amplitude_table_i = -1
     elif callable(self.laser_amplitude):
       self.laser_amplitude_func = self.laser_amplitude
+      
+    self.setuplaser_profile(self.field)
 
+  def setuplaser_profile(self,f):
     # --- Check if laser_profile has a type, is a function, or a table
     self.laser_profile_func = None
     if self.laser_profile == 'gaussian':
       assert self.laser_gauss_width is not None,\
              "For a gaussian laser, the width must be specified using laser_gauss_width"
-      f = self.field
-      xx = arange(self.nx+4)*f.dx+f.xmin*f.dx - 0.5*f.nx*f.dx
-      self.laser_profile = exp(-(xx/self.laser_gauss_width)**2/2.)
+#      xx = arange(self.nx+4)*f.dx+f.xmin*f.dx - 0.5*f.nx*f.dx
+#      self.laser_profile = exp(-(xx/self.laser_gauss_width)**2/2.)
+      yy = arange(f.ny+4)*f.dy+f.ymin*f.dy - 0.5*f.ny*f.dy
+      f.laser_profile = exp(-(yy/self.laser_gauss_width)**2/2.)
     elif operator.isSequenceType(self.laser_profile):
-      assert len(self.laser_profile) == self.nx+4,"The specified profile must be of length nx+4"
+      assert len(f.laser_profile) == f.ny+4,"The specified profile must be of length ny+4"
     elif callable(self.laser_profile):
       self.laser_profile_func = self.laser_profile
 
@@ -171,7 +219,8 @@ class EM2D(object):
       if self.l_moving_window and not self.l_elaser_out_plane:
         return z,x,uz,ux,uy
       else:
-        return x,z,ux,uz,uy
+#        return x,z,ux,uz,uy
+        return z,x,uz,ux,uy
 
   def transformfields(self,fx,fy,fz):
     if self.solvergeom == w3d.XYgeom:
@@ -180,35 +229,149 @@ class EM2D(object):
       if self.l_moving_window and not self.l_elaser_out_plane:
         return fz,fx,fy
       else:
-        return fx,fz,fy
+#        return fx,fz,fy
+        return fz,fx,fy
 
   def setj(self,x,y,ux,uy,uz,gaminv,q,w):
     n = len(x)
     if n == 0: return
     wtmp = zeros(n,'d')
-    em2d_depose_jxjy_esirkepov_linear_serial(self.field.J,n,x,y,ux,uy,uz,
-           gaminv,wtmp,q*w,self.field.xmin,self.field.ymin,top.dt,
-           self.field.dx,self.field.dy,self.field.nx,self.field.ny,
-           self.l_particles_weight)
-
+    if self.l_onegrid:
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wtmp,q*w,top.dt,false,self.field,self.field)
+    else:
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wtmp,q*w,top.dt,false,self.field,self.fpatchfine)
+    
+  def setjpy(self,x,y,ux,uy,uz,gaminv,q,w):
+    n = len(x)
+    if n == 0: return
+    wtmp = zeros(n,'d')
+    if self.l_onegrid:
+      em2d_depose_jxjy_esirkepov_linear_serial(self.field.J,n,x,y,ux,uy,uz,
+             gaminv,wtmp,q*w,self.field.xmin,self.field.ymin,top.dt,
+             self.field.dx,self.field.dy,self.field.nx,self.field.ny,
+             self.l_particles_weight)
+    else:
+      inpatch = where((x>self.fpatchfine.xminpatch_scatter) & \
+                      (x<self.fpatchfine.xmaxpatch_scatter) & \
+                      (y>self.fpatchfine.yminpatch_scatter) & \
+                      (y<self.fpatchfine.ymaxpatch_scatter), 1, 0)
+      ii = arange(n)
+      iin  = compress(inpatch,ii); iout = compress(1-inpatch,ii)
+      print 'nin,nout',len(iin),len(iout)
+      print min(x),max(x),min(y),max(y)
+      nin = len(iin);              nout = len(iout)
+      if nin>0:
+        xin = take(x,iin)
+        yin = take(y,iin)
+        uxin = take(ux,iin)
+        uyin = take(uy,iin)
+        uzin = take(uz,iin)
+        giin = take(gaminv,iin)
+        field = self.fpatchfine
+        wtmp = zeros(nin,'d')
+        print min(xin),max(xin),field.xmin,field.xmax
+        print min(yin),max(yin),field.ymin,field.ymax
+        em2d_depose_jxjy_esirkepov_linear_serial(field.J,nin,xin,yin,uxin,uyin,uzin,
+               giin,wtmp,q*w,field.xmin,field.ymin,top.dt,
+               field.dx,field.dy,field.nx,field.ny,
+               self.l_particles_weight)
+      if nout>0:
+        xout = take(x,iout)
+        yout = take(y,iout)
+        uxout = take(ux,iout)
+        uyout = take(uy,iout)
+        uzout = take(uz,iout)
+        giout = take(gaminv,iout)
+        field = self.field
+        wtmp = zeros(nout,'d')
+        print min(xout),max(xout),field.xmin,field.xmax
+        print min(yout),max(yout),field.ymin,field.ymax
+        em2d_depose_jxjy_esirkepov_linear_serial(field.J,nout,xout,yout,uxout,uyout,uzout,
+               giout,wtmp,q*w,field.xmin,field.ymin,top.dt,
+               field.dx,field.dy,field.nx,field.ny,
+               self.l_particles_weight)
+      
   def fetchefrompositions(self,x,y,ex,ey,ez):
     n = len(x)
     if n == 0: return
-    em2d_gete2d_linear_serial(n,x,y,ex,ey,ez,
-                              self.field.xmin,self.field.ymin,
-                              self.field.dx,self.field.dy,
-                              self.field.nx,self.field.ny,
-                              self.field.Ex,self.field.Ey,self.field.Ez)
+    self.fetchffrompositions(n,x,y,ex,ey,ez,'e')
 
   def fetchbfrompositions(self,x,y,bx,by,bz):
-    # --- This assumes that fetchefrompositions was already called
     n = len(x)
     if n == 0: return
-    em2d_getb2d_linear_serial(n,x,y,bx,by,bz,
-                              self.field.xmin,self.field.ymin,
-                              self.field.dx,self.field.dy,
-                              self.field.nx,self.field.ny,
-                              self.field.Bx,self.field.By,self.field.Bz)
+    self.fetchffrompositions(n,x,y,bx,by,bz,'b')
+    
+  def fetchffrompositions(self,n,x,y,fx,fy,fz,which):  
+    if which=='e':iwhich=1
+    if which=='b':iwhich=2
+    if self.l_onegrid:
+      getf_em2d(n,x,y,fx,fy,fz,self.field,self.field,iwhich)
+    else:
+      getf_em2d(n,x,y,fx,fy,fz,self.field,self.fpatchfine,iwhich)
+
+  def fetchffrompositionspy(self,n,x,y,fx,fy,fz,which='e'):  
+    if which=='e':
+      fxg = self.field.Ex
+      fyg = self.field.Ey
+      fzg = self.field.Ez
+    if which=='b':
+      fxg = self.field.Bx
+      fyg = self.field.By
+      fzg = self.field.Bz
+    if self.l_onegrid:
+      em2d_getf2d_linear_serial(n,x,y,fx,fy,fz,
+                                self.field.xmin,self.field.ymin,
+                                self.field.dx,self.field.dy,
+                                self.field.nx,self.field.ny,
+                                fxg,fyg,fzg)
+    else:
+      inpatch = where((x>self.fpatchfine.xminpatch_gather) & 
+                      (x<self.fpatchfine.xmaxpatch_gather) &
+                      (y>self.fpatchfine.yminpatch_gather) & 
+                      (y<self.fpatchfine.ymaxpatch_gather), 1, 0)
+      ii = arange(n)
+      iin  = compress(inpatch,ii); iout = compress(1-inpatch,ii)
+      nin = len(iin);              nout = len(iout)
+      if nin>0:
+        xin = take(x,iin)
+        yin = take(y,iin)
+        fxin = take(fx,iin)
+        fyin = take(fy,iin)
+        fzin = take(fz,iin)
+        field = self.fpatchfine
+        if which=='e':
+          ffxg = field.Exfsum
+          ffyg = field.Eyfsum
+          ffzg = field.Ezfsum
+        if which=='b':
+          ffxg = field.Bxfsum
+          ffyg = field.Byfsum
+          ffzg = field.Bzfsum
+        wtmp = zeros(nin,'d')
+        em2d_getf2d_linear_serial(nin,xin,yin,fxin,fyin,fzin,
+                                  field.xmin,field.ymin,
+                                  field.dx,field.dy,
+                                  field.nx,field.ny,
+                                  ffxg,ffyg,ffzg)
+        put(fx,iin,fxin)
+        put(fy,iin,fyin)
+        put(fz,iin,fzin)
+      if nout>0:
+        xout = take(x,iout)
+        yout = take(y,iout)
+        fxout = take(fx,iout)
+        fyout = take(fy,iout)
+        fzout = take(fz,iout)
+        field = self.field
+        wtmp = zeros(nout,'d')
+        em2d_getf2d_linear_serial(nout,xout,yout,fxout,fyout,fzout,
+                                  field.xmin,field.ymin,
+                                  field.dx,field.dy,
+                                  field.nx,field.ny,
+                                  fxg,fyg,fzg)
+        put(fx,iout,fxout)
+        put(fy,iout,fyout)
+        put(fz,iout,fzout)
 
   def fetchphifrompositions(self,x,z,phi):
     pass
@@ -217,7 +380,11 @@ class EM2D(object):
     pass
 
   def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
-    if lzero: self.field.J[...] = 0.
+    if lzero: 
+      self.field.J[...] = 0.
+      if not self.l_onegrid:
+        self.fpatchcoarse.J[...] = 0.
+        self.fpatchfine.J[...] = 0.
     for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
                        top.pgroup.sq,top.pgroup.sw):
       if n == 0: continue
@@ -225,7 +392,7 @@ class EM2D(object):
             top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],top.pgroup.zp[i:i+n],
             top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n])
       self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w)
-    self.smoothdensity()
+    if self.l_smoothdensity:self.smoothdensity()
 
   def smoothdensity(self):
     smooth2d_lindman(self.field.J[:,:,0],self.field.nx,self.field.ny)
@@ -276,11 +443,18 @@ class EM2D(object):
     pass
 
   def move_window_fields(self):
-    if not self.l_moving_window or ((top.it%self.ndelta_t)!=0): return
-    if top.time < self.tmin_moving_main_window: return
+    if (w3d.solvergeom not in [w3d.XZgeom]) or \
+       (abs(top.zgrid-self.zgridprv)<0.5*self.dz):return 
+#    if not self.l_moving_window or ((top.it%self.ndelta_t)!=0): return
+#    if top.time < self.tmin_moving_main_window: return
     move_window_field(self.field)
+    self.zgridprv=top.zgrid
+    self.fpatchfine.xminscatter+=w3d.dz
+    self.fpatchfine.xmaxscatter+=w3d.dz
+    self.fpatchfine.xmingather+=w3d.dz
+    self.fpatchfine.xmaxgather+=w3d.dz
 
-  def add_laser(self):
+  def add_laser(self,field):
     if self.laser_profile is None: return
 
     if self.laser_amplitude_func is not None:
@@ -302,12 +476,12 @@ class EM2D(object):
 
     if self.laser_profile_func is not None:
       self.laser_profile = self.laser_profile_func(top.time)
-      assert len(self.laser_profile) == self.nx+4,"The specified profile must be of length nx+4"
+      assert len(self.laser_profile) == field.ny+4,"The specified profile must be of length ny+4"
 
-    if (self.l_elaser_out_plane):
-      xx = (arange(self.nx+4) - 0.5)*self.field.dx+self.field.xmin
-    else:
-      xx = (arange(self.nx+3) - 0.5)*self.field.dx+self.field.xmin
+#    if (self.l_elaser_out_plane):
+#      xx = (arange(self.nx+4) - 0.5)*self.field.dx+self.field.xmin
+#    else:
+    xx = (arange(field.ny+3) - 0.5)*field.dy+field.ymin
 
     if self.laser_frequency is not None:
       phase = (xx*sin(self.laser_angle)/clight-top.time)*self.laser_frequency
@@ -315,64 +489,118 @@ class EM2D(object):
       phase = 0.
 
     if (self.l_elaser_out_plane):
-      self.field.Ez_in = self.laser_amplitude*self.laser_profile*cos(phase)
+      field.Ez_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
     else:
-      self.field.Bz_in = self.laser_amplitude*self.laser_profile[:-1]*cos(phase)
+      field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
 
   def solve(self,iwhich=0):
-    self.add_laser()
-    grimax(self.field)
-    push_em_b(self.field,0.5*top.dt)
-    push_em_e(self.field,top.dt)
-    push_em_b(self.field,0.5*top.dt)
+    if(not self.l_onegrid):
+      project_j(self.field,self.fpatchcoarse,self.fpatchfine)
+    if self.l_onegrid:
+      fields = [self.field]
+    else:
+      fields = [self.field,self.fpatchcoarse,self.fpatchfine]    
+    for field in fields:
+      self.add_laser(field)
+      grimax(field)
+      push_em_b(field,0.5*top.dt)
+      push_em_e(field,top.dt)
+      push_em_b(field,0.5*top.dt)
+      griuni(field)
     self.move_window_fields()
-    griuni(self.field)
-
+    if not self.l_onegrid:set_substitute_fields(self.field,self.fpatchcoarse,self.fpatchfine)
 
   ##########################################################################
   # Define the basic plot commands
   def genericfp(self,data,title,l_transpose=true,**kw):
-      f=self.field
+    f=self.field
+    if self.solvergeom == w3d.XYgeom:
       settitles(title,'X','Y','t = %gs'%(top.time))
-      if l_transpose:
-        kw.setdefault('xmin',self.xmmin)
-        kw.setdefault('xmax',self.xmmax)
-        kw.setdefault('ymin',self.ymmin)
-        kw.setdefault('ymax',self.ymmax)
-        ppgeneric(gridt=data,**kw)
-      else:
-        kw.setdefault('xmin',self.ymmin)
-        kw.setdefault('xmax',self.ymmax)
-        kw.setdefault('ymin',self.xmmin)
-        kw.setdefault('ymax',self.xmmax)
-        ppgeneric(grid=data,**kw)
+    elif self.solvergeom == w3d.XZgeom:
+      settitles(title,'Z','X','t = %gs'%(top.time))
+    if l_transpose:
+      kw.setdefault('xmin',self.xmmin)
+      kw.setdefault('xmax',self.xmmax)
+      kw.setdefault('ymin',self.ymmin)
+      kw.setdefault('ymax',self.ymmax)
+    else:
+      kw.setdefault('xmin',self.ymmin)
+      kw.setdefault('xmax',self.ymmax)
+      kw.setdefault('ymin',self.xmmin)
+      kw.setdefault('ymax',self.xmmax)
+    ppgeneric(grid=data,**kw)
       
   def fpex(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.Ey,'E_x',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.Ex,'E_x',**kw)
 
   def fpey(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.Ez,'E_y',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.Ey,'E_y',**kw)
 
   def fpez(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.Ex,'E_z',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.Ez,'E_z',**kw)
 
   def fpbx(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.By,'B_x',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.Bx,'B_x',**kw)
 
   def fpby(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.Bz,'B_y',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.By,'B_y',**kw)
 
   def fpbz(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.Bx,'B_z',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.Bz,'B_z',**kw)
 
   def fpjx(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.J[:,:,1],'J_x',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.J[:,:,0],'J_x',**kw)
 
   def fpjy(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.J[:,:,2],'J_y',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.J[:,:,1],'J_y',**kw)
 
   def fpjz(self,**kw):
+    if self.solvergeom == w3d.XZgeom:
+      self.genericfp(self.field.J[:,:,0],'J_z',**kw)
+    elif self.solvergeom == w3d.XYgeom:
       self.genericfp(self.field.J[:,:,2],'J_z',**kw)
+
+  def sezax(self):
+    pass
+
+  def sphiax(self):
+    pass
+
+  def rhodia(self):
+    pass
+
+  def gtlchg(self):
+    pass
+
+  def srhoax(self):
+    pass
+
+  def getese(self):
+    pass
 
 # --- This can only be done after MultiGrid is defined.
 try:
