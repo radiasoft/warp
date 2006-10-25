@@ -1,5 +1,6 @@
 #include "top.h"
 module em2d_depos
+use EM2D_FIELDtypemodule
 contains
 subroutine depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
    implicit none
@@ -240,11 +241,12 @@ end subroutine depose_jxjy_esirkepov_linear_serial
 
    return
  end subroutine geteb2d_linear_serial
- subroutine gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
+ 
+ subroutine getf2d_linear_serial(np,xp,yp,fx,fy,fz,xmin,ymin,dx,dy,nx,ny,fxg,fyg,fzg)
    
       integer(ISZ) :: np,nx,ny
-      real(kind=8), dimension(np) :: xp,yp,ex,ey,ez
-      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg
+      real(kind=8), dimension(np) :: xp,yp,fx,fy,fz
+      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: fxg,fyg,fzg
       real(kind=8) :: xmin,ymin,dx,dy
       integer(ISZ) :: ip, iixp, ijxp
       real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
@@ -273,58 +275,18 @@ end subroutine depose_jxjy_esirkepov_linear_serial
         w3 = s1x*s2y
         w4 = s2x*s2y 
           
-        ex(ip) = ex(ip)+(w1*exg(iixp+1,ijxp+1)+w2*exg(iixp,ijxp+1)+w3*exg(iixp+1,ijxp)+w4*exg(iixp,ijxp))
-        ey(ip) = ey(ip)+(w1*eyg(iixp+1,ijxp+1)+w2*eyg(iixp,ijxp+1)+w3*eyg(iixp+1,ijxp)+w4*eyg(iixp,ijxp))
-        ez(ip) = ez(ip)+(w1*ezg(iixp+1,ijxp+1)+w2*ezg(iixp,ijxp+1)+w3*ezg(iixp+1,ijxp)+w4*ezg(iixp,ijxp))
+        fx(ip) = fx(ip)+(w1*fxg(iixp+1,ijxp+1)+w2*fxg(iixp,ijxp+1)+w3*fxg(iixp+1,ijxp)+w4*fxg(iixp,ijxp))
+        fy(ip) = fy(ip)+(w1*fyg(iixp+1,ijxp+1)+w2*fyg(iixp,ijxp+1)+w3*fyg(iixp+1,ijxp)+w4*fyg(iixp,ijxp))
+        fz(ip) = fz(ip)+(w1*fzg(iixp+1,ijxp+1)+w2*fzg(iixp,ijxp+1)+w3*fzg(iixp+1,ijxp)+w4*fzg(iixp,ijxp))
 
      end do
 
    return
- end subroutine gete2d_linear_serial
- subroutine getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
-   
-      integer(ISZ) :: np,nx,ny
-      real(kind=8), dimension(np) :: xp,yp,bx,by,bz
-      real(kind=8), dimension(-1:nx+2,-1:ny+1) :: bxg,byg,bzg 
-      real(kind=8) :: xmin,ymin,dx,dy
-      integer(ISZ) :: ip, iixp, ijxp
-      real(kind=8) :: dxi, dyi, x, y, xint, yint, s1x, s2x, s1y, s2y, w1, w2, w3, w4
-
-      dxi = 1./dx
-      dyi = 1./dy
-
-      do ip=1,np
-
-        x = (xp(ip)-xmin)*dxi
-        y = (yp(ip)-ymin)*dyi
-
-        iixp=int(x)
-        ijxp=int(y)
-
-        xint=x-iixp
-        yint=y-ijxp
-
-        s1x=xint
-        s2x=1.-xint
-        s1y=yint
-        s2y=1.-yint
-
-        w1 = s1x*s1y
-        w2 = s2x*s1y 
-        w3 = s1x*s2y
-        w4 = s2x*s2y 
-          
-        bx(ip) = bx(ip)+(w1*bxg(iixp+1,ijxp+1)+w2*bxg(iixp,ijxp+1)+w3*bxg(iixp+1,ijxp)+w4*bxg(iixp,ijxp))
-        by(ip) = by(ip)+(w1*byg(iixp+1,ijxp+1)+w2*byg(iixp,ijxp+1)+w3*byg(iixp+1,ijxp)+w4*byg(iixp,ijxp))
-        bz(ip) = bz(ip)+(w1*bzg(iixp+1,ijxp+1)+w2*bzg(iixp,ijxp+1)+w3*bzg(iixp+1,ijxp)+w4*bzg(iixp,ijxp))
-
-     end do
-
-   return
- end subroutine getb2d_linear_serial
+ end subroutine getf2d_linear_serial
 end module em2d_depos
 
-subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight)
+subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_weight,field,fpatchfine)
+   use EM2D_FIELDtypemodule
    use EM2D_FIELDobjects
    use em2d_depos
    implicit none
@@ -332,13 +294,16 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
    real(kind=8), dimension(np) :: xp,yp,uxp,uyp,uzp,gaminv,w
    real(kind=8) :: dt,q
    logical(ISZ) :: l_particles_weight
+   TYPE(EM2D_FIELDtype), target :: field,fpatchfine
 
    integer(ISZ) :: ip, np_inpatch
    logical(ISZ) :: l_inpatch(np)
    
-   TYPE(EM2D_FIELDtype), POINTER :: f
+   TYPE(EM2D_FIELDtype), POINTER :: f,ff
 
    f => field
+   ff => fpatchfine
+
    if (l_onegrid) then
      call depose_jxjy_esirkepov_linear_serial(f%J,np,xp,yp,uxp,uyp,uzp,gaminv, &
                                               w,q,f%xmin,f%ymin,dt,f%dx,f%dy, &
@@ -346,8 +311,8 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
    else
      np_inpatch = 0
      do ip=1,np
-       IF(xp(ip)>xminpatch_scatter .and. xp(ip)<xmaxpatch_scatter .and. &
-          yp(ip)>yminpatch_scatter .and. yp(ip)<ymaxpatch_scatter) then
+       IF(xp(ip)>ff%xminpatch_scatter .and. xp(ip)<ff%xmaxpatch_scatter .and. &
+          yp(ip)>ff%yminpatch_scatter .and. yp(ip)<ff%ymaxpatch_scatter) then
          l_inpatch(ip) = .true.
          np_inpatch = np_inpatch+1
        else
@@ -366,44 +331,47 @@ subroutine depose_current_em2d(np,xp,yp,uxp,uyp,uzp,gaminv,w,q,dt,l_particles_we
                                                 f%dx,f%dy,f%nx,f%ny,l_particles_weight)
      end if
      if (np_inpatch>0) then
-       f => fpatchfine
-       call depose_jxjy_esirkepov_linear_serial(f%J,np_inpatch, &
+       call depose_jxjy_esirkepov_linear_serial(ff%J,np_inpatch, &
                                                 pack(xp,l_inpatch), &
                                                 pack(yp,l_inpatch), &
                                                 pack(uxp,l_inpatch), &
                                                 pack(uyp,l_inpatch), &
                                                 pack(uzp,l_inpatch), &
                                                 pack(gaminv,l_inpatch), &
-                                                w,q,f%xmin,f%ymin,dt, &
-                                                f%dx,f%dy,f%nx,f%ny,l_particles_weight)
+                                                w,q,ff%xmin,ff%ymin,dt, &
+                                                ff%dx,ff%dy,ff%nx,ff%ny,l_particles_weight)
      end if     
    endif
 end subroutine depose_current_em2d
 
-subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
+subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz,field,fpatchfine)
+   use EM2D_FIELDtypemodule
    use EM2D_FIELDobjects
    use em2d_depos
    implicit none
    
    integer(ISZ) :: np
    real(kind=8), dimension(np) :: xp,yp,ex,ey,ez,bx,by,bz
+   TYPE(EM2D_FIELDtype), target :: field,fpatchfine
 
    integer(ISZ) :: ip, ipt, np_inpatch, np_outpatch
    logical(ISZ) :: l_inpatch(np)
    real(kind=8), allocatable, dimension(:) :: ext,eyt,ezt,bxt,byt,bzt
    real(kind=8) :: d1,d2,d3,d4,d,wtz(np)
 
-   TYPE(EM2D_FIELDtype), POINTER :: f
+   TYPE(EM2D_FIELDtype), POINTER :: f, ff
 
    f => field
+   ff => fpatchfine
+   
    if (l_onegrid) then
      call geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
           f%ex,f%ey,f%ez,f%bx,f%by,f%bz)
    else
      np_inpatch = 0
      do ip=1,np
-       IF(xp(ip)>xminpatch_gather .and. xp(ip)<xmaxpatch_gather .and. &
-          yp(ip)>yminpatch_gather .and. yp(ip)<ymaxpatch_gather) then
+       IF(xp(ip)>ff%xminpatch_gather .and. xp(ip)<ff%xmaxpatch_gather .and. &
+          yp(ip)>ff%yminpatch_gather .and. yp(ip)<ff%ymaxpatch_gather) then
          l_inpatch(ip) = .true.
          np_inpatch = np_inpatch+1
        else
@@ -436,7 +404,6 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
        deallocate(ext,eyt,ezt,bxt,byt,bzt)
      end if
      if (np_inpatch>0) then
-       f => fpatchfine
        allocate(ext(np_inpatch),eyt(np_inpatch),ezt(np_inpatch), &
                 bxt(np_inpatch),byt(np_inpatch),bzt(np_inpatch))
        ext=0.; eyt=0.; ezt=0.; 
@@ -444,8 +411,8 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
        call geteb2d_linear_serial(np,pack(xp,l_inpatch), &
                                      pack(yp,l_inpatch), &
                                      ext,eyt,ezt,bxt,byt,bzt, &
-                                     f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
-                                     exfsum,eyfsum,ezfsum,bxfsum,byfsum,bzfsum)
+                                     ff%xmin,ff%ymin,ff%dx,ff%dy,ff%nx,ff%ny, &
+                                     ff%exfsum,ff%eyfsum,ff%ezfsum,ff%bxfsum,ff%byfsum,ff%bzfsum)
        ipt = 1
        do ip=1,np
          if (l_inpatch(ip)) then
@@ -463,6 +430,100 @@ subroutine geteb_em2d(np,xp,yp,ex,ey,ez,bx,by,bz)
    endif
 end subroutine geteb_em2d
 
+subroutine getf_em2d(np,xp,yp,fx,fy,fz,field,fpatchfine,which)
+   use EM2D_FIELDobjects
+   use em2d_depos
+   implicit none
+   
+   integer(ISZ) :: np,which
+   real(kind=8), dimension(np) :: xp,yp,fx,fy,fz
+   TYPE(EM2D_FIELDtype), target :: field,fpatchfine
+
+   integer(ISZ) :: ip, ipt, np_inpatch, np_outpatch
+   logical(ISZ) :: l_inpatch(np)
+   real(kind=8), allocatable, dimension(:) :: fxt,fyt,fzt
+   real(kind=8), pointer, dimension(:,:) :: fxg,fyg,fzg
+   real(kind=8) :: d1,d2,d3,d4,d,wtz(np)
+
+   TYPE(EM2D_FIELDtype), POINTER :: f, ff
+   
+   f => field
+   ff => fpatchfine
+   
+   if(which==1) then
+     fxg => f%Ex
+     fyg => f%Ey
+     fzg => f%Ez
+   else
+     fxg => f%Bx
+     fyg => f%By
+     fzg => f%Bz
+   end if
+   if (l_onegrid) then
+     call getf2d_linear_serial(np,xp,yp,fx,fy,fz,f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
+          fxg,fyg,fzg)
+   else
+     np_inpatch = 0
+     do ip=1,np
+       IF(xp(ip)>ff%xminpatch_gather .and. xp(ip)<ff%xmaxpatch_gather .and. &
+          yp(ip)>ff%yminpatch_gather .and. yp(ip)<ff%ymaxpatch_gather) then
+         l_inpatch(ip) = .true.
+         np_inpatch = np_inpatch+1
+       else
+         l_inpatch(ip) = .false.
+       END if
+     end do
+     np_outpatch = np-np_inpatch
+     if (np_outpatch>0) then
+       allocate(fxt(np_outpatch),fyt(np_outpatch),fzt(np_outpatch))
+       fxt=0.; fyt=0.; fzt=0.; 
+       call getf2d_linear_serial(np_outpatch,pack(xp,.not. l_inpatch), &
+                                     pack(yp,.not. l_inpatch), &
+                                     fxt,fyt,fzt, &
+                                     f%xmin,f%ymin,f%dx,f%dy,f%nx,f%ny, &
+                                     fxg,fyg,fzg)
+       ipt = 1
+       do ip=1,np
+         if (.not. l_inpatch(ip)) then
+           fx(ip)=fx(ip)+fxt(ipt)
+           fy(ip)=fy(ip)+fyt(ipt)
+           fz(ip)=fz(ip)+fzt(ipt)
+           ipt=ipt+1
+         end if
+       enddo
+       deallocate(fxt,fyt,fzt)
+     end if
+     if (np_inpatch>0) then
+       if(which==1) then
+         fxg => ff%Exfsum
+         fyg => ff%Eyfsum
+         fzg => ff%Ezfsum
+       else
+         fxg => ff%Bxfsum
+         fyg => ff%Byfsum
+         fzg => ff%Bzfsum
+       end if
+       allocate(fxt(np_inpatch),fyt(np_inpatch),fzt(np_inpatch))
+       fxt=0.; fyt=0.; fzt=0.; 
+       call getf2d_linear_serial(np_inpatch,pack(xp,l_inpatch), &
+                                     pack(yp,l_inpatch), &
+                                     fxt,fyt,fzt, &
+                                     ff%xmin,ff%ymin,ff%dx,ff%dy,ff%nx,ff%ny, &
+                                     fxg,fyg,fzg)
+       ipt = 1
+       do ip=1,np
+         if (l_inpatch(ip)) then
+           fx(ip)=fx(ip)+fxt(ipt)
+           fy(ip)=fy(ip)+fyt(ipt)
+           fz(ip)=fz(ip)+fzt(ipt)
+           ipt=ipt+1
+         end if
+       enddo
+       deallocate(fxt,fyt,fzt)
+     end if
+   endif
+end subroutine getf_em2d
+
 subroutine em2d_geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg,bxg,byg,bzg)
   use em2d_depos,Only: geteb2d_linear_serial
    
@@ -476,31 +537,18 @@ subroutine em2d_geteb2d_linear_serial(np,xp,yp,ex,ey,ez,bx,by,bz,xmin,ymin,dx,dy
   return
 end subroutine em2d_geteb2d_linear_serial
 
-subroutine em2d_gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
-  use em2d_depos,Only: gete2d_linear_serial
+subroutine em2d_getf2d_linear_serial(np,xp,yp,fx,fy,fz,xmin,ymin,dx,dy,nx,ny,fxg,fyg,fzg)
+  use em2d_depos,Only: getf2d_linear_serial
    
   integer(ISZ) :: np,nx,ny
-  real(kind=8), dimension(np) :: xp,yp,ex,ey,ez
-  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: exg,eyg,ezg
+  real(kind=8), dimension(np) :: xp,yp,fx,fy,fz
+  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: fxg,fyg,fzg
   real(kind=8) :: xmin,ymin,dx,dy
 
-  call gete2d_linear_serial(np,xp,yp,ex,ey,ez,xmin,ymin,dx,dy,nx,ny,exg,eyg,ezg)
+  call getf2d_linear_serial(np,xp,yp,fx,fy,fz,xmin,ymin,dx,dy,nx,ny,fxg,fyg,fzg)
 
   return
-end subroutine em2d_gete2d_linear_serial
-
-subroutine em2d_getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
-  use em2d_depos,Only: getb2d_linear_serial
-   
-  integer(ISZ) :: np,nx,ny
-  real(kind=8), dimension(np) :: xp,yp,bx,by,bz
-  real(kind=8), dimension(-1:nx+2,-1:ny+1) :: bxg,byg,bzg 
-  real(kind=8) :: xmin,ymin,dx,dy
-
-  call getb2d_linear_serial(np,xp,yp,bx,by,bz,xmin,ymin,dx,dy,nx,ny,bxg,byg,bzg)
-
-  return
-end subroutine em2d_getb2d_linear_serial
+end subroutine em2d_getf2d_linear_serial
 
 subroutine em2d_depose_jxjy_esirkepov_linear_serial(j,np,xp,yp,uxp,uyp,uzp,gaminv,w,q,xmin,ymin,dt,dx,dy,nx,ny,l_particles_weight)
   use em2d_depos,Only: depose_jxjy_esirkepov_linear_serial
@@ -587,35 +635,35 @@ subroutine smooth2d_lindman(q,nx,ny)
       return
       end subroutine smooth2d_lindman
 
-subroutine em2d_smoothdensity()
-   use EM2D_FIELDobjects
-   implicit none
-   
-   TYPE(EM2D_FIELDtype), POINTER :: f
-   real(kind=8), dimension(:,:), pointer :: jaux
-   integer(ISZ) :: i,ngrids
-
-   if (l_onegrid) then
-     ngrids = 1
-   else
-     ngrids = 2
-   end if
-   do i=1, ngrids
-     if(i==1) then
-       f => field
-     else
-       f => fpatchfine
-     endif
-    jaux => f%J(:,:,1)
-    call smooth2d_lindman(jaux,f%nx,f%ny)
-    jaux => f%J(:,:,2)
-    call smooth2d_lindman(jaux,f%nx,f%ny)
-    jaux => f%J(:,:,3)
-    call smooth2d_lindman(jaux,f%nx,f%ny)
-  end do
+!subroutine em2d_smoothdensity()
+!   use EM2D_FIELDobjects
+!   implicit none
+!   
+!   TYPE(EM2D_FIELDtype), POINTER :: f
+!   real(kind=8), dimension(:,:), pointer :: jaux
+!   integer(ISZ) :: i,ngrids
+!
+!   if (l_onegrid) then
+!     ngrids = 1
+!   else
+!     ngrids = 2
+!   end if
+!   do i=1, ngrids
+!     if(i==1) then
+!       f => field
+!     else
+!       f => fpatchfine
+!     endif
+!    jaux => f%J(:,:,1)
+!    call smooth2d_lindman(jaux,f%nx,f%ny)
+!    jaux => f%J(:,:,2)
+!    call smooth2d_lindman(jaux,f%nx,f%ny)
+!    jaux => f%J(:,:,3)
+!    call smooth2d_lindman(jaux,f%nx,f%ny)
+!  end do
   
-  return
-end subroutine em2d_smoothdensity
+!  return
+!end subroutine em2d_smoothdensity
 
 subroutine em2d_step()
       use InGen
@@ -663,7 +711,7 @@ subroutine em2d_step()
 
       wtmp = 0.
 
-      field%J = 0.      
+!      field%J = 0.      
 
       ! put fields back on staggered grid
       do is=1,pgroup%ns
@@ -672,7 +720,7 @@ subroutine em2d_step()
 
             ex=0.; ey=0.; ez=0.; bx=0.; by=0.; bz=0.
 
-            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
+!            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
 
             call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
                           bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
@@ -694,24 +742,24 @@ subroutine em2d_step()
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
             ! we assume that all particles have same weight
-            call depose_current_em2d(ip,xp(ipmin),yp(ipmin), &
-                                     uxp(ipmin),uyp(ipmin),uzp(ipmin), &
-                                     gaminv(ipmin),wtmp,sq(is)*sw(is),dt, &
-                                     .false.)
+!            call depose_current_em2d(ip,xp(ipmin),yp(ipmin), &
+!                                     uxp(ipmin),uyp(ipmin),uzp(ipmin), &
+!                                     gaminv(ipmin),wtmp,sq(is)*sw(is),dt, &
+!                                     .false.)
                                
          end do
       end do
-      if(l_smoothdensity) call em2d_smoothdensity()
+!      if(l_smoothdensity) call em2d_smoothdensity()
 
-      call grimax(field) 
+!      call grimax(field) 
       
-      call push_em_b(field,0.5*dt)
-      call push_em_e(field,dt)
-      call push_em_b(field,0.5*dt)
-      call move_window_fields()
+!      call push_em_b(field,0.5*dt)
+!      call push_em_e(field,dt)
+!      call push_em_b(field,0.5*dt)
+!      call move_window_fields()
 
 !     put fields values at nodes
-      call griuni(field) 
+!      call griuni(field) 
 
       do is=1,pgroup%ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -719,7 +767,7 @@ subroutine em2d_step()
 
             ex=0.; ey=0.; ez=0.; bx=0.; by=0.; bz=0.
 
-            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
+!            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
 
             call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin), &
                           ex, ey, ez, sq(is), sm(is), 0.5*dt)
@@ -736,8 +784,4 @@ subroutine em2d_step()
       
   return
 end subroutine em2d_step
-
-
-
-
 
