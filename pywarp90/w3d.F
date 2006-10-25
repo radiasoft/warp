@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.302 $, $Date: 2006/10/05 20:13:42 $
+c@(#) File W3D.F, version $Revision: 3.303 $, $Date: 2006/10/25 23:06:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -248,7 +248,7 @@ c  so that by default izfsmax = nz (for full field solve).
           ymmin = 0.
         endif
       else if(solvergeom==XZgeom) then
-        ymmin = 0.
+c        ymmin = 0.
         if (l2symtry .or. l4symtry) xmmin = 0.
       else if(solvergeom==RZgeom .or. solvergeom==Zgeom .or. solvergeom==Rgeom) then
         l2symtry=.false.
@@ -748,7 +748,11 @@ c         --- Set zbeam so that it follows the center of mass of the beam.
 
         else
 c         --- Advance beam frame location using the nominal beam frame velocity.
-          zbeam = zgrid
+c          if (lgridqnt) then
+c            zbeam = zbeam+vbeamfrm*dt
+c          else
+            zbeam = zgrid
+c          endif
         endif
 
 c       --- zgridprv needs to be updated for the "synchv" step
@@ -1836,8 +1840,6 @@ c       --- Inject more particles. This adds particles and alters ins and nps.
 c       --- Treat particles at boundaries
         call particleboundaries3d(pgroup)
 
-        if (lbeforelr) call execuser("beforelr")
- 
 c       --- Collect charge density (3d)
         call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
         call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
@@ -6206,6 +6208,8 @@ c --- all of the particles, otherwise the specified particles are loaded.
       logical(ISZ):: lzeroeven
 
       if (lw3dtimesubs) substarttime = wtime()
+
+      if (lbeforelr) call execuser("beforelr")
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
