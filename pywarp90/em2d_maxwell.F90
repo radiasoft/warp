@@ -4,6 +4,7 @@
 
 module mod_field
 
+use EM2D_FIELDtypemodule
 USE mod_bnd
 USE EM2D_FIELDobjects
 use GlobalVars
@@ -54,30 +55,46 @@ do k = 0, f%ny+1
 end do
 
 ! add source term
-if (l_elaser_out_plane) then
-  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
-  f%cst2 =  2.*dt/f%dy /(1.+dt*f%clight/f%dy)
-else
+!if (l_elaser_out_plane) then
+!  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
+!  f%cst2 =  2.*dt/f%dy /(1.+dt*f%clight/f%dy)
+!else
   f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
   f%cst2 =  2.*dt/f%dx /(1.+dt*f%clight/f%dx)
-end if
+!end if
 if (f%l_add_source) then
  if (.not.l_moving_window) then
   if(l_elaser_out_plane) then
   ! add contribution from Ez source (Ez_in)
-    k = f%js
-    do j = 0, f%nx+1
-      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (-f%Ez_in(j))
+!    k = f%js
+!    do j = 0, f%nx+1
+!      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (-f%Ez_in(j))
+!    end do
+
+    ! Evaluate Bx and By source
+!    do j = 1, f%nx+1
+!      f%By_in(j) = f%By_in(j) + dtsdx * (f%Ez_in(j) - f%Ez_in(j-1))
+!    end do
+
+!    do j = 0, f%nx+1
+!      f%Bx_in(j) = f%cst1 * f%Bx_in(j) + f%cst2 * f%Ez_in(j)
+!    end do
+ 
+    j = f%js
+    do k = 0, f%ny+1
+      f%By(j,k) = f%By(j,k) + dtsdx * (-f%Ez_in(k))
     end do
 
     ! Evaluate Bx and By source
-    do j = 1, f%nx+1
-      f%By_in(j) = f%By_in(j) + dtsdx * (f%Ez_in(j) - f%Ez_in(j-1))
+    do k = 1, f%ny+1
+      f%Bx_in(k) = f%Bx_in(k) - dtsdy * (f%Ez_in(k) - f%Ez_in(k-1))
     end do
 
-    do j = 0, f%nx+1
-      f%Bx_in(j) = f%cst1 * f%Bx_in(j) + f%cst2 * f%Ez_in(j)
+    do k = 0, f%ny+1
+      f%By_in(k) = f%cst1 * f%By_in(k) - f%cst2 * f%Ez_in(k)
     end do
+
+
   else
     j = f%js-1
     do k = 0, f%ny+1
@@ -94,33 +111,33 @@ if (f%l_add_source) then
  end if
 end if
 
-IF(f%l_addpatchresidual) then
-  ALLOCATE(Exapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
-  ALLOCATE(Eyapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
-  Exapr = 0.
-  Eyapr = 0.
-  call project_ex(exfin=fpatchfine%ex(0:fpatchfine%nx+1,0:fpatchfine%ny+1), exgros=Exapr,rap=rap)
-  call project_ey(eyfin=fpatchfine%ey(0:fpatchfine%nx+1,0:fpatchfine%ny+1), eygros=Eyapr,rap=rap)
-  Exapr = Exapr - fpatchcoarse%ex(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
-  Eyapr = Eyapr - fpatchcoarse%ey(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
-  j = ntamp_apr
-  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
-    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdx * Eyapr(j,k)
-  END do
-  j = fpatchcoarse%nx+1-ntamp_apr
-  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
-    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdx * Eyapr(j+1,k)
-  END do
-  k = ntamp_apr
-  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
-    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdy * Exapr(j,k)
-  END do
-  k = fpatchcoarse%ny+1-ntamp_apr
-  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
-    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdy * Exapr(j,k+1)
-  END do
-  DEALLOCATE(Exapr,Eyapr)
-END if
+!IF(f%l_addpatchresidual) then
+!  ALLOCATE(Exapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
+!  ALLOCATE(Eyapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
+!  Exapr = 0.
+!  Eyapr = 0.
+!  call project_ex(exfin=fpatchfine%ex(0:fpatchfine%nx+1,0:fpatchfine%ny+1), excoarse=Exapr,rap=rap)
+!  call project_ey(eyfin=fpatchfine%ey(0:fpatchfine%nx+1,0:fpatchfine%ny+1), eycoarse=Eyapr,rap=rap)
+!  Exapr = Exapr - fpatchcoarse%ex(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
+!  Eyapr = Eyapr - fpatchcoarse%ey(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
+!  j = ntamp_apr
+!  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
+!    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdx * Eyapr(j,k)
+!  END do
+!  j = fpatchcoarse%nx+1-ntamp_apr
+!  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
+!    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdx * Eyapr(j+1,k)
+!  END do
+!  k = ntamp_apr
+!  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
+!    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) + dtsdy * Exapr(j,k)
+!  END do
+!  k = fpatchcoarse%ny+1-ntamp_apr
+!  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
+!    f%Bz(j+ixpatch,k+iypatch) = f%Bz(j+ixpatch,k+iypatch) - dtsdy * Exapr(j,k+1)
+!  END do
+!  DEALLOCATE(Exapr,Eyapr)
+!END if
 
 end subroutine champ_b
 
@@ -171,13 +188,13 @@ do k = 0, f%ny+1
   end do
 end do
 
-if (l_elaser_out_plane) then
-  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
-  f%cst2 =  f%clight**2*2.*dt/f%dy /(1.+dt*f%clight/f%dy)
-else
+!if (l_elaser_out_plane) then
+!  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
+!  f%cst2 =  f%clight**2*2.*dt/f%dy /(1.+dt*f%clight/f%dy)
+!else
   f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
   f%cst2 =  f%clight**2*2.*dt/f%dx /(1.+dt*f%clight/f%dx)
-end if
+!end if
 if (f%l_add_source .and. .not.l_moving_window .and. .not. l_elaser_out_plane) then
     ! Evaluate Ex and Ey source
     do k = 1, f%ny+1
@@ -192,10 +209,15 @@ end if
 if (f%l_add_source) then
  if (.not.l_moving_window) then
   if(l_elaser_out_plane) then
+!    ! substract contribution from Bx source (Bx_in)
+!    k = f%js-1
+!    do j = 0, f%nx+1
+!      f%Ez(j,k) = f%Ez(j,k) - dtsdy * (-f%Bx_in(j)) 
+!    end do
     ! substract contribution from Bx source (Bx_in)
-    k = f%js-1
-    do j = 0, f%nx+1
-      f%Ez(j,k) = f%Ez(j,k) - dtsdy * (-f%Bx_in(j)) 
+    j = f%js-1
+    do k = 0, f%ny+1
+      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (-f%By_in(k)) 
     end do
   else
     ! add contribution from Bz source (Bz_in)
@@ -206,38 +228,42 @@ if (f%l_add_source) then
   end if
  else
   if(l_elaser_out_plane) then
-    k = 0
-    do j = 0, f%nx+1
-      f%Ez(j,k) = f%Ez_in(j) 
+!    k = 0
+!    do j = 0, f%nx+1
+!      f%Ez(j,k) = f%Ez_in(j) 
+!    end do
+    j = 0
+    do k = 0, f%ny+1
+      f%Ez(j,k) = f%Ez_in(k) 
     end do
   end if
  end if
 end if
 
-IF(f%l_addpatchresidual) then
-  ALLOCATE(Bzapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
-  Bzapr = 0. 
-  call project_bz(bzfin=fpatchfine%bz(0:fpatchfine%nx+1,0:fpatchfine%ny+1), bzgros=Bzapr,rap=rap)
-  Bzapr = Bzapr - fpatchcoarse%bz(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
-  
-  j = ntamp_apr
-  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
-    f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) - dtsdx * Bzapr(j,k)
-  END do
-  j = fpatchcoarse%nx+2-ntamp_apr
-  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
-    f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) + dtsdx * Bzapr(j-1,k)
-  END do
-  k = ntamp_apr
-  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
-    f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) + dtsdy * Bzapr(j,k)
-  END do
-  k = fpatchcoarse%ny+2-ntamp_apr
-  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
-    f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) - dtsdy * Bzapr(j,k-1)
-  END do
-  DEALLOCATE(Bzapr)
-END if
+!IF(f%l_addpatchresidual) then
+!  ALLOCATE(Bzapr(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1))
+!  Bzapr = 0. 
+!  call project_bz(bzfin=fpatchfine%bz(0:fpatchfine%nx+1,0:fpatchfine%ny+1), bzcoarse=Bzapr,rap=rap)
+!  Bzapr = Bzapr - fpatchcoarse%bz(0:fpatchcoarse%nx+1,0:fpatchcoarse%ny+1)
+!  
+!  j = ntamp_apr
+!  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
+!    f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) - dtsdx * Bzapr(j,k)
+!  END do
+!  j = fpatchcoarse%nx+2-ntamp_apr
+!  do k = ntamp_apr, fpatchcoarse%ny+1-ntamp_apr
+!    f%Ey(j+ixpatch,k+iypatch) = f%Ey(j+ixpatch,k+iypatch) + dtsdx * Bzapr(j-1,k)
+!  END do
+!  k = ntamp_apr
+!  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
+!    f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) + dtsdy * Bzapr(j,k)
+!  END do
+!  k = fpatchcoarse%ny+2-ntamp_apr
+!  do j = ntamp_apr, fpatchcoarse%nx+1-ntamp_apr
+!    f%Ex(j+ixpatch,k+iypatch) = f%Ex(j+ixpatch,k+iypatch) - dtsdy * Bzapr(j,k-1)
+!  END do
+!  DEALLOCATE(Bzapr)
+!END if
 
 if (f%l_apply_pml) then
   call exchange_bnd_field(f%bndexeybz,f)
@@ -260,7 +286,8 @@ if(f%ylbound==periodic) then
   f%Ex(0:f%nx+1,0)      = f%Ex(0:f%nx+1,f%ny+1)
   f%Ex(0:f%nx+1,f%ny+2) = f%Ex(0:f%nx+1,1)
 
-else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+!else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+else 
   kf = 0
   kb = kf + b%nbndy
   jk1=b%ntop1+kb*b%n1x
@@ -476,7 +503,8 @@ if(f%ylbound==periodic) then
   f%Bx(0:f%nx+1,0)      = f%Bx(0:f%nx+1,f%ny+1)
   f%Bx(0:f%nx+1,f%ny+2) = f%Bx(0:f%nx+1,1)
 
-else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+!else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+else 
 kf = 0
 kb = kf + b%nbndy
 jk1=b%ntop1+kb*b%n1x
@@ -518,7 +546,7 @@ do jf = 1, f%nx
 end do
 end if
 
-if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+!if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 kf = 0
 kb = kf + b%nbndy
 jk1=b%ntop1+kb*b%n1x
@@ -540,7 +568,7 @@ do jf = 1, f%nx+1
   jk = jk1+jb
   b%Ey(jk) = f%By(jf,kf)
 end do
-end if
+!end if
 
 if(f%xlbound==periodic) then
   f%By(0,0:f%ny+1)    = f%By(f%nx+1,0:f%ny+1)
@@ -807,28 +835,29 @@ INTEGER :: which,i,j
 
       return
       end subroutine smooth
-   subroutine project_jxjy(jxjyfin,jxjygros,rap)
-   ! Routine de projection des J d'une grille fine sur une grille grossiere.
-   ! Soit nx*ny la taille de la grille grossiere en nombre de mailles.
+   subroutine project_jxjy(jxjyfin,jxjycoarse,rap)
+   ! Routine de projection des J d'une grille fine sur une grille coarsesiere.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
    ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
    ! On passe une maille de plus pour chaque tableau a la limite superieure
    ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
    ! pour calculer les poids. Les tailles des tableaux passes sont
-   ! en definitive jxjygros(0:nx+1,0:ny+1,2) et jxjyfin(0:rap*nx+1,0:rap*ny+1,2).
-   real(kind=8), DIMENSION(0:,0:,:) :: jxjyfin,jxjygros
+   ! en definitive jxjycoarse(0:nx+1,0:ny+1,2) et jxjyfin(0:rap*nx+1,0:rap*ny+1,2).
+   real(kind=8), DIMENSION(0:,0:,:) :: jxjyfin,jxjycoarse
    INTEGER :: rap
 
-   INTEGER :: nxfin, nyfin, nxgros, nygros, j, k, jg, kg
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
    real(kind=8) :: w, invrapvol
 
-      invrapvol = 1./rap!**2
+!      invrapvol = 1./rap!**2
+      invrapvol = 1./rap**2
 
       nxfin = SIZE(jxjyfin,1)-2
       nyfin = SIZE(jxjyfin,2)-2
-      nxgros = SIZE(jxjygros,1)-2
-      nygros = SIZE(jxjygros,2)-2
+      nxcoarse = SIZE(jxjycoarse,1)-2
+      nycoarse = SIZE(jxjycoarse,2)-2
 
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in project_jxjy: rap does not match grid sizes.'
         stop
       END if
@@ -838,8 +867,8 @@ INTEGER :: which,i,j
         w = REAL(MOD(k,rap))/rap
         do j = 0, nxfin-1
           jg = j/rap
-          jxjygros(jg,kg,  1) = jxjygros(jg,kg,  1) + (1.-w)*jxjyfin(j,k,1)*invrapvol
-          jxjygros(jg,kg+1,1) = jxjygros(jg,kg+1,1) +     w *jxjyfin(j,k,1)*invrapvol
+          jxjycoarse(jg,kg,  1) = jxjycoarse(jg,kg,  1) + (1.-w)*jxjyfin(j,k,1)*invrapvol
+          jxjycoarse(jg,kg+1,1) = jxjycoarse(jg,kg+1,1) +     w *jxjyfin(j,k,1)*invrapvol
         end do
       end do
 
@@ -848,37 +877,36 @@ INTEGER :: which,i,j
         do j = 0, nxfin
           jg = j/rap
           w = REAL(MOD(j,rap))/rap
-          jxjygros(jg,  kg,2) = jxjygros(jg  ,kg,2) + (1.-w)*jxjyfin(j,k,2)*invrapvol
-          jxjygros(jg+1,kg,2) = jxjygros(jg+1,kg,2) +     w *jxjyfin(j,k,2)*invrapvol
+          jxjycoarse(jg,  kg,2) = jxjycoarse(jg  ,kg,2) + (1.-w)*jxjyfin(j,k,2)*invrapvol
+          jxjycoarse(jg+1,kg,2) = jxjycoarse(jg+1,kg,2) +     w *jxjyfin(j,k,2)*invrapvol
         end do
       end do
 
    end subroutine project_jxjy
 
-   subroutine interpol_jxjy(jxjyfin,jxjygros,rap)
-   ! Routine d'interpolation-soustraction des J d'une grille grossiere sur une grille fine.
-   ! Soit nx*ny la taille de la grille grossiere en nombre de mailles.
+   subroutine interpol_jxjy(jxjyfin,jxjycoarse,rap)
+   ! Routine d'interpolation-soustraction des J d'une grille coarsesiere sur une grille fine.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
    ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
    ! On passe une maille de plus pour chaque tableau a la limite superieure
    ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
    ! pour calculer les poids. Les tailles des tableaux passes sont
-   ! en definitive jxjygros(0:nx+1,0:ny+1,2) et jxjyfin(0:rap*nx+1,0:rap*ny+1,2).
-   real(kind=8), DIMENSION(0:,0:,:) :: jxjyfin,jxjygros
+   ! en definitive jxjycoarse(0:nx+1,0:ny+1,2) et jxjyfin(0:rap*nx+1,0:rap*ny+1,2).
+   real(kind=8), DIMENSION(0:,0:,:) :: jxjyfin,jxjycoarse
    INTEGER :: rap
 
-   INTEGER :: nxfin, nyfin, nxgros, nygros, j, k, jg, kg
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
    real(kind=8) :: w
    logical :: l_onfinegridfirst = .true.
    real(kind=8), DIMENSION(:,:,:), allocatable :: jxjyfin_new
 
       nxfin = SIZE(jxjyfin,1)-2
       nyfin = SIZE(jxjyfin,2)-2
-      nxgros = SIZE(jxjygros,1)-2
-      nygros = SIZE(jxjygros,2)-2
+      nxcoarse = SIZE(jxjycoarse,1)-2
+      nycoarse = SIZE(jxjycoarse,2)-2
 
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in interpol_jxjy: rap does not match grid sizes.'
-!        WRITE(0,*) nxgros,rap,nxfin,nygros,rap,nyfin
         stop
       END if
 
@@ -888,7 +916,7 @@ INTEGER :: which,i,j
           w = REAL(MOD(k,rap))/rap
           do j = 0, nxfin-1
             jg = j/rap
-            jxjyfin(j,k,1) = jxjyfin(j,k,1)-((1.-w)*jxjygros(jg,kg,1)+w*jxjygros(jg,kg+1,1))/rap
+            jxjyfin(j,k,1) = jxjyfin(j,k,1)-((1.-w)*jxjycoarse(jg,kg,1)+w*jxjycoarse(jg,kg+1,1))/rap
           end do
         end do
 
@@ -897,7 +925,7 @@ INTEGER :: which,i,j
           do j = 0, nxfin
             jg = j/rap
             w = REAL(MOD(j,rap))/rap
-            jxjyfin(j,k,2) = jxjyfin(j,k,2)-((1.-w)*jxjygros(jg,kg,2)+w*jxjygros(jg+1,kg,2))/rap
+            jxjyfin(j,k,2) = jxjyfin(j,k,2)-((1.-w)*jxjycoarse(jg,kg,2)+w*jxjycoarse(jg+1,kg,2))/rap
           end do
         end do
       else
@@ -928,28 +956,28 @@ INTEGER :: which,i,j
       end if
    end subroutine interpol_jxjy
 
-   subroutine project_ex(exfin,exgros,rap)
-   ! Routine de projection des J d'une grille fine sur une grille grossiere.
-   ! Soit nx*ny la taille de la grille grossiere en nombre de mailles.
+   subroutine project_ex(exfin,excoarse,rap)
+   ! Routine de projection des J d'une grille fine sur une grille coarsesiere.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
    ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
    ! On passe une maille de plus pour chaque tableau a la limite superieure
    ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
    ! pour calculer les poids. Les tailles des tableaux passes sont
-   ! en definitive exgros(0:nx+1,0:ny+1,2) et exfin(0:rap*nx+1,0:rap*ny+1).
-   real(kind=8), DIMENSION(0:,0:) :: exfin,exgros
+   ! en definitive excoarse(0:nx+1,0:ny+1,2) et exfin(0:rap*nx+1,0:rap*ny+1).
+   real(kind=8), DIMENSION(0:,0:) :: exfin,excoarse
    INTEGER :: rap
 
-   INTEGER :: nxfin, nyfin, nxgros, nygros, j, k, jg, kg
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
    real(kind=8) :: w, invrapvol
 
       invrapvol = 1./rap**2
 
       nxfin = SIZE(exfin,1)-2
       nyfin = SIZE(exfin,2)-2
-      nxgros = SIZE(exgros,1)-2
-      nygros = SIZE(exgros,2)-2
+      nxcoarse = SIZE(excoarse,1)-2
+      nycoarse = SIZE(excoarse,2)-2
 
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in project_ex: rap does not match grid sizes.'
         stop
       END if
@@ -959,35 +987,35 @@ INTEGER :: which,i,j
         w = REAL(MOD(k,rap))/rap
         do j = 0, nxfin-1
           jg = j/rap
-          exgros(jg,kg  ) = exgros(jg,kg  ) + (1.-w)*exfin(j,k)*invrapvol
-          exgros(jg,kg+1) = exgros(jg,kg+1) +     w *exfin(j,k)*invrapvol
+          excoarse(jg,kg  ) = excoarse(jg,kg  ) + (1.-w)*exfin(j,k)*invrapvol
+          excoarse(jg,kg+1) = excoarse(jg,kg+1) +     w *exfin(j,k)*invrapvol
         end do
       end do
 
    end subroutine project_ex
 
-   subroutine project_ey(eyfin,eygros,rap)
-   ! Routine de projection des J d'une grille fine sur une grille grossiere.
-   ! Soit nx*ny la taille de la grille grossiere en nombre de mailles.
+   subroutine project_ey(eyfin,eycoarse,rap)
+   ! Routine de projection des J d'une grille fine sur une grille coarsesiere.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
    ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
    ! On passe une maille de plus pour chaque tableau a la limite superieure
    ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
    ! pour calculer les poids. Les tailles des tableaux passes sont
-   ! en definitive eygros(0:nx+1,0:ny+1,2) et eyfin(0:rap*nx+1,0:rap*ny+1).
-   real(kind=8), DIMENSION(0:,0:) :: eyfin,eygros
+   ! en definitive eycoarse(0:nx+1,0:ny+1,2) et eyfin(0:rap*nx+1,0:rap*ny+1).
+   real(kind=8), DIMENSION(0:,0:) :: eyfin,eycoarse
    INTEGER :: rap
 
-   INTEGER :: nxfin, nyfin, nxgros, nygros, j, k, jg, kg
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
    real(kind=8) :: w, invrapvol
 
       invrapvol = 1./rap**2
 
       nxfin = SIZE(eyfin,1)-2
       nyfin = SIZE(eyfin,2)-2
-      nxgros = SIZE(eygros,1)-2
-      nygros = SIZE(eygros,2)-2
+      nxcoarse = SIZE(eycoarse,1)-2
+      nycoarse = SIZE(eycoarse,2)-2
 
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in project_ey: rap does not match grid sizes.'
         stop
       END if
@@ -997,35 +1025,35 @@ INTEGER :: which,i,j
         do j = 0, nxfin
           jg = j/rap
           w = REAL(MOD(j,rap))/rap
-          eygros(jg,  kg) = eygros(jg  ,kg) + (1.-w)*eyfin(j,k)*invrapvol
-          eygros(jg+1,kg) = eygros(jg+1,kg) +     w *eyfin(j,k)*invrapvol
+          eycoarse(jg,  kg) = eycoarse(jg  ,kg) + (1.-w)*eyfin(j,k)*invrapvol
+          eycoarse(jg+1,kg) = eycoarse(jg+1,kg) +     w *eyfin(j,k)*invrapvol
         end do
       end do
 
    end subroutine project_ey
 
-   subroutine project_bz(bzfin,bzgros,rap)
-   ! Routine de projection de Bz d'une grille fine sur une grille grossiere.
-   ! Soit nx*ny la taille de la grille grossiere en nombre de mailles.
+   subroutine project_rho(bzfin,bzcoarse,rap)
+   ! Routine de projection de Bz d'une grille fine sur une grille coarsesiere.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
    ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
    ! On passe une maille de plus pour chaque tableau a la limite superieure
    ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
    ! pour calculer les poids. Les tailles des tableaux passes sont
-   ! en definitive bzgros(0:nx+1,0:ny+1) et bzfin(0:rap*nx+1,0:rap*ny+1).
-   real(kind=8), DIMENSION(0:,0:) :: bzfin,bzgros
+   ! en definitive bzcoarse(0:nx+1,0:ny+1) et bzfin(0:rap*nx+1,0:rap*ny+1).
+   real(kind=8), DIMENSION(0:,0:) :: bzfin,bzcoarse
    INTEGER :: rap
 
-   INTEGER :: nxfin, nyfin, nxgros, nygros, j, k, jg, kg
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
    real(kind=8) :: wx, wy, invrapvol,q
 
       invrapvol = 1./rap**2
 
       nxfin = SIZE(bzfin,1)-2
       nyfin = SIZE(bzfin,2)-2
-      nxgros = SIZE(bzgros,1)-2
-      nygros = SIZE(bzgros,2)-2
+      nxcoarse = SIZE(bzcoarse,1)-2
+      nycoarse = SIZE(bzcoarse,2)-2
 
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in project_bz: rap does not match grid sizes.'
         stop
       END if
@@ -1037,27 +1065,68 @@ INTEGER :: which,i,j
           jg = j/rap
           wx = REAL(MOD(j,rap))/rap
           q = bzfin(j,k)*invrapvol
-          bzgros(jg,  kg  ) = bzgros(jg,  kg  ) + (1.-wx) * (1.-wy) * q
-          bzgros(jg+1,kg  ) = bzgros(jg+1,kg  ) +     wx  * (1.-wy) * q
-          bzgros(jg  ,kg+1) = bzgros(jg,  kg+1) + (1.-wx) *     wy  * q
-          bzgros(jg+1,kg+1) = bzgros(jg+1,kg+1) +     wx  *     wy  * q
+          bzcoarse(jg,  kg  ) = bzcoarse(jg,  kg  ) + (1.-wx) * (1.-wy) * q
+          bzcoarse(jg+1,kg  ) = bzcoarse(jg+1,kg  ) +     wx  * (1.-wy) * q
+          bzcoarse(jg  ,kg+1) = bzcoarse(jg,  kg+1) + (1.-wx) *     wy  * q
+          bzcoarse(jg+1,kg+1) = bzcoarse(jg+1,kg+1) +     wx  *     wy  * q
         end do
       end do
 
-   end subroutine project_bz
+   end subroutine project_rho
 
-   subroutine interpol(ffin,fgros,rap)
-   real(kind=8), DIMENSION(0:,0:) :: ffin,fgros
+   subroutine project_jz(bzfin,bzcoarse,rap)
+   ! Routine de projection de Bz d'une grille fine sur une grille coarsesiere.
+   ! Soit nx*ny la taille de la grille coarsesiere en nombre de mailles.
+   ! On suppose que la maille fine a un nombre de mailles rap*nx*rap*ny.
+   ! On passe une maille de plus pour chaque tableau a la limite superieure
+   ! pour chaque dimension de facon a pouvoir utiliser la fonction modulo
+   ! pour calculer les poids. Les tailles des tableaux passes sont
+   ! en definitive bzcoarse(0:nx+1,0:ny+1) et bzfin(0:rap*nx+1,0:rap*ny+1).
+   real(kind=8), DIMENSION(0:,0:) :: bzfin,bzcoarse
    INTEGER :: rap
-   INTEGER :: nxfin, nyfin, nxgros, nygros, jf, kf, jg, kg
+
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, j, k, jg, kg
+   real(kind=8) :: wx, wy, invrapvol,q
+
+      invrapvol = 1./rap**2
+
+      nxfin = SIZE(bzfin,1)-2
+      nyfin = SIZE(bzfin,2)-2
+      nxcoarse = SIZE(bzcoarse,1)-2
+      nycoarse = SIZE(bzcoarse,2)-2
+
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
+        WRITE(0,*) 'Error in project_bz: rap does not match grid sizes.'
+        stop
+      END if
+
+      do k = 0, nyfin-1
+        kg = k/rap
+        wy = 0.25+REAL(MOD(k,rap))/rap
+        do j = 0, nxfin-1
+          jg = j/rap
+          wx = 0.25+REAL(MOD(j,rap))/rap
+          q = bzfin(j,k)*invrapvol
+          bzcoarse(jg,  kg  ) = bzcoarse(jg,  kg  ) + (1.-wx) * (1.-wy) * q
+          bzcoarse(jg+1,kg  ) = bzcoarse(jg+1,kg  ) +     wx  * (1.-wy) * q
+          bzcoarse(jg  ,kg+1) = bzcoarse(jg,  kg+1) + (1.-wx) *     wy  * q
+          bzcoarse(jg+1,kg+1) = bzcoarse(jg+1,kg+1) +     wx  *     wy  * q
+        end do
+      end do
+
+   end subroutine project_jz
+
+   subroutine interpol(ffin,fcoarse,rap)
+   real(kind=8), DIMENSION(0:,0:) :: ffin,fcoarse
+   INTEGER :: rap
+   INTEGER :: nxfin, nyfin, nxcoarse, nycoarse, jf, kf, jg, kg
    real(kind=8) :: wj, wk
 
       nxfin = SIZE(ffin,1)-2
       nyfin = SIZE(ffin,2)-2
-      nxgros = SIZE(fgros,1)-2
-      nygros = SIZE(fgros,2)-2
-
-      IF(nxgros*rap/=nxfin .OR. nygros*rap/=nyfin) then
+      nxcoarse = SIZE(fcoarse,1)-2
+      nycoarse = SIZE(fcoarse,2)-2
+      IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
         WRITE(0,*) 'Error in interpol: rap does not match grid sizes.'
         stop
       END if
@@ -1068,10 +1137,10 @@ INTEGER :: which,i,j
         do jf = 0, nxfin
           jg = jf/rap
           wj = REAL(MOD(jf,rap))/rap
-          ffin(jf,kf) = ffin(jf,kf) + (1.-wj)*(1.-wk)*fgros(jg,  kg)   &
-                                    +     wj *(1.-wk)*fgros(jg+1,kg)   &
-                                    + (1.-wj)*    wk *fgros(jg,  kg+1) &
-                                    +     wj *    wk *fgros(jg+1,kg+1)
+          ffin(jf,kf) = ffin(jf,kf) + (1.-wj)*(1.-wk)*fcoarse(jg,  kg)   &
+                                    +     wj *(1.-wk)*fcoarse(jg+1,kg)   &
+                                    + (1.-wj)*    wk *fcoarse(jg,  kg+1) &
+                                    +     wj *    wk *fcoarse(jg+1,kg+1)
         end do
       end do
 
@@ -1084,7 +1153,7 @@ TYPE(EM2D_FIELDtype) :: f
 
 !   --- Note that the loops are written out since they seem to give
 !   --- the intel compiler fits.
-    if (l_elaser_out_plane) then
+    if (l_elaser_out_plane .and. .false.) then
       do iy=0,f%ny+2-f%rap
         do ix=0,f%nx+3
           f%Ex(ix,iy) = f%Ex(ix,iy+f%rap)
@@ -1146,72 +1215,15 @@ TYPE(EM2D_FIELDtype) :: f
 end subroutine shift_fields_1cell
 end module mod_field
 
-subroutine move_window_fields()
-use mod_field
-use Picglb
-implicit none
-TYPE(EM2D_FIELDtype), POINTER      :: f
-LOGICAL :: cond
-integer :: which, ngrid
-
-  if(.not. l_moving_window .or. (mod(it,ndelta_t)/=0)) return
-
-  if (l_onegrid) then
-    cond = .true.
-    ngrid = 1
-  else
-    if (l_elaser_out_plane) then
-      cond = nint(fpatchfine%ymax/field%dy)==nint(field%ymax/field%dy)
-    else
-      cond = nint(fpatchfine%xmax/field%dx)==nint(field%xmax/field%dx)
-    end if
-    ngrid = 3
-  end if
-  if(time<tmin_moving_main_window) return
-
-  do which = 1, ngrid
-    select case (which)
-      case (1)
-        f => field
-      case (2)
-        f => fpatchcoarse
-      case (3)
-        f => fpatchfine
-      case default
-    end select
-    if (which==1 .and. .not. cond) cycle ! do not move main window if patch not at upper end
-    call move_window_field(f)
-    if (l_elaser_out_plane) then
-      if(which==2) then
-        yminpatch_gather  = yminpatch_gather +f%dy*f%rap
-        yminpatch_scatter = yminpatch_scatter+f%dy*f%rap
-        ymaxpatch_gather  = ymaxpatch_gather +f%dy*f%rap
-        ymaxpatch_scatter = ymaxpatch_scatter+f%dy*f%rap
-        if(.not. cond) iypatch=iypatch+1
-      end if
-    else
-      if(which==2) then
-        xminpatch_gather  = xminpatch_gather +field%dx
-        xminpatch_scatter = xminpatch_scatter+field%dx
-        xmaxpatch_gather  = xmaxpatch_gather +field%dx
-        xmaxpatch_scatter = xmaxpatch_scatter+field%dx
-        if(.not. cond) ixpatch=ixpatch+1
-      end if
-   end if
-  end do
-  
-  return
-end subroutine move_window_fields
-
 subroutine move_window_field(f)
 use EM2D_FIELDtypemodule
 use mod_field,Only: l_elaser_out_plane,shift_fields_1cell
 use mod_bnd
 TYPE(EM2D_FIELDtype):: f
   call shift_fields_1cell(f)
-  call move_window_bnd(f%bndexeybz,f%rap,l_elaser_out_plane)
-  call move_window_bnd(f%bndbxbyez,f%rap,l_elaser_out_plane)
-  if (l_elaser_out_plane) then
+  call move_window_bnd(f%bndexeybz,f%rap,.false.)!l_elaser_out_plane)
+  call move_window_bnd(f%bndbxbyez,f%rap,.false.)!l_elaser_out_plane)
+  if (l_elaser_out_plane .and. .false.) then
     f%ymin  =f%ymin  +f%dy*f%rap
     f%ymax  =f%ymax  +f%dy*f%rap
   else
@@ -1341,6 +1353,10 @@ f%ntemp = 2*max(nx,ny)+4
 f%clight = clight
 f%mu0    = mu0
 f%js = 1 ! position of the source
+if(rap>1) then
+  f%nxfsum = nx
+  f%nyfsum = ny
+end if
 
   IF(l_copyfields) then
     f%nxcopy = f%nx
@@ -1471,3 +1487,67 @@ TYPE(EM2D_FIELDtype) :: f
   return
 end subroutine grimax
 
+subroutine project_j(f,fc,ff)
+   use mod_field, only: EM2D_FIELDtype, project_jxjy, project_jz
+   implicit none
+   
+   TYPE(EM2D_FIELDtype) :: f,fc, ff
+   integer :: nxpatch, nypatch, ixpatch, iypatch
+
+   nxpatch = fc%nx
+   nypatch = fc%ny
+   ixpatch = nint((fc%xmin-f%xmin)/f%dx)
+   iypatch = nint((fc%ymin-f%ymin)/f%dy)
+   call project_jxjy(        ff%J(1:ff%nx+2, 1:ff%ny+2, 1:2), fc%J(1:fc%nx+2, 1:fc%ny+2, 1:2), ff%rap)
+   call project_jz(ff%J(0:ff%nx+1, 0:ff%ny+1, 3),   fc%J(0:fc%nx+1, 0:fc%ny+1, 3),   ff%rap)
+   f%J(ixpatch:ixpatch+nxpatch+3,iypatch:iypatch+nypatch+2,:) = &
+   f%J(ixpatch:ixpatch+nxpatch+3,iypatch:iypatch+nypatch+2,:) + fc%J
+
+   return
+end subroutine project_j
+
+subroutine set_substitute_fields(field,fpatchcoarse,fpatchfine)
+use mod_field, only: EM2D_FIELDtype, interpol
+implicit none
+
+TYPE(EM2D_FIELDtype) :: field,fpatchcoarse,fpatchfine
+
+integer :: nxfsum, nyfsum, nxpatch, nypatch, ixpatch, iypatch, rap
+
+  nxfsum = fpatchfine%nxfsum
+  nyfsum = fpatchfine%nyfsum
+  nxpatch = fpatchcoarse%nx
+  nypatch = fpatchcoarse%ny
+  ixpatch = nint((fpatchcoarse%xmin-field%xmin)/field%dx)+1
+  iypatch = nint((fpatchcoarse%ymin-field%ymin)/field%dy)+1
+  rap = fpatchfine%rap
+  
+    fpatchfine%exfsum = fpatchfine%ex
+    fpatchfine%eyfsum = fpatchfine%ey 
+    fpatchfine%ezfsum = fpatchfine%ez
+    fpatchfine%bxfsum = fpatchfine%bx
+    fpatchfine%byfsum = fpatchfine%by 
+    fpatchfine%bzfsum = fpatchfine%bz
+
+    call interpol(ffin=fpatchfine%exfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%ex(1:nxpatch+2,1:nypatch+2),rap=rap)
+    call interpol(ffin=fpatchfine%eyfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%ey(1:nxpatch+2,1:nypatch+2),rap=rap)
+    call interpol(ffin=fpatchfine%ezfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%ez(1:nxpatch+2,1:nypatch+2),rap=rap)
+    call interpol(ffin=fpatchfine%bxfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%bx(1:nxpatch+2,1:nypatch+2),rap=rap)
+    call interpol(ffin=fpatchfine%byfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%by(1:nxpatch+2,1:nypatch+2),rap=rap)
+    call interpol(ffin=fpatchfine%bzfsum(1:nxfsum+2,1:nyfsum+2),fcoarse=-fpatchcoarse%bz(1:nxpatch+2,1:nypatch+2),rap=rap)
+
+    call interpol(ffin=fpatchfine%exfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%ex(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+    call interpol(ffin=fpatchfine%eyfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%ey(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+    call interpol(ffin=fpatchfine%ezfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%ez(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+    call interpol(ffin=fpatchfine%bxfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%bx(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+    call interpol(ffin=fpatchfine%byfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%by(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+    call interpol(ffin=fpatchfine%bzfsum(1:nxfsum+2,1:nyfsum+2), &
+                  fcoarse=field%bz(ixpatch:ixpatch+nxpatch+1,iypatch:iypatch+nypatch+1),rap=rap)
+
+  return
+end subroutine set_substitute_fields
