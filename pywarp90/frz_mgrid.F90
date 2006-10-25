@@ -10527,3 +10527,20 @@ TYPE(BNDtype), POINTER :: b
 return
 end subroutine init_bworkgrid
 
+subroutine updateguardcells2d()
+use multigridrz
+TYPE(GRIDtype), POINTER :: f
+integer(ISZ) :: i
+
+f => basegrid
+do i=1, ngrids
+  call updateguardcellsrz(f%phi, f%ixlbnd, f%ixrbnd, f%izlbnd, f%izrbnd)
+  if(associated(f%next)) then
+    f=>f%next
+  elseif(associated(f%down)) then
+    f=>f%down
+  endif
+enddo
+return
+
+end subroutine updateguardcells2d
