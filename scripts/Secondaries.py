@@ -4,15 +4,22 @@ Secondaries: class for generating secondaries
 from warp import *
 from pos import *
 from species import *
-import txphysics
+try:
+  import txphysics
+  l_txphysics = 1
+except:
+  print 'WARNING: module txphysics is not accessible.'
+  l_txphysics = 0
 try:
   import desorb
+  l_desorb = 1
 except:
   print 'WARNING: module desorb is not accessible.'
+  l_desorb = 0
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.12 2006/09/01 19:42:28 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.13 2006/10/26 23:50:42 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -34,16 +41,19 @@ Class for generating secondaries
             This is in units of time steps. The default is None (no minimum age required).
  - set_params_user: function that sets SEY parameters provided by the user.
                     Default is None: default set_params routine is used.
+ - vmode: 1 (default) -> uses instantaneous velocity to compute angle to normal of conductor
+          2           -> uses difference between current and old positions to compute angle to normal of conductor
  - l_verbose: sets verbosity (default=0). 
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
-                    xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,l_verbose=0):
+                    xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0):
     self.inter={}
     self.outparts=[]
 #    self.isinc = isinc
 #    self.conductors = conductors
 #    self.issec = issec
 #    self.type = type
+    self.vmode=vmode
     self.l_verbose=l_verbose
     self.l_record_timing=0
 #    self.condids={}
@@ -82,11 +92,12 @@ Class for generating secondaries
     self.secelec_dele   = zeros(1,'d')
     self.secelec_delr   = zeros(1,'d')
     self.secelec_delts  = zeros(1,'d')
-    # set arrays for 
-    self.emitted_e=txphysics.doubleArray(1000)
-    self.emitted_bn=txphysics.doubleArray(1000)
-    self.emitted_bt=txphysics.doubleArray(1000)
-    self.emitted_bz=txphysics.doubleArray(1000)
+    if l_txphysics:
+    # set arrays for txphysics
+      self.emitted_e=txphysics.doubleArray(1000)
+      self.emitted_bn=txphysics.doubleArray(1000)
+      self.emitted_bt=txphysics.doubleArray(1000)
+      self.emitted_bz=txphysics.doubleArray(1000)
     # set arrays for emitted particles
     self.npmax=4096
     self.nps={}
@@ -155,8 +166,8 @@ Class for generating secondaries
           self.pid[js]=fzeros([self.npmax,top.npid],'d')
 
   def install(self):
-    if not isinstalledafterfs(self.generate):
-      installafterfs(self.generate)
+    if not isinstalledbeforelr(self.generate):
+      installbeforelr(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
     if self.nps[js]+nn>self.npmax:self.flushpart(js)
@@ -312,16 +323,20 @@ Class for generating secondaries
         uxplost = take(top.uxplost[i1:i2],iit)
         uyplost = take(top.uyplost[i1:i2],iit)
         uzplost = take(top.uzplost[i1:i2],iit)
-#        xplostold = take(top.pidlost[i1:i2,self.xoldpid],iit)
-#        yplostold = take(top.pidlost[i1:i2,self.yoldpid],iit)
-#        zplostold = take(top.pidlost[i1:i2,self.zoldpid],iit)
-#        vxplost = (xplost-xplostold)/top.dt
-#        vyplost = (yplost-yplostold)/top.dt
-#        vzplost = (zplost-zplostold)/top.dt
         gaminvlost = take(top.gaminvlost[i1:i2],iit)
-        vxplost=uxplost*gaminvlost
-        vyplost=uyplost*gaminvlost
-        vzplost=uzplost*gaminvlost
+        if self.vmode==1:
+          vxplost=uxplost*gaminvlost
+          vyplost=uyplost*gaminvlost
+          vzplost=uzplost*gaminvlost
+        elif self.vmode==2:
+          xplostold = take(top.pidlost[i1:i2,self.xoldpid],iit)
+          yplostold = take(top.pidlost[i1:i2,self.yoldpid],iit)
+          zplostold = take(top.pidlost[i1:i2,self.zoldpid],iit)
+          vxplost = (xplost-xplostold)/top.dt
+          vyplost = (yplost-yplostold)/top.dt
+          vzplost = (zplost-zplostold)/top.dt
+        else:
+          raise('Error in Secondaries, one should have lmode=1 or 2, but have lmode=%g'%self.lmode)
         # set energy of incident particle in eV
         e0 = where(gaminvlost==1., \
                    0.5*top.pgroup.sm[js]*(uxplost**2+uyplost**2+uzplost**2)/top.echarge,
