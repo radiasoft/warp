@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.303 $, $Date: 2006/10/25 23:06:41 $
+c@(#) File W3D.F, version $Revision: 3.304 $, $Date: 2006/10/26 18:24:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -325,7 +325,7 @@ c  Initialize the B field solver if it is being used
       call init_bfieldsolver(bfstype)
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
-      call vp3d(1)
+      call fieldsol3d(1)
 
 c  Create the dynamic arrays in Z_arrays; set the z mesh
 
