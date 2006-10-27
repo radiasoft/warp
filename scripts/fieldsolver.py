@@ -260,6 +260,23 @@ conductors are used. The diagnostic routines only need to be defined if
 the diagnostic is of interest and is meaningfull.
   """
 
+  __flaginputs__ = {'lreducedpickle':0,'lnorestoreonpickle':0}
+
+  def __init__(self,**kw):
+
+    for name,defvalue in FieldSolver.__flaginputs__.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+      if kw.has_key(name): del kw[name]
+
+  def __getstate__(self):
+    dict = self.__dict__.copy()
+    return dict
+
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+
   # ---------------------------------------------------------------------
   # --- These routines must at least be defined.
   def loadrho(self,lzero=true,**kw):
@@ -296,29 +313,46 @@ the diagnostic is of interest and is meaningfull.
 
   def fetche(self,**kw):
     'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
-    if w3d.api_xlf2:
-      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
+    ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
+    ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
+    pid = w3d.pgroupfsapi.pid[ipmin-1:ipmin-1+w3d.npfsapi,:]
+    self.fetchefrompositions(x,y,z,ex,ey,ez,w3d.pgroupfsapi)
 
-  def fetchb(self):
+  def fetchb(self,**kw):
     'Fetches the B field, uses arrays from w3d module FieldSolveAPI'
-    if w3d.api_xlf2:
-      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-    self.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                             w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    bx = w3d.pgroupfsapi.bx[ipmin-1:ipmin-1+w3d.npfsapi]
+    by = w3d.pgroupfsapi.by[ipmin-1:ipmin-1+w3d.npfsapi]
+    bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
+    self.fetchbfrompositions(x,y,z,ex,ey,ez,w3d.pgroupfsapi)
 
   def fetchphi(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
-    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    self.fetchphifrompositions(x,y,z,w3d.phifsapi)
 
   def fetcha(self):
     'Fetches the magnetostatic potential, uses arrays from w3d module FieldSolveAPI'
-    self.fetchafrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.afsapi)
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    self.fetchafrompositions(x,y,z,w3d.afsapi)
 
   def solve(self,iwhich=0):
     'do the field solve'
@@ -397,6 +431,18 @@ the diagnostic is of interest and is meaningfull.
 #=============================================================================
 class SubcycledPoissonSolver(FieldSolver):
 
+  def __getstate__(self):
+    dict = FieldSolver.__getstate__(self)
+    if self.lreducedpickle:
+      if 'rhoparray' in dict: del dict['rhoparray']
+      if 'phiparray' in dict: del dict['phiparray']
+    return dict
+
+  def __setstate__(self,dict):
+    FieldSolver.__setstate__(self,dict)
+    if self.lreducedpickle and not self.lnorestoreonpickle:
+      self.allocatedataarrays()
+
   def setrhopforparticles(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
       rhopndts = self.getrhop(lndts=1)
@@ -409,8 +455,9 @@ class SubcycledPoissonSolver(FieldSolver):
     "Anything that needs to be done to rhop after the deposition"
     pass
 
-  def loadrho(self,lzero=true,**kw):
+  def loadrho(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
+    if lzero is None: lzero = w3d.lzerorhofsapi
     self.allocatedataarrays()
     if lzero: self.zerorhop()
 
@@ -419,24 +466,28 @@ class SubcycledPoissonSolver(FieldSolver):
       if n > 0:
         args = [top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
                 top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],
-                q,w*top.pgroup.dtscale[js]]
+                q,w*top.pgroup.dtscale[js],top.zgrid]
         if top.pgroup.ldts[js]:
           indts = top.ndtstorho[top.pgroup.ndts[js]-1]
           self.setrhopforparticles(0,indts,None)
+          zgrid = top.zgrid + (top.zgrid-top.zgridprv)*(top.pgroup.ndts[js]-1)
+          args[-1] = zgrid
           self.setrhop(*args)
         if top.pgroup.iselfb[js] > -1:
           iselfb = top.pgroup.iselfb[js]
           self.setrhopforparticles(None,None,iselfb)
           self.setrhop(*args)
 
-    for indts in range(top.nsndts):
-      self.setrhopforparticles(0,indts,None)
-      self.aftersetrhop(lzero)
-    for iselfb in range(top.nsselfb):
-      self.setrhopforparticles(None,None,iselfb)
-      self.aftersetrhop(lzero)
+    if lzero:
+      for indts in range(top.nsndts):
+        if top.ldts[indts]:
+          self.setrhopforparticles(0,indts,None)
+          self.aftersetrhop(lzero)
+      for iselfb in range(top.nsselfb):
+        self.setrhopforparticles(None,None,iselfb)
+        self.aftersetrhop(lzero)
 
-    self.averagerhopwithsubcycling()
+      self.averagerhopwithsubcycling()
 
   def loadj(self,lzero=true,**kw):
     pass
@@ -472,12 +523,16 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def fetche(self,**kw):
     'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
-    if w3d.api_xlf2:
-      w3d.xfsapi = top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi = top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi = top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-    args = [w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-            w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi]
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
+    ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
+    ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
+    pid = w3d.pgroupfsapi.pid[ipmin-1:ipmin-1+w3d.npfsapi,:]
+    args = [x,y,z,ex,ey,ez,w3d.pgroupfsapi]
 
     js = w3d.jsfsapi
     if js < 0: ndtstorho = 0
@@ -490,25 +545,30 @@ class SubcycledPoissonSolver(FieldSolver):
 
     # add self B correction as needed
     if js >= 0 and top.pgroup.iselfb[js] > -1:
-      exfsapispecies = zeros(shape(w3d.exfsapi),'d')
-      eyfsapispecies = zeros(shape(w3d.eyfsapi),'d')
-      ezfsapispecies = zeros(shape(w3d.ezfsapi),'d')
+      extemp = zeros(shape(x),'d')
+      eytemp = zeros(shape(y),'d')
+      eztemp = zeros(shape(z),'d')
       self.setphipforparticles(None,top.pgroup.iselfb[js])
-      args = [w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-              exfsapispecies,eyfsapispecies,ezfsapispecies]
+      args = [x,y,z,extemp,eytemp,eztemp,w3d.pgroupfsapi]
       self.fetchefrompositions(*args,**kw)
-      w3d.exfsapi[...] += exfsapispecies
-      w3d.eyfsapi[...] += eyfsapispecies
+      ex[...] += extemp
+      ey[...] += eytemp
 
   def fetchphi(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
+    if w3d.npfsapi == 0: return
+    ipmin = w3d.ipminfsapi
+    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+
     js = w3d.jsfsapi
     if js < 0: ndtstorho = 0
     else:      ndtstorho = top.ndtstorho[top.pgroup.ndts[js]-1]
     tmpnsndts = getnsndtsforsubcycling()
     indts = min(tmpnsndts-1,ndtstorho)
     self.setphipforparticles(indts,None)
-    self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
+    self.fetchphifrompositions(x,y,z,w3d.phifsapi)
 
   def setrhoandphiforfieldsolve(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
@@ -623,7 +683,7 @@ of the rho and field arrays"""
 
     # --- During the generate, do the copy of the new rhop to the old rhop
     # --- for group 0, which is normally done during the zerorhop call.
-    if top.it == 0: rhopndts[...,1,0] = rhopndts[...,0,0]
+    rhopndts[...,1,0] = rhopndts[...,0,0]
 
     # --- Save the rhop where the fastest particle's rhop is. For now,
     # --- assume that this is in1=0
@@ -633,21 +693,19 @@ of the rho and field arrays"""
         rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
       elif top.rhotondts[in1]%2 == 1:
         # --- Use the rhop that is closest in time to the current time.
-        if ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
-            (top.it-1)%top.rhotondts[in1] == 0):
+        if ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2.-1.):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
         else:
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,1,in1])
       else:
         # --- When ndts is even, at the mid point of the step, take the
         # --- average of the old and the new
-        # --- Otherwise, use the rhop that is closest in time to the currentc
+        # --- Otherwise, use the rhop that is closest in time to the current
         # --- time.
-        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2:
+        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2.-1.:
           rhopndts[...,1,0] = (rhopndts[...,1,0] +
                0.5*(rhopndts[...,0,in1] + rhopndts[...,1,in1]))
-        elif ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2. or
-              (top.it-1)%top.rhotondts[in1] == 0):
+        elif ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2.-1.):
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,0,in1])
         else:
           rhopndts[...,1,0] = (rhopndts[...,1,0] + rhopndts[...,1,in1])
