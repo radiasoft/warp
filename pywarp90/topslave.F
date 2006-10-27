@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.42 $, $Date: 2006/08/25 21:48:42 $
+c TOPSLAVE.M, version $Revision: 1.43 $, $Date: 2006/10/27 20:11:19 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -62,7 +62,7 @@ c  track of how many left and sends to the appropriate processor.
       integer(MPIISZ):: left_pe,right_pe
       integer(MPIISZ):: nquant,ierr
 
-c     integer(MPIISZ):: blocklengths(100),displacements(100)
+c     integer(MPIISZ),allocatable:: blocklengths(:),displacements(:)
       include "mpif.h"
       integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(MPIISZ):: mpinewtype,mpirequest
@@ -123,27 +123,24 @@ c           --- in the arrays.
               pgroup%ins(is) = pgroup%ins(is) + 1
               pgroup%nps(is) = pgroup%nps(is) - 1
 
-              temp = pgroup%xp(ip)
-              pgroup%xp(ip) = pgroup%xp(idest)
-              pgroup%xp(idest) = temp
-              temp = pgroup%yp(ip)
-              pgroup%yp(ip) = pgroup%yp(idest)
-              pgroup%yp(idest) = temp
-              temp = pgroup%zp(ip)
-              pgroup%zp(ip) = pgroup%zp(idest)
-              pgroup%zp(idest) = temp
-              temp = pgroup%uxp(ip)
-              pgroup%uxp(ip) = pgroup%uxp(idest)
-              pgroup%uxp(idest) = temp
-              temp = pgroup%uyp(ip)
-              pgroup%uyp(ip) = pgroup%uyp(idest)
-              pgroup%uyp(idest) = temp
-              temp = pgroup%uzp(ip)
-              pgroup%uzp(ip) = pgroup%uzp(idest)
-              pgroup%uzp(idest) = temp
-              temp = pgroup%gaminv(ip)
-              pgroup%gaminv(ip) = pgroup%gaminv(idest)
-              pgroup%gaminv(idest) = temp
+              temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
+              temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
+              temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+
+              temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
+              temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
+              temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
+
+              temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
+
+              temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
+              temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
+              temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
+
+              temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
+              temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
+              temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
+
               if (pgroup%npid > 0) then
                 pidtemp = pgroup%pid(ip,:)
                 pgroup%pid(ip,:) = pgroup%pid(idest,:)
@@ -157,27 +154,24 @@ c           --- in the arrays.
               idest = pgroup%ins(is) + pgroup%nps(is) - 1
               pgroup%nps(is) = pgroup%nps(is) - 1
 
-              temp = pgroup%xp(ip)
-              pgroup%xp(ip) = pgroup%xp(idest)
-              pgroup%xp(idest) = temp
-              temp = pgroup%yp(ip)
-              pgroup%yp(ip) = pgroup%yp(idest)
-              pgroup%yp(idest) = temp
-              temp = pgroup%zp(ip)
-              pgroup%zp(ip) = pgroup%zp(idest)
-              pgroup%zp(idest) = temp
-              temp = pgroup%uxp(ip)
-              pgroup%uxp(ip) = pgroup%uxp(idest)
-              pgroup%uxp(idest) = temp
-              temp = pgroup%uyp(ip)
-              pgroup%uyp(ip) = pgroup%uyp(idest)
-              pgroup%uyp(idest) = temp
-              temp = pgroup%uzp(ip)
-              pgroup%uzp(ip) = pgroup%uzp(idest)
-              pgroup%uzp(idest) = temp
-              temp = pgroup%gaminv(ip)
-              pgroup%gaminv(ip) = pgroup%gaminv(idest)
-              pgroup%gaminv(idest) = temp
+              temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
+              temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
+              temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+
+              temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
+              temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
+              temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
+
+              temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
+
+              temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
+              temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
+              temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
+
+              temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
+              temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
+              temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
+
               if (pgroup%npid > 0) then
                 pidtemp = pgroup%pid(ip,:)
                 pgroup%pid(ip,:) = pgroup%pid(idest,:)
@@ -244,9 +238,10 @@ c       --- Make sure these are zero in case they are not set below.
         nsendleftsum = 0
         nsendrightsum = 0
 
-c       --- Number of quantities to be exchanged. Normally it is seven,
+c       --- Number of quantities to be exchanged. Normally it is thirteen,
+c       --- the positions, velocities, gaminv, and the fields
 c       --- but when pgroup%npid>0, then it is more since pid is also exchanged.
-        nquant = 7
+        nquant = 13
         if (pgroup%npid > 0) nquant = nquant + pgroup%npid
 
 c       --- Copy particles being sent to the left to buffer1.
@@ -263,15 +258,21 @@ c       --- Copy particles being sent to the left to buffer1.
               ip = ins_init(is)
               nn = nsendleft(is)
               if (nn > 0) then
-                buffer1(ii     :ii+  nn-1) = pgroup%xp(ip:ip+nn-1)
-                buffer1(ii+  nn:ii+2*nn-1) = pgroup%yp(ip:ip+nn-1)
-                buffer1(ii+2*nn:ii+3*nn-1) = pgroup%zp(ip:ip+nn-1)
-                buffer1(ii+3*nn:ii+4*nn-1) = pgroup%uxp(ip:ip+nn-1)
-                buffer1(ii+4*nn:ii+5*nn-1) = pgroup%uyp(ip:ip+nn-1)
-                buffer1(ii+5*nn:ii+6*nn-1) = pgroup%uzp(ip:ip+nn-1)
-                buffer1(ii+6*nn:ii+7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
+                buffer1(ii      :ii+   nn-1) = pgroup%xp(ip:ip+nn-1)
+                buffer1(ii+   nn:ii+ 2*nn-1) = pgroup%yp(ip:ip+nn-1)
+                buffer1(ii+ 2*nn:ii+ 3*nn-1) = pgroup%zp(ip:ip+nn-1)
+                buffer1(ii+ 3*nn:ii+ 4*nn-1) = pgroup%uxp(ip:ip+nn-1)
+                buffer1(ii+ 4*nn:ii+ 5*nn-1) = pgroup%uyp(ip:ip+nn-1)
+                buffer1(ii+ 5*nn:ii+ 6*nn-1) = pgroup%uzp(ip:ip+nn-1)
+                buffer1(ii+ 6*nn:ii+ 7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
+                buffer1(ii+ 7*nn:ii+ 8 nn-1) = pgroup%ex(ip:ip+nn-1)
+                buffer1(ii+ 8 nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
+                buffer1(ii+ 9*nn:ii+10*nn-1) = pgroup%ez(ip:ip+nn-1)
+                buffer1(ii+10*nn:ii+11 nn-1) = pgroup%bx(ip:ip+nn-1)
+                buffer1(ii+11 nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
+                buffer1(ii+12*nn:ii+13*nn-1) = pgroup%bz(ip:ip+nn-1)
                 do ipid=1,pgroup%npid
-                  buffer1(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
+                  buffer1(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -293,15 +294,21 @@ c       --- Copy particles being sent to the right to buffer2.
               ip = pgroup%ins(is) + pgroup%nps(is)
               nn = nsendright(is)
               if (nn > 0) then
-                buffer2(ii     :ii+  nn-1) = pgroup%xp(ip:ip+nn-1)
-                buffer2(ii+  nn:ii+2*nn-1) = pgroup%yp(ip:ip+nn-1)
-                buffer2(ii+2*nn:ii+3*nn-1) = pgroup%zp(ip:ip+nn-1)
-                buffer2(ii+3*nn:ii+4*nn-1) = pgroup%uxp(ip:ip+nn-1)
-                buffer2(ii+4*nn:ii+5*nn-1) = pgroup%uyp(ip:ip+nn-1)
-                buffer2(ii+5*nn:ii+6*nn-1) = pgroup%uzp(ip:ip+nn-1)
-                buffer2(ii+6*nn:ii+7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
+                buffer2(ii      :ii+   nn-1) = pgroup%xp(ip:ip+nn-1)
+                buffer2(ii+   nn:ii+ 2*nn-1) = pgroup%yp(ip:ip+nn-1)
+                buffer2(ii+ 2*nn:ii+ 3*nn-1) = pgroup%zp(ip:ip+nn-1)
+                buffer2(ii+ 3*nn:ii+ 4*nn-1) = pgroup%uxp(ip:ip+nn-1)
+                buffer2(ii+ 4*nn:ii+ 5*nn-1) = pgroup%uyp(ip:ip+nn-1)
+                buffer2(ii+ 5*nn:ii+ 6*nn-1) = pgroup%uzp(ip:ip+nn-1)
+                buffer2(ii+ 6*nn:ii+ 7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
+                buffer2(ii+ 7*nn:ii+ 8 nn-1) = pgroup%ex(ip:ip+nn-1)
+                buffer2(ii+ 8 nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
+                buffer2(ii+ 9*nn:ii+10*nn-1) = pgroup%ez(ip:ip+nn-1)
+                buffer2(ii+10*nn:ii+11 nn-1) = pgroup%bx(ip:ip+nn-1)
+                buffer2(ii+11 nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
+                buffer2(ii+12*nn:ii+13*nn-1) = pgroup%bz(ip:ip+nn-1)
                 do ipid=1,pgroup%npid
-                  buffer2(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
+                  buffer2(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -370,15 +377,21 @@ c     call VTBEGIN(60,IERR)
             nn = nrecvleft(is)
             if (nn > 0) then
               ip = pgroup%ins(is) - nn
-              pgroup%xp(ip:ip+nn-1)  = buffer3(ii     :ii+  nn-1)
-              pgroup%yp(ip:ip+nn-1)  = buffer3(ii+  nn:ii+2*nn-1)
-              pgroup%zp(ip:ip+nn-1)  = buffer3(ii+2*nn:ii+3*nn-1)
-              pgroup%uxp(ip:ip+nn-1) = buffer3(ii+3*nn:ii+4*nn-1)
-              pgroup%uyp(ip:ip+nn-1) = buffer3(ii+4*nn:ii+5*nn-1)
-              pgroup%uzp(ip:ip+nn-1) = buffer3(ii+5*nn:ii+6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer3(ii+6*nn:ii+7*nn-1)
+              pgroup%xp(ip:ip+nn-1)     = buffer3(ii      :ii+   nn-1)
+              pgroup%yp(ip:ip+nn-1)     = buffer3(ii+   nn:ii+ 2*nn-1)
+              pgroup%zp(ip:ip+nn-1)     = buffer3(ii+ 2*nn:ii+ 3*nn-1)
+              pgroup%uxp(ip:ip+nn-1)    = buffer3(ii+ 3*nn:ii+ 4*nn-1)
+              pgroup%uyp(ip:ip+nn-1)    = buffer3(ii+ 4*nn:ii+ 5*nn-1)
+              pgroup%uzp(ip:ip+nn-1)    = buffer3(ii+ 5*nn:ii+ 6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer3(ii+ 6*nn:ii+ 7*nn-1)
+              pgroup%ex(ip:ip+nn-1)     = buffer3(ii+ 7*nn:ii+ 8*nn-1)
+              pgroup%ey(ip:ip+nn-1)     = buffer3(ii+ 8*nn:ii+ 9*nn-1)
+              pgroup%ez(ip:ip+nn-1)     = buffer3(ii+ 9*nn:ii+10*nn-1)
+              pgroup%bx(ip:ip+nn-1)     = buffer3(ii+10*nn:ii+11*nn-1)
+              pgroup%by(ip:ip+nn-1)     = buffer3(ii+11*nn:ii+12*nn-1)
+              pgroup%bz(ip:ip+nn-1)     = buffer3(ii+12*nn:ii+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
               pgroup%ins(is) = pgroup%ins(is) - nn
@@ -396,15 +409,21 @@ c     call VTBEGIN(60,IERR)
             nn = nrecvright(is)
             if (nn > 0) then
               ip = pgroup%ins(is) + pgroup%nps(is)
-              pgroup%xp(ip:ip+nn-1)  = buffer4(ii     :ii+1*nn-1)
-              pgroup%yp(ip:ip+nn-1)  = buffer4(ii+  nn:ii+2*nn-1)
-              pgroup%zp(ip:ip+nn-1)  = buffer4(ii+2*nn:ii+3*nn-1)
-              pgroup%uxp(ip:ip+nn-1) = buffer4(ii+3*nn:ii+4*nn-1)
-              pgroup%uyp(ip:ip+nn-1) = buffer4(ii+4*nn:ii+5*nn-1)
-              pgroup%uzp(ip:ip+nn-1) = buffer4(ii+5*nn:ii+6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer4(ii+6*nn:ii+7*nn-1)
+              pgroup%xp(ip:ip+nn-1)     = buffer4(ii      :ii+ 1*nn-1)
+              pgroup%yp(ip:ip+nn-1)     = buffer4(ii+   nn:ii+ 2*nn-1)
+              pgroup%zp(ip:ip+nn-1)     = buffer4(ii+ 2*nn:ii+ 3*nn-1)
+              pgroup%uxp(ip:ip+nn-1)    = buffer4(ii+ 3*nn:ii+ 4*nn-1)
+              pgroup%uyp(ip:ip+nn-1)    = buffer4(ii+ 4*nn:ii+ 5*nn-1)
+              pgroup%uzp(ip:ip+nn-1)    = buffer4(ii+ 5*nn:ii+ 6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer4(ii+ 6*nn:ii+ 7*nn-1)
+              pgroup%ex(ip:ip+nn-1)     = buffer4(ii+ 7*nn:ii+ 8*nn-1)
+              pgroup%ey(ip:ip+nn-1)     = buffer4(ii+ 8*nn:ii+ 9*nn-1)
+              pgroup%ez(ip:ip+nn-1)     = buffer4(ii+ 9*nn:ii+10*nn-1)
+              pgroup%bx(ip:ip+nn-1)     = buffer4(ii+10*nn:ii+11*nn-1)
+              pgroup%by(ip:ip+nn-1)     = buffer4(ii+11*nn:ii+12*nn-1)
+              pgroup%bz(ip:ip+nn-1)     = buffer4(ii+12*nn:ii+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(6+ipid)*nn:ii+(7+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
               pgroup%nps(is) = pgroup%nps(is) + nn
@@ -427,8 +446,9 @@ c     call VTEND(70,IERR)
       enddo
 
 c What follows (but is commented out) is the preferred version, but
-c is causes a core dump for some unknown reason.
+c it causes a core dump for some unknown reason.
 c Now it needs to be adjusted to send all species at once.
+c       allocate(blocklengths(nquant),displacements(nquant))
 c       --- Create new type for receiving particles from left
 c       do ii=1,nquant
 c         blocklengths(ii) = nrecvleft
@@ -441,8 +461,14 @@ c       call MPI_ADDRESS(pgroup%uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(pgroup%uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(pgroup%uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(pgroup%gaminv(ip),displacements(7),mpierror)
+c       call MPI_ADDRESS(pgroup%ex(ip),displacements(8),mpierror)
+c       call MPI_ADDRESS(pgroup%ey(ip),displacements(9),mpierror)
+c       call MPI_ADDRESS(pgroup%ez(ip),displacements(10),mpierror)
+c       call MPI_ADDRESS(pgroup%bx(ip),displacements(11),mpierror)
+c       call MPI_ADDRESS(pgroup%by(ip),displacements(12),mpierror)
+c       call MPI_ADDRESS(pgroup%bz(ip),displacements(13),mpierror)
 c       do ipid=1,pgroup%npid
-c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(7+ipid),mpierror)
+c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(nquant+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
@@ -468,8 +494,14 @@ c       call MPI_ADDRESS(pgroup%uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(pgroup%uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(pgroup%uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(pgroup%gaminv(ip),displacements(7),mpierror)
+c       call MPI_ADDRESS(pgroup%ex(ip),displacements(8),mpierror)
+c       call MPI_ADDRESS(pgroup%ey(ip),displacements(9),mpierror)
+c       call MPI_ADDRESS(pgroup%ez(ip),displacements(10),mpierror)
+c       call MPI_ADDRESS(pgroup%bx(ip),displacements(11),mpierror)
+c       call MPI_ADDRESS(pgroup%by(ip),displacements(12),mpierror)
+c       call MPI_ADDRESS(pgroup%bz(ip),displacements(13),mpierror)
 c       do ipid=1,pgroup%npid
-c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(7+ipid),mpierror)
+c         call MPI_ADDRESS(pgroup%pid(ip,ipid),displacements(nquant+ipid),mpierror)
 c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
@@ -481,6 +513,7 @@ c    &                    MPI_BOTTOM,1,mpinewtype,right_pe,0,
 c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
 c       pgroup%nps(is) = pgroup%nps(is) + nrecvright
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
+c       deallocate(blocklengths,displacements)
 
 !$OMP MASTER
       if (ltoptimesubs) timezpartbnd_slave = timezpartbnd_slave + wtime() - substarttime
@@ -547,7 +580,7 @@ c     --- over every processor to find which one the particle is in.
 
 c     --- Next, create temporary arrays to hold the sorted particles.
       pnp = sum(pgroup%nps)
-      ncoords = 7 + pgroup%npid
+      ncoords = 13 + pgroup%npid
       pnpmax = max(int(1,MPIISZ),pnp)
       allocate(ptemp(0:ncoords-1,pnpmax),pprocs(pnpmax),stat=allocerror)
       if (allocerror /= 0) then
@@ -603,15 +636,21 @@ c     --- Copy sorted particle data into the temporary array
           ip = pprocs(pip)
           iitemp = piii(is,ip)
           piii(is,ip) = piii(is,ip) + 1
-          ptemp(0,iitemp) = pgroup%xp(ii)
-          ptemp(1,iitemp) = pgroup%yp(ii)
-          ptemp(2,iitemp) = pgroup%zp(ii)
-          ptemp(3,iitemp) = pgroup%uxp(ii)
-          ptemp(4,iitemp) = pgroup%uyp(ii)
-          ptemp(5,iitemp) = pgroup%uzp(ii)
-          ptemp(6,iitemp) = pgroup%gaminv(ii)
+          ptemp( 0,iitemp) = pgroup%xp(ii)
+          ptemp( 1,iitemp) = pgroup%yp(ii)
+          ptemp( 2,iitemp) = pgroup%zp(ii)
+          ptemp( 3,iitemp) = pgroup%uxp(ii)
+          ptemp( 4,iitemp) = pgroup%uyp(ii)
+          ptemp( 5,iitemp) = pgroup%uzp(ii)
+          ptemp( 6,iitemp) = pgroup%gaminv(ii)
+          ptemp( 7,iitemp) = pgroup%ex(ii)
+          ptemp( 8,iitemp) = pgroup%ey(ii)
+          ptemp( 9,iitemp) = pgroup%ez(ii)
+          ptemp(10,iitemp) = pgroup%bx(ii)
+          ptemp(11,iitemp) = pgroup%by(ii)
+          ptemp(12,iitemp) = pgroup%bz(ii)
           if (pgroup%npid > 0) then
-            ptemp(7:,iitemp) = pgroup%pid(ii,:)
+            ptemp(13:,iitemp) = pgroup%pid(ii,:)
           endif
         enddo
       enddo
@@ -684,15 +723,21 @@ c     --- Now copy the data into the particle arrays
             ii1 = pgroup%ins(is+1) + pgroup%nps(is+1)
             ii2 = ii1 + nprecv(is,ip) - 1
             pgroup%nps(is+1) = pgroup%nps(is+1) + nprecv(is,ip)
-            pgroup%xp(ii1:ii2) = precv(0,ip1:ip2)
-            pgroup%yp(ii1:ii2) = precv(1,ip1:ip2)
-            pgroup%zp(ii1:ii2) = precv(2,ip1:ip2)
-            pgroup%uxp(ii1:ii2) = precv(3,ip1:ip2)
-            pgroup%uyp(ii1:ii2) = precv(4,ip1:ip2)
-            pgroup%uzp(ii1:ii2) = precv(5,ip1:ip2)
-            pgroup%gaminv(ii1:ii2) = precv(6,ip1:ip2)
+            pgroup%xp(ii1:ii2)     = precv( 0,ip1:ip2)
+            pgroup%yp(ii1:ii2)     = precv( 1,ip1:ip2)
+            pgroup%zp(ii1:ii2)     = precv( 2,ip1:ip2)
+            pgroup%uxp(ii1:ii2)    = precv( 3,ip1:ip2)
+            pgroup%uyp(ii1:ii2)    = precv( 4,ip1:ip2)
+            pgroup%uzp(ii1:ii2)    = precv( 5,ip1:ip2)
+            pgroup%gaminv(ii1:ii2) = precv( 6,ip1:ip2)
+            pgroup%ex(ii1:ii2)     = precv( 7,ip1:ip2)
+            pgroup%ey(ii1:ii2)     = precv( 8,ip1:ip2)
+            pgroup%ez(ii1:ii2)     = precv( 9,ip1:ip2)
+            pgroup%bx(ii1:ii2)     = precv(10,ip1:ip2)
+            pgroup%by(ii1:ii2)     = precv(11,ip1:ip2)
+            pgroup%bz(ii1:ii2)     = precv(12,ip1:ip2)
             do ii=1,pgroup%npid
-              pgroup%pid(ii1:ii2,ii) = precv(6+ii,ip1:ip2)
+              pgroup%pid(ii1:ii2,ii) = precv(12+ii,ip1:ip2)
             enddo
           endif
         enddo
