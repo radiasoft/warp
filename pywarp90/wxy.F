@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.73 $, $Date: 2006/10/05 20:12:13 $
+c@(#) File WXY.M, version $Revision: 3.74 $, $Date: 2006/10/27 20:23:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -273,9 +273,14 @@ c     call zeroarry(curr,nzzarr+1)
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
 
-      npdamp = 1
-      if (eomdamp .ne. 0.) npdamp = npmax
-      call gallot("Damped_eom", 0)
+      if (eomdamp /= 0.) then
+        exeomoldpid = nextpid()
+        eyeomoldpid = nextpid()
+        ezeomoldpid = nextpid()
+        exeomlagpid = nextpid()
+        eyeomlagpid = nextpid()
+        ezeomlagpid = nextpid()
+      endif
 
 c  Create the dynamic arrays for "window" moments
 
@@ -957,6 +962,8 @@ c  and also loads RHO at the new time level.
 
 c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: ex(:),ey(:),ez(:)
+      real(kind=8),pointer:: bx(:),by(:),bz(:)
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
       integer(ISZ),pointer:: ins(:),nps(:)
@@ -964,8 +971,7 @@ c     --- Create local pointers to the arrays in pgroup.
 
       integer(ISZ):: isid,is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
-      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp), ezo(nparpgrp)
-      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
+      real(kind=8):: ezo(nparpgrp)
       real(kind=8):: xpo(nparpgrp), ypo(nparpgrp), zpo(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: gaminvo(nparpgrp)
@@ -991,6 +997,12 @@ c     --- Create local pointers to the arrays in pgroup.
       uyp => pgroup%uyp
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
+      ex => pgroup%ex
+      ey => pgroup%ey
+      ez => pgroup%ez
+      bx => pgroup%bx
+      by => pgroup%by
+      bz => pgroup%bz
       pid => pgroup%pid
 
       sm => pgroup%sm
@@ -1050,7 +1062,7 @@ c  Zero the moments if center is synchv
       endif
 
 !$OMP PARALLEL
-!$OMP&PRIVATE(ip,ipmin,i,ex,ey,ez,bx,by,bz)
+!$OMP&PRIVATE(ip,ipmin,i)
 !$OMP&PRIVATE(xpo,ypo,zpo,uxpo,uypo,uzpo,gaminvo,ezo,iter_dt)
 !$OMP&PRIVATE(uxpadv,uypadv,uzpadv,bendres,bendradi)
 !$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
@@ -1059,7 +1071,7 @@ c  Zero the bend radius and residence fraction
       bendradi = 0.
       bendres = 0.
 
-      if(solvergeom==XYgeom) ez=0.
+      if(solvergeom==XYgeom) ez = 0.
 
 c  Loop over species
       do is=1,pgroup%ns
@@ -1070,53 +1082,56 @@ c  Loop over particle blocks; move each block separately
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
-          call fetchexy(pgroup,ipmin,ip,is,ex,ey,ez)
+          call fetchexy(pgroup,ipmin,ip,is,ex(ipmin),ey(ipmin),ez(ipmin))
 
-c           --- Scale the self E-field to get the lowest order relativistic
-c           --- correction.
-            if (relativity == 1)
-     &        call sete3d_relativity(ip,ex,ey,vbeam)
+c         --- Scale the self E-field to get the lowest order relativistic
+c         --- correction.
+          if (relativity == 1)
+     &      call sete3d_relativity(ip,ex(ipmin),ey(ipmin),vbeam)
 
 c         --- Zero out B field arrays
-          do i = 1,ip
-             bx(i) = 0.
-             by(i) = 0.
-             bz(i) = 0.
-          enddo
+          bx(ipmin:ipmin+ip-1) = 0.
+          by(ipmin:ipmin+ip-1) = 0.
+          bz(ipmin:ipmin+ip-1) = 0.
+
 c         --- Compute lag average for experimental damping algorithm
           if (eomdamp .ne. 0.)
-     &      call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
-     &                  exold(ipmin),eyold(ipmin),ezold(ipmin),
-     &                  exlag(ipmin),eylag(ipmin),ezlag(ipmin))
+     &      call edamp(eomdamp,it,itdamp,center,ip,
+     &                 pid(ipmin,exeomoldpid),
+     &                 pid(ipmin,eyeomoldpid),
+     &                 pid(ipmin,ezeomoldpid),
+     &                 pid(ipmin,exeomlagpid),
+     &                 pid(ipmin,eyeomlagpid),
+     &                 pid(ipmin,ezeomlagpid))
 
 c         --- HALFV
           if (center == "halfv") then
 c           --- Obtain bend radii and residence factors
             call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt,.true.)
 c           --- Correct Ez_self for warped mesh effect
-            call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
+            call bendezxy (ip,xp(ipmin),zp(ipmin),ez(ipmin),
      &                     bendres,bendradi,bends,bnezflag)
 c           --- Add in Ez from axially-smoothed gaps 
-            call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
+            call gapfield (ip,zp(ipmin),ez(ipmin),zbeam,zzmin,egap,dzz)
 c           --- Add in ears and uniform focusing E field pieces
             call otherexy (ip,xp(ipmin),yp(ipmin),dedr,dexdx,deydy,dbdr,
-     &                     ex,ey,ez,bx,by,bz)
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B;  All: Bz
             call extebxy (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                    gaminv(ipmin),0.,dt*0.5,bx,by,bz,
-     &                    ex,ey,ez,sm(is),sq(is),bendres,bendradi,lexbend,
+     &                    gaminv(ipmin),0.,dt*0.5,bx(ipmin),by(ipmin),bz(ipmin),
+     &                    ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),bendres,bendradi,lexbend,
      &                    gammabar,zbeam,vbeam,dt,time)
 
             if (lvzchang) then
               if (lexactds .and. .not. linbend .and. .not. linaccl(0) .and.
      &            (ibpush == 0 .or.
-     &             (maxval(abs(bx(1:ip))) == 0. .and.
-     &              maxval(abs(by(1:ip))) == 0.))) then
+     &             (maxval(abs(bx(ipmin:ipmin+ip-1))) == 0. .and.
+     &              maxval(abs(by(ipmin:ipmin+ip-1))) == 0.))) then
                 niter_dt_tmp = 1
 c               --- Calculate new step size directly.
                 call getnewdtpwithe(ip,pid(ipmin,dtpid),
      &                              uzp(ipmin),gaminv(ipmin),
-     &                              ez,sq(is),sm(is),ds)
+     &                              ez(ipmin),sq(is),sm(is),ds)
               else
                 niter_dt_tmp = niter_dt
 c               --- Save current position and velocity and ez
@@ -1128,7 +1143,7 @@ c               --- Save current position and velocity and ez
                   uypo(i) = uyp(ipmin+i-1)
                   uzpo(i) = uzp(ipmin+i-1)
                   gaminvo(i) = gaminv(ipmin+i-1)
-                  ezo(i) = ez(i)
+                  ezo(i) = ez(ipmin+i-1)
                 enddo
               endif
             endif
@@ -1141,18 +1156,18 @@ c             --- Get field from accelerating elements (depends on dtp)
               call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         pid(ipmin,dtpid),0.,dt*0.5,
      &                         sm(is),sq(is),dt,
-     &                         .true.,ez)
+     &                         .true.,ez(ipmin))
 c             --- Correction to z on entry/exit to accelerator gap
               call zgapcorrxy(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                        pid(ipmin,dtpid),0., dt*0.5, dt,
      &                        sm(1), sq(1), time)
 c             --- Magnetic field increment to momenta
               call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      bx, by, bz, sq(is), sm(is),
+     &                      bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                      pid(ipmin,dtpid),0.5,ibpush)
 c             --- Final half-electric field increment to momenta
               call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                      ex, ey, ez, sq(is), sm(is),
+     &                      ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is),
      &                      pid(ipmin,dtpid), 0.5)
 c             --- Advance relativistic Gamma factor
               call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -1181,7 +1196,7 @@ c               --- Restore position and velocity if not finished with iteration
                   uyp(ipmin+i-1) = uypo(i)
                   uzp(ipmin+i-1) = uzpo(i)
                   gaminv(ipmin+i-1) = gaminvo(i)
-                  ez(i) = ezo(i)
+                  ez(ipmin+i-1) = ezo(i)
                 enddo
               endif
             enddo
@@ -1199,67 +1214,67 @@ c         --- PUSHV
           elseif (center == "pushv") then
 c           --- Add in ears and uniform focusing E field pieces
             call otherexy (ip,xp(ipmin),yp(ipmin),dedr,dexdx,deydy,dbdr,
-     &                     ex,ey,ez,bx,by,bz)
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B;  All: Bz
             call extebxy (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                    gaminv(ipmin),-SMALLPOS,SMALLPOS,bx,by,bz,
-     &                    ex,ey,ez,sm(is),sq(is),bendres,bendradi,lexbend,
+     &                    gaminv(ipmin),-SMALLPOS,SMALLPOS,bx(ipmin),by(ipmin),bz(ipmin),
+     &                    ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),bendres,bendradi,lexbend,
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is),
+     &                    bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid),0.5,ibpush)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is),
+     &                    ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid), 1.0)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is),
+     &                    bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid),0.5,ibpush)
 
 c         --- PUSHV
           elseif (center == "lpushv") then
 c           --- Add in ears and uniform focusing E field pieces
             call otherexy (ip,xp(ipmin),yp(ipmin),dedr,dexdx,deydy,dbdr,
-     &                     ex,ey,ez,bx,by,bz)
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B;  All: Bz
             call extebxy (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                    gaminv(ipmin),-dt*0.5,0.,bx,by,bz,
-     &                    ex,ey,ez,sm(is),sq(is),bendres,bendradi,lexbend,
+     &                    gaminv(ipmin),-dt*0.5,0.,bx(ipmin),by(ipmin),bz(ipmin),
+     &                    ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),bendres,bendradi,lexbend,
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is),
+     &                    ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid), 0.5)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is),
+     &                    bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid),0.5,ibpush)
 
 c         --- PUSHV
           elseif (center == "rpushv") then
 c           --- Add in ears and uniform focusing E field pieces
             call otherexy (ip,xp(ipmin),yp(ipmin),dedr,dexdx,deydy,dbdr,
-     &                     ex,ey,ez,bx,by,bz)
+     &                     ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B;  All: Bz
             call extebxy (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                    gaminv(ipmin),0.,dt*0.5,bx,by,bz,
-     &                    ex,ey,ez,sm(is),sq(is),bendres,bendradi,lexbend,
+     &                    gaminv(ipmin),0.,dt*0.5,bx(ipmin),by(ipmin),bz(ipmin),
+     &                    ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),bendres,bendradi,lexbend,
      &                    gammabar,zbeam,vbeam,dt,time)
 c           --- Magnetic field increment to momenta
             call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                    bx, by, bz, sq(is), sm(is),
+     &                    bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid),0.5,ibpush)
 c           --- Final half-electric field increment to momenta
             call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                    ex, ey, ez, sq(is), sm(is),
+     &                    ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is),
      &                    pid(ipmin,dtpid), 0.5)
 c           --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -1283,34 +1298,34 @@ c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
 c            --- Obtain bend radii and residence factors
              call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.,.true.)
 c            --- Correct Ez_self for warped mesh effect
-             call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
+             call bendezxy (ip,xp(ipmin),zp(ipmin),ez(ipmin),
      &                      bendres,bendradi,bends,bnezflag)
 c            --- Add in Ez from axially-smoothed gaps 
-             call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
+             call gapfield (ip,zp(ipmin),ez(ipmin),zbeam,zzmin,egap,dzz)
 c            --- Add in ears and uniform focusing E field pieces
              call otherexy (ip,xp(ipmin),yp(ipmin),dedr,dexdx,deydy,dbdr,
-     &                      ex,ey,ez,bx,by,bz)
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 c            --- Set quad, dipole E and B; All: Bz
              call extebxy (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
      &                     gaminv(ipmin),-dt*0.5,0.,
-     &                     bx,by,bz,ex,ey,ez,sm(is),sq(is),
+     &                     bx(ipmin),by(ipmin),bz(ipmin),ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
      &                     bendres,bendradi,lexbend,
      &                     gammabar,zbeam,vbeam,dt,time)
 c            --- Get field from accelerating elements (depends on dtp)
              call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                        pid(ipmin,dtpid),-dt*0.5,0.,
      &                        sm(is),sq(is),dt,
-     &                        .true.,ez)
+     &                        .true.,ez(ipmin))
 c            --- Half electric field increment to momenta
              call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                     ex, ey, ez, sq(is), sm(is),
+     &                     ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is),
      &                     pid(ipmin,dtpid), 0.5)
 c            --- Advance relativistic Gamma factor
              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                     gamadv,lrelativ)
 c            --- Half magnetic field increment to momenta
              call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                     bx, by, bz, sq(is), sm(is),
+     &                     bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is),
      &                     pid(ipmin,dtpid),0.5,ibpush)
              if (center == "gen") then
 c              --- Reset uxp to uxpo, set uxpo to half step backward
