@@ -339,9 +339,9 @@ class MagnetostaticMG(object):
 
   def fetchb(self):
     if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     self.fetchbfrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
 
