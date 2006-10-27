@@ -29,10 +29,12 @@ class MultiGrid(SubcycledPoissonSolver):
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
                    'my_index','nslaves','izfsslave','nzfsslave']
-  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
-                    'lreducedpickle':0,'lnorestoreonpickle':0}
+  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
-  def __init__(self,**kw):
+  def __init__(self,lreducedpickle=1,**kw):
+    kw['lreducedpickle'] = lreducedpickle
+    FieldSolver.__init__(self,**kw)
+    del kw['lreducedpickle']
     self.solvergeom = w3d.XYZgeom
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
@@ -118,6 +120,15 @@ class MultiGrid(SubcycledPoissonSolver):
       self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
+    else:
+      if self.nzfull == 0:
+        # --- This point is reached if the MultiGrid instance is created
+        # --- before the generate.
+        self.nzfull = w3d.nz
+        self.zmminglobal = self.zmmin
+        self.zmmaxglobal = self.zmmax
+        self.izfsslave = None
+        self.nzfsslave = None
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
@@ -158,18 +169,27 @@ class MultiGrid(SubcycledPoissonSolver):
     self.lbuildquads = false
 
   def __getstate__(self):
-    dict = self.__dict__.copy()
+    dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
-      del dict['rho']
-      del dict['rhop']
-      del dict['phi']
-      del dict['phip']
-      del dict['selfe']
+      if 'rho'   in dict: del dict['rho']
+      if 'rhop'  in dict: del dict['rhop']
+      if 'phi'   in dict: del dict['phi']
+      if 'phip'  in dict: del dict['phip']
+      if 'selfe' in dict: del dict['selfe']
       del dict['conductors']
+    # --- Flag whether this is the registered solver so it knows whether
+    # --- to reregister itself upon the restore.
+    if self is getregisteredsolver():
+      dict['iamtheregisteredsolver'] = 1
+    else:
+      dict['iamtheregisteredsolver'] = 0
     return dict
 
   def __setstate__(self,dict):
-    self.__dict__.update(dict)
+    SubcycledPoissonSolver.__setstate__(self,dict)
+    if self.iamtheregisteredsolver:
+      del self.iamtheregisteredsolver
+      registersolver(self)
     if self.lreducedpickle and not self.lnorestoreonpickle:
       self.allocatefieldarrays()
       # --- Regenerate the conductor data
@@ -205,17 +225,17 @@ class MultiGrid(SubcycledPoissonSolver):
     return ((1+self.nx,1+self.ny,1+self.nz),
             (1+self.nx,1+self.ny,3+self.nz))
 
-  def setrhop(self,x,y,z,uz,q,w):
+  def setrhop(self,x,y,z,uz,q,w,zgrid):
     n = len(x)
     if n == 0: return
-    setrho3d(self.rhop,self.rhop,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+    setrho3d(self.rhop,self.rhop,n,x,y,z,zgrid,uz,q,w,top.depos,
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
     if self.lzerorhointerior:
       cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,
                            self.rhop)
 
-  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup=None):
     n = len(x)
     if n == 0: return
     sete3d(self.phip,self.selfe,n,x,y,z,top.zgridprv,
@@ -335,6 +355,8 @@ class MultiGrid(SubcycledPoissonSolver):
       setrstar(self.rstar,self.nz,self.dz,self.zmmin,top.zgrid)
       self.linbend = min(self.rstar) < largepos
 
+    if self.izfsslave is None: self.izfsslave = top.izfsslave
+    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
     if self.electrontemperature == 0:
