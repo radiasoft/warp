@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.182 $, $Date: 2006/10/02 21:50:42 $
+#@(#) File TOP.V, version $Revision: 3.183 $, $Date: 2006/10/27 20:10:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.182 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.183 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1981,22 +1981,19 @@ yoldpid   integer /0/  # position of particles previous position in y in array p
                        # (FORTRAN indexed: based 1)                  
 zoldpid   integer /0/  # position of particles previous position in z in array pid
                        # (FORTRAN indexed: based 1)                  
-expid   integer /0/  # position of particles Ex field in array pid
+dxpid   integer /0/    # position of particles dx grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
-eypid   integer /0/  # position of particles Ey field in array pid
+dypid   integer /0/    # position of particles dy grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
-ezpid   integer /0/  # position of particles Ez field in array pid
+dzpid   integer /0/    # position of particles dz grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
-bxpid   integer /0/  # position of particles Bx field in array pid
-                       # (FORTRAN indexed: based 1)                  
-bypid   integer /0/  # position of particles By field in array pid
-                       # (FORTRAN indexed: based 1)                  
-bzpid   integer /0/  # position of particles Bz field in array pid
-                       # (FORTRAN indexed: based 1)                  
-chdtspid integer  /0/  # position of particle pid for dts change
+chdtspid integer /0/   # position of particle pid for dts change
                        # (FORTRAN indexed: based 1)
-ssn    integer    /1/  # next particles 'social security number' available
+ssn    integer   /1/   # next particles 'social security number' available
 lsaveoldpos logical /.false./ # Flag setting whether old particle positions are saved
+particlesortbyindex(pgroup:ParticleGroup,pindex(np):integer,ipmin:integer,np:integer,
+                    nn:integer,npblock(nn):integer) subroutine
+                       # Sorts particles based on an inputted index
 
 %%%%%%%%%%% ParticleGroup:
 # Dynamic particle arrays, and related data
@@ -2016,10 +2013,6 @@ sid(0:ns-1) _integer /-1/ # Global species index for each species
 ndts(0:ns-1) _integer /1/  # Stride for time step advance for each species
 ldts(ns) _logical /1/
 lvdts(ns+1)  _logical /1/
-nchdts_up(ns) _integer /0/ # Number of particles to change to group/species 
-                           # with larger time step
-nchdts_down(ns) _integer /0/ # Number of particles to change to group/species 
-                           # with smaller time step
 lvdtsmax  integer /1/  # maximum number of ndts levels
 iselfb(0:ns-1) _integer /-1/ # Group number for particles that are affected by
                          # their own magnetic field, using the 1/gamma**2
@@ -2036,6 +2029,12 @@ zp(npmax)       _real [m]       # Z-positions of particles
 uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
 uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
+ex(npmax)       _real [m]       # Ex of particles
+ey(npmax)       _real [m]       # Ey of particles
+ez(npmax)       _real [m]       # Ez of particles
+bx(npmax)       _real [m]       # Bx of particles
+by(npmax)       _real [m]       # By of particles
+bz(npmax)       _real [m]       # Bz of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
 *********** Subcycling dump:
