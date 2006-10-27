@@ -213,6 +213,12 @@ Implements adaptive mesh refinement in 3d
     # --- then it is not needed.
     self.childdomains = None
 
+    # --- Set up variable time steps
+    if top.chdtspid > 0:
+      top.dxpid = nextpid()
+      top.dypid = nextpid()
+      top.dzpid = nextpid()
+
     # --- Now add any specified children
     self.children = []
     if children is not None:
@@ -245,7 +251,7 @@ it knows whether to re-register itself.
       # --- Remove the big objects from the dictionary. This can be
       # --- regenerated upon the restore.
       dict['childdomains'] = None
-    # --- Flag whether this is the registered solver so it know whether
+    # --- Flag whether this is the registered solver so it knows whether
     # --- to reregister itself upon the restore.
     if self is getregisteredsolver():
       dict['iamtheregisteredsolver'] = 1
@@ -258,9 +264,6 @@ it knows whether to re-register itself.
    #self.makefortranordered('phi')
    #self.makefortranordered('rho')
    #self.makefortranordered('selfe')
-    if self.iamtheregisteredsolver:
-      del self.iamtheregisteredsolver
-      registersolver(self)
     if (self == self.root and self.lreducedpickle and
         not self.lnorestoreonpickle):
       # --- It is assumed that at this point, all of the children have been
@@ -836,7 +839,7 @@ gives a better initial guess for the field solver.
   # --- Methods to fetch E-fields and potential
   #--------------------------------------------------------------------------
 
-  def sortbyichildgetisort(self,ichild,x,y,z):
+  def sortbyichildgetisort(self,ichild,pgroup):
     xout,yout,zout = zeros((3,len(x)),'d')
     isort = zeros(len(x))
     nperchild = zeros(self.root.totalnumberofblocks)
@@ -869,7 +872,7 @@ Gathers the ichild for the fetche_allsort.
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
 
-  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
@@ -886,31 +889,26 @@ blocknumber rather than the child number relative to the parent.
       # --- This assumes that the root block has blocknumber zero.
       self.getichild_positiveonly(x,y,z,ichild)
 
-      x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
-
-      # --- Create temporary arrays to hold the E field
-      tex,tey,tez = zeros((3,len(x)),'d')
+      # --- This sorts the particle data in place, including
+      # --- the velocities, gaminv, and pid.
+      nn = self.root.totalnumberofblocks
+      nperchild = zeros(nn)
+      particlesortbyindex(pgroup,ichild,w3d.ipminfsapi,w3d.npfsapi,
+                          nn,nperchild)
 
     else:
-      isort = None
       nperchild = [len(x)]
-      tex,tey,tez = ex,ey,ez
 
     # --- For each block, pass to it the particles in it's domain.
     i = 0
     for block,n in zip(self.root.listofblocks,nperchild):
       MultiGrid.fetchefrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],
-                                          tex[i:i+n],tey[i:i+n],tez[i:i+n])
+                                          ex[i:i+n],ey[i:i+n],ez[i:i+n])
+      if top.chdtspid > 0:
+        pgroup.pid[i:i+n,top.dxpid-1] = block.dx
+        pgroup.pid[i:i+n,top.dypid-1] = block.dy
+        pgroup.pid[i:i+n,top.dzpid-1] = block.dz
       i = i + n
-
-    # --- Now, put the E fields back into the original arrays, unsorting
-    # --- the data
-    if isort is not None:
-      #put(ex,isort,tex)
-      #put(ey,isort,tey)
-      #put(ez,isort,tez)
-      n = len(x)
-      putsortedefield(len(tex),isort,tex,tey,tez,ex[:n],ey[:n],ez[:n])
 
   def fetchphifrompositions(self,x,y,z,phi):
     """
