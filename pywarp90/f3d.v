@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.158 $, $Date: 2006/10/03 18:53:20 $
+#@(#) File F3D.V, version $Revision: 3.159 $, $Date: 2006/10/27 20:01:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.158 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.159 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -681,7 +681,7 @@ pipest3d(pipeshpe:real, cap:real, phi:real, kxsq:real, kysq:real, kzsq:real,
          ylen:real, zlen:real,
          nx:integer,ny:integer,nz:integer,nzfull:integer,
          scrtch:real, piperadi:real,
-         pipen:real,pipe8th:real,pipex:real,pipey:real,cap3d:real,kpvt,
+         pipen:real,pipe8th:real,pipex:real,pipey:real,cap3d:real,kpvt:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine #  Sets up capacity matrix
 setcap3d(ncndpts,quadx:real,quady:real,quadz:real,quadcap:real,kpvt:integer,
