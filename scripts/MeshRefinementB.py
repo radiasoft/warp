@@ -908,9 +908,9 @@ Gathers the ichild for the fetche_allsort.
 Fetches the B field. This should only be called at the root level grid.
     """
     if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     self.fetchbfrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                      w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
 
@@ -963,9 +963,9 @@ blocknumber rather than the child number relative to the parent.
 Fetches the vector potential. This should only be called at the root level grid.
     """
     if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.ipfsapi]
+      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
     self.fetchafrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.afsapi)
 
   def fetchafrompositions_allsort(self,x,y,z,a):
