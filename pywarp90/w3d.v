@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.238 $, $Date: 2006/10/25 23:05:51 $
+#@(#) File W3D.V, version $Revision: 3.239 $, $Date: 2006/10/27 20:21:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.238 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.239 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -280,15 +280,14 @@ lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
 
 *********** Damped_eom dump:
 # All quantities associated with the damped mover algorithm
-eomdamp                   real   [1]  /0./     # EOM Damping param and switch 
-itdamp                    integer     /5/      # Timestep when damping starts
-npdamp                    integer # Length of particle arrays for damping qtys
-exold(npdamp)             _real   # Electric field at particle one step back
-eyold(npdamp)             _real   # Electric field at particle one step back
-ezold(npdamp)             _real   # Electric field at particle one step back
-exlag(npdamp)             _real   # Electric field, lag-averaged for damping
-eylag(npdamp)             _real   # Electric field, lag-averaged for damping
-ezlag(npdamp)             _real   # Electric field, lag-averaged for damping
+eomdamp     real  [1] /0./ # EOM Damping param and switch 
+itdamp      integer   /5/  # Timestep when damping starts
+exeomoldpid integer        # Electric field pid index at particle one step back
+eyeomoldpid integer        # Electric field pid index at particle one step back
+ezeomoldpid integer        # Electric field pid index at particle one step back
+exeomlagpid integer        # Electric field pid index, lag-averaged for damping
+eyeomlagpid integer        # Electric field pid index, lag-averaged for damping
+ezeomlagpid integer        # Electric field pid index, lag-averaged for damping
 
 *********** Fields3d:
 # Large arrays: potential and charge density, plot scratch, etc.
@@ -336,7 +335,7 @@ phip(:,:,:) _real # Potential used by the particles to calculate
 rhop(:,:,:) _real # Charge density from the particles.
                   # This will be pointed to each of the different ndts
                   # groups as needed.
-rhopndts(0:nxp,0:nyp,0:nzp,nrhopndtscopies3d,0:nsndts3d-1) _real +fassign
+rhopndts(0:nxp,0:nyp,0:nzp,0:nrhopndtscopies3d-1,0:nsndts3d-1) _real +fassign
                  # Charge density from the particles
                  # for groups with different time step sizes.
                  # This includes the time averaged charge density from
@@ -376,8 +375,10 @@ selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
 
 *********** FieldSolveAPI:
 jsfsapi     integer
-ipfsapi     integer
+npfsapi     integer
 ipminfsapi  integer
+lzerorhofsapi logical /.true./
+pgroupfsapi ParticleGroup
 api_xlf2    logical /.false./
 exfsapi(:) _real
 eyfsapi(:) _real
@@ -635,7 +636,6 @@ npredcor      integer /1/   # number of times to do predictor-corrector
 *********** DKInterptmp:
 # This group contains temporary data for the drift-kinetic interpolation
 npint          integer   /0/     # dimension for interpolation arrays
-npfield        integer   /0/     # dimension for temp field arrays
 grdbsq(3,npint) _real [t**2/m]   # components of gradbsq (z,x,y)
 dbsqdz(npint)   _real [T**2/m]    # dB^2/dz
 bsqi(npint)     _real [1/T**2]    # 1/B^2
@@ -644,12 +644,6 @@ uparoverB(npint) _real [m/s*T]    # v_parallel/B
 uparsq(npint)   _real [m**2/s**2] # vparallel^2
 uperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
 usq(npint)      _real [m**2/s**2] # v^2
-bx(npfield)     _real [T]          # Bx 
-by(npfield)     _real [T]          # By
-bz(npfield)     _real [T]          # Bz 
-ex(npfield)     _real [V/m]        # Ex 
-ey(npfield)     _real [V/m]        # Ey 
-ez(npfield)     _real [V/m]        # Ez 
 vbx(npint)      _real [m/s]       # x magnetic drift velocity
 vby(npint)      _real [m/s]       # y magnetic drift velocity
 vbz(npint)      _real [m/s]       # z magnetic drift velocity
@@ -727,24 +721,29 @@ xpush3dintrp(pgroup:ParticleGroup,np,is,ipmin,dt:real)
 getvperpparsq(pgroup:ParticleGroup,np,ipmin) 
               subroutine #  finds v_perp^2, v_parallel^2, vparallel/B,v^2
                          #  of particles
-getveff(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,predcor:string,dt:real) 
+getveff(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,
+        ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real,
+        predcor:string,dt:real) 
     subroutine #  gets components of interpolated velocity used in x push
-getvdrift(np,is,x(np):real,y(np):real,z(np):real,gaminv(np):real) 
+getvdrift(np,is,x(np):real,y(np):real,z(np):real,gaminv(np):real,
+          ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real) 
     subroutine #  calculates vdrift from ExB and gradB
-setfields(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
+setfields(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,
+          ex(np):real,ey(np):real,ez(np):real,bx(np):real,by(np):real,bz(np):real,
+          dt:real) 
     subroutine #  sets E,B at particle arrays; determines interpolation
                #  parameter alpha and its complement alphabar
-setfields2(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
-           ux(np):real,uy(np):real,uz(np):real)
-    subroutine #  sets E,B at particle arrays; determines interpolation
-               #  parameter alpha and its complement alphabar
+$setfields2(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
+$           ux(np):real,uy(np):real,uz(np):real)
+$    subroutine #  sets E,B at particle arrays; determines interpolation
+$               #  parameter alpha and its complement alphabar
 getgradbsq(np,is,ipmin,x(np):real,y(np):real,z(np):real,gaminv(np):real,dt:real) 
          subroutine    #  calculates or fetches grad B^2 components
 geteb(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
           subroutine   #  fetch E and B fields
-setvdrifts(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
-           ux(np):real,uy(np):real,uz(np):real,predcor:string)
-    subroutine #  calculates vdrifts from ExB and gradB
+$setvdrifts(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
+$           ux(np):real,uy(np):real,uz(np):real,predcor:string)
+$    subroutine #  calculates vdrifts from ExB and gradB
 
 *********** W3Dsubs:
 # Subroutines in package 3D
@@ -1067,7 +1066,7 @@ timebpush3d real /0./
 timebpusht3d real /0./
 timexpush3d real /0./
 timexpusht3d real /0./
-timecheckcc3d real /0./
+timecheck_cc3d real /0./
 timesete3d_relativity real /0./
 timeedamp real /0./
 timegetbend real /0./
