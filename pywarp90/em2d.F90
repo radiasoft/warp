@@ -679,18 +679,13 @@ subroutine em2d_step()
       
 !     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
       integer(ISZ),pointer:: ins(:),nps(:)
       real(kind=8) :: wtmp(nparpgrp)
 
       integer(ISZ) :: is, ipmin, ip
-
-!  Set storage for field arrays if not adequate already
-      if (npfield < nparpgrp) then
-         npfield = nparpgrp
-         call gchange("DKInterptmp",0)
-      endif
 
 !     --- Create local pointers to the arrays in pgroup.
       xp => pgroup%xp
@@ -700,6 +695,12 @@ subroutine em2d_step()
       uyp => pgroup%uyp
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
+      ex => pgroup%ex
+      ey => pgroup%ey
+      ez => pgroup%ez
+      bx => pgroup%bx
+      by => pgroup%by
+      bz => pgroup%bz
       if (pgroup%npid > 0) pid => pgroup%pid
 
       sm => pgroup%sm
@@ -718,14 +719,19 @@ subroutine em2d_step()
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
-            ex=0.; ey=0.; ez=0.; bx=0.; by=0.; bz=0.
+            ex(ipmin:ipmin+ip-1) = 0.
+            ey(ipmin:ipmin+ip-1) = 0.
+            ez(ipmin:ipmin+ip-1) = 0.
+            bx(ipmin:ipmin+ip-1) = 0.
+            by(ipmin:ipmin+ip-1) = 0.
+            bz(ipmin:ipmin+ip-1) = 0.
 
-!            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
+!           call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin))
 
             call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
-                          bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
+                          bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is), 0.5*dt, ibpush)
             call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin), &
-                          ex, ey, ez, sq(is), sm(is), 0.5*dt)
+                          ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is), 0.5*dt)
 !              --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin), &
                           gamadv,lrelativ)
@@ -770,12 +776,12 @@ subroutine em2d_step()
 !            call geteb_em2d(ip,xp(ipmin),yp(ipmin),ex,ey,ez,bx,by,bz)
 
             call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin), &
-                          ex, ey, ez, sq(is), sm(is), 0.5*dt)
+                          ex(ipmin), ey(ipmin), ez(ipmin), sq(is), sm(is), 0.5*dt)
 !              --- Advance relativistic Gamma factor
             call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin), &
                           gamadv,lrelativ)
             call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), &
-                          bx, by, bz, sq(is), sm(is), 0.5*dt, ibpush)
+                          bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is), 0.5*dt, ibpush)
          end do
       end do
 
