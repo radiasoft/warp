@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.191 $, $Date: 2006/10/02 21:50:42 $
+c@(#) File TOP.F, version $Revision: 3.192 $, $Date: 2006/10/27 20:07:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2680,6 +2680,7 @@ c=============================================================================
       type(ParticleGroup):: pgroup
 
       pgroup%npid = npid
+c     call gchange("Particles",0)
       call ParticleGroupchange(pgroup)
 
       return
@@ -2824,25 +2825,35 @@ c=============================================================================
      &                    pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
      &                    pgroup%xp,pgroup%yp,pgroup%zp,
      &                    pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
+     &                    .true.,
+     &                    pgroup%ex,pgroup%ey,pgroup%ez,
+     &                    pgroup%bx,pgroup%by,pgroup%bz,
      &                    pgroup%pid)
       else
         call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
      &                    pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
      &                    pgroup%xp,pgroup%yp,pgroup%zp,
      &                    pgroup%uxp,pgroup%uyp,pgroup%uzp,pgroup%gaminv,
+     &                    .true.,
+     &                    pgroup%ex,pgroup%ey,pgroup%ez,
+     &                    pgroup%bx,pgroup%by,pgroup%bz,
      &                    0.)
       endif
       return
       end
 c=============================================================================
       subroutine shftpartwork(is,ishift,npmax,ns,ipmax_s,ins,nps,
-     &                        npid,xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
+     &                        npid,xp,yp,zp,uxp,uyp,uzp,gaminv,
+     &                        lshiftfields,ex,ey,ez,bx,by,bz,pid)
       use Subtimerstop
       integer(ISZ):: is,ishift
       integer(ISZ):: npmax,ns,ipmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
       real(kind=8):: uxp(npmax),uyp(npmax),uzp(npmax)
       real(kind=8):: gaminv(npmax),pid(npmax,npid)
+      logical(ISZ):: lshiftfields
+      real(kind=8):: ex(npmax),ey(npmax),ez(npmax)
+      real(kind=8):: bx(npmax),by(npmax),bz(npmax)
 
 c Shift particles by 'ishift'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
@@ -2872,6 +2883,14 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
+          if (lshiftfields) then
+            ex(ip+ishift) = ex(ip)
+            ey(ip+ishift) = ey(ip)
+            ez(ip+ishift) = ez(ip)
+            bx(ip+ishift) = bx(ip)
+            by(ip+ishift) = by(ip)
+            bz(ip+ishift) = bz(ip)
+          endif
           if (npid > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
@@ -2904,6 +2923,14 @@ c       --- (ins(is) - ipmax_s(is-1)) < -ishift
           uyp(ip+ishift) = uyp(ip)
           uzp(ip+ishift) = uzp(ip)
           gaminv(ip+ishift) = gaminv(ip)
+          if (lshiftfields) then
+            ex(ip+ishift) = ex(ip)
+            ey(ip+ishift) = ey(ip)
+            ez(ip+ishift) = ez(ip)
+            bx(ip+ishift) = bx(ip)
+            by(ip+ishift) = by(ip)
+            bz(ip+ishift) = bz(ip)
+          endif
           if (npid > 0) then
             pid(ip+ishift,:) = pid(ip,:)
           endif
@@ -2960,6 +2987,12 @@ c starting at 'istart' to locations starting at 'it'.
           pgroup%uyp(in) = pgroup%uyp(ij)
           pgroup%uzp(in) = pgroup%uzp(ij)
           pgroup%gaminv(in) = pgroup%gaminv(ij)
+          pgroup%ex(in) = pgroup%ex(ij)
+          pgroup%ey(in) = pgroup%ey(ij)
+          pgroup%ez(in) = pgroup%ez(ij)
+          pgroup%bx(in) = pgroup%bx(ij)
+          pgroup%by(in) = pgroup%by(ij)
+          pgroup%bz(in) = pgroup%bz(ij)
           if (pgroup%npid > 0) then
             pgroup%pid(in,:) = pgroup%pid(ij,:)
           endif
@@ -2975,6 +3008,12 @@ c starting at 'istart' to locations starting at 'it'.
           pgroup%uyp(in) = pgroup%uyp(ij)
           pgroup%uzp(in) = pgroup%uzp(ij)
           pgroup%gaminv(in) = pgroup%gaminv(ij)
+          pgroup%ex(in) = pgroup%ex(ij)
+          pgroup%ey(in) = pgroup%ey(ij)
+          pgroup%ez(in) = pgroup%ez(ij)
+          pgroup%bx(in) = pgroup%bx(ij)
+          pgroup%by(in) = pgroup%by(ij)
+          pgroup%bz(in) = pgroup%bz(ij)
           if (pgroup%npid > 0) then
             pgroup%pid(in,:) = pgroup%pid(ij,:)
           endif
@@ -3135,6 +3174,12 @@ c       --- to fill in the empty spaces.
                 pgroup%uyp(ip) = pgroup%uyp(ips)
                 pgroup%uzp(ip) = pgroup%uzp(ips)
                 pgroup%gaminv(ip) = pgroup%gaminv(ips)
+                pgroup%ex(ip) = pgroup%ex(ips)
+                pgroup%ey(ip) = pgroup%ey(ips)
+                pgroup%ez(ip) = pgroup%ez(ips)
+                pgroup%bx(ip) = pgroup%bx(ips)
+                pgroup%by(ip) = pgroup%by(ips)
+                pgroup%bz(ip) = pgroup%bz(ips)
                 if (pgroup%npid > 0) then
                   pgroup%pid(ip,:) = pgroup%pid(ips,:)
                   pgroup%pid(ips,:) = 0
@@ -3169,6 +3214,12 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 pgroup%uyp(ip) = pgroup%uyp(ips)
                 pgroup%uzp(ip) = pgroup%uzp(ips)
                 pgroup%gaminv(ip) = pgroup%gaminv(ips)
+                pgroup%ex(ip) = pgroup%ex(ips)
+                pgroup%ey(ip) = pgroup%ey(ips)
+                pgroup%ez(ip) = pgroup%ez(ips)
+                pgroup%bx(ip) = pgroup%bx(ips)
+                pgroup%by(ip) = pgroup%by(ips)
+                pgroup%bz(ip) = pgroup%bz(ips)
                 if (pgroup%npid > 0) then
                   pgroup%pid(ip,:) = pgroup%pid(ips,:)
                   pgroup%pid(ips,:) = 0
@@ -3344,7 +3395,6 @@ c         --- Zero out the velocity, the flag for a lost particle.
 c=============================================================================
       subroutine particlesortyzwithcopy(pgroup,dy,dz,ymmin,zmmin,ny,nz)
       use ParticleGroupmodule
-      use Beam_acc,Only: lrelativ
       type(ParticleGroup):: pgroup
       real(kind=8):: dy,dz,ymmin,zmmin
       integer(ISZ):: ny,nz
@@ -3352,66 +3402,94 @@ c=============================================================================
 c Sorts particles, using a full size extra particle array for temporary
 c space.
 
-      integer(ISZ):: is,ip,ipg,iy,iz,ipid
+      integer(ISZ):: is,ip,iy,iz
       integer(ISZ),allocatable:: pindex(:)
-      integer(ISZ),allocatable:: npgrid(:),ipgrid(:)
-      real(kind=8),pointer:: pdata(:),ptemp(:)
-
-      allocate(pindex(pgroup%npmax))
-      allocate(npgrid((1+ny)*(1+nz)))
-      allocate(ipgrid((1+ny)*(1+nz)))
-
-      pindex = 0
+      integer(ISZ):: npblock((1+ny)*(1+nz))
 
 c     --- Treat the particles in each species separately
       do is=1,pgroup%ns
-        npgrid = 0
+        allocate(pindex(pgroup%nps(is)))
 
-c     --- First, find which block each particle goes into and cound how
-c     --- many are in each block
+c       --- First, find which block each particle goes into and count how
+c       --- many are in each block
+        pindex = 0
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           iy = abs(pgroup%yp(ip) - ymmin)/dy
           iz = abs(pgroup%zp(ip) - zmmin)/dz
-          ipg = iy + (ny+1)*iz
-          pindex(ip) = ipg
-          npgrid(ipg) = npgrid(ipg) + 1
+          pindex(ip) = iy + (ny+1)*iz
         enddo
 
-        ipgrid(1) = pgroup%ins(is)
-        do ipg=2,(1+ny)*(1+nz)
-          ipgrid(ipg) = ipgrid(ipg-1) + npgrid(ipg-1)
-        enddo
+c       --- Do the sorting
+        call particlesortbyindex(pgroup,pindex,pgroup%ins(is),pgroup%nps(is),
+     &                           (1+ny)*(1+nz),npblock)
 
-        do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-          ipg = pindex(ip)
-          pindex(ip) = ipgrid(ipg)
-          ipgrid(ipg) = ipgrid(ipg) + 1
-        enddo
+        deallocate(pindex)
 
 c     --- End of loop over species
       enddo
 
-c     --- pindex is setup for all species. Now do the moving of data.
-      allocate(pdata(pgroup%npmax))
-      call particlecopysorteddata(pgroup%npmax,pgroup%xp,pdata,pindex)
-      call particlecopysorteddata(pgroup%npmax,pgroup%yp,pdata,pindex)
-      call particlecopysorteddata(pgroup%npmax,pgroup%zp,pdata,pindex)
-      call particlecopysorteddata(pgroup%npmax,pgroup%uxp,pdata,pindex)
-      call particlecopysorteddata(pgroup%npmax,pgroup%uyp,pdata,pindex)
-      call particlecopysorteddata(pgroup%npmax,pgroup%uzp,pdata,pindex)
+      return
+      end
+c=============================================================================
+      subroutine particlesortbyindex(pgroup,pindex,ipmin,np,
+     &                               nn,npblock)
+      use ParticleGroupmodule
+      use Beam_acc, Only: lrelativ
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: ipmin,np,nn
+      integer(ISZ):: npblock(nn)
+      integer(ISZ):: pindex(np)
+
+      integer(ISZ):: ip,ipb,ipid,pindexmin
+      integer(ISZ):: ipblock(nn)
+      real(kind=8),pointer:: pdata(:)
+      
+      npblock = 0
+      pindexmin = minval(pindex)
+
+c     --- First, count how many are in each block
+      do ip=1,np
+        ipb = pindex(ip) - pindexmin + 1
+        npblock(ipb) = npblock(ipb) + 1
+      enddo
+
+c     --- Calculate the starting location of each block
+      ipblock(1) = 1
+      do ipb=2,nn
+        ipblock(ipb) = ipblock(ipb-1) + npblock(ipb-1)
+      enddo
+
+c     --- Replace pindex with the new array index.
+      do ip=1,np
+        ipb = pindex(ip) - pindexmin + 1
+        pindex(ip) = ipblock(ipb)
+        ipblock(ipb) = ipblock(ipb) + 1
+      enddo
+
+c     --- Now, the sort can be done.
+      allocate(pdata(np))
+      call particlecopysorteddata(np,pgroup%xp(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%yp(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%zp(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%uxp(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%uyp(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%uzp(ipmin:ipmin+np-1),pdata,pindex)
       if (lrelativ) then
-        call particlecopysorteddata(pgroup%npmax,pgroup%gaminv,pdata,pindex)
+        call particlecopysorteddata(np,pgroup%gaminv(ipmin:ipmin+np-1),pdata,pindex)
       endif
+      call particlecopysorteddata(np,pgroup%ex(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%ey(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%ez(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%bx(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%by(ipmin:ipmin+np-1),pdata,pindex)
+      call particlecopysorteddata(np,pgroup%bz(ipmin:ipmin+np-1),pdata,pindex)
 
       do ipid=1,pgroup%npid
-        call particlecopysorteddata(pgroup%npmax,pgroup%pid(:,ipid),pdata,
-     &                                pindex)
+        call particlecopysorteddata(np,pgroup%pid(ipmin:ipmin+np-1,ipid),pdata,
+     &                              pindex)
       enddo
 
       deallocate(pdata)
-      deallocate(pindex)
-      deallocate(npgrid)
-      deallocate(ipgrid)
 
       return
       end
@@ -3547,12 +3625,14 @@ c=============================================================================
         call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
      &                    inslost,npslost,npidlost,
      &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
-     &                    gaminvlost,pidlost)
+     &                    gaminvlost,
+     &                    .false.,0.,0.,0.,0.,0.,0.,pidlost)
       else
         call shftpartwork(is,ishift,npmaxlost,ns,npmaxlost_s,
      &                    inslost,npslost,npidlost,
      &                    xplost,yplost,zplost,uxplost,uyplost,uzplost,
-     &                    gaminvlost,0.)
+     &                    gaminvlost,
+     &                    .false.,0.,0.,0.,0.,0.,0.,0.)
       endif
 
 !$OMP MASTER
@@ -3642,194 +3722,207 @@ c=============================================================================
 c=============================================================================
       subroutine chgparticlesdts(pgroup)
       use ParticleGroupmodule
-      use Particles, only: chdtspid,spid
+      use Particles, Only: chdtspid,spid
       type(ParticleGroup):: pgroup
       
-      real(kind=8)::tmp
-      integer(kind=ISZ)::ipid,ipd,ipu,ipl,iplast,nec,neclast,nex,i,is,nps,ipdlast,nulast,ndlast
-      integer(kind=ISZ)::iu,id,ipdu,ipdl,ipdulast,ipdllast
-      integer(kind=ISZ)::nrmd(pgroup%ns),nrmu(pgroup%ns),npsinit(pgroup%ns)
-c      write(0,*) 'exchange'
-c      write(0,*) 'up = ',pgroup%nchdts_up
-c      write(0,*) 'do = ',pgroup%nchdts_down
+      integer(ISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns),is,ip,idest,ip0,idest0
+      integer(ISZ):: ins_save(pgroup%ns),nps_save(pgroup%ns)
+      logical(ISZ):: ldts_save(pgroup%ns)
+      real(kind=8):: pidtemp(pgroup%npid)
+      real(kind=8):: temp
+      integer(ISZ):: nup,ndown
 
-c --- first exchange between species O<=>O<=>O
-      do is=1,pgroup%ns-1
-        if(pgroup%nchdts_up(is)>0 .and. pgroup%nchdts_down(is+1)>0) then
-          nex=min(pgroup%nchdts_up(is),pgroup%nchdts_down(is+1))
-          do i=1,nex
-c       --- compute indices
-            ipd=pgroup%ins(is+1)+nint(pgroup%pid(pgroup%ins(is+1)+pgroup%nchdts_down(is+1)-i,             chdtspid))-1
-            ipu=pgroup%ins(is  )+nint(pgroup%pid(pgroup%ins(is  )+pgroup%nps(is)-pgroup%nchdts_up(is)+i-1,chdtspid))-1
-c       --- exchange particles
-            tmp=pgroup%xp    (ipu);   pgroup%xp    (ipu)  =pgroup%xp    (ipd);   pgroup%xp    (ipd)  =tmp
-            tmp=pgroup%yp    (ipu);   pgroup%yp    (ipu)  =pgroup%yp    (ipd);   pgroup%yp    (ipd)  =tmp
-            tmp=pgroup%zp    (ipu);   pgroup%zp    (ipu)  =pgroup%zp    (ipd);   pgroup%zp    (ipd)  =tmp
-            tmp=pgroup%uxp   (ipu);   pgroup%uxp   (ipu)  =pgroup%uxp   (ipd);   pgroup%uxp   (ipd)  =tmp
-            tmp=pgroup%uyp   (ipu);   pgroup%uyp   (ipu)  =pgroup%uyp   (ipd);   pgroup%uyp   (ipd)  =tmp
-            tmp=pgroup%uzp   (ipu);   pgroup%uzp   (ipu)  =pgroup%uzp   (ipd);   pgroup%uzp   (ipd)  =tmp
-            tmp=pgroup%gaminv(ipu);   pgroup%gaminv(ipu)  =pgroup%gaminv(ipd);   pgroup%gaminv(ipd)  =tmp
-            do ipid=1,pgroup%npid
-              if (ipid/=chdtspid) then
-                tmp=pgroup%pid(ipu,ipid); pgroup%pid(ipu,ipid)=pgroup%pid(ipd,ipid); pgroup%pid(ipd,ipid)=tmp
-              endif
-            enddo
-          enddo
-          pgroup%nchdts_up(is)=pgroup%nchdts_up(is)-nex
-          pgroup%nchdts_down(is+1)=pgroup%nchdts_down(is+1)-nex
-        endif
-      enddo
-
-c --- compute number of particles that will be left to be removed after copies down and up
-      nrmd(2:pgroup%ns-1) = max(0,pgroup%nchdts_down(2:pgroup%ns-1)-pgroup%nchdts_down(3:pgroup%ns))
-      nrmd(pgroup%ns) = pgroup%nchdts_down(pgroup%ns)
-      nrmd(1)=0
-      nrmu(2:pgroup%ns-1) = max(0,pgroup%nchdts_up(2:pgroup%ns-1)-pgroup%nchdts_up(1:pgroup%ns-2))
-      nrmu(1) = pgroup%nchdts_up(1)
-      nrmu(pgroup%ns)=0
-      npsinit=pgroup%nps
-      
-c      write(0,*) 'copy down'
-c      write(0,*) 'up = ',pgroup%nchdts_up
-c      write(0,*) 'do = ',pgroup%nchdts_down
-c --- copy down O<==O
-      do is=2,pgroup%ns
-c       --- Make room for the particles going down
-        call chckpart(pgroup,is-1,0,max(0,pgroup%nchdts_down(is)-pgroup%nchdts_down(is-1)),.false.)
-        do i=1,pgroup%nchdts_down(is)
-          if(i<=pgroup%nchdts_down(is-1)) then
-            ipl=pgroup%ins(is-1) + nint(pgroup%pid(pgroup%ins(is-1)+pgroup%nchdts_down(is-1)-i,chdtspid))-1
-          else
-            ipl=pgroup%ins(is-1) + pgroup%nps(is-1) + i - pgroup%nchdts_down(is-1) - 1
-          endif 
-          ipd =pgroup%ins(is)+nint(pgroup%pid(pgroup%ins(is)+pgroup%nchdts_down(is)-i,chdtspid))-1
-          pgroup%xp    (ipl)  =pgroup%xp    (ipd)
-          pgroup%yp    (ipl)  =pgroup%yp    (ipd)
-          pgroup%zp    (ipl)  =pgroup%zp    (ipd)
-          pgroup%uxp   (ipl)  =pgroup%uxp   (ipd)
-          pgroup%uyp   (ipl)  =pgroup%uyp   (ipd)
-          pgroup%uzp   (ipl)  =pgroup%uzp   (ipd)
-          pgroup%gaminv(ipl)  =pgroup%gaminv(ipd)
-          do ipid=1,pgroup%npid
-            if (ipid/=chdtspid) then
-              pgroup%pid   (ipl,ipid)=pgroup%pid   (ipd,ipid)
-            endif
-          enddo
-        enddo
-        pgroup%nps(is-1)     = pgroup%nps(is-1) + max(0,pgroup%nchdts_down(is) - pgroup%nchdts_down(is-1))
-      enddo 
-
-c      write(0,*) 'copy up'
-c      write(0,*) 'up = ',pgroup%nchdts_up
-c      write(0,*) 'do = ',pgroup%nchdts_down
-c --- copy up O==>O
-      do is=pgroup%ns-1,1,-1
-c       --- Make room for the particles going up
-        call chckpart(pgroup,is+1,0,max(0,pgroup%nchdts_up(is)-pgroup%nchdts_up(is+1)),.false.)
-        do i=1,pgroup%nchdts_up(is)
-          if(i<=pgroup%nchdts_up(is+1)) then
-            ipu=pgroup%ins(is+1) + nint(pgroup%pid(pgroup%ins(is+1)+npsinit(is+1)-pgroup%nchdts_up(is+1)+i-1,chdtspid))-1
-          else
-            ipu=pgroup%ins(is+1) + pgroup%nps(is+1) + i - pgroup%nchdts_up(is+1) - 1
-          endif 
-          ipd=pgroup%ins(is)+nint(pgroup%pid(pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1,chdtspid))-1
-c          write(0,*) ipd,' => ',ipu, i, is,pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1
-c          write(0,*) pgroup%pid(pgroup%ins(is)+npsinit(is)-pgroup%nchdts_up(is)+i-1,chdtspid)
-          pgroup%xp    (ipu)  =pgroup%xp    (ipd)
-          pgroup%yp    (ipu)  =pgroup%yp    (ipd)
-          pgroup%zp    (ipu)  =pgroup%zp    (ipd)
-          pgroup%uxp   (ipu)  =pgroup%uxp   (ipd)
-          pgroup%uyp   (ipu)  =pgroup%uyp   (ipd)
-          pgroup%uzp   (ipu)  =pgroup%uzp   (ipd)
-          pgroup%gaminv(ipu)  =pgroup%gaminv(ipd)
-          do ipid=1,pgroup%npid
-            if (ipid/=chdtspid) then
-              pgroup%pid   (ipu,ipid)=pgroup%pid   (ipd,ipid)
-            endif
-          enddo
-        enddo
-        pgroup%nps(is+1)     = pgroup%nps(is+1) + max(0,pgroup%nchdts_up(is) - pgroup%nchdts_up(is+1))
-      enddo 
-
-c      write(0,*) 'fill holes'
-c      write(0,*) 'rm up = ',nrmu
-c      write(0,*) 'rm do = ',nrmd
-c --- fill holes with last particles in species
+c     --- first, move particles that have been flagged to the beggining or end
+c     --- of the particle arrays.
       do is=1,pgroup%ns
-        nulast=nrmu(is)
-        ndlast=nrmd(is)
-        iu=1
-        id=1
-        ipdl=pgroup%ins(is)+pgroup%nps(is)
-        ipdu=ipdl
-        ipdllast=0
-        ipdulast=0
-        ipdlast=0
-        do while(iu<=nulast .or. id<=ndlast) 
-          iplast=pgroup%ins(is)+pgroup%nps(is)-1
-          if(id<=ndlast) then
-            ipdl     = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + id-1    ,chdtspid))-1
-            ipdllast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + ndlast-1,chdtspid))-1
-          else 
-            ipdllast = 0
-            ipdl     = pgroup%ins(is)+pgroup%nps(is)
-          endif
-          if(iu<=nulast) then
-            ipdu     = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is) - iu    ,chdtspid))-1
-            ipdulast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is) - nulast,chdtspid))-1
-          else 
-            ipdulast = 0
-            ipdu     = pgroup%ins(is)+pgroup%nps(is)
-          endif
-          ipd=min(ipdl,ipdu)
-          ipdlast=max(ipdllast,ipdulast)
-          do while(ipdlast==iplast)
-            pgroup%nps(is) = pgroup%nps(is) - 1
-            iplast=pgroup%ins(is)+pgroup%nps(is)-1
-            if (ipdulast>ipdllast) then
-              nulast=nulast-1
-            else
-              ndlast=ndlast-1
-            endif
-            if(iu>nulast .and. id>ndlast) exit
-            if(id<=ndlast) then
-              ipdllast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + ndlast-1,chdtspid))-1
-            else 
-              ipdllast = 0
-            endif
-            if(iu<=nulast) then
-              ipdulast = pgroup%ins(is) + nint(pgroup%pid(pgroup%ins(is) + npsinit(is)-nulast,chdtspid))-1
-            else 
-              ipdulast = 0
-            endif
-            ipdlast=max(ipdllast,ipdulast)
-          enddo
-          if(iu>nulast .and. id>ndlast) exit
-          pgroup%xp    (ipd)  =pgroup%xp    (iplast)
-          pgroup%yp    (ipd)  =pgroup%yp    (iplast)
-          pgroup%zp    (ipd)  =pgroup%zp    (iplast)
-          pgroup%uxp   (ipd)  =pgroup%uxp   (iplast)
-          pgroup%uyp   (ipd)  =pgroup%uyp   (iplast)
-          pgroup%uzp   (ipd)  =pgroup%uzp   (iplast)
-          pgroup%gaminv(ipd)  =pgroup%gaminv(iplast)
-          do ipid=1,pgroup%npid
-            if (ipid/=chdtspid) then
-              pgroup%pid   (ipd,ipid)=pgroup%pid   (iplast,ipid)
-            endif
-          enddo
-          pgroup%nps(is) = pgroup%nps(is) - 1
-          if(ipdu<ipdl) then
-            iu=iu+1
-          else
-            id=id+1
-          endif
-        enddo
-      enddo
-c      write(0,*) 'done'
-c --- zero out down and up arrays
-      pgroup%nchdts_up  =0
-      pgroup%nchdts_down=0
 
+c       --- initialize counter and save particle's start and number
+        ip = pgroup%ins(is)
+        ins_init(is) = pgroup%ins(is)
+        nps_init(is) = pgroup%nps(is)
+
+c       --- Loop over particles and pick out the ones which have been flagged
+c       --- to be moved to a different ndts group.
+        do while (ip < pgroup%ins(is) + pgroup%nps(is))
+
+c         --- If particle is going to a faster group, switch with lowest particle
+c         --- in the arrays.
+          if (pgroup%pid(ip,chdtspid) < 0.) then
+            pgroup%pid(ip,chdtspid) = 0.
+
+            idest = pgroup%ins(is)
+            pgroup%ins(is) = pgroup%ins(is) + 1
+            pgroup%nps(is) = pgroup%nps(is) - 1
+
+            temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
+            temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
+            temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+
+            temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
+            temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
+            temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
+
+            temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
+
+            temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
+            temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
+            temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
+
+            temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
+            temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
+            temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
+
+            pidtemp = pgroup%pid(ip,:); pgroup%pid(ip,:) = pgroup%pid(idest,:); pgroup%pid(idest,:) = pidtemp
+
+          elseif (pgroup%pid(ip,chdtspid) > 0.) then
+            pgroup%pid(ip,chdtspid) = 0.
+
+            idest = pgroup%ins(is) + pgroup%nps(is) - 1
+            pgroup%nps(is) = pgroup%nps(is) - 1
+
+            temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
+            temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
+            temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+
+            temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
+            temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
+            temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
+
+            temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
+
+            temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
+            temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
+            temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
+
+            temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
+            temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
+            temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
+
+            pidtemp = pgroup%pid(ip,:); pgroup%pid(ip,:) = pgroup%pid(idest,:); pgroup%pid(idest,:) = pidtemp
+
+            ip = ip - 1
+          endif
+
+c         --- advance ip
+          ip = ip + 1
+        enddo
+c       --- end of loop over species
+      enddo
+
+c     --- Now, swap the contributions of rho for the particles that moved up and down. This
+c     --- involves temporarily changing the values of ins, nps, sw, and ldts.
+      ins_save = pgroup%ins
+      nps_save = pgroup%nps
+      ldts_save = pgroup%ldts
+      pgroup%ldts = .true.
+
+c     --- Remove the contributions from the particles that are to be moved.
+c     --- The weight is made negative to remove the contribution.
+      pgroup%sw = -pgroup%sw
+c     --- Particles going down...
+      pgroup%ins = ins_init
+      pgroup%nps = ins_save - ins_init
+      call loadrho3d(pgroup,-1,-1,-1,.false.)
+c     --- Particles going up...
+      pgroup%ins = ins_save + nps_save
+      pgroup%nps = ins_init + nps_init - pgroup%ins
+      call loadrho3d(pgroup,-1,-1,-1,.false.)
+c     --- Fix the sign of the weight
+      pgroup%sw = -pgroup%sw
+
+c     --- Add the contributions to their new species
+c     --- This assumes that all species have the same weight (which must be
+c     --- true anyway in order to be swapping particles around).
+c     --- Particles going down...
+      pgroup%ins(:pgroup%ns-1) = ins_init(2:)
+      pgroup%nps(:pgroup%ns-1) = ins_save(2:) - ins_init(2:)
+      pgroup%nps(pgroup%ns) = 0
+      call loadrho3d(pgroup,-1,-1,-1,.false.)
+c     --- Particles going up...
+      pgroup%ins(2:) = ins_save(:pgroup%ns-1) + nps_save(:pgroup%ns-1)
+      pgroup%nps(2:) = ins_init(:pgroup%ns-1) + nps_init(:pgroup%ns-1) - pgroup%ins(2:)
+      pgroup%nps(1) = 0
+      call loadrho3d(pgroup,-1,-1,-1,.false.)
+
+c     --- Restore the values
+      pgroup%ins = ins_save
+      pgroup%nps = nps_save
+      pgroup%ldts = ldts_save
+     
+c     --- Now, swap the particle between species.
+      do is=1,pgroup%ns - 1
+        ndown = pgroup%ins(is+1) - ins_init(is+1)
+        nup = (ins_init(is) + nps_init(is)) - (pgroup%ins(is) + pgroup%nps(is))
+        do ip0 = 0,min(ndown,nup)-1
+          ip = pgroup%ins(is) + pgroup%nps(is) + ip0
+          idest = pgroup%ins(is+1) - 1 - ip0
+
+          temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
+          temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
+          temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+
+          temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
+          temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
+          temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
+
+          temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
+
+          temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
+          temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
+          temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
+
+          temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
+          temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
+          temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
+
+          pidtemp = pgroup%pid(ip,:); pgroup%pid(ip,:) = pgroup%pid(idest,:); pgroup%pid(idest,:) = pidtemp
+
+        enddo
+        pgroup%nps(is) = pgroup%nps(is) + min(ndown,nup)
+        pgroup%ins(is+1) = pgroup%ins(is+1) - min(ndown,nup)
+        pgroup%nps(is+1) = pgroup%nps(is+1) + min(ndown,nup)
+
+c       --- Move any particles that are left over
+        if (ndown > nup) then
+          idest0 = pgroup%ins(is) + pgroup%nps(is)
+          idest = idest0 + (ndown - nup) - 1
+          ip0 = pgroup%ins(is+1) - (ndown - nup)
+          ip = pgroup%ins(is+1) - 1
+          pgroup%nps(is) = pgroup%nps(is) + (ndown - nup)
+        else if (nup > ndown) then
+          idest0 = pgroup%ins(is+1) - (nup - ndown)
+          idest = pgroup%ins(is+1) - 1
+          ip0 = pgroup%ins(is) + pgroup%nps(is)
+          ip = ip0 + (nup - ndown) - 1
+          pgroup%ins(is+1) = pgroup%ins(is+1) - (nup - ndown)
+          pgroup%nps(is+1) = pgroup%nps(is+1) + (nup - ndown)
+        endif
+        if (nup .ne. ndown) then
+          pgroup%xp(idest0:idest) = pgroup%xp(ip0:ip)
+          pgroup%yp(idest0:idest) = pgroup%yp(ip0:ip)
+          pgroup%zp(idest0:idest) = pgroup%zp(ip0:ip)
+  
+          pgroup%uxp(idest0:idest) = pgroup%uxp(ip0:ip)
+          pgroup%uyp(idest0:idest) = pgroup%uyp(ip0:ip)
+          pgroup%uzp(idest0:idest) = pgroup%uzp(ip0:ip)
+  
+          pgroup%gaminv(idest0:idest) = pgroup%gaminv(ip0:ip)
+  
+          pgroup%ex(idest0:idest) = pgroup%ex(ip0:ip)
+          pgroup%ey(idest0:idest) = pgroup%ey(ip0:ip)
+          pgroup%ez(idest0:idest) = pgroup%ez(ip0:ip)
+  
+          pgroup%bx(idest0:idest) = pgroup%bx(ip0:ip)
+          pgroup%by(idest0:idest) = pgroup%by(ip0:ip)
+          pgroup%bz(idest0:idest) = pgroup%bz(ip0:ip)
+  
+          pgroup%pid(idest0:idest,:) = pgroup%pid(ip0:ip,:)
+          pgroup%pid(ip0:ip,:) = 0.
+        endif
+
+      enddo
+
+      return
       end
 c=============================================================================
 c=============================================================================
@@ -3989,6 +4082,12 @@ c       --- Loop only over live particles
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
+          pgroup%ex(ip+ishift) = pgroup%ex(ip)
+          pgroup%ey(ip+ishift) = pgroup%ey(ip)
+          pgroup%ez(ip+ishift) = pgroup%ez(ip)
+          pgroup%bx(ip+ishift) = pgroup%bx(ip)
+          pgroup%by(ip+ishift) = pgroup%by(ip)
+          pgroup%bz(ip+ishift) = pgroup%bz(ip)
           if (pgroup%npid > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
@@ -4020,6 +4119,12 @@ c       --- Note that particles will be clobbered if shifted onto species below.
           pgroup%uyp(ip+ishift) = pgroup%uyp(ip)
           pgroup%uzp(ip+ishift) = pgroup%uzp(ip)
           pgroup%gaminv(ip+ishift) = pgroup%gaminv(ip)
+          pgroup%ex(ip+ishift) = pgroup%ex(ip)
+          pgroup%ey(ip+ishift) = pgroup%ey(ip)
+          pgroup%ez(ip+ishift) = pgroup%ez(ip)
+          pgroup%bx(ip+ishift) = pgroup%bx(ip)
+          pgroup%by(ip+ishift) = pgroup%by(ip)
+          pgroup%bz(ip+ishift) = pgroup%bz(ip)
           if (pgroup%npid > 0) then
             pgroup%pid(ip+ishift,:) = pgroup%pid(ip,:)
 c           pgroup%pid(ip,:) = 0
@@ -4075,6 +4180,12 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = pgroupin%uyp(ij)
           pgroupout%uzp(in) = pgroupin%uzp(ij)
           pgroupout%gaminv(in) = pgroupin%gaminv(ij)
+          pgroupout%ex(in) = pgroupin%ex(ij)
+          pgroupout%ey(in) = pgroupin%ey(ij)
+          pgroupout%ez(in) = pgroupin%ez(ij)
+          pgroupout%bx(in) = pgroupin%bx(ij)
+          pgroupout%by(in) = pgroupin%by(ij)
+          pgroupout%bz(in) = pgroupin%bz(ij)
           if (pgroupin%npid > 0) then
             pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
@@ -4090,6 +4201,12 @@ c starting at 'istart' to locations starting at 'it'.
           pgroupout%uyp(in) = pgroupin%uyp(ij)
           pgroupout%uzp(in) = pgroupin%uzp(ij)
           pgroupout%gaminv(in) = pgroupin%gaminv(ij)
+          pgroupout%ex(in) = pgroupin%ex(ij)
+          pgroupout%ey(in) = pgroupin%ey(ij)
+          pgroupout%ez(in) = pgroupin%ez(ij)
+          pgroupout%bx(in) = pgroupin%bx(ij)
+          pgroupout%by(in) = pgroupin%by(ij)
+          pgroupout%bz(in) = pgroupin%bz(ij)
           if (pgroupin%npid > 0) then
             pgroupout%pid(in,:) = pgroupin%pid(ij,:)
           endif
