@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.304 $, $Date: 2006/10/26 18:24:55 $
+c@(#) File W3D.F, version $Revision: 3.305 $, $Date: 2006/10/27 20:19:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -78,8 +78,7 @@ c=============================================================================
       use Lattice
       use LatticeInternal
       use Particles, Only: pgroup,npmax,wpid,tpid,rpid,chdtspid,
-     &                     xoldpid,yoldpid,zoldpid,lsaveoldpos,
-     &                     expid,eypid,ezpid,bxpid,bypid,bzpid
+     &                     xoldpid,yoldpid,zoldpid,lsaveoldpos
       use Picglb
       use Picglb3d
       use OutParams
@@ -90,7 +89,6 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
-      use DKInterp
       use InDiag3d
       use ExtPart
       use w3d_interfaces
@@ -417,12 +415,6 @@ c  Load the particles, calculate the charge density
         xoldpid = nextpid()
         yoldpid = nextpid()
         zoldpid = nextpid()
-        expid = nextpid()
-        eypid = nextpid()
-        ezpid = nextpid()
-        bxpid = nextpid()
-        bypid = nextpid()
-        bzpid = nextpid()
       endif
       call remark(" ---  done")
 
@@ -431,9 +423,14 @@ c  Set up for injection
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
 
-      npdamp = 1
-      if (eomdamp /= 0.) npdamp = npmax
-      call gchange("Damped_eom", 0)
+      if (eomdamp /= 0.) then
+        exeomoldpid = nextpid()
+        eyeomoldpid = nextpid()
+        ezeomoldpid = nextpid()
+        exeomlagpid = nextpid()
+        eyeomlagpid = nextpid()
+        ezeomlagpid = nextpid()
+      endif
 
 c  Create the dynamic arrays for "window" moments
 
@@ -1012,9 +1009,9 @@ c     --- Accumulate time for applying the fields of the lattice
       return
       end
 c=============================================================================
-      subroutine othere3d (np,xp,yp,zp,zbeam,zimax,zimin,straight,
-     &                     ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
-     &                     dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
+      subroutine othere3d(np,xp,yp,zp,zbeam,zimax,zimin,straight,
+     &                    ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
+     &                    dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
       use Subtimers3d
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
@@ -1268,18 +1265,25 @@ c=============================================================================
       end
 c=============================================================================
       subroutine positionadvance3d(pgroup,is,np,ipmin,interpdk,dt,
-     &                             zpo,bendres,bendradi)
+     &                             bendres,bendradi)
       use ParticleGroupmodule
-      use Particles, only: chdtspid,xoldpid,yoldpid,zoldpid,lsaveoldpos
+      use Particles, Only: xoldpid,yoldpid,zoldpid
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,np,ipmin,interpdk
       real(kind=8):: dt
-      real(kind=8):: zpo(np),bendres(np),bendradi(np)
+      real(kind=8):: bendres(np),bendradi(np)
 
-      if (lsaveoldpos) then
-        pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
-        pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
-        pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
+      real(kind=8),pointer:: zpo(:)
+
+      if (xoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
+      if (yoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
+      if (zoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
+
+      if (zoldpid > 0) then
+        zpo => pgroup%pid(ipmin:ipmin+np-1,zoldpid)
+      else
+        allocate(zpo(np))
+        zpo = pgroup%zp(ipmin:ipmin+np-1)
       endif
 
       if (interpdk .ne. 0) then
@@ -1301,6 +1305,10 @@ c     --- Correct position advance for slanted dipole entry/exit
       call sledgcor(pgroup,np,ipmin,zpo,0.,0.,0.,
      &              pgroup%sm(is),pgroup%sq(is),.false.)
 
+      if (zoldpid == 0) then
+        deallocate(zpo)
+      endif
+
       return
       end
 c=============================================================================
@@ -1316,8 +1324,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,spid,xoldpid,yoldpid,zoldpid,
-     &                    expid,eypid,ezpid,bxpid,bypid,bzpid
+      use Particles,Only: nplive,wpid,chdtspid,spid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -1342,6 +1349,7 @@ c  and also loads RHO at the new time level.
 
 c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: xp(:),yp(:),zp(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
       integer(ISZ),pointer:: ins(:),nps(:)
@@ -1349,11 +1357,8 @@ c     --- Create local pointers to the arrays in pgroup.
       integer(ISZ):: isid,is,ismax,ip,ipmin,i,ndtstmp
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt
       real(kind=8):: fulldt_s,halfdt_s
-      real(kind=8),allocatable:: zpo(:)
-c RHC: moved ex, ey, ez, bx, by, bz to DKInterptmp in w3d.v  3/11/04
-c      real(kind=8),allocatable:: ex(:), ey(:), ez(:)
-c      real(kind=8),allocatable:: bx(:), by(:), bz(:)
       real(kind=8),allocatable:: uxpo(:), uypo(:), uzpo(:)
+      real(kind=8),allocatable:: exo(:),eyo(:),ezo(:),bxo(:),byo(:),bzo(:)
       real(kind=8),allocatable:: gaminvo(:)
       real(kind=8),allocatable:: bendres(:), bendradi(:)
 #ifdef _OPENMP
@@ -1380,6 +1385,12 @@ c     --- Create local pointers to the arrays in pgroup.
       uyp => pgroup%uyp
       uzp => pgroup%uzp
       gaminv => pgroup%gaminv
+      ex => pgroup%ex
+      ey => pgroup%ey
+      ez => pgroup%ez
+      bx => pgroup%bx
+      by => pgroup%by
+      bz => pgroup%bz
       if (pgroup%npid > 0) pid => pgroup%pid
 
       sm => pgroup%sm
@@ -1396,13 +1407,16 @@ c     --- Create local pointers to the arrays in pgroup.
       center = center_in
 
 !$OMP PARALLEL
-!$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
+!$OMP&PRIVATE(ip,xpo,ypo,zpo,uxpo,uypo,uzpo,bendres,bendradi,
 !$OMP&        uxpadv,uypadv,uzpadv,maxp,minp,zmmnts0,zmmnts)
 
-      allocate(zpo(nparpgrp))
-      allocate(uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp))
+      allocate(uxpo(nparpgrp),uypo(nparpgrp),uzpo(nparpgrp))
       allocate(gaminvo(nparpgrp))
       allocate(bendres(nparpgrp), bendradi(nparpgrp))
+      if (center == "synchv" .and. chdtspid>0) then
+        allocate(exo(nparpgrp),eyo(nparpgrp),ezo(nparpgrp))
+        allocate(bxo(nparpgrp),byo(nparpgrp),bzo(nparpgrp))
+      endif
 
 #ifdef _OPENMP
         allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
@@ -1421,18 +1435,15 @@ c     call zeroarry (bendradi,nparpgrp)
       bendres = 0.
       bendradi = 0.
 
-c  Set storage for field arrays if not adequate already
-      if (npfield < nparpgrp) then
-         npfield = nparpgrp
-         call gchange("DKInterptmp",0)
-      endif
 c  Set lvdts array
+c  This needs to be calculated ahead of time since the value of lvdts is needed
+c  for speciess other that the one being looped over below.
       if (ndtsaveraging == 0) then
         do is=1,pgroup%ns
           if (pgroup%ndts(is-1) == 1) then
             pgroup%lvdts(is) = .true.
           elseif (mod(it-1,pgroup%ndts(is-1)) == pgroup%ndts(is-1) - 1 .and.
-     &      center_in=="synchv") then
+     &            center_in=="synchv") then
             pgroup%lvdts(is) = .true.
           else
             pgroup%lvdts(is) = .false.
@@ -1505,11 +1516,19 @@ c             center is "synchv" and interpdk is nonzero and allspecl
 c             is 0
             if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0 
      &          .and. .not. allspecl)) then
-               do i = 1,ip
-                  bx(i) = 0.
-                  by(i) = 0.
-                  bz(i) = 0.
-               enddo
+              bx(ipmin:ipmin+ip-1) = 0.
+              by(ipmin:ipmin+ip-1) = 0.
+              bz(ipmin:ipmin+ip-1) = 0.
+            endif
+
+c           --- Save old fields if needed.
+            if(center == "synchv" .and. chdtspid>0) then
+              exo(1:ip) = ex(ipmin:ipmin+ip-1)
+              eyo(1:ip) = ey(ipmin:ipmin+ip-1)
+              ezo(1:ip) = ez(ipmin:ipmin+ip-1)
+              bxo(1:ip) = bx(ipmin:ipmin+ip-1)
+              byo(1:ip) = by(ipmin:ipmin+ip-1)
+              bzo(1:ip) = bz(ipmin:ipmin+ip-1)
             endif
 
 c           --- Obtain the self-fields
@@ -1517,26 +1536,31 @@ c           --- Obtain the self-fields
             call fetchb3d(pgroup,ipmin,ip,is)
 
 c           --- Get E field for particles near the  injection surface.
-            call inj_sete(pgroup,ipmin,ip,ex,ey,ez)
+            call inj_sete(pgroup,ipmin,ip,ex(ipmin),ey(ipmin),ez(ipmin))
             call inj_addtemp3d(pgroup,ip,ipmin,dz)
 
 c           --- Get transverse E field for particles near any defined
 c           --- apertures.
             call sete3d_aperture(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                           zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
-     &                           nxp,nyp,nzp,ex,ey,l2symtry,l4symtry)
+     &                           nxp,nyp,nzp,ex(ipmin),ey(ipmin),l2symtry,l4symtry)
 
 c           --- Scale the self E-field to get the lowest order relativistic
 c           --- correction.
             if (relativity == 1) then
-              call sete3d_relativity(ip,ex,ey,vbeam)
+              call sete3d_relativity(ip,ex(ipmin),ey(ipmin),vbeam)
             end if
 
 c           --- Compute lag average for experimental damping algorithm
             if (eomdamp /= 0.) then
-              call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
-     &                    exold(ipmin),eyold(ipmin),ezold(ipmin),
-     &                    exlag(ipmin),eylag(ipmin),ezlag(ipmin))
+              call edamp(eomdamp,it,itdamp,center,ip,
+     &                   ex(ipmin),ey(ipmin),ez(ipmin),
+     &                   pid(ipmin,exeomoldpid),
+     &                   pid(ipmin,eyeomoldpid),
+     &                   pid(ipmin,ezeomoldpid),
+     &                   pid(ipmin,exeomlagpid),
+     &                   pid(ipmin,eyeomlagpid),
+     &                   pid(ipmin,ezeomlagpid))
             end if
 c           --- FULLV
 c           Note if this is a species with interpolation between
@@ -1547,35 +1571,34 @@ c           In this case fullv and halfv do the same thing and
 c           synchv does nothing
             if (center == "fullv" .or. (center == "halfv" .and.
      &             interpdk(isid) == 1 .and. .not. allspecl)) then
-               do i = 1,ip
-                 zpo(i) = zp(ipmin+i-1) 
-               enddo 
 c              --- Obtain bend radii and residence factors
                call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
      &                      pgroup%gaminv(ipmin),
      &                      bendres,bendradi,-halfdt_s,halfdt_s,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
      &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c
 c              --- Add in ears and uniform focusing E field pieces
-               call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                        zbeam,zimax,zimin,straight,ifeears,eears,
-     &                        eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
-     &                        ex,ey,ez,bx,by,bz)
+               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                       zbeam,zimax,zimin,straight,ifeears,eears,
+     &                       eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                       ex(ipmin),ey(ipmin),ez(ipmin),
+     &                       bx(ipmin),by(ipmin),bz(ipmin))
 c              --- Set quad, dipole E and B; All: Bz
-               call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),-halfdt_s,halfdt_s,
-     &                       bx,by,bz,ex,ey,ez,sm(is),sq(is),
-     &                       bendres,bendradi,gammabar,fulldt_s)
+               call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                      gaminv(ipmin),-halfdt_s,halfdt_s,
+     &                      bx(ipmin),by(ipmin),bz(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
+     &                      bendres,bendradi,gammabar,fulldt_s)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
 c              --- First half-electric field increment to momenta
-               call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+               call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
@@ -1583,22 +1606,24 @@ c              --- Magnetic field increment to momenta
 c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction before and half after Bpush
                if (interpdk(isid) .ne. 0) then
-c                  call setptrs(bx,by,bz,ex,ey,ez)
+c                  call setptrs(bx(ipmin),by(ipmin),bz(ipmin),
+c    &                          ex(ipmin),ey(ipmin),ez(ipmin))
                   call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
                endif
-               call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), fulldt_s, ibpush)
+               call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                      bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                      fulldt_s,ibpush)
                if (interpdk(isid) .ne. 0)
      &           call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
 c              --- Final half-electric field increment to momenta
-               call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+               call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                       ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
                call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
-     &                                fulldt_s,zpo,bendres,bendradi)
+     &                                fulldt_s,bendres,bendradi)
 c           --- HALFV
             elseif ((center == "halfv" .and. (interpdk(isid) .ne. 1 .or.
      &               allspecl)) .or. (center == "hbor2" .and.
@@ -1608,62 +1633,63 @@ c               with full-v steps except when initalizing, which is
 c               optionally taken care of by "hbor2" option
 c               The hbor1 option does 1st half of a Boris step,
 c               hbor2 does 2nd half.
-               do i = 1,ip
-                 zpo(i) = zp(ipmin+i-1) 
-               enddo 
 c              --- Obtain bend radii and residence factors
                call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
      &                      pgroup%gaminv(ipmin),
      &                      bendres,bendradi,0.,halfdt_s,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
      &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
-               call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                        zbeam,zimax,zimin,straight,ifeears,eears,
-     &                        eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
-     &                        ex,ey,ez,bx,by,bz)
+               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                       zbeam,zimax,zimin,straight,ifeears,eears,
+     &                       eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                       ex(ipmin),ey(ipmin),ez(ipmin),
+     &                       bx(ipmin),by(ipmin),bz(ipmin))
 c              --- Set quad, dipole E and B;  All: Bz
-               call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),0.,halfdt_s,bx,by,bz,
-     &                       ex,ey,ez,sm(is),sq(is),bendres,bendradi,
-     &                       gammabar,fulldt_s)
+               call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                      gaminv(ipmin),0.,halfdt_s,
+     &                      bx(ipmin),by(ipmin),bz(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),
+     &                      sm(is),sq(is),bendres,bendradi,gammabar,fulldt_s)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       0., halfdt_s, fulldt_s, sm(1), sq(1), time)
 c              --- Magnetic field increment to momenta
                if (interpdk(isid) .ne. 0) then
-                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), fulldt_s, -1)
+                  call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         bx(ipmin),by(ipmin),bz(ipmin),
+     &                         sq(is),sm(is),fulldt_s,-1)
 c              --- If interpolating with drift kinetics, must do 
 c              ---  a mu grad B correction.  Since may be calling
 c              ---  this on first timestep, must make sure grad B's are
 c              ---  calculated, so last arg = 1.
                   call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
                else
-                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), halfdt_s, ibpush)
+                  call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         bx(ipmin),by(ipmin),bz(ipmin),
+     &                         sq(is),sm(is),halfdt_s,ibpush)
 c              --- Final half-electric field increment to momenta
                endif
-               call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+               call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
                if (center .ne. "hbor2") then
-c                hbor2 just does a v advance, no x push
+c                --- hbor2 just does a v advance, no x push
                  call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
-     &                                  fulldt_s,zpo,bendres,bendradi)
+     &                                  fulldt_s,bendres,bendradi)
                endif
 c           --- SYNCHV or GEN
 c           Double "if" follows so that moments are calculated
 c           for center = "synchv" or "gen" regardless of interpdk,
 c           but the vpush is only done for interpdk=1 if allspecl=1.
             elseif (center == "synchv" .or. center == "gen"
-     &        .or. center == "hbor1") then
+     &              .or. center == "hbor1") then
 c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
 c            --- This is needed for the call to getzmmnt below.
 c            --- gaminvo is saved so it can be restored below
@@ -1677,39 +1703,41 @@ c            --- during a gen step.
                enddo
              endif
              if ((center == "synchv" .and. (interpdk(isid) == 0
-     &          .or. allspecl)) 
-     &         .or. center == "gen" .or. (center == "hbor1"
-     &          .and. interpdk(isid) .ne. 0)) then
+     &           .or. allspecl)) 
+     &           .or. center == "gen" .or. (center == "hbor1"
+     &           .and. interpdk(isid) .ne. 0)) then
 c           --- drift-kinetic-interpolated species are always treated
-c               with full-v steps except in initial setup, when we want
-c               a half-v step packwards.  center = "hbor2" provides
-c               the latter capability with dt set to be negative.
-c               Exception, if allspecl = 1, then we synchronize every
-c               step, using half Boris if interpdk = 1.
-c               More generally hbor1 provides 1st half of a Boris
-c               step, hbor2 provides 2nd half.
+c           --- with full-v steps except in initial setup, when we want
+c           --- a half-v step packwards.  center = "hbor2" provides
+c           --- the latter capability with dt set to be negative.
+c           --- Exception, if allspecl = 1, then we synchronize every
+c           --- step, using half Boris if interpdk = 1.
+c           --- More generally hbor1 provides 1st half of a Boris
+c           --- step, hbor2 provides 2nd half.
 c              --- Obtain bend radii and residence factors
                call getbend(ip,ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),
      &                      pgroup%gaminv(ipmin),bendres,
      &                      bendradi,-halfdt_s,0.,.false.)
 c              --- Correct Ez_self for warped mesh effect
-               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez,
+               call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
      &                       bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield(ip,pgroup%zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+               call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
-               call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                        zbeam,zimax,zimin,straight,ifeears,eears,
-     &                        eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
-     &                        ex,ey,ez,bx,by,bz)
+               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                       zbeam,zimax,zimin,straight,ifeears,eears,
+     &                       eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                       ex(ipmin),ey(ipmin),ez(ipmin),
+     &                       bx(ipmin),by(ipmin),bz(ipmin))
 c              --- Set quad, dipole E and B; All: Bz
-               call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),-halfdt_s,0.,
-     &                       bx,by,bz,ex,ey,ez,sm(is),sq(is),
-     &                       bendres,bendradi,gammabar,fulldt_s)
+               call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
+     &                      gaminv(ipmin),-halfdt_s,0.,
+     &                      bx(ipmin),by(ipmin),bz(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
+     &                      bendres,bendradi,gammabar,fulldt_s)
 c              --- Half electric field increment to momenta
-               call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), halfdt_s)
+               call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
@@ -1718,12 +1746,12 @@ c              ---  a mu grad B correction
 c              --- Half magnetic field increment to momenta
                if (interpdk(isid) .ne. 0) then
                   call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
-                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), fulldt_s, -1)
+                  call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),fulldt_s,-1)
 c                 Half a Boris push
                else
                   call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), halfdt_s, ibpush)
+     &                       bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is), halfdt_s, ibpush)
                endif
                if (center == "gen") then
 c                --- Reset uxp to uxpo, set uxpo to half step backward
@@ -1767,13 +1795,7 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
      &                                        isid,time,zbeam)
               endif
               if(center == "synchv" .and. chdtspid>0) then
-                call check_cc3d(pgroup,is,ipmin,ip,ex,ey,ez,bx,by,bz)
-                pid(ipmin:ipmin+ip-1,expid) = ex(1:ip)
-                pid(ipmin:ipmin+ip-1,eypid) = ey(1:ip)
-                pid(ipmin:ipmin+ip-1,ezpid) = ez(1:ip)
-                pid(ipmin:ipmin+ip-1,bxpid) = bx(1:ip)
-                pid(ipmin:ipmin+ip-1,bypid) = by(1:ip)
-                pid(ipmin:ipmin+ip-1,bzpid) = bz(1:ip)
+                call check_cc3d(pgroup,is,ipmin,ip,exo,eyo,ezo,bxo,byo,bzo)
               endif
             endif
          enddo
@@ -1805,8 +1827,7 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
       endif
 #endif
 
-      deallocate(zpo)
-      deallocate(uxpo, uypo, uzpo)
+      deallocate(uxpo,uypo,uzpo)
       deallocate(gaminvo)
       deallocate(bendres, bendradi)
 
@@ -2257,7 +2278,7 @@ c  Advance particle positions
       return
       end
 c=============================================================================
-      subroutine check_cc3d(pgroup,is,ipmin,np,ex,ey,ez,bx,by,bz)
+      subroutine check_cc3d(pgroup,is,ipmin,np,exo,eyo,ezo,bxo,byo,bzo)
       use Constant
       use InGen
       use Subtimers3d
@@ -2267,95 +2288,95 @@ c=============================================================================
       use InGen3d
       use InMesh3d
       use ParticleGroupmodule
-      use Particles, only: xoldpid, yoldpid, zoldpid, chdtspid,
-     &                     expid,eypid,ezpid,bxpid,bypid,bzpid, tpid
+      use Particles, toppgroup => pgroup
       use Fields3dParticles, only: nxc,nyc,nzc,isnearbycond
       implicit none
       type(ParticleGroup):: pgroup
-      integer(ISZ):: np,is,ipmin,ipmin0,ip0,ips,myndts
-      real(kind=8):: dd,denorm,dbnorm,denorm_up,dbnorm_up,exo,eyo,ezo,bxo,byo,bzo,dex,dey,dez,dbx,dby,dbz
-      real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
-      integer(ISZ)::pisnearbycond(np)
-      logical(ISZ):: ldfield_below_threshold,ldfield_below_threshold_up,l_pisnearbycond
+      integer(ISZ):: np,is,ipmin
+      real(kind=8):: exo(np),eyo(np),ezo(np),bxo(np),byo(np),bzo(np)
 
 c Check if particle is under or over the Courant condition limits (ccmin and ccmax) 
-c and regiter the ones that fall outside the limits for change to group (or species) 
+c and register the ones that fall outside the limits for change to group (or species) 
 c with appropriate time step.
 
+      integer(ISZ):: ipmin0,ip0,ips,myndts
+      real(kind=8):: tdx,tdy,tdz
+      real(kind=8):: dd,denorm,dbnorm,denorm_up,dbnorm_up,dex,dey,dez,dbx,dby,dbz
+      integer(ISZ),allocatable::pisnearbycond(:)
+      logical(ISZ):: ldfield_below_threshold,ldfield_below_threshold_up,l_pisnearbycond
       integer(ISZ):: ip,ndtsmax
       real(kind=8):: substarttime,wtime,ddx,ddy,ddz,dtgaminv
       if (lw3dtimesubs) substarttime = wtime()
 
-        ndtsmax = 2**(pgroup%lvdtsmax-1)
-        myndts  = pgroup%ndts(is-1)
-        ipmin0=ipmin-1
+      tdx = dx
+      tdy = dy
+      tdz = dz
+      ndtsmax = 2**(pgroup%lvdtsmax-1)
+      myndts  = pgroup%ndts(is-1)
+      ipmin0=ipmin-1
+      if (nxc>0) then
+        allocate(pisnearbycond(np))
+        call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
+     &                     pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
+     &                     l2symtry,l4symtry)
+      else
+        l_pisnearbycond=.false.
+      end if
+      do ip=1,np
+        ip0=ipmin0+ip
+        if(tpid>0) then
+          if ((time-pgroup%pid(ip0,tpid))<ndtsmax*dt) cycle
+        endif
+        if (dxpid > 0 .and. dypid > 0 .and. dzpid > 0) then
+          tdx = pgroup%pid(ip0,dxpid)
+          tdy = pgroup%pid(ip0,dypid)
+          tdz = pgroup%pid(ip0,dzpid)
+        endif
+        ddx=abs(pgroup%xp(ip0)-pgroup%pid(ip0,xoldpid))/tdx
+        ddy=abs(pgroup%yp(ip0)-pgroup%pid(ip0,yoldpid))/tdy
+        ddz=abs(pgroup%zp(ip0)-pgroup%pid(ip0,zoldpid))/tdz
+        dex=abs(pgroup%ex(ip0)-exo(ip))
+        dey=abs(pgroup%ey(ip0)-eyo(ip))
+        dez=abs(pgroup%ez(ip0)-ezo(ip))
+        dbx=abs(pgroup%bx(ip0)-bxo(ip))
+        dby=abs(pgroup%by(ip0)-byo(ip))
+        dbz=abs(pgroup%bz(ip0)-bzo(ip))
+        denorm = defieldmax*sqrt(exo(ip)*exo(ip)+eyo(ip)*eyo(ip)+ezo(ip)*ezo(ip))
+        dbnorm = dbfieldmax*sqrt(bxo(ip)*bxo(ip)+byo(ip)*byo(ip)+bzo(ip)*bzo(ip))
+        ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and. 
+     &                            dbx<=dbnorm .and. dby<=dbnorm .and. dbz<=dbnorm
+        if (myndts<ndtsmax) then
+c         --- the threshold on field change is lower for increasing time step in order to 
+c         --- minimize particles changing time steps back and forth due to constant crossing of threshold
+          denorm_up = denorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
+          dbnorm_up = dbnorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
+          ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and. 
+     &                                 dbx<=dbnorm_up .and. dby<=dbnorm_up .and. dbz<=dbnorm_up
+        endif
         if (nxc>0) then
-          call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
-     &                   pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
-     &                   l2symtry,l4symtry)
-        else
-          l_pisnearbycond=.false.
+          if (pisnearbycond(ip)>0) then
+            l_pisnearbycond=.true.
+          else
+            l_pisnearbycond=.false.
+          endif
         end if
-        do ip=1,np
-          ip0=ipmin0+ip
-          if(tpid>0) then
-            if ((time-pgroup%pid(ip0,tpid))<ndtsmax*dt) cycle
-          endif
-          ddx=abs(pgroup%xp(ip0)-pgroup%pid(ip0,xoldpid))/dx
-          ddy=abs(pgroup%yp(ip0)-pgroup%pid(ip0,yoldpid))/dy
-          ddz=abs(pgroup%zp(ip0)-pgroup%pid(ip0,zoldpid))/dz
-          exo = pgroup%pid(ip0,expid)
-          eyo = pgroup%pid(ip0,eypid)
-          ezo = pgroup%pid(ip0,ezpid)
-          bxo = pgroup%pid(ip0,bxpid)
-          byo = pgroup%pid(ip0,bypid)
-          bzo = pgroup%pid(ip0,bzpid)
-          dex=abs(ex(ip)-exo)
-          dey=abs(ey(ip)-eyo)
-          dez=abs(ez(ip)-ezo)
-          dbx=abs(bx(ip)-bxo)
-          dby=abs(by(ip)-byo)
-          dbz=abs(bz(ip)-bzo)
-          denorm = defieldmax*sqrt(exo*exo+eyo*eyo+ezo*ezo)
-          dbnorm = dbfieldmax*sqrt(bxo*bxo+byo*byo+bzo*bzo)
-          ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and. 
-     &                              dbx<=dbnorm .and. dby<=dbnorm .and. dbz<=dbnorm
-          if (myndts<ndtsmax) then
-c           --- the threshold on field change is lower for increasing time step in order to 
-c           --- minimize particles changing time steps back and forth due to constant crossing of threshold
-            denorm_up = denorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
-            dbnorm_up = dbnorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
-            ldfield_below_threshold_up = dex<=denorm_up .and. dey<=denorm_up .and. dez<=denorm_up .and. 
-     &                                   dbx<=dbnorm_up .and. dby<=dbnorm_up .and. dbz<=dbnorm_up
-          endif
-          if (nxc>0) then
-            if (pisnearbycond(ip)>0) then
-              l_pisnearbycond=.true.
-            else
-              l_pisnearbycond=.false.
-            endif
-          end if
-          dd=max(ddx,ddy,ddz)
-c         --- if dd<ccmin or dd>ccmax, register particle for move to group/species with 
-c         --- appropriate time step 
-          if(myndts>1 .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
-c           --- move to group with smaller time step
-            ips = ipmin+ip-pgroup%ins(is)
-c            write(0,*) 'set do ',is,ipmin,pgroup%nchdts_down(is),ip
-            pgroup%pid(pgroup%ins(is)+pgroup%nchdts_down(is),chdtspid)=ips
-            pgroup%nchdts_down(is)=pgroup%nchdts_down(is)+1
-          elseif(pgroup%lvdts(is+1) .and. myndts<ndtsmax .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
-     &           .not. l_pisnearbycond) then
-c           --- move to group with larger time step
-            ips = ipmin+ip-pgroup%ins(is)
-            pgroup%nchdts_up(is)=pgroup%nchdts_up(is)+1
-c            write(0,*) 'set up ',is,ipmin,pgroup%nchdts_up(is),ips,np
-            pgroup%pid(pgroup%ins(is)+pgroup%nps(is)-pgroup%nchdts_up(is),chdtspid)=ips
-          endif
-        enddo
-c        write(0,*) 'exit check_cc3d, up, do',pgroup%nchdts_up,pgroup%nchdts_down
+        dd = max(ddx,ddy,ddz)
+c       --- if dd<ccmin or dd>ccmax, register particle for move to group/species with 
+c       --- appropriate time step 
+        if(myndts>1 .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
+c         --- flag to move to group with smaller time step
+          pgroup%pid(ip0,chdtspid) = -1.
+        elseif(pgroup%lvdts(is+1) .and. myndts<ndtsmax .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
+     &         .not. l_pisnearbycond) then
+c         --- flag to move to group with larger time step
+          pgroup%pid(ip0,chdtspid) = +1.
+        endif
+      enddo
+
+      if (nxc>0) deallocate(pisnearbycond)
+
 !$OMP MASTER
-      if (lw3dtimesubs) timecheckcc3d = timecheckcc3d + wtime() - substarttime
+      if (lw3dtimesubs) timecheck_cc3d = timecheck_cc3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
@@ -5971,14 +5992,14 @@ c=============================================================================
 
 c     --- Zero the rho copy for species when the positions
 c     --- are advanced.
-c     --- rhopndts(:,:,:,2,in1) holds the old rho which is still needed
+c     --- rhopndts(:,:,:,1,in1) holds the old rho which is still needed
 c     --- for the faster advanced groups.
       do in1=0,nsndts-1
         if (ldts(in1)) then
           if (nrhopndtscopies == 2) then
-            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+            rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,0,in1)
           endif
-          call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+          call zeroarry(rhopndts(:,:,:,0,in1),(nxp+1)*(nyp+1)*(nzp+1))
         endif
       enddo
 
@@ -5997,21 +6018,21 @@ c=============================================================================
 
 c     --- During the generate, do the copy of the new rhop to the old rhop
 c     --- for group 0, which is normally done during the zerorhop call.
-      if (it == 0) rhopndts(:,:,:,2,0) = rhopndts(:,:,:,1,0)
+      if (it == 0) rhopndts(:,:,:,1,0) = rhopndts(:,:,:,0,0)
 
 c     --- Save the rho where the fastest particle's rho is. For now,
 c     --- assume that this is in1=0
       do in1=1,nsndts-1
         if (it == 0) then
 c         --- At it==0, before the first step, always add the new rho.
-          rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+          rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
         elseif (mod(rhotondts(in1),2) == 1) then
 c         --- Use the rho that is closest in time to the current time.
           if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
      &        mod(it-1,rhotondts(in1)) == 0) then
-            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+            rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
           else
-            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
+            rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,1,in1)
           endif
         else
 c         --- When ndts is even, at the mid point of the step, take the
@@ -6019,13 +6040,13 @@ c         --- average of the old and the new
 c         --- Otherwise, use the rho that is closest in time to the currentc
 c         --- time.
           if (mod(it-1,rhotondts(in1)) == rhotondts(in1)/2) then
-            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) +
-     &       0.5*(rhopndts(:,:,:,1,in1) + rhopndts(:,:,:,2,in1))
+            rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) +
+     &       0.5*(rhopndts(:,:,:,0,in1) + rhopndts(:,:,:,1,in1))
           else if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
      &             mod(it-1,rhotondts(in1)) == 0) then
-            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,1,in1)
+            rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
           else
-            rhopndts(:,:,:,2,0) = rhopndts(:,:,:,2,0) + rhopndts(:,:,:,2,in1)
+            rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,1,in1)
           endif
         endif
       enddo
@@ -6045,7 +6066,7 @@ c     --- are advanced.
         if (mod(rhotondts(in1),2) == 1) then
 c         --- rho is zeroed for all of the odd cases
           if (ldts(in1)) then
-            call zeroarry(rhopndts(:,:,:,1,in1),(nxp+1)*(nyp+1)*(nzp+1))
+            call zeroarry(rhopndts(:,:,:,0,in1),(nxp+1)*(nyp+1)*(nzp+1))
           endif
         else
           print*,"This version of subcyling is not supported with even step sizes."
@@ -6063,7 +6084,7 @@ c                 exit
 c               endif
 c             endif
 c           enddo
-c           if (lzeroeven) rhopndts(:,:,:,1,in1) = 0.
+c           if (lzeroeven) rhopndts(:,:,:,0,in1) = 0.
 c         endif
         endif
       enddo
@@ -6097,12 +6118,12 @@ c     --- The copy is only needed if there are multiple groups of ndts.
 c           --- Copy the individual speices rho to its array holding the
 c           --- total rho.
             if (mod(rhotondts(in1),2) == 1) then
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,1,in1)
+              rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,0,in1)
             else
 c             --- For ndts even, some contribution may already have been made
 c             --- in setupevensubcyclingrho.
-              rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                                rhopndts(:,:,:,1,in1)
+              rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,1,in1) +
+     &                                rhopndts(:,:,:,0,in1)
             endif
           endif
         enddo
@@ -6115,8 +6136,8 @@ c             --- in setupevensubcyclingrho.
 c           --- For groups with larger time steps, add in their rho
 c           --- now since it only needs to be done once.
 c           --- Also, if only sampling instead of averaging.
-            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                              rhopndts(:,:,:,1,in2)
+            rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,1,in1) +
+     &                              rhopndts(:,:,:,0,in2)
           else if (rhotondts(in1) > rhotondts(in2)) then
 c           --- For groups with smaller times steps, add in the
 c           --- fractional contribution.
@@ -6145,8 +6166,8 @@ c           --- and its rho won't change every step and its contribution
 c           --- doesn't needed to be added in every step. Right now
 c           --- though I'm too lazy to figure out the logic and the
 c           --- weighting factors.
-            rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-     &                              rhopndts(:,:,:,1,in2)*rndts
+            rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,1,in1) +
+     &                              rhopndts(:,:,:,0,in2)*rndts
           endif
         enddo
       enddo
@@ -6191,6 +6212,7 @@ c=============================================================================
       use Subcycling
       use Fields3dParticles
       use GridBoundary3d
+      use FieldSolveAPI, Only: lzerorhofsapi
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -6202,7 +6224,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2,isid
       integer(ISZ):: ip,ipmin,is,indts
-      real(kind=8):: swtmp
+      real(kind=8):: swtmp,zgrdndts
       real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
       logical(ISZ):: lzeroeven
@@ -6220,6 +6242,7 @@ c     --- made changes.
 
       if (fstype == 12) then
 c       --- Use user registered solver to load rho
+        lzerorhofsapi = lzero
         call execuser("loadrhoregistered")
       else
 
@@ -6284,10 +6307,11 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
              if (pgroup%ldts(is)) then
 c              --- Only load the rho if the positions have been advanced.
                indts = ndtstorho(pgroup%ndts(is-1))
-               call setrho3d(rhopndts(:,:,:,1,indts),
-     &                       rhopndts(:,:,:,1,indts),nps_u,
+               zgrdndts = zgrid + (zgrid-zgridprv)*(pgroup%ndts(is-1)-1)
+               call setrho3d(rhopndts(:,:,:,0,indts),
+     &                       rhopndts(:,:,:,0,indts),nps_u,
      &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                    zgrid,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
+     &                    zgrdndts,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
      &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                    l2symtry,l4symtry)
              endif
@@ -6351,15 +6375,17 @@ c            --- loop over particle blocks
            endif
         enddo
 
-c       --- Add together the rhop from the species with different time steps
-c       --- This must be done after all of the species has been deposited.
-        if(solvergeom==XYZgeom) then
-          if (ndtsaveraging == 0) then
-            call averagerhowithsampledsubcycling()
-          elseif (ndtsaveraging == 1) then
-            call averagerhowithfullvsubcycling()
-          elseif (ndtsaveraging == 2) then
-            call averagerhowithhalfvsubcycling()
+        if (lzero) then
+c         --- Add together the rhop from the species with different time steps
+c         --- This must be done after all of the species has been deposited.
+          if(solvergeom==XYZgeom) then
+            if (ndtsaveraging == 0) then
+              call averagerhowithsampledsubcycling()
+            elseif (ndtsaveraging == 1) then
+              call averagerhowithfullvsubcycling()
+            elseif (ndtsaveraging == 2) then
+              call averagerhowithhalfvsubcycling()
+            endif
           endif
         endif
 
@@ -6402,7 +6428,7 @@ c         if (rhotondts(in1) > rhotondts(in2)) then
 c           if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
 c             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
 c             if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
-c               rhopndts(:,:,:,2,in1) = 0.
+c               rhopndts(:,:,:,1,in1) = 0.
 c               exit
 c             endif
 c           endif
@@ -6419,8 +6445,8 @@ c           if (mod(rhotondts(in1),rhotondts(in2)) == 0) then
 c             ndtstmp = rhotondts(in1) - mod(rhotondts(in1),2)
 c             if (mod(it-1,rhotondts(in1)) == ndtstmp/2) then
 c               rndts = 0.5/rhotondts(in1)
-c               rhopndts(:,:,:,2,in1) = rhopndts(:,:,:,2,in1) +
-c    &                                  rhopndts(:,:,:,1,in2)*rndts
+c               rhopndts(:,:,:,1,in1) = rhopndts(:,:,:,1,in1) +
+c    &                                  rhopndts(:,:,:,0,in2)*rndts
 c             endif
 c           endif
 c         endif
@@ -6594,7 +6620,7 @@ c     endif
 
 c     --- rhop and phip have the special values for the species which are
 c     --- incremented every time step.
-      call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies,0),
+      call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies-1,0),
      &                       phipndts(:,:,:,0))
 
 c     --- Note that special coding is needed to clean up the rhopndts array
@@ -6609,6 +6635,7 @@ c     --- rhop is expensive.
 c=============================================================================
       subroutine fetche3d(pgroup,ipmin,ip,is)
       use ParticleGroupmodule
+      use Particles, toppgroup => pgroup
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -6621,73 +6648,34 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
-      use DKInterptmp
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
 
 c     --- Obtain the self-field from the electrostatic potential
 
+      real(kind=8),pointer:: ex(:),ey(:),ez(:)
       integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      ex => pgroup%ex(ipmin:ipmin+ip-1)
+      ey => pgroup%ey(ipmin:ipmin+ip-1)
+      ez => pgroup%ez(ipmin:ipmin+ip-1)
+
       if(fstype == 12) then
+        pgroupfsapi = pgroup
         jsfsapi = is - 1
-#ifdef XLF
-c       --- The pointer assignment breaks with the xlf compilers, so instead
-c       --- new arrays are allocated and those are used as the work space.
-c       --- This is less efficient since there is overhead in the allocation
-c       --- and the data needs to be copied around.
-        allocate(xfsapi(ip),yfsapi(ip),zfsapi(ip))
-        allocate(exfsapi(ip),eyfsapi(ip),ezfsapi(ip))
-        xfsapi = pgroup%xp(ipmin:ipmin+ip-1)
-        yfsapi = pgroup%yp(ipmin:ipmin+ip-1)
-        zfsapi = pgroup%zp(ipmin:ipmin+ip-1)
-#else
-#ifdef XLF2
-        api_xlf2 = .true.
-        ipfsapi    = ip
         ipminfsapi = ipmin
-        allocate(exfsapi(ip),eyfsapi(ip),ezfsapi(ip))
-#else
-        xfsapi => pgroup%xp(ipmin:ipmin+ip-1)
-        yfsapi => pgroup%yp(ipmin:ipmin+ip-1)
-        zfsapi => pgroup%zp(ipmin:ipmin+ip-1)
-        exfsapi => ex(1:ip)
-        eyfsapi => ey(1:ip)
-        ezfsapi => ez(1:ip)
-#endif
-#endif
+        npfsapi = ip
         call execuser("fetcheregistered")
         jsfsapi = -1
-#ifdef XLF
-        ex(1:ip) = exfsapi
-        ey(1:ip) = eyfsapi
-        ez(1:ip) = ezfsapi
-        deallocate(xfsapi,yfsapi,zfsapi)
-        deallocate(exfsapi,eyfsapi,ezfsapi)
-#else
-#ifdef XLF2
-        ex(1:ip) = exfsapi
-        ey(1:ip) = eyfsapi
-        ez(1:ip) = ezfsapi
-        deallocate(exfsapi,eyfsapi,ezfsapi)
-#else
-        nullify(exfsapi)
-        nullify(eyfsapi)
-        nullify(ezfsapi)
-        nullify(xfsapi)
-        nullify(yfsapi)
-        nullify(zfsapi)
-#endif
-#endif
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry)
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,efetch,
+     &              ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
@@ -6812,13 +6800,13 @@ c       --- and the data needs to be copied around.
 c=============================================================================
       subroutine fetchb3d(pgroup,ipmin,ip,is)
       use ParticleGroupmodule
-      use DKInterptmp
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
       call fetchb3dfrompositions(is,ip,
      &                           pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                           pgroup%zp(ipmin),
-     &                           bx,by,bz)
+     &                           pgroup%bx(ipmin),pgroup%by(ipmin),
+     &                           pgroup%bz(ipmin))
       return
       end
 c=============================================================================
@@ -6831,7 +6819,6 @@ c=============================================================================
       use InMesh3d
       use Picglb
       use Picglb3d
-      use Particles, only: chdtspid
       type(ParticleGroup):: pgroup
 
 c Does everything needed to apply particle boundary conditions.
@@ -7959,7 +7946,7 @@ c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
-        call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies,indts),
+        call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
      &                                 phipndts(:,:,:,isndts))
 
 c       --- enforce periodicity
@@ -7989,7 +7976,7 @@ c         --- If not in bend, call VP3D
             if (boundnz == periodic)  izmax = nz
             tnz = izmax - izmin + 1
 #ifndef MPIPARALLEL
-            call copyarry(rhopndts(:,:,izmin,nrhopndtscopies,indts),
+            call copyarry(rhopndts(:,:,izmin,nrhopndtscopies-1,indts),
      &                    phipndts(:,:,izmin,isndts),
      &                    (nx+1)*(ny+1)*(tnz))
 #else
@@ -8017,7 +8004,7 @@ c     --- End loop over ndts groups
 
 c     --- Points to the values that are used by the most frequently time
 c     --- advanced group.
-      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies,0),
+      call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies-1,0),
      &                     phipndts(:,:,:,0))
 
 !$OMP MASTER
