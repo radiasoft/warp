@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.22 $, $Date: 2006/08/01 22:35:27 $
+c@(#) File WRZ.M, version $Revision: 3.23 $, $Date: 2006/10/27 20:22:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1038,12 +1038,18 @@ c  and also advances RHO.
  
  
       integer(ISZ):: is,ipmin,ip,i,isid,ismax
-      real(kind=8):: er(nparpgrp), et(nparpgrp), ez(nparpgrp)
-      real(kind=8):: br(nparpgrp), bt(nparpgrp), bz(nparpgrp)
+      real(kind=8),pointer:: er(:), et(:), ez(:)
+      real(kind=8),pointer:: br(:), bt(:), bz(:)
       real(kind=8):: frext(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
  
       ismax = maxval(pgroup%sid)+1
+      er => pgroup%ex
+      et => pgroup%ey
+      ez => pgroup%ez
+      br => pgroup%bx
+      bt => pgroup%by
+      bz => pgroup%bz
 
 c  Zero RHO if particles are advanced
       if (center.eq."fullv" .or. center.eq."halfv") then
@@ -1069,11 +1075,11 @@ c  Call seterz to fill E_z and E_r arrays
          if (it .le. 1) then
          call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
+     &                efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          else
          call seterz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
+     &                efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          endif
          call setexte(it,dt,dz,vbeam,nr,nz)
  
@@ -1082,18 +1088,19 @@ c  Loop over particle block, and move each block seperately
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
             call seterz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                   efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
+     &                   efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
             call othererz(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dr,dz,nr,nz,zmmin,er,et,ez,
+     &                    eearsofz,dr,dz,nr,nz,zmmin,er(ipmin),et(ipmin),ez(ipmin),
      &                    eearsrz,rmmin,ezext)
             call exterz (ip,pgroup%zp(ipmin),pgroup%uzp(ipmin),zbeam,pgroup%xp(ipmin),
-     &                   ez0,er,et,ez,dedr)
+     &                   ez0,er(ipmin),et(ipmin),ez(ipmin),dedr)
             call extbrz (ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),br,bt,bz)
+     &                   pgroup%uzp(ipmin),pgroup%gaminv(ipmin),br(ipmin),bt(ipmin),bz(ipmin))
             call pushrz (center, ip, pgroup%xp(ipmin), pgroup%yp(ipmin), pgroup%zp(ipmin),
      &                   pgroup%uxp(ipmin), pgroup%uyp(ipmin), pgroup%uzp(ipmin), pgroup%gaminv(ipmin),
-     &                   er, et, ez, br, bt, bz, frext, pgroup%sq(is), pgroup%sm(is),
+     &                   er(ipmin), et(ipmin), ez(ipmin), br(ipmin), bt(ipmin), bz(ipmin),
+     &                   frext, pgroup%sq(is), pgroup%sm(is),
      &                   dt, gamadv)
             if (center .eq. "synchv") then
 c             --- copy 'old' velocity into temp array uxpo,uypo, and uzpo for
