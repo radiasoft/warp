@@ -22,7 +22,7 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 
-warputils_version = "$Id: warputils.py,v 1.13 2006/08/30 22:55:43 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.14 2006/10/31 01:53:55 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -260,10 +260,10 @@ logically Cartesian mesh.
   for i in range(nskip):
     ff.readline()
 
-  # --- Loop over the file, reading on one line at a time.
+  # --- Loop over the file, reading in one line at a time.
   # --- Each whole line is put into data at once.
-  # --- For the conversion of the strings into numbers, it is faster to use float or
-  # --- int rather than eval.
+  # --- For the conversion of the strings into numbers, it is faster to use
+  # --- float or int rather than eval.
   i = 0
   while i < ntot:
     dataline = map(converter,string.split(ff.readline()))
@@ -271,22 +271,25 @@ logically Cartesian mesh.
     data[i:i+nd] = dataline
     i = i + nd
 
+  if not fortranordering:
+    # --- reverse the order of the dims to prepare the transpose that follows
+    dims = list(dims)
+    dims.reverse()
+
   # --- If nquantities, then add another dimension to the data array
   if nquantities > 1:
+    dims0 = dims
     dims = [nquantities] + list(dims)
   else:
     dims = list(dims)
 
   # --- Set array to have proper shape.
+  dims.reverse()
+  data.shape = tuple(dims)
   if fortranordering:
-    # --- This gives the array fortran ordering, where the index that varies
-    # --- that fastest in the file will be the first index.
-    dims.reverse()
-    data.shape = tuple(dims)
     data = transpose(data)
   else:
-    # --- C ordering
-    data.shape = tuple(dims)
+    data = transpose(data,[len(dims0)]+range(len(dims0)))
 
   return data
 
