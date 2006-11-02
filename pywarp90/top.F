@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.192 $, $Date: 2006/10/27 20:07:06 $
+c@(#) File TOP.F, version $Revision: 3.193 $, $Date: 2006/11/02 02:06:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3737,48 +3737,39 @@ c     --- of the particle arrays.
       do is=1,pgroup%ns
 
 c       --- initialize counter and save particle's start and number
-        ip = pgroup%ins(is)
+        ip0 = pgroup%ins(is)
         ins_init(is) = pgroup%ins(is)
         nps_init(is) = pgroup%nps(is)
 
 c       --- Loop over particles and pick out the ones which have been flagged
 c       --- to be moved to a different ndts group.
-        do while (ip < pgroup%ins(is) + pgroup%nps(is))
+        do while (ip0 < pgroup%ins(is) + pgroup%nps(is))
 
 c         --- If particle is going to a faster group, switch with lowest particle
 c         --- in the arrays.
-          if (pgroup%pid(ip,chdtspid) < 0.) then
-            pgroup%pid(ip,chdtspid) = 0.
+          if (is > 1 .and. pgroup%pid(ip0,chdtspid) < 0.) then
 
+            ip = ip0
             idest = pgroup%ins(is)
             pgroup%ins(is) = pgroup%ins(is) + 1
             pgroup%nps(is) = pgroup%nps(is) - 1
 
-            temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
-            temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
-            temp = pgroup%zp(ip); pgroup%zp(ip) = pgroup%zp(idest); pgroup%zp(idest) = temp
+          elseif (is < pgroup%ns .and. pgroup%pid(ip0,chdtspid) > 0.) then
 
-            temp = pgroup%uxp(ip); pgroup%uxp(ip) = pgroup%uxp(idest); pgroup%uxp(idest) = temp
-            temp = pgroup%uyp(ip); pgroup%uyp(ip) = pgroup%uyp(idest); pgroup%uyp(idest) = temp
-            temp = pgroup%uzp(ip); pgroup%uzp(ip) = pgroup%uzp(idest); pgroup%uzp(idest) = temp
-
-            temp = pgroup%gaminv(ip); pgroup%gaminv(ip) = pgroup%gaminv(idest); pgroup%gaminv(idest) = temp
-
-            temp = pgroup%ex(ip); pgroup%ex(ip) = pgroup%ex(idest); pgroup%ex(idest) = temp
-            temp = pgroup%ey(ip); pgroup%ey(ip) = pgroup%ey(idest); pgroup%ey(idest) = temp
-            temp = pgroup%ez(ip); pgroup%ez(ip) = pgroup%ez(idest); pgroup%ez(idest) = temp
-
-            temp = pgroup%bx(ip); pgroup%bx(ip) = pgroup%bx(idest); pgroup%bx(idest) = temp
-            temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
-            temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
-
-            pidtemp = pgroup%pid(ip,:); pgroup%pid(ip,:) = pgroup%pid(idest,:); pgroup%pid(idest,:) = pidtemp
-
-          elseif (pgroup%pid(ip,chdtspid) > 0.) then
-            pgroup%pid(ip,chdtspid) = 0.
-
+            ip = ip0
             idest = pgroup%ins(is) + pgroup%nps(is) - 1
             pgroup%nps(is) = pgroup%nps(is) - 1
+c           --- Note that the particle swapped in stills need to be checked.
+            ip0 = ip0 - 1
+
+          else
+            ip = -1
+          endif
+
+c         --- This must be set for all particles since it will be used in the synchv
+c         --- instead of pgroup%ndts.
+
+          if (ip > 0) then
 
             temp = pgroup%xp(ip); pgroup%xp(ip) = pgroup%xp(idest); pgroup%xp(idest) = temp
             temp = pgroup%yp(ip); pgroup%yp(ip) = pgroup%yp(idest); pgroup%yp(idest) = temp
@@ -3798,57 +3789,19 @@ c         --- in the arrays.
             temp = pgroup%by(ip); pgroup%by(ip) = pgroup%by(idest); pgroup%by(idest) = temp
             temp = pgroup%bz(ip); pgroup%bz(ip) = pgroup%bz(idest); pgroup%bz(idest) = temp
 
+            pgroup%pid(ip,chdtspid) = 0.
             pidtemp = pgroup%pid(ip,:); pgroup%pid(ip,:) = pgroup%pid(idest,:); pgroup%pid(idest,:) = pidtemp
 
-            ip = ip - 1
           endif
 
-c         --- advance ip
-          ip = ip + 1
+c         --- advance ip0
+          ip0 = ip0 + 1
+
         enddo
+
 c       --- end of loop over species
       enddo
 
-c     --- Now, swap the contributions of rho for the particles that moved up and down. This
-c     --- involves temporarily changing the values of ins, nps, sw, and ldts.
-      ins_save = pgroup%ins
-      nps_save = pgroup%nps
-      ldts_save = pgroup%ldts
-      pgroup%ldts = .true.
-
-c     --- Remove the contributions from the particles that are to be moved.
-c     --- The weight is made negative to remove the contribution.
-      pgroup%sw = -pgroup%sw
-c     --- Particles going down...
-      pgroup%ins = ins_init
-      pgroup%nps = ins_save - ins_init
-      call loadrho3d(pgroup,-1,-1,-1,.false.)
-c     --- Particles going up...
-      pgroup%ins = ins_save + nps_save
-      pgroup%nps = ins_init + nps_init - pgroup%ins
-      call loadrho3d(pgroup,-1,-1,-1,.false.)
-c     --- Fix the sign of the weight
-      pgroup%sw = -pgroup%sw
-
-c     --- Add the contributions to their new species
-c     --- This assumes that all species have the same weight (which must be
-c     --- true anyway in order to be swapping particles around).
-c     --- Particles going down...
-      pgroup%ins(:pgroup%ns-1) = ins_init(2:)
-      pgroup%nps(:pgroup%ns-1) = ins_save(2:) - ins_init(2:)
-      pgroup%nps(pgroup%ns) = 0
-      call loadrho3d(pgroup,-1,-1,-1,.false.)
-c     --- Particles going up...
-      pgroup%ins(2:) = ins_save(:pgroup%ns-1) + nps_save(:pgroup%ns-1)
-      pgroup%nps(2:) = ins_init(:pgroup%ns-1) + nps_init(:pgroup%ns-1) - pgroup%ins(2:)
-      pgroup%nps(1) = 0
-      call loadrho3d(pgroup,-1,-1,-1,.false.)
-
-c     --- Restore the values
-      pgroup%ins = ins_save
-      pgroup%nps = nps_save
-      pgroup%ldts = ldts_save
-     
 c     --- Now, swap the particle between species.
       do is=1,pgroup%ns - 1
         ndown = pgroup%ins(is+1) - ins_init(is+1)
@@ -3920,6 +3873,19 @@ c       --- Move any particles that are left over
           pgroup%pid(ip0:ip,:) = 0.
         endif
 
+        if ((pgroup%nps(is) + pgroup%nps(is+1)) > 0) then
+c         --- This puts ipmax_s is a nice place between the species that allows
+c         --- each to grew without shifting particles around.
+c         --- Though ipmax_s will most likely be removed since it is not really
+c         --- needed.
+          pgroup%ipmax_s(is) = (pgroup%nps(is)*(pgroup%ins(is) + pgroup%nps(is) - 1) +
+     &                          pgroup%nps(is+1)*(pgroup%ins(is+1) - 1))/
+     &                         (pgroup%nps(is) + pgroup%nps(is+1))
+        else
+          pgroup%ipmax_s(is) = (pgroup%ins(is) + pgroup%nps(is) - 1 +
+     &                          pgroup%ins(is+1) - 1)/2
+        endif
+
       enddo
 
       return
@@ -3936,6 +3902,7 @@ c the self B correction.
 c These are generic and can be used by any field solver.
 
       integer(ISZ):: js1,js2,isid
+
       logical(ISZ):: lnew
 
 c     --- Find any new species with different fselfb.
