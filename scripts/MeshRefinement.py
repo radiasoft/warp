@@ -597,7 +597,7 @@ not be fetched from there (it is set negative).
     for block in self.listofblocks:
       SubcycledPoissonSolver.averagerhopwithsubcycling(block)
 
-  def setrhop(self,x,y,z,uz,q,w,lrootonly=0):
+  def setrhop(self,x,y,z,uz,q,w,zgrid,lrootonly=0):
     """
 Given the list of particles, a charge and a weight, deposits the charge
 density of the mesh structure.
@@ -621,7 +621,7 @@ relative to the parent.
     # --- For each block, pass to it the particles in it's domain.
     i = 0
     for block,n in zip(self.root.listofblocks,nperchild):
-      MultiGrid.setrhop(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
+      MultiGrid.setrhop(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w,zgrid)
       i = i + n
 
   def aftersetrhop(self,lzero):
