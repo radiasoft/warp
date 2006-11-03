@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.43 $, $Date: 2006/10/27 20:11:19 $
+c TOPSLAVE.M, version $Revision: 1.44 $, $Date: 2006/11/03 13:42:52 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -85,6 +85,7 @@ c     call VTSYMDEF(60, "ZBND", "CPY2", IERR)
 c     call VTSYMDEF(70, "ZBND", "PLOR", IERR)
 c     call VTBEGIN(10,IERR)
 #endif
+
 
 c     --- Set ldoagain flag to false. Later on, particles received are checked
 c     --- if they are within the bounds and if any are not, ldoagain is set
@@ -265,14 +266,14 @@ c       --- Copy particles being sent to the left to buffer1.
                 buffer1(ii+ 4*nn:ii+ 5*nn-1) = pgroup%uyp(ip:ip+nn-1)
                 buffer1(ii+ 5*nn:ii+ 6*nn-1) = pgroup%uzp(ip:ip+nn-1)
                 buffer1(ii+ 6*nn:ii+ 7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
-                buffer1(ii+ 7*nn:ii+ 8 nn-1) = pgroup%ex(ip:ip+nn-1)
-                buffer1(ii+ 8 nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
+                buffer1(ii+ 7*nn:ii+ 8*nn-1) = pgroup%ex(ip:ip+nn-1)
+                buffer1(ii+ 8*nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
                 buffer1(ii+ 9*nn:ii+10*nn-1) = pgroup%ez(ip:ip+nn-1)
-                buffer1(ii+10*nn:ii+11 nn-1) = pgroup%bx(ip:ip+nn-1)
-                buffer1(ii+11 nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
+                buffer1(ii+10*nn:ii+11*nn-1) = pgroup%bx(ip:ip+nn-1)
+                buffer1(ii+11*nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
                 buffer1(ii+12*nn:ii+13*nn-1) = pgroup%bz(ip:ip+nn-1)
                 do ipid=1,pgroup%npid
-                  buffer1(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
+                  buffer1(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -301,14 +302,14 @@ c       --- Copy particles being sent to the right to buffer2.
                 buffer2(ii+ 4*nn:ii+ 5*nn-1) = pgroup%uyp(ip:ip+nn-1)
                 buffer2(ii+ 5*nn:ii+ 6*nn-1) = pgroup%uzp(ip:ip+nn-1)
                 buffer2(ii+ 6*nn:ii+ 7*nn-1) = pgroup%gaminv(ip:ip+nn-1)
-                buffer2(ii+ 7*nn:ii+ 8 nn-1) = pgroup%ex(ip:ip+nn-1)
-                buffer2(ii+ 8 nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
+                buffer2(ii+ 7*nn:ii+ 8*nn-1) = pgroup%ex(ip:ip+nn-1)
+                buffer2(ii+ 8*nn:ii+ 9*nn-1) = pgroup%ey(ip:ip+nn-1)
                 buffer2(ii+ 9*nn:ii+10*nn-1) = pgroup%ez(ip:ip+nn-1)
-                buffer2(ii+10*nn:ii+11 nn-1) = pgroup%bx(ip:ip+nn-1)
-                buffer2(ii+11 nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
+                buffer2(ii+10*nn:ii+11*nn-1) = pgroup%bx(ip:ip+nn-1)
+                buffer2(ii+11*nn:ii+12*nn-1) = pgroup%by(ip:ip+nn-1)
                 buffer2(ii+12*nn:ii+13*nn-1) = pgroup%bz(ip:ip+nn-1)
                 do ipid=1,pgroup%npid
-                  buffer2(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
+                  buffer2(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1) = pgroup%pid(ip:ip+nn-1,ipid)
                 enddo
                 ii = ii + nn*nquant
               endif
@@ -391,7 +392,7 @@ c     call VTBEGIN(60,IERR)
               pgroup%by(ip:ip+nn-1)     = buffer3(ii+11*nn:ii+12*nn-1)
               pgroup%bz(ip:ip+nn-1)     = buffer3(ii+12*nn:ii+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
               pgroup%ins(is) = pgroup%ins(is) - nn
@@ -423,7 +424,7 @@ c     call VTBEGIN(60,IERR)
               pgroup%by(ip:ip+nn-1)     = buffer4(ii+11*nn:ii+12*nn-1)
               pgroup%bz(ip:ip+nn-1)     = buffer4(ii+12*nn:ii+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(nquant-1+ipid)*nn:ii+(nquant+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1)
               enddo
               ii = ii + nquant*nn
               pgroup%nps(is) = pgroup%nps(is) + nn
@@ -433,6 +434,21 @@ c     call VTBEGIN(60,IERR)
             endif
           enddo
         endif
+
+        do is=1,ns
+          if ((pgroup%nps(is) + pgroup%nps(is+1)) > 0) then
+c           --- This puts ipmax_s is a nice place between the species that allows
+c           --- each to grew without shifting particles around.
+c           --- Though ipmax_s will most likely be removed since it is not really
+c           --- needed.
+            pgroup%ipmax_s(is) = (pgroup%nps(is)*(pgroup%ins(is) + pgroup%nps(is) - 1) +
+     &                            pgroup%nps(is+1)*(pgroup%ins(is+1) - 1))/
+     &                           (pgroup%nps(is) + pgroup%nps(is+1))
+          else
+            pgroup%ipmax_s(is) = (pgroup%ins(is) + pgroup%nps(is) - 1 +
+     &                            pgroup%ins(is+1) - 1)/2
+          endif
+        enddo
 
 #ifdef VAMPIR
 c     call VTEND(60,IERR)
