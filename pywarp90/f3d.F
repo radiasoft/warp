@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.121 $, $Date: 2006/10/06 21:00:37 $
+c@(#) File F3D.M, version $Revision: 3.122 $, $Date: 2006/11/09 15:10:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6329,7 +6329,7 @@ c     --- End of block setting up quads.
 
 c +++++++++++++++++++++++++++
 c     --- add points for electrostatic dipoles
-      if (ndipo >= 0) then
+      if (ndipo >= 0 .and. ldipocond) then
 
 c       --- set prevcent (center of previous dipole) to large negative
 c       --- value to ensure that first dipole is included.
@@ -7005,6 +7005,10 @@ c     --- loop over plate to fill in data
         do iz=izmin,izmax
           if (.not. lcndbndy .or. delx == 0) then
             ncond = ncond + 1
+            if (ncond > conductors%interior%nmax) then
+              conductors%interior%nmax = ncond
+              call gchange("Conductor3d",0)
+            endif
             conductors%interior%indx(0,ncond) = ix_near
             conductors%interior%indx(1,ncond) = iy
             conductors%interior%indx(2,ncond) = iz
@@ -7014,6 +7018,10 @@ c     --- loop over plate to fill in data
             if (mod(ix + iy + iz,2) == 0) then
 c             --- ix is even
               ne = ne + 1
+              if (ne > conductors%evensubgrid%nmax) then
+                conductors%evensubgrid%nmax = ne
+                call gchange("Conductor3d",0)
+              endif
               conductors%evensubgrid%dels(:,ne) = 2.
               conductors%evensubgrid%dels(1,ne) = delx
               conductors%evensubgrid%indx(0,ne) = ix
@@ -7022,6 +7030,10 @@ c             --- ix is even
               conductors%evensubgrid%volt(:,ne) = vvv
 c             --- ix+1 is odd
               no = no + 1
+              if (no > conductors%oddsubgrid%nmax) then
+                conductors%oddsubgrid%nmax = no
+                call gchange("Conductor3d",0)
+              endif
               conductors%oddsubgrid%dels(:,no) = 2.
               conductors%oddsubgrid%dels(0,no) = 1. - delx
               conductors%oddsubgrid%indx(0,no) = ix + 1
@@ -7031,6 +7043,10 @@ c             --- ix+1 is odd
             else
 c             --- ix is odd
               no = no + 1
+              if (no > conductors%oddsubgrid%nmax) then
+                conductors%oddsubgrid%nmax = no
+                call gchange("Conductor3d",0)
+              endif
               conductors%oddsubgrid%dels(:,no) = 2.
               conductors%oddsubgrid%dels(1,no) = delx
               conductors%oddsubgrid%indx(0,no) = ix
@@ -7039,6 +7055,10 @@ c             --- ix is odd
               conductors%oddsubgrid%volt(:,no) = vvv
 c             --- ix+1 is even
               ne = ne + 1
+              if (ne > conductors%evensubgrid%nmax) then
+                conductors%evensubgrid%nmax = ne
+                call gchange("Conductor3d",0)
+              endif
               conductors%evensubgrid%dels(:,ne) = 2.
               conductors%evensubgrid%dels(0,ne) = 1. - delx
               conductors%evensubgrid%indx(0,ne) = ix + 1
@@ -7050,21 +7070,9 @@ c             --- ix+1 is even
         enddo
       enddo
 
-c     --- Print warning if conductor arrays filled up.
-      if (ne == nemax .or. no == nomax .or.
-     &    ncond == ncondmax) then
-        call remark("WARNING: The arrays holding the conductor data have filled")
-        call remark("         up.  Increase size of arrays to ensure all of")
-        call remark("         the conductors have been generated.")
-        call remark("         In function dipopnt.")
-      endif
-
       conductors%interior%n = ncond
-      conductors%interior%nmax = ncondmax
       conductors%evensubgrid%n = ne
-      conductors%evensubgrid%nmax = nemax
       conductors%oddsubgrid%n = no
-      conductors%oddsubgrid%nmax = nomax
 
       return
       end
