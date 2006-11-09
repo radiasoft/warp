@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.183 $, $Date: 2006/10/27 20:10:29 $
+#@(#) File TOP.V, version $Revision: 3.184 $, $Date: 2006/11/09 15:09:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.183 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.184 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -499,6 +499,8 @@ bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
+ldipocond logical  /.false./  # Auto generate flat dipole plates from the
+                              # dipole parameters
 
 ******** Mult_data dump:
 nemltsets          integer /0/  # Number of different electrostatic data sets
