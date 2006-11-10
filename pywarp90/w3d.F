@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.306 $, $Date: 2006/11/02 02:03:45 $
+c@(#) File W3D.F, version $Revision: 3.307 $, $Date: 2006/11/10 21:26:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7148,6 +7148,8 @@ c=============================================================================
 
 c     --- Call the appropriate routine to get the phi
       if (fstype == 12) then
+        jsfsapi = -1
+        npfsapi = n
         xfsapi => x
         yfsapi => y
         zfsapi => z
