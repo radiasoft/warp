@@ -113,7 +113,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
-    # --- Set set parallel related paramters and calculate mesh sizes
+    # --- Set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
       self.nzfull = self.nz
       self.zmminglobal = self.zmmin
@@ -260,7 +260,7 @@ class MultiGrid(SubcycledPoissonSolver):
       self.rhotemp = self.rho
       self.phitemp = self.phi
       SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
-      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rhotemp,
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rhotemp,
                             self.nx,self.ny,self.nz,self.rho,self.nzpguard)
       self.rho = self.rhotemp
       self.phi = self.phitemp
@@ -268,7 +268,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getphipforparticles(self,*args):
     if npes > 0:
-      getphiforparticles3d(self.nx,self.ny,self.nz,self.phi,
+      setphiforparticles3d(self.nx,self.ny,self.nz,self.phi,
                            self.nxp,self.nyp,self.nzp,self.phip)
     SubcycledPoissonSolver.getphipforparticles(self,*args)
 
@@ -359,6 +359,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
+    print self.nz,self.nzfull
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                        self.dx,self.dy,self.dz,self.phi,self.rho,
