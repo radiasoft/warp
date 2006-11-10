@@ -321,7 +321,6 @@ the diagnostic is of interest and is meaningfull.
     ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
     ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
     ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
-    pid = w3d.pgroupfsapi.pid[ipmin-1:ipmin-1+w3d.npfsapi,:]
     self.fetchefrompositions(x,y,z,ex,ey,ez,w3d.pgroupfsapi)
 
   def fetchb(self,**kw):
@@ -531,7 +530,6 @@ class SubcycledPoissonSolver(FieldSolver):
     ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
     ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
     ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
-    pid = w3d.pgroupfsapi.pid[ipmin-1:ipmin-1+w3d.npfsapi,:]
     args = [x,y,z,ex,ey,ez,w3d.pgroupfsapi]
 
     js = w3d.jsfsapi
@@ -556,11 +554,15 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def fetchphi(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
+   #if w3d.npfsapi == 0: return
+   #ipmin = w3d.ipminfsapi
+   #x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+   #y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+   #z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
     if w3d.npfsapi == 0: return
-    ipmin = w3d.ipminfsapi
-    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
-    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
-    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    x = w3d.xfsapi
+    y = w3d.yfsapi
+    z = w3d.zfsapi
 
     js = w3d.jsfsapi
     if js < 0: ndtstorho = 0
