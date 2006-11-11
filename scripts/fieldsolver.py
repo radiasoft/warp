@@ -338,10 +338,9 @@ the diagnostic is of interest and is meaningfull.
   def fetchphi(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
     if w3d.npfsapi == 0: return
-    ipmin = w3d.ipminfsapi
-    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
-    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
-    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+    x = w3d.xfsapi
+    y = w3d.yfsapi
+    z = w3d.zfsapi
     self.fetchphifrompositions(x,y,z,w3d.phifsapi)
 
   def fetcha(self):
