@@ -91,7 +91,7 @@ top.quadpa[4] = top.quadpa[0]
 top.qdelpar[4] = top.qdelpar[0]
 
 top.quadrr = 9./10.*top.quadap # This is to mimmic the egg-shaped rod profile. (esqround.10.8cmRod.aut)
-top.quadde = (top.quadvx - top.quadvy)#/top.quadap**2
+#top.quadde = (top.quadvx - top.quadvy)#/top.quadap**2
 top.quadpw[0:5] = esq_platewid
 top.quadpr = 1.e0
 f3d.rodfract = .5e0
@@ -155,53 +155,33 @@ top.itmomnts[0:4]=[top.nhist,1000000,top.nhist,0]
 top.lhlinechg = false
 top.lhvzofz = false
 top.lhcurrz = true
-# --- set up psor
-top.fstype = 11
+# --- set up multigrid
+top.fstype = 7
 w3d.bound0 = 1 #neumann boundary at iz=0
 w3d.boundnz = 0 #dirichlet boundary at iz=w3d.nz
 w3d.boundxy = 1 #neumann boundary
-f3d.sorparam =    1.957683
 f3d.mgparam = 1.63125
 f3d.downpasses = 4
 f3d.uppasses = 4
-f3d.lcndbndy = true
-f3d.lplates  = true
-f3d.sortol = 2.
 f3d.mgtol = 1.e-3
 f3d.mgmaxiters = 0
-f3d.lchebshv= false
-
-f3d.ncondmax = 1
-f3d.ncndmax = 1
-
 
 # --- Make some plots
 def plotdiode(gridframe=0,axis='x'):
   plotquadoutline(gridframe=gridframe,axis=axis)
   if top.it > 0:
-    plotsrfrv(sourcemin,0.,xxxz3,gridframe=gridframe)
-    plotsrfrv(sourcemax,0.,xxxz3,gridframe=gridframe)
-    plotsrfrv(sourcemin,0.,xxxz3,rscale=-1.,gridframe=gridframe)
-    plotsrfrv(sourcemax,0.,xxxz3,rscale=-1.,gridframe=gridframe)
-    plotsrfrv(extractmin,0.,0.0693166,gridframe=gridframe)
-    plotsrfrv(extractmax,0.,0.0693166,gridframe=gridframe)
-    plotsrfrv(extractmin,0.,0.0693166,rscale=-1.,gridframe=gridframe)
-    plotsrfrv(extractmax,0.,0.0693166,rscale=-1.,gridframe=gridframe)
-    plotsrfrv(plugmin,0.0459994,0.0584962,gridframe=gridframe)
-    plotsrfrv(plugmax,0.0459994,0.0584962,gridframe=gridframe)
-    plotsrfrv(plugmin,0.0459994,0.0584962,rscale=-1.,gridframe=gridframe)
-    plotsrfrv(plugmax,0.0459994,0.0584962,rscale=-1.,gridframe=gridframe)
+    pierce.draw()
+    extractor.draw()
+    plug.draw()
 def myplots():
   #
   pfzx(contours=50,plotsg=0)
-  pfzxi(contours=50,plotsg=0)
   ppzx(iy=w3d.iy_axis,wy=2)
   plotdiode(0,'x')
   limits(0.,zmmax,-.15,.15)
   fma()
   #
   pfzy(contours=50,plotsg=0)
-  pfzyi(contours=50,plotsg=0)
   ppzy(ix=w3d.ix_axis,wx=2)
   plotdiode(0,'y')
   limits(0.,zmmax,-.15,.15)
@@ -265,11 +245,6 @@ w3d.phi[:,:,w3d.nz+1:] = top.quadvx[3]
 top.vinject = v_max
 
 ###########################################################################
-# --- All conductors generated from the lattice are numbered '1'.
-f3d.condnumb[:f3d.ncond] = 1
-f3d.ecnumb[:f3d.necndbdy] = 1
-f3d.ocnumb[:f3d.nocndbdy] = 1
-###########################################################################
 ###########################################################################
 # --- setup source conductor using srfrvinout
 print "Setting up source"
@@ -286,144 +261,75 @@ xxxrc = 0.0980821
 xxxrnose = 0.0362458
 xxxangle = 50.0
 
-def sourcemin():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz <= 0.e0):
-    f3d.srfrv_r = 0.e0
-  elif (zz < xxxz1):
-    f3d.srfrv_r = sqrt(max(0,top.rinject[0]**2 - (top.rinject[0] - zz)**2+1.e-6))
-  elif (zz < xxxz2):
-    f3d.srfrv_r = top.a0 + tan(xxxangle*top.pi/180.)*(zz - xxxz1)
-  elif (zz < xxxz3):
-    f3d.srfrv_r = xxxrc - sqrt(max(0,xxxrnose**2 - (zz-xxxzc)**2))
-  else:
-    f3d.srfrv_r = xxxrc
+rmin = [0.,
+        sqrt(top.rinject[0]**2 - (top.rinject[0] - xxxz1)**2),
+        top.a0 + tan(xxxangle*top.pi/180.)*(xxxz2 - xxxz1),
+        xxxrc]
+zmin = w3d.zmmin+array([0.,xxxz1,xxxz2,xxxz3])
+rcmin = [top.rinject[0],None,-xxxrnose]
 
-def sourcemax():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz < xxxzc):
-    f3d.srfrv_r = xxxr4
-  elif (zz < xxxz3):
-    f3d.srfrv_r = xxxrc + sqrt(max(0,xxxrnose**2 - (zz-xxxzc)**2))
-  else:
-    f3d.srfrv_r = xxxrc
+rmax = [xxxr4,xxxr4,xxxrc]
+zmax = w3d.zmmin+array([0.,xxxzc,xxxz3])
+rcmax = [None,xxxrnose]
 
-is1_start = f3d.ncond
-io1_start = f3d.nocndbdy
-ie1_start = f3d.necndbdy
-# --- make sure there is a point at x=y=0 in the source
-f3d.ncond = f3d.ncond + 1
-f3d.ixcond[f3d.ncond] = 0
-f3d.iycond[f3d.ncond] = 0
-f3d.izcond[f3d.ncond] = 0
-f3d.condvolt[f3d.ncond] = top.vinject[0]
-srfrvinout("sourcemin","sourcemax",top.vinject,w3d.zmmin,w3d.zmmin+xxxz3,0.e0,0.e0,false,
-         w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,true,
-         w3d.zmmin,w3d.zmmax,top.zbeam,w3d.dx,w3d.dy,w3d.dz,w3d.nx,w3d.ny,w3d.nz,w3d.ix_axis,w3d.iy_axis,
-         w3d.xmesh,w3d.ymesh,w3d.l2symtry,w3d.l4symtry)
-is1_end = f3d.ncond
-io1_end = f3d.nocndbdy
-ie1_end = f3d.necndbdy
-# --- Source and Pierce are numbered '2'
-f3d.condnumb[is1_start:is1_end] = 2
-f3d.ecnumb[ie1_start:ie1_end] = 2
-f3d.ocnumb[io1_start:io1_end] = 2
+pierce = ZSrfrvInOut(zmin=w3d.zmmin,zmax=w3d.zmmin+xxxz3,voltage=top.vinject,
+                     rminofzdata=rmin,rmaxofzdata=rmax,
+                     zmindata=zmin,zmaxdata=zmax,
+                     radmindata=rcmin,radmaxdata=rcmax,
+                     condid=2)
+
+installconductors(pierce)
+
 ###########################################################################
 
 # --- setup extraction conductor
 print "Setting up extraction ring"
-
-def extractmin():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz < 0.004318):
-    f3d.srfrv_r = 1.65227e-01
-  elif (zz < 4.45516e-02):
-    f3d.srfrv_r = 12.4993e-2 + sqrt(max(0,(4.02336e-2)**2 - (zz-0.004318)**2))
-  elif (zz < 0.050546):
-    f3d.srfrv_r = 10.2286e-2 - sqrt(max(0,1.23825e-2**2 - (0.0569341 - zz)**2))
-  elif (zz < 0.0529336):
-    f3d.srfrv_r = 0.0835914 - sqrt(max(0,2.38760e-3**2 - (0.0529336 - zz)**2))
-  elif (zz < 0.0553212):
-    f3d.srfrv_r = 0.0812038
-  elif (zz < 0.0584962):
-    f3d.srfrv_r = 0.0624865
-  elif (zz < 0.0608838):
-    f3d.srfrv_r = 0.0812038
-  elif (zz < 0.0632714):
-    f3d.srfrv_r = 0.0835914 - sqrt(max(0,2.38760e-3**2 - (0.0608838 - zz)**2))
-  elif (zz < 0.0693166):
-    f3d.srfrv_r = 0.102286 - sqrt(max(0,1.23825e-2**2 - (0.0569341 - zz)**2))
-  else:
-    f3d.srfrv_r = 0.11
-
-def extractmax():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz < 0.004318):
-    f3d.srfrv_r = 1.89992e-01
-  elif (zz < 0.0693166):
-    f3d.srfrv_r = 12.4993e-2 + sqrt(max(0,(6.49986e-2)**2 - (zz-0.004318)**2))
-  else:
-    f3d.srfrv_r = 0.11
+rmin = [1.65227e-01,1.65227e-01,12.4993e-2,0.102286,0.091678526943706151,
+        0.083591399873139335,
+        0.0812038,0.0812038,0.0624865,0.0624865,0.0812038,0.0812038,0.0835914,0.09164809912811743,
+        0.102286,0.11]
+zmin = w3d.zmmin + array([0.,0.004318,4.45516e-02,4.45516e-02,0.050546,0.050546,0.0529336,0.0553212,
+                          0.0553212,0.0584962,0.0584962,0.0608838,0.0632714,0.0632714,0.0693166,0.0693166],)
+rcmin = [None,4.02336e-2,None,-1.23825e-2,None,-2.38760e-3,None,None,None,None,None,-2.38760e-3,None,-1.23825e-2,None]
 
 
+rmax = [1.89992e-01,1.89992e-01,0.124993,0.11]
+zmax = w3d.zmmin + array([0.,0.004318,0.0693166,0.0693166])
+rcmax = [None,6.49986e-2,None]
 
-is2_start = f3d.ncond
-io2_start = f3d.nocndbdy
-ie2_start = f3d.necndbdy
-srfrvinout("extractmin","extractmax",extraction_volt,w3d.zmmin,w3d.zmmin+0.0693166,0.e0,0.e0,false,
-         w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,true,
-         w3d.zmmin,w3d.zmmax,top.zbeam,w3d.dx,w3d.dy,w3d.dz,w3d.nx,w3d.ny,w3d.nz,w3d.ix_axis,w3d.iy_axis,
-         w3d.xmesh,w3d.ymesh,w3d.l2symtry,w3d.l4symtry)
+extractor = ZSrfrvInOut(zmin=w3d.zmmin,zmax=w3d.zmmin+0.0693166,voltage=extraction_volt,
+                        rminofzdata=rmin,rmaxofzdata=rmax,
+                        zmindata=zmin,zmaxdata=zmax,
+                        radmindata=rcmin,radmaxdata=rcmax,
+                        condid=2)
 
 ###########################################################################
 
 # --- setup extraction conductor PLUG
 print "Setting up extraction ring PLUG"
 
-def plugmin():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz == 0.0459994):
-    f3d.srfrv_r = 0.0599948
-  elif (zz < 0.0510032):
-    f3d.srfrv_r = 0.0599948 - sqrt(max(0,0.50038e-2**2 - (0.0510032 - zz)**2+1.e-6))
-  elif (zz < 0.0534924):
-    f3d.srfrv_r = 0.054991
-  elif (zz < 0.0584962):
-    f3d.srfrv_r = 0.0599948 - sqrt(max(0,0.50038e-2**2 - (0.0534924 - zz)**2+1.e-6))
-  else:
-    f3d.srfrv_r = 0.0674878
+rmin = [0.0599948,0.054991,0.054991,0.0599948,0.0674878]
+zmin = w3d.zmmin + array([0.0459994,0.0510032,0.0534924,0.0584962,0.0584962])
+rcmin = [-0.50038e-2,None,-0.50038e-2,None]
 
-def plugmax():
-  zz = f3d.srfrv_z - w3d.zmmin
-  if (zz == 0.0459994):
-    f3d.srfrv_r = 0.0599948
-  elif (zz < 0.0510032):
-    f3d.srfrv_r = 0.062484 + sqrt(max(0,0.50038e-2**2 - (0.0510032 - zz)**2+1.e-6))
-  elif (zz < 0.0584962):
-    f3d.srfrv_r = 0.0674878
+rmax = [0.062484,0.0674878,0.062484,0.0674878]
+zmax = w3d.zmmin + array([0.0459994,0.0510032,0.0584962,0.0584962])
+rcmax = [0.50038e-2,None,None]
 
-srfrvinout("plugmin","plugmax",extraction_volt,0.0459994,0.0584962,0.e0,0.e0,false,
-         w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,true,
-         w3d.zmmin,w3d.zmmax,top.zbeam,w3d.dx,w3d.dy,w3d.dz,w3d.nx,w3d.ny,w3d.nz,w3d.ix_axis,w3d.iy_axis,
-         w3d.xmesh,w3d.ymesh,w3d.l2symtry,w3d.l4symtry)
+plug = ZSrfrvInOut(zmin=0.0459994,zmax=0.0584962,voltage=extraction_volt,
+                   rminofzdata=rmin,rmaxofzdata=rmax,
+                   zmindata=zmin,zmaxdata=zmax,
+                   radmindata=rcmin,radmaxdata=rcmax,
+                   condid=3)
 
-is2_end = f3d.ncond
-io2_end = f3d.nocndbdy
-ie2_end = f3d.necndbdy
 
-# --- Extraction electode is numbered '3'
-f3d.condnumb[is2_start:is2_end] = 3
-f3d.ecnumb[ie2_start:ie2_end] = 3
-f3d.ocnumb[io2_start:io2_end] = 3
+installconductors(pierce+extractor+plug)
 
 # --- set so conductor is not recalculated
 f3d.gridmode = 1
 
-if top.fstype == 7:
-  subgrid_sor_to_mg(w3d.nx,w3d.ny,w3d.nz,w3d.dx,w3d.dy,w3d.dz,
-                    w3d.l2symtry,w3d.l4symtry)
 # --- Recalculate the fields
-f3d.sortol = 1.e-3
+f3d.mgtol = 1.e-3
 f3d.mgmaxiters = 100
 fieldsol(-1)
 
