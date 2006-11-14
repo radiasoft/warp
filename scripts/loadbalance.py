@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.49 2006/08/30 22:54:38 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.50 2006/11/14 18:24:23 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -346,8 +346,6 @@ needed since some processors may have more conductor points than others.
   """
   if not lparallel: return
   # --- Save the old values
-  oldiz = top.izslave + 0
-  oldnz = top.nzslave + 0
   oldizfs = top.izfsslave + 0
   oldnzfs = top.nzfsslave + 0
   oldphi = w3d.phi + 0.
@@ -406,18 +404,18 @@ needed since some processors may have more conductor points than others.
   _adjustz()
 
   # --- Shift the existing charge density and phi
-  izstart = max(oldiz[me],top.izslave[me])
-  izend = min(oldiz[me]+oldnz[me],top.izslave[me]+top.nzslave[me])
-  newiz1 = izstart - top.izslave[me]
-  newiz2 = izend - top.izslave[me] + 1
+  izstart = max(oldizfs[me],top.izfsslave[me])
+  izend = min(oldizfs[me]+oldnzfs[me],top.izfsslave[me]+top.nzfsslave[me])
+  newiz1 = izstart - top.izfsslave[me]
+  newiz2 = izend - top.izfsslave[me] + 1
   oldiz1 = izstart - oldiz[me]
   oldiz2 = izend - oldiz[me] + 1
   w3d.phi[:,:,newiz1+1:newiz2+1] = oldphi[:,:,oldiz1+1:oldiz2+1]
   w3d.rho[:,:,newiz1:newiz2] = oldrho[:,:,oldiz1:oldiz2]
 
   # --- Correct the locations of conductor points for the field-solver.
-  newiz = top.izslave
-  newnz = top.nzslave
+  newiz = top.izfsslave
+  newnz = top.nzfsslave
   newizfs = top.izfsslave
   newnzfs = top.nzfsslave
   reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
@@ -499,24 +497,14 @@ of the domains.
 def _adjustz():
 
   #---------------------------------------------------------------------------
-  # --- Set the axial extent of each slaves domain to include
-  # --- both the particle and field solve domain.
-  if(w3d.solvergeom == w3d.XYZgeom):
-   for i in range(npes):
-    top.izslave[i] = top.izfsslave[i]
-    top.nzslave[i] = top.nzfsslave[i]
-    top.zmslmin[i] = top.izfsslave[i]*w3d.dz + w3d.zmminglobal
-    top.zmslmax[i] = (top.izfsslave[i]+top.nzfsslave[i])*w3d.dz+w3d.zmminglobal
-
-  #---------------------------------------------------------------------------
   # --- Reset local values
   w3d.nz     = top.nzfsslave[me]
   zpmin = w3d.zmminglobal + top.izpslave[me]*w3d.dz
   zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + w3d.zmminglobal
   w3d.izfsmin = 0.
   w3d.izfsmax = top.nzfsslave[me]
-  w3d.zmmin = top.zmslmin[me]
-  w3d.zmmax = top.zmslmax[me]
+  w3d.zmmin = top.izfsslave[me]*w3d.dz + w3d.zmminglobal
+  w3d.zmmax = (top.izfsslave[me]+top.nzfsslave[me])*w3d.dz+w3d.zmminglobal
 
   # --- Change the alocation of everything effected are reset the meshes.
   gchange("Fields3d")
