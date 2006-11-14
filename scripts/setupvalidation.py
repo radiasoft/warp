@@ -1,5 +1,5 @@
 from warp import *
-setupvalidation_version = "$Id: setupvalidation.py,v 1.3 2001/03/23 00:02:28 dave Exp $"
+setupvalidation_version = "$Id: setupvalidation.py,v 1.4 2006/11/14 18:21:39 dave Exp $"
 
 def setupvalidationdoc():
   print """
@@ -16,9 +16,9 @@ def getvalidationdata():
   if lparallel:
     # --- Sum only the non overlapping part of the 3-d arrays. Otherwise
     # --- the answers will be different with differing numbers of processors.
-    iz1 = top.izfsslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izslave[me]
+      iz2 = top.izfsslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
     return (globalsum(sum(getx(gather=0))),
