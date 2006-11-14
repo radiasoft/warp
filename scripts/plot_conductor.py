@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.107 2006/10/10 16:31:38 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.108 2006/11/14 18:22:12 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -818,7 +818,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
   if izf is not None: iz = izf
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   if w3d.solvergeom<>w3d.XYgeom:
     if iz < 0 or solver.nzfull < iz: return
   if scale:
@@ -2380,7 +2380,8 @@ grid that data is to be used for.
 def srfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
              rmax=top.largepos,lfill=false,
              xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-             zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
+             zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+             dx=None,dy=None,dz=None,
              nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
              xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
              srfrv_pernz=0,condid=0):
@@ -2424,6 +2425,7 @@ Output is put directly into the conductor arrays of Conductor3d.
   if ymax is None: ymax = w3d.ymmax
   if zmmin is None: zmmin = w3d.zmmin
   if zmmax is None: zmmax = w3d.zmmax
+  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2460,8 +2462,8 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-                xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
-                nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
   if srfrv_pernz > 0: f3d.srfrv_pernz = save_srfrv_pernz
@@ -2470,7 +2472,8 @@ Output is put directly into the conductor arrays of Conductor3d.
 def srfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
             rmin=0.,lfill=false,
             xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-            zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
+            zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+            dx=None,dy=None,dz=None,
             nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
             xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
             srfrv_pernz=0,condid=0):
@@ -2514,6 +2517,7 @@ Output is put directly into the conductor arrays of Conductor3d.
   if ymax is None: ymax = w3d.ymmax
   if zmmin is None: zmmin = w3d.zmmin
   if zmmax is None: zmmax = w3d.zmmax
+  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2550,8 +2554,8 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
-               xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
-               nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
   if srfrv_pernz > 0: f3d.srfrv_pernz = save_srfrv_pernz
@@ -2560,7 +2564,8 @@ Output is put directly into the conductor arrays of Conductor3d.
 def srfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
                xcent=0.,ycent=0.,lzend=true,
                xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-               zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
+               zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+               dx=None,dy=None,dz=None,
                nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
                xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
                srfrv_pernz=0,condid=0):
@@ -2602,6 +2607,7 @@ Output is put directly into the conductor arrays of Conductor3d.
   if ymax is None: ymax = w3d.ymmax
   if zmmin is None: zmmin = w3d.zmmin
   if zmmax is None: zmmax = w3d.zmmax
+  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2641,8 +2647,8 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
-                  xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
-                  nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
   if srfrv_pernz > 0: f3d.srfrv_pernz = save_srfrv_pernz
@@ -2759,7 +2765,7 @@ Sets the voltage on a conductor, given an id.
     if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
-      setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete,
+      setconductorvoltagerz(voltage,w3d.nzfull,w3d.zmminglobal,w3d.dz,discrete,
                             condid)
     else:
       setconductorvoltagerz_id(condid,voltage)
