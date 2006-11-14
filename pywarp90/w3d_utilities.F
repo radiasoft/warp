@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.12 $, $Date: 2006/09/29 19:27:54 $
+c@(#) File w3d_utilities.F, version $Revision: 1.13 $, $Date: 2006/11/14 18:09:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -601,4 +601,246 @@ c array.
 
       return
       end
+c=============================================================================
+c=============================================================================
+c Some routines used by the parallel code that need to be accessible
+c from python
+c=============================================================================
+c=============================================================================
+      subroutine domaindecomposefields(nz,nslaves,lfsautodecomp,
+     &                                 izfsslave,nzfsslave,grid_overlap)
+      use InGen, Only: fstype
+      integer(ISZ):: nz,nslaves
+      logical(ISZ):: lfsautodecomp
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: grid_overlap
+
+      real(kind=8):: zperproc,avezpp,ztot
+      integer(ISZ):: bestnz,overlap
+      integer(ISZ):: i
+
+c---------------------------------------------------------------------------
+c     --- An overlap of one plane is needed for the FFT field solvers.
+c     --- An overlap of two planes is needed for SOR field solver since
+c     --- plane 0 of each processor must overlap with a plane which is
+c     --- calculated in the neighboring processor.
+c     --- As an example, for nz=8 divided among 2 PE's...
+c     ---   for overlap=1        0 1 2 3 4 5 6 7 8
+c     ---                       |_________|
+c     ---                               |_________|
+c     ---   for overlap=2        0 1 2 3 4 5 6 7 8
+c     ---                       |___________|
+c     ---                               |_________|
+      if (fstype == 3 .or. fstype == 7 .or. fstype == 8 .or. fstype == 13) then
+        overlap = 2
+      else
+        overlap = 1
+      endif
+      grid_overlap = overlap
+
+c---------------------------------------------------------------------------
+c     --- Do the domain decomposition for the field solver.
+c     --- The domain decomposition by default is done so that each processor
+c     --- has nearly the same number of z planes. If lautodecomp is false and
+c     --- fstype == 3, then the decomposition is supplied by the user (input
+c     --- through nzfsslave).
+      if (lfsautodecomp .or.
+     &    (fstype /= 3 .and. fstype /= 7 .and. fstype /= 13)) then
+
+c       --- Calculate average number of z planes per processor, including the
+c       --- extra space for overlap.  For FFT, the minimum number of planes
+c       --- allowable is 1 and for PSOR, the minimum number of planes allowable
+c       --- is 2.
+        zperproc = (nz + (nslaves - 1.)*(overlap - 1))/nslaves
+        if (zperproc < overlap) zperproc = overlap
+
+c       --- bestnz is zperproc rounded down.
+        bestnz = int(zperproc)
+     
+c       --- First processor is easy
+        nzfsslave(0) = bestnz
+        izfsslave(0) = 0
+        ztot = nzfsslave(0)
+
+c       --- loop over processors until used all processors or have assigned
+c       --- all of grid.
+        i = 0
+        do while (i < nslaves-1 .and.
+     &            izfsslave(i)+nzfsslave(i)-overlap+1 < nz)
+          i = i + 1
+
+c         --- This processor starts at the end of the region covered
+c         --- by the previous processor, overlapping it by the value of overlap.
+          izfsslave(i) = izfsslave(i-1) + nzfsslave(i-1) + 1 - overlap
+
+c         --- The number of z planes given to this processor is first assumed to
+c         --- be bestnz.  If this gives an average number of z planes per
+c         --- processor that is less then zperproc, it is increased by 1.
+          nzfsslave(i) = bestnz
+          ztot = ztot + nzfsslave(i)
+          avezpp = ztot/(i+1)
+          if (avezpp < zperproc) then
+            nzfsslave(i) = nzfsslave(i) + 1
+            ztot = ztot + 1
+          endif
+
+c         --- Check if this region extends past the end of the grid.  If so,
+c         --- recalculate nzfsslave(i).
+          if (izfsslave(i) + nzfsslave(i) > nz) then
+            nzfsslave(i) = nz - izfsslave(i)
+c           --- If nzfsslave(i) is less than 3 then skip this
+c           --- processor and give remaining zones to previous processor.
+c           if (nzfsslave(i) < 3) then
+c             i = i - 1
+c             nzfsslave(i) = nz - izfsslave(i)
+c           endif
+          endif
+
+        enddo
+
+c       --- Save the number of processors that have part of the grid assigned
+c       --- to them.
+        nslaves = i+1
+
+      else
+
+c       --- nzfsslave is assumed to be input by the user and is assumed to
+c       --- not include the overlap.
+
+c       --- First check to make sure that all values are > 0.
+        do i=0,nslaves-1
+          if (nzfsslave(i) == 0) then
+            call remark("ERROR: nz for the field solver for each processor")
+            call remark("       must be greater than zero")
+            call kaboom(1)
+          endif
+        enddo
+
+c       --- Fill in the array izfsslave, based on the inputted nzfsslave and
+c       --- add the overlap to nzfsslave.
+        izfsslave(0) = 0
+        do i=1,nslaves-1
+          izfsslave(i) = izfsslave(i-1) + nzfsslave(i-1)
+        enddo
+c       --- Note that the last processor has no overlap
+        do i=0,nslaves-2
+          nzfsslave(i) = nzfsslave(i) + overlap - 1
+        enddo
+c       --- Get the new value of nz.
+        nz = izfsslave(nslaves-1) + nzfsslave(nslaves-1)
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine domaindecomposeparticles(nz,nslaves,izfsslave,nzfsslave,
+     &                                    overlap,nzpguard,zmmin,zmmax,dz,zslave,
+     &                                    lautodecomp,izpslave,nzpslave,
+     &                                    zpslmin,zpslmax)
+      use InGen3d,Only: solvergeom,AMRgeom
+      integer(ISZ):: nz,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: overlap,nzpguard
+      real(kind=8):: zmmin,zmmax,dz
+      real(kind=8):: zslave(0:nslaves-1)
+      logical(ISZ):: lautodecomp
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      real(kind=8):: zpslmin(0:nslaves-1),zpslmax(0:nslaves-1)
+
+      integer(ISZ):: i
+      real(kind=8):: sumzslave,zlast
+
+
+c     --- Now, set the domain decomposition for the particles. This can
+c     --- either be input from the user or set the same as the decompostion
+c     --- for the field solver.
+      if (lautodecomp) then
+
+c       --- Set from field solver decompostion
+        do i=0,nslaves-1
+          izpslave(i) = izfsslave(i)
+          nzpslave(i) = nzfsslave(i) - (overlap - 1)
+c         --- These shouldn't include the guard cells
+          zpslmin(i) = izpslave(i)*dz + zmmin
+          zpslmax(i) = (izpslave(i)+nzpslave(i))*dz + zmmin
+c         --- Now include the guard cells
+          izpslave(i) = izpslave(i) - nzpguard
+          nzpslave(i) = nzpslave(i) + 2*nzpguard
+c         --- Make sure that the processors doesn't have grid cells
+c         --- sticking out the ends.
+          if (izpslave(i) < 0) then
+            nzpslave(i) = nzpslave(i) + izpslave(i)
+            izpslave(i) = 0
+          endif
+          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
+        enddo
+        zpslmax(nslaves-1) = zmmax
+
+      else
+c       --- It is assumed that the user supplied decomposition is specified
+c       --- in the array zslave, which is the fractional z-ranges
+c       --- of the particles for each processor. It is assumed that zslave
+c       --- has been properly normalized so that if the sum of the z-ranges
+c       --- covers the whole grid, then the sum is one.
+
+c       --- Get sum of zslave to allow proper scaling.
+        sumzslave = 1.
+c       sumzslave = zslave(0)
+c       do i=1,nslaves-1
+c         sumzslave = sumzslave + zslave(i)
+c       enddo
+
+c       --- All values of zslave must be > 0.
+        do i=0,nslaves-1
+c         if (zslave(i)/sumzslave*(zmmax-zmmin) <= 0.) then
+          if (zslave(i) <= 0.) then
+            call remark("ERROR: The length of all particle domains must be")
+            call remark("       positive. Fix zslave appropriately.")
+            call kaboom(1)
+          endif
+        enddo
+
+c       --- Set minimum z of each processor.
+        zlast = zmmin
+        do i=0,nslaves-1
+          zpslmin(i) = zlast
+          zpslmax(i) = zlast + zslave(i)/sumzslave*(zmmax - zmmin)
+          zlast = zpslmax(i)
+        enddo
+
+c       --- When using solvergeom==AMRgeom, the particle decomposition must
+c       --- be aligned with the grid.
+        if (solvergeom==AMRgeom) then
+         do i=0,nslaves-1
+           zpslmin(i) = nint((zpslmin(i) - zmmin)/dz)*dz
+           zpslmax(i) = nint((zpslmax(i) - zmmin)/dz)*dz
+         enddo
+        endif
+
+c       --- This is only needed to avoid problems from round off in the
+c       --- accumulation. From the loop above, zpslmax(nslaves-1) will
+c       --- not be exactly the same as zmmax due to roundoff.
+        if (zpslmax(nslaves-1) > zmmax) zpslmax(nslaves-1) = zmmax
+
+c       --- Set iz and nz. This is done so that zmesh(izpslave) < zpslmin, and
+c       --- zmesh(izpslave+nzpslave) > zpslmax.
+        do i=0,nslaves-1
+          izpslave(i) = int((zpslmin(i) - zmmin)/dz) - nzpguard
+          nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i) + 1 +
+     &                  2*nzpguard
+c         --- Make sure that the processors doesn't have grid cells
+c         --- sticking out the end.
+          if (izpslave(i) < 0) then
+            nzpslave(i) = nzpslave(i) + izpslave(i)
+            izpslave(i) = 0
+          endif
+          if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
+        enddo
+
+      endif
+
+      return
+      end
+c=============================================================================
 c=============================================================================
