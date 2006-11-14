@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.29 $, $Date: 2006/09/23 00:30:08 $
+c version $Revision: 1.30 $, $Date: 2006/11/14 18:16:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -13,7 +13,7 @@ c=============================================================================
       subroutine multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                          rstar,linbend,
      &                          bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                          xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                          xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
       use GlobalVars
       use PSOR3d
       use Conductor3d
@@ -31,7 +31,7 @@ c     integer:: fsf
       logical(ISZ):: linbend
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
 
 c     fsf = for_set_fpe(FPE_M_TRAP_INV+FPE_M_TRAP_DIV0+FPE_M_TRAP_OVF)
 
@@ -54,7 +54,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 
       call multigridbe3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                        rstar,linbend,bounds,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                        xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                        mgparam,mgiters,mgmaxiters,
      &                        mgmaxlevels,mgerror,mgtol,
      &                        downpasses,uppasses,
@@ -67,7 +67,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 c=============================================================================
       subroutine multigridbe3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                              rstar,linbend,bounds,
-     &                              xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                              xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                              mgparam,mgiters,mgmaxiters,
      &                              mgmaxlevels,mgerror,mgtol,
      &                              downpasses,uppasses,
@@ -86,7 +86,7 @@ c=============================================================================
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
       real(kind=8):: mgparam
       integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels
       real(kind=8):: mgerror,mgtol
@@ -130,7 +130,8 @@ c     --- converted and expanded for the multigrid solver.
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
         if (lbuildquads) then
-          call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+          call setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                  nx,ny,nz,dx,dy,dz,
      &                  bounds(4),bounds(5),bounds(1),
      &                  (bounds(0)/=1.and.bounds(2)==1),
      &                  (bounds(0)==1.and.bounds(2)==1))

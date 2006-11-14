@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.159 $, $Date: 2006/10/27 20:01:12 $
+#@(#) File F3D.V, version $Revision: 3.160 $, $Date: 2006/11/14 18:17:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.159 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.160 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -220,7 +220,7 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
              rstar(-1:nz+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
-             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
+             xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real)
    subroutine
    # Solves Poisson's equation using the multigrid method. This uses variables
    # from the f3d package to control the iterations and conductors.
@@ -228,7 +228,7 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  dx:real,dy:real,dz:real,
                  phi(0:nx,0:ny,-1:nz+1):real,rho(0:nx,0:ny,0:nz):real,
                  rstar(-1:nz+1):real,linbend:logical,bounds:integer,
-                 xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+                 xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
                  downpasses:integer,uppasses:integer,
@@ -576,7 +576,8 @@ dtranlan(0:nxlan,0:nylan,0:2) _real
 
 *********** PSOR3d_subs:
 psor3df(iwhich,nx,ny,nz,phi:real,rho:real,phi1d:real,rho1d:real,rstar:real,
-       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,zbeam:real,
+       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,
+       zbeam:real,
        zgrid:real,linbends:logical,bound0:integer,boundnz:integer,
        boundxy:integer,l2symtry:logical,l4symtry:logical,lzerophiedge:logical,
        scrtch:real,izfsmin:integer,izfsmax:integer)
@@ -585,14 +586,15 @@ psorinit(nx,ny,nz,dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical)
      subroutine # Initialize arrays that hold conductor points
 cond_pot(nx,ny,nz,phi:real)
      subroutine # Sets potential in phi to desired potential on conductors
-setcndtr(xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,nx,ny,nz,
+setcndtr(xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,
+         zbeam:real,zgrid:real,nx,ny,nz,
          dx:real,dy:real,dz:real,bound0:integer,boundnz:integer,boundxy:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine # Calculates conductor locations
 srfrvoutf(rofzfunc:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,rmax:real,lfill:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmmin:real,zmmax:real,zbeam:real,
+         zmmin:real,zmmax:real,zmminglobal:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
          l2symtry:logical,l4symtry:logical,condid:integer)
@@ -601,7 +603,7 @@ srfrvoutf(rofzfunc:string,volt:real,zmin:real,zmax:real,
 srfrvinf(rofzfunc:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,rmin:real,lfill:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmmin:real,zmmax:real,zbeam:real,
+         zmmin:real,zmmax:real,zmminglobal:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
          l2symtry:logical,l4symtry:logical,condid:integer)
@@ -610,7 +612,7 @@ srfrvinf(rofzfunc:string,volt:real,zmin:real,zmax:real,
 srfrvinoutf(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,lzend:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
-         zmmin:real,zmmax:real,zbeam:real,
+         zmmin:real,zmmax:real,zmminglobal:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
          l2symtry:logical,l4symtry:logical,condid:integer)

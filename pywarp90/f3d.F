@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.122 $, $Date: 2006/11/09 15:10:03 $
+c@(#) File F3D.M, version $Revision: 3.123 $, $Date: 2006/11/14 18:18:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4528,7 +4528,7 @@ c PSOR3D field solver
 c
 c===========================================================================
       subroutine psor3df(iwhich,nx,ny,nz,phi,rho,phi1d,rho1d,rstar,dx,dy,dz,
-     &                  xmmin,ymmin,zmmin,zbeam,zgrid,linbends,
+     &                  xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,linbends,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
      &                  scrtch,izfsmin,izfsmax)
       use PSOR3d
@@ -4540,7 +4540,7 @@ c===========================================================================
       integer(ISZ):: iwhich,nx,ny,nz,izfsmin,izfsmax
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: phi1d(*),rho1d(*),scrtch(*)
-      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
       logical(ISZ):: linbends
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry,lzerophiedge
@@ -4618,8 +4618,8 @@ c       --- Zero the number of conductor points
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
 c       --- Generate new conductors.
-        call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                bound0,boundnz,boundxy,l2symtry,l4symtry)
+        call setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+     &                dx,dy,dz,bound0,boundnz,boundxy,l2symtry,l4symtry)
       endif
 
 c Set up for error calculations.  Set nsorerr so the sample points used to
@@ -5606,13 +5606,14 @@ c Fix longitudinal boundary conditions for the parallel version.
       end
 c===========================================================================
 c===========================================================================
-      subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      subroutine setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+     &                    dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom,XZgeom
       use Conductor3d
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5624,24 +5625,26 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
 c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call setcndtrrz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
+        call setcndtrrz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
-        call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+        call setcndtr3dmg(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+     &                    dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    conductors)
 c     else if(fstype==11) then
-c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+c       call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
 c    &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else
-        call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+        call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       end if
 
       return
       end
 c===========================================================================
-      subroutine setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      subroutine setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                      nx,ny,nz,dx,dy,dz,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry)
       use Constant
       use Surface_of_Rev
@@ -5650,7 +5653,7 @@ c===========================================================================
       use Lattice
       use InjectVars
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
@@ -7248,7 +7251,7 @@ c===========================================================================
 c===========================================================================
       subroutine srfrvoutf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                     xmin,xmax,ymin,ymax,lshell,
-     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                     condid)
       use Surface_of_Rev
@@ -7259,7 +7262,7 @@ c===========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -7320,7 +7323,7 @@ c     --- Call the appropriate version of the routine.
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid,
      &                    conductors)
       else
@@ -7854,7 +7857,7 @@ c========================================================================
 c========================================================================
       subroutine srfrvinf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,
      &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
@@ -7865,7 +7868,7 @@ c========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -7919,7 +7922,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
-     &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                 zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
      &                 xmesh,ymesh,l2symtry,l4symtry,condid,conductors)
       else
@@ -7949,7 +7952,7 @@ c========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -8464,7 +8467,7 @@ c                 --- odd
 c===========================================================================
       subroutine srfrvinoutf(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                       lzend,xmin,xmax,ymin,ymax,lshell,
-     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                       condid)
       use Surface_of_Rev
@@ -8475,7 +8478,7 @@ c===========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -8545,7 +8548,7 @@ c     --- Call the appropriate routine
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
-     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid,
      &                     conductors)
       else
@@ -9353,15 +9356,15 @@ c       --- Get r(z) from the Python function.
       return
       end
 c===========================================================================
-      subroutine setcndtr_rz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
+      subroutine setcndtr_rz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz,
      &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,nz
-      real(kind=8):: xmmin,zmmin,zbeam,zgrid,dx,dz
+      real(kind=8):: xmmin,zmmin,zmminglobal,zbeam,zgrid,dx,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
-      call setcndtr3d(xmmin,0.,zmmin,zbeam,zgrid,nx,0,nz,dx,dx,dz,
+      call setcndtr3d(xmmin,0.,zmmin,zmminglobal,zbeam,zgrid,nx,0,nz,dx,dx,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return
@@ -9413,15 +9416,17 @@ c===========================================================================
       return
       end
 c===========================================================================
-      subroutine setcndtr_3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      subroutine setcndtr_3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                       nx,ny,nz,dx,dy,dz,
      &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
-      call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                nx,ny,nz,dx,dy,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return

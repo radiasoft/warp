@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.121 $, $Date: 2006/10/03 18:53:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.122 $, $Date: 2006/11/14 18:17:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -12,7 +12,7 @@ c=============================================================================
       subroutine multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                        xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
       use GlobalVars
       use PSOR3d
       use Conductor3d
@@ -27,7 +27,7 @@ c=============================================================================
       logical(ISZ):: linbend
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
 
 c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(0) = boundxy
@@ -48,7 +48,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 
       call multigrid3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                            rstar,linbend,bounds,
-     &                            xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
@@ -61,7 +61,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
 c=============================================================================
       subroutine multigrid3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                            rstar,linbend,bounds,
-     &                            xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
@@ -79,7 +79,7 @@ c=============================================================================
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
       real(kind=8):: mgparam
       integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels
       real(kind=8):: mgerror,mgtol
@@ -158,7 +158,7 @@ c     --- converted and expanded for the multigrid solver.
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
         if (lbuildquads) then
-          call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+          call setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  bounds(4),bounds(5),bounds(1),
      &                  (bounds(0)/=1.and.bounds(2)==1),
      &                  (bounds(0)==1.and.bounds(2)==1))
@@ -2935,12 +2935,13 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                        nx,ny,nz,dx,dy,dz,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                        conductors)
       use ConductorTypemodule
       use Parallel
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
@@ -2949,7 +2950,6 @@ c=============================================================================
 c Makes call to the recursive routine which generates the conductors.
 
       integer(ISZ):: nzfull
-      real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,dx1,dy1,dz1
       integer(ISZ):: nzlocal,nx1,ny1,nz1,nzfull1
@@ -2959,15 +2959,13 @@ c Makes call to the recursive routine which generates the conductors.
       integer(ISZ):: getthestupidnumber
       integer(ISZ):: getthestupidevennumber,getthestupidoddnumber
 
-c     --- nzfull and zmminglobal are needed, but difficult to pass down from
+c     --- nzfull is needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
-      zmminglobal = zmslmin(0)
       nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
-      zmminglobal = zmmin
       nzlocal = nz
 #endif
       globalb0 = bound0
@@ -3005,7 +3003,7 @@ c       io1 = conductors%oddsubgrid%n + 1
         io1 = getthestupidoddnumber(conductors) + 1
         bound0 = localb0
         boundnz = localbnz
-        call setcndtr3d(xmmin,ymmin,zmmin1,zbeam,zgrid,nx1,ny1,nz1,dx1,dy1,dz1,
+        call setcndtr3d(xmmin,ymmin,zmmin1,zmminglobal,zbeam,zgrid,nx1,ny1,nz1,dx1,dy1,dz1,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
 c       ic2 = conductors%interior%n
 c       ie2 = conductors%evensubgrid%n
@@ -3027,7 +3025,7 @@ c       io2 = conductors%oddsubgrid%n
 c=============================================================================
       subroutine srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                        xmin,xmax,ymin,ymax,lshell,
-     &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                        zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                        condid,conductors)
       use ConductorTypemodule
@@ -3036,7 +3034,7 @@ c=============================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -3046,7 +3044,6 @@ c=============================================================================
 c Makes calls to srfrvout3d for each level
 
       integer(ISZ):: nzfull
-      real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
       integer(ISZ):: nzlocal,nx1,ny1,nz1
@@ -3056,11 +3053,9 @@ c     --- nzfull and zmminglobal are needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
-      zmminglobal = zmslmin(0)
       nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
-      zmminglobal = zmmin
       nzlocal = nz
 #endif
 
@@ -3104,7 +3099,7 @@ c       --- Get the conductors for this level
 c=============================================================================
       subroutine srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                       xmin,xmax,ymin,ymax,lshell,
-     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                       condid,conductors)
       use ConductorTypemodule
@@ -3113,7 +3108,7 @@ c=============================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -3123,7 +3118,6 @@ c=============================================================================
 c Makes call to the recursive routine which generates the conductors.
 
       integer(ISZ):: nzfull
-      real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
       integer(ISZ):: nzlocal,nx1,ny1,nz1
@@ -3133,11 +3127,9 @@ c     --- nzfull and zmminglobal are needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
-      zmminglobal = zmslmin(0)
       nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
-      zmminglobal = zmmin
       nzlocal = nz
 #endif
 
@@ -3181,7 +3173,7 @@ c       --- Get the conductors for this level
 c=============================================================================
       subroutine srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,
      &                          xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
-     &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                          zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
      &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                          condid,conductors)
       use ConductorTypemodule
@@ -3190,7 +3182,7 @@ c=============================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -3200,7 +3192,6 @@ c=============================================================================
 c Makes call to the recursive routine which generates the conductors.
 
       integer(ISZ):: nzfull
-      real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
       integer(ISZ):: nzlocal,nx1,ny1,nz1
@@ -3210,11 +3201,9 @@ c     --- nzfull and zmminglobal are needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
-      zmminglobal = zmslmin(0)
       nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
-      zmminglobal = zmmin
       nzlocal = nz
 #endif
 
