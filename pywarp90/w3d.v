@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.239 $, $Date: 2006/10/27 20:21:38 $
+#@(#) File W3D.V, version $Revision: 3.240 $, $Date: 2006/11/14 18:11:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.239 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.240 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -807,8 +807,11 @@ setrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
                       rhop(0:nx,0:ny,0:nz):real,
                       nzpguard:integer)
              subroutine # Copies data from rhop to rho - for parallel
-getphiforparticles(indts:integer)
+getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
+getphipforparticles3d(nx:integer,ny:integer,nz:integer,phi(0:nx,0:ny,-1:nz+1):real,
+              nxp:integer,nyp:integer,nzp:integer,phip(0:nxp,0:nyp,-1:nzp+1):real)
+             subroutine # Calls the parallel routine for copying phi into phip
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
 perphi3d()
@@ -968,6 +971,18 @@ setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
 setupgrid2dtype(grid:Grid2dtype,check:logical) subroutine
       # Checks the consistency of Grid3dtype input and allocates the grid
       # If check is false, then the input is inconsistent.
+domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
+        izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
+        grid_overlap:integer) subroutine
+      # Do the domain decomposition for the field solver
+domaindecomposeparticles(nz:integer,nslaves:integer,
+                izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
+                overlap:integer,nzpguard:integer,zmmin:real,zmmax:real,
+                dz:real,zslave(0:nslaves-1):real,lautodecomp:logical,
+                izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
+                zpslmin(0:nslaves-1):real,zpslmax(0:nslaves-1):real) subroutine
+      # Do the domain decomposition for the particles
+
 
 *********** W3Dload:
 r_b      real [m]     /0./ # Code set: CFE rms equivalent beam radius 
@@ -1111,7 +1126,7 @@ timeinit_w3d_parallel real /0./
 timesw_globalsum real /0./
 timesumrhoondomainboundaries real /0./
 timeperrho3d_slave real /0./
-timegetrhoforfieldsolve3d real /0./
+timesetrhoforfieldsolve3d real /0./
 timeperphi3d_slave real /0./
 timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
