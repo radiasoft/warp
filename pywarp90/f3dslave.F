@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.29 $, $Date: 2006/09/29 19:23:38 $
+c F3DSLAVE.M, version $Revision: 1.30 $, $Date: 2006/11/14 18:16:36 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1816,11 +1816,11 @@ c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nslaves-1
         if (my_index == 0) then
-          izglobal = max(izfsslave(my_index)-1,izslave(i)-1)
+          izglobal = max(izfsslave(my_index)-1,izfsslave(i)-1)
         else
-          izglobal = max(izfsslave(my_index),izslave(i)-1)
+          izglobal = max(izfsslave(my_index),izfsslave(i)-1)
         endif
-        izmax   = izslave(i)+nzslave(i)+1
+        izmax   = izfsslave(i)+nzfsslave(i)+1
         if (my_index == nslaves-1) then
           izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
         else
@@ -1834,18 +1834,18 @@ c     --- Data to be sent
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if (i == 0) then
-          izglobal = max(izslave(my_index)-1,izfsslave(i)-1)
+          izglobal = max(izfsslave(my_index)-1,izfsslave(i)-1)
         else
-          izglobal = max(izslave(my_index)-1,izfsslave(i))
+          izglobal = max(izfsslave(my_index)-1,izfsslave(i))
         endif
-        izmax   = izslave(my_index)+nzslave(my_index)+1
+        izmax   = izfsslave(my_index)+nzfsslave(my_index)+1
         if (i == nslaves-1) then
           izmaxfs  = izfsslave(i)+nzfsslave(i)+1
         else
           izmaxfs  = izfsslave(i)+nzfsslave(i)-1
         endif
 
-        izrecv(i) = izglobal - izslave(my_index)
+        izrecv(i) = izglobal - izfsslave(my_index)
         nzrecv(i) = min(izmax,izmaxfs) - izglobal + 1
       enddo
  

@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.69 2006/08/30 22:54:39 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.70 2006/11/14 18:21:04 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -419,19 +419,19 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:],
                        indx=(ipmin,0))
         elif p == 'w3d' and vname in ['rho']:
-          iz1 = top.izfsslave[me] - top.izslave[me]
-          if me < npes-1: iz2 = top.izfsslave[me+1] - top.izslave[me]
+          iz1 = 0
+          if me < npes-1: iz2 = top.izfsslave[me+1] - top.izfsslave[me]
           else:           iz2 = iz1 + top.nzfsslave[me] + 1
           ppp = w3d.rho[:,:,iz1:iz2]
           ff.write(pdbname,ppp,indx=(0,0,top.izfsslave[me]))
         elif p == 'w3d' and vname in ['phi']:
-          iz1 = top.izfsslave[me] - top.izslave[me]
+          iz1 = 0
           if me == 0: iz1 = iz1 - 1
-          if me < npes-1: iz2 = top.izfsslave[me+1] - top.izslave[me]
+          if me < npes-1: iz2 = top.izfsslave[me+1] - top.izfsslave[me]
           else:           iz2 = iz1 + top.nzfsslave[me] + 1
           ppp = w3d.phi[:,:,iz1+1:iz2+1]
           if me == 0: izmin = 0
-          else:       izmin = top.izslave[me]+1
+          else:       izmin = top.izfsslave[me]+1
           ff.write(pdbname,ppp,indx=(0,0,izmin))
         elif p == 'w3d' and vname in ['zmeshlocal']:
           # --- This has the same decomposition as the fields
