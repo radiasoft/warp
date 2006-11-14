@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.139 2006/10/18 17:38:10 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.140 2006/11/14 18:26:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2894,7 +2894,8 @@ data and make sure it is consistent.
         # --- Given a radius and the two endpoints, the center of the
         # --- circle can be found.
         assert 4*rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
-             "Radius of circle must be larger than the distance between points"
+             "Radius of circle must be larger than the distance between points %d,%d\n%e < %e"%\
+             (i,i+1,2*rad[i],sqrt((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2))
         zm = 0.5*(zz[i] + zz[i+1])
         rm = 0.5*(rr[i] + rr[i+1])
         dbm = sqrt((zm - zz[i+1])**2 + (rm - rr[i+1])**2)
