@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.307 $, $Date: 2006/11/10 21:26:56 $
+c@(#) File W3D.F, version $Revision: 3.308 $, $Date: 2006/11/14 18:12:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7860,7 +7860,7 @@ c     --- End of loop over apertures
       return
       end
 c===========================================================================
-      subroutine getphiforparticles(indts)
+      subroutine getphipforparticles(indts)
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -7874,14 +7874,27 @@ c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
         call getphiforparticlesrz()
       elseif (solvergeom==XYgeom) then
-        call remark("getphiforparticles not implemented in parallel for XYgeom.")
+        call remark("getphipforparticles not implemented in parallel for XYgeom.")
         stop
 c      else if(solvergeom==Zgeom) then
-c        call getphiforparticlesz()
+c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call getphiforparticles3d(nx,ny,nz,phi,
-     &                            nxp,nyp,nzp,phipndts(:,:,:,indts))
+        call getphipforparticles3d(nx,ny,nz,phi,
+     &                             nxp,nyp,nzp,phipndts(:,:,:,indts))
       end if
+#endif
+
+      return
+      end
+c===========================================================================
+      subroutine getphipforparticles3d(nx,ny,nz,phi,
+     &                                nxp,nyp,nzp,phip)
+      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phip(0:nxp,0:nyp,-1:nzp+1)
+
+#ifdef MPIPARALLEL
+        call getphipforparticles3d_parallel(nx,ny,nz,phi,nxp,nyp,nzp,phip)
 #endif
 
       return
@@ -8029,7 +8042,7 @@ c         --- Call perturbative bent beam field solver
 
 c       --- Distribute phi among the processes so each has phi in its
 c       --- particle domain.
-        call getphiforparticles(indts)
+        call getphipforparticles(indts)
 
       enddo
 c     --- End loop over ndts groups
@@ -8229,7 +8242,7 @@ c          --- Note that by default, izfsmax=nz, and izfsmin=0.
 c          --- izfsmin and izfsmax allow field solves on a partial grid.
            call psor3df(iwhich,nx,ny,nz,phi,rho,
      &                 phi,rho,rstar, 
-     &                 dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid,linbend,
+     &                 dx,dy,dz,xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,linbend,
      &                 bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
      &                 scrtch(0,0),izfsmin,izfsmax)
       elseif (fstype == 4) then
@@ -8280,12 +8293,12 @@ c         --- General capacity matrix solver
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
      &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &            xmmin,ymmin,zmmin,zbeam,zgrid)
+     &            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
         else
           call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                        xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
         endif
 
 #ifdef MPIPARALLEL
@@ -8329,7 +8342,7 @@ c         --- Chombo AMR  full-multigrid solver
         call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &                      rstar,linbend,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                      xmmin,ymmin,zmmin,zbeam,zgrid)
+     &                      xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
 
       endif
 
