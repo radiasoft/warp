@@ -852,6 +852,7 @@ end subroutine assign_grids_ptr
 subroutine init_bnd(g,nr,nz,dr,dz,zmin,zmax)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 USE InGen3d, ONLY:l2symtry, l4symtry
+USE InMesh3d, ONLY:zmmin,zmmax
 implicit none
 TYPE(GRIDtype), pointer :: g
 INTEGER(ISZ), INTENT(IN) :: nr, nz
@@ -958,13 +959,15 @@ TYPE(BNDtype), pointer :: b
       END if
 #endif
     END if
-#ifdef MPIPARALLEL
-    b%zmin = zmslmin(int(my_index/nworkpproc)*nworkpproc)
-    b%zmax = zmslmax((1+int(my_index/nworkpproc))*nworkpproc-1)
-#else
-    b%zmin = zmin
-    b%zmax = zmax
-#endif
+!#ifdef MPIPARALLEL
+!   b%zmin = zmslmin(int(my_index/nworkpproc)*nworkpproc)
+!   b%zmax = zmslmax((1+int(my_index/nworkpproc))*nworkpproc-1)
+!#else
+!    b%zmin = zmin
+!    b%zmax = zmax
+!#endif
+    b%zmin = zmmin
+    b%zmax = zmmax
 
 #ifdef MPIPARALLEL
     b%nworkpproc = nworkpproc
@@ -5668,12 +5671,12 @@ conductors%oddsubgrid%n = 0
 return
 end subroutine srfrvinoutrz
 
-subroutine setcndtrrz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz, &
+subroutine setcndtrrz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz, &
                       bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 USE multigridrz
 use Conductor3d
 integer(ISZ):: nx,nz
-real(kind=8):: xmmin,zmmin,zbeam,zgrid,dx,dz
+real(kind=8):: xmmin,zmmin,zmminglobal,zbeam,zgrid,dx,dz
 integer(ISZ):: bound0_in,boundnz_in,boundxy_in
 logical(ISZ):: l2symtry_in,l4symtry_in
 
@@ -5709,7 +5712,7 @@ do igrid=1,ngrids
   conductors%evensubgrid%n = 0
   conductors%oddsubgrid%n = 0
 
-  call setcndtr_rz(rmin_in,zmin_in,zbeam,zgrid,nrc,nzc,drc,dzc, &
+  call setcndtr_rz(rmin_in,zmin_in,zmminglobal,zbeam,zgrid,nrc,nzc,drc,dzc, &
                    bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
@@ -8018,8 +8021,8 @@ ilp = 1+izpslave(i)
 iup = 1+izpslave(i)+nzpslave(i)
 do i = 0, nslaves-1
   if (i/=my_index) then
-    ilg = 1+izslave(i)
-    iug = 1+izslave(i) +nzslave(i)
+    ilg = 1+izfsslave(i)
+    iug = 1+izfsslave(i) +nzfsslave(i)
     il = MAX(ilg,ilp)-ilp+1
     iu = MIN(iug,iup)-ilp+1
     IF(il>iu) cycle
@@ -8031,8 +8034,8 @@ end do
 
 ! recv slices of rhop from required processors
 i=my_index
-ilg = 1+izslave(i)
-iug = 1+izslave(i) +nzslave(i)
+ilg = 1+izfsslave(i)
+iug = 1+izfsslave(i) +nzfsslave(i)
 do i = 0, nslaves-1
   ilp = 1+izpslave(i)
   iup = 1+izpslave(i)+nzpslave(i)
@@ -8061,8 +8064,8 @@ do i = 0, nslaves-1
   wz(ilp:iup) = wz(ilp:iup)+1
 END do
 i=my_index
-ilg = 1+izslave(i)
-iug = 1+izslave(i)+nzslave(i)
+ilg = 1+izfsslave(i)
+iug = 1+izfsslave(i)+nzfsslave(i)
 ilp = 1+izpslave(i)
 iup = 1+izpslave(i)+nzpslave(i)
 do l = ilg, iug
@@ -8115,8 +8118,8 @@ grid%phip = 0.
 
 IF(testthis) then
 i=my_index
-ilg = 1+izslave(i)-1
-iug = 1+izslave(i)+nzslave(i)+1
+ilg = 1+izfsslave(i)-1
+iug = 1+izfsslave(i)+nzfsslave(i)+1
 do l = ilg, iug
  do j = 0, basegrid%nr+2
    ll = l-ilg
@@ -8127,8 +8130,8 @@ END if
 
 ! send slices of phi to processors that need it
 i=my_index
-ilg = 1+izslave(i)             - 1
-iug = 1+izslave(i) +nzslave(i) + 1
+ilg = 1+izfsslave(i)               - 1
+iug = 1+izfsslave(i) +nzfsslave(i) + 1
 do i = 0, nslaves-1
   if (i/=my_index) then
     ilp = 1+izpslave(i)             - 1
@@ -8147,8 +8150,8 @@ i=my_index
 ilp = 1+izpslave(i)             - 1
 iup = 1+izpslave(i)+nzpslave(i) + 1
 do i = 0, nslaves-1
-  ilg = 1+izslave(i)             - 1
-  iug = 1+izslave(i) +nzslave(i) + 1
+  ilg = 1+izfsslave(i)               - 1
+  iug = 1+izfsslave(i) +nzfsslave(i) + 1
   il = MAX(ilg,ilp)-ilp
   iu = MIN(iug,iup)-ilp
   IF(il>iu) cycle
