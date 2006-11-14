@@ -512,6 +512,7 @@ class SubcycledPoissonSolver(FieldSolver):
       return self.rhoparray[...,top.nrhopndtscopies*top.nsndts:]
 
   def setphipforparticles(self,indts,iselfb):
+    "Sets self.phip to the currently active phi"
     if indts is not None:
       phipndts = self.getphip(lndts=1)
       self.phip = phipndts[...,min(indts,w3d.nsndtsphi3d-1)]
@@ -584,6 +585,7 @@ class SubcycledPoissonSolver(FieldSolver):
       self.phi = phipselfb[...,iselfb]
 
   def getphipforparticles(self,indts,iselfb):
+    "Copies from phi to phip"
     if indts is not None:
       phipndts = self.getphip(lndts=1)
       phipndts[...,min(indts,w3d.nsndtsphi3d-1)] = self.phi[...]
