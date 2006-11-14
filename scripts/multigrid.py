@@ -28,7 +28,7 @@ class MultiGrid(SubcycledPoissonSolver):
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
-                   'my_index','nslaves','izfsslave','nzfsslave']
+                   'my_index','nslaves','izfsslave','nzfsslave','lfsautodecomp']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
   def __init__(self,lreducedpickle=1,**kw):
@@ -121,14 +121,20 @@ class MultiGrid(SubcycledPoissonSolver):
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
     else:
-      if self.nzfull == 0:
-        # --- This point is reached if the MultiGrid instance is created
-        # --- before the generate.
-        self.nzfull = w3d.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
-        self.izfsslave = None
-        self.nzfsslave = None
+      self.nzfull = self.nz
+      self.zmminglobal = self.zmmin
+      self.zmmaxglobal = self.zmmax
+      self.izfsslave = zeros(self.nslaves)
+      self.nzfsslave = zeros(self.nslaves)
+      self.grid_overlap = zeros(1)
+      domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
+                            self.izfsslave,self.nzfsslave,self.grid_overlap)
+
+      self.nz = self.nzfsslave[me]
+      self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+      self.zmmin = self.zmminglobal + self.izfsslave[me]*self.dz
+      self.zmmax = self.zmminglobal + (self.izfsslave[me] + self.nzfsslave[me])*self.dz
+
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
@@ -140,9 +146,9 @@ class MultiGrid(SubcycledPoissonSolver):
     self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
     self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
 
-    self.ix_axis = nint(-self.ymmin/self.dy)
+    self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
-    self.iz_axis = nint(-self.ymmin/self.dy)
+    self.iz_axis = nint(-self.zmminglobal/self.dz)
 
     # --- Create extra variables which are used in various places
     self.nxp = self.nx
@@ -156,8 +162,7 @@ class MultiGrid(SubcycledPoissonSolver):
     self.conductors = ConductorType()
     self.conductorlist = []
 
-    # --- These must be arrays since they are modified in the call to the
-    # --- MG solver.
+    # --- Give these variables dummy initial values.
     self.mgiters = 0
     self.mgerror = 0.
 
@@ -268,9 +273,11 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getphipforparticles(self,*args):
     if npes > 0:
-      setphiforparticles3d(self.nx,self.ny,self.nz,self.phi,
+      self.setphipforparticles(*args)
+      getphipforparticles3d(self.nx,self.ny,self.nz,self.phi,
                            self.nxp,self.nyp,self.nzp,self.phip)
-    SubcycledPoissonSolver.getphipforparticles(self,*args)
+    else:
+      SubcycledPoissonSolver.getphipforparticles(self,*args)
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -359,12 +366,12 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
-    print self.nz,self.nzfull
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                        self.dx,self.dy,self.dz,self.phi,self.rho,
                        self.rstar,self.linbend,self.bounds,
-                       self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
+                       self.xmmin,self.ymmin,self.zmmin,
+                       self.zmminglobal,top.zbeam,top.zgrid,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                        self.mgmaxlevels,mgerror,self.mgtol,
                        self.downpasses,self.uppasses,
@@ -377,7 +384,8 @@ class MultiGrid(SubcycledPoissonSolver):
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                          self.dx,self.dy,self.dz,self.phi,self.rho,
                          star,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmmin,top.zbeam,top.zgrid,
+                         self.xmmin,self.ymmin,self.zmmin,
+                         self.zmminglobal,top.zbeam,top.zgrid,
                          self.mgparam,mgiters,self.mgmaxiters,
                          self.mgmaxlevels,mgerror,self.mgtol,
                          self.downpasses,self.uppasses,
