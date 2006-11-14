@@ -1,5 +1,5 @@
 from warp import *
-interepolate_version = "$Id: interpolate.py,v 1.3 2006/04/28 17:51:58 dave Exp $"
+interepolate_version = "$Id: interpolate.py,v 1.4 2006/11/14 18:25:00 dave Exp $"
 
 def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
                 serial=1,pgroup=None):
@@ -15,7 +15,7 @@ def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
   if zl and zu:
     zcent = 0.5*(zl + zu)
   elif iz:
-    if npes > 0: zcent = top.zmslmin[0] + iz*w3d.dz
+    if npes > 0: zcent = w3d.zmminglobal + iz*w3d.dz
     else: zcent = w3d.zmmin + iz*w3d.dz
   else:
     zcent = top.zbeam + 0.5*(top.zwindows[0,iw] + top.zwindows[1,iw])
