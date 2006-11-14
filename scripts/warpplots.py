@@ -1,5 +1,12 @@
 from warp import *
-import gist
+try:
+  if me == 0 and sys.platform != 'mac':
+    import gist
+  else:
+    import gistdummy
+    gist = gistdummy
+except ImportError:
+  pass
 import controllers
 import RandomArray
 import re
@@ -13,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.177 2006/09/29 16:23:33 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.178 2006/11/14 18:20:30 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2930,9 +2937,9 @@ to all three.
     if ix is not None and iy is not None and iz is not None:
       return solver.rho[ix,iy,iz]
   else:
-    iz1 = top.izfsslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izslave[me]
+      iz2 = top.izfsslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
     ppp = solver.rho[...,iz1:iz2]
@@ -2999,7 +3006,7 @@ to all three.
    #else:
    #  pe = convertiztope(iz)
    #  if pe is None: return None
-   #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
+   #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
    #if bcast: ppp = broadcast(ppp)
    #return ppp
@@ -3042,9 +3049,9 @@ be from none to all three.
     if ix is not None and iy is not None and iz is not None:
       return solver.phi[ix,iy,iz+1]
   else:
-    iz1 = top.izfsslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izslave[me]
+      iz2 = top.izfsslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
     ppp = solver.phi[:,:,iz1+1:iz2+1]
@@ -3111,7 +3118,7 @@ be from none to all three.
    #else:
    #  pe = convertiztope(iz)
    #  if pe is None: return None
-   #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
+   #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
    #if bcast: ppp = broadcast(ppp)
    #return ppp
@@ -3171,9 +3178,9 @@ be from none to all three.
     elif ix is not None and iy is not None and iz is not None:
       eee = solver.selfe[ic,ix,iy,iz]
   else:
-    iz1 = top.izpslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izslave[me]
+      iz2 = top.izpslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
     eee = solver.selfe[ic,:,:,iz1:iz2]
@@ -3264,9 +3271,9 @@ be from none to all three.
     elif ix is not None and iy is not None and iz is not None:
       j = bfield.j[ic,ix,iy,iz]
   else:
-    iz1 = top.izpslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izslave[me]
+      iz2 = top.izpslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
     j = bfield.j[ic,:,:,iz1:iz2]
@@ -3358,9 +3365,9 @@ be from none to all three.
     elif ix is not None and iy is not None and iz is not None:
       b = bfield.b[ic,ix,iy,iz]
   else:
-    iz1 = top.izpslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izslave[me]
+      iz2 = top.izpslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
     b = bfield.b[ic,:,:,iz1:iz2]
@@ -3451,9 +3458,9 @@ be from none to all three.
     elif ix is not None and iy is not None and iz is not None:
       a = bfield.a[ic,ix+1,iy+1,iz+1]
   else:
-    iz1 = top.izpslave[me] - top.izslave[me]
+    iz1 = 0
     if me < npes-1:
-      iz2 = top.izpslave[me+1] - top.izslave[me]
+      iz2 = top.izpslave[me+1] - top.izfsslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
     a = bfield.a[ic,1:-1,1:-1,iz1+1:iz2+1]
@@ -3570,7 +3577,7 @@ def pcrhoxy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -3663,7 +3670,7 @@ def pcphixy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -3774,7 +3781,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -3894,7 +3901,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4014,7 +4021,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4135,7 +4142,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4187,8 +4194,8 @@ field domain.
   mm = 1. - gap
   for i in xrange(top.maxslaves):
     z = z + [1.]
-    zmin = top.zmslmin[i]
-    zmax = top.zmslmax[i]
+    zmin = top.izfsslave[i]*dz + w3d.zmminglobal
+    zmax = (top.izfsslave[i] + top.nzfsslave[i])*dz + w3d.zmminglobal
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
   for i in xrange(top.maxslaves):
