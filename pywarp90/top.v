@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.184 $, $Date: 2006/11/09 15:09:13 $
+#@(#) File TOP.V, version $Revision: 3.185 $, $Date: 2006/11/14 18:13:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.184 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.185 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2524,14 +2524,10 @@ xynppgroup    integer /16/        # For slice field solver, number of process
                                   # a field solve.
 zslave(0:maxslaves-1)    _real +dump    # User supplied weighting for the domain
                                         # decomposition of the particles.
-izslave(0:maxslaves-1)   _integer +dump # starting iz for each slave
 izfsslave(0:maxslaves-1) _integer +dump # starting iz for which each slave does
                                         # a field solve calculation
-nzslave(0:maxslaves-1)   _integer +dump # number of z grid cells for each slave
 nzfsslave(0:maxslaves-1) _integer +dump # number of z grid cells for which each
                                         # slave does a field solve calculation
-zmslmin(0:maxslaves-1)   _real    +dump # Mesh Z minimum for each slave
-zmslmax(0:maxslaves-1)   _real    +dump # Mesh Z maximum for each slave
 izpslave(0:maxslaves-1)  _integer +dump # Starting iz of particle extent
 nzpslave(0:maxslaves-1)  _integer +dump # Number of Z cells of particle extent
 zpslmin(0:maxslaves-1)   _real    +dump # Particle Z minimum for each slave
