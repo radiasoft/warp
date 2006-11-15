@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.122 $, $Date: 2006/11/14 18:17:19 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.123 $, $Date: 2006/11/15 18:44:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -491,7 +491,7 @@ c=============================================================================
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       use Multigrid3d_diagnostic
-c     use formggetarraysuminterface
+      use formggetarraysuminterface
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -529,7 +529,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
-c     real(kind=8):: sss(2)
+      real(kind=8):: sss(2)
+      logical(ISZ):: larraysumdiagnostic=.false.
 
       dxsqi = 1./dx**2
       dysqi = 1./dy**2
@@ -557,12 +558,14 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
-c     sss = mggetarraysum(nx,ny,nz,0,1,phi,
-c    &                    izfsslave,nzfsslave,nslaves,my_index)
-c     if (my_index == 0) print*,"V1 phi",mglevel,sss
-c     sss = mggetarraysum(nx,ny,nz,0,0,rho,
-c    &                    izfsslave,nzfsslave,nslaves,my_index)
-c     if (my_index == 0) print*,"V1 rho",mglevel,sss
+      if (larraysumdiagnostic) then
+        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V1 phi",mglevel,sss
+        sss = mggetarraysum(nx,ny,nz,0,0,rho,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V1 rho",mglevel,sss
+      endif
 
 c     --- Do initial SOR passes.
 c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
@@ -586,12 +589,14 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
-c     sss = mggetarraysum(nx,ny,nz,0,1,phi,
-c    &                    izfsslave,nzfsslave,nslaves,my_index)
-c     if (my_index == 0) print*,"V2 phi",mglevel,sss
-c     sss = mggetarraysum(nx,ny,nz,0,0,rho,
-c    &                    izfsslave,nzfsslave,nslaves,my_index)
-c     if (my_index == 0) print*,"V2 rho",mglevel,sss
+      if (larraysumdiagnostic) then
+        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V2 phi",mglevel,sss
+        sss = mggetarraysum(nx,ny,nz,0,0,rho,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V2 rho",mglevel,sss
+      endif
 
 c     --- Check if this is the finest level. If so, then don't do any further
 c     --- coarsening. This is the same check that is done in getmglevels.
@@ -610,26 +615,27 @@ c       --- Get the residual on the current grid.
      &                mglevel,localbounds,mgparam,mgform,.false.,
      &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,3,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-3,1,3,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
-     &                                my_index,nslaves,izfsslave,
-     &                                whosendingleft,whosendingright)
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,3,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-3,1,3,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
+     &                              my_index,nslaves,izfsslave,
+     &                              whosendingleft,whosendingright)
 #endif
-c         sss = mggetarraysum(nx,ny,nz,1,3,res,
-c    &                        izfsslave,nzfsslave,nslaves,my_index)
-c       if (my_index == 0) print*,"V3 res",mglevel,sss
-
+        if (larraysumdiagnostic) then
+          sss = mggetarraysum(nx,ny,nz,1,3,res,
+     &                        izfsslave,nzfsslave,nslaves,my_index)
+          if (my_index == 0) print*,"V3 res",mglevel,sss
+        endif
 
 c       --- Calculate the size of the next coarsest grid. If the current
 c       --- size is twice and odd integer, the next coarsest size will be
@@ -762,9 +768,11 @@ c         --- routine.
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
      &                    localbounds,localboundsc,lzoffset)
-c         sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,rhocoarse,
-c    &                        izfsslavec,nzfsslavec,nslaves,my_index)
-c         if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+          if (larraysumdiagnostic) then
+            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,rhocoarse,
+     &                          izfsslavec,nzfsslavec,nslaves,my_index)
+            if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+          endif
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
@@ -774,9 +782,11 @@ c         --- Continue at the next coarsest level.
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
-c         sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,1,phicoarse,
-c    &                        izfsslavec,nzfsslavec,nslaves,my_index)
-c         if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+          if (larraysumdiagnostic) then
+            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,1,phicoarse,
+     &                          izfsslavec,nzfsslavec,nslaves,my_index)
+            if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+          endif
 
 c         --- Add in resulting error.
           call expand3d(nx,ny,nz,nzfull,phi,
@@ -787,9 +797,11 @@ c         --- Add in resulting error.
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
-c         sss = mggetarraysum(nx,ny,nz,0,1,phi,
-c    &                        izfsslave,nzfsslave,nslaves,my_index)
-c         if (my_index == 0) print*,"V5 phi",mglevel,sss
+          if (larraysumdiagnostic) then
+            sss = mggetarraysum(nx,ny,nz,0,1,phi,
+     &                          izfsslave,nzfsslave,nslaves,my_index)
+            if (my_index == 0) print*,"V5 phi",mglevel,sss
+          endif
 
           deallocate(phicoarse,rhocoarse)
         endif
