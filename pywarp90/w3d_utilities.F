@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.13 $, $Date: 2006/11/14 18:09:59 $
+c@(#) File w3d_utilities.F, version $Revision: 1.14 $, $Date: 2006/11/16 20:35:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -608,15 +608,15 @@ c from python
 c=============================================================================
 c=============================================================================
       subroutine domaindecomposefields(nz,nslaves,lfsautodecomp,
-     &                                 izfsslave,nzfsslave,grid_overlap)
+     &                                 izfsslave,nzfsslave,overlap)
       use InGen, Only: fstype
       integer(ISZ):: nz,nslaves
       logical(ISZ):: lfsautodecomp
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: grid_overlap
+      integer(ISZ):: overlap
 
       real(kind=8):: zperproc,avezpp,ztot
-      integer(ISZ):: bestnz,overlap
+      integer(ISZ):: bestnz
       integer(ISZ):: i
 
 c---------------------------------------------------------------------------
@@ -631,12 +631,13 @@ c     ---                               |_________|
 c     ---   for overlap=2        0 1 2 3 4 5 6 7 8
 c     ---                       |___________|
 c     ---                               |_________|
-      if (fstype == 3 .or. fstype == 7 .or. fstype == 8 .or. fstype == 13) then
-        overlap = 2
-      else
-        overlap = 1
+      if (overlap == 0) then
+        if (fstype == 3 .or. fstype == 7 .or. fstype == 8 .or. fstype == 13) then
+          overlap = 2
+        else
+          overlap = 1
+        endif
       endif
-      grid_overlap = overlap
 
 c---------------------------------------------------------------------------
 c     --- Do the domain decomposition for the field solver.
