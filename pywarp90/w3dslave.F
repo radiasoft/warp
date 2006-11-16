@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.38 $, $Date: 2006/11/14 18:09:16 $
+c W3DSLAVE.M, version $Revision: 1.39 $, $Date: 2006/11/16 20:33:34 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -141,12 +141,14 @@ c total number of particles.
       end
 c===========================================================================
 c===========================================================================
-      subroutine sumrhoondomainboundariesold(rhop,nxp,nyp,nzp)
+      subroutine sumrhoondomainboundariesold(rhop,nxp,nyp,nzp,
+     &                                       my_index,nslaves,izpslave,nzpslave)
       use Subtimers3d
       use GlobalVars
-      use Parallel
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c This routine sums rhop in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rhop back to the left
@@ -254,12 +256,14 @@ c     --- Now, wait just to make sure that the send was recv'ed
       return
       end
 c=============================================================================
-      subroutine sumrhoondomainboundariestry1(rhop,nxp,nyp,nzp)
+      subroutine sumrhoondomainboundariestry1(rhop,nxp,nyp,nzp,
+     &                                        my_index,nslaves,izpslave,nzpslave)
       use Subtimers3d
       use GlobalVars
-      use Parallel
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c This routine sums rhop in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rhop back to the left
@@ -294,9 +298,6 @@ c more robust to future changes.
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,2),mpierror,mpirequest(2)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-c     print*,"sumrhoondomainboundaries ",my_index
-c     if (my_index == 0) print*,'iz ',izpslave
-c     if (my_index == 0) print*,'nz ',nzpslave
 
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -440,11 +441,13 @@ c     print*,"sumrho all done ",my_index,maxval(rhop)
       return
       end
 c=============================================================================
-      subroutine sumrhoondomainboundariestry2(rhop,nxp,nyp,nzp)
+      subroutine sumrhoondomainboundariestry2(rhop,nxp,nyp,nzp,
+     &                                        my_index,nslaves,izpslave,nzpslave)
       use Subtimers3d
-      use Parallel
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
       integer(ISZ):: allocerror
       integer(MPIISZ):: i,nn,i1,i2,iz,nzbuff
@@ -532,11 +535,13 @@ c     --- Wait for all sends to complete before deleting the sendbuffer.
       return
       end
 c=============================================================================
-      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard)
+      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard,
+     &                                    my_index,nslaves,izpslave,nzpslave)
       use Subtimers3d
-      use Parallel
       integer(ISZ):: nxp,nyp,nzp,nzpguard
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
       integer(ISZ):: allocerror
       integer(MPIISZ):: i,nn,i1,i2,iz,nzbuff
@@ -666,13 +671,17 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine setrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      subroutine setrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                                          my_index,nslaves,izpslave,nzpslave,
+     &                                          izfsslave,nzfsslave)
       use Subtimers3d
-      use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" rho from
