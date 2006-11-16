@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.140 2006/11/14 18:26:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.141 2006/11/16 20:45:14 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -115,7 +115,8 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
-                        conductors=None,gridrz=None):
+                        conductors=None,gridrz=None,
+                        izfsslave=None,nzfsslave=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -149,7 +150,8 @@ Installs the given conductors.
   if conductors is None: conductors = f3d.conductors
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz)
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz,
+           izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
