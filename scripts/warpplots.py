@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.178 2006/11/14 18:20:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.179 2006/11/16 20:38:59 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2899,7 +2899,7 @@ Plots b envelope +/- x centroid
 ##########################################################################
 # --- These functions returns or sets slices of phi and rho.
 ##########################################################################
-def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,solver=w3d):
+def getrho(ix=None,iy=None,iz=None,bcast=0,local=0,solver=None):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
@@ -2912,6 +2912,9 @@ to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
+  solver = (getregisteredsolver() or w3d)
+  if solver == w3d: toptmp = top
+  else:             toptmp = solver
   if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     if solver is w3d: solver = frz.basegrid
     if iy is not None: iy = None
@@ -2939,9 +2942,9 @@ to all three.
   else:
     iz1 = 0
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izfsslave[me]
+      iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
     else:
-      iz2 = iz1 + top.nzfsslave[me] + 1
+      iz2 = iz1 + toptmp.nzfsslave[me] + 1
     ppp = solver.rho[...,iz1:iz2]
     if ix is not None and iy is None:
       ppp = ppp[ix,...]
@@ -2954,13 +2957,13 @@ to all three.
     else:
       pe = convertizfstope(iz)
       if pe is None: return None
-      if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
+      if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
 #     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setrho(val,ix=None,iy=None,iz=None,local=0,solver=w3d):
+def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of rho, the charge density array. The shape of the input
 object depends on the number of arguments specified, which can be from none
 to all three.
@@ -2969,6 +2972,7 @@ to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
   """
+  solver = (getregisteredsolver() or w3d)
   if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     if solver is w3d: solver = frz.basegrid
     if iy is not None: iy = None
@@ -3011,7 +3015,7 @@ to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,solver=w3d):
+def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,solver=None):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3025,6 +3029,9 @@ be from none to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
+  solver = (getregisteredsolver() or w3d)
+  if solver == w3d: toptmp = top
+  else:             toptmp = solver
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   try:
@@ -3051,9 +3058,9 @@ be from none to all three.
   else:
     iz1 = 0
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izfsslave[me]
+      iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
     else:
-      iz2 = iz1 + top.nzfsslave[me] + 1
+      iz2 = iz1 + toptmp.nzfsslave[me] + 1
     ppp = solver.phi[:,:,iz1+1:iz2+1]
     if ix is not None and iy is None:
       ppp = ppp[ix,:,:]
@@ -3066,13 +3073,13 @@ be from none to all three.
     else:
       pe = convertizfstope(iz)
       if pe is None: return None
-      if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
+      if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
 #     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
-def setphi(val,ix=None,iy=None,iz=None,local=0,solver=w3d):
+def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
   """Sets slices of phi, the electrostatic potential array. The shape of
 the input object depends on the number of arguments specified, which can
 be from none to all three.
@@ -3082,6 +3089,7 @@ be from none to all three.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
                from -1 to nz+1
   """
+  solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if local or not lparallel:
