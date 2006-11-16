@@ -28,7 +28,7 @@ class MultiGrid(SubcycledPoissonSolver):
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
-                   'my_index','nslaves','izfsslave','nzfsslave','lfsautodecomp']
+                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
   def __init__(self,lreducedpickle=1,**kw):
@@ -120,13 +120,23 @@ class MultiGrid(SubcycledPoissonSolver):
       self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
+      self.nxp = self.nx
+      self.nyp = self.ny
+      self.nzp = self.nz
+      self.xmminp = self.xmmin
+      self.xmmaxp = self.xmmax
+      self.ymminp = self.ymmin
+      self.ymmaxp = self.ymmax
+      self.zmminp = self.zmmin
+      self.zmmaxp = self.zmmax
     else:
       self.nzfull = self.nz
       self.zmminglobal = self.zmmin
       self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(self.nslaves)
       self.nzfsslave = zeros(self.nslaves)
-      self.grid_overlap = zeros(1)
+      self.grid_overlap = array([2])
+      top.grid_overlap = 2
       domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 
@@ -134,6 +144,27 @@ class MultiGrid(SubcycledPoissonSolver):
       self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
       self.zmmin = self.zmminglobal + self.izfsslave[me]*self.dz
       self.zmmax = self.zmminglobal + (self.izfsslave[me] + self.nzfsslave[me])*self.dz
+
+      self.izpslave = zeros(self.nslaves)
+      self.nzpslave = zeros(self.nslaves)
+      self.zpslmin = zeros(self.nslaves,'d')
+      self.zpslmax = zeros(self.nslaves,'d')
+      domaindecomposeparticles(self.nzfull,self.nslaves,self.izfsslave,self.nzfsslave,
+                               self.grid_overlap,self.nzpguard,
+                               self.zmminglobal,self.zmmaxglobal,self.dz,self.zslave[:self.nslaves],
+                               self.lautodecomp,self.izpslave,self.nzpslave,
+                               self.zpslmin,self.zpslmax)
+
+      self.nxp = self.nx
+      self.nyp = self.ny
+      self.nzp = self.nzpslave[me]
+      self.xmminp = self.xmmin
+      self.xmmaxp = self.xmmax
+      self.ymminp = self.ymmin
+      self.ymmaxp = self.ymmax
+      self.zmminp = self.zmminglobal + self.izpslave[me]*self.dz
+      self.zmmaxp = self.zmminglobal + (self.izpslave[me] + self.nzpslave[me])*self.dz
+
 
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
@@ -149,11 +180,6 @@ class MultiGrid(SubcycledPoissonSolver):
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
     self.iz_axis = nint(-self.zmminglobal/self.dz)
-
-    # --- Create extra variables which are used in various places
-    self.nxp = self.nx
-    self.nyp = self.ny
-    self.nzp = self.nz
 
     # --- Create phi and rho arrays and other arrays.
     self.allocatefieldarrays()
@@ -183,8 +209,9 @@ class MultiGrid(SubcycledPoissonSolver):
       if 'selfe' in dict: del dict['selfe']
       del dict['conductors']
     # --- Flag whether this is the registered solver so it knows whether
-    # --- to reregister itself upon the restore.
-    if self is getregisteredsolver():
+    # --- to reregister itself upon the restore. The instance
+    # --- is not registered if it is not going to be restored.
+    if self is getregisteredsolver() and not self.lnorestoreonpickle:
       dict['iamtheregisteredsolver'] = 1
     else:
       dict['iamtheregisteredsolver'] = 0
@@ -192,7 +219,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
-    if self.iamtheregisteredsolver:
+    if self.iamtheregisteredsolver and not self.lnorestoreonpickle:
       del self.iamtheregisteredsolver
       registersolver(self)
     if self.lreducedpickle and not self.lnorestoreonpickle:
@@ -208,12 +235,13 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
+    print me,self.nz
     self.rstar = fzeros(3+self.nz,'d')
     if self.efetch == 3:
-      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
-      self.nx_selfe = self.nx
-      self.ny_selfe = self.ny
-      self.nz_selfe = self.nz
+      self.selfe = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp),'d')
+      self.nx_selfe = self.nxp
+      self.ny_selfe = self.nyp
+      self.nz_selfe = self.nzp
     else:
       self.selfe = 0.
       self.nx_selfe = 0
@@ -234,42 +262,41 @@ class MultiGrid(SubcycledPoissonSolver):
     n = len(x)
     if n == 0: return
     setrho3d(self.rhop,self.rhop,n,x,y,z,zgrid,uz,q,w,top.depos,
-             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+             self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+             self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry)
     if self.lzerorhointerior:
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nz,
+      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nzp,
                            self.rhop)
 
   def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup=None):
     n = len(x)
     if n == 0: return
     sete3d(self.phip,self.selfe,n,x,y,z,top.zgridprv,
-           self.xmmin,self.ymmin,self.zmmin,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
+           self.xmminp,self.ymminp,self.zmminp,
+           self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
-    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phip[:,:,1:-1],
-              self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
+    getgrid3d(n,x,y,z,phi,self.nxp,self.nyp,self.nzp,self.phip[:,:,1:-1],
+              self.xmminp,self.xmmaxp,self.ymminp,self.ymmaxp,self.zmminp,self.zmmaxp,
               self.l2symtry,self.l4symtry)
 
   def setrhoandphiforfieldsolve(self,*args):
-    if npes == 0:
+    if self.nslaves <= 1:
       SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
     else:
       # --- This needs checking.
       rhodims,phidims = self.getdims()
-      if 'rho' not in self.__dict__: self.rho = fzeros(rhodims,'d')
-      if 'phi' not in self.__dict__: self.phi = fzeros(phidims,'d')
-      self.rhotemp = self.rho
-      self.phitemp = self.phi
-      SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
-      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rhotemp,
-                            self.nx,self.ny,self.nz,self.rho,self.nzpguard)
-      self.rho = self.rhotemp
-      self.phi = self.phitemp
-      del self.rhotemp,self.phitemp
+      if 'rho' not in self.__dict__ or shape(self.rho) != tuple(rhodims):
+        self.rho = fzeros(rhodims,'d')
+      if 'phi' not in self.__dict__ or shape(self.phi) != tuple(phidims):
+        self.phi = fzeros(phidims,'d')
+      SubcycledPoissonSolver.setrhopforparticles(self,*args)
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
+                            self.nxp,self.nyp,self.nzp,self.rhop,self.nzpguard,
+                            me,self.nslaves,self.izpslave,self.nzpslave,
+                            self.izfsslave,self.nzfsslave)
 
   def getphipforparticles(self,*args):
     if npes > 0:
@@ -336,9 +363,9 @@ class MultiGrid(SubcycledPoissonSolver):
                       top.zbeam,
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
-                      solvergeom=self.solvergeom,
-                      conductors=self.conductors)
+                      self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
+                      solvergeom=self.solvergeom,conductors=self.conductors,
+                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
   def clearconductors(self):
     self.conductors.interior.n = 0
