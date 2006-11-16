@@ -111,6 +111,8 @@ Implements adaptive mesh refinement in 3d
         # --- includes the entire extent specified by mins and maxs.
         self.mins = array(mins)
         self.maxs = array(maxs)
+        self.mins = maximum(self.mins,self.root.mins)
+        self.maxs = minimum(self.maxs,self.root.maxs)
         self.lower = (nint(floor((self.mins - self.root.mins)/parent.deltas))*
                      self.refinement)
         self.upper = (nint(ceil((self.maxs - self.root.mins)/parent.deltas))*
@@ -296,14 +298,14 @@ Add a mesh refined block to this block.
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,nguard=self.nguard,
                     nslaves=nslaves,my_index=my_index)
-    #self.addblockaschild(child)
-    self.children.append(child)
-
-  def addblockaschild(self,block):
-    """
-Given a block instance, installs it as a child.
-    """
-    self.children.append(block)
+    # --- Make sure there is some overlap of the child with the parent
+    mins = maximum(self.mins,child.mins)
+    maxs = minimum(self.maxs,child.maxs)
+    if alltrue((self.mins <= mins) & (maxs <= self.maxs)):
+      self.children.append(child)
+    else:
+      if self.root.nslaves <= 1:
+        print "Warning: there is no overlap between the child and the parent"
 
   def resetroot(self):
     # --- No parents, so just create empty lists
@@ -331,7 +333,9 @@ Given a block instance, installs it as a child.
       child.clearconductors()
 
   def hasconductors(self):
-    return self.conductors.interior.n > 0
+    return (self.conductors.interior.n > 0 or
+            self.conductors.evensubgrid.n > 0 or
+            self.conductors.oddsubgrid.n > 0)
 
   def getconductors(self,alllevels=1,result=None):
     if result is None: result = []
@@ -394,9 +398,11 @@ Given a block instance, installs it as a child.
         self.lreducedpickle = 1
         self.lnorestoreonpickle = 1
       if (self.my_index > 0): mpi.send(blocklists,self.my_index-1)
-      if (self.my_index < npes): blocklistsright = mpi.recv(self.my_index+1)
-      if (self.my_index < npes): mpi.send(blocklists,self.my_index+1)
-      if (self.my_index > 0): blocklistsleft = mpi.recv(self.my_index-1)
+      if (self.my_index < npes-1): blocklistsright = mpi.recv(self.my_index+1)[0]
+      else:                        blocklistsright = [[] for i in range(100)]
+      if (self.my_index < npes-1): mpi.send(blocklists,self.my_index+1)
+      if (self.my_index > 0): blocklistsleft = mpi.recv(self.my_index-1)[0]
+      else:                   blocklistsleft = [[] for i in range(100)]
       # --- Restore the flags
       for block in self.listofblocks:
         self.lreducedpickle = lreducedpicklesave
