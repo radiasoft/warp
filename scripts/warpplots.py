@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.179 2006/11/16 20:38:59 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.180 2006/11/16 21:25:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2912,7 +2912,7 @@ to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
-  solver = (getregisteredsolver() or w3d)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
   else:             toptmp = solver
   if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
@@ -2972,7 +2972,7 @@ to all three.
   - iy = None: Defaults to 0 except when using 3-D geometry.
   - iz = None:
   """
-  solver = (getregisteredsolver() or w3d)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     if solver is w3d: solver = frz.basegrid
     if iy is not None: iy = None
@@ -3029,7 +3029,7 @@ be from none to all three.
              value of phi - no communication is done. Has no effect for serial
              version.
   """
-  solver = (getregisteredsolver() or w3d)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
   else:             toptmp = solver
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
@@ -3089,7 +3089,7 @@ be from none to all three.
   - iz = None: Value is relative to the fortran indexing, so iz ranges
                from -1 to nz+1
   """
-  solver = (getregisteredsolver() or w3d)
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
     iy=0
   if local or not lparallel:
