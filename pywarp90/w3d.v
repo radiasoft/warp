@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.240 $, $Date: 2006/11/14 18:11:03 $
+#@(#) File W3D.V, version $Revision: 3.241 $, $Date: 2006/11/16 20:36:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.240 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.241 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -804,8 +804,10 @@ setrhoandphiforfieldsolve(rhop:real,phip:real)
 setrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
                       rho(0:nx,0:ny,0:nz):real,
                       nxp:integer,nyp:integer,nzp:integer,
-                      rhop(0:nx,0:ny,0:nz):real,
-                      nzpguard:integer)
+                      rhop(0:nxp,0:nyp,0:nzp):real,
+                      nzpguard:integer,my_index:integer,nslaves:integer,
+                      izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
+                      izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer)
              subroutine # Copies data from rhop to rho - for parallel
 getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
@@ -973,7 +975,7 @@ setupgrid2dtype(grid:Grid2dtype,check:logical) subroutine
       # If check is false, then the input is inconsistent.
 domaindecomposefields(nz:integer,nslaves:integer,lfsautodecomp:logical,
         izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
-        grid_overlap:integer) subroutine
+        overlap:integer) subroutine
       # Do the domain decomposition for the field solver
 domaindecomposeparticles(nz:integer,nslaves:integer,
                 izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer,
