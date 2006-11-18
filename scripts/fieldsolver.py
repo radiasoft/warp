@@ -111,7 +111,7 @@ The default is to zero out rho.
     loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
   elif (currpkg == "wxy"):
     #loadrhoxy(ins_i,nps_i,is_i,lzero)
-    print "loadj  not support in wxy yet"
+    print "loadj not support in wxy yet"
 
 #=============================================================================
 # --- Setup routines which give access to fortran any field solver
@@ -439,7 +439,7 @@ class SubcycledPoissonSolver(FieldSolver):
   def __setstate__(self,dict):
     FieldSolver.__setstate__(self,dict)
     if self.lreducedpickle and not self.lnorestoreonpickle:
-      self.allocatedataarrays()
+      installafterrestart(self.allocatedataarrays)
 
   def setrhopforparticles(self,irhopndtscopies,indts,iselfb):
     if irhopndtscopies is not None:
