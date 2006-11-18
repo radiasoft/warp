@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.124 $, $Date: 2006/11/18 02:10:37 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.125 $, $Date: 2006/11/18 02:13:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3717,7 +3717,7 @@ c=============================================================================
 
       do iz0=l(2),u(2)
         iz = iz0 - fulllower(2)
-        izp1 = int(iz0/r(2) - parentfulllower(2))
+        izp1 = int(iz0/r(2) - parentfulllower(2) + 1) - 1
         wz(1) = 1.*mod(iz0,r(2))/r(2)
         wz(0) = 1. - wz(1)
         if (wz(1) == 0.) then
