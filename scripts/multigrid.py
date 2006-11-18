@@ -115,9 +115,10 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- Set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
-      self.nzfull = self.nz
-      self.zmminglobal = self.zmmin
-      self.zmmaxglobal = self.zmmax
+      if self.zmminglobal == self.zmmaxglobal:
+        self.nzfull = self.nz
+        self.zmminglobal = self.zmmin
+        self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
       self.nxp = self.nx
@@ -130,14 +131,15 @@ class MultiGrid(SubcycledPoissonSolver):
       self.zmminp = self.zmmin
       self.zmmaxp = self.zmmax
     else:
-      self.nzfull = self.nz
-      self.zmminglobal = self.zmmin
-      self.zmmaxglobal = self.zmmax
+      if self.zmminglobal == self.zmmaxglobal:
+        self.nzfull = self.nz
+        self.zmminglobal = self.zmmin
+        self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(self.nslaves)
       self.nzfsslave = zeros(self.nslaves)
       self.grid_overlap = array([2])
       top.grid_overlap = 2
-      domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
+      domaindecomposefields(self.nzfull,self.nslaves,self.lfsautodecomp,
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 
       self.nz = self.nzfsslave[me]
@@ -168,14 +170,15 @@ class MultiGrid(SubcycledPoissonSolver):
 
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
-    self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+    self.dz = (self.zmmax - self.zmmin)/self.nz
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-    self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
-    self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
+    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+    if self is self.root:
+      self.zmeshglobal = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
@@ -235,7 +238,6 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
-    print me,self.nz
     self.rstar = fzeros(3+self.nz,'d')
     if self.efetch == 3:
       self.selfe = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp),'d')
@@ -299,12 +301,12 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.izfsslave,self.nzfsslave)
 
   def getphipforparticles(self,*args):
-    if npes > 0:
+    if self.nslaves <= 1:
+      SubcycledPoissonSolver.getphipforparticles(self,*args)
+    else:
       self.setphipforparticles(*args)
       getphipforparticles3d(self.nx,self.ny,self.nz,self.phi,
-                           self.nxp,self.nyp,self.nzp,self.phip)
-    else:
-      SubcycledPoissonSolver.getphipforparticles(self,*args)
+                            self.nxp,self.nyp,self.nzp,self.phip)
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
