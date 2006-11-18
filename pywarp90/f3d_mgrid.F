@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.123 $, $Date: 2006/11/15 18:44:32 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.124 $, $Date: 2006/11/18 02:10:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3667,8 +3667,8 @@ c=============================================================================
                 do iwx=iwx1,iwx2
                   wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
 
-c                   --- Adjust for symmetries
-                    if (dopbounds == 1) then
+c                 --- Adjust for symmetries
+                  if (dopbounds == 1) then
                     if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
      &                wrho = 2*wrho
                     if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
