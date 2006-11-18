@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.39 $, $Date: 2006/11/16 20:33:34 $
+c W3DSLAVE.M, version $Revision: 1.40 $, $Date: 2006/11/18 02:12:20 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -25,7 +25,6 @@ c===========================================================================
 
 c This is the routine which divies up the work among the slaves.
 
-      real(kind=8):: zpmin,zpmax
       logical(MPIISZ):: w3dinitialized
       data w3dinitialized/.false./
       save w3dinitialized
@@ -54,26 +53,27 @@ c get number of slaves and my_pe
         lprntpara = .false.
       endif
 
-c Calculate how the work is to be arranged among the processors.
-
-      call domaindecomposefields(nz,nslaves,lfsautodecomp,
-     &                           izfsslave,nzfsslave,grid_overlap)
-
-c     --- Set the grid cell size, which is needed below. It must be set here
-c     --- after the field solve domain decomposition since nz may be
-c     --- determined from the user supplied decomposition.
-      dz = (zmmax - zmmin)/nz
-
-      call domaindecomposeparticles(nz,nslaves,izfsslave,nzfsslave,
-     &                              grid_overlap,nzpguard,zmmin,zmmax,dz,zslave,
-     &                              lautodecomp,izpslave,nzpslave,
-     &                              zpslmin,zpslmax)
-
 c---------------------------------------------------------------------------
 c     --- Save global array sizes
       nzfull = nz
       zplmin = zmmin
       zplmax = zmmax
+
+c---------------------------------------------------------------------------
+c     --- Calculate how the work is to be arranged among the processors.
+
+      call domaindecomposefields(nzfull,nslaves,lfsautodecomp,
+     &                           izfsslave,nzfsslave,grid_overlap)
+
+c     --- Set the grid cell size, which is needed below. It must be set here
+c     --- after the field solve domain decomposition since nz may be
+c     --- determined from the user supplied decomposition.
+      dz = (zmmaxglobal - zmminglobal)/nzfull
+
+      call domaindecomposeparticles(nzfull,nslaves,izfsslave,nzfsslave,
+     &                              grid_overlap,nzpguard,zmminglobal,zmmaxglobal,
+     &                              dz,zslave,lautodecomp,izpslave,nzpslave,
+     &                              zpslmin,zpslmax)
 
 c---------------------------------------------------------------------------
 c     --- Reset local values
@@ -83,13 +83,11 @@ c     --- Reset local values
       nz = nzfsslave(my_index)
       nzp = nzpslave(my_index)
       zmminp = zmminglobal + izpslave(my_index)*dz
-      zmmaxp = zmminp + nzp*dz
-      zpmin = zmmin + izpslave(my_index)*dz
-      zpmax = (izpslave(my_index)+nzpslave(my_index))*dz + zmmin
+      zmmaxp = zmminglobal + (izpslave(my_index) + nzpslave(my_index))*dz
       izfsmin = 0
       izfsmax = nzfsslave(my_index)
-      zmmin = izfsslave(my_index)*dz + zmmin
-      zmmax = (izfsslave(my_index) + nzfsslave(my_index))*dz + zmmin
+      zmmin = zmminglobal + izfsslave(my_index)*dz
+      zmmax = zmminglobal + (izfsslave(my_index) + nzfsslave(my_index))*dz
 
 c     --- Set value of izextra, which is the amount of extra space at the
 c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
