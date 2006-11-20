@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.47 2006/09/01 20:32:15 dave Exp $"
+particles_version = "$Id: particles.py,v 1.48 2006/11/20 22:12:56 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -692,6 +692,84 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   if len(ii) > 0:
     gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
     result = take(gaminv,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getex(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+    result = take(ex,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getey(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+    result = take(ey,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getez(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    ez = getattrwithsuffix(pgroup,'ez',suffix)
+    result = take(ez,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getbx(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    bx = getattrwithsuffix(pgroup,'bx',suffix)
+    result = take(bx,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getby(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    by = getattrwithsuffix(pgroup,'by',suffix)
+    result = take(by,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getbz(iw=0,gather=1,bcast=None,**kw):
+  "Returns the X momentum over mass."
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    bz = getattrwithsuffix(pgroup,'bz',suffix)
+    result = take(bz,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
