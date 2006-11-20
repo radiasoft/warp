@@ -948,7 +948,7 @@ blocknumber rather than the child number relative to the parent.
       # --- the velocities, gaminv, and pid.
       nn = self.root.totalnumberofblocks
       nperchild = zeros(nn)
-      particlesortbyindex(pgroup,ichild,w3d.ipminfsapi,w3d.npfsapi,
+      particlesortbyindex(pgroup,ichild,0,w3d.ipminfsapi,w3d.npfsapi,
                           nn,nperchild)
 
     else:
