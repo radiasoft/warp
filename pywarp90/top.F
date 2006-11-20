@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.193 $, $Date: 2006/11/02 02:06:38 $
+c@(#) File TOP.F, version $Revision: 3.194 $, $Date: 2006/11/20 23:19:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3402,7 +3402,7 @@ c=============================================================================
 c Sorts particles, using a full size extra particle array for temporary
 c space.
 
-      integer(ISZ):: is,ip,iy,iz
+      integer(ISZ):: is,ip,iy,iz,pindexmin
       integer(ISZ),allocatable:: pindex(:)
       integer(ISZ):: npblock((1+ny)*(1+nz))
 
@@ -3420,7 +3420,9 @@ c       --- many are in each block
         enddo
 
 c       --- Do the sorting
-        call particlesortbyindex(pgroup,pindex,pgroup%ins(is),pgroup%nps(is),
+        pindexmin = minval(pindex)
+        call particlesortbyindex(pgroup,pindex,pindexmin,
+     &                           pgroup%ins(is),pgroup%nps(is),
      &                           (1+ny)*(1+nz),npblock)
 
         deallocate(pindex)
@@ -3431,21 +3433,20 @@ c     --- End of loop over species
       return
       end
 c=============================================================================
-      subroutine particlesortbyindex(pgroup,pindex,ipmin,np,
+      subroutine particlesortbyindex(pgroup,pindex,pindexmin,ipmin,np,
      &                               nn,npblock)
       use ParticleGroupmodule
       use Beam_acc, Only: lrelativ
       type(ParticleGroup):: pgroup
-      integer(ISZ):: ipmin,np,nn
+      integer(ISZ):: pindexmin,ipmin,np,nn
       integer(ISZ):: npblock(nn)
       integer(ISZ):: pindex(np)
 
-      integer(ISZ):: ip,ipb,ipid,pindexmin
+      integer(ISZ):: ip,ipb,ipid
       integer(ISZ):: ipblock(nn)
       real(kind=8),pointer:: pdata(:)
       
       npblock = 0
-      pindexmin = minval(pindex)
 
 c     --- First, count how many are in each block
       do ip=1,np

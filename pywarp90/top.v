@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.185 $, $Date: 2006/11/14 18:13:37 $
+#@(#) File TOP.V, version $Revision: 3.186 $, $Date: 2006/11/20 23:19:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.185 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.186 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1993,7 +1993,8 @@ chdtspid integer /0/   # position of particle pid for dts change
                        # (FORTRAN indexed: based 1)
 ssn    integer   /1/   # next particles 'social security number' available
 lsaveoldpos logical /.false./ # Flag setting whether old particle positions are saved
-particlesortbyindex(pgroup:ParticleGroup,pindex(np):integer,ipmin:integer,np:integer,
+particlesortbyindex(pgroup:ParticleGroup,pindex(np):integer,pindexmin:integer,
+                    ipmin:integer,np:integer,
                     nn:integer,npblock(nn):integer) subroutine
                        # Sorts particles based on an inputted index
 
