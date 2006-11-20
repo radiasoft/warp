@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.48 2006/11/20 22:12:56 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.49 2006/11/20 22:45:14 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -698,7 +698,7 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getex(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the Ex field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -711,7 +711,7 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getey(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the Ey field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -724,7 +724,7 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getez(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the Ez field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -737,7 +737,7 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbx(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the Bx field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -750,7 +750,7 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getby(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the By field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
@@ -763,7 +763,7 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   else: return result
 #-------------------------------------------------------------------------
 def getbz(iw=0,gather=1,bcast=None,**kw):
-  "Returns the X momentum over mass."
+  "Returns the Bz field applied to the particles"
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
