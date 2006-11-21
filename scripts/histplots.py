@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.31 2006/08/29 21:49:37 jlvay Exp $"
+histplots_version = "$Id: histplots.py,v 1.32 2006/11/21 17:35:56 jlvay Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -346,12 +346,14 @@ Plots data in various ways. By default, makes a mountain range plot.
     perspecies = kw.get('perspecies',1)
     if 'perspecies' in kw: del kw['perspecies']
     js = kw.get('js',-1)
+    if 'js' in kw: del kw['js']
     if perspecies: hzarray = hzarray[...,js]
     mountainplot1(kw['titlet'],hzarray,kw)
   else:
     kw.setdefault('iend',jhist)
     perspecies = kw.get('perspecies',1)
     if 'perspecies' in kw: del kw['perspecies']
+    if 'js' in kw: del kw['js']
     js = kw.get('js',-1)
     if perspecies: hzarray = hzarray[...,js]
     mountainplot1(kw['titlet'],hzarray,kw)
