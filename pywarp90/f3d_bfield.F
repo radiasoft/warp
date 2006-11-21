@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.22 $, $Date: 2006/10/04 01:42:53 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.23 $, $Date: 2006/11/21 16:54:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -855,7 +855,7 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
 
       return
       end
-c=============================================================================
+cc=============================================================================
       subroutine getanalyticbtheta(bfield)
       use Constant
       use BFieldGridTypemodule
@@ -1740,7 +1740,7 @@ c       --- and the data needs to be copied around.
         nullify(bzfsapi)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         if (bfstype >= 0) then
-          call setb3d(bfieldp,n,x,y,z,zgrid,bx,by,bz,l2symtry,l4symtry)
+          call setb3d(bfieldp,n,x,y,z,zgridprv,bx,by,bz,l2symtry,l4symtry)
         endif
       else
         bx = 0.
