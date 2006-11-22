@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.141 2006/11/16 20:45:14 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.142 2006/11/22 17:19:20 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -116,7 +116,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
                         conductors=None,gridrz=None,
-                        izfsslave=None,nzfsslave=None):
+                        my_index=None,nslaves=None,izfsslave=None,nzfsslave=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -151,7 +151,7 @@ Installs the given conductors.
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
            xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz,
-           izslave=izfsslave,nzslave=nzfsslave)
+           my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
@@ -1577,7 +1577,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                     gridrz=None,
-                    izslave=None,nzslave=None):
+                    my_index=None,nslaves=None,izslave=None,nzslave=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1599,6 +1599,8 @@ Creates a grid object which can generate conductor data.
     self.zmmax = _default(zmmax,w3d.zmmaxglobal)
     self.l2symtry = _default(l2symtry,w3d.l2symtry)
     self.l4symtry = _default(l4symtry,w3d.l4symtry)
+    self.my_index = _default(my_index,top.my_index)
+    self.nslaves = _default(nslaves,top.nslaves)
     self.izslave = _default(izslave,top.izfsslave)
     self.nzslave = _default(nzslave,top.nzfsslave)
     
@@ -1637,7 +1639,7 @@ Creates a grid object which can generate conductor data.
       conductors = ConductorType()
       getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
                   conductors,
-                  top.my_index,top.nslaves,self.izslave,self.nzslave)
+                  self.my_index,self.nslaves,self.izslave,self.nzslave)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
