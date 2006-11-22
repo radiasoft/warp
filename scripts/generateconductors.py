@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.142 2006/11/22 17:19:20 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.143 2006/11/22 22:03:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -269,7 +269,7 @@ Should never be directly created by the user.
   def draw(self,**kw):
     nowarn = kw.get('nowarn',0)
     if not nowarn:
-      print 'draw method not implemeneted for '+self.__class__.__name__
+      print 'draw method not implemented for '+self.__class__.__name__
 
   def drawzx(self,**kw):
     self.draw(**kw)
@@ -565,7 +565,7 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
@@ -598,7 +598,7 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
@@ -631,7 +631,7 @@ AssemblyMinus class.
   """
   def __init__(self,l,r):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid,
-                      kw={'material':l.material,'name':l.name,'neumann':l.neumann})
+                      kw={'material':l.material,'name':(l.name or r.name),'neumann':l.neumann})
     self.left = l
     self.right = r
   def getextent(self):
