@@ -185,12 +185,12 @@ Implements adaptive mesh refinement in 3d
       # --- Check if the mesh doesn't reach the edge of the root grid.
       # --- If not, switch to Dirichlet boundary.
       self.bounds[::2] = where(self.fulllower > 0,0,self.bounds[::2])
-      self.bounds[1::2] = where(self.fullupper < self.rootdims,
+      self.bounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
                                 0,self.bounds[1::2])
       self.l2symtry = self.root.l2symtry
       self.l4symtry = self.root.l4symtry
       self.pbounds[::2] = where(self.fulllower > 0,0,self.pbounds[::2])
-      self.pbounds[1::2] = where(self.fullupper < self.rootdims,
+      self.pbounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
                                 0,self.pbounds[1::2])
 
       # --- Create some temporaries for optimization
@@ -1014,7 +1014,6 @@ Fetches the potential, given a list of positions
   #--------------------------------------------------------------------------
 
   def getblockfromnumber(self,number):
-    if number < 0 or number >= len(self.root.listofblocks): print "BBBBB ",number,len(self.root.listofblocks),me
     return self.root.listofblocks[number]
 
   def islastcall(self):
