@@ -115,6 +115,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- Set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
+      self.my_index = 0
       if self.zmminglobal == self.zmmaxglobal:
         self.nzfull = self.nz
         self.zmminglobal = self.zmmin
@@ -131,6 +132,7 @@ class MultiGrid(SubcycledPoissonSolver):
       self.zmminp = self.zmmin
       self.zmmaxp = self.zmmax
     else:
+      self.my_index = me
       if self.zmminglobal == self.zmmaxglobal:
         self.nzfull = self.nz
         self.zmminglobal = self.zmmin
@@ -142,10 +144,10 @@ class MultiGrid(SubcycledPoissonSolver):
       domaindecomposefields(self.nzfull,self.nslaves,self.lfsautodecomp,
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 
-      self.nz = self.nzfsslave[me]
+      self.nz = self.nzfsslave[self.my_index]
       self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-      self.zmmin = self.zmminglobal + self.izfsslave[me]*self.dz
-      self.zmmax = self.zmminglobal + (self.izfsslave[me] + self.nzfsslave[me])*self.dz
+      self.zmmin = self.zmminglobal + self.izfsslave[self.my_index]*self.dz
+      self.zmmax = self.zmminglobal + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
 
       self.izpslave = zeros(self.nslaves)
       self.nzpslave = zeros(self.nslaves)
@@ -159,13 +161,13 @@ class MultiGrid(SubcycledPoissonSolver):
 
       self.nxp = self.nx
       self.nyp = self.ny
-      self.nzp = self.nzpslave[me]
+      self.nzp = self.nzpslave[self.my_index]
       self.xmminp = self.xmmin
       self.xmmaxp = self.xmmax
       self.ymminp = self.ymmin
       self.ymmaxp = self.ymmax
-      self.zmminp = self.zmminglobal + self.izpslave[me]*self.dz
-      self.zmmaxp = self.zmminglobal + (self.izpslave[me] + self.nzpslave[me])*self.dz
+      self.zmminp = self.zmminglobal + self.izpslave[self.my_index]*self.dz
+      self.zmmaxp = self.zmminglobal + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
 
 
     self.dx = (self.xmmax - self.xmmin)/self.nx
@@ -297,7 +299,7 @@ class MultiGrid(SubcycledPoissonSolver):
       SubcycledPoissonSolver.setrhopforparticles(self,*args)
       setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
                             self.nxp,self.nyp,self.nzp,self.rhop,self.nzpguard,
-                            me,self.nslaves,self.izpslave,self.nzpslave,
+                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
 
   def getphipforparticles(self,*args):
@@ -332,14 +334,14 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def makerhoperiodic_parallel(self):
     tag = 70
-    if me == self.nslaves-1:
+    if self.my_index == self.nslaves-1:
       request = mpi.isend(self.rho[:,:,self.nz],0,tag)
       self.rho[:,:,self.nz],status = mpi.recv(0,tag)
-    elif me == 0:
+    elif self.my_index == 0:
       rhotemp,status = mpi.recv(self.nslaves-1,tag)
       self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
       request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
-    if me == 0 or me == self.nslaves-1:
+    if self.my_index == 0 or self.my_index == self.nslaves-1:
       status = request.wait()
 
   def fetcha(self):
@@ -367,6 +369,7 @@ class MultiGrid(SubcycledPoissonSolver):
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,conductors=self.conductors,
+                      my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
   def clearconductors(self):
