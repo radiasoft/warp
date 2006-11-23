@@ -607,6 +607,11 @@ not be fetched from there (it is set negative).
       SubcycledPoissonSolver.setrhopforparticles(block,*args)
 
   def allocatedataarrays(self):
+    # --- If not root, than only allocate the arrays of this patch
+    if self != self.root:
+      SubcycledPoissonSolver.allocatedataarrays(self)
+      return
+    # --- Otherwise, do all patches.
     # --- Make sure that the final setup was done. This is put here
     # --- since this routine is called by loadrho and solve, which
     # --- call finalize anyway.
@@ -1144,9 +1149,14 @@ not given, it uses f3d.mgmaxiters.
 
   def find_mgparam(self,lsavephi=false,resetpasses=0):
     for block in self.listofblocks:
-      print "Finding mgparam for block number ",block.blocknumber
-      find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
-                   solver=self,pkg3d=self)
+      print "Finding mgparam for block number ",block.blocknumber,me
+      # --- Temporarily remove the children so the solve is only done
+      # --- on this patch
+      childrensave = block.children
+      block.children = []
+      MultiGrid.find_mgparam(block,lsavephi=lsavephi,resetpasses=resetpasses)
+      # --- Restore the children
+      block.children = childrensave
 
   def arraysliceoperation(self,ip,idim,arraystring,op,opnd,null,comp=None):
     """
