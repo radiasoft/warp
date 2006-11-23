@@ -377,8 +377,9 @@ class MultiGrid(SubcycledPoissonSolver):
     self.conductors.evensubgrid.n = 0
     self.conductors.oddsubgrid.n = 0
 
-  def optimizeconvergence(self,resetpasses=1):
-    find_mgparam(resetpasses=resetpasses,solver=self)
+  def find_mgparam(self,lsavephi=false,resetpasses=1):
+    find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+                 solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
     # --- Setup data for bends.
