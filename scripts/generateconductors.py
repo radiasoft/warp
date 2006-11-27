@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.143 2006/11/22 22:03:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.144 2006/11/27 23:24:22 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2930,29 +2930,48 @@ data and make sure it is consistent.
              "Some of the input surface data is not the correct length"
     return data
 
-  def getplotdata(self,rdata,zdata,raddata,rcdata,zcdata,narcpoints):
+  def getplotdata(self,rfunc,npoints,
+                       rdata,zdata,raddata,rcdata,zcdata,narcpoints):
     r = []
     z = []
-    for i in range(len(rdata)-1):
-      if raddata[i] == largepos:
-        r.append(rdata[i])
-        z.append(zdata[i])
-      else:
-        zz = span(zdata[i],zdata[i+1],narcpoints)
-        if raddata[i] > 0.:
-          rr = rcdata[i] + sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+    if rfunc != ' ':
+      # --- Get the data from the rofz function
+      import __main__
+      if npoints is None:
+        solver = getregisteredsolver()
+        if solver is None: dz = w3d.dz
+        else:              dz = solver.dz
+        npoints = max(100,nint((self.zmax-self.zmin)/dz))
+      dz = (self.zmax - self.zmin)/npoints
+      for i in range(npoints+1):
+        f3d.srfrv_z = self.zmin + i*dz
+        getattr(__main__,rfunc)()
+        r.append(f3d.srfrv_r)
+        z.append(f3d.srfrv_z)
+    else:
+      # --- Get the data from the rofz table
+      for i in range(len(rdata)-1):
+        if raddata[i] == largepos:
+          r.append(rdata[i])
+          z.append(zdata[i])
         else:
-          rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
-        r = r + list(rr)
-        z = z + list(zz)
-    r.append(rdata[-1])
-    z.append(zdata[-1])
-    # --- zcent needs to be added in when chopping the data at zmin and zmax,
-    # --- but then subtracted out since the base plotting routines adds
-    # --- in zcent.
-    z = array(z) + self.zcent
-    z = minimum(self.zmax,maximum(self.zmin,array(z)))
-    z = list(z - self.zcent)
+          zz = span(zdata[i],zdata[i+1],narcpoints)
+          if raddata[i] > 0.:
+            rr = rcdata[i] + sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+          else:
+            rr = rcdata[i] - sqrt(maximum(0,raddata[i]**2 - (zz-zcdata[i])**2))
+          r = r + list(rr)
+          z = z + list(zz)
+      r.append(rdata[-1])
+      z.append(zdata[-1])
+
+      # --- zcent needs to be added in when chopping the data at zmin and zmax,
+      # --- but then subtracted out since the base plotting routines adds
+      # --- in zcent.
+      z = array(z) + self.zcent
+      z = minimum(self.zmax,maximum(self.zmin,array(z)))
+      z = list(z - self.zcent)
+
     return r,z
 
 #============================================================================
@@ -3027,6 +3046,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rofzfunc = self.rofzfunc.__name__
+      self.rofzdata = None
+      self.zdata = None
+      self.raddata = None
+      self.rcdata = None
+      self.zcdata = None
 
     assert zmin is not None,'zmin must be specified'
     assert zmax is not None,'zmin must be specified'
@@ -3052,7 +3076,7 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+  def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -3065,13 +3089,13 @@ Plots the r versus z
     """
     narcpoints = kw.get('narcpoints',40)
     rmax = kw.get('rmax',None)
-    if self.usedata:
-      r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
-                             self.rcdata,self.zcdata,narcpoints)
-      if rmax is None: rmax = self.rmax
-      r = [rmax] + r + [rmax]
-      z = [self.zmin] + z + [self.zmax]
-      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    r,z = self.getplotdata(self.rofzfunc,nzpoints,
+                           self.rofzdata,self.zdata,self.raddata,
+                           self.rcdata,self.zcdata,narcpoints)
+    if rmax is None: rmax = self.rmax
+    r = [rmax] + r + [rmax]
+    z = [self.zmin] + z + [self.zmax]
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,rmax=None,kwdict={},**kw):
     """
@@ -3164,6 +3188,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rofzfunc = self.rofzfunc.__name__
+      self.rofzdata = None
+      self.zdata = None
+      self.raddata = None
+      self.rcdata = None
+      self.zcdata = None
 
     assert zmin is not None,'zmin must be specified'
     assert zmax is not None,'zmin must be specified'
@@ -3191,7 +3220,7 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+  def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -3204,13 +3233,13 @@ Plots the r versus z
     """
     narcpoints = kw.get('narcpoints',40)
     rmin = kw.get('rmin',None)
-    if self.usedata:
-      r,z = self.getplotdata(self.rofzdata,self.zdata,self.raddata,
-                             self.rcdata,self.zcdata,narcpoints)
-      if rmin is None: rmin = self.rmin
-      r = [rmin] + r + [rmin]
-      z = [self.zmin] + z + [self.zmax]
-      self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
+    r,z = self.getplotdata(self.rofzfunc,nzpoints,
+                           self.rofzdata,self.zdata,self.raddata,
+                           self.rcdata,self.zcdata,narcpoints)
+    if rmin is None: rmin = self.rmin
+    r = [rmin] + r + [rmin]
+    z = [self.zmin] + z + [self.zmax]
+    self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
   def createdxobject(self,kwdict={},**kw):
     """
@@ -3302,6 +3331,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rminofz = self.rminofz.__name__
+      self.rminofzdata = None
+      self.zmindata = None
+      self.radmindata = None
+      self.rcmindata = None
+      self.zcmindata = None
 
     if operator.isSequenceType(zmaxdata):
       self.usemaxdata = true
@@ -3331,6 +3365,11 @@ Methods:
         # --- Get the name of the input function if a reference to the function
         # --- was passed in.
         self.rmaxofz = self.rmaxofz.__name__
+      self.rmaxofzdata = None
+      self.zmaxdata = None
+      self.radmaxdata = None
+      self.rcmaxdata = None
+      self.zcmaxdata = None
 
     # --- If zmin or zmax were not specified, get the extremum from any tablized
     # --- data.
@@ -3379,7 +3418,7 @@ Methods:
 
     return Assembly.getkwlist(self)
 
-  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+  def draw(self,color='fg',filled=None,fullplane=1,nzpoints=None,**kw):
     """
 Plots the r versus z
  - color='fg': color of outline, set to None to not plot the outline
@@ -3389,16 +3428,12 @@ Plots the r versus z
  - narcpoints=40: number of points to draw along any circular arcs
     """
     narcpoints = kw.get('narcpoints',40)
-    if self.usemindata:
-      ri,zi = self.getplotdata(self.rminofzdata,self.zmindata,self.radmindata,
-                               self.rcmindata,self.zcmindata,narcpoints)
-    else:
-      ri,zi = [],[]
-    if self.usemaxdata:
-      ro,zo = self.getplotdata(self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
-                               self.rcmaxdata,self.zcmaxdata,narcpoints)
-    else:
-      ro,zo = [],[]
+    ri,zi = self.getplotdata(self.rminofz,nzpoints,
+                             self.rminofzdata,self.zmindata,self.radmindata,
+                             self.rcmindata,self.zcmindata,narcpoints)
+    ro,zo = self.getplotdata(self.rmaxofz,nzpoints,
+                             self.rmaxofzdata,self.zmaxdata,self.radmaxdata,
+                             self.rcmaxdata,self.zcmaxdata,narcpoints)
     ro.reverse()
     zo.reverse()
     r,z = ri+ro,zi+zo
