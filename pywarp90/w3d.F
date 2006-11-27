@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.309 $, $Date: 2006/11/16 20:36:07 $
+c@(#) File W3D.F, version $Revision: 3.310 $, $Date: 2006/11/27 21:26:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7981,6 +7981,7 @@ c     --- If a field solver is registered, call it and return.
         call execuser('fieldsolregistered')
 !$OMP MASTER
         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+        fstime = fstime + (wtime() - timetemp)
 !$OMP END MASTER
         return
       endif
@@ -8067,8 +8068,8 @@ c     --- advanced group.
 
 !$OMP MASTER
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
-!$OMP END MASTER
       fstime = fstime + (wtime() - timetemp)
+!$OMP END MASTER
       return
       end
 c===========================================================================
