@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.23 $, $Date: 2006/11/21 16:54:16 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.24 $, $Date: 2006/11/28 23:42:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2082,7 +2082,8 @@ c fits and so was replaced with if statements.
 
         call multigrid3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,a,j,
      &                      bfield%rstar,linbend,bfield%bounds,
-     &                      bfield%xmmin,bfield%ymmin,bfield%zmmin,zbeam,zgrid,
+     &                      bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                      bfield%zmminglobal,zbeam,zgrid,
      &                      bfield%mgparam(iaxis),bfield%mgform(iaxis),
      &                      bfield%mgiters(iaxis),bfield%mgmaxiters(iaxis),
      &                      bfield%mgmaxlevels(iaxis),bfield%mgerror(iaxis),
