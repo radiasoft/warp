@@ -249,16 +249,40 @@ class Species:
         js=self.jslist[0]
       addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum,**kw)
       
-  def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
+  def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
+                      vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
+                      lmomentum=0,**kw):
     x=xmin+(xmax-xmin)*RandomArray.random(np)
     y=ymin+(ymax-ymin)*RandomArray.random(np)
     z=zmin+(zmax-zmin)*RandomArray.random(np)
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
     vz=RandomArray.normal(vzmean,vthz,np)
-    self.addpart(x,y,z,vx,vy,vz,js=js,**kw)
+    if lmomentum:
+      gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
+    else:
+      gi=1.
+    self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
-  def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
+  def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
+                           xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,js=None,
+                           lmomentum=0,**kw):
+    r=RandomArray.random(np)
+    theta=RandomArray.random(np)
+    x=xmean+rmax*sqrt(r)*cos(2.*pi*theta)
+    y=ymean+rmax*sqrt(r)*sin(2.*pi*theta)
+    z=zmin+(zmax-zmin)*RandomArray.random(np)
+    vx=RandomArray.normal(vxmean,vthx,np)
+    vy=RandomArray.normal(vymean,vthy,np)
+    vz=RandomArray.normal(vzmean,vthz,np)
+    if lmomentum:
+      gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
+    else:
+      gi=1
+    self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
+    
+  def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
+                        xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
     x=RandomArray.normal(xmean,deltax,np)
     y=RandomArray.normal(ymean,deltay,np)
     z=RandomArray.normal(zmean,deltaz,np)
