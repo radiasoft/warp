@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.126 2006/10/04 01:39:38 dave Exp $"
+warp_version = "$Id: warp.py,v 1.127 2006/11/29 00:52:13 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -398,8 +398,8 @@ w3d.ymmin, w3d.ymmax, w3d.zmmin, w3d.zmmax.
   if xmax is None: xmax=w3d.xmmax
   if ymin is None: ymin=w3d.ymmin
   if ymax is None: ymax=w3d.ymmax
-  if zmin is None: zmin=w3d.zmmin
-  if zmax is None: zmax=w3d.zmmax
+  if zmin is None: zmin=w3d.zmmin+top.zgrid
+  if zmax is None: zmax=w3d.zmmax+top.zgrid
 
   # --- Calculate the grid cell sizes, checking for zero values
   if nx > 0:
@@ -479,7 +479,7 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   else:
     top.zlmin = zmin - zlen/10.
     top.zlmax = zmax + zlen/10.
-    top.nzl = 100
+    top.nzl = 1000
     top.dzl = (top.zlmax - top.zlmin)/top.nzl
     top.dzli = 1./top.dzl
     top.zlframe = 0.
