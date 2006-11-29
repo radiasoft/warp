@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.310 $, $Date: 2006/11/27 21:26:56 $
+c@(#) File W3D.F, version $Revision: 3.311 $, $Date: 2006/11/29 00:48:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1509,7 +1509,6 @@ c         --- Same defaults as set in getzmmnt
           zmmnts => tempzmmnts
 #endif
         endif
-
 c  Loop over particle blocks; move each block separately
 !$OMP DO
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -1602,6 +1601,10 @@ c           --- Set quad, dipole E and B; All: Bz
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
+c           --- Apply cancellation of E+VxB correction
+            if(pgroup%lebcancel) 
+     &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- First half-electric field increment to momenta
             call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                   ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
@@ -1663,6 +1666,10 @@ c           --- Set quad, dipole E and B;  All: Bz
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    0., halfdt_s, fulldt_s, sm(1), sq(1), time)
+c           --- Apply cancellation of E+VxB correction
+            if(pgroup%lebcancel) 
+     &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
+     &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- Magnetic field increment to momenta
             if (interpdk(isid) .ne. 0) then
               call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
@@ -1745,6 +1752,10 @@ c             --- Set quad, dipole E and B; All: Bz
      &                     bx(ipmin),by(ipmin),bz(ipmin),
      &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
      &                     bendres,bendradi,gammabar,fulldt_s)
+c             --- Apply cancellation of E+VxB correction
+              if(pgroup%lebcancel) 
+     &        call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c             --- Half electric field increment to momenta
               call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                     ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
@@ -2131,7 +2142,6 @@ c  Push the particle velocity with B field
 
       if (lw3dtimesubs) substarttime = wtime()
       const = q*ddt*0.5/m
-
       if (ibpush == 1) then
 c        --- fast b-field rotation algorithm
          do ip=1,np
@@ -2309,6 +2319,75 @@ c  Advance particle positions
 
 !$OMP MASTER
       if (lw3dtimesubs) timexpusht3d = timexpusht3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine ebcancel3d(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,bxp,byp,bzp)
+      use Subtimers3d
+      integer(ISZ):: np
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: exp(np),eyp(np),ezp(np),bxp(np),byp(np),bzp(np)
+      real(kind=8):: v,vx,vy,vz,e,ex,ey,ez,ve,vex,vey,vez
+      real(kind=8):: eve,evex,evey,evez,b_e,b_ve,b_eve,v_eve,vcrossb_e,de,fact
+
+c Apply E+VxB cancellation.
+c Vectors are first decomposed on base B={E,VxE,Ex(VxE)}. 
+
+      integer(ISZ):: ip
+      real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+!      if (lw3dtimesubs) substarttime = wtime()
+      do ip=1,np
+        ! get unit vectors e and v
+        e  = sqrt(exp(ip)*exp(ip)+eyp(ip)*eyp(ip)+ezp(ip)*ezp(ip))
+        if(e==0.) cycle
+        vx = uxp(ip)*gaminv(ip)
+        vy = uyp(ip)*gaminv(ip)
+        vz = uzp(ip)*gaminv(ip)
+        v = sqrt(vx*vx+vy*vy+vz*vz)
+        if(v==0.) return
+        ex = exp(ip)/e; ey = eyp(ip)/e; ez = ezp(ip)/e
+        vx = vx/v; vy = vy/v; vz = vz/v
+        ! get unit vectors ve
+        vex = vy*ez-vz*ey
+        vey = vz*ex-vx*ez
+        vez = vx*ey-vy*ex
+        ve = sqrt(vex*vex+vey*vey+vez*vez)
+        vex = vex/ve; vey = vey/ve; vez = vez/ve
+        if(ve==0.) cycle
+        ! get unit vectors eve
+        evex = ey*vez-ez*vey
+        evey = ez*vex-ex*vez
+        evez = ex*vey-ey*vex
+        eve = sqrt(evex*evex+evey*evey+evez*evez)
+        evex = evex/eve; evey = evey/eve; evez = evez/eve
+        ! get B field in base {E,VxE,Ex(VxE)}
+        b_e   = bxp(ip)*ex  +byp(ip)*ey  +bzp(ip)*ez
+        b_ve  = bxp(ip)*vex +byp(ip)*vey +bzp(ip)*vez
+        if(b_ve==0.) cycle
+        b_eve = bxp(ip)*evex+byp(ip)*evey+bzp(ip)*evez
+        ! get velocity V in base {E,VxE,Ex(VxE)}
+!        v_e   = vx*ex  +vy*ey  +vz*ez  ! uninteresting
+!        v_ve  = vx*vex +vy*vey +vz*vez ! should be 0
+        v_eve = v*(vx*evex+vy*evey+vz*evez)
+        if(v_eve==0.) cycle
+        ! get VxB along E
+        vcrossb_e = -v_eve*b_ve!+v_ve*b_eve
+        if(vcrossb_e>=0.) cycle
+        de = max(vcrossb_e,-e)
+        b_ve = b_ve+de/v_eve
+        fact = de/e
+        exp(ip) = exp(ip)*(1.+fact)
+        eyp(ip) = eyp(ip)*(1.+fact)
+        ezp(ip) = ezp(ip)*(1.+fact)
+        bxp(ip) = b_e*ex+b_ve*vex+b_eve*evex
+        byp(ip) = b_e*ey+b_ve*vey+b_eve*evey
+        bzp(ip) = b_e*ez+b_ve*vez+b_eve*evez
+      enddo
+
+!$OMP MASTER
+!      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
