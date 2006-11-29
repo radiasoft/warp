@@ -50,16 +50,21 @@ class Quasistatic:
     else:
       self.pboundxy = pboundxy
       
-  def push(self,l_return_dist=false):
+  def push(self,l_return_dist=false,l_return_rho=false):
     # --- defines shortcuts
     pg = top.pgroup
     bg = frz.basegrid
     # --- generate electrons
-    self.slist[0].add_uniform_box(self.Ninit,w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,0.,0.,1.e-10,1.e-10,1.e-10)
+    if top.prwall<sqrt(w3d.xmmax**2+w3d.ymmax**2):
+      self.slist[0].add_uniform_cylinder(self.Ninit,top.prwall,0.,0.,1.e-10,1.e-10,1.e-10)
+    else:
+      self.slist[0].add_uniform_box(self.Ninit,w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,0.,0.,1.e-10,1.e-10,1.e-10)
     if l_return_dist:
       dist=[]
       sp=self.slist[0]
       dist.append([sp.getx(),sp.gety(),sp.getvx(),sp.getvy()])
+    if l_return_rho:
+      rho = zeros([w3d.nx+1,w3d.ny+1,w3d.nz+1],'d')
     # --- switch to 2-D solver
     solvergeomcp = w3d.solvergeom
     fstypecp = top.fstype
@@ -89,6 +94,7 @@ class Quasistatic:
                       bg.dr,bg.dz,bg.rmin,top.zgrid)
       # --- distribute rho among patches
       distribute_rho_rz()
+      if l_return_rho:rho[:,:,iz]=frz.basegrid.rho
       if self.l_verbose:print 'feldsolve'   # MR OK
       if self.l_findmgparam and top.it==0 and iz==w3d.nz/2:frz.find_mgparam_rz(false)
       solve_mgridrz(bg,frz.mgridrz_accuracy,true)
@@ -178,6 +184,8 @@ class Quasistatic:
     top.fstype = fstypecp
     if l_return_dist: 
       return dist
+    if l_return_rho:
+      return rho
 
 class Quasistatic2:
   def __init__(self,slist=None,MRroot=None,l_verbose=0,l_findmgparam=0,nparpgrp=top.nparpgrp,Ninit=1000):
