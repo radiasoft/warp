@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.180 2006/11/16 21:25:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.181 2006/11/29 00:55:57 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -639,7 +639,7 @@ def settitles(titlet="",titleb="",titlel="",titler=""):
   if titleb is not None: default_titleb = titleb
   if titlel is not None: default_titlel = titlel
   if titler is not None: default_titler = titler
-def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
+def ptitles(titlet="",titleb="",titlel="",titler="",v=None,height=20):
   "Plots titles, either uses input or titles set by settitles"
   global framet,frameb,framel,framer
   if "ptitles" in _plotpackage.__dict__:
@@ -656,16 +656,16 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
   framer=titler
   if titlet:
     plt(titlet,ptitle_placement[v-1][0][0],ptitle_placement[v-1][0][1],
-        justify="CC",orient=0,local=1)
+        justify="CC",orient=0,local=1,height=height)
   if titleb:
     plt(titleb,ptitle_placement[v-1][1][0],ptitle_placement[v-1][1][1],
-        justify="CC",orient=0,local=1)
+        justify="CC",orient=0,local=1,height=height)
   if titlel:
     plt(titlel,ptitle_placement[v-1][2][0],ptitle_placement[v-1][2][1],
-        justify="CC",orient=1,local=1)
+        justify="CC",orient=1,local=1,height=height)
   if titler:
     plt(titler,ptitle_placement[v-1][3][0],ptitle_placement[v-1][3][1],
-        justify="CC",orient=0,local=1)
+        justify="CC",orient=0,local=1,height=height)
   settitles()
 def ptitlebottom(text=""):
   plt(text,0.3950,0.37,justify="CC",local=1)
