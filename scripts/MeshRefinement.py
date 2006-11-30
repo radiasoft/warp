@@ -64,14 +64,11 @@ Implements adaptive mesh refinement in 3d
       self.totalrefinement = ones(3)
       self.forcesymmetries = 1
       self.nguard = nguard
+      self.deltas = None
 
       self.refinement = None
 
-      # --- Make sure the top.nparpgrp is a large number. If it becomes too
-      # --- small, fetche becomes inefficient since it is called many times,
-      # --- once per each group. The not insignificant function call overhead
-      # --- of python begins to use up a sizable chunk of time.
-      top.nparpgrp = 100000
+      # --- top.nparpgrp is now set in the init of the base class.
       
     else:
 
@@ -199,6 +196,10 @@ Implements adaptive mesh refinement in 3d
 
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
+    if self.deltas is not None:
+      self.dx = self.deltas[0]
+      self.dy = self.deltas[1]
+      self.dz = self.deltas[2]
     if self.dims is not None:
       self.nx = self.dims[0]
       self.ny = self.dims[1]
