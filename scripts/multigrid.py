@@ -17,7 +17,7 @@ except ImportError:
 ##############################################################################
 class MultiGrid(SubcycledPoissonSolver):
   
-  __w3dinputs__ = ['nx','ny','nz','nzfull','nzpguard',
+  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nzfull','nzpguard',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
                    'zmminglobal','zmmaxglobal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
@@ -145,7 +145,7 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 
       self.nz = self.nzfsslave[self.my_index]
-      self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+      if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
       self.zmmin = self.zmminglobal + self.izfsslave[self.my_index]*self.dz
       self.zmmax = self.zmminglobal + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
 
@@ -169,18 +169,16 @@ class MultiGrid(SubcycledPoissonSolver):
       self.zmminp = self.zmminglobal + self.izpslave[self.my_index]*self.dz
       self.zmmaxp = self.zmminglobal + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
 
-
-    self.dx = (self.xmmax - self.xmmin)/self.nx
-    self.dy = (self.ymmax - self.ymmin)/self.ny
-    self.dz = (self.zmmax - self.zmmin)/self.nz
+    if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
+    if self.dy == 0.: self.dy = (self.ymmax - self.ymmin)/self.ny
+    if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-    if self is self.root:
-      self.zmeshglobal = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
+    self.zmeshglobal = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
