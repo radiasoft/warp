@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.50 2006/11/14 18:24:23 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.51 2006/11/30 19:14:49 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -202,7 +202,7 @@ recalculated on a finer mesh to give better balancing.
                          zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
                          nzguard=self.nzguard)
     for i in range(getnsndtsforsubcycling()):
-      getphiforparticles(i)
+      getphipforparticles(i)
 
 #########################################################################
 #########################################################################
