@@ -2,6 +2,7 @@
 """
 from warp import *
 import __main__
+import gc
 
 #=============================================================================
 def loadrho(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -269,6 +270,12 @@ the diagnostic is of interest and is meaningfull.
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
       if kw.has_key(name): del kw[name]
+
+    # --- Make sure the top.nparpgrp is a large number. If it becomes too
+    # --- small, fetche becomes inefficient since it is called many times,
+    # --- once per each group. The not insignificant function call overhead
+    # --- of python begins to use up a sizable chunk of time.
+    top.nparpgrp = 100000
 
   def __getstate__(self):
     dict = self.__dict__.copy()
@@ -620,6 +627,8 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- Solve for phi for groups which require the self B correction
     for js in range(top.nsselfb):
       self.dosolveonphi(iwhich,None,None,js)
+
+    gc.collect()
 
   def getpdims(self):
     raise """getpdims must be supplied - it should return a list of the dimensions
