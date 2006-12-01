@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.80 $, $Date: 2006/10/02 21:50:41 $
+c@(#) File w3d_injection.F, version $Revision: 1.81 $, $Date: 2006/12/01 00:14:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -365,6 +365,10 @@ c               --- Save SSN
                 end if
 c               --- save time of creation if tpid > 0
                 if(tpid>0) pgroup%pid(ii,tpid) = time + fulldt_s
+c               --- save radius of creation if rpid > 0
+                if(rpid>0) then
+                  pgroup%pid(ii,rpid) = sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
+                endif
 c               --- increment particle counter
                 npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
                 inj_prev(ixx        ,iyy        ,ij,inj_is) =
