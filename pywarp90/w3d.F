@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.311 $, $Date: 2006/11/29 00:48:46 $
+c@(#) File W3D.F, version $Revision: 3.312 $, $Date: 2006/12/04 18:35:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6342,6 +6342,12 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lw3dtimesubs) substarttime = wtime()
 
+#ifdef MPIPARALLEL
+c     --- Set the flag signalling that rho has been changed and that
+c     --- the parallel sums on boundaries will need to be done again.
+      lrhosummedonboundaries = .false.
+#endif
+
       if (lbeforelr) call execuser("beforelr")
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
@@ -6662,6 +6668,7 @@ c=============================================================================
       subroutine setrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,nzpguard,
      &                                 my_index,nslaves,izpslave,nzpslave,
      &                                 izfsslave,nzfsslave)
+      use Fields3dParticles,Only: lrhosummedonboundaries
       integer(ISZ):: nx,ny,nz,nxp,nyp,nzp,nzpguard
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
@@ -6672,8 +6679,13 @@ c=============================================================================
 #ifdef MPIPARALLEL
 
       call parallelbarrier()
-      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard,
-     &                              my_index,nslaves,izpslave,nzpslave)
+
+c     --- If rho has already been summed on the boundaries since the last
+c     --- call to loadrho, then don't do it again.
+      if (.not. lrhosummedonboundaries) then
+        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard,
+     &                                my_index,nslaves,izpslave,nzpslave)
+      endif
       call parallelbarrier()
       call setrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
      &                                    my_index,nslaves,
@@ -8058,6 +8070,16 @@ c     --- If no field solve, return
 c     --- If a field solver is registered, call it and return.
       if (fstype == 12) then
         call execuser('fieldsolregistered')
+
+#ifdef MPIPARALLEL
+c       --- Set the flag signalling that rho has been parallel summed
+c       --- on the boundaries. This is done here assuming that
+c       --- after the field solve, the sums have been done.
+c       --- This also avoids having the registered solvers having
+c       --- to set the flag.
+        lrhosummedonboundaries = .true.
+#endif
+
 !$OMP MASTER
         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
         fstime = fstime + (wtime() - timetemp)
@@ -8144,6 +8166,13 @@ c     --- Points to the values that are used by the most frequently time
 c     --- advanced group.
       call assignrhoandphi(rhopndts(:,:,:,nrhopndtscopies-1,0),
      &                     phipndts(:,:,:,0))
+
+#ifdef MPIPARALLEL
+c     --- Set the flag signalling that rho has been parallel summed
+c     --- on the boundaries. This is done here only after rho has been
+c     --- setup for all subcycling and selfb groups.
+      lrhosummedonboundaries = .true.
+#endif
 
 !$OMP MASTER
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
