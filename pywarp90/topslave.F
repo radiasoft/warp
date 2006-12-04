@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.44 $, $Date: 2006/11/03 13:42:52 $
+c TOPSLAVE.M, version $Revision: 1.45 $, $Date: 2006/12/04 18:36:48 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -435,7 +435,7 @@ c     call VTBEGIN(60,IERR)
           enddo
         endif
 
-        do is=1,ns
+        do is=1,ns-1
           if ((pgroup%nps(is) + pgroup%nps(is+1)) > 0) then
 c           --- This puts ipmax_s is a nice place between the species that allows
 c           --- each to grew without shifting particles around.
@@ -449,6 +449,7 @@ c           --- needed.
      &                            pgroup%ins(is+1) - 1)/2
           endif
         enddo
+        pgroup%ipmax_s(ns) = pgroup%npmax
 
 #ifdef VAMPIR
 c     call VTEND(60,IERR)
