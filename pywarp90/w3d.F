@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.312 $, $Date: 2006/12/04 18:35:37 $
+c@(#) File W3D.F, version $Revision: 3.313 $, $Date: 2006/12/05 21:46:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8045,6 +8045,7 @@ c===========================================================================
       use LatticeInternal
       use InjectVars
       use GridBoundary3d
+      use Parallel,Only:my_index,nslaves
       use w3d_interfaces
       integer(ISZ):: iwhich
 
@@ -8128,12 +8129,10 @@ c         --- If not in bend, call VP3D
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
      &        fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
      &        fstype == 8 .or. fstype == 9) then
-            if (bound0  == dirichlet) izmin = 1
-            if (bound0  == neumann)   izmin = 0
-            if (bound0  == periodic)  izmin = 0
-            if (boundnz == dirichlet) izmax = nz-1
-            if (boundnz == neumann)   izmax = nz
-            if (boundnz == periodic)  izmax = nz
+            izmin = 0
+            izmax = nz
+            if (bound0  == dirichlet .and. my_index == 0) izmin = 1
+            if (boundnz == dirichlet .and. my_index >= nslaves-1) izmax = nz-1
             tnz = izmax - izmin + 1
 #ifndef MPIPARALLEL
             call copyarry(rhopndts(:,:,izmin,nrhopndtscopies-1,indts),
