@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.30 $, $Date: 2006/11/14 18:16:36 $
+c F3DSLAVE.M, version $Revision: 1.31 $, $Date: 2006/12/05 21:21:16 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1507,7 +1507,7 @@ c     --- that processors to the right do not have to also wait.
 c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer may not
 c       --- be correct, so explicitly writing out the loops may not work.
-        call sumarry(buffer,bfieldp%j(:,:,:,left_iz),nn)
+        bfieldp%j(:,:,:,left_iz)=bfieldp%j(:,:,:,left_iz)+reshape(buffer,shape(bfieldp%j(:,:,:,left_iz)))
         deallocate(buffer)
 
       endif
@@ -1589,7 +1589,7 @@ c only responsible for sending out the j is owns.
       integer(MPIISZ):: messid = 60
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
+      
 c     --- First, calculate what data needs to be sent and received.
 c     --- Data to be sent
       right_nz = 1
@@ -1730,9 +1730,9 @@ c     --- Note that special cases are needed for the first and last processors
 c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nslaves-1
-        izglobal = max(izfsslave(my_index)-1,izpslave(i)-1)
-        izmaxp   = izpslave(i)+nzpslave(i)+1
-        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
+        izglobal = max(izfsslave(my_index),izpslave(i))
+        izmaxp   = izpslave(i)+nzpslave(i)
+        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)
 
         izsend(i) = izglobal - izfsslave(my_index)
         nzsend(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -1740,9 +1740,9 @@ c     --- Data to be sent
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
-        izglobal = max(izpslave(my_index)-1,izfsslave(i)-1)
-        izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
-        izmaxfs  = izfsslave(i)+nzfsslave(i)+1
+        izglobal = max(izpslave(my_index),izfsslave(i))
+        izmaxp   = izpslave(my_index)+nzpslave(my_index)
+        izmaxfs  = izfsslave(i)+nzfsslave(i)
 
         izrecv(i) = izglobal - izpslave(my_index)
         nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -1809,7 +1809,6 @@ c iz=-1 and +1.
       integer(MPIISZ):: messid = 81
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
 c     --- First, calculate what data needs to be sent and received.
 c     --- Note that special cases are needed for the first and last processors
 c     --- so that the guard cells are filled properly.
