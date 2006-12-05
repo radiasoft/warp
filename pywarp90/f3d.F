@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.123 $, $Date: 2006/11/14 18:18:13 $
+c@(#) File F3D.M, version $Revision: 3.124 $, $Date: 2006/12/05 21:47:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -848,14 +848,14 @@ c       --- min's.
         else
           ikym = 0
         endif
-        call tridiag(nx_tran,ny_tran-1,nzfull,nz2,a,norm,
+        call tridiag(nx_tran,ny_tran-1,nzfull,a,norm,
      &               kxsq(ix),kysq(iy),kzsq,ikxm,ikym,0,zwork)
 
 c       --- Rearrange phi again back to original arrangement.
         call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
 #else
 c  Serial version
-        call tridiag(nx,ny,nz,nz2,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,1,zwork)
+        call tridiag(nx,ny,nz,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,1,zwork)
 #endif
 
       endif
@@ -1665,9 +1665,9 @@ c grid dimensions passed are not the true grid dimensions.
       return
       end
 c=============================================================================
-      subroutine tridiag(nx,ny,nz,nz2,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,esy,
+      subroutine tridiag(nx,ny,nz,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,esy,
      &                   zwork)
-      integer(ISZ):: nx,ny,nz,nz2,ikxmin,ikymin,esy
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: zwork(0:nx,0:nz)
