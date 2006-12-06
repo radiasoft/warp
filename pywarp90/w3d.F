@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.313 $, $Date: 2006/12/05 21:46:26 $
+c@(#) File W3D.F, version $Revision: 3.314 $, $Date: 2006/12/06 02:02:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1978,7 +1978,7 @@ c  sets slice at nz+1 equal to the slice at 1
       end if
 
 #ifdef MPIPARALLEL
-      call perphi3d_slave(phi(0,0,-1),nx,ny,nz)
+      call perpot3d_slave(phi,1,nx,ny,nz,0,0)
 #else
       do iy=0,ny
         do ix=0,nx
@@ -2056,7 +2056,7 @@ c  Copy charge density from frz.basegrid to w3d.rho
 
       if (solvergeom==XYZgeom .and. bound0==periodic) then
 #ifdef MPIPARALLEL
-        call perrho3d_slave(rho,nx,ny,nz)
+        call persource3d_slave(rho,1,nx,ny,nz)
 #else
         rho(:,:,0)  = rho(:,:,0) + rho(:,:,nz)
         rho(:,:,nz) = rho(:,:,0)
@@ -6683,13 +6683,13 @@ c=============================================================================
 c     --- If rho has already been summed on the boundaries since the last
 c     --- call to loadrho, then don't do it again.
       if (.not. lrhosummedonboundaries) then
-        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,nzpguard,
-     &                                my_index,nslaves,izpslave,nzpslave)
+        call sumsourcepondomainboundaries(rhop,1,nxp,nyp,nzp,nzpguard,
+     &                                    my_index,nslaves,izpslave,nzpslave)
       endif
       call parallelbarrier()
-      call setrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
-     &                                    my_index,nslaves,
-     &                                    izpslave,nzpslave,izfsslave,nzfsslave)
+      call setsourceforfieldsolve3d_parallel(1,nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                                       my_index,nslaves,
+     &                                       izpslave,nzpslave,izfsslave,nzfsslave)
 
 #endif
 
