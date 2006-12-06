@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.242 $, $Date: 2006/12/04 18:35:36 $
+#@(#) File W3D.V, version $Revision: 3.243 $, $Date: 2006/12/06 02:03:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.242 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.243 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -1132,10 +1132,10 @@ timeputsortedefield real /0./
 
 timeinit_w3d_parallel real /0./
 timesw_globalsum real /0./
-timesumrhoondomainboundaries real /0./
-timeperrho3d_slave real /0./
-timesetrhoforfieldsolve3d real /0./
-timeperphi3d_slave real /0./
+timesumsourcepondomainboundaries real /0./
+timesetsourceforfieldsolve3d real /0./
+timepersource3d_slave real /0./
+timeperpot3d_slave real /0./
 timegetphiforparticles3d real /0./
 timegetphiforfields3d real /0./
 
