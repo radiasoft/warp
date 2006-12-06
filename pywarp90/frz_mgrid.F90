@@ -7916,7 +7916,7 @@ end subroutine rhobndrz
 !  sets slice at nz+1 equal to the slice at 1
 
 #ifdef MPIPARALLEL
-   call perphi3d_slave(basegrid%phi(1:basegrid%nr+1,0:basegrid%nz+2),basegrid%nr,0,basegrid%nz)
+   call perpot3d_slave(basegrid%phi(:,0:basegrid%nz+2),1,basegrid%nr,0,basegrid%nz,basegrid%nguardx,0)
 #endif
 
   return
@@ -7927,7 +7927,7 @@ USE multigridrz
 implicit none
 
 #ifdef MPIPARALLEL
-   call perrho3d_slave(basegrid%rho(0,0),basegrid%nr,0,basegrid%nz,periodic)
+   call persource3d_slave(basegrid%rho(0,0),1,basegrid%nr,0,basegrid%nz)
 #endif
 
 end subroutine perrhorz
