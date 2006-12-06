@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.24 $, $Date: 2006/11/28 23:42:19 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.25 $, $Date: 2006/12/06 01:58:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -152,7 +152,15 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: allocerror
 
       if (lf3dtimesubs) substarttime = wtime()
+
+#ifdef MPIPARALLEL
+c     --- Set the flag signalling that j has been changed and that
+c     --- the parallel sums on boundaries will need to be done again.
+      ljsummedonboundaries = .false.
+#endif
+
       if (depos == 'none') return
+
 
       if (fstype == 12) then
         call execuser("loadjregistered")
@@ -350,7 +358,7 @@ c     --- With the cylindrical solver, the guard cells are already set.
         if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
 #ifdef MPIPARALLEL
           call getaforfields3d(bfield)
-          call pera3d_slave(bfield)
+          call perpot3d_slave(bfield%a,3,bfield%nx,bfield%ny,bfield%nz,1,1)
 #else
           a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
           a(:,:,:,bfield%nz)   = a(:,:,:,0)
@@ -413,7 +421,7 @@ c  Enforce transverse periodicity if requested.
 
       if (solvergeom==XYZgeom .and. bound0==periodic) then
 #ifdef MPIPARALLEL
-        call perj3d_slave(bfield)
+        call persource3d_slave(j,3,bfield%nx,bfield%ny,bfield%nz)
 #else
         j(:,:,:,0)  = j(:,:,:,0) + j(:,:,:,bfield%nz)
         j(:,:,:,bfield%nz) = j(:,:,:,0)
@@ -1502,6 +1510,7 @@ c       --- If jp is not associated with j, then copy the data.
 #else
 
       use Parallel
+      use Fields3dParticles,Only: nzpguard
 
 c  For parallel version, each processor sends j to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -1512,7 +1521,9 @@ c     else if(solvergeom==Zgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
 c       call getjforfieldsolvez(nz,j)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call getjforfieldsolve3d(bfield,bfieldp)
+        call getjforfieldsolve3d(bfield,bfieldp,nzpguard,
+     &                           my_index,nslaves,izpslave,nzpslave,
+     &                           izfsslave,nzfsslave)
       end if
 
 #endif
@@ -1520,14 +1531,32 @@ c       call getjforfieldsolvez(nz,j)
       return
       end
 c=============================================================================
-      subroutine getjforfieldsolve3d(bfield,bfieldp)
+      subroutine getjforfieldsolve3d(bfield,bfieldp,nzpguard,
+     &                               my_index,nslaves,izpslave,nzpslave,
+     &                               izfsslave,nzfsslave)
+
       use BFieldGridTypemodule
+      use BFieldGrid,Only: ljsummedonboundaries
       type(BFieldGridType):: bfield,bfieldp
+      integer(ISZ):: nzpguard,my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 #ifdef MPIPARALLEL
 
-      call sumjondomainboundaries(bfieldp)
-      call getjforfieldsolve3d_parallel(bfield,bfieldp)
+      if (.not. ljsummedonboundaries) then
+        call sumsourcepondomainboundaries(bfieldp%j,
+     &                                    3,bfieldp%nx,bfieldp%ny,bfieldp%nz,
+     &                                    nzpguard,
+     &                                    my_index,nslaves,izpslave,nzpslave)
+      endif
+      call setsourceforfieldsolve3d_parallel(3,bfield%nx,bfield%ny,bfield%nz,
+     &                                       bfield%j,
+     &                                       bfieldp%nx,bfieldp%ny,bfieldp%nz,
+     &                                       bfieldp%j,
+     &                                       my_index,nslaves,izpslave,nzpslave,
+     &                                       izfsslave,nzfsslave)
+
 
 #endif
 
@@ -1577,8 +1606,8 @@ c     --- If either jp of bp are not associated or either does not have
 c     --- the correct dimensions as given by nxj, etc, something 
 c     --- needs to be done for fix them.
       if (.not. associated(bfieldp%j) .or. .not. associated(bfieldp%b) .or.
-     &  ANY(ubound(bfieldp%b).ne.(/3,bfieldp%nx,bfieldp%ny,bfieldp%nz+1/)) .or.
-     &  ANY(ubound(bfieldp%j).ne.(/3,bfieldp%nx,bfieldp%ny,bfieldp%nz  /))) then
+     &  ANY(ubound(bfieldp%b).ne.(/2,bfieldp%nx,bfieldp%ny,bfieldp%nz/)) .or.
+     &  ANY(ubound(bfieldp%j).ne.(/2,bfieldp%nx,bfieldp%ny,bfieldp%nz/))) then
 
 c       --- Free whatever the jp and bp arrays are now refering to.
         call BFieldGridTypefree(bfieldp)
@@ -1890,6 +1919,13 @@ c       --- Call perturbative bent beam field solver
 
       endif
 
+#ifdef MPIPARALLEL
+c     --- Set the flag signalling that j has been parallel summed
+c     --- on the boundaries. This is done here only after j has been
+c     --- setup for all subcycling and selfb groups.
+      ljsummedonboundaries = .true.
+#endif
+
 c     --- Get B from A, either taking the finite difference curl of A to get B,
 c     --- or just copy it when B is solved for directly.
       call getbfroma3d(bfield)
@@ -1952,7 +1988,7 @@ c=============================================================================
 
       if (bfstype <= 4) then
 c       --- For the FFT field solvers, only one temp array is needed since
-c       --- rho is not passed and the field solve happens in place.
+c       --- j is not passed and the field solve happens in place.
 c       --- jtemp is pointed to atemp just to give it a non-null value.
         jtemp => atemp
       else
