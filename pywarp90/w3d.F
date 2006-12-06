@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.314 $, $Date: 2006/12/06 02:02:04 $
+c@(#) File W3D.F, version $Revision: 3.315 $, $Date: 2006/12/06 23:13:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4205,7 +4205,13 @@ c             --- routine wrandomgauss must be called in the correct order.
              do i=1,i1-k+1
                uxt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig3,dig4,1,1,.true.)
              enddo
-             do i=1,i1-k+1
+c            --- Force the first value to be done in such a way so that the
+c            --- calculation of the gaussian random numbers is reset (since
+c            --- they are calculated two at a time. This is only really
+c            --- needed for the parallel version to get the same numbers
+c            --- as the serial case.
+             uyt(1) = wrandomgauss(vtrandom,1+k-1+ioff,dig5,dig6,1,1,.false.)
+             do i=2,i1-k+1
                uyt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig5,dig6,1,1,.true.)
              enddo
            else if (distr_t == "uniform") then
