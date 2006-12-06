@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.160 $, $Date: 2006/11/14 18:17:43 $
+#@(#) File F3D.V, version $Revision: 3.161 $, $Date: 2006/12/06 01:55:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.160 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.161 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -463,6 +463,12 @@ conductors ConductorType # Default data structure for conductor data
 *********** BFieldGrid:
 bfield BFieldGridType
 bfieldp BFieldGridType
+ljsummedonboundaries  logical /.false./
+                  # Auto set flag which determines whether j has been
+                  # set up for the field solve yet. This is set to true
+                  # by setjforfieldsolve and false by loadj.
+                  # This avoids double counting j in parallel
+                  # when multiple field solves are done.
 init_bfieldsolver(bfstype:integer) subroutine # Initializes the B-field solver
 bfieldsol3d(iwhich) subroutine # Self B-field solver
 loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
@@ -491,7 +497,7 @@ setj3d(bfield:BFieldGridType,j1d:real,np:integer,xp:real,yp:real,zp:real,
              subroutine # Computes current density
 getjforfieldsolve()
              subroutine #
-getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,
+getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,nzpguard:integer,
                     my_index:integer,nslaves:integer,izfsslave:integer,
                     nzfsslave:integer,izpslave:integer,nzpslave:integer)
              subroutine #
@@ -943,10 +949,6 @@ timeloadj3d                    real /0./
 timefetchb3dfrompositions      real /0./
 timebfieldsol3d                real /0./
 timebvp3d                      real /0./
-timesumjondomainboundaries     real /0./
-timeperj3d_slave               real /0./
-timegetjforfieldsolve3d        real /0./
-timepera3d_slave               real /0./
 timegetbforparticles3d         real /0./
 timegetaforfields3d            real /0./
 
