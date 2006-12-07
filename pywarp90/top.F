@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.194 $, $Date: 2006/11/20 23:19:55 $
+c@(#) File TOP.F, version $Revision: 3.195 $, $Date: 2006/12/07 01:01:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2005,8 +2005,17 @@ c         --- This only works if multiple windows don't overlap.
           ay = (pgroup%uyp(ip) - uypo(ip-ipmin+1))*oneondt
           az = (pgroup%uzp(ip) - uzpo(ip-ipmin+1))*oneondt
 
-          delz = (zzep - pgroup%zp(ip))
-          dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
+          delz = (pgroup%zp(ip) - zzep)
+          if ((vz**2 - 2.*az*delz) >= 0.) then
+            dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
+          else
+c           --- In this case, because of az, the particle will never
+c           --- cross the zzep plane, so effectively decrease az
+c           --- so that the particle would just touch the plane.
+c           --- This is very kludgy and ad-hoc, but the calculation
+c           --- of az is already equally kludgy.
+            dtstar = 2.*delz/(vz)
+          endif
 
 c         --- Make an estimate of where the particle will be on the next step.
 c         --- This assumes that az will be constant.
