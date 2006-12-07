@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.195 $, $Date: 2006/12/07 01:01:54 $
+c@(#) File TOP.F, version $Revision: 3.196 $, $Date: 2006/12/07 18:44:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1948,7 +1948,7 @@ c ---   (this avoids having to use E and B to extrapolate V).
 c --- X extrapolated using constant V and estimated A
 
       real(kind=8):: zzep,wzep
-      real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az
+      real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az,dp,dm
       real(kind=8):: vznp1,zznp1,delznp1,dtstarnp1
       integer(ISZ):: iw,ip,nn
 
@@ -2006,15 +2006,25 @@ c         --- This only works if multiple windows don't overlap.
           az = (pgroup%uzp(ip) - uzpo(ip-ipmin+1))*oneondt
 
           delz = (pgroup%zp(ip) - zzep)
-          if ((vz**2 - 2.*az*delz) >= 0.) then
-            dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
+          if (az == 0.) then
+            dtstar = -delz/vz
           else
-c           --- In this case, because of az, the particle will never
-c           --- cross the zzep plane, so effectively decrease az
-c           --- so that the particle would just touch the plane.
-c           --- This is very kludgy and ad-hoc, but the calculation
-c           --- of az is already equally kludgy.
-            dtstar = 2.*delz/(vz)
+            if ((vz**2 - 2.*az*delz) > 0.) then
+              dm = (-vz - sqrt(vz**2 - 2.*az*delz))/az
+              dp = (-vz + sqrt(vz**2 - 2.*az*delz))/az
+              if (abs(dp) < abs(dm)) then
+                dtstar = dp
+              else
+                dtstar = dm
+              endif
+            else
+c             --- In this case, because of az, the particle will never
+c             --- cross the zzep plane, so effectively decrease az
+c             --- so that the particle would just touch the plane.
+c             --- This is very kludgy and ad-hoc, but the calculation
+c             --- of az is already equally kludgy.
+              dtstar = -vz/az
+            endif
           endif
 
 c         --- Make an estimate of where the particle will be on the next step.
@@ -2025,8 +2035,23 @@ c         --- then wait until then to save the particle.
             vznp1 = vz + 0.5*az*dt
             zznp1 = pgroup%zp(ip) + vznp1*dt
             vznp1 = vznp1 + 0.5*az*dt
-            delznp1 = (zzep - zznp1)
+            delznp1 = (zznp1 - zzep)
             dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
+            if (az == 0.) then
+              dtstarnp1 = -delznp1/vznp1
+            else
+              if ((vznp1**2 - 2.*az*delznp1) > 0.) then
+                dm = (-vznp1 - sqrt(vznp1**2 - 2.*az*delznp1))/az
+                dp = (-vznp1 + sqrt(vznp1**2 - 2.*az*delznp1))/az
+                if (abs(dp) < abs(dm)) then
+                  dtstarnp1 = dp
+                else
+                  dtstarnp1 = dm
+                endif
+              else
+                dtstarnp1 = -vznp1/az
+              endif
+            endif
 c           --- The factor of 0.75 is an adhoc parameter, an attempt to
 c           --- prevent particles from being missed if the estimate of
 c           --- dtstarnp1 is way off.
