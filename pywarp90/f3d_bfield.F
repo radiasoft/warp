@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.25 $, $Date: 2006/12/06 01:58:36 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.26 $, $Date: 2006/12/07 20:36:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -355,9 +355,11 @@ c       --- In this case, actually ny == 0. This ensures that d/dtheta is zero.
 
 c     --- With the cylindrical solver, the guard cells are already set.
       if (.not. bfield%lcylindrical) then
+#ifdef MPIPARALLEL
+        call getaforfields3d(bfield)
+#endif
         if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
 #ifdef MPIPARALLEL
-          call getaforfields3d(bfield)
           call perpot3d_slave(bfield%a,3,bfield%nx,bfield%ny,bfield%nz,1,1)
 #else
           a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
@@ -365,15 +367,19 @@ c     --- With the cylindrical solver, the guard cells are already set.
           a(:,:,:,bfield%nz+1) = a(:,:,:,1)
 #endif
         else
-          if (bfield%bounds(4) == neumann) then
-            a(:,:,:,-1) = a(:,:,:,1)
-          elseif (bfield%bounds(4) == dirichlet) then
-            a(:,:,:,-1) = 2.*a(:,:,:,0) - a(:,:,:,1)
+          if (bfield%zmmin == bfield%zmminglobal) then
+            if (bfield%bounds(4) == neumann) then
+              a(:,:,:,-1) = a(:,:,:,1)
+            elseif (bfield%bounds(4) == dirichlet) then
+              a(:,:,:,-1) = 2.*a(:,:,:,0) - a(:,:,:,1)
+            endif
           endif
-          if (bfield%bounds(5) == neumann) then
-            a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz-1)
-          elseif (bfield%bounds(5) == dirichlet) then
-            a(:,:,:,bfield%nz+1) = 2.*a(:,:,:,bfield%nz) - a(:,:,:,bfield%nz-1)
+          if (bfield%zmmax == bfield%zmmaxglobal) then
+            if (bfield%bounds(5) == neumann) then
+              a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz-1)
+            elseif (bfield%bounds(5) == dirichlet) then
+              a(:,:,:,bfield%nz+1) = 2.*a(:,:,:,bfield%nz) - a(:,:,:,bfield%nz-1)
+            endif
           endif
         endif
       endif
