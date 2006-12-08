@@ -160,7 +160,8 @@ class FieldSolver3dBase(object):
     if n == 0: return
     setrho3d(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry,
+             self.solvergeom==w3d.RZgeom)
 
   def setrhoselect(self,x,y,z,uz,q,w):
     n = len(x)
@@ -175,7 +176,7 @@ class FieldSolver3dBase(object):
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
-           ex,ey,ez,self.l2symtry,self.l4symtry)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)

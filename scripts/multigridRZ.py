@@ -320,7 +320,7 @@ class MultiGridRZ(object):
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
-           ex,ey,ez,self.l2symtry,self.l4symtry)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)

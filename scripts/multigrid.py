@@ -265,7 +265,8 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     setrho3d(self.rhop,self.rhop,n,x,y,z,zgrid,uz,q,w,top.depos,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
-             self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry)
+             self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+             self.solvergeom==w3d.RZgeom)
     if self.lzerorhointerior:
       cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nzp,
                            self.rhop)
@@ -276,7 +277,7 @@ class MultiGrid(SubcycledPoissonSolver):
     sete3d(self.phip,self.selfe,n,x,y,z,top.zgridprv,
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
-           ex,ey,ez,self.l2symtry,self.l4symtry)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
