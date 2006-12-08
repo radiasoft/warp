@@ -411,6 +411,7 @@ class MagnetostaticMG(object):
                          bfield.j[id,:,:,:],
                          bfield.rstar,self.linbend,bfield.bounds,
                          bfield.xmmin,bfield.ymmin,bfield.zmmin,
+                         self.zmminglobal,
                          top.zbeam,top.zgrid,
                          bfield.mgparam[id],bfield.mgform[id],
                          bfield.mgiters[id],bfield.mgmaxiters[id],
