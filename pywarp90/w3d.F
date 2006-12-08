@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.316 $, $Date: 2006/12/08 21:51:42 $
+c@(#) File W3D.F, version $Revision: 3.317 $, $Date: 2006/12/08 22:13:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2666,14 +2666,15 @@ c  at smaller radii, zones are closer together, so field is larger.
       end      
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
-     &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
+     &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
+     &                  lcylindrical)
       use Subtimers3d
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
       real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
-      logical(ISZ):: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets self electric field for particles
 c  Note that the phi1d passed in is assumed to start at phi(0,0,-1).
@@ -2697,7 +2698,7 @@ c        + ...
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy
-      real(kind=8):: xi,yj,zk
+      real(kind=8):: xi,yj,zk,x,y
       integer(ISZ):: noff(32)
       save noff
 
@@ -2766,13 +2767,21 @@ c  Evaluation of E, vectorized over particles
       if (.not. (l2symtry .or. l4symtry)) then
         do ip = 1, np
 
-           i =  (xp(ip) - xmmin) * dxi
-           j =  (yp(ip) - ymmin) * dyi
+           if (lcylindrical) then
+             x = sqrt(xp(ip)**2 + yp(ip)**2)
+             y = 0.
+           else
+             x = xp(ip)
+             y = yp(ip)
+           endif
+
+           i =  (x      - xmmin) * dxi
+           j =  (y      - ymmin) * dyi
            k =  (zp(ip) - zgrid - zmmin) * dzi
            ind0 = i + j*nnx + k*nnxy
 
-           u1 = (xp(ip) - xmmin) * dxi - i
-           v1 = (yp(ip) - ymmin) * dyi - j
+           u1 = (x      - xmmin) * dxi - i
+           v1 = (y      - ymmin) * dyi - j
            w1 = (zp(ip) - zgrid - zmmin) * dzi - k
 
            u0 = 1. - u1
@@ -3362,7 +3371,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
       else if (efetch == 6) then
 
-c     --- Same as efetch=1 but the i,j,k and are recalculated for the next
+c     --- Same as efetch=1 but the i,j,k and are precalculated for the next
 c     --- particle since the float to integer conversion can be slow
 
       if (.not. (l2symtry .or. l4symtry)) then
@@ -4524,7 +4533,8 @@ c     --- Apply particle boundary conditions
       end
 c=============================================================================
       subroutine setrho3d(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    lcylindrical)
       use GlobalVars
       use Subtimers3d
       integer(ISZ):: np
@@ -4536,7 +4546,7 @@ c=============================================================================
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
-      logical(ISZ):: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets charge density using various algorithms
 
@@ -4575,9 +4585,16 @@ c  Direct deposition loop with precalculated integer conversions
 c--------------------------------------
       elseif (depos == "direct1") then
 
+        if (.not. lcylindrical) then
         call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
      &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                       l2symtry,l4symtry)
+
+        else
+        call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                       l2symtry,l4symtry,lcylindrical)
+        endif
 
 c--------------------------------------
 c  Vectorized deposition loop with precalculated integer conversions
@@ -5233,6 +5250,219 @@ c       --- normal loop
           rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
           rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
           rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    lcylindrical)
+      use GlobalVars
+      use Constant,Only: pi
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj,kk,ix
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: u1next,v1next,w1next
+
+c     --- Work array holding q/cell volume, the charge density per
+c     --- real particle. This is primarily needed for the RZ version
+c     --- since the cell volume there has radial dependence.
+      real(kind=8):: cdens(0:nx)
+c     --- Temp arrays to hold particle data
+c     --- These are needed when lcylindrical is true, in which case x=r, y=0.
+      real(kind=8):: x,y
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (lcylindrical) then
+        if (xmmin == 0.) then
+c         --- The factor 0.75 corrects for overdeposition due to linear
+c         --- weighting (for uniform distribution)
+c         --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c         --- and Verboncoeur, J. of Comp. Phys.,
+          cdens(0) = 0.75/(pi*(0.5*0.5*dx*dx*dz))
+        else
+          cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
+        endif
+        do ix = 1,nx
+          cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
+        enddo
+        cdens = cdens*wght*q
+      else
+        g = wght*q/(dx*dy*dz)
+        if (l2symtry) then
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          g = g*0.5
+        elseif (l4symtry) then
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          g = g*0.25
+        endif
+        cdens = g
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,gyfact,gxfact,
+!$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .and. .not. lcylindrical) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gyfact = 1.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry .and. .not. lcylindrical) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gxfact = 1.
+          gyfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        if (lcylindrical) then
+          x = sqrt(xp(1)**2 + yp(1)**2)
+          y = 0.
+        else
+          x = xp(1)
+          y = yp(1)
+        endif
+        iinext = int((x - xmmin)*dxi)
+        jjnext = int((y - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (x - xmmin)*dxi - iinext
+        v1next = (y - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          if (uzp(ip) == 0) cycle
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            if (lcylindrical) then
+              x = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              y = 0.
+            else
+              x = xp(ip+1)
+              y = yp(ip+1)
+            endif
+            iinext = int((x - xmmin)*dxi)
+            jjnext = int((y - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (x - xmmin)*dxi - iinext
+            v1next = (y - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          u0 = u0*cdens(ii  )
+          u1 = u1*cdens(ii+1)
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1
         enddo
 !$OMP END DO
       endif
@@ -6436,7 +6666,7 @@ c              --- Only load the rho if the positions have been advanced.
      &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                    zgrdndts,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
      &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
-     &                    l2symtry,l4symtry)
+     &                    l2symtry,l4symtry,solvergeom==RZgeom)
              endif
            elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
 c            --- loop over particle blocks
@@ -6819,7 +7049,7 @@ c     --- Don't do anything if there are no particles input.
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,efetch,
-     &              ex,ey,ez,l2symtry,l4symtry)
+     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
@@ -6898,6 +7128,7 @@ c       --- and the data needs to be copied around.
         call execuser("fetcheregistered")
         npfsapi = 0
         jsfsapi = -1
+        npfsapi = 0
 #if defined(XLF) || defined(XLF2)
         ex(1:n) = exfsapi
         ey(1:n) = eyfsapi
@@ -6922,7 +7153,7 @@ c       --- and the data needs to be copied around.
         call sete3d(phipndts(:,:,:,indts),selfe,n,
      &              x,y,z,
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry)
+     &              efetch,ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv)
       elseif(solvergeom==XZgeom) then
