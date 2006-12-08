@@ -8,6 +8,7 @@ from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
 import time
+#import threading
 try:
   import psyco
 except ImportError:
@@ -382,6 +383,7 @@ Add a mesh refined block to this block.
     # --- This should only be called at the top level.
     if self != self.root or self.finalized: return
     blocklists = self.generateblocklevellists()
+    self.blocklists = blocklists
     blocklistsleft,blocklistsright = self.swapblocklistswithprocessneighbors(blocklists)
     self.clearparentsandchildren()
     self.findallchildren(blocklists)
@@ -402,8 +404,8 @@ Add a mesh refined block to this block.
     # --- of it to the children
     if self not in blocklists[0]:
       blocklists[0].append(self)
-    for child in self.children:
-      b = child.generateblocklevellists(blocklists[1:])
+      for child in self.children:
+        b = child.generateblocklevellists(blocklists[1:])
     return blocklists
 
   def swapblocklistswithprocessneighbors(self,blocklists):
@@ -869,6 +871,26 @@ higher numbered blocks. This should only ever be called by the root block.
     # --- referencing for subcycling and self-B correction
     for child in self.children:
       child.dosolveonphi(iwhich,*args)
+    """
+    if self == self.root:
+      t = threading.Thread(target=MultiGrid.dosolve,args=tuple([self,iwhich]))
+      t.start()
+      t.join()
+      for blocklist in self.blocklists[1:]:
+        if len(blocklist) == 0: break
+        tlist = []
+        for block in blocklist:
+          t = threading.Thread(target=block.dosolveonphi,args=tuple([iwhich]+list(args)))
+          t.start()
+          tlist.append(t)
+          print self.blocknumber,len(tlist)
+        for t in tlist:
+          t.join()
+    else:
+      self.setphifromparents()
+      MultiGrid.dosolve(self,iwhich)
+    """
+
 
   def setphifromparents(self):
     """
@@ -900,40 +922,13 @@ gives a better initial guess for the field solver.
   # --- Methods to fetch E-fields and potential
   #--------------------------------------------------------------------------
 
-  def sortbyichildgetisort(self,ichild,pgroup):
-    xout,yout,zout = zeros((3,len(x)),'d')
-    isort = zeros(len(x))
-    nperchild = zeros(self.root.totalnumberofblocks)
-    sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
-                                 self.root.totalnumberofblocks,
-                                 xout,yout,zout,isort,nperchild)
-    return xout,yout,zout,isort,nperchild
+  def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup=None):
+    if pgroup is None:
+      self.fetchefrompositionswithoutpgroup(x,y,z,ex,ey,ez)
+    else:
+      self.fetchefrompositionswithpgroup(x,y,z,ex,ey,ez,pgroup)
 
-  def setphipforparticles(self,*args):
-    for block in self.listofblocks:
-      SubcycledPoissonSolver.setphipforparticles(block,*args)
-
-  def getichild_positiveonly(self,x,y,z,ichild):
-    """
-Gathers the ichild for the fetche_allsort.
-    """
-    # --- This must wait until all of the parents have have set ichild
-    # --- so that the value in the children takes precedence.
-    if not self.islastcall(): return
-    if len(x) == 0: return
-    if len(self.children) > 0:
-
-      # --- Find out whether the particles are in the local domain or one of
-      # --- the children's.
-      getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
-                            self.nx,self.ny,self.nz,self.childdomains,
-                            self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmmin,self.zmmax,top.zgridprv,
-                            self.l2symtry,self.l4symtry)
-      for child in self.children:
-        child.getichild_positiveonly(x,y,z,ichild)
-
-  def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup):
+  def fetchefrompositionswithpgroup(self,x,y,z,ex,ey,ez,pgroup=None):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
@@ -943,6 +938,7 @@ The sort takes up about 40% of the time. It is significantly faster
 using the fortran sort.
 Note that this depends on having ichilddomains filled with the
 blocknumber rather than the child number relative to the parent.
+Also, this ends up with the input data remaining sorted.
     """
     if len(self.children) > 0:
 
@@ -970,6 +966,40 @@ blocknumber rather than the child number relative to the parent.
         pgroup.pid[i:i+n,top.dypid-1] = block.dy
         pgroup.pid[i:i+n,top.dzpid-1] = block.dz
       i = i + n
+
+  def fetchefrompositionswithoutpgroup(self,x,y,z,ex,ey,ez):
+    """
+This is the old version of fetchefrompositions that doesn't rely on having
+access to the particle group and does not sort the input data.
+    """
+    if len(self.children) > 0:
+
+      ichild = zeros(len(x))
+      # --- This assumes that the root block has blocknumber zero.
+      self.getichild_positiveonly(x,y,z,ichild)
+
+      x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
+
+      # --- Create temporary arrays to hold the E field
+      tex,tey,tez = zeros((3,len(x)),'d')
+
+    else:
+      isort = None
+      nperchild = [len(x)]
+      tex,tey,tez = ex,ey,ez
+
+    # --- For each block, pass to it the particles in it's domain.
+    i = 0
+    for block,n in zip(self.root.listofblocks,nperchild):
+      MultiGrid.fetchefrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],
+                                          tex[i:i+n],tey[i:i+n],tez[i:i+n])
+      i = i + n
+
+    # --- Now, put the E fields back into the original arrays, unsorting
+    # --- the data
+    if isort is not None:
+      n = len(x)
+      putsortedefield(len(tex),isort,tex,tey,tez,ex[:n],ey[:n],ez[:n])
 
   def fetchphifrompositions(self,x,y,z,phi):
     """
@@ -1014,6 +1044,39 @@ Fetches the potential, given a list of positions
 
       # --- Get phi from this domain
       MultiGrid.fetchphifrompositions(self,x,y,z,phi)
+
+  def setphipforparticles(self,*args):
+    for block in self.listofblocks:
+      SubcycledPoissonSolver.setphipforparticles(block,*args)
+
+  def sortbyichildgetisort(self,ichild,x,y,z):
+    xout,yout,zout = zeros((3,len(x)),'d')
+    isort = zeros(len(x))
+    nperchild = zeros(self.root.totalnumberofblocks)
+    sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
+                                 self.root.totalnumberofblocks,
+                                 xout,yout,zout,isort,nperchild)
+    return xout,yout,zout,isort,nperchild
+
+  def getichild_positiveonly(self,x,y,z,ichild):
+    """
+Gathers the ichild for the fetche_allsort.
+    """
+    # --- This must wait until all of the parents have have set ichild
+    # --- so that the value in the children takes precedence.
+    if not self.islastcall(): return
+    if len(x) == 0: return
+    if len(self.children) > 0:
+
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
+                            self.nx,self.ny,self.nz,self.childdomains,
+                            self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                            self.zmmin,self.zmmax,top.zgridprv,
+                            self.l2symtry,self.l4symtry)
+      for child in self.children:
+        child.getichild_positiveonly(x,y,z,ichild)
 
   #--------------------------------------------------------------------------
   # --- Utility methods
