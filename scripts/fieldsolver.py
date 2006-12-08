@@ -530,14 +530,22 @@ class SubcycledPoissonSolver(FieldSolver):
   def fetche(self,**kw):
     'Fetches the E field, uses arrays from w3d module FieldSolveAPI'
     if w3d.npfsapi == 0: return
-    ipmin = w3d.ipminfsapi
-    x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
-    y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
-    z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
-    ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
-    ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
-    ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
-    args = [x,y,z,ex,ey,ez,w3d.pgroupfsapi]
+    # --- First, check how the data is being passed.
+    if w3d.getpyobject('xfsapi') is not None:
+      # --- If xfsapi is being used, pass the api arrays in directly and
+      # --- don't pass in a pgroup.
+      args = [w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi]
+    else:
+      # --- Otherwise, use data from w3d.pgroupfsapi.
+      ipmin = w3d.ipminfsapi
+      x = w3d.pgroupfsapi.xp[ipmin-1:ipmin-1+w3d.npfsapi]
+      y = w3d.pgroupfsapi.yp[ipmin-1:ipmin-1+w3d.npfsapi]
+      z = w3d.pgroupfsapi.zp[ipmin-1:ipmin-1+w3d.npfsapi]
+      ex = w3d.pgroupfsapi.ex[ipmin-1:ipmin-1+w3d.npfsapi]
+      ey = w3d.pgroupfsapi.ey[ipmin-1:ipmin-1+w3d.npfsapi]
+      ez = w3d.pgroupfsapi.ez[ipmin-1:ipmin-1+w3d.npfsapi]
+      args = [x,y,z,ex,ey,ez,w3d.pgroupfsapi]
 
     js = w3d.jsfsapi
     if js < 0: ndtstorho = 0
