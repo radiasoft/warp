@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.315 $, $Date: 2006/12/06 23:13:17 $
+c@(#) File W3D.F, version $Revision: 3.316 $, $Date: 2006/12/08 21:51:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6798,6 +6798,9 @@ c     --- Obtain the self-field from the electrostatic potential
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+c     --- Don't do anything if there are no particles input.
+      if (ip == 0) return
+
       ex => pgroup%ex(ipmin:ipmin+ip-1)
       ey => pgroup%ey(ipmin:ipmin+ip-1)
       ez => pgroup%ez(ipmin:ipmin+ip-1)
@@ -6809,6 +6812,7 @@ c     --- Obtain the self-field from the electrostatic potential
         npfsapi = ip
         call execuser("fetcheregistered")
         jsfsapi = -1
+        npfsapi = 0
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
@@ -6867,6 +6871,9 @@ c     --- particles group.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+c     --- Don't do anything if there are no particles input.
+      if (n == 0) return
+
       if(fstype == 12) then
 #if defined(XLF) || defined(XLF2)
 c       --- The pointer assignment breaks with the xlf compilers, so instead
@@ -6879,7 +6886,6 @@ c       --- and the data needs to be copied around.
         yfsapi = y
         zfsapi = z
 #else
-        jsfsapi = is - 1
         xfsapi => x
         yfsapi => y
         zfsapi => z
@@ -6887,7 +6893,10 @@ c       --- and the data needs to be copied around.
         eyfsapi => ey
         ezfsapi => ez
 #endif
+        npfsapi = n
+        jsfsapi = is - 1
         call execuser("fetcheregistered")
+        npfsapi = 0
         jsfsapi = -1
 #if defined(XLF) || defined(XLF2)
         ex(1:n) = exfsapi
@@ -6942,6 +6951,10 @@ c=============================================================================
       use ParticleGroupmodule
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
+
+c     --- Don't do anything if there are no particles input.
+      if (ip == 0) return
+
       call fetchb3dfrompositions(is,ip,
      &                           pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                           pgroup%zp(ipmin),
@@ -7256,6 +7269,9 @@ c=============================================================================
       integer(ISZ):: n
       real(kind=8),target:: x(n),y(n),z(n),p(n)
 
+c     --- Don't do anything if there are no particles input.
+      if (n == 0) return
+
 c     --- Call the appropriate routine to get the phi
       if (fstype == 12) then
         jsfsapi = -1
@@ -7265,6 +7281,7 @@ c     --- Call the appropriate routine to get the phi
         zfsapi => z
         phifsapi => p
         call execuser("fetchphiregistered")
+        npfsapi = 0
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
