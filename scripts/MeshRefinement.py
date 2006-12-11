@@ -157,10 +157,8 @@ Implements adaptive mesh refinement in 3d
 
       # --- If it is still odd, then there is some serious problem. The number
       # --- in the base grid may be odd.
-      assert alltrue(self.dims%2 == 0),\
-             """The number of grid cells in one of the dimensions is odd - they
-             all must be even. Check that the number of cells in the base grid
-             is even."""
+      assert alltrue(self.dims[:2]%2 == 0),\
+             """The number of grid cells in one of the transverse dimensions is odd - they all must be even. Check that the number of cells in the base grid is even."""
 
       # --- Now calculate the extent of the grid
       self.mins = self.root.minsglobal + self.fulllower*self.deltas
@@ -315,17 +313,14 @@ Add a mesh refined block to this block.
                                      constructor.
   -nslaves=1: defaults to one so it is not parallelized
     """
-    try:
-      if nguard is None: nguard = self.nguard
-      child = MRBlock(parent=self,lower=lower,upper=upper,
-                      fulllower=fulllower,fullupper=fullupper,
-                      mins=mins,maxs=maxs,
-                      refinement=refinement,nguard=nguard,
-                      nslaves=nslaves)
-      self.children.append(child)
-      return child
-    except:
-      if self.root.nslaves <= 1: raise
+    if nguard is None: nguard = self.nguard
+    child = MRBlock(parent=self,lower=lower,upper=upper,
+                    fulllower=fulllower,fullupper=fullupper,
+                    mins=mins,maxs=maxs,
+                    refinement=refinement,nguard=nguard,
+                    nslaves=nslaves)
+    self.children.append(child)
+    return child
 
   def resetroot(self):
     # --- No parents, so just create empty lists
@@ -873,9 +868,7 @@ higher numbered blocks. This should only ever be called by the root block.
       child.dosolveonphi(iwhich,*args)
     """
     if self == self.root:
-      t = threading.Thread(target=MultiGrid.dosolve,args=tuple([self,iwhich]))
-      t.start()
-      t.join()
+      MultiGrid.dosolve(self,iwhich)
       for blocklist in self.blocklists[1:]:
         if len(blocklist) == 0: break
         tlist = []
