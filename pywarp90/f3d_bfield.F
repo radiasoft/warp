@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.26 $, $Date: 2006/12/07 20:36:48 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.27 $, $Date: 2006/12/11 23:31:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1765,11 +1765,10 @@ c       --- and the data needs to be copied around.
         bz(1:n) = bzfsapi
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(bxfsapi,byfsapi,bzfsapi)
-#else
+#endif
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
-#endif
         nullify(bxfsapi)
         nullify(byfsapi)
         nullify(bzfsapi)
