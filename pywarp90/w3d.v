@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.245 $, $Date: 2006/12/08 22:17:45 $
+#@(#) File W3D.V, version $Revision: 3.246 $, $Date: 2006/12/11 23:30:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.245 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.246 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -384,7 +384,7 @@ jsfsapi     integer
 npfsapi     integer
 ipminfsapi  integer
 lzerorhofsapi logical /.true./
-pgroupfsapi ParticleGroup
+pgroupfsapi _ParticleGroup +fassign
 api_xlf2    logical /.false./
 exfsapi(:) _real
 eyfsapi(:) _real

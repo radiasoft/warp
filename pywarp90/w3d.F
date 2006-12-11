@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.317 $, $Date: 2006/12/08 22:13:18 $
+c@(#) File W3D.F, version $Revision: 3.318 $, $Date: 2006/12/11 23:30:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -25,6 +25,11 @@ c=============================================================================
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
       end subroutine setrhoandphiforfieldsolve
+      subroutine fetche3d(pgroup,ipmin,ip,is)
+      use ParticleGroupmodule
+      type(ParticleGroup),target:: pgroup
+      integer(ISZ):: ipmin,ip,is
+      end subroutine fetche3d
       end interface
       end module w3d_interfaces
 c=============================================================================
@@ -1355,6 +1360,7 @@ c=============================================================================
       use DKInterp
       use DKInterptmp
       use FieldSolveAPI
+      use w3d_interfaces
       type(ParticleGroup):: pgroup
       character(*):: center
 
@@ -7018,7 +7024,7 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
-      type(ParticleGroup):: pgroup
+      type(ParticleGroup),target:: pgroup
       integer(ISZ):: ipmin,ip,is
 
 c     --- Obtain the self-field from the electrostatic potential
@@ -7036,11 +7042,12 @@ c     --- Don't do anything if there are no particles input.
       ez => pgroup%ez(ipmin:ipmin+ip-1)
 
       if(fstype == 12) then
-        pgroupfsapi = pgroup
+        pgroupfsapi => pgroup
         jsfsapi = is - 1
         ipminfsapi = ipmin
         npfsapi = ip
         call execuser("fetcheregistered")
+        NULLIFY(pgroupfsapi)
         jsfsapi = -1
         npfsapi = 0
       elseif(solvergeom==XYZgeom) then
@@ -7135,11 +7142,10 @@ c       --- and the data needs to be copied around.
         ez(1:n) = ezfsapi
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(exfsapi,eyfsapi,ezfsapi)
-#else
+#endif
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
-#endif
         nullify(exfsapi)
         nullify(eyfsapi)
         nullify(ezfsapi)
