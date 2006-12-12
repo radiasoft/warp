@@ -97,7 +97,7 @@ Implements adaptive mesh refinement in 3d
         # --- The grid mins and maxs are input.
         # --- The lower and upper are calculated to be an integer number of
         # --- parent grid cells times the refinement factor. The lower is
-        # --- rounded down and upper rounded up to ensure that the patch
+        # --- rounded down and upper rounded up to ensure that the block
         # --- includes the entire extent specified by mins and maxs.
         self.mins = array(mins)
         self.maxs = array(maxs)
@@ -120,8 +120,8 @@ Implements adaptive mesh refinement in 3d
       # --- information in the z guard planes of phi is correct.
       self.extradimslower = zeros(3)
       self.extradimsupper = zeros(3)
-      if me > 0:      self.extradimslower[-1] = 1
-      if me < npes-1: self.extradimsupper[-1] = 1
+      if npes > 1 and me > 0:      self.extradimslower[-1] = 1
+      if npes > 1 and me < npes-1: self.extradimsupper[-1] = 1
 
       rootfulllower = self.root.fulllower*self.totalrefinement - self.extradimslower*self.totalrefinement
       rootfullupper = self.root.fullupper*self.totalrefinement + self.extradimsupper*self.totalrefinement
@@ -164,15 +164,25 @@ Implements adaptive mesh refinement in 3d
       self.mins = self.root.minsglobal + self.fulllower*self.deltas
       self.maxs = self.root.minsglobal + self.fullupper*self.deltas
 
-      # --- Make sure there is some overlap of the child with the parent
-      mins = maximum(self.mins,parent.mins)
-      maxs = minimum(self.maxs,parent.maxs)
-      assert alltrue(maxs >= mins),\
-             "The child is not within the extent of the parent"
+      # --- This check is not necessarily needed. Not doing it allows a child
+      # --- to be added to any parent one level coarser. It also avoids
+      # --- problems in the parallel version where a child may not intersect
+      # --- the root block on all processors.
 
-      # --- Make sure that the patch has a finite extent in all dimensions
-      assert alltrue(self.upper>self.lower),\
-             "The child must have a finite extent in all dimensions"
+      # --- Make sure there is some overlap of the child with the parent
+      #mins = maximum(self.mins,parent.mins)
+      #maxs = minimum(self.maxs,parent.maxs)
+      #assert alltrue(maxs >= mins),\
+      #       "The child is not within the extent of the parent"
+
+      # --- Make sure that the block has a finite extent in all dimensions
+      # --- For the parallel case, this may just mean that on this processor,
+      # --- the block is outside the extent of the processors domain. This
+      # --- is OK, but still, the block should not be created. Only raise
+      # --- and exception in the serial case where this is always bad input.
+      if not alltrue(self.upper>self.lower):
+        if npes <= 1: raise "The child must have a finite extent in all dimensions"
+        return
 
       # --- First, just use same boundary conditions as root.
       self.bounds = self.root.bounds.copy()
@@ -319,6 +329,10 @@ Add a mesh refined block to this block.
                     mins=mins,maxs=maxs,
                     refinement=refinement,nguard=nguard,
                     nslaves=nslaves)
+    # --- Note that this is not necessary since the children list will
+    # --- be cleared and reset during finalize anyway. It is kept for
+    # --- legacy code which uses the children list for adding more
+    # --- children.
     self.children.append(child)
     return child
 
@@ -605,11 +619,11 @@ not be fetched from there (it is set negative).
       SubcycledPoissonSolver.setrhopforparticles(block,*args)
 
   def allocatedataarrays(self):
-    # --- If not root, than only allocate the arrays of this patch
+    # --- If not root, than only allocate the arrays of this block
     if self != self.root:
       SubcycledPoissonSolver.allocatedataarrays(self)
       return
-    # --- Otherwise, do all patches.
+    # --- Otherwise, do all blocks.
     # --- Make sure that the final setup was done. This is put here
     # --- since this routine is called by loadrho and solve, which
     # --- call finalize anyway.
@@ -656,7 +670,7 @@ relative to the parent.
   def aftersetrhop(self,lzero):
     # --- distribute charge density among blocks
     if lzero:
-      # --- propagate rhop between patches
+      # --- propagate rhop between blocks
       self.getrhopfromoverlaps()
       self.gatherrhopfromchildren()
       self.exchangerhopwithneighbors()
@@ -1215,7 +1229,7 @@ not given, it uses f3d.mgmaxiters.
     for block in self.listofblocks:
       print "Finding mgparam for block number ",block.blocknumber,me
       # --- Temporarily remove the children so the solve is only done
-      # --- on this patch
+      # --- on this block
       childrensave = block.children
       block.children = []
       MultiGrid.find_mgparam(block,lsavephi=lsavephi,resetpasses=resetpasses)
