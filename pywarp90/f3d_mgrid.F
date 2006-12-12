@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.126 $, $Date: 2006/12/12 21:08:18 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.127 $, $Date: 2006/12/12 21:25:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -627,9 +627,6 @@ c       --- Get the residual on the current grid.
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-c       call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
-c    &                              my_index,nslaves,izfsslave,
-c    &                              whosendingleft,whosendingright)
 #endif
         if (larraysumdiagnostic) then
           sss = mggetarraysum(nx,ny,nz,1,3,res,
@@ -1192,7 +1189,7 @@ c The expansion is only transverse.
       end
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,bendx,bounds,
+     &                     rdx2,rdy2,rdz2,linbend,bendx,localbounds,
      &                     mgparam,mgform,lcndbndy,icndbndy,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -1204,7 +1201,7 @@ c=============================================================================
       real(kind=8):: bendx((nx+1)*(ny+1))
       real(kind=8):: rdx2,rdy2,rdz2
       logical(ISZ):: linbend
-      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
@@ -1242,8 +1239,8 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
      &                nx,ny,nz,phi,mglevel,mgform,.false.)
-      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
-      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -1259,15 +1256,15 @@ c     --- do loop to cover even and odd points
 
         call sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                     rdx2,rdy2,rdz2,linbend,bendx,
-     &                     bounds,mgparam,mgform,
+     &                     localbounds,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
 
 #ifdef MPIPARALLEL
-        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
@@ -1277,7 +1274,7 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
@@ -1287,7 +1284,7 @@ c     --- Exchange phi in the z guard planes
       end
 c=============================================================================
       subroutine sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,bendx,bounds,
+     &                     rdx2,rdy2,rdz2,linbend,bendx,localbounds,
      &                     mgparam,mgform,lcndbndy,icndbndy,conductors)
       use Constant
       use ConductorTypemodule
@@ -1296,7 +1293,7 @@ c=============================================================================
       real(kind=8):: bendx((nx+1)*(ny+1))
       real(kind=8):: rdx2,rdy2,rdz2
       logical(ISZ):: linbend
-      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
@@ -1355,8 +1352,8 @@ c     --- izr since phi1d is passed as phi(0,0,-1).  If using Dirichlet
 c     --- boundary conditions, do not solve for the potential on the end planes.
       izl = 1
       izr = nz + 1
-      if (bounds(4) < 1) izl = izl + 1
-      if (bounds(5) < 1) izr = izr - 1
+      if (localbounds(4) < 1) izl = izl + 1
+      if (localbounds(5) < 1) izr = izr - 1
 
 c     --- Save values on the transverse boundaries.
       do iz=izl-1,izr-1
@@ -1433,25 +1430,25 @@ c     --- loop.  This automatically takes care of Dirichlet boundaries.
       enddo
 
 c     --- Neumann boundary conditions for the transverse planes
-      if (bounds(0) == 1) then
+      if (localbounds(0) == 1) then
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  -iimx,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(1) == 1) then
+      if (localbounds(1) == 1) then
         call mgsor_loop(parity,nx+1,izl,izr,1,2*(nx+1),(nx+1)*ny,2*(nx+1),
      &                  iimx,-iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(2) == 1) then
+      if (localbounds(2) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(3) == 1) then
+      if (localbounds(3) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,(nx+1)*ny+2,(nx+1)*(ny+1)-1,2,
      &                  iimx,iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
@@ -1459,25 +1456,25 @@ c     --- Neumann boundary conditions for the transverse planes
       endif
 
 c     --- lines at transverse edges
-      if (bounds(0) == 1 .or. bounds(2) == 1) then
+      if (localbounds(0) == 1 .or. localbounds(2) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  -iimx,iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(1) == 1 .or. bounds(2) == 1) then
+      if (localbounds(1) == 1 .or. localbounds(2) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nx+1,nxy*(izr-izl)+nx+1,2*nxy,
      &                  iimx,-iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(0) == 1 .or. bounds(3) == 1) then
+      if (localbounds(0) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy-nx,nxy*(izr-izl)+nxy-nx,2*nxy,
      &                  -iimx,iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(1) == 1 .or. bounds(3) == 1) then
+      if (localbounds(1) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy,nxy*(izr-izl)+nxy,2*nxy,
      &                  iimx,-iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
@@ -1485,26 +1482,26 @@ c     --- lines at transverse edges
       endif
 
 c     --- Periodic boundary conditions for the transverse planes
-      if (bounds(0) == 2) then
+      if (localbounds(0) == 2) then
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  nx-1,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(2) == 2) then
+      if (localbounds(2) == 2) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      if (bounds(1) == 2 .or. bounds(3) == 2) then
+      if (localbounds(1) == 2 .or. localbounds(3) == 2) then
         do iz=izl-1,izr-1
-          if (bounds(3) == 2) then
+          if (localbounds(3) == 2) then
             do ix=1+mod(iz+parity+1,2),nx-1,2
               phi(ix,ny,iz) = phi(ix,0,iz)
             enddo
           endif
-          if (bounds(1) == 2) then
+          if (localbounds(1) == 2) then
             do iy=1+mod(iz+parity+1,2),ny-1,2
               phi(nx,iy,iz) = phi(0,iy,iz)
             enddo
@@ -1512,7 +1509,7 @@ c     --- Periodic boundary conditions for the transverse planes
         enddo
       endif
 c     --- lines at transverse edges
-      if (ANY(bounds(0:3) == 2)) then
+      if (ANY(localbounds(0:3) == 2)) then
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  nx-1,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
@@ -1530,24 +1527,24 @@ c     --- along the transverse corners of the mesh when applying
 c     --- Dirichlet boundary conditions there. Otherwise, the corners
 c     --- will be left with Nuemann or periodic boundaries, which is not
 c     --- quite correct.
-      if (ANY(bounds(0:3)==0)) then
+      if (ANY(localbounds(0:3)==0)) then
         do iz=izl-1,izr-1
           if (mod(iz+parity,2) == 0) then
-            if (bounds(0) == 0) then
+            if (localbounds(0) == 0) then
               phi(0,0,iz) = boundsavex(0,1,iz)
               phi(nx,0,iz) = boundsavex(nx,1,iz)
             endif
-            if (bounds(1) == 0) then
+            if (localbounds(1) == 0) then
               phi(0,ny,iz) = boundsavex(0,2,iz)
               phi(nx,ny,iz) = boundsavex(nx,2,iz)
             endif
           endif
           if (mod(iz+parity,2) == 0) then
-            if (bounds(2) == 0) then
+            if (localbounds(2) == 0) then
               phi(0,0,iz) = boundsavey(0,1,iz)
               phi(0,ny,iz) = boundsavey(ny,1,iz)
             endif
-            if (bounds(3) == 0) then
+            if (localbounds(3) == 0) then
               phi(nx,0,iz) = boundsavey(0,2,iz)
               phi(nx,ny,iz) = boundsavey(ny,2,iz)
             endif
@@ -1560,12 +1557,12 @@ c     --- surface of the conductor boundaries.
       if (lcndbndy) then
         if (parity == 0) then
          call condbndymg(conductors%evensubgrid,nx,ny,nz,phi,rho,
-     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,bounds,
+     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
          call condbndymg(conductors%oddsubgrid,nx,ny,nz,phi,rho,
-     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,bounds,
+     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
       endif
@@ -1573,14 +1570,14 @@ c     --- surface of the conductor boundaries.
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
      &                nx,ny,nz,phi,mglevel,mgform,.false.)
-      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
-      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
 
 c     --- set phi in the z guard planes
-      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
-      if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
-      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
+      if (localbounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
+      if (localbounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
+      if (localbounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
+      if (localbounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 
       return
       end
@@ -2048,13 +2045,13 @@ c         --- Minus term is in bulk and plus term is Neumann subgrid
       end
 c=============================================================================
       subroutine condbndymg(subgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
-     &                      bounds,mglevel,mgform,icndbndy)
+     &                      localbounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
-      integer(ISZ):: bounds(0:5),mgform,icndbndy
+      integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -2102,20 +2099,20 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 1) ixm1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 2) ixm1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 1) ixp1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 2) ixp1 = 1
         if (ixm1 == -1 .or. ixp1 == nx+1) cycle
 
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 1) iym1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+        if (iz == 0  .and. localbounds(4) < 1) cycle
+        if (iz == nz .and. localbounds(5) < 1) cycle
 
 c       --- Set temporaries with initial values.
         pxm = phi(ixm1,iy   ,iz   )
@@ -2199,20 +2196,20 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 1) ixm1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 2) ixm1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 1) ixp1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 2) ixp1 = 1
         if (ixm1 == -1 .or. ixp1 == nx+1) cycle
 
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 1) iym1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+        if (iz == 0  .and. localbounds(4) < 1) cycle
+        if (iz == nz .and. localbounds(5) < 1) cycle
 
 c       --- Set temporaries with initial values.
         pxm = phi(ixm1,iy   ,iz   )
@@ -2252,12 +2249,12 @@ c       --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine condbndymgint(subgrid,nx,ny,nz,phi,bounds,mglevel,icndbndy)
+      subroutine condbndymgint(subgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      integer(ISZ):: bounds(0:5),icndbndy
+      integer(ISZ):: localbounds(0:5),icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -2302,26 +2299,26 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == 0 .and. bounds(0) == 0) cycle
-        if (ixm1 == -1 .and. bounds(0) == 1) cycle
-        if (ixm1 == -1 .and. bounds(0) == 2) cycle
-        if (ixp1 == nx .and. bounds(1) == 0) cycle
-        if (ixp1 == nx+1 .and. bounds(1) == 1) cycle
-        if (ixp1 == nx+1 .and. bounds(1) == 2) cycle
+        if (ixm1 == 0 .and. localbounds(0) == 0) cycle
+        if (ixm1 == -1 .and. localbounds(0) == 1) cycle
+        if (ixm1 == -1 .and. localbounds(0) == 2) cycle
+        if (ixp1 == nx .and. localbounds(1) == 0) cycle
+        if (ixp1 == nx+1 .and. localbounds(1) == 1) cycle
+        if (ixp1 == nx+1 .and. localbounds(1) == 2) cycle
         if (ixm1 == -1 .or. ixp1 == nx+1) cycle
 
-        if (iym1 == 0 .and. bounds(2) == 0) cycle
-        if (iym1 == -1 .and. bounds(2) == 1) cycle
-        if (iym1 == -1 .and. bounds(2) == 2) cycle
-        if (iyp1 == ny .and. bounds(3) == 0) cycle
-        if (iyp1 == ny+1 .and. bounds(3) == 1) cycle
-        if (iyp1 == ny+1 .and. bounds(3) == 2) cycle
+        if (iym1 == 0 .and. localbounds(2) == 0) cycle
+        if (iym1 == -1 .and. localbounds(2) == 1) cycle
+        if (iym1 == -1 .and. localbounds(2) == 2) cycle
+        if (iyp1 == ny .and. localbounds(3) == 0) cycle
+        if (iyp1 == ny+1 .and. localbounds(3) == 1) cycle
+        if (iyp1 == ny+1 .and. localbounds(3) == 2) cycle
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (izm1 == 0 .and. bounds(4) == 0) cycle
-        if (izp1 == nz .and. bounds(5) == 0) cycle
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+        if (izm1 == 0 .and. localbounds(4) == 0) cycle
+        if (izp1 == nz .and. localbounds(5) == 0) cycle
+        if (iz == 0  .and. localbounds(4) < 1) cycle
+        if (iz == nz .and. localbounds(5) < 1) cycle
 
         if (0. >= dels(0,ic) .and. dels(0,ic) > -1.) phi(ixm1,iy,iz)=phi(ix,iy,iz)
         if (0. >= dels(1,ic) .and. dels(1,ic) > -1.) phi(ixp1,iy,iz)=phi(ix,iy,iz)
@@ -2339,7 +2336,7 @@ c       --- set temporaries for boundaries
       end
 c=============================================================================
       subroutine condbndyres(subgrid,nx,ny,nz,phi,rho,res,rdx2,rdy2,rdz2,
-     &                       mgparam,bounds,mglevel,
+     &                       mgparam,localbounds,mglevel,
      &                       mgform,mgform2init,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
@@ -2348,7 +2345,7 @@ c=============================================================================
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
-      integer(ISZ):: bounds(0:5),mgform,icndbndy
+      integer(ISZ):: localbounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -2414,20 +2411,20 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 1) ixm1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 2) ixm1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 1) ixp1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 2) ixp1 = 1
         if (ixm1 == -1 .or. ixp1 == nx+1) cycle
 
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 1) iym1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) == 0) cycle
-        if (iz == nz .and. bounds(5) == 0) cycle
+        if (iz == 0  .and. localbounds(4) == 0) cycle
+        if (iz == nz .and. localbounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
         pxm = phi(ixm1,iy   ,iz   )
@@ -2515,20 +2512,20 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == -1 .and. bounds(0) == 1) ixm1 = 1
-        if (ixm1 == -1 .and. bounds(0) == 2) ixm1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 1) ixp1 = nx-1
-        if (ixp1 == nx+1 .and. bounds(1) == 2) ixp1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 1) ixm1 = 1
+        if (ixm1 == -1 .and. localbounds(0) == 2) ixm1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 1) ixp1 = nx-1
+        if (ixp1 == nx+1 .and. localbounds(1) == 2) ixp1 = 1
         if (ixm1 == -1 .or. ixp1 == nx+1) cycle
 
-        if (iym1 == -1 .and. bounds(2) == 1) iym1 = 1
-        if (iym1 == -1 .and. bounds(2) == 2) iym1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 1) iyp1 = ny-1
-        if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 1) iym1 = 1
+        if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
+        if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) == 0) cycle
-        if (iz == nz .and. bounds(5) == 0) cycle
+        if (iz == 0  .and. localbounds(4) == 0) cycle
+        if (iz == nz .and. localbounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
         pxm = phi(ixm1,iy   ,iz   )
@@ -2579,14 +2576,14 @@ c       --- calculate the residual based on the boundary conditions
       end
 c=============================================================================
       subroutine residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
-     &                    mglevel,bounds,mgparam,mgform,mgform2init,
+     &                    mglevel,localbounds,mgparam,mgform,mgform2init,
      &                    lcndbndy,icndbndy,conductors)
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
-      integer(ISZ):: mglevel,bounds(0:5)
+      integer(ISZ):: mglevel,localbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
       logical(ISZ):: mgform2init
@@ -2622,12 +2619,12 @@ c     --- Set the loop limits, including edges when appropriate.
       iymax = ny-1
       izmin = 0
       izmax = nz
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(1) == 1) ixmax = nx
-      if (bounds(2) >  0) iymin = 0
-      if (bounds(3) == 1) iymax = ny
-      if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nz-1
+      if (localbounds(0) >  0) ixmin = 0
+      if (localbounds(1) == 1) ixmax = nx
+      if (localbounds(2) >  0) iymin = 0
+      if (localbounds(3) == 1) iymax = ny
+      if (localbounds(4) == 0) izmin = 1
+      if (localbounds(5) == 0) izmax = nz-1
 
       res = 0.
 c     --- Calculate the residual.
@@ -2638,19 +2635,19 @@ c     --- Calculate the residual.
 
         do iy=iymin,iymax
           iym1 = iy - 1
-          if (iy==0 .and. bounds(2) == 1) iym1 = 1
-          if (iy==0 .and. bounds(2) == 2) iym1 = ny-1
+          if (iy==0 .and. localbounds(2) == 1) iym1 = 1
+          if (iy==0 .and. localbounds(2) == 2) iym1 = ny-1
           iyp1 = iy + 1
-          if (iy == ny .and. bounds(3) == 1)  iyp1 = ny-1
-          if (iy == ny .and. bounds(3) == 2)  iyp1 = 1
+          if (iy == ny .and. localbounds(3) == 1)  iyp1 = ny-1
+          if (iy == ny .and. localbounds(3) == 2)  iyp1 = 1
 
           do ix=ixmin,ixmax
             ixm1 = ix - 1
-            if (ix==0 .and. bounds(0) == 1) ixm1 = 1
-            if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
+            if (ix==0 .and. localbounds(0) == 1) ixm1 = 1
+            if (ix==0 .and. localbounds(0) == 2) ixm1 = nx-1
             ixp1 = ix + 1
-            if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
-            if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
+            if (ix == nx .and. localbounds(1) == 1)  ixp1 = nx-1
+            if (ix == nx .and. localbounds(1) == 2)  ixp1 = 1
 
             res(ix,iy,iz) = rho(ix,iy,iz)
      &          +  (phi(ixm1,iy  ,iz  )+phi(ixp1,iy  ,iz  ))*dxsqic
@@ -2670,35 +2667,35 @@ c     --- Zero the residual inside conductors.
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
         call condbndyres(conductors%evensubgrid,nx,ny,nz,phi,rho,res,
-     &                   dxsqi,dysqi,dzsqi,mgparam,bounds,
+     &                   dxsqi,dysqi,dzsqi,mgparam,localbounds,
      &                   mglevel,mgform,mgform2init,icndbndy)
         call condbndyres(conductors%oddsubgrid,nx,ny,nz,phi,rho,res,
-     &                   dxsqi,dysqi,dzsqi,mgparam,bounds,
+     &                   dxsqi,dysqi,dzsqi,mgparam,localbounds,
      &                   mglevel,mgform,mgform2init,icndbndy)
       endif
 
 c     --- Transverse boundaries
-      if (bounds(0) == 0) res(-1:0,:,:) = 0.
-      if (bounds(1) == 0) res(nx:nx+1,:,:) = 0.
-      if (bounds(0) == 1) res(-1,:,:) = res(1,:,:)
-      if (bounds(1) == 1) res(nx+1,:,:) = res(nx-1,:,:)
-      if (bounds(0) == 2) res(-1,:,:) = res(nx-1,:,:)
-      if (bounds(1) == 2) res(nx:nx+1,:,:) = res(0:1,:,:)
+      if (localbounds(0) == 0) res(-1:0,:,:) = 0.
+      if (localbounds(1) == 0) res(nx:nx+1,:,:) = 0.
+      if (localbounds(0) == 1) res(-1,:,:) = res(1,:,:)
+      if (localbounds(1) == 1) res(nx+1,:,:) = res(nx-1,:,:)
+      if (localbounds(0) == 2) res(-1,:,:) = res(nx-1,:,:)
+      if (localbounds(1) == 2) res(nx:nx+1,:,:) = res(0:1,:,:)
 
-      if (bounds(2) == 0) res(:,-1:0,:) = 0.
-      if (bounds(3) == 0) res(:,ny:ny+1,:) = 0.
-      if (bounds(2) == 1) res(:,-1,:) = res(:,1,:)
-      if (bounds(3) == 1) res(:,ny+1,:) = res(:,ny-1,:)
-      if (bounds(2) == 2) res(:,-1,:) = res(:,ny-1,:)
-      if (bounds(3) == 2) res(:,ny:ny+1,:) = res(:,0:1,:)
+      if (localbounds(2) == 0) res(:,-1:0,:) = 0.
+      if (localbounds(3) == 0) res(:,ny:ny+1,:) = 0.
+      if (localbounds(2) == 1) res(:,-1,:) = res(:,1,:)
+      if (localbounds(3) == 1) res(:,ny+1,:) = res(:,ny-1,:)
+      if (localbounds(2) == 2) res(:,-1,:) = res(:,ny-1,:)
+      if (localbounds(3) == 2) res(:,ny:ny+1,:) = res(:,0:1,:)
 
 c     --- Longitudinal boundaries
-      if (bounds(4) == 0) res(:,:,-1:0) = 0.
-      if (bounds(5) == 0) res(:,:,nz:nz+1) = 0.
-      if (bounds(4) == 1) res(:,:,-1) = res(:,:,1)
-      if (bounds(5) == 1) res(:,:,nz+1) = res(:,:,nz-1)
-      if (bounds(4) == 2 .and. nz == nzfull) res(:,:,-1) = res(:,:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) res(:,:,nz+1) = res(:,:,1)
+      if (localbounds(4) == 0) res(:,:,-1:0) = 0.
+      if (localbounds(5) == 0) res(:,:,nz:nz+1) = 0.
+      if (localbounds(4) == 1) res(:,:,-1) = res(:,:,1)
+      if (localbounds(5) == 1) res(:,:,nz+1) = res(:,:,nz-1)
+      if (localbounds(4) == 2 .and. nz == nzfull) res(:,:,-1) = res(:,:,nz-1)
+      if (localbounds(5) == 2 .and. nz == nzfull) res(:,:,nz+1) = res(:,:,1)
 
       return
       end
