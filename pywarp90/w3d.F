@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.318 $, $Date: 2006/12/11 23:30:26 $
+c@(#) File W3D.F, version $Revision: 3.319 $, $Date: 2006/12/12 00:01:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -10,26 +10,31 @@ c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
       module w3d_interfaces
       interface
+
       subroutine assignrhoandphi(rhopindts,phipindts)
       use Fields3dParticles
       real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
       end subroutine assignrhoandphi
+
       subroutine assignrhopandphip(rhopindts,phipindts)
       use Fields3dParticles
       real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
       end subroutine assignrhopandphip
+
       subroutine setrhoandphiforfieldsolve(rhopin,phipin)
       use Fields3dParticles
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
       end subroutine setrhoandphiforfieldsolve
+
       subroutine fetche3d(pgroup,ipmin,ip,is)
       use ParticleGroupmodule
       type(ParticleGroup),target:: pgroup
       integer(ISZ):: ipmin,ip,is
       end subroutine fetche3d
+
       end interface
       end module w3d_interfaces
 c=============================================================================
@@ -7135,11 +7140,10 @@ c       --- and the data needs to be copied around.
         call execuser("fetcheregistered")
         npfsapi = 0
         jsfsapi = -1
-        npfsapi = 0
 #if defined(XLF) || defined(XLF2)
-        ex(1:n) = exfsapi
-        ey(1:n) = eyfsapi
-        ez(1:n) = ezfsapi
+        ex = exfsapi
+        ey = eyfsapi
+        ez = ezfsapi
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(exfsapi,eyfsapi,ezfsapi)
 #endif
