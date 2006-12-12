@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.14 $, $Date: 2006/11/16 20:35:04 $
+c@(#) File w3d_utilities.F, version $Revision: 1.15 $, $Date: 2006/12/12 21:14:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -762,6 +762,7 @@ c       --- Set from field solver decompostion
         do i=0,nslaves-1
           izpslave(i) = izfsslave(i)
           nzpslave(i) = nzfsslave(i) - (overlap - 1)
+          if (i == nslaves-1) nzpslave(i) = nzfsslave(i)
 c         --- These shouldn't include the guard cells
           zpslmin(i) = izpslave(i)*dz + zmmin
           zpslmax(i) = (izpslave(i)+nzpslave(i))*dz + zmmin
@@ -776,6 +777,8 @@ c         --- sticking out the ends.
           endif
           if (izpslave(i) + nzpslave(i) > nz) nzpslave(i) = nz - izpslave(i)
         enddo
+c       --- Set zpslmax for the last process so that it is exactly equal to
+c       --- zmmax (avoiding problems with roundoff errors).
         zpslmax(nslaves-1) = zmmax
 
       else
