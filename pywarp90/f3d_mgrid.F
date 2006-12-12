@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.125 $, $Date: 2006/11/18 02:13:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.126 $, $Date: 2006/12/12 21:08:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -385,8 +385,8 @@ c     unscaled residual
 c     --- For Dirichlet boundary conditions, copy data into guard planes
 c     --- For other boundary conditions, the guard planes are used during
 c     --- the solve are so are already set.
-      if (bounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
-      if (bounds(5) == 0) phi(:,:,nz+1) = phi(:,:,nz)
+      if (localbounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
+      if (localbounds(5) == 0) phi(:,:,nz+1) = phi(:,:,nz)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -627,9 +627,9 @@ c       --- Get the residual on the current grid.
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
-     &                              my_index,nslaves,izfsslave,
-     &                              whosendingleft,whosendingright)
+c       call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
+c    &                              my_index,nslaves,izfsslave,
+c    &                              whosendingleft,whosendingright)
 #endif
         if (larraysumdiagnostic) then
           sss = mggetarraysum(nx,ny,nz,1,3,res,
@@ -705,6 +705,11 @@ c         --- Add in resulting error.
             print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
           endif
           call expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,localbounds)
+#ifdef MPIPARALLEL
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+     &                                my_index,nslaves,izfsslave,
+     &                                whosendingleft,whosendingright)
+#endif
 
           deallocate(phicoarse,rhocoarse)
         else
@@ -786,6 +791,9 @@ c         --- Continue at the next coarsest level.
             sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,1,phicoarse,
      &                          izfsslavec,nzfsslavec,nslaves,my_index)
             if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+            sss = mggetarraysum(nx,ny,nz,0,1,phi,
+     &                          izfsslave,nzfsslave,nslaves,my_index)
+            if (my_index == 0) print*,"V4 phi",mglevel,sss
           endif
 
 c         --- Add in resulting error.
@@ -797,17 +805,18 @@ c         --- Add in resulting error.
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
-          if (larraysumdiagnostic) then
-            sss = mggetarraysum(nx,ny,nz,0,1,phi,
-     &                          izfsslave,nzfsslave,nslaves,my_index)
-            if (my_index == 0) print*,"V5 phi",mglevel,sss
-          endif
 
           deallocate(phicoarse,rhocoarse)
         endif
 
         deallocate(res)
 
+      endif
+
+      if (larraysumdiagnostic) then
+        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V5 phi",mglevel,sss
       endif
 
 c     --- Do final SOR passes.
@@ -1253,8 +1262,6 @@ c     --- do loop to cover even and odd points
      &                     bounds,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
 
-        if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
-        if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 #ifdef MPIPARALLEL
         call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
@@ -1269,11 +1276,11 @@ c     --- end of loop over even and odd points
       enddo
 
 #ifdef MPIPARALLEL
-c         --- Exchange phi in the z guard planes
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
-     &                        my_index,nslaves,izfsslave,nzfsslave,
-     &                        whosendingleft,izsendingleft,
-     &                        whosendingright,izsendingright)
+c     --- Exchange phi in the z guard planes
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
+     &                    my_index,nslaves,izfsslave,nzfsslave,
+     &                    whosendingleft,izsendingleft,
+     &                    whosendingright,izsendingright)
 #endif
 
       return
@@ -1570,9 +1577,9 @@ c     --- Put desired potential onto conductors in phi array.
       call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,bounds,mglevel,icndbndy)
 
 c     --- set phi in the z guard planes
-      if (bounds(4) == 1) phi(:,:,izl-2) = phi(:,:,izl)
-      if (bounds(5) == 1) phi(:,:,izr)   = phi(:,:,izr-2)
-      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,izl-2) = phi(:,:,izr-2)
+      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
+      if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
+      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
       if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 
       return
@@ -2836,7 +2843,7 @@ c=============================================================================
       RECURSIVE subroutine getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,
      &                                      mglevel,lx,ly,lz,
      &                                      conductors,
-     &                                     my_index,nslaves,izfsslave,nzfsslave)
+     &                                      my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
