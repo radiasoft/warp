@@ -916,12 +916,13 @@ gives a better initial guess for the field solver.
   #--------------------------------------------------------------------------
 
   def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup=None):
-    if pgroup is None:
-      self.fetchefrompositionswithoutpgroup(x,y,z,ex,ey,ez)
-    else:
-      self.fetchefrompositionswithpgroup(x,y,z,ex,ey,ez,pgroup)
+    # --- The fetche without sorting everything is faster, so use it.
+    # --- It is faster because the extra sorting takes a not insignificant
+    # --- amount of time, more than unsorting the E arrays.
+    self.fetchefrompositionswithoutsort(x,y,z,ex,ey,ez,pgroup)
+    #self.fetchefrompositionswithpsort(x,y,z,ex,ey,ez,pgroup)
 
-  def fetchefrompositionswithpgroup(self,x,y,z,ex,ey,ez,pgroup=None):
+  def fetchefrompositionswithsort(self,x,y,z,ex,ey,ez,pgroup=None):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
@@ -954,13 +955,14 @@ Also, this ends up with the input data remaining sorted.
     for block,n in zip(self.root.listofblocks,nperchild):
       MultiGrid.fetchefrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],
                                           ex[i:i+n],ey[i:i+n],ez[i:i+n])
-      if top.chdtspid > 0:
-        pgroup.pid[i:i+n,top.dxpid-1] = block.dx
-        pgroup.pid[i:i+n,top.dypid-1] = block.dy
-        pgroup.pid[i:i+n,top.dzpid-1] = block.dz
+      if pgroup is not None and top.chdtspid > 0:
+        ipmin = w3d.ipminfsapi - 1 + i
+        pgroup.pid[ipmin:ipmin+n,top.dxpid-1] = block.dx
+        pgroup.pid[ipmin:ipmin+n,top.dypid-1] = block.dy
+        pgroup.pid[ipmin:ipmin+n,top.dzpid-1] = block.dz
       i = i + n
 
-  def fetchefrompositionswithoutpgroup(self,x,y,z,ex,ey,ez):
+  def fetchefrompositionswithoutsort(self,x,y,z,ex,ey,ez,pgroup=None):
     """
 This is the old version of fetchefrompositions that doesn't rely on having
 access to the particle group and does not sort the input data.
@@ -986,6 +988,11 @@ access to the particle group and does not sort the input data.
     for block,n in zip(self.root.listofblocks,nperchild):
       MultiGrid.fetchefrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],
                                           tex[i:i+n],tey[i:i+n],tez[i:i+n])
+      if pgroup is not None and top.chdtspid > 0:
+        ipmin = w3d.ipminfsapi - 1 + i
+        pgroup.pid[ipmin:ipmin+n,top.dxpid-1] = block.dx
+        pgroup.pid[ipmin:ipmin+n,top.dypid-1] = block.dy
+        pgroup.pid[ipmin:ipmin+n,top.dzpid-1] = block.dz
       i = i + n
 
     # --- Now, put the E fields back into the original arrays, unsorting
