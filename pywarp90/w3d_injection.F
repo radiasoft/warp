@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.81 $, $Date: 2006/12/01 00:14:19 $
+c@(#) File w3d_injection.F, version $Revision: 1.82 $, $Date: 2006/12/12 00:00:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2732,19 +2732,22 @@ c to get zp.
       real(kind=8):: xxsq,yysq,r1sq,r2sq
       real(kind=8):: ainjsqi,binjsqi
       real(kind=8):: xm,ym,rrsq,aa,az
-      real(kind=8):: xx((1+inj_nx)*(1+inj_ny)*ninject)
-      real(kind=8):: yy((1+inj_nx)*(1+inj_ny)*ninject)
-      real(kind=8):: zz((1+inj_nx)*(1+inj_ny)*ninject)
-      integer(ISZ):: xi((1+inj_nx)*(1+inj_ny)*ninject)
-      integer(ISZ):: yi((1+inj_nx)*(1+inj_ny)*ninject)
-      integer(ISZ):: in((1+inj_nx)*(1+inj_ny)*ninject)
-      real(kind=8):: pp((1+inj_nx)*(1+inj_ny)*ninject)
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:),pp(:)
+      integer(ISZ),allocatable:: xi(:),yi(:),in(:)
       integer(ISZ):: nn,ii,i1,i2
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       if (ninject == 0) return
       if (inject < 1 .or. inject > 3) return
+
+      allocate(xx((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(yy((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(zz((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(xi((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(yi((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(in((1+inj_nx)*(1+inj_ny)*ninject))
+      allocate(pp((1+inj_nx)*(1+inj_ny)*ninject))
 
       call updateinj_zmminmax()
 
@@ -2843,7 +2846,7 @@ c     --- the emitting surface.
         
       if(inj_nz>1) then
         inj_dz = inj_dz_tmp
-        call getinj_phi_mr(nn,xx(1),yy(1),zz(1),xi(1),yi(1))
+        call getinj_phi_mr(nn,xx,yy,zz,xi,yi)
       end if
 
 #ifdef MPIPARALLEL
@@ -2880,6 +2883,9 @@ c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
           enddo
         enddo
       endif
+
+      deallocate(xx,yy,zz,pp)
+      deallocate(xi,yi,in)
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetinj_phi = timegetinj_phi + wtime() - substarttime
