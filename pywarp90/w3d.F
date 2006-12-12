@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.319 $, $Date: 2006/12/12 00:01:26 $
+c@(#) File W3D.F, version $Revision: 3.320 $, $Date: 2006/12/12 21:10:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5154,7 +5154,6 @@ c     --- vectorized loop to compute indices, weights
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5169,6 +5168,7 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -5193,7 +5193,6 @@ c     --- vectorized loop to compute indices, weights
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5208,6 +5207,7 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -5235,7 +5235,6 @@ c       --- normal loop
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5250,6 +5249,7 @@ c       --- normal loop
             v1next = (yp(ip+1) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -5351,7 +5351,6 @@ c     --- vectorized loop to compute indices, weights
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5366,6 +5365,7 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -5390,7 +5390,6 @@ c     --- vectorized loop to compute indices, weights
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5405,6 +5404,7 @@ c     --- vectorized loop to compute indices, weights
             v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -5439,7 +5439,6 @@ c       --- normal loop
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
-          if (uzp(ip) == 0) cycle
           ii = iinext
           jj = jjnext
           kk = kknext
@@ -5461,6 +5460,7 @@ c       --- normal loop
             v1next = (y - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
+          if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
