@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.27 $, $Date: 2006/12/11 23:31:10 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.28 $, $Date: 2006/12/12 21:46:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -162,10 +162,10 @@ c     --- the parallel sums on boundaries will need to be done again.
       if (depos == 'none') return
 
 
-      if (fstype == 12) then
-        call execuser("loadjregistered")
-      elseif (bfstype == 12) then
+      if (bfstype == 12) then
         call execuser("bloadjregistered")
+      elseif (fstype == 12) then
+        call execuser("loadjregistered")
       elseif (bfstype >= 0) then
 
 c       --- Ensure that the jp array is setup properly
@@ -1753,10 +1753,10 @@ c       --- and the data needs to be copied around.
         byfsapi => by
         bzfsapi => bz
 #endif
-        if (fstype == 12) then
-          call execuser("fetchbregistered")
-        else
+        if (bfstype == 12) then
           call execuser("bfetchbregistered")
+        else
+          call execuser("fetchbregistered")
         endif
         jsfsapi = -1
 #if defined(XLF) || defined(XLF2)
@@ -1804,10 +1804,10 @@ c     --- Call the appropriate routine to get the A
         yfsapi => y
         zfsapi => z
         afsapi => a
-        if (fstype == 12) then
-          call execuser("fetcharegistered")
-        else
+        if (bfstype == 12) then
           call execuser("bfetcharegistered")
+        else
+          call execuser("fetcharegistered")
         endif
         nullify(xfsapi)
         nullify(yfsapi)
