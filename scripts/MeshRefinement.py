@@ -164,8 +164,8 @@ Implements adaptive mesh refinement in 3d
       self.mins = self.root.minsglobal + self.fulllower*self.deltas
       self.maxs = self.root.minsglobal + self.fullupper*self.deltas
 
-      # --- This check is not necessarily needed. Not doing it allows a child
-      # --- to be added to any parent one level coarser. It also avoids
+      # --- This check below is not necessarily needed. Not doing it allows a
+      # --- child to be added to any parent one level coarser. It also avoids
       # --- problems in the parallel version where a child may not intersect
       # --- the root block on all processors.
 
@@ -178,11 +178,10 @@ Implements adaptive mesh refinement in 3d
       # --- Make sure that the block has a finite extent in all dimensions
       # --- For the parallel case, this may just mean that on this processor,
       # --- the block is outside the extent of the processors domain. This
-      # --- is OK, but still, the block should not be created. Only raise
-      # --- and exception in the serial case where this is always bad input.
-      if not alltrue(self.upper>self.lower):
-        if npes <= 1: raise "The child must have a finite extent in all dimensions"
-        return
+      # --- is OK, but still, the block should not be created.
+      # --- In the serial case this is always due to bad input.
+      assert alltrue(self.upper>self.lower),\
+             "The child must have a finite extent in all dimensions"
 
       # --- First, just use same boundary conditions as root.
       self.bounds = self.root.bounds.copy()
@@ -324,17 +323,21 @@ Add a mesh refined block to this block.
   -nslaves=1: defaults to one so it is not parallelized
     """
     if nguard is None: nguard = self.nguard
-    child = MRBlock(parent=self,lower=lower,upper=upper,
-                    fulllower=fulllower,fullupper=fullupper,
-                    mins=mins,maxs=maxs,
-                    refinement=refinement,nguard=nguard,
-                    nslaves=nslaves)
-    # --- Note that this is not necessary since the children list will
-    # --- be cleared and reset during finalize anyway. It is kept for
-    # --- legacy code which uses the children list for adding more
-    # --- children.
-    self.children.append(child)
-    return child
+    try:
+      child = MRBlock(parent=self,lower=lower,upper=upper,
+                      fulllower=fulllower,fullupper=fullupper,
+                      mins=mins,maxs=maxs,
+                      refinement=refinement,nguard=nguard,
+                      nslaves=nslaves)
+      self.children.append(child)
+      return child
+    except AssertionError:
+      # --- Getting here means that one of the assertions was flagged.
+      # --- If running in parallel, then just return since the assertions
+      # --- can be ignored (but without creating the child), while in
+      # --- serial, re-raise the error since it was likely due to bad
+      # --- user input.
+      if npes <= 1: raise
 
   def resetroot(self):
     # --- No parents, so just create empty lists
