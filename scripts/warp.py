@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.127 2006/11/29 00:52:13 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.128 2006/12/14 20:28:08 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -813,7 +813,7 @@ Reads in data from file, redeposits charge density and does field solve
   """
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
-  if not onefile:
+  if lparallel and not onefile:
     filename = filename + '_%05d_%05d.dump'%(me,npes)
   # --- Call different restore routine depending on context
   if onefile and lparallel:
