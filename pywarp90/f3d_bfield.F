@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.28 $, $Date: 2006/12/12 21:46:10 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.29 $, $Date: 2006/12/14 19:09:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -164,7 +164,7 @@ c     --- the parallel sums on boundaries will need to be done again.
 
       if (bfstype == 12) then
         call execuser("bloadjregistered")
-      elseif (fstype == 12) then
+      elseif (fstype == 12 .and. bfstype < 0) then
         call execuser("loadjregistered")
       elseif (bfstype >= 0) then
 
@@ -1733,7 +1733,7 @@ c     --- Obtain the magnetic field
         return
       endif
 
-      if (fstype == 12 .or. bfstype == 12) then
+      if ((fstype == 12 .and. bfstype < 0) .or. bfstype == 12) then
 #if defined(XLF) || defined(XLF2)
 c       --- The pointer assignment breaks with the xlf compilers, so instead
 c       --- new arrays are allocated and those are used as the work space.
@@ -1799,7 +1799,7 @@ c=============================================================================
       real(kind=8),target:: x(n),y(n),z(n),a(0:2,n)
 
 c     --- Call the appropriate routine to get the A
-      if (fstype == 12 .or. bfstype == 12) then
+      if ((fstype == 12 .and. bfstype < 0) .or. bfstype == 12) then
         xfsapi => x
         yfsapi => y
         zfsapi => z
