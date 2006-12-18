@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.246 $, $Date: 2006/12/11 23:30:26 $
+#@(#) File W3D.V, version $Revision: 3.247 $, $Date: 2006/12/18 17:55:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.246 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.247 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -917,15 +917,18 @@ setupFields3dParticles(ns,ndts,it) subroutine
 check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
      
 *********** W3Dutilities:
-sortparticlesbyindex(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
+sortparticlesbyindex1(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
                      uz(n):real,nblocks:integer,
                      xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
                      pcounts(0:nblocks-1):integer)
       subroutine
-sortparticlesbyindexwithcounts(n:integer,indx(n):integer,
-                     x(n):real,y(n):real,z(n):real,uz(n):real,
+sortparticlesbyindex2(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
+                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
+                     nw:integer,wght:real,
                      nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,
+                     xout(n):real,yout(n):real,zout(n):real,
+                     uxout(n):real,uyout(n):real,uzout(n):real,gaminvout(n):real,
+                     wghtout:real,
                      pcounts(0:nblocks-1):integer)
       subroutine
 sortparticlesbyindexgetisort(n:integer,indx(n):integer,
@@ -936,13 +939,6 @@ sortparticlesbyindexgetisort(n:integer,indx(n):integer,
       subroutine
 getichild(gridnumb:integer,np:integer,x(np):real,y(np):real,z(np):real,
           ichild(np):integer,
-          nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):integer,
-          xmin:real,xmax:real,ymin:real,ymax:real,
-          zmin:real,zmax:real,
-          zgrid:real,l2symtry:logical,l4symtry:logical)
-      subroutine # Gathers data from a 3-D grid using nearest grid point.
-getichildandcount(np:integer,x(np):real,y(np):real,z(np):real,
-          ichild:integer,nblocks:integer,nperchild(0:nblocks-1):integer,
           nx:integer,ny:integer,nz:integer,grid(0:nx,0:ny,0:nz):integer,
           xmin:real,xmax:real,ymin:real,ymax:real,
           zmin:real,zmax:real,
@@ -967,13 +963,6 @@ putsortedefield(n:integer,isort(0:n-1):integer,
                 ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
 getextpart(pgroup:ParticleGroup)  subroutine
-sortposandvelbyindex(n:integer,indx:integer,x(n):real,y(n):real,z(n):real,
-                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,
-                     nblocks:integer,
-                     xout(n):real,yout(n):real,zout(n):real,
-                     uxout(n):real,uyout(n):real,uzout(n):real,gout(n):real,
-                     pcounts:integer)
-      subroutine
 setupgrid3dtype(grid:Grid3dtype,check:logical) subroutine
       # Checks the consistency of Grid3dtype input and allocates the grid
       # If check is false, then the input is inconsistent.
@@ -1121,10 +1110,8 @@ timeset_aperture_e real /0./
 timefieldsol3d real /0./
 timevp3d real /0./
 timesortpart_byindex real /0./
-timesortpart_byindexwithcounts real /0./
 timesortpart_byindexgetisort real /0./
 timegetichild real /0./
-timegetichildandcount real /0./
 timegetichildpositiveonly real /0./
 timeaddrhotoowner real /0./
 timegetrhofromowner real /0./

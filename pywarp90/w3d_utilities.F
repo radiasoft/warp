@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.15 $, $Date: 2006/12/12 21:14:21 $
+c@(#) File w3d_utilities.F, version $Revision: 1.16 $, $Date: 2006/12/18 17:54:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9,8 +9,8 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
 c=============================================================================
-      subroutine sortparticlesbyindex(n,indx,x,y,z,uz,nblocks,
-     &                                xout,yout,zout,uzout,pcounts)
+      subroutine sortparticlesbyindex1(n,indx,x,y,z,uz,nblocks,
+     &                                 xout,yout,zout,uzout,pcounts)
       use Subtimers3d
       integer(ISZ):: n,nblocks
       integer(ISZ):: indx(n)
@@ -60,13 +60,18 @@ c     --- Rearrange the particles
       return
       end
 c=============================================================================
-      subroutine sortparticlesbyindexwithcounts(n,indx,x,y,z,uz,nblocks,
-     &                                          xout,yout,zout,uzout,pcounts)
+      subroutine sortparticlesbyindex2(n,indx,x,y,z,ux,uy,uz,gaminv,nw,wght,
+     &                                 nblocks,
+     &                                 xout,yout,zout,uxout,uyout,uzout,
+     &                                 gaminvout,wghtout,pcounts)
       use Subtimers3d
-      integer(ISZ):: n,nblocks
+      integer(ISZ):: n,nw,nblocks
       integer(ISZ):: indx(n)
-      real(kind=8):: x(n),y(n),z(n),uz(n)
-      real(kind=8):: xout(n),yout(n),zout(n),uzout(n)
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n)
+      real(kind=8):: wght(nw)
+      real(kind=8):: xout(n),yout(n),zout(n),uxout(n),uyout(n),uzout(n)
+      real(kind=8):: gaminvout(n)
+      real(kind=8):: wghtout(nw)
       integer(ISZ):: pcounts(0:nblocks-1)
 
 c Given particle data and an index array, the routine sorts the particles
@@ -78,7 +83,13 @@ c number of particles for each index.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c     --- pcounts is passed in.
+c     --- First, count how many in each block there are.
+c     --- Note that the blocks numbers start at zero.
+      pcounts = 0
+      do ip=1,n
+        ib = indx(ip)
+        pcounts(ib) = pcounts(ib) + 1
+      enddo
 
 c     --- Generate partial sum of pcounts
       tcounts(0) = 1
@@ -93,13 +104,16 @@ c     --- Rearrange the particles
         xout(ii) = x(ip)
         yout(ii) = y(ip)
         zout(ii) = z(ip)
+        uxout(ii) = ux(ip)
+        uyout(ii) = uy(ip)
         uzout(ii) = uz(ip)
+        gaminvout(ii) = gaminv(ip)
+        if (nw == n) wghtout(ii) = wght(ip)
         tcounts(ib) = tcounts(ib) + 1
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timesortpart_byindexwithcounts =
-     &                         timesortpart_byindexwithcounts +
+      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
      &                                             wtime() - substarttime
 !$OMP END MASTER
 
@@ -224,80 +238,6 @@ c       --- if not within grid, skip it
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetichild = timegetichild + wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
-c=============================================================================
-      subroutine getichildandcount(np,x,y,z,ichild,nblocks,nperchild,
-     &                             nx,ny,nz,grid,
-     &                             xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
-     &                             l2symtry,l4symtry)
-      use Subtimers3d
-      integer(ISZ):: nx,ny,nz,np,nblocks
-      real(kind=8):: x(np), y(np), z(np)
-      integer(ISZ):: ichild(np)
-      integer(ISZ):: nperchild(0:nblocks-1)
-      integer(ISZ):: grid(0:nx,0:ny,0:nz)
-      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
-      logical(ISZ):: l2symtry,l4symtry
-
-c Gathers data from a 3-D mesh onto particle positions.
-c Same as getgridngp3d, but only gathers the data if it is positive.
-
-      integer(ISZ):: ip,ix,iy,iz
-      real(kind=8):: gx,gy,gz
-      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
-      real(kind=8):: xsymmetryplane,ysymmetryplane
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-c     --- These now default to zero, but could be input quantities.
-      xsymmetryplane = 0.
-      ysymmetryplane = 0.
-
-c     --- set grid cell inverse sizes
-      dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
-      dzi = nz/(zmax - zmin)
-
-c     --- loop over particles
-      do ip=1,np
-
-c       --- find location on grid, taking into account any symmetries.
-        if (l4symtry) then
-          gx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
-          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
-        else if (l2symtry) then
-          gx = x(ip)
-          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
-        else
-          gx = x(ip)
-          gy = y(ip)
-        endif
-
-        gz = z(ip) - zgrid
-
-c       --- if not within grid, skip it
-c       if (gx < xmin .or. gx > xmax .or.
-c    &      gy < ymin .or. gy > ymax .or.
-c    &      gz < zmin .or. gz > zmax) cycle
-
-        gx = (gx - xmin)*dxi
-        gy = (gy - ymin)*dyi
-        gz = (gz - zmin)*dzi
-
-        ix = int(gx)
-        iy = int(gy)
-        iz = int(gz)
-        ichild(ip) = abs(grid(ix,iy,iz))
-        nperchild(ichild(ip)) = nperchild(ichild(ip)) + 1
-
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timegetichildandcount = timegetichildandcount +
-     &                                          wtime() - substarttime
 !$OMP END MASTER
 
       return
@@ -455,63 +395,6 @@ c     &                      abs(f(ix  ,iy  ,iz  )-f(ix  ,iy  ,izm1)))*dzi
       return
       end
 c=============================================================================
-c=============================================================================
-c --- Routines used by the mesh refined B field solver
-c=============================================================================
-      subroutine sortposandvelbyindex(n,indx,x,y,z,ux,uy,uz,gaminv,nblocks,
-     &                                xout,yout,zout,uxout,uyout,uzout,gout,
-     &                                pcounts)
-      use Subtimers3d
-      integer(ISZ):: n,nblocks
-      integer(ISZ):: indx(n)
-      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n)
-      real(kind=8):: xout(n),yout(n),zout(n),uxout(n),uyout(n),uzout(n),gout(n)
-      integer(ISZ):: pcounts(0:nblocks-1)
-
-c Given particle data and an index array, the routine sorts the particles
-c based on the index. It returns the sorted particles and a list of the
-c number of particles for each index.
-
-      integer(ISZ):: ip,ii,ib
-      integer(ISZ):: tcounts(0:nblocks-1)
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-c     --- First, count how many in each block there are.
-c     --- Note that the blocks numbers start at zero.
-      pcounts = 0
-      do ip=1,n
-        ib = indx(ip)
-        pcounts(ib) = pcounts(ib) + 1
-      enddo
-
-c     --- Generate partial sum of pcounts
-      tcounts(0) = 1
-      do ib=0,nblocks-2
-        tcounts(ib+1) = tcounts(ib) + pcounts(ib)
-      enddo
-
-c     --- Rearrange the particles
-      do ip=1,n
-        ib = indx(ip)
-        ii = tcounts(ib)
-        xout(ii) = x(ip)
-        yout(ii) = y(ip)
-        zout(ii) = z(ip)
-        uxout(ii) = ux(ip)
-        uyout(ii) = uy(ip)
-        uzout(ii) = uz(ip)
-        gout(ii) = gaminv(ip)
-        tcounts(ib) = tcounts(ib) + 1
-      enddo
-
-!$OMP MASTER
-      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
-     &                                             wtime() - substarttime
-!$OMP END MASTER
-
-      return
-      end
 c=============================================================================
 c=============================================================================
 c=============================================================================
