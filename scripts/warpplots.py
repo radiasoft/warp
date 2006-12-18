@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.181 2006/11/29 00:55:57 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.182 2006/12/18 18:07:20 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3256,7 +3256,7 @@ be from none to all three.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver.bfield
+  else:             bfield = solver
   try:
     if solver.nslaves <= 1: local = 1
   except:
@@ -3350,7 +3350,7 @@ be from none to all three.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver.bfield
+  else:             bfield = solver
   try:
     if solver.nslaves <= 1: local = 1
   except:
@@ -3443,7 +3443,7 @@ be from none to all three.
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
   if solver == w3d: bfield = f3d.bfield
-  else:             bfield = solver.bfield
+  else:             bfield = solver
   try:
     if solver.nslaves <= 1: local = 1
   except:
@@ -4128,7 +4128,6 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
     a = geta(comp=comp,iy=iy,solver=solver,local=local)
-    print shape(transpose(a))
     ppgeneric(grid=transpose(a),kwdict=kw,local=1)
     if fullplane and solver.l4symtry:
       ppgeneric(grid=transpose(a),kwdict=kw,local=1,flipyaxis=1)

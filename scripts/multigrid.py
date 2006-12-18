@@ -17,25 +17,20 @@ except ImportError:
 ##############################################################################
 class MultiGrid(SubcycledPoissonSolver):
   
-  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nzfull','nzpguard',
-                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
-                   'zmminglobal','zmmaxglobal',
-                   'bound0','boundnz','boundxy','l2symtry','l4symtry',
-                   'solvergeom',
-                   'iondensity','electrontemperature','plasmapotential',
+  __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
-                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp']
-  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0}
 
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
-    FieldSolver.__init__(self,**kw)
-    del kw['lreducedpickle']
+    SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
+    self.ncomponents = 1
+    self.nxguard = 0
+    self.nyguard = 0
+    self.nzguard = 1
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors.
@@ -52,140 +47,9 @@ class MultiGrid(SubcycledPoissonSolver):
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__topinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(top,name))
-      if kw.has_key(name): del kw[name]
-    for name,defvalue in MultiGrid.__flaginputs__.iteritems():
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
-
-    # --- bounds is special since it will sometimes be set from the
-    # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
-    if 'bounds' not in self.__dict__:
-      if 'bounds' in kw:
-        self.bounds = kw['bounds']
-      else:
-        self.bounds = zeros(6)
-        self.bounds[0] = self.boundxy
-        self.bounds[1] = self.boundxy
-        self.bounds[2] = self.boundxy
-        self.bounds[3] = self.boundxy
-        self.bounds[4] = self.bound0
-        self.bounds[5] = self.boundnz
-        if self.l2symtry:
-          self.bounds[2] = neumann
-          if self.boundxy == periodic: self.bounds[3] = neumann
-          if self.forcesymmetries: self.ymmin = 0.
-        elif self.l4symtry:
-          self.bounds[0] = neumann
-          self.bounds[2] = neumann
-          if self.boundxy == periodic: self.bounds[1] = neumann
-          if self.boundxy == periodic: self.bounds[3] = neumann
-          if self.forcesymmetries: self.xmmin = 0.
-          if self.forcesymmetries: self.ymmin = 0.
-
-    # --- pbounds is special since it will sometimes be set from the
-    # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
-    if 'pbounds' not in self.__dict__:
-      if 'pbounds' in kw:
-        self.pbounds = kw['pbounds']
-      else:
-        self.pbounds = zeros(6)
-        self.pbounds[0] = self.pboundxy
-        self.pbounds[1] = self.pboundxy
-        self.pbounds[2] = self.pboundxy
-        self.pbounds[3] = self.pboundxy
-        self.pbounds[4] = self.pbound0
-        self.pbounds[5] = self.pboundnz
-        if self.l2symtry:
-          self.pbounds[2] = reflect
-          if self.pboundxy == periodic: self.pbounds[3] = reflect
-        elif self.l4symtry:
-          self.pbounds[0] = reflect
-          self.pbounds[2] = reflect
-          if self.pboundxy == periodic: self.pbounds[1] = reflect
-          if self.pboundxy == periodic: self.pbounds[3] = reflect
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
-
-    # --- Set parallel related parameters and calculate mesh sizes
-    if self.nslaves <= 1:
-      self.my_index = 0
-      if self.zmminglobal == self.zmmaxglobal:
-        self.nzfull = self.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
-      self.izfsslave = zeros(1)
-      self.nzfsslave = zeros(1) + self.nz
-      self.nxp = self.nx
-      self.nyp = self.ny
-      self.nzp = self.nz
-      self.xmminp = self.xmmin
-      self.xmmaxp = self.xmmax
-      self.ymminp = self.ymmin
-      self.ymmaxp = self.ymmax
-      self.zmminp = self.zmmin
-      self.zmmaxp = self.zmmax
-    else:
-      self.my_index = me
-      if self.zmminglobal == self.zmmaxglobal:
-        self.nzfull = self.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
-      self.izfsslave = zeros(self.nslaves)
-      self.nzfsslave = zeros(self.nslaves)
-      self.grid_overlap = array([2])
-      top.grid_overlap = 2
-      domaindecomposefields(self.nzfull,self.nslaves,self.lfsautodecomp,
-                            self.izfsslave,self.nzfsslave,self.grid_overlap)
-
-      self.nz = self.nzfsslave[self.my_index]
-      if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-      self.zmmin = self.zmminglobal + self.izfsslave[self.my_index]*self.dz
-      self.zmmax = self.zmminglobal + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
-
-      self.izpslave = zeros(self.nslaves)
-      self.nzpslave = zeros(self.nslaves)
-      self.zpslmin = zeros(self.nslaves,'d')
-      self.zpslmax = zeros(self.nslaves,'d')
-      domaindecomposeparticles(self.nzfull,self.nslaves,self.izfsslave,self.nzfsslave,
-                               self.grid_overlap,self.nzpguard,
-                               self.zmminglobal,self.zmmaxglobal,self.dz,self.zslave[:self.nslaves],
-                               self.lautodecomp,self.izpslave,self.nzpslave,
-                               self.zpslmin,self.zpslmax)
-
-      self.nxp = self.nx
-      self.nyp = self.ny
-      self.nzp = self.nzpslave[self.my_index]
-      self.xmminp = self.xmmin
-      self.xmmaxp = self.xmmax
-      self.ymminp = self.ymmin
-      self.ymmaxp = self.ymmax
-      self.zmminp = self.zmminglobal + self.izpslave[self.my_index]*self.dz
-      self.zmmaxp = self.zmminglobal + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
-
-    if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
-    if self.dy == 0.: self.dy = (self.ymmax - self.ymmin)/self.ny
-    if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-    self.xsymmetryplane = 0.
-    self.ysymmetryplane = 0.
-
-    self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
-    self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-    self.zmeshglobal = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
-
-    self.ix_axis = nint(-self.xmmin/self.dx)
-    self.iy_axis = nint(-self.ymmin/self.dy)
-    self.iz_axis = nint(-self.zmminglobal/self.dz)
-
-    # --- Create phi and rho arrays and other arrays.
-    self.allocatefieldarrays()
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
@@ -205,28 +69,12 @@ class MultiGrid(SubcycledPoissonSolver):
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
-      if 'rho'   in dict: del dict['rho']
-      if 'rhop'  in dict: del dict['rhop']
-      if 'phi'   in dict: del dict['phi']
-      if 'phip'  in dict: del dict['phip']
-      if 'selfe' in dict: del dict['selfe']
       del dict['conductors']
-    # --- Flag whether this is the registered solver so it knows whether
-    # --- to reregister itself upon the restore. The instance
-    # --- is not registered if it is not going to be restored.
-    if self is getregisteredsolver() and not self.lnorestoreonpickle:
-      dict['iamtheregisteredsolver'] = 1
-    else:
-      dict['iamtheregisteredsolver'] = 0
     return dict
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
-    if self.iamtheregisteredsolver and not self.lnorestoreonpickle:
-      del self.iamtheregisteredsolver
-      registersolver(self)
     if self.lreducedpickle and not self.lnorestoreonpickle:
-      self.allocatefieldarrays()
       # --- Regenerate the conductor data
       self.conductors = ConductorType()
       conductorlist = self.conductorlist
@@ -234,126 +82,137 @@ class MultiGrid(SubcycledPoissonSolver):
       for conductor in conductorlist:
         self.installconductor(conductor)
 
-  def allocatefieldarrays(self):
-    # --- Create phi and rho arrays and other arrays. These are created
-    # --- with fortran ordering so no transpose and copy is needed when
-    # --- they are passed to fortran.
-    self.rstar = fzeros(3+self.nz,'d')
-    if self.efetch == 3:
-      self.selfe = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp),'d')
-      self.nx_selfe = self.nxp
-      self.ny_selfe = self.nyp
-      self.nz_selfe = self.nzp
-    else:
-      self.selfe = 0.
-      self.nx_selfe = 0
-      self.ny_selfe = 0
-      self.nz_selfe = 0
-
   def getpdims(self):
-    # --- Returns the dimensions of the rhop and phip arrays
-    return ((1+self.nxp,1+self.nyp,1+self.nzp),
-            (1+self.nxp,1+self.nyp,3+self.nzp))
+    # --- Returns the dimensions of the arrays used by the particles
+    if self.efetch == 3:
+      return ((1+self.nxp,1+self.nyp,1+self.nzp),
+              (3,1+self.nxp,1+self.nyp,1+self.nzp),
+              (1+self.nxp,1+self.nyp,3+self.nzp))
+    else:
+      return ((1+self.nxp,1+self.nyp,1+self.nzp),
+              (1+self.nxp,1+self.nyp,3+self.nzp))
 
   def getdims(self):
-    # --- Returns the dimensions of the rhop and phip arrays
+    # --- Returns the dimensions of the arrays used by the field solver
     return ((1+self.nx,1+self.ny,1+self.nz),
             (1+self.nx,1+self.ny,3+self.nz))
 
-  def setrhop(self,x,y,z,uz,q,w,zgrid):
-    n = len(x)
+  def loadrho(self,lzero=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
+
+  def fetche(self,*args):
+    SubcycledPoissonSolver.fetchfield(self,*args)
+
+  def setsourcep(self,js,pgroup,zgrid):
+    n  = pgroup.nps[js]
     if n == 0: return
-    setrho3d(self.rhop,self.rhop,n,x,y,z,zgrid,uz,q,w,top.depos,
+    i  = pgroup.ins[js] - 1
+    x  = pgroup.xp[i:i+n]
+    y  = pgroup.yp[i:i+n]
+    z  = pgroup.zp[i:i+n]
+    ux = zeros((0,), 'd')
+    uy = zeros((0,), 'd')
+    uz = pgroup.uzp[i:i+n]
+    gaminv = zeros((0,), 'd')
+    q  = pgroup.sq[js]
+    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    wght = zeros((0,), 'd')
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+    n  = len(x)
+    if n == 0: return
+    setrho3d(self.sourcep,self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
     if self.lzerorhointerior:
-      cond_zerorhointerior(self.conductors.interior,self.nx,self.ny,self.nzp,
-                           self.rhop)
+      cond_zerorhointerior(self.conductors.interior,self.nxp,self.nyp,self.nzp,
+                           self.sourcep)
 
-  def fetchefrompositions(self,x,y,z,ex,ey,ez,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+    # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.phip,self.selfe,n,x,y,z,top.zgridprv,
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,top.zgridprv,
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
-  def fetchphifrompositions(self,x,y,z,phi):
+  def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
-    getgrid3d(n,x,y,z,phi,self.nxp,self.nyp,self.nzp,self.phip[:,:,1:-1],
+    getgrid3d(n,x,y,z,phi,self.nxp,self.nyp,self.nzp,self.potentialp[:,:,1:-1],
               self.xmminp,self.xmmaxp,self.ymminp,self.ymmaxp,self.zmminp,self.zmmaxp,
               self.l2symtry,self.l4symtry)
 
-  def setrhoandphiforfieldsolve(self,*args):
+  def setarraysforfieldsolve(self,*args):
     if self.nslaves <= 1:
-      SubcycledPoissonSolver.setrhoandphiforfieldsolve(self,*args)
+      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
     else:
       # --- This needs checking.
-      rhodims,phidims = self.getdims()
-      if 'rho' not in self.__dict__ or shape(self.rho) != tuple(rhodims):
-        self.rho = fzeros(rhodims,'d')
-      if 'phi' not in self.__dict__ or shape(self.phi) != tuple(phidims):
-        self.phi = fzeros(phidims,'d')
-      SubcycledPoissonSolver.setrhopforparticles(self,*args)
-      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                            self.nxp,self.nyp,self.nzp,self.rhop,self.nzpguard,
+      sourcedims,potentialdims = self.getdims()
+      if 'source' not in self.__dict__ or shape(self.source) != tuple(sourcedims):
+        self.source = fzeros(sourcedims,'d')
+      if 'potential' not in self.__dict__ or shape(self.potential) != tuple(potentialdims):
+        self.potential = fzeros(potentialdims,'d')
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
+                            self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
 
-  def getphipforparticles(self,*args):
+  def getpotentialpforparticles(self,*args):
     if self.nslaves <= 1:
-      SubcycledPoissonSolver.getphipforparticles(self,*args)
+      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
-      self.setphipforparticles(*args)
-      getphipforparticles3d(self.nx,self.ny,self.nz,self.phi,
-                            self.nxp,self.nyp,self.nzp,self.phip)
+      self.setpotentialpforparticles(*args)
+      getphipforparticles3d(self.nx,self.ny,self.nz,self.potential,
+                            self.nxp,self.nyp,self.nzp,self.potentialp)
 
-  def makerhoperiodic(self):
+  def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      self.rho[0,:,:] = self.rho[0,:,:] + self.rho[-1,:,:]
-      self.rho[-1,:,:] = self.rho[0,:,:]
+      self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
+      self.source[-1,:,:] = self.source[0,:,:]
     if self.pbounds[2] == 2 or self.pbounds[3] == 2:
-      self.rho[:,0,:] = self.rho[:,0,:] + self.rho[:,-1,:]
-      self.rho[:,-1,:] = self.rho[:,0,:]
+      self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
+      self.source[:,-1,:] = self.source[:,0,:]
     if self.pbounds[0] == 1 and not self.l4symtry:
-       self.rho[0,:,:] = 2.*self.rho[0,:,:]
-    if self.pbounds[1] == 1: self.rho[-1,:,:] = 2.*self.rho[-1,:,:]
+       self.source[0,:,:] = 2.*self.source[0,:,:]
+    if self.pbounds[1] == 1: self.source[-1,:,:] = 2.*self.source[-1,:,:]
     if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry):
-       self.rho[:,0,:] = 2.*self.rho[:,0,:]
-    if self.pbounds[3] == 1: self.rho[:,-1,:] = 2.*self.rho[:,-1,:]
+       self.source[:,0,:] = 2.*self.source[:,0,:]
+    if self.pbounds[3] == 1: self.source[:,-1,:] = 2.*self.source[:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.nslaves > 1:
-        self.makerhoperiodic_parallel()
+        self.makesourceperiodic_parallel()
       else:
-        self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
-        self.rho[:,:,-1] = self.rho[:,:,0]
-    if self.pbounds[4] == 1: self.rho[:,:,0] = 2.*self.rho[:,:,0]
-    if self.pbounds[5] == 1: self.rho[:,:,-1] = 2.*self.rho[:,:,-1]
+        self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]
+        self.source[:,:,-1] = self.source[:,:,0]
+    if self.pbounds[4] == 1: self.source[:,:,0] = 2.*self.source[:,:,0]
+    if self.pbounds[5] == 1: self.source[:,:,-1] = 2.*self.source[:,:,-1]
 
-  def makerhoperiodic_parallel(self):
+  def makesourceperiodic_parallel(self):
     tag = 70
     if self.my_index == self.nslaves-1:
-      request = mpi.isend(self.rho[:,:,self.nz],0,tag)
-      self.rho[:,:,self.nz],status = mpi.recv(0,tag)
+      request = mpi.isend(self.source[:,:,self.nz],0,tag)
+      self.source[:,:,self.nz],status = mpi.recv(0,tag)
     elif self.my_index == 0:
-      rhotemp,status = mpi.recv(self.nslaves-1,tag)
-      self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
-      request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
+      sourcetemp,status = mpi.recv(self.nslaves-1,tag)
+      self.source[:,:,0] = self.source[:,:,0] + sourcetemp
+      request = mpi.isend(self.source[:,:,0],self.nslaves-1,tag)
     if self.my_index == 0 or self.my_index == self.nslaves-1:
       status = request.wait()
 
-  def fetcha(self):
-    pass
-
-  def getselfe(self,recalculate=0):
-    if type(self.selfe) != ArrayType:
-      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+  def getfield(self,recalculate=0):
+    if type(self.fieldp) != ArrayType:
+      # --- This should only ever be done by an external routine, such as
+      # --- a plotting function.
+      self.fieldp = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp),'d')
     if recalculate:
-      getselfe3d(self.phi,self.nx,self.ny,self.nz,
-                 self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+      getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
+                 self.fieldp,self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                  self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
-    return self.selfe
+    return self.fieldp
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -371,6 +230,11 @@ class MultiGrid(SubcycledPoissonSolver):
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
+  def hasconductors(self):
+    return (self.conductors.interior.n > 0 or
+            self.conductors.evensubgrid.n > 0 or
+            self.conductors.oddsubgrid.n > 0)
+
   def clearconductors(self):
     self.conductors.interior.n = 0
     self.conductors.evensubgrid.n = 0
@@ -382,6 +246,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def dosolve(self,iwhich=0,*args):
     # --- Setup data for bends.
+    rstar = fzeros(3+self.nz,'d')
     if top.bends:
 
       # --- This commented out code does the same thing as the line below
@@ -391,8 +256,8 @@ class MultiGrid(SubcycledPoissonSolver):
       #                     self.zmmin+top.zgrid <= top.cbendze)
       #self.linbend = sometrue(ii)
 
-      setrstar(self.rstar,self.nz,self.dz,self.zmmin,top.zgrid)
-      self.linbend = min(self.rstar) < largepos
+      setrstar(rstar,self.nz,self.dz,self.zmmin,top.zgrid)
+      self.linbend = min(rstar) < largepos
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
@@ -400,8 +265,8 @@ class MultiGrid(SubcycledPoissonSolver):
     mgerror = zeros(1,'d')
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
-                       self.dx,self.dy,self.dz,self.phi,self.rho,
-                       self.rstar,self.linbend,self.bounds,
+                       self.dx,self.dy,self.dz,self.potential,self.source,
+                       rstar,self.linbend,self.bounds,
                        self.xmmin,self.ymmin,self.zmmin,
                        self.zmminglobal,top.zbeam,top.zgrid,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
@@ -414,7 +279,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
-                         self.dx,self.dy,self.dz,self.phi,self.rho,
+                         self.dx,self.dy,self.dz,self.potential,self.source,
                          star,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin,
                          self.zmminglobal,top.zbeam,top.zgrid,
@@ -431,14 +296,20 @@ class MultiGrid(SubcycledPoissonSolver):
     self.mgerror = mgerror[0]
 
     if self.efetch == 3:
-      self.getselfe(self,recalculate=1)
+      self.setfieldpforparticles(args)
+      self.getfield(self,recalculate=1)
 
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
     kw['conductors'] = self.conductors
     kw['solver'] = self
+    # --- This is a temporary kludge until the plot routines are updated to
+    # --- use source and potential instead of rho and phi.
+    self.rho = self.source
+    self.phi = self.potential
     pffunc(**kw)
+    del self.rho,self.phi
   def pfxy(self,**kw): self.genericpf(kw,pfxy)
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzy(self,**kw): self.genericpf(kw,pfzy)
