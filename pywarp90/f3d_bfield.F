@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.29 $, $Date: 2006/12/14 19:09:00 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.30 $, $Date: 2006/12/18 18:05:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -10,39 +10,50 @@ c=============================================================================
       module f3d_bfield_interfaces
       interface
 
-      subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,nw,wghtp,depos,l2symtry,l4symtry)
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
+      subroutine setj3d(j,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
+     &                  q,wght,nw,wghtp,depos,nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  l2symtry,l4symtry,lcylindrical)
       integer(ISZ):: np,nw
-      real(kind=8):: zgrid,q
-      real(kind=8),target:: wghtp(nw)
-      real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: j(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: j1d(0:3*(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8),target:: wghtp(nw)
       character(8):: depos
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine setj3d
 
-      subroutine setb3d(bfield,np,xp,yp,zp,zgrid,bx,by,bz,l2symtry,l4symtry)
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
+      subroutine setb3d(b,np,xp,yp,zp,zgrid,bx,by,bz,
+     &                  nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  l2symtry,l4symtry,lcylindrical)
       integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: zgrid
-      real(kind=8),target:: xp(np),yp(np),zp(np)
-      real(kind=8):: bx(np),by(np),bz(np)
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: b(0:2,0:nx,0:ny,0:nz)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8):: bx(np), by(np), bz(np)
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine setb3d
 
-      subroutine fetchafrompositions3d(np,xp,yp,zp,a,zgrid,bfield,
-     &                                 l2symtry,l4symtry)
-      use BFieldGridTypemodule
+      subroutine fetchafrompositions3d(a,np,xp,yp,zp,zgrid,ap,
+     &                                 nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                 l2symtry,l4symtry,lcylindrical)
+      use Subtimersf3d
       integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8):: ap(0:2,np)
       real(kind=8):: zgrid
-      real(kind=8),target:: xp(np),yp(np),zp(np)
-      real(kind=8):: a(0:2,np)
-      type(BFieldGridType):: bfield
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
       end subroutine fetchafrompositions3d
 
       end interface
@@ -145,7 +156,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
-      real(kind=8):: swtmp(1)
+      real(kind=8):: swtmp,wptmp(1)
       real(kind=8):: substarttime,wtime
       real(kind=8),dimension(:,:,:,:),pointer::jpcopy
       real(kind=8),pointer:: pidtmp(:)
@@ -227,7 +238,7 @@ c                  --- just add its saved jptmp into jp.
                  end if
               end if
               if(wpid==0) then
-                call setj3d(bfieldp,bfieldp%j,nps_u,
+                call setj3d(bfieldp%j,bfieldp%j,nps_u,
      &                      pgroup%xp(ipmin:ipmin+nps_u-1),
      &                      pgroup%yp(ipmin:ipmin+nps_u-1),
      &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
@@ -235,15 +246,18 @@ c                  --- just add its saved jptmp into jp.
      &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
      &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
      &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                      pgroup%sq(is)*swtmp(1),
-     &                      0,swtmp,depos,l2symtry,l4symtry)
+     &                      pgroup%sq(is),swtmp,0,wptmp,depos,
+     &                      bfield%nx,bfield%ny,bfield%nz,
+     &                      bfield%dx,bfield%dy,bfield%dz,
+     &                      bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                      l2symtry,l4symtry,bfield%lcylindrical)
               else
 c               --- Due to compiler bug, the pid array needs to be temporarily
 c               --- pointed to in order to be properly passed into setj3d.
 c               --- When pid is passed directly into setj3d, it is just all
 c               --- zeros.
                 pidtmp => pgroup%pid(ipmin:ipmin+nps_u-1,wpid)
-                call setj3d(bfieldp,bfieldp%j,nps_u,
+                call setj3d(bfieldp%j,bfieldp%j,nps_u,
      &                      pgroup%xp(ipmin:ipmin+nps_u-1),
      &                      pgroup%yp(ipmin:ipmin+nps_u-1),
      &                      pgroup%zp(ipmin:ipmin+nps_u-1),zgrid,
@@ -251,8 +265,11 @@ c               --- zeros.
      &                      pgroup%uyp(ipmin:ipmin+nps_u-1),
      &                      pgroup%uzp(ipmin:ipmin+nps_u-1),
      &                      pgroup%gaminv(ipmin:ipmin+nps_u-1),
-     &                      pgroup%sq(is)*swtmp(1),nps_u,pidtmp,
-     &                      depos,l2symtry,l4symtry)
+     &                      pgroup%sq(is),swtmp,nps_u,pidtmp,depos,
+     &                      bfield%nx,bfield%ny,bfield%nz,
+     &                      bfield%dx,bfield%dy,bfield%dz,
+     &                      bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                      l2symtry,l4symtry,bfield%lcylindrical)
               endif
               if (pgroup%ndts(is-1)>1 .and. mod(it+1,pgroup%ndts(is-1))==0) then
 c               --- If this species is being advanced this step, then restore
@@ -295,90 +312,91 @@ c       --- system.
       return
       end
 c=============================================================================
-      subroutine setaboundaries3d(bfield)
+      subroutine setaboundaries3d(a,nx,ny,nz,
+     &                            zmmin,zmmax,zmminglobal,zmmaxglobal,
+     &                            bounds,lcylindrical)
       use Subtimersf3d
       use GlobalVars
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: zmmin,zmmax,zmminglobal,zmmaxglobal
+      integer(ISZ):: bounds(0:5)
+      logical(ISZ):: lcylindrical
 
 c  Sets the slices on the exterior of A, depending on the boundary conditions.
 
-      real(kind=8),pointer,dimension(:,:,:,:):: a
-      integer(ISZ):: ix,iy
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      a => bfield%a
-
 c     --- With the cylindrical solver, the guard cells are already set.
-      if (.not. bfield%lcylindrical) then
-        if (bfield%bounds(0) == periodic .or. bfield%bounds(1) == periodic) then
-          a(:,-1,:,:)   = a(:,bfield%nx-1,:,:)
-          a(:,bfield%nx,:,:)   = a(:,0,:,:)
-          a(:,bfield%nx+1,:,:) = a(:,1,:,:)
+      if (.not. lcylindrical) then
+        if (bounds(0) == periodic .or. bounds(1) == periodic) then
+          a(:,-1,:,:)   = a(:,nx-1,:,:)
+          a(:,nx,:,:)   = a(:,0,:,:)
+          a(:,nx+1,:,:) = a(:,1,:,:)
         else
-          if (bfield%bounds(0) == neumann) then
+          if (bounds(0) == neumann) then
             a(:,-1,:,:) = a(:,1,:,:)
-          elseif (bfield%bounds(0) == dirichlet) then
+          elseif (bounds(0) == dirichlet) then
             a(:,-1,:,:) = 2.*a(:,0,:,:) - a(:,1,:,:)
           endif
-          if (bfield%bounds(1) == neumann) then
-            a(:,bfield%nx+1,:,:) = a(:,bfield%nx-1,:,:)
-          elseif (bfield%bounds(1) == dirichlet) then
-            a(:,bfield%nx+1,:,:) = 2.*a(:,bfield%nx,:,:) - a(:,bfield%nx-1,:,:)
+          if (bounds(1) == neumann) then
+            a(:,nx+1,:,:) = a(:,nx-1,:,:)
+          elseif (bounds(1) == dirichlet) then
+            a(:,nx+1,:,:) = 2.*a(:,nx,:,:) - a(:,nx-1,:,:)
           endif
         endif
       endif
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- In this case, actually ny == 0. This ensures that d/dtheta is zero.
         a(:,:,-1,:) = a(:,:,0,:)
-        a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny,:)
+        a(:,:,ny+1,:) = a(:,:,ny,:)
       else
-        if (bfield%bounds(2) == periodic .or. bfield%bounds(3) == periodic) then
-          a(:,:,-1,:)   = a(:,:,bfield%ny-1,:)
-          a(:,:,bfield%ny,:)   = a(:,:,0,:)
-          a(:,:,bfield%ny+1,:) = a(:,:,1,:)
+        if (bounds(2) == periodic .or. bounds(3) == periodic) then
+          a(:,:,-1,:)   = a(:,:,ny-1,:)
+          a(:,:,ny,:)   = a(:,:,0,:)
+          a(:,:,ny+1,:) = a(:,:,1,:)
         else
-          if (bfield%bounds(2) == neumann) then
+          if (bounds(2) == neumann) then
             a(:,:,-1,:) = a(:,:,1,:)
-          elseif (bfield%bounds(2) == dirichlet) then
+          elseif (bounds(2) == dirichlet) then
             a(:,:,-1,:) = 2.*a(:,:,0,:) - a(:,:,1,:)
           endif
-          if (bfield%bounds(3) == neumann) then
-            a(:,:,bfield%ny+1,:) = a(:,:,bfield%ny-1,:)
-          elseif (bfield%bounds(3) == dirichlet) then
-            a(:,:,bfield%ny+1,:) = 2.*a(:,:,bfield%ny,:) - a(:,:,bfield%ny-1,:)
+          if (bounds(3) == neumann) then
+            a(:,:,ny+1,:) = a(:,:,ny-1,:)
+          elseif (bounds(3) == dirichlet) then
+            a(:,:,ny+1,:) = 2.*a(:,:,ny,:) - a(:,:,ny-1,:)
           endif
         endif
       endif
 
 c     --- With the cylindrical solver, the guard cells are already set.
-      if (.not. bfield%lcylindrical) then
+      if (.not. lcylindrical) then
 #ifdef MPIPARALLEL
-        call getaforfields3d(bfield)
+        call getaforfields3d(a,nx,ny,nz)
 #endif
-        if (bfield%bounds(4) == periodic .or. bfield%bounds(5) == periodic) then
+        if (bounds(4) == periodic .or. bounds(5) == periodic) then
 #ifdef MPIPARALLEL
-          call perpot3d_slave(bfield%a,3,bfield%nx,bfield%ny,bfield%nz,1,1)
+          call perpot3d_slave(a,3,nx,ny,nz,1,1)
 #else
-          a(:,:,:,-1)   = a(:,:,:,bfield%nz-1)
-          a(:,:,:,bfield%nz)   = a(:,:,:,0)
-          a(:,:,:,bfield%nz+1) = a(:,:,:,1)
+          a(:,:,:,-1)   = a(:,:,:,nz-1)
+          a(:,:,:,nz)   = a(:,:,:,0)
+          a(:,:,:,nz+1) = a(:,:,:,1)
 #endif
         else
-          if (bfield%zmmin == bfield%zmminglobal) then
-            if (bfield%bounds(4) == neumann) then
+          if (zmmin == zmminglobal) then
+            if (bounds(4) == neumann) then
               a(:,:,:,-1) = a(:,:,:,1)
-            elseif (bfield%bounds(4) == dirichlet) then
+            elseif (bounds(4) == dirichlet) then
               a(:,:,:,-1) = 2.*a(:,:,:,0) - a(:,:,:,1)
             endif
           endif
-          if (bfield%zmmax == bfield%zmmaxglobal) then
-            if (bfield%bounds(5) == neumann) then
-              a(:,:,:,bfield%nz+1) = a(:,:,:,bfield%nz-1)
-            elseif (bfield%bounds(5) == dirichlet) then
-              a(:,:,:,bfield%nz+1) = 2.*a(:,:,:,bfield%nz) - a(:,:,:,bfield%nz-1)
+          if (zmmax == zmmaxglobal) then
+            if (bounds(5) == neumann) then
+              a(:,:,:,nz+1) = a(:,:,:,nz-1)
+            elseif (bounds(5) == dirichlet) then
+              a(:,:,:,nz+1) = 2.*a(:,:,:,nz) - a(:,:,:,nz-1)
             endif
           endif
         endif
@@ -440,15 +458,19 @@ c  Enforce transverse periodicity if requested.
       return
       end
 c=============================================================================
-      subroutine setb3d(bfield,np,xp,yp,zp,zgrid,bx,by,bz,l2symtry,l4symtry)
+      subroutine setb3d(b,np,xp,yp,zp,zgrid,bx,by,bz,
+     &                  nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  l2symtry,l4symtry,lcylindrical)
       use Subtimersf3d
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
       integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: zgrid
-      real(kind=8),target:: xp(np),yp(np),zp(np)
-      real(kind=8):: bx(np),by(np),bz(np)
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: b(0:2,0:nx,0:ny,0:nz)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8):: bx(np), by(np), bz(np)
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets magnetic field for particles
 
@@ -464,7 +486,7 @@ c     --- y = 0.
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- Allocate and set the temporary particle arrays which will hold
 c       --- the radius.
         allocate(x(np),y(np),bxtemp(np))
@@ -477,54 +499,54 @@ c       --- the radius.
       z => zp
 
 c  Evaluation of B, vectorized over particles
-      tdxi = 1./(2.*bfield%dx)
-      tdyi = 1./(2.*bfield%dy)
-      tdzi = 1./(2.*bfield%dz)
-      dxi = 1./bfield%dx
-      dyi = 1./bfield%dy
-      dzi = 1./bfield%dz
+      tdxi = 1./(2.*dx)
+      tdyi = 1./(2.*dy)
+      tdzi = 1./(2.*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
 
-      if ((.not. (l2symtry .or. l4symtry)) .or. bfield%lcylindrical) then
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
         do ip = 1, np
 
-          i = (x(ip) - bfield%xmmin) * dxi
-          j = (y(ip) - bfield%ymmin) * dyi
-          k = (z(ip) - zgrid - bfield%zmmin) * dzi
+          i = (x(ip) - xmmin) * dxi
+          j = (y(ip) - ymmin) * dyi
+          k = (z(ip) - zgrid - zmmin) * dzi
 
-          u1 = (x(ip) - bfield%xmmin) * dxi - i
-          v1 = (y(ip) - bfield%ymmin) * dyi - j
-          w1 = (z(ip) - zgrid - bfield%zmmin) * dzi - k
+          u1 = (x(ip) - xmmin) * dxi - i
+          v1 = (y(ip) - ymmin) * dyi - j
+          w1 = (z(ip) - zgrid - zmmin) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
 
-          bx(ip) = u0*v0*w0*bfield%b(0,i  ,j  ,k  )
-     &           + u1*v0*w0*bfield%b(0,i+1,j  ,k  )
-     &           + u0*v1*w0*bfield%b(0,i  ,j+1,k  )
-     &           + u1*v1*w0*bfield%b(0,i+1,j+1,k  )
-     &           + u0*v0*w1*bfield%b(0,i  ,j  ,k+1)
-     &           + u1*v0*w1*bfield%b(0,i+1,j  ,k+1)
-     &           + u0*v1*w1*bfield%b(0,i  ,j+1,k+1)
-     &           + u1*v1*w1*bfield%b(0,i+1,j+1,k+1)
+          bx(ip) = u0*v0*w0*b(0,i  ,j  ,k  )
+     &           + u1*v0*w0*b(0,i+1,j  ,k  )
+     &           + u0*v1*w0*b(0,i  ,j+1,k  )
+     &           + u1*v1*w0*b(0,i+1,j+1,k  )
+     &           + u0*v0*w1*b(0,i  ,j  ,k+1)
+     &           + u1*v0*w1*b(0,i+1,j  ,k+1)
+     &           + u0*v1*w1*b(0,i  ,j+1,k+1)
+     &           + u1*v1*w1*b(0,i+1,j+1,k+1)
 
-          by(ip) = u0*v0*w0*bfield%b(1,i  ,j  ,k  )
-     &           + u1*v0*w0*bfield%b(1,i+1,j  ,k  )
-     &           + u0*v1*w0*bfield%b(1,i  ,j+1,k  )
-     &           + u1*v1*w0*bfield%b(1,i+1,j+1,k  )
-     &           + u0*v0*w1*bfield%b(1,i  ,j  ,k+1)
-     &           + u1*v0*w1*bfield%b(1,i+1,j  ,k+1)
-     &           + u0*v1*w1*bfield%b(1,i  ,j+1,k+1)
-     &           + u1*v1*w1*bfield%b(1,i+1,j+1,k+1)
+          by(ip) = u0*v0*w0*b(1,i  ,j  ,k  )
+     &           + u1*v0*w0*b(1,i+1,j  ,k  )
+     &           + u0*v1*w0*b(1,i  ,j+1,k  )
+     &           + u1*v1*w0*b(1,i+1,j+1,k  )
+     &           + u0*v0*w1*b(1,i  ,j  ,k+1)
+     &           + u1*v0*w1*b(1,i+1,j  ,k+1)
+     &           + u0*v1*w1*b(1,i  ,j+1,k+1)
+     &           + u1*v1*w1*b(1,i+1,j+1,k+1)
 
-          bz(ip) = u0*v0*w0*bfield%b(2,i  ,j  ,k  )
-     &           + u1*v0*w0*bfield%b(2,i+1,j  ,k  )
-     &           + u0*v1*w0*bfield%b(2,i  ,j+1,k  )
-     &           + u1*v1*w0*bfield%b(2,i+1,j+1,k  )
-     &           + u0*v0*w1*bfield%b(2,i  ,j  ,k+1)
-     &           + u1*v0*w1*bfield%b(2,i+1,j  ,k+1)
-     &           + u0*v1*w1*bfield%b(2,i  ,j+1,k+1)
-     &           + u1*v1*w1*bfield%b(2,i+1,j+1,k+1)
+          bz(ip) = u0*v0*w0*b(2,i  ,j  ,k  )
+     &           + u1*v0*w0*b(2,i+1,j  ,k  )
+     &           + u0*v1*w0*b(2,i  ,j+1,k  )
+     &           + u1*v1*w0*b(2,i+1,j+1,k  )
+     &           + u0*v0*w1*b(2,i  ,j  ,k+1)
+     &           + u1*v0*w1*b(2,i+1,j  ,k+1)
+     &           + u0*v1*w1*b(2,i  ,j+1,k+1)
+     &           + u1*v1*w1*b(2,i+1,j+1,k+1)
 
         enddo
 
@@ -539,13 +561,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(x(ip)) - bfield%xmmin)*dxi
-          j = (abs(y(ip)) - bfield%ymmin)*dyi
-          k = (z(ip) - zgrid - bfield%zmmin)*dzi
+          i = (abs(x(ip)) - xmmin)*dxi
+          j = (abs(y(ip)) - ymmin)*dyi
+          k = (z(ip) - zgrid - zmmin)*dzi
 
-          u1 = (abs(x(ip)) - bfield%xmmin)*dxi - i
-          v1 = (abs(y(ip)) - bfield%ymmin)*dyi - j
-          w1 = (z(ip) - zgrid - bfield%zmmin)*dzi - k
+          u1 = (abs(x(ip)) - xmmin)*dxi - i
+          v1 = (abs(y(ip)) - ymmin)*dyi - j
+          w1 = (z(ip) - zgrid - zmmin)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -557,38 +579,38 @@ c         --- Adjust sign of B field for appropriate quadrant.
           if (x(ip) < 0.) xsign = sx
           if (y(ip) < 0.) ysign = sy
 
-          bx(ip) = xsign*(u0*v0*w0*bfield%b(0,i  ,j  ,k  )
-     &                  + u1*v0*w0*bfield%b(0,i+1,j  ,k  )
-     &                  + u0*v1*w0*bfield%b(0,i  ,j+1,k  )
-     &                  + u1*v1*w0*bfield%b(0,i+1,j+1,k  )
-     &                  + u0*v0*w1*bfield%b(0,i  ,j  ,k+1)
-     &                  + u1*v0*w1*bfield%b(0,i+1,j  ,k+1)
-     &                  + u0*v1*w1*bfield%b(0,i  ,j+1,k+1)
-     &                  + u1*v1*w1*bfield%b(0,i+1,j+1,k+1))
+          bx(ip) = xsign*(u0*v0*w0*b(0,i  ,j  ,k  )
+     &                  + u1*v0*w0*b(0,i+1,j  ,k  )
+     &                  + u0*v1*w0*b(0,i  ,j+1,k  )
+     &                  + u1*v1*w0*b(0,i+1,j+1,k  )
+     &                  + u0*v0*w1*b(0,i  ,j  ,k+1)
+     &                  + u1*v0*w1*b(0,i+1,j  ,k+1)
+     &                  + u0*v1*w1*b(0,i  ,j+1,k+1)
+     &                  + u1*v1*w1*b(0,i+1,j+1,k+1))
 
-          by(ip) = ysign*(u0*v0*w0*bfield%b(1,i  ,j  ,k  )
-     &                  + u1*v0*w0*bfield%b(1,i+1,j  ,k  )
-     &                  + u0*v1*w0*bfield%b(1,i  ,j+1,k  )
-     &                  + u1*v1*w0*bfield%b(1,i+1,j+1,k  )
-     &                  + u0*v0*w1*bfield%b(1,i  ,j  ,k+1)
-     &                  + u1*v0*w1*bfield%b(1,i+1,j  ,k+1)
-     &                  + u0*v1*w1*bfield%b(1,i  ,j+1,k+1)
-     &                  + u1*v1*w1*bfield%b(1,i+1,j+1,k+1))
+          by(ip) = ysign*(u0*v0*w0*b(1,i  ,j  ,k  )
+     &                  + u1*v0*w0*b(1,i+1,j  ,k  )
+     &                  + u0*v1*w0*b(1,i  ,j+1,k  )
+     &                  + u1*v1*w0*b(1,i+1,j+1,k  )
+     &                  + u0*v0*w1*b(1,i  ,j  ,k+1)
+     &                  + u1*v0*w1*b(1,i+1,j  ,k+1)
+     &                  + u0*v1*w1*b(1,i  ,j+1,k+1)
+     &                  + u1*v1*w1*b(1,i+1,j+1,k+1))
 
-          bz(ip) =        u0*v0*w0*bfield%b(2,i  ,j  ,k  )
-     &                  + u1*v0*w0*bfield%b(2,i+1,j  ,k  )
-     &                  + u0*v1*w0*bfield%b(2,i  ,j+1,k  )
-     &                  + u1*v1*w0*bfield%b(2,i+1,j+1,k  )
-     &                  + u0*v0*w1*bfield%b(2,i  ,j  ,k+1)
-     &                  + u1*v0*w1*bfield%b(2,i+1,j  ,k+1)
-     &                  + u0*v1*w1*bfield%b(2,i  ,j+1,k+1)
-     &                  + u1*v1*w1*bfield%b(2,i+1,j+1,k+1)
+          bz(ip) =        u0*v0*w0*b(2,i  ,j  ,k  )
+     &                  + u1*v0*w0*b(2,i+1,j  ,k  )
+     &                  + u0*v1*w0*b(2,i  ,j+1,k  )
+     &                  + u1*v1*w0*b(2,i+1,j+1,k  )
+     &                  + u0*v0*w1*b(2,i  ,j  ,k+1)
+     &                  + u1*v0*w1*b(2,i+1,j  ,k+1)
+     &                  + u0*v1*w1*b(2,i  ,j+1,k+1)
+     &                  + u1*v1*w1*b(2,i+1,j+1,k+1)
 
         enddo
 
       endif
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- Transform Br and Btheta into Bx and By
         y = atan2(yp,xp)
         bxtemp = bx
@@ -603,16 +625,19 @@ c       --- Transform Br and Btheta into Bx and By
       return
       end
 c=============================================================================
-      subroutine fetchafrompositions3d(np,xp,yp,zp,a,zgrid,bfield,
-     &                                 l2symtry,l4symtry)
+      subroutine fetchafrompositions3d(a,np,xp,yp,zp,zgrid,ap,
+     &                                 nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                                 l2symtry,l4symtry,lcylindrical)
       use Subtimersf3d
-      use BFieldGridTypemodule
       integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8),target:: xp(np), yp(np), zp(np)
+      real(kind=8):: ap(0:2,np)
       real(kind=8):: zgrid
-      real(kind=8),target:: xp(np),yp(np),zp(np)
-      real(kind=8):: a(0:2,np)
-      type(BFieldGridType):: bfield
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Gets the magnetic vector potential
 
@@ -628,7 +653,7 @@ c     --- y = 0.
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- Allocate and set the temporary particle arrays which will hold
 c       --- the radius.
         allocate(x(np),y(np),axtemp(np))
@@ -641,54 +666,54 @@ c       --- the radius.
       z => zp
 
 c  Evaluation of A, vectorized over particles
-      tdxi = 1./(2.*bfield%dx)
-      tdyi = 1./(2.*bfield%dy)
-      tdzi = 1./(2.*bfield%dz)
-      dxi = 1./bfield%dx
-      dyi = 1./bfield%dy
-      dzi = 1./bfield%dz
+      tdxi = 1./(2.*dx)
+      tdyi = 1./(2.*dy)
+      tdzi = 1./(2.*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
 
-      if ((.not. (l2symtry .or. l4symtry)) .or. bfield%lcylindrical) then
+      if ((.not. (l2symtry .or. l4symtry)) .or. lcylindrical) then
         do ip = 1, np
 
-          i = (x(ip) - bfield%xmmin) * dxi
-          j = (y(ip) - bfield%ymmin) * dyi
-          k = (z(ip) - zgrid - bfield%zmmin) * dzi
+          i = (x(ip) - xmmin) * dxi
+          j = (y(ip) - ymmin) * dyi
+          k = (z(ip) - zgrid - zmmin) * dzi
 
-          u1 = (x(ip) - bfield%xmmin) * dxi - i
-          v1 = (y(ip) - bfield%ymmin) * dyi - j
-          w1 = (z(ip) - zgrid - bfield%zmmin) * dzi - k
+          u1 = (x(ip) - xmmin) * dxi - i
+          v1 = (y(ip) - ymmin) * dyi - j
+          w1 = (z(ip) - zgrid - zmmin) * dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
 
-          a(0,ip) = u0*v0*w0*bfield%a(0,i  ,j  ,k  )
-     &            + u1*v0*w0*bfield%a(0,i+1,j  ,k  )
-     &            + u0*v1*w0*bfield%a(0,i  ,j+1,k  )
-     &            + u1*v1*w0*bfield%a(0,i+1,j+1,k  )
-     &            + u0*v0*w1*bfield%a(0,i  ,j  ,k+1)
-     &            + u1*v0*w1*bfield%a(0,i+1,j  ,k+1)
-     &            + u0*v1*w1*bfield%a(0,i  ,j+1,k+1)
-     &            + u1*v1*w1*bfield%a(0,i+1,j+1,k+1)
+          ap(0,ip) = u0*v0*w0*a(0,i  ,j  ,k  )
+     &             + u1*v0*w0*a(0,i+1,j  ,k  )
+     &             + u0*v1*w0*a(0,i  ,j+1,k  )
+     &             + u1*v1*w0*a(0,i+1,j+1,k  )
+     &             + u0*v0*w1*a(0,i  ,j  ,k+1)
+     &             + u1*v0*w1*a(0,i+1,j  ,k+1)
+     &             + u0*v1*w1*a(0,i  ,j+1,k+1)
+     &             + u1*v1*w1*a(0,i+1,j+1,k+1)
 
-          a(1,ip) = u0*v0*w0*bfield%a(1,i  ,j  ,k  )
-     &            + u1*v0*w0*bfield%a(1,i+1,j  ,k  )
-     &            + u0*v1*w0*bfield%a(1,i  ,j+1,k  )
-     &            + u1*v1*w0*bfield%a(1,i+1,j+1,k  )
-     &            + u0*v0*w1*bfield%a(1,i  ,j  ,k+1)
-     &            + u1*v0*w1*bfield%a(1,i+1,j  ,k+1)
-     &            + u0*v1*w1*bfield%a(1,i  ,j+1,k+1)
-     &            + u1*v1*w1*bfield%a(1,i+1,j+1,k+1)
+          ap(1,ip) = u0*v0*w0*a(1,i  ,j  ,k  )
+     &             + u1*v0*w0*a(1,i+1,j  ,k  )
+     &             + u0*v1*w0*a(1,i  ,j+1,k  )
+     &             + u1*v1*w0*a(1,i+1,j+1,k  )
+     &             + u0*v0*w1*a(1,i  ,j  ,k+1)
+     &             + u1*v0*w1*a(1,i+1,j  ,k+1)
+     &             + u0*v1*w1*a(1,i  ,j+1,k+1)
+     &             + u1*v1*w1*a(1,i+1,j+1,k+1)
 
-          a(2,ip) = u0*v0*w0*bfield%a(2,i  ,j  ,k  )
-     &            + u1*v0*w0*bfield%a(2,i+1,j  ,k  )
-     &            + u0*v1*w0*bfield%a(2,i  ,j+1,k  )
-     &            + u1*v1*w0*bfield%a(2,i+1,j+1,k  )
-     &            + u0*v0*w1*bfield%a(2,i  ,j  ,k+1)
-     &            + u1*v0*w1*bfield%a(2,i+1,j  ,k+1)
-     &            + u0*v1*w1*bfield%a(2,i  ,j+1,k+1)
-     &            + u1*v1*w1*bfield%a(2,i+1,j+1,k+1)
+          ap(2,ip) = u0*v0*w0*a(2,i  ,j  ,k  )
+     &             + u1*v0*w0*a(2,i+1,j  ,k  )
+     &             + u0*v1*w0*a(2,i  ,j+1,k  )
+     &             + u1*v1*w0*a(2,i+1,j+1,k  )
+     &             + u0*v0*w1*a(2,i  ,j  ,k+1)
+     &             + u1*v0*w1*a(2,i+1,j  ,k+1)
+     &             + u0*v1*w1*a(2,i  ,j+1,k+1)
+     &             + u1*v1*w1*a(2,i+1,j+1,k+1)
 
         enddo
 
@@ -703,13 +728,13 @@ c       --- the axis of symmetry.
 c       --- special loop symmetry is used
         do ip = 1, np
 
-          i = (abs(x(ip)) - bfield%xmmin)*dxi
-          j = (abs(y(ip)) - bfield%ymmin)*dyi
-          k = (z(ip) - zgrid - bfield%zmmin)*dzi
+          i = (abs(x(ip)) - xmmin)*dxi
+          j = (abs(y(ip)) - ymmin)*dyi
+          k = (z(ip) - zgrid - zmmin)*dzi
 
-          u1 = (abs(x(ip)) - bfield%xmmin)*dxi - i
-          v1 = (abs(y(ip)) - bfield%ymmin)*dyi - j
-          w1 = (z(ip) - zgrid - bfield%zmmin)*dzi - k
+          u1 = (abs(x(ip)) - xmmin)*dxi - i
+          v1 = (abs(y(ip)) - ymmin)*dyi - j
+          w1 = (z(ip) - zgrid - zmmin)*dzi - k
 
           u0 = 1. - u1
           v0 = 1. - v1
@@ -721,43 +746,43 @@ c         --- Adjust sign of B field for appropriate quadrant.
           if (x(ip) < 0.) xsign = sx
           if (y(ip) < 0.) ysign = sy
 
-          a(0,ip) = xsign*(u0*v0*w0*bfield%a(0,i  ,j  ,k  )
-     &                   + u1*v0*w0*bfield%a(0,i+1,j  ,k  )
-     &                   + u0*v1*w0*bfield%a(0,i  ,j+1,k  )
-     &                   + u1*v1*w0*bfield%a(0,i+1,j+1,k  )
-     &                   + u0*v0*w1*bfield%a(0,i  ,j  ,k+1)
-     &                   + u1*v0*w1*bfield%a(0,i+1,j  ,k+1)
-     &                   + u0*v1*w1*bfield%a(0,i  ,j+1,k+1)
-     &                   + u1*v1*w1*bfield%a(0,i+1,j+1,k+1))
+          ap(0,ip) = xsign*(u0*v0*w0*a(0,i  ,j  ,k  )
+     &                    + u1*v0*w0*a(0,i+1,j  ,k  )
+     &                    + u0*v1*w0*a(0,i  ,j+1,k  )
+     &                    + u1*v1*w0*a(0,i+1,j+1,k  )
+     &                    + u0*v0*w1*a(0,i  ,j  ,k+1)
+     &                    + u1*v0*w1*a(0,i+1,j  ,k+1)
+     &                    + u0*v1*w1*a(0,i  ,j+1,k+1)
+     &                    + u1*v1*w1*a(0,i+1,j+1,k+1))
 
-          a(1,ip) = ysign*(u0*v0*w0*bfield%a(1,i  ,j  ,k  )
-     &                   + u1*v0*w0*bfield%a(1,i+1,j  ,k  )
-     &                   + u0*v1*w0*bfield%a(1,i  ,j+1,k  )
-     &                   + u1*v1*w0*bfield%a(1,i+1,j+1,k  )
-     &                   + u0*v0*w1*bfield%a(1,i  ,j  ,k+1)
-     &                   + u1*v0*w1*bfield%a(1,i+1,j  ,k+1)
-     &                   + u0*v1*w1*bfield%a(1,i  ,j+1,k+1)
-     &                   + u1*v1*w1*bfield%a(1,i+1,j+1,k+1))
+          ap(1,ip) = ysign*(u0*v0*w0*a(1,i  ,j  ,k  )
+     &                    + u1*v0*w0*a(1,i+1,j  ,k  )
+     &                    + u0*v1*w0*a(1,i  ,j+1,k  )
+     &                    + u1*v1*w0*a(1,i+1,j+1,k  )
+     &                    + u0*v0*w1*a(1,i  ,j  ,k+1)
+     &                    + u1*v0*w1*a(1,i+1,j  ,k+1)
+     &                    + u0*v1*w1*a(1,i  ,j+1,k+1)
+     &                    + u1*v1*w1*a(1,i+1,j+1,k+1))
 
-          a(2,ip) =        u0*v0*w0*bfield%a(2,i  ,j  ,k  )
-     &                   + u1*v0*w0*bfield%a(2,i+1,j  ,k  )
-     &                   + u0*v1*w0*bfield%a(2,i  ,j+1,k  )
-     &                   + u1*v1*w0*bfield%a(2,i+1,j+1,k  )
-     &                   + u0*v0*w1*bfield%a(2,i  ,j  ,k+1)
-     &                   + u1*v0*w1*bfield%a(2,i+1,j  ,k+1)
-     &                   + u0*v1*w1*bfield%a(2,i  ,j+1,k+1)
-     &                   + u1*v1*w1*bfield%a(2,i+1,j+1,k+1)
+          ap(2,ip) =        u0*v0*w0*a(2,i  ,j  ,k  )
+     &                    + u1*v0*w0*a(2,i+1,j  ,k  )
+     &                    + u0*v1*w0*a(2,i  ,j+1,k  )
+     &                    + u1*v1*w0*a(2,i+1,j+1,k  )
+     &                    + u0*v0*w1*a(2,i  ,j  ,k+1)
+     &                    + u1*v0*w1*a(2,i+1,j  ,k+1)
+     &                    + u0*v1*w1*a(2,i  ,j+1,k+1)
+     &                    + u1*v1*w1*a(2,i+1,j+1,k+1)
 
         enddo
 
       endif
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- Transform Br and Btheta into Bx and By
         y = atan2(yp,xp)
-        axtemp = a(0,:)
-        a(0,:) = axtemp*cos(y) - a(1,:)*sin(y)
-        a(1,:) = axtemp*sin(y) + a(1,:)*cos(y)
+        axtemp = ap(0,:)
+        ap(0,:) = axtemp*cos(y) - ap(1,:)*sin(y)
+        ap(1,:) = axtemp*sin(y) + ap(1,:)*cos(y)
         deallocate(x,y,axtemp)
       endif
 
@@ -767,27 +792,32 @@ c       --- Transform Br and Btheta into Bx and By
       return
       end
 c=========================================================================== 
-      subroutine getbfroma3d(bfield)
+      subroutine getbfroma3d(a,b,nx,ny,nz,dx,dy,dz,xmmin,
+     &                       lcylindrical,lusevectorpotential)
       use GlobalVars
       use Subtimersf3d
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: b(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin
+      logical(ISZ):: lcylindrical,lusevectorpotential
 
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      if (bfield%lusevectorpotential) then
+      if (lusevectorpotential) then
 
 c       --- Calculate B via finite differences of A.
-        call curl3d(bfield%a,bfield%b,bfield%nx,bfield%ny,bfield%nz,
-     &              bfield%dx,bfield%dy,bfield%dz,
-     &              bfield%xmmin,bfield%lcylindrical,
+        call curl3d(a,b,nx,ny,nz,
+     &              dx,dy,dz,
+     &              xmmin,lcylindrical,
      &              1,1,0,0)
 
       else
 
 c       --- The solver calculated B directly, so just do a copy.
-        bfield%b = bfield%a(:,0:bfield%nx,0:bfield%ny,0:bfield%nz)
+        b = a(:,0:nx,0:ny,0:nz)
 
       endif
 
@@ -869,49 +899,55 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
 
       return
       end
-cc=============================================================================
-      subroutine getanalyticbtheta(bfield)
+c=============================================================================
+      subroutine getanalyticbtheta(b,j,nx,ny,nz,dx,xmmin)
       use Constant
       use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: b(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: j(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: dx,xmmin
 
       integer(ISZ):: ir
       real(kind=8):: r
-      real(kind=8):: izi(0:bfield%nz)
+      real(kind=8):: izi(0:nz)
 
 c     --- If xmmin > 0, this assumes that there is no current below xmmin.
 c     --- Note that a future version could extract a current below xmmin
 c     --- by inspecting a nonzero Btheta at xmmin.
       izi = 0.
-      bfield%b(1,0,0,:) = 0.
+      b(1,0,0,:) = 0.
 
-      do ir=0,bfield%nx-1
+      do ir=0,nx-1
 c       --- The total current is calculated assuming linear interpolation
 c       --- between grid points, i.e. the trapezoidal rule.
-        izi = izi + bfield%dx**2*(bfield%j(2,ir  ,0,:)*(ir/2.+1./6.) +
-     &                            bfield%j(2,ir+1,0,:)*(ir/2.+1./3.))
-        r = bfield%xmmin + (ir+1)*bfield%dx
-        bfield%b(1,ir+1,0,:) = mu0*izi/r
+        izi = izi + dx**2*(j(2,ir  ,0,:)*(ir/2.+1./6.) +
+     &                            j(2,ir+1,0,:)*(ir/2.+1./3.))
+        r = xmmin + (ir+1)*dx
+        b(1,ir+1,0,:) = mu0*izi/r
       enddo
 
       return
       end
 c=============================================================================
-      subroutine setj3d(bfield,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
-     &                  q,nw,wghtp,depos,l2symtry,l4symtry)
+      subroutine setj3d(j,j1d,np,xp,yp,zp,zgrid,uxp,uyp,uzp,gaminv,
+     &                  q,w,nw,wghtp,depos,nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                  l2symtry,l4symtry,lcylindrical)
       use GlobalVars
       use Constant
       use Subtimersf3d
-      use BFieldGridTypemodule
-      type(BFieldGridType):: bfield
       integer(ISZ):: np,nw
-      real(kind=8):: zgrid,q
-      real(kind=8),target:: wghtp(nw)
-      real(kind=8):: j1d(0:3*(1+bfield%nx)*(1+bfield%ny)*(1+bfield%nz)-1)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: zgrid,q,w
+      real(kind=8):: j(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: j1d(0:3*(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8),target:: xp(np), yp(np), zp(np)
       real(kind=8),target:: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8),target:: wghtp(nw)
       character(8):: depos
-      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
 c  Sets current density
 
@@ -939,16 +975,15 @@ c     --- For both algorithms
 c     --- Work array holding q/cell volume, the charge density per
 c     --- real particle. This is primarily needed for the RZ version
 c     --- since the cell volume there has radial dependence.
-      real(kind=8):: cdens(0:bfield%nx)
+      real(kind=8):: cdens(0:nx)
 c     --- Work array holding q*w/cell volume, the charge density per
 c     --- simulation particle.
-      real(kind=8):: cdensw(0:bfield%nx)
+      real(kind=8):: cdensw(0:nx)
 c     --- Temp arrays to hold particle data
 c     --- These are needed when lcylindrical is true, in which case x=r, y=0,
 c     --- and vx = vr, and vy = vtheta.
       real(kind=8),pointer:: x(:),y(:),z(:),ux(:),uy(:),uz(:),gi(:),wght(:)
 
-      real(kind=8),pointer,dimension(:,:,:,:):: j
       integer(ISZ):: ipmin,nptmp,ix,iy,iz,ind0,m,ir
       real(kind=8):: g,gw,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxf,gyf
       real(kind=8):: vv(0:2)
@@ -960,33 +995,33 @@ c  Set up offset array for vectorized deposition:
 
       moff(0) = 0
       moff(1) = 1
-      moff(2) = bfield%nx+1
-      moff(3) = bfield%nx+2
-      moff(4) = (bfield%nx+1)*(bfield%ny+1)
-      moff(5) = (bfield%nx+1)*(bfield%ny+1)+1
-      moff(6) = (bfield%nx+1)*(bfield%ny+1)+bfield%nx+1
-      moff(7) = (bfield%nx+1)*(bfield%ny+1)+bfield%nx+2
+      moff(2) = nx+1
+      moff(3) = nx+2
+      moff(4) = (nx+1)*(ny+1)
+      moff(5) = (nx+1)*(ny+1)+1
+      moff(6) = (nx+1)*(ny+1)+nx+1
+      moff(7) = (nx+1)*(ny+1)+nx+2
 
-      dxi = 1./bfield%dx
-      dyi = 1./bfield%dy
-      dzi = 1./bfield%dz
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
 
-      if (bfield%lcylindrical) then
-        if (bfield%xmmin == 0.) then
+      if (lcylindrical) then
+        if (xmmin == 0.) then
 c         --- The factor 0.75 corrects for overdeposition due to linear
 c         --- weighting (for uniform distribution)
 c         --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
 c         --- and Verboncoeur, J. of Comp. Phys.,
-          cdens(0) = 0.75/(pi*(0.5*0.5*bfield%dx*bfield%dx*bfield%dz))
+          cdens(0) = 0.75/(pi*(0.5*0.5*dx*dx*dz))
         else
-          cdens(0) = 1./(2.*pi*(bfield%xmmin)*bfield%dx*bfield%dz)
+          cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
         endif
-        do ix = 1,bfield%nx
-          cdens(ix) = 1./(2.*pi*(ix*bfield%dx+bfield%xmmin)*bfield%dx*bfield%dz)
+        do ix = 1,nx
+          cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
         enddo
-        cdens = cdens*q
+        cdens = cdens*q*w
       else
-        g = q / (bfield%dx * bfield%dy * bfield%dz)
+        g = w*q/(dx*dy*dz)
         if (l2symtry) then
 c         --- The particle weight is reduced by a factor of 2 except near the
 c         --- transverse boundaries.
@@ -1011,7 +1046,7 @@ c         --- transverse boundaries.
 !$OMP&                 gyf,gxf,s,m,ii,jj,kk,x,y,z,ux,uy,uz)
 !$OMP&FIRSTPRIVATE(np)
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
 c       --- Allocate temporary particle arrays which will hold
 c       --- the radius.
 c       --- This is done in the parallel block since each thread must allocate
@@ -1025,7 +1060,7 @@ c       --- its own work arrays.
         nptmp = min(nparpgrp, np+1-ipmin)
 
 c       --- Setup temporary particle arrays
-        if (bfield%lcylindrical) then
+        if (lcylindrical) then
           x(1:nptmp) = sqrt(xp(ipmin:ipmin+nptmp-1)**2 +
      &                      yp(ipmin:ipmin+nptmp-1)**2)
           y(1:nptmp) = atan2(yp(ipmin:ipmin+nptmp-1),
@@ -1056,21 +1091,21 @@ c--------------------------------------
       allocate(v(0:7,0:nparpgrp-1))
 
 c     --- vectorized loop to compute indices, weights
-      if (l2symtry .and. .not. bfield%lcylindrical) then
+      if (l2symtry .and. .not. lcylindrical) then
 c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
         do ir = 1,nptmp
-           ix  = int((x(ir) - bfield%xmmin) * dxi)
-           u1 =      (x(ir) - bfield%xmmin) * dxi - ix
+           ix  = int((x(ir) - xmmin) * dxi)
+           u1 =      (x(ir) - xmmin) * dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(y(ir)) - bfield%ymmin)*dyi)
-           v1 =      (abs(y(ir)) - bfield%ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - ymmin)*dyi)
+           v1 =      (abs(y(ir)) - ymmin)*dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
+           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1080,7 +1115,7 @@ c       --- transverse boundaries.
            indx(6,ir) = ind0 + moff(6)
            indx(7,ir) = ind0 + moff(7)
            gyf = 1.
-           if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+           if (iy == 0 .and. ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
            s(0,ir) = u0 * v0 * w0 * gw*gyf
            s(1,ir) = u1 * v0 * w0 * gw*gyf
@@ -1096,21 +1131,21 @@ c       --- transverse boundaries.
            v(1,ir) = uy(ir)*gi(ir)
            v(2,ir) = uz(ir)*gi(ir)
         enddo
-      elseif (l4symtry .and. .not. bfield%lcylindrical) then
+      elseif (l4symtry .and. .not. lcylindrical) then
 c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
         do ir = 1,nptmp
-           ix  = int((abs(x(ir)) - bfield%xmmin)*dxi)
-           u1 =      (abs(x(ir)) - bfield%xmmin)*dxi - ix
+           ix  = int((abs(x(ir)) - xmmin)*dxi)
+           u1 =      (abs(x(ir)) - xmmin)*dxi - ix
            u0 = 1. - u1
-           iy  = int((abs(y(ir)) - bfield%ymmin)*dyi)
-           v1 =      (abs(y(ir)) - bfield%ymmin)*dyi - iy
+           iy  = int((abs(y(ir)) - ymmin)*dyi)
+           v1 =      (abs(y(ir)) - ymmin)*dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
+           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1121,8 +1156,8 @@ c       --- transverse boundaries.
            indx(7,ir) = ind0 + moff(7)
            gxf = 1.
            gyf = 1.
-           if (ix == 0 .and. bfield%xmmin == 0.) gxf = 2.
-           if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+           if (ix == 0 .and. xmmin == 0.) gxf = 2.
+           if (iy == 0 .and. ymmin == 0.) gyf = 2.
            if (nw == np) gw = g*wght(ir)
            s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
            s(1,ir) = u1 * v0 * w0 * gw*gyf
@@ -1143,16 +1178,16 @@ c       --- transverse boundaries.
       else
 c       --- normal loop
         do ir = 1,nptmp
-           ix  = int((x(ir) - bfield%xmmin) * dxi)
-           u1 =      (x(ir) - bfield%xmmin) * dxi - ix
+           ix  = int((x(ir) - xmmin) * dxi)
+           u1 =      (x(ir) - xmmin) * dxi - ix
            u0 = 1. - u1
-           iy  = int((y(ir) - bfield%ymmin) * dyi)
-           v1 =      (y(ir) - bfield%ymmin) * dyi - iy
+           iy  = int((y(ir) - ymmin) * dyi)
+           v1 =      (y(ir) - ymmin) * dyi - iy
            v0 = 1. - v1
-           iz  = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-           w1 =      (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+           iz  = int((z(ir) - zgrid - zmmin) * dzi)
+           w1 =      (z(ir) - zgrid - zmmin) * dzi - iz
            w0 = 1. - w1
-           ind0 = ix + iy*(bfield%nx+1) + iz*(bfield%nx+1)*(bfield%ny+1)
+           ind0 = ix + iy*(nx+1) + iz*(nx+1)*(ny+1)
            indx(0,ir) = ind0 + moff(0)
            indx(1,ir) = ind0 + moff(1)
            indx(2,ir) = ind0 + moff(2)
@@ -1203,19 +1238,19 @@ c  Begin main loop over species
 
 
 c     --- vectorized loop to compute indices, weights
-      if (l2symtry .and. .not. bfield%lcylindrical) then
+      if (l2symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ii(ir) = int((x(ir) - bfield%xmmin) * dxi)
-          u1     =     (x(ir) - bfield%xmmin) * dxi - ii(ir)
+          ii(ir) = int((x(ir) - xmmin) * dxi)
+          u1     =     (x(ir) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(y(ir)) - bfield%ymmin)*dyi)
-          v1     =     (abs(y(ir)) - bfield%ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - ymmin)*dyi)
+          v1     =     (abs(y(ir)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gyf = 1.
-          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (jj(ir) == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           s(0,ir) = u0 * v0 * w0 * gw*gyf
           s(1,ir) = u1 * v0 * w0 * gw*gyf
@@ -1231,21 +1266,21 @@ c     --- vectorized loop to compute indices, weights
           v(1,ir) = uy(ir)*gi(ir)
           v(2,ir) = uz(ir)*gi(ir)
         enddo
-      elseif (l4symtry .and. .not. bfield%lcylindrical) then
+      elseif (l4symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ii(ir) = int((abs(x(ir)) - bfield%xmmin)*dxi)
-          u1     =     (abs(x(ir)) - bfield%xmmin)*dxi - ii(ir)
+          ii(ir) = int((abs(x(ir)) - xmmin)*dxi)
+          u1     =     (abs(x(ir)) - xmmin)*dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((abs(y(ir)) - bfield%ymmin)*dyi)
-          v1     =     (abs(y(ir)) - bfield%ymmin)*dyi - jj(ir)
+          jj(ir) = int((abs(y(ir)) - ymmin)*dyi)
+          v1     =     (abs(y(ir)) - ymmin)*dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           gxf = 1.
           gyf = 1.
-          if (ii(ir) == 0 .and. bfield%xmmin == 0.) gxf = 2.
-          if (jj(ir) == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (ii(ir) == 0 .and. xmmin == 0.) gxf = 2.
+          if (jj(ir) == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           s(0,ir) = u0 * v0 * w0 * gw*gxf*gyf
           s(1,ir) = u1 * v0 * w0 * gw*gyf
@@ -1266,14 +1301,14 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ir = 1,nptmp
-          ii(ir) = int((x(ir) - bfield%xmmin) * dxi)
-          u1     =     (x(ir) - bfield%xmmin) * dxi - ii(ir)
+          ii(ir) = int((x(ir) - xmmin) * dxi)
+          u1     =     (x(ir) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
-          jj(ir) = int((y(ir) - bfield%ymmin) * dyi)
-          v1     =     (y(ir) - bfield%ymmin) * dyi - jj(ir)
+          jj(ir) = int((y(ir) - ymmin) * dyi)
+          v1     =     (y(ir) - ymmin) * dyi - jj(ir)
           v0     = 1. - v1
-          kk(ir) = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - kk(ir)
+          kk(ir) = int((z(ir) - zgrid - zmmin) * dzi)
+          w1     =     (z(ir) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
           if (nw == np) cdensw(ii(ir):ii(ir)+1)=cdens(ii(ir):ii(ir)+1)*wght(ir)
           s(0,ir) = u0 * v0 * w0 * cdensw(ii(ir)  )
@@ -1290,7 +1325,6 @@ c       --- normal loop
         enddo
       endif
 c     --- scalar loop does the actual deposition
-      j => bfield%j
 !$OMP CRITICAL (CRITICAL_SETJ3D2)
       do ir = 1, nptmp
          if (uz(ir) /= 0) then
@@ -1334,22 +1368,21 @@ c--------------------------------------
       elseif (depos == "direct1") then
 
 c  Begin main loop over species
-      j => bfield%j
 
 c     --- vectorized loop to compute indices, weights
-      if (l2symtry .and. .not. bfield%lcylindrical) then
+      if (l2symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ix = int((x(ir) - bfield%xmmin) * dxi)
-          iy = int((abs(y(ir)) - bfield%ymmin)*dyi)
-          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          u1 =     (x(ir) - bfield%xmmin) * dxi - ix
+          ix = int((x(ir) - xmmin) * dxi)
+          iy = int((abs(y(ir)) - ymmin)*dyi)
+          iz = int((z(ir) - zgrid - zmmin) * dzi)
+          u1 =     (x(ir) - xmmin) * dxi - ix
           u0 = 1. - u1
-          v1 =     (abs(y(ir)) - bfield%ymmin)*dyi - iy
+          v1 =     (abs(y(ir)) - ymmin)*dyi - iy
           v0 = 1. - v1
-          w1 =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w1 =     (z(ir) - zgrid - zmmin) * dzi - iz
           w0 = 1. - w1
           gyf = 1.
-          if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (iy == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           ysign = 1.
           if (y(ir) < 0.) ysign = -1.
@@ -1381,21 +1414,21 @@ c     --- vectorized loop to compute indices, weights
           j(2,ix  ,iy+1,iz+1) = j(2,ix  ,iy+1,iz+1) + u0*v1*w1*gw*vv(2)
           j(2,ix+1,iy+1,iz+1) = j(2,ix+1,iy+1,iz+1) + u1*v1*w1*gw*vv(2)
         enddo
-      elseif (l4symtry .and. .not. bfield%lcylindrical) then
+      elseif (l4symtry .and. .not. lcylindrical) then
         do ir = 1,nptmp
-          ix = int((abs(x(ir)) - bfield%xmmin)*dxi)
-          iy = int((abs(y(ir)) - bfield%ymmin)*dyi)
-          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          u1 =     (abs(x(ir)) - bfield%xmmin)*dxi - ix
+          ix = int((abs(x(ir)) - xmmin)*dxi)
+          iy = int((abs(y(ir)) - ymmin)*dyi)
+          iz = int((z(ir) - zgrid - zmmin) * dzi)
+          u1 =     (abs(x(ir)) - xmmin)*dxi - ix
           u0 = 1. - u1
-          v1 =     (abs(y(ir)) - bfield%ymmin)*dyi - iy
+          v1 =     (abs(y(ir)) - ymmin)*dyi - iy
           v0 = 1. - v1
-          w1     =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w1     =     (z(ir) - zgrid - zmmin) * dzi - iz
           w0     = 1. - w1
           gxf = 1.
           gyf = 1.
-          if (ix == 0 .and. bfield%xmmin == 0.) gxf = 2.
-          if (iy == 0 .and. bfield%ymmin == 0.) gyf = 2.
+          if (ix == 0 .and. xmmin == 0.) gxf = 2.
+          if (iy == 0 .and. ymmin == 0.) gyf = 2.
           if (nw == np) gw = g*wght(ir)
           xsign = 1.
           ysign = 1.
@@ -1432,14 +1465,14 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ir = 1,nptmp
-          ix = int((x(ir) - bfield%xmmin) * dxi)
-          iy = int((y(ir) - bfield%ymmin) * dyi)
-          iz = int((z(ir) - zgrid - bfield%zmmin) * dzi)
-          u1 =     (x(ir) - bfield%xmmin) * dxi - ix
+          ix = int((x(ir) - xmmin) * dxi)
+          iy = int((y(ir) - ymmin) * dyi)
+          iz = int((z(ir) - zgrid - zmmin) * dzi)
+          u1 =     (x(ir) - xmmin) * dxi - ix
           u0 = 1. - u1
-          v1 =     (y(ir) - bfield%ymmin) * dyi - iy
+          v1 =     (y(ir) - ymmin) * dyi - iy
           v0 = 1. - v1
-          w1 =     (z(ir) - zgrid - bfield%zmmin) * dzi - iz
+          w1 =     (z(ir) - zgrid - zmmin) * dzi - iz
           w0 = 1. - w1
           if (nw == np) cdensw(ix:ix+1)=cdens(ix:ix+1)*wght(ir)
           u0 = u0*cdensw(ix  )
@@ -1479,7 +1512,7 @@ c       --- normal loop
       enddo
 !$OMP END DO
 
-      if (bfield%lcylindrical) then
+      if (lcylindrical) then
         deallocate(x,y)
         deallocate(ux,uy)
       endif
@@ -1527,7 +1560,9 @@ c     else if(solvergeom==Zgeom) then
 c       print*,"Error: Self magnetic field not supported with solvergeom=Zgeom"
 c       call getjforfieldsolvez(nz,j)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call getjforfieldsolve3d(bfield,bfieldp,nzpguard,
+        call setjforfieldsolve3d(bfield%nx,bfield%ny,bfield%nz,bfield%j,
+     &                           bfieldp%nx,bfieldp%ny,bfieldp%nz,bfieldp%j,
+     &                           nzpguard,
      &                           my_index,nslaves,izpslave,nzpslave,
      &                           izfsslave,nzfsslave)
       end if
@@ -1537,32 +1572,27 @@ c       call getjforfieldsolvez(nz,j)
       return
       end
 c=============================================================================
-      subroutine getjforfieldsolve3d(bfield,bfieldp,nzpguard,
+      subroutine setjforfieldsolve3d(nx,ny,nz,j,nxp,nyp,nzp,jp,nzpguard,
      &                               my_index,nslaves,izpslave,nzpslave,
      &                               izfsslave,nzfsslave)
 
-      use BFieldGridTypemodule
       use BFieldGrid,Only: ljsummedonboundaries
-      type(BFieldGridType):: bfield,bfieldp
-      integer(ISZ):: nzpguard,my_index,nslaves
+      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp,nzpguard
+      real(kind=8):: j(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: jp(0:2,0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
       integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 #ifdef MPIPARALLEL
 
       if (.not. ljsummedonboundaries) then
-        call sumsourcepondomainboundaries(bfieldp%j,
-     &                                    3,bfieldp%nx,bfieldp%ny,bfieldp%nz,
-     &                                    nzpguard,
+        call sumsourcepondomainboundaries(jp,3,nxp,nyp,nzp,nzpguard,
      &                                    my_index,nslaves,izpslave,nzpslave)
       endif
-      call setsourceforfieldsolve3d_parallel(3,bfield%nx,bfield%ny,bfield%nz,
-     &                                       bfield%j,
-     &                                       bfieldp%nx,bfieldp%ny,bfieldp%nz,
-     &                                       bfieldp%j,
+      call setsourceforfieldsolve3d_parallel(3,nx,ny,nz,j,nxp,nyp,nzp,jp,
      &                                       my_index,nslaves,izpslave,nzpslave,
      &                                       izfsslave,nzfsslave)
-
 
 #endif
 
@@ -1726,13 +1756,6 @@ c     --- Obtain the magnetic field
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      if (.not. lcallfetchb) then
-        bx = 0.
-        by = 0.
-        bz = 0.
-        return
-      endif
-
       if ((fstype == 12 .and. bfstype < 0) .or. bfstype == 12) then
 #if defined(XLF) || defined(XLF2)
 c       --- The pointer assignment breaks with the xlf compilers, so instead
@@ -1745,7 +1768,6 @@ c       --- and the data needs to be copied around.
         yfsapi = y
         zfsapi = z
 #else
-        jsfsapi = is - 1
         xfsapi => x
         yfsapi => y
         zfsapi => z
@@ -1753,11 +1775,14 @@ c       --- and the data needs to be copied around.
         byfsapi => by
         bzfsapi => bz
 #endif
+        npfsapi = n
+        jsfsapi = is - 1
         if (bfstype == 12) then
           call execuser("bfetchbregistered")
         else
           call execuser("fetchbregistered")
         endif
+        npfsapi = 0
         jsfsapi = -1
 #if defined(XLF) || defined(XLF2)
         bx(1:n) = bxfsapi
@@ -1774,7 +1799,11 @@ c       --- and the data needs to be copied around.
         nullify(bzfsapi)
       elseif (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         if (bfstype >= 0) then
-          call setb3d(bfieldp,n,x,y,z,zgridprv,bx,by,bz,l2symtry,l4symtry)
+          call setb3d(bfieldp%b,n,x,y,z,zgridprv,bx,by,bz,
+     &                bfield%nx,bfield%ny,bfield%nz,
+     &                bfield%dx,bfield%dy,bfield%dz,
+     &                bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                l2symtry,l4symtry,bfield%lcylindrical)
         endif
       else
         bx = 0.
@@ -1804,17 +1833,25 @@ c     --- Call the appropriate routine to get the A
         yfsapi => y
         zfsapi => z
         afsapi => a
+        npfsapi = n
+        jsfsapi = -1
         if (bfstype == 12) then
           call execuser("bfetcharegistered")
         else
           call execuser("fetcharegistered")
         endif
+        npfsapi = 0
+        jsfsapi = -1
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)
         nullify(afsapi)
       else if (solvergeom==XYZgeom .or. solvergeom==RZgeom) then
-        call fetchafrompositions3d(n,x,y,z,a,zgrid,bfield,l2symtry,l4symtry)
+        call fetchafrompositions3d(bfield%a,n,x,y,z,zgrid,a,
+     &                             bfield%nx,bfield%ny,bfield%nz,
+     &                             bfield%dx,bfield%dy,bfield%dz,
+     &                             bfield%xmmin,bfield%ymmin,bfield%zmmin,
+     &                             l2symtry,l4symtry,bfield%lcylindrical)
 c     elseif(solvergeom==XZgeom) then
 c       call setarz(n,x,y,z,p,zgrid)
 c     elseif(solvergeom==Zgeom) then
@@ -1933,10 +1970,16 @@ c     --- setup for all subcycling and selfb groups.
 
 c     --- Get B from A, either taking the finite difference curl of A to get B,
 c     --- or just copy it when B is solved for directly.
-      call getbfroma3d(bfield)
+      call getbfroma3d(bfield%a,bfield%b,bfield%nx,bfield%ny,bfield%nz,
+     &                 bfield%dx,bfield%dy,bfield%dz,bfield%xmmin,
+     &                 bfield%lcylindrical,bfield%lusevectorpotential)
 
 c     --- If using the analytic form of Btheta, calculate it here.
-      if (bfield%lanalyticbtheta) call getanalyticbtheta(bfield)
+      if (bfield%lanalyticbtheta) then
+        call getanalyticbtheta(bfield%b,bfield%j,
+     &                         bfield%nx,bfield%ny,bfield%nz,
+     &                         bfield%dx,bfield%xmmin)
+      endif
 
 c     --- Distribute B among the processes so each has B in its
 c     --- particle domain.
@@ -2028,7 +2071,10 @@ c     bfield%a = bfield%a*mu0*eps0
 
 c     --- This is slightly inefficient in some cases, since for example, the
 c     --- MG solver already takes care of the longitudinal BC's.
-      call setaboundaries3d(bfield)
+      call setaboundaries3d(bfield%a,bfield%nx,bfield%ny,bfield%nz,
+     &                      bfield%zmmin,bfield%zmmax,
+     &                      bfield%zmminglobal,bfield%zmmaxglobal,
+     &                      bfield%bounds,bfield%lcylindrical)
 
       deallocate(atemp)
       if (bfstype > 4) deallocate(jtemp)
@@ -2147,4 +2193,6 @@ c fits and so was replaced with if statements.
 !$OMP END MASTER
       return
       end
+c=============================================================================
+c=============================================================================
 c=============================================================================
