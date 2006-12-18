@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.320 $, $Date: 2006/12/12 21:10:03 $
+c@(#) File W3D.F, version $Revision: 3.321 $, $Date: 2006/12/18 17:56:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -140,10 +140,6 @@ c  Put ny to zero for RZ geometry and setup a few flags
       elseif(solvergeom==AMRgeom) then
         if (fstype .ne. -1 .and. fstype .ne. 12) fstype = 11
       endif
-
-c  If a B field solver is being used, then turn on the fetching of the B field
-
-      if (bfstype >= 0) lcallfetchb = .true.
 
 c Set epflagpid if needed
       if (lepsaveonce) then
@@ -7147,12 +7143,12 @@ c       --- and the data needs to be copied around.
         deallocate(xfsapi,yfsapi,zfsapi)
         deallocate(exfsapi,eyfsapi,ezfsapi)
 #endif
-        nullify(xfsapi)
-        nullify(yfsapi)
-        nullify(zfsapi)
-        nullify(exfsapi)
-        nullify(eyfsapi)
-        nullify(ezfsapi)
+        NULLIFY(xfsapi)
+        NULLIFY(yfsapi)
+        NULLIFY(zfsapi)
+        NULLIFY(exfsapi)
+        NULLIFY(eyfsapi)
+        NULLIFY(ezfsapi)
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(ndts))
@@ -7523,10 +7519,10 @@ c     --- Call the appropriate routine to get the phi
         phifsapi => p
         call execuser("fetchphiregistered")
         npfsapi = 0
-        nullify(xfsapi)
-        nullify(yfsapi)
-        nullify(zfsapi)
-        nullify(phifsapi)
+        NULLIFY(xfsapi)
+        NULLIFY(yfsapi)
+        NULLIFY(zfsapi)
+        NULLIFY(phifsapi)
       elseif (solvergeom==XYZgeom) then
         call fetchphi3d(n,x,y,z,p)
       elseif (solvergeom==RZgeom) then
