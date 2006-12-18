@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.321 $, $Date: 2006/12/18 17:56:05 $
+c@(#) File W3D.F, version $Revision: 3.322 $, $Date: 2006/12/18 19:40:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3619,7 +3619,7 @@ c=============================================================================
       use InPart
       use InPart3d
       use InMesh3d
-      use Particles,Only: npmax
+      use Particles,Only: npmax,spid,ssn
       use Picglb
       use Picglb3d
 #ifdef MPIPARALLEL
@@ -4273,6 +4273,10 @@ c            --- put velocity into particle arrays
              pgroup%uzp(ip+i) = vzt(ii)*(1.+vtilt_s(isid)*(zmid - zt(ii))*zleni) +
      &                   vtzt(ii)*uzt(ii)
              if (pgroup%npid > 0) pgroup%pid(ip+i,:) = 0.
+             if (spid > 0) then
+               pgroup%pid(ip+i,spid) = ioff + k + i - 1
+               ssn = ioff + k + i
+             endif
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -4333,6 +4337,11 @@ c            --- after the variables are used above to calculate the
 c            --- coherent velocity component.
              pgroup%xp(ip+i) = pgroup%xp(ip+i) + xct(i)
              pgroup%yp(ip+i) = pgroup%yp(ip+i) + yct(i)
+             if (pgroup%npid > 0) pgroup%pid(ip+i,:) = 0.
+             if (spid > 0) then
+               pgroup%pid(ip+i,spid) = ioff + k + i - 1
+               ssn = ioff + k + i
+             endif
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -4405,6 +4414,10 @@ c            --- set longitudinal particle gamma*velocity
              pgroup%uzp(ip+i) = vzt(i)*(1. + vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
              if (pgroup%npid > 0) pgroup%pid(ip+i,:) = 0.
+             if (spid > 0) then
+               pgroup%pid(ip+i,spid) = ioff + k + i - 1
+               ssn = ioff + k + i
+             endif
            enddo
 
 c          --- add sinusoidal perturbation to uzp
