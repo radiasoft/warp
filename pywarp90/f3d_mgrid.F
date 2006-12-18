@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.127 $, $Date: 2006/12/12 21:25:43 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.128 $, $Date: 2006/12/18 18:03:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -212,11 +212,13 @@ c       --- Change rstar if using Nuemann boundary conditions
       endif
 
 c     --- Make sure guard planes have sensible values before beginning.
+      localbounds = bounds
+#ifndef MPIPARALLEL
       if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
       if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
       if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
       if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
-#ifdef MPIPARALLEL
+#else
       lzoffset = 0
       rzoffset = 0
       if (izfsslave(my_index) > 0) localbounds(4) = -1
@@ -227,11 +229,11 @@ c     --- Make sure guard planes have sensible values before beginning.
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
 c     --- These calls break the parallel field solver
-c     call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
+c     call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,0,1,
 c    &                    my_index,nslaves,izfsslave,nzfsslave,
 c    &                    whosendingleft,izsendingleft,
 c    &                    whosendingright,izsendingright)
-c     call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+c     call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
 c    &                            my_index,nslaves,izfsslave,
 c    &                            whosendingleft,whosendingright)
 #endif
@@ -254,7 +256,6 @@ c     --- Also setup parallel arrays.
         endif
 !$OMP END SINGLE
         rhosave = rho
-        localbounds = bounds
       endif
 
       allocate(phisave(0:nx,0:ny,-1:nz+1),stat=allocerror)
@@ -289,11 +290,11 @@ c       --- correction form since it is operating on the error.
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,1,3,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,1,3,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -319,11 +320,11 @@ c       --- those planes are only set with the error of phi.
           if (localbounds(4) == 2 .and. nz==nzfull) phi(:,:,-1) = phi(:,:,nz-1)
           if (localbounds(5) == 2 .and. nz==nzfull) phi(:,:,nz+1) = phi(:,:,1)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
@@ -385,8 +386,8 @@ c     unscaled residual
 c     --- For Dirichlet boundary conditions, copy data into guard planes
 c     --- For other boundary conditions, the guard planes are used during
 c     --- the solve are so are already set.
-      if (localbounds(4) == 0) phi(:,:,-1) = phi(:,:,0)
-      if (localbounds(5) == 0) phi(:,:,nz+1) = phi(:,:,nz)
+      if (localbounds(4) == 0) phi(:,:,-1) = 2.*phi(:,:,0) - phi(:,:,1)
+      if (localbounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz) - phi(:,:,nz-1)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -431,13 +432,13 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
 c=============================================================================
       module formggetarraysuminterface
       contains
-      function mggetarraysum(nx,ny,nz,delt,delz,a,
+      function mggetarraysum(nx,ny,nz,delx,dely,delz,a,
      &                       izfsslave,nzfsslave,npes,my_index)
       real(kind=8),dimension(2):: mggetarraysum
       integer(ISZ):: nx,ny,nz,npes,my_index
-      integer:: delt,delz
+      integer:: delx,dely,delz
       integer(ISZ):: izfsslave(0:npes-1),nzfsslave(0:npes-1)
-      real(kind=8):: a(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
+      real(kind=8):: a(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
 
 #ifdef MPIPARALLEL
 
@@ -559,10 +560,10 @@ c     message added by petermc, 1 Oct 2002
 #endif
 
       if (larraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+        sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 phi",mglevel,sss
-        sss = mggetarraysum(nx,ny,nz,0,0,rho,
+        sss = mggetarraysum(nx,ny,nz,0,0,0,rho,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 rho",mglevel,sss
       endif
@@ -590,10 +591,10 @@ c     message added by petermc, 1 Oct 2002
 #endif
 
       if (larraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+        sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V2 phi",mglevel,sss
-        sss = mggetarraysum(nx,ny,nz,0,0,rho,
+        sss = mggetarraysum(nx,ny,nz,0,0,0,rho,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V2 rho",mglevel,sss
       endif
@@ -615,21 +616,21 @@ c       --- Get the residual on the current grid.
      &                mglevel,localbounds,mgparam,mgform,.false.,
      &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,1,3,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,3,
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,1,3,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-3,1,3,
+        call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-3,1,1,3,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
 #endif
         if (larraysumdiagnostic) then
-          sss = mggetarraysum(nx,ny,nz,1,3,res,
+          sss = mggetarraysum(nx,ny,nz,1,1,3,res,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V3 res",mglevel,sss
         endif
@@ -687,7 +688,7 @@ c         --- Ratio of old to new constant needed to scale the residual for
 c         --- the restriction.
           ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzsqi)
           call restrict2d(nx,ny,nz,res,nxcoarse,nycoarse,rhocoarse,ff,
-     &                    localbounds)
+     &                    localbounds,1,1)
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+iszone,nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,
@@ -769,9 +770,9 @@ c         --- routine.
           ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
-     &                    localbounds,localboundsc,lzoffset)
+     &                    localbounds,localboundsc,lzoffset,1,1)
           if (larraysumdiagnostic) then
-            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,rhocoarse,
+            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,0,rhocoarse,
      &                          izfsslavec,nzfsslavec,nslaves,my_index)
             if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
           endif
@@ -785,10 +786,10 @@ c         --- Continue at the next coarsest level.
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
           if (larraysumdiagnostic) then
-            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,1,phicoarse,
+            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,1,phicoarse,
      &                          izfsslavec,nzfsslavec,nslaves,my_index)
             if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
-            sss = mggetarraysum(nx,ny,nz,0,1,phi,
+            sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                          izfsslave,nzfsslave,nslaves,my_index)
             if (my_index == 0) print*,"V4 phi",mglevel,sss
           endif
@@ -798,7 +799,7 @@ c         --- Add in resulting error.
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  localbounds,lzoffset)
 #ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -811,7 +812,7 @@ c         --- Add in resulting error.
       endif
 
       if (larraysumdiagnostic) then
-        sss = mggetarraysum(nx,ny,nz,0,1,phi,
+        sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V5 phi",mglevel,sss
       endif
@@ -843,10 +844,10 @@ c     message added by petermc, 1 Oct 2002
       end
 c=============================================================================
       subroutine restrict2d(nx,ny,nz,res,nxcoarse,nycoarse,rhocoarse,
-     &                      ff,bounds)
-      integer(ISZ):: nx,ny,nz
+     &                      ff,bounds,delx,dely)
+      integer(ISZ):: nx,ny,nz,delx,dely
       integer(ISZ):: nxcoarse,nycoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-3:nz+3)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nz)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
@@ -877,9 +878,14 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(5) == 0) izmax = nz-1
 
       dx = 1.*nx/nxcoarse
-      dy = 1.*ny/nycoarse
       dxi = 1.*nxcoarse/nx
-      dyi = 1.*nycoarse/ny
+      if (ny > 0) then
+        dy = 1.*ny/nycoarse
+        dyi = 1.*nycoarse/ny
+      else
+        dy = 1.
+        dyi = 1.
+      endif
       w = ff*dxi*dyi
 
 c     --- Do the loops.
@@ -934,10 +940,10 @@ c     --- Set appropriate boundary values
 c=============================================================================
       subroutine restrict3d(nx,ny,nz,nzfull,res,
      &                      nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
-     &                      ff,bounds,boundscoarse,lzoffset)
-      integer(ISZ):: nx,ny,nz,nzfull
+     &                      ff,bounds,boundscoarse,lzoffset,delx,dely)
+      integer(ISZ):: nx,ny,nz,nzfull,delx,dely
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-3:nz+3)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
@@ -971,10 +977,15 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(5) == 0) izcoarsemax = nzcoarse - 1
 
       dx = 1.*nx/nxcoarse
-      dy = 1.*ny/nycoarse
-      dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
-      dyi = 1.*nycoarse/ny
+      if (ny > 0) then
+        dy = 1.*ny/nycoarse
+        dyi = 1.*nycoarse/ny
+      else
+        dy = 1.
+        dyi = 1.
+      endif
+      dz = 1.*nzfull/nzfullcoarse
       dzi = 1.*nzfullcoarse/nzfull
       w = ff*dxi*dyi*dzi
 
@@ -1055,7 +1066,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(5) == 0) izmax = nz-1
 
       dx = 1.*nxcoarse/nx
-      dy = 1.*nycoarse/ny
+      if (ny > 0) dy = 1.*nycoarse/ny
 
 !$OMP DO
       do iz=izmin,izmax
@@ -1121,7 +1132,7 @@ c The expansion is only transverse.
       real(kind=8):: wx,wy,wz
 
       dx = 1.*nxcoarse/nx
-      dy = 1.*nycoarse/ny
+      if (ny > 0) dy = 1.*nycoarse/ny
       dz = 1.*nzfullcoarse/nzfull
 
 !$OMP DO
@@ -1189,7 +1200,7 @@ c The expansion is only transverse.
       end
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,bendx,localbounds,
+     &                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
      &                     mgparam,mgform,lcndbndy,icndbndy,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -1199,7 +1210,7 @@ c=============================================================================
       integer(ISZ):: mglevel,nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
-      real(kind=8):: rdx2,rdy2,rdz2
+      real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: linbend
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
@@ -1255,16 +1266,16 @@ c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
 
         call sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,bendx,
+     &                     dxsqi,dysqi,dzsqi,linbend,bendx,
      &                     localbounds,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
 
 #ifdef MPIPARALLEL
-        call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
@@ -1274,7 +1285,7 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c     --- Exchange phi in the z guard planes
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
+      call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,0,1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
@@ -1284,14 +1295,14 @@ c     --- Exchange phi in the z guard planes
       end
 c=============================================================================
       subroutine sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,bendx,localbounds,
+     &                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
      &                     mgparam,mgform,lcndbndy,icndbndy,conductors)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: parity,mglevel,nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
-      real(kind=8):: rdx2,rdy2,rdz2
+      real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: linbend
       integer(ISZ):: localbounds(0:5)
       real(kind=8):: mgparam
@@ -1322,19 +1333,19 @@ c The boundaries are then reset, the previous value was destroyed.
 c
 c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
-      real(kind=8):: rdel,const,rdx2c,rdy2c,rdz2c,spm1,dx
+      real(kind=8):: rdel,const,dxsqic,dysqic,dzsqic,spm1,dx
       real(kind=8):: boundsavex(0:nx,2,0:nz)
       real(kind=8):: boundsavey(0:ny,2,0:nz)
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr
       integer(ISZ):: ii,ix,iy,iz,ic,i1,i2
 
 c     --- Set temporary variables (these are used to increase performance)
-      dx = 1./sqrt(rdx2)
-      rdel = rdz2/(rdx2 + rdy2 + rdz2)
-      const = mgparam*0.5/(rdx2 + rdy2 + rdz2)
-      rdx2c = rdx2*const
-      rdy2c = rdy2*const
-      rdz2c = rdz2*const
+      dx = 1./sqrt(dxsqi)
+      rdel = dzsqi/(dxsqi + dysqi + dzsqi)
+      const = mgparam*0.5/(dxsqi + dysqi + dzsqi)
+      dxsqic = dxsqi*const
+      dysqic = dysqi*const
+      dzsqic = dzsqi*const
       spm1 = 1. - mgparam
 
 c     --- Set indices for 1d arrays used in the seven point finite difference
@@ -1404,14 +1415,14 @@ c     --- outer loop over z is needed.
 c       --- no bends 
         call mgsor_loop(parity,1,0,0,1,izl*nxy+2,(izr+1)*nxy,2,
      &                  iimx,iipx,iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       else 
 c       --- bends
         call mgsor_loop(parity,1,izl,izr,1,2,nxy,2,
      &                  iimx,iipx,iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif 
 
 c     --- Transverse boundaries     
@@ -1433,66 +1444,66 @@ c     --- Neumann boundary conditions for the transverse planes
       if (localbounds(0) == 1) then
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  -iimx,iipx,iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(1) == 1) then
         call mgsor_loop(parity,nx+1,izl,izr,1,2*(nx+1),(nx+1)*ny,2*(nx+1),
      &                  iimx,-iipx,iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(2) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,-iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(3) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,(nx+1)*ny+2,(nx+1)*(ny+1)-1,2,
      &                  iimx,iipx,iimy,-iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
 
 c     --- lines at transverse edges
       if (localbounds(0) == 1 .or. localbounds(2) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  -iimx,iipx,-iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(1) == 1 .or. localbounds(2) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nx+1,nxy*(izr-izl)+nx+1,2*nxy,
      &                  iimx,-iipx,-iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(0) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy-nx,nxy*(izr-izl)+nxy-nx,2*nxy,
      &                  -iimx,iipx,iimy,-iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(1) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy,nxy*(izr-izl)+nxy,2*nxy,
      &                  iimx,-iipx,iimy,-iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
 
 c     --- Periodic boundary conditions for the transverse planes
       if (localbounds(0) == 2) then
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  nx-1,iipx,iimy,iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(2) == 2) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
       endif
       if (localbounds(1) == 2 .or. localbounds(3) == 2) then
         do iz=izl-1,izr-1
@@ -1512,8 +1523,8 @@ c     --- lines at transverse edges
       if (ANY(localbounds(0:3) == 2)) then
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  nx-1,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
-     &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
-     &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
+     &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
         do iz=izl-1+mod(izl-1+parity,2),izr-1,2
           phi(nx,0,iz) = phi(0,0,iz)
           phi(0,ny,iz) = phi(0,0,iz)
@@ -1557,12 +1568,12 @@ c     --- surface of the conductor boundaries.
       if (lcndbndy) then
         if (parity == 0) then
          call condbndymg(conductors%evensubgrid,nx,ny,nz,phi,rho,
-     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,localbounds,
+     &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
          call condbndymg(conductors%oddsubgrid,nx,ny,nz,phi,rho,
-     &                   rdx2c,rdy2c,rdz2c,spm1,mgparam,localbounds,
+     &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
       endif
@@ -1584,12 +1595,12 @@ c     --- set phi in the z guard planes
 c=============================================================================
       subroutine mgsor_loop(i_parity,s_parity,izl,izr,izstep,
      &                      ii1,ii2,iistep,iimx,iipx,iimy,iipy,iimz,iipz,
-     &                      phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends,
-     &                      rstar,dx,rdx2,rdy2,rdz2,rdel,const,xx)
+     &                      phi1d,rho1d,nxy,dxsqic,dysqic,dzsqic,spm1,linbends,
+     &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,xx)
       real(kind=8):: phi1d(*),rho1d(*),rstar(*),xx(*)
       integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
       integer(ISZ):: iimx,iipx,iimy,iipy,iimz,iipz
-      real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,dx,rdx2,rdy2,rdz2,rdel,const
+      real(kind=8):: dxsqic,dysqic,dzsqic,spm1,dx,dxsqi,dysqi,dzsqi,rdel,const
       logical(ISZ):: linbends
 
 c This routine provides the loops over the phi array which solves the 
@@ -1644,9 +1655,9 @@ c on HIF, an HP 735 workstation.
 !$OMP DO
             do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, 2
               phi1d(ii) = rho1d(ii-nxy) +
-     &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
-     &                  (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
-     &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*dxsqic +
+     &                  (phi1d(ii+iimy) + phi1d(ii+iipy))*dysqic +
+     &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*dzsqic +
      &                  spm1*phi1d(ii)
             enddo
 !$OMP END DO
@@ -1654,9 +1665,9 @@ c on HIF, an HP 735 workstation.
 !$OMP DO
             do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
               phi1d(ii) = rho1d(ii-nxy) +
-     &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
-     &                  (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
-     &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*dxsqic +
+     &                  (phi1d(ii+iimy) + phi1d(ii+iipy))*dysqic +
+     &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*dzsqic +
      &                  spm1*phi1d(ii)
             enddo
 !$OMP END DO
@@ -1668,17 +1679,17 @@ c on HIF, an HP 735 workstation.
             if (iistep == 2) then
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, 2
                 phi1d(ii) = rho1d(ii-nxy) +
-     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
-     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
-     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*dxsqic +
+     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*dysqic +
+     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*dzsqic +
      &                    spm1*phi1d(ii)
               enddo
             else
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
                 phi1d(ii) = rho1d(ii-nxy) +
-     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
-     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
-     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*dxsqic +
+     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*dysqic +
+     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*dzsqic +
      &                    spm1*phi1d(ii)
               enddo
             endif
@@ -1699,9 +1710,9 @@ c           --- current z-slice not in bend or bordering a bend, do not
 c           --- include curvature terms from Poisson's equation    
             do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
               phi1d(ii) = rho1d(ii-nxy) +
-     &            (phi1d(ii+iipx) + phi1d(ii+iimx))*rdx2c +
-     &            (phi1d(ii+iipy) + phi1d(ii+iimy))*rdy2c +
-     &            (phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2c +
+     &            (phi1d(ii+iipx) + phi1d(ii+iimx))*dxsqic +
+     &            (phi1d(ii+iipy) + phi1d(ii+iimy))*dysqic +
+     &            (phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqic +
      &            spm1*phi1d(ii)
             enddo  
           else  
@@ -1718,12 +1729,12 @@ c           --- r is set to 1 over (rs+x) to reduce the number of divides.
                 xfact    = (x*r)*((x*r)-2.) 
                 del2bndc = const/( 1.+xfact*rdel )
                 phi1d(ii) = rho1d(ii-nxy) + del2bndc*( 
-     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*rdx2 +
-     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*rdy2 +
-     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2+
+     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*dxsqi +
+     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*dysqi +
+     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqi+
      &              .5*(phi1d(ii+iipx)-phi1d(ii+iimx))*r*dxi + 
-     &              xfact*(phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2 - 
-     &              .25*(rs*r)**3*x*(phi1d(ii+iipz) - phi1d(ii+iimz))*dh*rdz2) +
+     &              xfact*(phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqi - 
+     &              .25*(rs*r)**3*x*(phi1d(ii+iipz) - phi1d(ii+iimz))*dh*dzsqi) +
      &              spm1*phi1d(ii)
               enddo 
 
@@ -1732,10 +1743,10 @@ c           --- current z-slice is near border of a bend only
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
                 x = xx(ii-iz*nxy)
                 phi1d(ii) = rho1d(ii-nxy) + const*(
-     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*rdx2 +
-     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*rdy2 +
-     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2 -
-     &              .25*x*(phi1d(ii+iipz) - phi1d(ii+iimz))*dh*rdz2) +
+     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*dxsqi +
+     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*dysqi +
+     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqi -
+     &              .25*x*(phi1d(ii+iipz) - phi1d(ii+iimz))*dh*dzsqi) +
      &              spm1*phi1d(ii)
               enddo
 
@@ -1747,11 +1758,11 @@ c           --- current z-slice is in a bend only
                 xfact    = (x*r)*((x*r)-2.)
                 del2bndc = const/( 1.+xfact*rdel )
                 phi1d(ii) = rho1d(ii-nxy) + del2bndc*(
-     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*rdx2 +
-     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*rdy2 +
-     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2+
+     &              (phi1d(ii+iipx) + phi1d(ii+iimx))*dxsqi +
+     &              (phi1d(ii+iipy) + phi1d(ii+iimy))*dysqi +
+     &              (phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqi+
      &              .5*(phi1d(ii+iipx) - phi1d(ii+iimx))*r*dxi +
-     &              xfact*(phi1d(ii+iipz) + phi1d(ii+iimz))*rdz2) +
+     &              xfact*(phi1d(ii+iipz) + phi1d(ii+iimz))*dzsqi) +
      &              spm1*phi1d(ii)
               enddo
             endif
@@ -1801,11 +1812,11 @@ c     --- phi to the voltage of the conductor, otherwise, set it to zero.
       end
 c=============================================================================
       subroutine cond_potmgres(interior,nx,ny,nz,res,mglevel,
-     &                         mgform,mgform2init)
+     &                         mgform,mgform2init,delx,dely)
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
-      integer(ISZ):: nx,ny,nz,mglevel,mgform
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
+      integer(ISZ):: nx,ny,nz,mglevel,mgform,delx,dely
+      real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-3:nz+3)
       logical(ISZ):: mgform2init
 
 c Set conductor points to the desired potential.
@@ -1906,10 +1917,10 @@ c Set rho to zero inside conductor points.
       return
       end
 c=============================================================================
-      subroutine handlesubgrid2(im,ip,pm,pp,rd2cos,ic,dels,volt,voltfac,
+      subroutine handlesubgrid2(im,ip,pm,pp,dsqicos,ic,dels,volt,voltfac,
      &                          denom,ppp)
       integer(ISZ):: im,ip
-      real(kind=8):: pm,pp,rd2cos
+      real(kind=8):: pm,pp,dsqicos
       integer(ISZ):: ic
       real(kind=8):: dels(0:5,*),volt(0:5,*),voltfac,denom
       real(kind=8):: ppp
@@ -1955,7 +1966,7 @@ c       --- Both terms are Dirichlet subgrid
         pm = voltfac*volt(im,ic)*2./(dels(im,ic)*(dels(ip,ic)+dels(im,ic)))
         pp = voltfac*volt(ip,ic)*2./(dels(ip,ic)*(dels(ip,ic)+dels(im,ic)))
         denom = denom +
-     &        2.*(1.-dels(ip,ic)*dels(im,ic))/(dels(ip,ic)*dels(im,ic))*rd2cos
+     &        2.*(1.-dels(ip,ic)*dels(im,ic))/(dels(ip,ic)*dels(im,ic))*dsqicos
         ppp = min(ppp,dels(im,ic))
         ppp = min(ppp,dels(ip,ic))
       else if (0. >= dels(im,ic) .and. dels(im,ic) > -1. .and.
@@ -1963,7 +1974,7 @@ c       --- Both terms are Dirichlet subgrid
 c       --- Both terms are Neumann subgrid
         pm = 0.
         pp = 0.
-        denom = denom - 2.*rd2cos
+        denom = denom - 2.*dsqicos
         if (abs(dels(im,ic)) > 0.) then
           ppp = min(ppp,abs(dels(im,ic)))
         else
@@ -1981,7 +1992,7 @@ c       --- Minus term is Dirichlet and plus term is Neumann subgrid
         pm = voltfac*volt(im,ic)/(dels(im,ic)*(adel+0.5*dels(im,ic)))
         pp = 0.
         denom = denom + (1.-2.*dels(im,ic)*adel-dels(im,ic))/
-     &                  (dels(im,ic)*(adel+0.5*dels(im,ic)))*rd2cos
+     &                  (dels(im,ic)*(adel+0.5*dels(im,ic)))*dsqicos
         ppp = min(ppp,dels(im,ic))
         if (adel > 0.) then
           ppp = min(ppp,adel)
@@ -1995,7 +2006,7 @@ c       --- Minus term is Neumann and plus term is Dirichlet subgrid
         pm = 0.
         pp = voltfac*volt(ip,ic)/(dels(ip,ic)*(adel+0.5*dels(ip,ic)))
         denom = denom + (1.-2.*dels(ip,ic)*adel-dels(ip,ic))/
-     &                  (dels(ip,ic)*(adel+0.5*dels(ip,ic)))*rd2cos
+     &                  (dels(ip,ic)*(adel+0.5*dels(ip,ic)))*dsqicos
         if (adel > 0.) then
           ppp = min(ppp,adel)
         else
@@ -2007,14 +2018,14 @@ c       --- Minus term is Neumann and plus term is Dirichlet subgrid
 c         --- Minus term is Dirichlet subgrid and plus term is in bulk
           pm = voltfac*volt(im,ic)*2./(dels(im,ic)*(1.+dels(im,ic)))
           pp = pp*(2./(1.+dels(im,ic)))
-          denom = denom + 2.*(1.-dels(im,ic))/dels(im,ic)*rd2cos
+          denom = denom + 2.*(1.-dels(im,ic))/dels(im,ic)*dsqicos
           ppp = min(ppp,dels(im,ic))
         else if (0. >= dels(im,ic) .and. dels(im,ic) > -1.) then
 c         --- Minus term is Neumann subgrid and plus term is in bulk
           adel = abs(dels(im,ic))
           pm = 0.
           pp = pp/(0.5+adel)
-          denom = denom - 2.*adel/(adel + 0.5)*rd2cos
+          denom = denom - 2.*adel/(adel + 0.5)*dsqicos
           if (adel > 0.) then
             ppp = min(ppp,adel)
           else
@@ -2025,14 +2036,14 @@ c         --- Minus term is Neumann subgrid and plus term is in bulk
 c         --- Minus term is in bulk and plus term is Dirichlet subgrid
           pp = voltfac*volt(ip,ic)*2./(dels(ip,ic)*(1.+dels(ip,ic)))
           pm = pm*(2./(1.+dels(ip,ic)))
-          denom = denom + 2.*(1.-dels(ip,ic))/dels(ip,ic)*rd2cos
+          denom = denom + 2.*(1.-dels(ip,ic))/dels(ip,ic)*dsqicos
           ppp = min(ppp,dels(ip,ic))
         else if (0. >= dels(ip,ic) .and. dels(ip,ic) > -1.) then
 c         --- Minus term is in bulk and plus term is Neumann subgrid
           adel = abs(dels(ip,ic))
           pp = 0.
           pm = pm/(0.5+adel)
-          denom = denom - 2.*adel/(adel + 0.5)*rd2cos
+          denom = denom - 2.*adel/(adel + 0.5)*dsqicos
           if (adel > 0.) then
             ppp = min(ppp,adel)
           else
@@ -2044,18 +2055,18 @@ c         --- Minus term is in bulk and plus term is Neumann subgrid
       return
       end
 c=============================================================================
-      subroutine condbndymg(subgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
-     &                      localbounds,mglevel,mgform,icndbndy)
+      subroutine condbndymg(subgrid,nx,ny,nz,phi,rho,dxsqic,dysqic,dzsqic,spm1,
+     &                      mgparam,localbounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
-      real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
+      real(kind=8):: dxsqic,dysqic,dzsqic,spm1,mgparam
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
-c NOTE that rdx2cos and rdy2cos are rdx2c and rdy2c over mgparam.
+c NOTE that dxsqicos and dysqicos are dxsqic and dysqic over mgparam.
 c
 c Temporary variables pxm, pym, pzm, pxp, pyp, and pzp hold phi at minus
 c and plus one in each direction from the current point.
@@ -2066,7 +2077,7 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
+      real(kind=8):: dxsqicos,dysqicos,dzsqicos,pxm,pym,pzm,pxp,pyp,pzp,denom
       real(kind=8):: voltfac
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
       integer(ISZ):: ix,iy,iz
@@ -2074,9 +2085,9 @@ c points on the boundary.
       logical(ISZ):: dosubgrid
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
-      rdx2cos = rdx2c/srp
-      rdy2cos = rdy2c/srp
-      rdz2cos = rdz2c/srp
+      dxsqicos = dxsqic/mgparam
+      dysqicos = dysqic/mgparam
+      dzsqicos = dzsqic/mgparam
       dels => subgrid%dels
       volt => subgrid%volt
 
@@ -2109,18 +2120,22 @@ c       --- set temporaries for boundaries
         if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
+        if (ny == 0) then
+          iym1 = iy
+          iyp1 = iy
+        endif
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
         if (iz == 0  .and. localbounds(4) < 1) cycle
         if (iz == nz .and. localbounds(5) < 1) cycle
 
 c       --- Set temporaries with initial values.
-        pxm = phi(ixm1,iy   ,iz   )
-        pxp = phi(ixp1,iy   ,iz   )
-        pym = phi(ix   ,iym1,iz   )
-        pyp = phi(ix   ,iyp1,iz   )
-        pzm = phi(ix   ,iy   ,izm1)
-        pzp = phi(ix   ,iy   ,izp1)
+        pxm = phi(ixm1,iy  ,iz  )
+        pxp = phi(ixp1,iy  ,iz  )
+        pym = phi(ix  ,iym1,iz  )
+        pyp = phi(ix  ,iyp1,iz  )
+        pzm = phi(ix  ,iy  ,izm1)
+        pzp = phi(ix  ,iy  ,izp1)
         denom = 1.
         dosubgrid = .false.
 
@@ -2135,43 +2150,43 @@ c       --- coarser levels since solver for the residuals.
 c       --- the point lower in x is inside the conductor
         if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = voltfac*volt(0,ic)/dels(0,ic)
-          denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2cos
+          denom = denom + (1.-dels(0,ic))/dels(0,ic)*dxsqicos
           dosubgrid = .true.
         endif
 c       --- the point higher in x is inside the conductor
         if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = voltfac*volt(1,ic)/dels(1,ic)
-          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
+          denom = denom + (1.-dels(1,ic))/dels(1,ic)*dxsqicos
           dosubgrid = .true.
         endif
 c       --- the point lower in y is inside the conductor
-        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1. .and. ny > 0) then
           pym = voltfac*volt(2,ic)/dels(2,ic)
-          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2cos
+          denom = denom + (1.-dels(2,ic))/dels(2,ic)*dysqicos
           dosubgrid = .true.
         endif
 c       --- the point higher in y is inside the conductor
-        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1. .and. ny > 0) then
           pyp = voltfac*volt(3,ic)/dels(3,ic)
-          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2cos
+          denom = denom + (1.-dels(3,ic))/dels(3,ic)*dysqicos
           dosubgrid = .true.
         endif
 c       --- the point lower in z is inside the conductor
         if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = voltfac*volt(4,ic)/dels(4,ic)
-          denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdz2cos
+          denom = denom + (1.-dels(4,ic))/dels(4,ic)*dzsqicos
           dosubgrid = .true.
         endif
 c       --- the point higher in z is inside the conductor
         if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = voltfac*volt(5,ic)/dels(5,ic)
-          denom = denom + (1.-dels(5,ic))/dels(5,ic)*rdz2cos
+          denom = denom + (1.-dels(5,ic))/dels(5,ic)*dzsqicos
           dosubgrid = .true.
         endif
 c       --- calculate the new phi based on the boundary conditions
         if (dosubgrid) then
           phi(ix,iy,iz) = (rho(ix,iy,iz) +
-     &      (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
+     &      (pxm+pxp)*dxsqic + (pym+pyp)*dysqic + (pzm+pzp)*dzsqic)/denom +
      &      spm1*subgrid%prevphi(ic)
         endif
       enddo
@@ -2206,6 +2221,10 @@ c       --- set temporaries for boundaries
         if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
+        if (ny == 0) then
+          iym1 = iy
+          iyp1 = iy
+        endif
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
         if (iz == 0  .and. localbounds(4) < 1) cycle
@@ -2229,14 +2248,14 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-        call handlesubgrid2(0,1,pxm,pxp,rdx2cos,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(2,3,pym,pyp,rdy2cos,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(4,5,pzm,pzp,rdz2cos,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(0,1,pxm,pxp,dxsqicos,ic,dels,volt,voltfac,denom,ppp)
+        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqicos,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,dzsqicos,ic,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the new phi based on the boundary conditions
         if (ppp < 1.) then
           phi(ix,iy,iz) = (rho(ix,iy,iz) +
-     &      (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
+     &      (pxm+pxp)*dxsqic + (pym+pyp)*dysqic + (pzm+pzp)*dzsqic)/denom +
      &      spm1*subgrid%prevphi(ic)
 
         endif
@@ -2258,7 +2277,7 @@ c=============================================================================
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
-c NOTE that rdx2cos and rdy2cos are rdx2c and rdy2c over mgparam.
+c NOTE that dxsqicos and dysqicos are dxsqic and dysqic over mgparam.
 c
 c Temporary variables pxm, pym, pzm, pxp, pyp, and pzp hold phi at minus
 c and plus one in each direction from the current point.
@@ -2299,33 +2318,35 @@ c       --- set temporaries for boundaries
         izp1 = iz + 1
         izm1 = iz - 1
 
-        if (ixm1 == 0 .and. localbounds(0) == 0) cycle
-        if (ixm1 == -1 .and. localbounds(0) == 1) cycle
-        if (ixm1 == -1 .and. localbounds(0) == 2) cycle
-        if (ixp1 == nx .and. localbounds(1) == 0) cycle
-        if (ixp1 == nx+1 .and. localbounds(1) == 1) cycle
-        if (ixp1 == nx+1 .and. localbounds(1) == 2) cycle
-        if (ixm1 == -1 .or. ixp1 == nx+1) cycle
+        if (.not. ((ixm1 == 0 .and. localbounds(0) == 0) .or.
+     &             (ixm1 == -1 .and. localbounds(0) == 1) .or.
+     &             (ixm1 == -1 .and. localbounds(0) == 2) .or.
+     &             (ixp1 == nx .and. localbounds(1) == 0) .or.
+     &             (ixp1 == nx+1 .and. localbounds(1) == 1) .or.
+     &             (ixp1 == nx+1 .and. localbounds(1) == 2) .or.
+     &             (ixm1 == -1 .or. ixp1 == nx+1))) then
+          if (0. >= dels(0,ic) .and. dels(0,ic) > -1.) phi(ixm1,iy,iz)=phi(ix,iy,iz)
+          if (0. >= dels(1,ic) .and. dels(1,ic) > -1.) phi(ixp1,iy,iz)=phi(ix,iy,iz)
+        endif
 
-        if (iym1 == 0 .and. localbounds(2) == 0) cycle
-        if (iym1 == -1 .and. localbounds(2) == 1) cycle
-        if (iym1 == -1 .and. localbounds(2) == 2) cycle
-        if (iyp1 == ny .and. localbounds(3) == 0) cycle
-        if (iyp1 == ny+1 .and. localbounds(3) == 1) cycle
-        if (iyp1 == ny+1 .and. localbounds(3) == 2) cycle
-        if (iym1 == -1 .or. iyp1 == ny+1) cycle
+        if (.not. ((iym1 == 0 .and. localbounds(2) == 0) .or.
+     &             (iym1 == -1 .and. localbounds(2) == 1) .or.
+     &             (iym1 == -1 .and. localbounds(2) == 2) .or.
+     &             (iyp1 == ny .and. localbounds(3) == 0) .or.
+     &             (iyp1 == ny+1 .and. localbounds(3) == 1) .or.
+     &             (iyp1 == ny+1 .and. localbounds(3) == 2) .or.
+     &             (iym1 == -1 .or. iyp1 == ny+1))) then
+          if (0. >= dels(2,ic) .and. dels(2,ic) > -1.) phi(ix,iym1,iz)=phi(ix,iy,iz)
+          if (0. >= dels(3,ic) .and. dels(3,ic) > -1.) phi(ix,iyp1,iz)=phi(ix,iy,iz)
+        endif
 
-        if (izm1 == 0 .and. localbounds(4) == 0) cycle
-        if (izp1 == nz .and. localbounds(5) == 0) cycle
-        if (iz == 0  .and. localbounds(4) < 1) cycle
-        if (iz == nz .and. localbounds(5) < 1) cycle
-
-        if (0. >= dels(0,ic) .and. dels(0,ic) > -1.) phi(ixm1,iy,iz)=phi(ix,iy,iz)
-        if (0. >= dels(1,ic) .and. dels(1,ic) > -1.) phi(ixp1,iy,iz)=phi(ix,iy,iz)
-        if (0. >= dels(2,ic) .and. dels(2,ic) > -1.) phi(ix,iym1,iz)=phi(ix,iy,iz)
-        if (0. >= dels(3,ic) .and. dels(3,ic) > -1.) phi(ix,iyp1,iz)=phi(ix,iy,iz)
-        if (0. >= dels(4,ic) .and. dels(4,ic) > -1.) phi(ix,iy,izm1)=phi(ix,iy,iz)
-        if (0. >= dels(5,ic) .and. dels(5,ic) > -1.) phi(ix,iy,izp1)=phi(ix,iy,iz)
+        if (.not. ((izm1 == 0 .and. localbounds(4) == 0) .or.
+     &             (izp1 == nz .and. localbounds(5) == 0) .or.
+     &             (iz == 0  .and. localbounds(4) < 1) .or.
+     &             (iz == nz .and. localbounds(5) < 1))) then
+          if (0. >= dels(4,ic) .and. dels(4,ic) > -1.) phi(ix,iy,izm1)=phi(ix,iy,iz)
+          if (0. >= dels(5,ic) .and. dels(5,ic) > -1.) phi(ix,iy,izp1)=phi(ix,iy,iz)
+        endif
 
       enddo
 !$OMP END DO
@@ -2335,7 +2356,7 @@ c       --- set temporaries for boundaries
       return
       end
 c=============================================================================
-      subroutine condbndyres(subgrid,nx,ny,nz,phi,rho,res,rdx2,rdy2,rdz2,
+      subroutine condbndyres(subgrid,nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,
      &                       mgparam,localbounds,mglevel,
      &                       mgform,mgform2init,icndbndy)
       use ConductorSubGridTypemodule
@@ -2344,7 +2365,7 @@ c=============================================================================
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
-      real(kind=8):: rdx2,rdy2,rdz2,mgparam
+      real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
       logical(ISZ):: mgform2init
 
@@ -2375,20 +2396,20 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: const,rdx2c,rdy2c,rdz2c,pxm,pym,pzm,pxp,pyp,pzp,denom
+      real(kind=8):: const,dxsqic,dysqic,dzsqic,pxm,pym,pzm,pxp,pyp,pzp,denom
       real(kind=8):: voltfac
-      real(kind=8):: rdx2cs,rdy2cs,rdz2cs,ppp
+      real(kind=8):: dxsqics,dysqics,dzsqics,ppp
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
       integer(ISZ):: ix,iy,iz
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
-      const = 0.5/(rdx2+rdy2+rdz2)
-      rdx2c = rdx2*const
-      rdy2c = rdy2*const
-      rdz2c = rdz2*const
-      rdx2cs = mgparam*rdx2*const
-      rdy2cs = mgparam*rdy2*const
-      rdz2cs = mgparam*rdz2*const
+      const = 0.5/(dxsqi+dysqi+dzsqi)
+      dxsqic = dxsqi*const
+      dysqic = dysqi*const
+      dzsqic = dzsqi*const
+      dxsqics = mgparam*dxsqi*const
+      dysqics = mgparam*dysqi*const
+      dzsqics = mgparam*dzsqi*const
       dels => subgrid%dels
       volt => subgrid%volt
 
@@ -2421,18 +2442,22 @@ c       --- set temporaries for boundaries
         if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
+        if (ny == 0) then
+          iym1 = iy
+          iyp1 = iy
+        endif
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
         if (iz == 0  .and. localbounds(4) == 0) cycle
         if (iz == nz .and. localbounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
-        pxm = phi(ixm1,iy   ,iz   )
-        pxp = phi(ixp1,iy   ,iz   )
-        pym = phi(ix   ,iym1,iz   )
-        pyp = phi(ix   ,iyp1,iz   )
-        pzm = phi(ix   ,iy   ,izm1)
-        pzp = phi(ix   ,iy   ,izp1)
+        pxm = phi(ixm1,iy  ,iz  )
+        pxp = phi(ixp1,iy  ,iz  )
+        pym = phi(ix  ,iym1,iz  )
+        pyp = phi(ix  ,iyp1,iz  )
+        pzm = phi(ix  ,iy  ,izm1)
+        pzp = phi(ix  ,iy  ,izp1)
         denom = 1.
         ppp = 1.
 
@@ -2447,37 +2472,37 @@ c       --- coarser levels since solver for the residuals.
 c       --- the point lower in x is inside the conductor
         if (0 < dels(0,ic) .and. dels(0,ic) < 1.) then
           pxm = voltfac*volt(0,ic)/dels(0,ic)
-          denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2c
+          denom = denom + (1.-dels(0,ic))/dels(0,ic)*dxsqic
           ppp = min(ppp,dels(0,ic))
         endif
 c       --- the point higher in x is inside the conductor
         if (0 < dels(1,ic) .and. dels(1,ic) < 1.) then
           pxp = voltfac*volt(1,ic)/dels(1,ic)
-          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2c
+          denom = denom + (1.-dels(1,ic))/dels(1,ic)*dxsqic
           ppp = min(ppp,dels(1,ic))
         endif
 c       --- the point lower in y is inside the conductor
-        if (0 < dels(2,ic) .and. dels(2,ic) < 1.) then
+        if (0 < dels(2,ic) .and. dels(2,ic) < 1. .and. ny > 0) then
           pym = voltfac*volt(2,ic)/dels(2,ic)
-          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2c
+          denom = denom + (1.-dels(2,ic))/dels(2,ic)*dysqic
           ppp = min(ppp,dels(2,ic))
         endif
 c       --- the point higher in y is inside the conductor
-        if (0 < dels(3,ic) .and. dels(3,ic) < 1.) then
+        if (0 < dels(3,ic) .and. dels(3,ic) < 1. .and. ny > 0) then
           pyp = voltfac*volt(3,ic)/dels(3,ic)
-          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2c
+          denom = denom + (1.-dels(3,ic))/dels(3,ic)*dysqic
           ppp = min(ppp,dels(3,ic))
         endif
 c       --- the point lower in z is inside the conductor
         if (0 < dels(4,ic) .and. dels(4,ic) < 1.) then
           pzm = voltfac*volt(4,ic)/dels(4,ic)
-          denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdz2c
+          denom = denom + (1.-dels(4,ic))/dels(4,ic)*dzsqic
           ppp = min(ppp,dels(4,ic))
         endif
 c       --- the point higher in z is inside the conductor
         if (0 < dels(5,ic) .and. dels(5,ic) < 1.) then
           pzp = voltfac*volt(5,ic)/dels(5,ic)
-          denom = denom + (1.-dels(5,ic))/dels(5,ic)*rdz2c
+          denom = denom + (1.-dels(5,ic))/dels(5,ic)*dzsqic
           ppp = min(ppp,dels(5,ic))
         endif
 c       --- calculate the residual based on the boundary conditions
@@ -2487,7 +2512,7 @@ c       --- calculate the residual based on the boundary conditions
           ppp = 1.
 #endif
           res(ix,iy,iz) = ppp*(rho(ix,iy,iz)
-     &           + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
+     &           + (pxm+pxp)*dxsqics + (pym+pyp)*dysqics + (pzm+pzp)*dzsqics
      &           - phi(ix,iy,iz)*mgparam*denom)
         endif
       enddo
@@ -2522,18 +2547,22 @@ c       --- set temporaries for boundaries
         if (iym1 == -1 .and. localbounds(2) == 2) iym1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 1) iyp1 = ny-1
         if (iyp1 == ny+1 .and. localbounds(3) == 2) iyp1 = 1
+        if (ny == 0) then
+          iym1 = iy
+          iyp1 = iy
+        endif
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
         if (iz == 0  .and. localbounds(4) == 0) cycle
         if (iz == nz .and. localbounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
-        pxm = phi(ixm1,iy   ,iz   )
-        pxp = phi(ixp1,iy   ,iz   )
-        pym = phi(ix   ,iym1,iz   )
-        pyp = phi(ix   ,iyp1,iz   )
-        pzm = phi(ix   ,iy   ,izm1)
-        pzp = phi(ix   ,iy   ,izp1)
+        pxm = phi(ixm1,iy  ,iz  )
+        pxp = phi(ixp1,iy  ,iz  )
+        pym = phi(ix  ,iym1,iz  )
+        pyp = phi(ix  ,iyp1,iz  )
+        pzm = phi(ix  ,iy  ,izm1)
+        pzp = phi(ix  ,iy  ,izp1)
         denom = 1.
         ppp = 1.
 
@@ -2545,9 +2574,9 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-        call handlesubgrid2(0,1,pxm,pxp,rdx2c,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(2,3,pym,pyp,rdy2c,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(4,5,pzm,pzp,rdz2c,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(0,1,pxm,pxp,dxsqic,ic,dels,volt,voltfac,denom,ppp)
+        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqic,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,dzsqic,ic,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the residual based on the boundary conditions
         if (ppp < 1.) then
@@ -2556,13 +2585,13 @@ c       --- calculate the residual based on the boundary conditions
           ppp = 1.
 #endif
           res(ix,iy,iz) = ppp*(rho(ix,iy,iz)
-     &           + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
+     &           + (pxm+pxp)*dxsqics + (pym+pyp)*dysqics + (pzm+pzp)*dzsqics
      &           - phi(ix,iy,iz)*mgparam*denom)
 
           if (0. >= dels(0,ic) .and. dels(0,ic) >= -1.) res(ixm1,iy,iz) = 0.
           if (0. >= dels(1,ic) .and. dels(1,ic) >= -1.) res(ixp1,iy,iz) = 0.
-          if (0. >= dels(2,ic) .and. dels(2,ic) >= -1.) res(ix,iym1,iz) = 0.
-          if (0. >= dels(3,ic) .and. dels(3,ic) >= -1.) res(ix,iyp1,iz) = 0.
+          if (0. >= dels(2,ic) .and. dels(2,ic) >= -1. .and. ny > 0) res(ix,iym1,iz) = 0.
+          if (0. >= dels(3,ic) .and. dels(3,ic) >= -1. .and. ny > 0) res(ix,iyp1,iz) = 0.
           if (0. >= dels(4,ic) .and. dels(4,ic) >= -1.) res(ix,iy,izm1) = 0.
           if (0. >= dels(5,ic) .and. dels(5,ic) >= -1.) res(ix,iy,izp1) = 0.
 
@@ -2662,7 +2691,7 @@ c     --- Calculate the residual.
 
 c     --- Zero the residual inside conductors.
       call cond_potmgres(conductors%interior,
-     &                   nx,ny,nz,res,mglevel,mgform,.false.)
+     &                   nx,ny,nz,res,mglevel,mgform,.false.,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
@@ -3623,421 +3652,28 @@ c       --- than the other point. If so, reset data for the other point.
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine gatherrhofromchild(rho,nn,childrho,cnn,
-     &                              l,u,fulllower,childlower,childupper,
-     &                              r,weights,dopbounds,pbounds,rootdims)
+      subroutine gathersourcefromchild(source,nc,nn,childsource,cnn,
+     &                                 l,u,fulllower,childlower,childupper,
+     &                                 r,weights,radius,cradius,lcylindrical,
+     &                                 dopbounds,pbounds,rootdims)
       use Subtimersf3d
       use Subcycling
-      integer(ISZ):: nn(0:2),nextra,cnn(0:2)
+      integer(ISZ):: nc,nn(0:2),nextra,cnn(0:2)
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
       integer(ISZ):: r(0:2)
       integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
-      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
-      real(kind=8):: childrho(0:cnn(0),0:cnn(1),0:cnn(2))
-      real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
-
-      integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
-      integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
-      integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
-      real(kind=8):: wrho
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
-
-      do iz=l(2),u(2)
-        iz0 = iz - fulllower(2)
-        iz1 = max(iz*r(2) - r(2) + 1,childlower(2))
-        iz2 = min(iz*r(2) + r(2) - 1,childupper(2))
-        iwz1 = iz1 - iz*r(2)
-        iwz2 = iz2 - iz*r(2)
-        icz = iz*r(2) - childlower(2)
-        do iy=l(1),u(1)
-          iy0 = iy - fulllower(1)
-          iy1 = max(iy*r(1) - r(1) + 1,childlower(1))
-          iy2 = min(iy*r(1) + r(1) - 1,childupper(1))
-          iwy1 = iy1 - iy*r(1)
-          iwy2 = iy2 - iy*r(1)
-          icy = iy*r(1) - childlower(1)
-          do ix=l(0),u(0)
-            ix0 = ix - fulllower(0)
-            ix1 = max(ix*r(0) - r(0) + 1,childlower(0))
-            ix2 = min(ix*r(0) + r(0) - 1,childupper(0))
-            iwx1 = ix1 - ix*r(0)
-            iwx2 = ix2 - ix*r(0)
-            icx = ix*r(0) - childlower(0)
-
-            do iwz=iwz1,iwz2
-              do iwy=iwy1,iwy2
-                do iwx=iwx1,iwx2
-                  wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
-
-c                 --- Adjust for symmetries
-                  if (dopbounds == 1) then
-                    if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
-     &                wrho = 2*wrho
-                    if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
-     &                wrho = 2*wrho
-                    if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
-     &                wrho = 2*wrho
-                    if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
-     &                wrho = 2*wrho
-                    if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
-     &                wrho = 2*wrho
-                    if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
-     &                wrho = 2*wrho
-                  endif
-                  rho(ix0,iy0,iz0) = rho(ix0,iy0,iz0) + wrho
-
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
-
-      if (lf3dtimesubs) timegatherrhofromchild = timegatherrhofromchild +
-     &                                           wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine gatherphifromparents(phi,nn,l,u,fulllower,
-     &                                parentphi,pnn,parentfulllower,r)
-      use Subtimersf3d
-      integer(ISZ):: nn(0:2),pnn(0:2)
-      integer(ISZ):: r(0:2)
-      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
-      integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
-      real(kind=8):: phi(0:nn(0),0:nn(1),-1:nn(2)+1)
-      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),-1:pnn(2)+1)
-
-      integer(ISZ):: ix0,iy0,iz0
-      integer(ISZ):: ix,iy,iz
-      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
-      integer(ISZ):: ixp,iyp,izp
-      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
-
-      do iz0=l(2),u(2)
-        iz = iz0 - fulllower(2)
-        izp1 = int(iz0/r(2) - parentfulllower(2) + 1) - 1
-        wz(1) = 1.*mod(iz0,r(2))/r(2)
-        wz(0) = 1. - wz(1)
-        if (wz(1) == 0.) then
-          izp2 = izp1
-        else
-          izp2 = izp1 + 1
-        endif
-
-        do iy0=l(1),u(1)
-          iy = iy0 - fulllower(1)
-          iyp1 = int(iy0/r(1) - parentfulllower(1))
-          wy(1) = 1.*mod(iy0,r(1))/r(1)
-          wy(0) = 1. - wy(1)
-          if (wy(1) == 0.) then
-            iyp2 = iyp1
-          else
-            iyp2 = iyp1 + 1
-          endif
-
-          do ix0=l(0),u(0)
-            ix = ix0 - fulllower(0)
-            ixp1 = int(ix0/r(0) - parentfulllower(0))
-            wx(1) = 1.*mod(ix0,r(0))/r(0)
-            wx(0) = 1. - wx(1)
-            if (wx(1) == 0.) then
-              ixp2 = ixp1
-            else
-              ixp2 = ixp1 + 1
-            endif
-
-            phi(ix,iy,iz) = 0.
-
-            do izp=izp1,izp2
-              do iyp=iyp1,iyp2
-                do ixp=ixp1,ixp2
-
-                  phi(ix,iy,iz) = phi(ix,iy,iz) + 
-     &              wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
-     &              parentphi(ixp,iyp,izp)
-
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
-
-      if (lf3dtimesubs) timegatherphifromparents = timegatherphifromparents +
-     &                                             wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine gatherphifromparentstest(phi,rho,nn,deltas,parentphi,pnn,r)
-      use Constant
-      use Subtimersf3d
-      integer(ISZ):: nn(0:2),pnn(0:2)
-      integer(ISZ):: r(0:2)
-      real(kind=8):: deltas(0:2)
-      real(kind=8):: phi(0:nn(0),0:nn(1),0:nn(2))
-      real(kind=8):: rho(0:nn(0),0:nn(1),0:nn(2))
-      real(kind=8):: parentphi(0:pnn(0),0:pnn(1),0:pnn(2))
-
-      integer(ISZ):: ix,iy,iz,ii
-      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
-      integer(ISZ):: ixp,iyp,izp
-      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
-      real(kind=8):: delsq,denom
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
-
-      delsq = deltas(0)**2 + deltas(1)**2 + deltas(2)**2
-
-      do iz=0,nn(2),2
-        izp1 = iz/2
-        do iy=0,nn(1),2
-          iyp1 = iy/2
-          do ix=0,nn(0),2
-            ixp1 = ix/2
-            phi(ix,iy,iz) = parentphi(ixp1,iyp1,izp1)
-          enddo
-        enddo
-      enddo
-
-      do iz=1,nn(2)-1,2
-        do iy=1,nn(1)-1,2
-          do ix=1,nn(0)-1,2
-            phi(ix,iy,iz) = 0.125*(rho(ix,iy,iz)*delsq/eps0 + 
-     &                             phi(ix-1,iy-1,iz-1) +
-     &                             phi(ix+1,iy-1,iz-1) +
-     &                             phi(ix-1,iy+1,iz-1) +
-     &                             phi(ix+1,iy+1,iz-1) +
-     &                             phi(ix-1,iy-1,iz+1) +
-     &                             phi(ix+1,iy-1,iz+1) +
-     &                             phi(ix-1,iy+1,iz+1) +
-     &                             phi(ix+1,iy+1,iz+1))
-          enddo
-        enddo
-      enddo
-
-c     - - - - 
-      delsq = deltas(0)**2 + deltas(1)**2
-      denom = 4./delsq + 2./deltas(2)**2
-      do iz=0,nn(2),2
-        do iy=1,nn(1)-1,2
-          do ix=1,nn(0)-1,2
-            if (iz == 0 .or. iz == nn(2)) then
-              phi(ix,iy,iz) = 0.25*(phi(ix-1,iy-1,iz) +
-     &                              phi(ix+1,iy-1,iz) +
-     &                              phi(ix-1,iy+1,iz) +
-     &                              phi(ix+1,iy+1,iz))
-            else
-              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
-     &                         (phi(ix-1,iy-1,iz) +
-     &                          phi(ix+1,iy-1,iz) +
-     &                          phi(ix-1,iy+1,iz) +
-     &                          phi(ix+1,iy+1,iz))/delsq +
-     &                         (phi(ix,iy,iz+1) +
-     &                          phi(ix,iy,iz-1))/deltas(2)**2)/denom
-            endif
-          enddo
-        enddo
-      enddo
-
-      delsq = deltas(0)**2 + deltas(2)**2
-      denom = 4./delsq + 2./deltas(1)**2
-      do iz=1,nn(2)-1,2
-        do iy=0,nn(1),2
-          do ix=1,nn(0)-1,2
-            if (iy == 0 .or. iy == nn(1)) then
-              phi(ix,iy,iz) = 0.25*(phi(ix-1,iy,iz-1) +
-     &                              phi(ix+1,iy,iz-1) +
-     &                              phi(ix-1,iy,iz+1) +
-     &                              phi(ix+1,iy,iz+1))
-            else
-              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
-     &                         (phi(ix-1,iy,iz-1) +
-     &                          phi(ix+1,iy,iz-1) +
-     &                          phi(ix-1,iy,iz+1) +
-     &                          phi(ix+1,iy,iz+1))/delsq +
-     &                         (phi(ix,iy+1,iz) +
-     &                          phi(ix,iy-1,iz))/deltas(1)**2)/denom
-            endif
-          enddo
-        enddo
-      enddo
-
-      delsq = deltas(1)**2 + deltas(2)**2
-      denom = 4./delsq + 2./deltas(0)**2
-      do iz=1,nn(2)-1,2
-        do iy=1,nn(1)-1,2
-          do ix=0,nn(0),2
-            if (ix == 0 .or. ix == nn(0)) then
-              phi(ix,iy,iz) = 0.25*(phi(ix,iy-1,iz-1) +
-     &                              phi(ix,iy+1,iz-1) +
-     &                              phi(ix,iy-1,iz+1) +
-     &                              phi(ix,iy+1,iz+1))
-            else
-              phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
-     &                         (phi(ix,iy-1,iz-1) +
-     &                          phi(ix,iy+1,iz-1) +
-     &                          phi(ix,iy-1,iz+1) +
-     &                          phi(ix,iy+1,iz+1))/delsq +
-     &                         (phi(ix+1,iy,iz) +
-     &                          phi(ix-1,iy,iz))/deltas(0)**2)/denom
-            endif
-          enddo
-        enddo
-      enddo
-
-c     - - - - -
-      denom = 2./deltas(0)**2 + 2./deltas(1)**2 + 2./deltas(2)**2
-      do iz=0,nn(2)
-        do iy=0,nn(1)
-          do ix=0,nn(0)
-            if (mod(ix,2) + mod(iy,2) + mod(iz,2) == 1) then
-              if ((iy == 0 .or. iy == nn(1)) .and.
-     &            (iz == 0 .or. iz == nn(2))) then
-                phi(ix,iy,iz) = 0.5*(phi(ix-1,iy,iz) + phi(ix+1,iy,iz))
-              else if ((ix == 0 .or. ix == nn(0)) .and.
-     &                 (iz == 0 .or. iz == nn(2))) then
-                phi(ix,iy,iz) = 0.5*(phi(ix,iy-1,iz) + phi(ix,iy+1,iz))
-              else if ((ix == 0 .or. ix == nn(0)) .and.
-     &                 (iy == 0 .or. iy == nn(1))) then
-                phi(ix,iy,iz) = 0.5*(phi(ix,iy,iz-1) + phi(ix,iy,iz+1))
-              else if (ix == 0 .or. ix == nn(0)) then
-                phi(ix,iy,iz) = 0.25*(phi(ix,iy-1,iz  ) +
-     &                                phi(ix,iy+1,iz  ) +
-     &                                phi(ix,iy  ,iz+1) +
-     &                                phi(ix,iy  ,iz+1))
-              else if (iy == 0 .or. iy == nn(1)) then
-                phi(ix,iy,iz) = 0.25*(phi(ix-1,iy,iz  ) +
-     &                                phi(ix+1,iy,iz  ) +
-     &                                phi(ix  ,iy,iz+1) +
-     &                                phi(ix  ,iy,iz+1))
-              else if (iz == 0 .or. iz == nn(2)) then
-                phi(ix,iy,iz) = 0.25*(phi(ix-1,iy  ,iz) +
-     &                                phi(ix+1,iy  ,iz) +
-     &                                phi(ix  ,iy+1,iz) +
-     &                                phi(ix  ,iy-1,iz))
-              else
-                phi(ix,iy,iz) = (rho(ix,iy,iz)/eps0 + 
-     &                           (phi(ix-1,iy  ,iz  ) +
-     &                            phi(ix+1,iy  ,iz  ))/deltas(0)**2 +
-     &                           (phi(ix  ,iy-1,iz  ) +
-     &                            phi(ix  ,iy+1,iz  ))/deltas(1)**2 +
-     &                           (phi(ix  ,iy  ,iz+1) +
-     &                            phi(ix  ,iy  ,iz-1))/deltas(2)**2)/denom
-              endif
-            endif
-          enddo
-        enddo
-      enddo
-
-      if (lf3dtimesubs) timegatherphifromparents = timegatherphifromparents +
-     &                                             wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine gatherafromparents(a,nn,l,u,fulllower,
-     &                              parenta,pnn,parentfulllower,r)
-      use Subtimersf3d
-      integer(ISZ):: nn(0:2),pnn(0:2)
-      integer(ISZ):: r(0:2)
-      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
-      integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
-      real(kind=8):: a(0:2,-1:nn(0)+1,-1:nn(1)+1,-1:nn(2)+1)
-      real(kind=8):: parenta(0:2,-1:pnn(0)+1,-1:pnn(1)+1,-1:pnn(2)+1)
-
-      integer(ISZ):: ix0,iy0,iz0
-      integer(ISZ):: ix,iy,iz
-      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
-      integer(ISZ):: ixp,iyp,izp
-      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
-      real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
-
-      do iz0=l(2),u(2)
-        iz = iz0 - fulllower(2)
-        izp1 = int(iz0/r(2) - parentfulllower(2))
-        wz(1) = 1.*mod(iz0,r(2))/r(2)
-        wz(0) = 1. - wz(1)
-        if (wz(1) == 0.) then
-          izp2 = izp1
-        else
-          izp2 = izp1 + 1
-        endif
-
-        do iy0=l(1),u(1)
-          iy = iy0 - fulllower(1)
-          iyp1 = int(iy0/r(1) - parentfulllower(1))
-          wy(1) = 1.*mod(iy0,r(1))/r(1)
-          wy(0) = 1. - wy(1)
-          if (wy(1) == 0.) then
-            iyp2 = iyp1
-          else
-            iyp2 = iyp1 + 1
-          endif
-
-          do ix0=l(0),u(0)
-            ix = ix0 - fulllower(0)
-            ixp1 = int(ix0/r(0) - parentfulllower(0))
-            wx(1) = 1.*mod(ix0,r(0))/r(0)
-            wx(0) = 1. - wx(1)
-            if (wx(1) == 0.) then
-              ixp2 = ixp1
-            else
-              ixp2 = ixp1 + 1
-            endif
-
-            a(:,ix,iy,iz) = 0.
-
-            do izp=izp1,izp2
-              do iyp=iyp1,iyp2
-                do ixp=ixp1,ixp2
-
-                  a(:,ix,iy,iz) = a(:,ix,iy,iz) + 
-     &              wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
-     &              parenta(:,ixp,iyp,izp)
-
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
-
-      if (lf3dtimesubs) timegatherafromparents = timegatherafromparents +
-     &                                             wtime() - substarttime
-
-      return
-      end
-c=============================================================================
-      subroutine gatherjfromchild(j,nn,childj,cnn,
-     &                            l,u,fulllower,childlower,childupper,
-     &                            r,weights,
-     &                            radius,cradius,lcylindrical,
-     &                            dopbounds,pbounds,rootdims)
-      use Subtimersf3d
-      integer(ISZ):: nn(0:2),cnn(0:2)
-      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
-      integer(ISZ):: childlower(0:2),childupper(0:2)
-      integer(ISZ):: r(0:2)
-      integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
-      real(kind=8):: j(0:2,0:nn(0),0:nn(1),0:nn(2))
-      real(kind=8):: childj(0:2,0:cnn(0),0:cnn(1),0:cnn(2))
+      real(kind=8):: source(0:nc-1,0:nn(0),0:nn(1),0:nn(2))
+      real(kind=8):: childsource(0:nc-1,0:cnn(0),0:cnn(1),0:cnn(2))
       real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
       real(kind=8):: radius(0:nn(0)),cradius(0:cnn(0))
       logical(ISZ):: lcylindrical
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
-      integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
-      real(kind=8):: cdr
-      real(kind=8):: wj(0:2),crr,rr,onethird
+      integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2,ic
+      real(kind=8):: cdr,onethird,rr,crr
+      real(kind=8):: wsource
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -4075,42 +3711,167 @@ c               rr = 0.75/(0.5*0.5*r(0)*cdr*r(0))
               endif
             endif
 
-            do iwz=iwz1,iwz2
-              do iwy=iwy1,iwy2
-                do iwx=iwx1,iwx2
-                  wj=weights(iwx,iwy,iwz)*childj(:,icx+iwx,icy+iwy,icz+iwz)
-                  if (lcylindrical) then
-c                   --- Calculate volumes. Note that the factors of pi and dz
-c                   --- cancel out and so are left out, but the refinement
-c                   --- factor in z is still included. Also not that one
-c                   --- factor of dr has beed factored out. Finally, note
-c                   --- that crr is calculated as the volume to avoid a
-c                   --- division.
-                    if (cradius(icx+iwx) == 0.) then
-c                     crr = 0.75/(0.5*0.5*cdr)
-                      crr = cdr*onethird
-                    else
-                      crr = 2.*cradius(icx+iwx)
+            if (nc == 1) then
+c             --- This case is separated out for optimization
+              do iwz=iwz1,iwz2
+                do iwy=iwy1,iwy2
+                  do iwx=iwx1,iwx2
+                    wsource=weights(iwx,iwy,iwz)*childsource(0,icx+iwx,icy+iwy,icz+iwz)
+                    if (lcylindrical) then
+c                     --- Calculate volumes. Note that the factors of pi and dz
+c                     --- cancel out and so are left out, but the refinement
+c                     --- factor in z is still included. Also not that one
+c                     --- factor of dr has beed factored out. Finally, note
+c                     --- that crr is calculated as the volume to avoid a
+c                     --- division.
+                      if (cradius(icx+iwx) == 0.) then
+c                       crr = (0.5*0.5*cdr)/0.75
+                        crr = cdr*onethird
+                      else
+                        crr = 2.*cradius(icx+iwx)
+                      endif
+                      wsource = wsource*r(2)*rr*crr
                     endif
-                    wj = wj*r(2)*rr*crr
-                  endif
 
-c                 --- Adjust for symmetries
-                  if (dopbounds == 1) then
-                    if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
-     &                wj = 2*wj
-                    if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
-     &                wj = 2*wj
-                    if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
-     &                wj = 2*wj
-                    if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
-     &                wj = 2*wj
-                    if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
-     &                wj = 2*wj
-                    if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
-     &                wj = 2*wj
-                  endif
-                  j(:,ix0,iy0,iz0) = j(:,ix0,iy0,iz0) + wj
+c                   --- Adjust for symmetries
+                    if (dopbounds == 1) then
+                      if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+     &                  wsource = 2*wsource
+                      if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+     &                  wsource = 2*wsource
+                      if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+     &                  wsource = 2*wsource
+                      if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+     &                  wsource = 2*wsource
+                      if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+     &                  wsource = 2*wsource
+                      if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+     &                  wsource = 2*wsource
+                    endif
+                    source(0,ix0,iy0,iz0) = source(0,ix0,iy0,iz0) + wsource
+
+                  enddo
+                enddo
+              enddo
+
+            else
+
+              do iwz=iwz1,iwz2
+                do iwy=iwy1,iwy2
+                  do iwx=iwx1,iwx2
+                    do ic=0,nc-1
+                      wsource=weights(iwx,iwy,iwz)*childsource(ic,icx+iwx,icy+iwy,icz+iwz)
+                      if (lcylindrical) then
+c                       --- Calculate volumes. Note that the factors of pi and dz
+c                       --- cancel out and so are left out, but the refinement
+c                       --- factor in z is still included. Also not that one
+c                       --- factor of dr has beed factored out. Finally, note
+c                       --- that crr is calculated as the volume to avoid a
+c                       --- division.
+                        if (cradius(icx+iwx) == 0.) then
+c                         crr = (0.5*0.5*cdr)/0.75
+                          crr = cdr*onethird
+                        else
+                          crr = 2.*cradius(icx+iwx)
+                        endif
+                        wsource = wsource*r(2)*rr*crr
+                      endif
+
+c                     --- Adjust for symmetries
+                      if (dopbounds == 1) then
+                        if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+     &                    wsource = 2*wsource
+                        if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+     &                    wsource = 2*wsource
+                        if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+     &                    wsource = 2*wsource
+                        if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+     &                    wsource = 2*wsource
+                        if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+     &                    wsource = 2*wsource
+                        if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+     &                    wsource = 2*wsource
+                      endif
+                      source(ic,ix0,iy0,iz0) = source(ic,ix0,iy0,iz0) + wsource
+                    enddo
+                  enddo
+                enddo
+              enddo
+
+            endif
+
+          enddo
+        enddo
+      enddo
+
+      if (lf3dtimesubs) timegathersourcefromchild = timegathersourcefromchild +
+     &                                           wtime() - substarttime
+
+      return
+      end
+c=============================================================================
+      subroutine gatherpotentialfromparents(potential,nc,ng,nn,l,u,fulllower,
+     &                                parentpotential,pnn,parentfulllower,r)
+      use Subtimersf3d
+      integer(ISZ):: nc,ng(0:2),nn(0:2),pnn(0:2)
+      integer(ISZ):: r(0:2)
+      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
+      integer(ISZ):: parentfulllower(0:2),parentupper(0:2)
+      real(kind=8):: potential(0:nc-1,-ng(0):nn(0)+ng(0),-ng(1):nn(1)+ng(1),-ng(2):nn(2)+ng(2))
+      real(kind=8):: parentpotential(0:nc-1,-ng(0):pnn(0)+ng(0),-ng(1):pnn(1)+ng(1),-ng(2):pnn(2)+ng(2))
+
+      integer(ISZ):: ix0,iy0,iz0
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixp1,ixp2,iyp1,iyp2,izp1,izp2
+      integer(ISZ):: ixp,iyp,izp,ic
+      real(kind=8):: wx(0:1),wy(0:1),wz(0:1)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      do iz0=l(2),u(2)
+        iz = iz0 - fulllower(2)
+        izp1 = int(iz0/r(2) - parentfulllower(2) + 1) - 1
+        wz(1) = 1.*mod(iz0,r(2))/r(2)
+        wz(0) = 1. - wz(1)
+        if (wz(1) == 0.) then
+          izp2 = izp1
+        else
+          izp2 = izp1 + 1
+        endif
+
+        do iy0=l(1),u(1)
+          iy = iy0 - fulllower(1)
+          iyp1 = int(iy0/r(1) - parentfulllower(1) + 1) - 1
+          wy(1) = 1.*mod(iy0,r(1))/r(1)
+          wy(0) = 1. - wy(1)
+          if (wy(1) == 0.) then
+            iyp2 = iyp1
+          else
+            iyp2 = iyp1 + 1
+          endif
+
+          do ix0=l(0),u(0)
+            ix = ix0 - fulllower(0)
+            ixp1 = int(ix0/r(0) - parentfulllower(0) + 1) - 1
+            wx(1) = 1.*mod(ix0,r(0))/r(0)
+            wx(0) = 1. - wx(1)
+            if (wx(1) == 0.) then
+              ixp2 = ixp1
+            else
+              ixp2 = ixp1 + 1
+            endif
+
+            potential(:,ix,iy,iz) = 0.
+
+            do izp=izp1,izp2
+              do iyp=iyp1,iyp2
+                do ixp=ixp1,ixp2
+
+                  do ic=0,nc-1
+                    potential(ic,ix,iy,iz) = potential(ic,ix,iy,iz) + 
+     &                wx(ixp-ixp1)*wy(iyp-iyp1)*wz(izp-izp1)*
+     &                parentpotential(ic,ixp,iyp,izp)
+                  enddo
 
                 enddo
               enddo
@@ -4119,8 +3880,9 @@ c                 --- Adjust for symmetries
         enddo
       enddo
 
-      if (lf3dtimesubs) timegatherjfromchild = timegatherjfromchild +
-     &                                           wtime() - substarttime
+      if (lf3dtimesubs) timegatherpotentialfromparents =
+     &                                   timegatherpotentialfromparents +
+     &                                   wtime() - substarttime
 
       return
       end
