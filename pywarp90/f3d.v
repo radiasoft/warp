@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.162 $, $Date: 2006/12/08 00:28:20 $
+#@(#) File F3D.V, version $Revision: 3.163 $, $Date: 2006/12/18 18:06:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.162 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.163 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -474,30 +474,44 @@ bfieldsol3d(iwhich) subroutine # Self B-field solver
 loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
              subroutine # Provides a simple interface to the current density
                         # loading routine setj3d
-setaboundaries3d(bfield:BFieldGridType)
+setaboundaries3d(a(0:2,-1:nx+1,-1:ny+1,-1:nz+1):real,
+                 nx:integer,ny:integer,nz:integer,zmmin:real,zmmax:real,
+                 zmminglobal:real,zmmaxglobal:real,
+                 bounds(0:5):integer,lcylindrical:logical)
              subroutine #
 perj3d(j:real,nx:integer,ny:integer,nz:integer,bound0:integer,boundxy:integer)
              subroutine #
-setb3d(bfield:BFieldGridType,np:integer,xp:real,yp:real,zp:real,zgrid:real,
-       bx:real,by:real,bz:real,l2symtry:logical,l4symtry:logical)
+setb3d(b(0:2,0:nx,0:ny,0:nz):real,np:integer,xp:real,yp:real,zp:real,zgrid:real,
+       bx:real,by:real,bz:real,nx:integer,ny:integer,nz:integer,
+       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
+       l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine #
-fetchafrompositions3d(np:integer,xp:real,yp:real,zp:real,a:real,zgrid:real,
-                      bfield:BFieldGridType,l2symtry:logical,l4symtry:logical)
+fetchafrompositions3d(a(0:2,-1:nx+1,-1:ny+1,-1:nz+1):real,np:integer,
+                      xp(np):real,yp(np):real,zp(np):real,ap(0:2,np):real,zgrid:real,
+                      nx:integer,ny:integer,nz:integer,
+                      dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
+                      l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine #
-getbfroma3d(bfield:BFieldGridType)
+getbfroma3d(a(0:2,-1:nx+1,-1:ny+1,-1:nz+1):real,b(0:2,0:nx,0:ny,0:nz):real,
+            nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
+            xmmin:real,lcylindrical:logical,lusevectorpotential:logical)
              subroutine #
 curl3d(a:real,b:real,nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
        xmmin:real,lcylindrical:logical,
        adelx:integer,adelz:integer,bdelx:integer,bdelz:integer)
              subroutine # Calculates the curl of the input array a, putting
                         # the result into b.
-setj3d(bfield:BFieldGridType,j1d:real,np:integer,xp:real,yp:real,zp:real,
-       zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,
-       nw:integer,wght:real,depos:string,l2symtry:logical,l4symtry:logical)
+setj3d(j(0:2,0:nx,0:ny,0:nz):real,j1d:real,np:integer,xp:real,yp:real,zp:real,
+       zgrid:real,uxp:real,uyp:real,uzp:real,gaminv:real,q:real,w:real,
+       nw:integer,wghtp:real,depos:string,nx:integer,ny:integer,nz:integer,
+       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
+       l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes current density
 getjforfieldsolve()
              subroutine #
-getjforfieldsolve3d(bfield:BFieldGridType,bfieldp:BFieldGridType,nzpguard:integer,
+setjforfieldsolve3d(nx:integer,ny:integer,nz:integer,j(0:2,0:nx,0:ny,0:nz):real,
+                    nxp:integer,nyp:integer,nzp:integer,jp(0:2,0:nx,0:ny,0:nz):real,
+                    nzpguard:integer,
                     my_index:integer,nslaves:integer,izfsslave:integer,
                     nzfsslave:integer,izpslave:integer,nzpslave:integer)
              subroutine #
@@ -513,26 +527,22 @@ getbforparticles()
              subroutine #
 bvp3d(iwhich:integer,bfstype:integer)
              subroutine #
+getanalyticbtheta(b(0:2,0:nx,0:ny,0:nz),j(0:2,0:nx,0:ny,0:nz):real,
+                  nx:integer,ny:integer,nz:integer,dx:real,xmmin:real)
+             subroutine # Calculate and analytic Btheta
 
 *********** AMR3droutines:
-gatherrhofromchild(rho:real,nn:integer,childrho:real,cnn:integer,
-                   l:integer,u:integer,fulllower:integer,
-                   childlower:integer,childupper:integer,
-                   r:integer,weights:real,
-                   dobounds:integer,bounds:integer,rootdims:integer)
-      subroutine
-gatherphifromparents(phi:real,nn:integer,l:integer,u:integer,fulllower:integer,
-                     parentphi:real,pnn:integer,parentlower:integer,r:integer)
-      subroutine
-gatherafromparents(a:real,nn:integer,l:integer,u:integer,fulllower:integer,
-                     parenta:real,pnn:integer,parentlower:integer,r:integer)
-      subroutine
-gatherjfromchild(j:real,nn:integer,childj:real,cnn:integer,
+gathersourcefromchild(rho:real,nc:integer,nn:integer,childrho:real,cnn:integer,
                    l:integer,u:integer,fulllower:integer,
                    childlower:integer,childupper:integer,
                    r:integer,weights:real,
                    radius:real,cradius:real,lcylinderical:logical,
                    dobounds:integer,bounds:integer,rootdims:integer)
+      subroutine
+gatherpotentialfromparents(potential:real,nc:integer,ng:integer,nn:integer,
+                           l:integer,u:integer,fulllower:integer,
+                           parentpotential:real,pnn:integer,
+                           parentlower:integer,r:integer)
       subroutine
 
 *********** Surface_of_Rev dump:
@@ -920,8 +930,9 @@ conductorsmoothshading() subroutine
 ******** Subtimersf3d:
 lf3dtimesubs logical /.false./
 timemultigrid3dsolve real /0./
-timegatherrhofromchild real /0./
-timegatherphifromparents real /0./
+timemultigridrzsolve real /0./
+timegathersourcefromchild real /0./
+timegatherpotentialfromparents real /0./
 timegatherafromparents real /0./
 timegatherjfromchild real /0./
 
