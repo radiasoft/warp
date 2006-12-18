@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.322 $, $Date: 2006/12/18 19:40:35 $
+c@(#) File W3D.F, version $Revision: 3.323 $, $Date: 2006/12/18 23:28:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3974,8 +3974,13 @@ c          --- xt,yt,uxt,uyt passed as scratch arrays
 
 c          --- Loading gaussian longitudinal velocity distribution.
            if (distr_l == "gaussian") then
+c            --- Note that the last argument is set to force the first value
+c            --- to be done in such a way so that the calculation of the
+c            --- gaussian random numbers is reset (since they are calculated
+c            --- two at a time. This is only really needed for the parallel
+c            --- version to get the same numbers as the serial case.
              do i=1,i1-k+1
-               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,.true.)
+               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,i>1)
                uzt(i) = 0.5*perpscal(i)*uzt(i)
              enddo
            endif
@@ -3987,7 +3992,7 @@ c          --- set vtz to vthz
 c          --- load uzt with gaussian distribution (mean 0, variance 1)
            if (vtz /= 0.) then
              do i=1,i1-k+1
-               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,.true.)
+               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,i>1)
              enddo
            endif
 c          --- set perpscal to one first time through
@@ -4219,16 +4224,10 @@ c          --- load normalized transverse velocity variables
 c             --- Note that the loops must be broken up in this way since the
 c             --- routine wrandomgauss must be called in the correct order.
              do i=1,i1-k+1
-               uxt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig3,dig4,1,1,.true.)
+               uxt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig3,dig4,1,1,i>1)
              enddo
-c            --- Force the first value to be done in such a way so that the
-c            --- calculation of the gaussian random numbers is reset (since
-c            --- they are calculated two at a time. This is only really
-c            --- needed for the parallel version to get the same numbers
-c            --- as the serial case.
-             uyt(1) = wrandomgauss(vtrandom,1+k-1+ioff,dig5,dig6,1,1,.false.)
-             do i=2,i1-k+1
-               uyt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig5,dig6,1,1,.true.)
+             do i=1,i1-k+1
+               uyt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig5,dig6,1,1,i>1)
              enddo
            else if (distr_t == "uniform") then
              do i=1,i1-k+1
@@ -6398,8 +6397,7 @@ c         --- At it==0, before the first step, always add the new rho.
           rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
         elseif (mod(rhotondts(in1),2) == 1) then
 c         --- Use the rho that is closest in time to the current time.
-          if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
-     &        mod(it-1,rhotondts(in1)) == 0) then
+          if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2.-1.) then
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
           else
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,1,in1)
@@ -6409,11 +6407,10 @@ c         --- When ndts is even, at the mid point of the step, take the
 c         --- average of the old and the new
 c         --- Otherwise, use the rho that is closest in time to the currentc
 c         --- time.
-          if (mod(it-1,rhotondts(in1)) == rhotondts(in1)/2) then
+          if (mod(it-1,rhotondts(in1)) == rhotondts(in1)/2-1) then
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) +
      &       0.5*(rhopndts(:,:,:,0,in1) + rhopndts(:,:,:,1,in1))
-          else if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2. .or.
-     &             mod(it-1,rhotondts(in1)) == 0) then
+          else if (mod(it-1,rhotondts(in1)) > rhotondts(in1)/2.-1.) then
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
           else
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,1,in1)
