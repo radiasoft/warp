@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.128 $, $Date: 2006/12/18 18:03:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.129 $, $Date: 2006/12/19 01:23:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -50,7 +50,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                            rstar,linbend,bounds,
      &                            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
-     &                            mgmaxlevels,mgerror,mgtol,
+     &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                            gridmode,conductors,
@@ -63,7 +63,7 @@ c=============================================================================
      &                            rstar,linbend,bounds,
      &                            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
-     &                            mgmaxlevels,mgerror,mgtol,
+     &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                            gridmode,conductors,
@@ -81,7 +81,7 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
       real(kind=8):: mgparam
-      integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels
+      integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
@@ -376,9 +376,11 @@ c       mgerror = maxval(abs(phisave - phi))
 
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
-      print *, 'iteration ', mgiters, ' mgerror=', mgerror
+      if (mgverbose>=1) then
+        print *, 'iteration ', mgiters, ' mgerror=', mgerror
 c     unscaled residual
-      print *, 'max(residual)=', maxres*2.0*(dxsqi+dysqi+dzsqi)
+        print *, 'max(residual)=', maxres*2.0*(dxsqi+dysqi+dzsqi)
+      endif
 #endif
 
       enddo
@@ -390,13 +392,15 @@ c     --- the solve are so are already set.
       if (localbounds(5) == 0) phi(:,:,nz+1) = 2.*phi(:,:,nz) - phi(:,:,nz-1)
 
 c     --- Make a print out.
-      if (mgerror > mgtol) then
-        call remark("Multigrid: Maximum number of iterations reached")
+      if (mgverbose>=1) then
+        if (mgerror > mgtol) then
+          call remark("Multigrid: Maximum number of iterations reached")
+        endif
+        write(errline,20) mgerror,mgiters
+  20    format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
+        call remark(errline)
       endif
-      write(errline,20) mgerror,mgiters
-  20  format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
-      call remark(errline)
-
+      
 c     --- If using residual correction form, restore saved rho
       if (mgform == 2) then
         rho = rhosave

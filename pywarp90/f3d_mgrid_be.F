@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.30 $, $Date: 2006/11/14 18:16:58 $
+c version $Revision: 1.31 $, $Date: 2006/12/19 01:24:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -56,7 +56,7 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                        rstar,linbend,bounds,
      &                        xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                        mgparam,mgiters,mgmaxiters,
-     &                        mgmaxlevels,mgerror,mgtol,
+     &                        mgmaxlevels,mgerror,mgtol,mgverbose,
      &                        downpasses,uppasses,
      &                        lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                        gridmode,conductors,
@@ -69,7 +69,7 @@ c=============================================================================
      &                              rstar,linbend,bounds,
      &                              xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
      &                              mgparam,mgiters,mgmaxiters,
-     &                              mgmaxlevels,mgerror,mgtol,
+     &                              mgmaxlevels,mgerror,mgtol,mgverbose,
      &                              downpasses,uppasses,
      &                              lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                              gridmode,conductors,
@@ -88,7 +88,7 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
       real(kind=8):: mgparam
-      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels
+      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
@@ -232,13 +232,15 @@ c     --- Copy phi back
       phi = phiwithbounds(0:nx,0:ny,:)
 
 c     --- Make a print out.
-      if (mgerror > mgtol) then
-        call remark("MultigridBE: Maximum number of iterations reached")
+      if (mgverbose>=1) then
+        if (mgerror > mgtol) then
+          call remark("MultigridBE: Maximum number of iterations reached")
+        endif
+        write(errline,20) mgerror,mgiters
+  20    format("MultigridBE: Error converged to ",1pe11.3," in ",i5," v-cycles")
+        call remark(errline)
       endif
-      write(errline,20) mgerror,mgiters
-  20  format("MultigridBE: Error converged to ",1pe11.3," in ",i5," v-cycles")
-      call remark(errline)
-
+      
       deallocate(phiwithbounds)
       deallocate(phisave)
       deallocate(regionid)

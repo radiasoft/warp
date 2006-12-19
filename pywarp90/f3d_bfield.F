@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.30 $, $Date: 2006/12/18 18:05:48 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.31 $, $Date: 2006/12/19 01:23:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2174,7 +2174,7 @@ c fits and so was replaced with if statements.
      &                      bfield%mgparam(iaxis),bfield%mgform(iaxis),
      &                      bfield%mgiters(iaxis),bfield%mgmaxiters(iaxis),
      &                      bfield%mgmaxlevels(iaxis),bfield%mgerror(iaxis),
-     &                      bfield%mgtol(iaxis),
+     &                      bfield%mgtol(iaxis),bfield%mgverbose(iaxis),
      &                      bfield%downpasses(iaxis),bfield%uppasses(iaxis),
      &                      bfield%lcndbndy,bfield%laddconductor,
      &                      bfield%icndbndy,.false.,
