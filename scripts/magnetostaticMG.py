@@ -20,7 +20,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                       'lcndbndy','icndbndy','laddconductor',
                       'lcylindrical','lanalyticbtheta'] 
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
-                   'mgmaxiters','mgtol','mgmaxlevels','mgform',
+                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
                    'lcndbndy','icndbndy','laddconductor'] 
 
   def __init__(self,**kw):
@@ -80,6 +80,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     self.mgparam = ones(3)*self.mgparam
     self.mgform = ones(3)*self.mgform
     self.mgtol = ones(3)*self.mgtol
+    self.mgverbose = ones(3)*self.mgverbose
     self.downpasses = ones(3)*self.downpasses
     self.uppasses = ones(3)*self.uppasses
 
@@ -193,6 +194,16 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                           self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                           self.izfsslave,self.nzfsslave)
 
+  def getpotentialpforparticles(self,*args):
+    """Despite the name, this actually gets the field instead, since that is
+       always used in the magnetostatic solver"""
+    if self.nslaves <= 1:
+      SubcycledPoissonSolver.getfieldpforparticles(self,*args)
+    else:
+      self.setfieldpforparticles(*args)
+      getphipforparticles3d(3,self.nx,self.ny,self.nz,self.field,
+                            self.nxp,self.nyp,self.nzp,self.fieldp,0)
+
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
       self.source[:,0,:,:] = self.source[:,0,:,:] + self.source[:,-1,:,:]
@@ -299,7 +310,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                          self.mgparam[id],self.mgform[id],
                          self.mgiters[id],self.mgmaxiters[id],
                          self.mgmaxlevels[id],self.mgerror[id],
-                         self.mgtol[id],
+                         self.mgtol[id],self.mgverbose[id],
                          self.downpasses[id],self.uppasses[id],
                          self.lcndbndy,self.laddconductor,
                          self.icndbndy,false,
@@ -310,7 +321,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- MG solver already takes care of the longitudinal BC's.
     setaboundaries3d(self.potential,self.nx,self.ny,self.nz,
                      self.zmmin,self.zmmax,self.zmminglobal,self.zmmaxglobal,
-                     self.bounds,self.lcylindrical)
+                     self.bounds,self.lcylindrical,false)
 
     # --- Now take the curl of A to get B.
     getbfroma3d(self.potential,self.field,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,self.xmmin,
