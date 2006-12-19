@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.187 $, $Date: 2006/11/29 00:44:31 $
+#@(#) File TOP.V, version $Revision: 3.188 $, $Date: 2006/12/19 02:53:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.187 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.188 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2065,6 +2065,7 @@ ldts(0:nsndts-1) _logical /1/    # Set to true when the particle positions
                                  # have been advanced (and the rho updated)
 itndts(0:nsndts-1) _integer /0/  # The time level of the position of the
                                  # ndts group
+zgridndts(0:nsndts-1) _real      # z location of the grid for each ndts group
 nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
                            # It defaults to 1 which is what is needed if
                            # there are only groups with ndts==1. Otherwise
@@ -2502,7 +2503,7 @@ wtremain() real function # returns the time remaining for the running job
 getbeamcom(pgroup:ParticleGroup) real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
-zpartbnd(pgroup:ParticleGroup,zmmax:real,zmmin:real,dz:real,zgrid:real)
+zpartbnd(pgroup:ParticleGroup,zmmax:real,zmmin:real,dz:real)
        subroutine
        # Enforces axial particle boundary conditions
 zpartbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.45 $, $Date: 2006/12/04 18:36:48 $
+c TOPSLAVE.M, version $Revision: 1.46 $, $Date: 2006/12/19 02:53:32 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -37,7 +37,7 @@ c=============================================================================
       return
       end
 c===========================================================================
-      subroutine zpartbnd_slave(pgroup,zmmax,zmmin,dz,zgrid)
+      subroutine zpartbnd_slave(pgroup,zmmax,zmmin,dz)
       use ParticleGroupmodule
       use Subtimerstop
       use GlobalVars
@@ -45,16 +45,17 @@ c===========================================================================
       use InPart
       use Parallel
       use Databuffers
+      use SubCycling, Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
-      real(kind=8):: zmmax,zmmin,dz,zgrid
+      real(kind=8):: zmmax,zmmin,dz
 
 c  Impose boundary conditions on zp.  Puts particles that exit to the left
 c  lower in the arrays and particles that exit to the right higher.  Keeps
 c  track of how many left and sends to the appropriate processor.
 
       logical(ISZ):: ldoagain
-      real(kind=8):: temp,pidtemp(pgroup%npid),syslen
-      integer(MPIISZ):: is,ip,idest,ipid,ii,nn
+      real(kind=8):: temp,pidtemp(pgroup%npid),syslen,zgrid
+      integer(MPIISZ):: is,ip,idest,ipid,ii,nn,indts
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
       integer(MPIISZ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
@@ -107,6 +108,8 @@ c     --- wrapping around at the ends.
 
 c       --- Loop over species
         do is=1,pgroup%ns
+          indts = ndtstorho(pgroup%ndts(is-1))
+          zgrid = zgridndts(indts)
 
 c         --- initialize counter and save particle's start and number
           ip = pgroup%ins(is)
@@ -773,21 +776,24 @@ c     --- Done!
       end
 c=============================================================================
 c=============================================================================
-      integer(ISZ) function checkzpartbnd(pgroup,zgrid)
+      integer(ISZ) function checkzpartbnd(pgroup)
       use ParticleGroupmodule
       use Subtimerstop
       use InPart
       use Parallel
+      use SubCycling, Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
-      real(kind=8):: zgrid
 c Check if all particles are within the mesh.  Returns number of particles
 c outside the mesh.
-      integer(ISZ):: is,ip,nout
+      integer(ISZ):: is,ip,nout,indts
+      real(kind=8):: zgrid
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
       nout = 0
       do is=1,pgroup%ns
+        indts = ndtstorho(pgroup%ndts(is-1))
+        zgrid = zgridndts(indts)
 !$OMP PARALLEL DO REDUCTION(+:nout)
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
           if (pgroup%zp(ip)-zgrid < zpslmin(my_index) .or.

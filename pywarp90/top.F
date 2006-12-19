@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.196 $, $Date: 2006/12/07 18:44:18 $
+c@(#) File TOP.F, version $Revision: 3.197 $, $Date: 2006/12/19 02:53:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2447,23 +2447,24 @@ c  Converts v to u, sets inverse gamma factor for all particles
       return
       end
 c=============================================================================
-      subroutine zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
+      subroutine zpartbnd(pgroup,zmmax,zmmin,dz)
       use ParticleGroupmodule
       use Picglb, only: it
       use GlobalVars
       use InGen
       use InPart
+      use SubCycling,Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
-      real(kind=8):: zmmax,zmmin,dz,zgrid
+      real(kind=8):: zmmax,zmmin,dz
 
 c  Impose boundary conditions on zp
 
-      real(kind=8):: syslen
-      integer(ISZ):: is,ip
+      real(kind=8):: syslen,zgrid
+      integer(ISZ):: is,ip,indts
 
 c Parallel version makes call to special routine zpartbnd_slave
 #ifdef MPIPARALLEL
-      call zpartbnd_slave(pgroup,zmmax,zmmin,dz,zgrid)
+      call zpartbnd_slave(pgroup,zmmax,zmmin,dz)
 #else
 
       if (pbound0==periodic) then
@@ -2471,6 +2472,8 @@ c     --- periodic boundary condition
         syslen = zmmax - zmmin
         do is=1,pgroup%ns
           if (mod(it,pgroup%ndts(is-1))/=0) cycle
+          indts = ndtstorho(pgroup%ndts(is-1))
+          zgrid = zgridndts(indts)
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             if (pgroup%zp(ip) < zgrid + zmmin) then
               pgroup%zp(ip) = pgroup%zp(ip) +
@@ -2486,6 +2489,8 @@ c     --- periodic boundary condition
 c     --- other boundary condition (particles absorbed or reflected)
         do is=1,pgroup%ns
           if (mod(it,pgroup%ndts(is-1))/=0) cycle
+          indts = ndtstorho(pgroup%ndts(is-1))
+          zgrid = zgridndts(indts)
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
             if ((pgroup%zp(ip)-zgrid) >= zmmax) then
               if(pboundnz==absorb) then

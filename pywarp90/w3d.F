@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.323 $, $Date: 2006/12/18 23:28:00 $
+c@(#) File W3D.F, version $Revision: 3.324 $, $Date: 2006/12/19 02:53:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -524,6 +524,7 @@ c=============================================================================
       use InPart
       use Picglb3d
       use Ctl_to_pic
+      use Subcycling,Only: zgridndts,rhotondts
 
 c  Takes a time step.
 c  This routine advances the mesh in the lab frame, sets the logicals
@@ -562,13 +563,14 @@ c       --- Otherwise, zbeam is the same as zgrid, as set at the
 c       --- end of padvnc3d.
         zgridprv = zbeam
       endif
+      zgrid = zbeam + dt*vbeamfrm + zcorrection
+      zgridndts = zbeam + dt*vbeamfrm*rhotondts + zcorrection
+c     --- zgrid is integer number of dz's
       if (lgridqnt) then
-c       --- zgrid is integer number of dz's
-        zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
-      else
-c       --- zgrid is the same as the beam frame
-        zgrid = zbeam + dt*vbeamfrm + zcorrection
+        zgrid = int(zgrid/dz + .5)*dz
+        zgridndts = int(zgridndts/dz + .5)*dz
       endif
+
       call stepid (it, time+dt, zgrid)
 
 c  set logicals
@@ -4531,7 +4533,7 @@ c      call sw_globalsum(pgroup%ns,pgroup%sw)
 c#endif
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
+      call zpartbnd(pgroup,zmmax,zmmin,dz)
       do js=0,pgroup%ns-1
         if (pgroup%nps(js+1) > 0) then
            ip = pgroup%ins(js+1)
@@ -4556,6 +4558,7 @@ c=============================================================================
      &                    lcylindrical)
       use GlobalVars
       use Subtimers3d
+      use Parallel,Only:my_index
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
@@ -6356,6 +6359,7 @@ c=============================================================================
       subroutine zerorhowithsampledsubcycling()
       use Subcycling
       use Fields3dParticles
+      use Parallel,Only:my_index
 
       integer(ISZ):: in1
 
@@ -6379,6 +6383,7 @@ c=============================================================================
       use Picglb,Only: it
       use Subcycling
       use Fields3dParticles
+      use Parallel,Only:my_index
 
       integer(ISZ):: in1,in2,in2tmp
       real(kind=8):: wranf,oldornew
@@ -6577,6 +6582,7 @@ c=============================================================================
       use Fields3dParticles
       use GridBoundary3d
       use FieldSolveAPI, Only: lzerorhofsapi
+      use Parallel,Only:my_index
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -6588,7 +6594,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2,isid
       integer(ISZ):: ip,ipmin,is,indts
-      real(kind=8):: swtmp,zgrdndts
+      real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
       logical(ISZ):: lzeroeven
@@ -6677,12 +6683,12 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
              if (pgroup%ldts(is)) then
 c              --- Only load the rho if the positions have been advanced.
                indts = ndtstorho(pgroup%ndts(is-1))
-               zgrdndts = zgrid + (zgrid-zgridprv)*(pgroup%ndts(is-1)-1)
+c              zgridndts = zgrid + (zgrid-zgridprv)*(pgroup%ndts(is-1)-1)
                call setrho3d(rhopndts(:,:,:,0,indts),
      &                       rhopndts(:,:,:,0,indts),nps_u,
      &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                    zgrdndts,pgroup%uzp(ipmin),pgroup%sq(is),swtmp,depos,
-     &                    nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                    zgridndts(indts),pgroup%uzp(ipmin),pgroup%sq(is),
+     &                    swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                    l2symtry,l4symtry,solvergeom==RZgeom)
              endif
            elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
@@ -7228,7 +7234,7 @@ c Does everything needed to apply particle boundary conditions.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmax,zmmin,dz,zgrid)
+      call zpartbnd(pgroup,zmmax,zmmin,dz)
 
 c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
