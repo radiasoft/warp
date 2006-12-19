@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.248 $, $Date: 2006/12/19 01:25:26 $
+#@(#) File W3D.V, version $Revision: 3.249 $, $Date: 2006/12/19 22:38:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.248 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.249 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -817,8 +817,8 @@ setrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
              subroutine # Copies data from rhop to rho - for parallel
 getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
-getphipforparticles3d(nx:integer,ny:integer,nz:integer,phi(0:nx,0:ny,-1:nz+1):real,
-              nxp:integer,nyp:integer,nzp:integer,phip(0:nxp,0:nyp,-1:nzp+1):real)
+getphipforparticles3d(nc:integer,nx:integer,ny:integer,nz:integer,phi:real,
+              nxp:integer,nyp:integer,nzp:integer,phip:real,delz:integer)
              subroutine # Calls the parallel routine for copying phi into phip
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho

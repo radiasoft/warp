@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.41 $, $Date: 2006/12/06 02:05:05 $
+c W3DSLAVE.M, version $Revision: 1.42 $, $Date: 2006/12/19 22:38:06 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -451,13 +451,14 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getphipforparticles3d_parallel(nx,ny,nz,phi,nxp,nyp,nzp,phip)
+      subroutine getphipforparticles3d_parallel(nc,nx,ny,nz,phi,
+     &                                          nxp,nyp,nzp,phip,delz)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nc,nx,ny,nz,delz
+      real(kind=8):: phi(0:nc-1,0:nx,0:ny,-delz:nz+delz)
       integer(ISZ):: nxp,nyp,nzp
-      real(kind=8):: phip(0:nxp,0:nyp,-1:nzp+1)
+      real(kind=8):: phip(0:nc-1,0:nxp,0:nyp,-delz:nzp+delz)
 
 c Get the phi for the extent where the particles are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
@@ -475,13 +476,11 @@ c iz=-1 and +1.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- First, calculate what data needs to be sent and received.
-c     --- Note that special cases are needed for the first and last processors
-c     --- so that the guard cells are filled properly.
 c     --- Data to be sent
       do i=0,nslaves-1
-        izglobal = max(izfsslave(my_index)-1,izpslave(i)-1)
-        izmaxp   = izpslave(i)+nzpslave(i)+1
-        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+1
+        izglobal = max(izfsslave(my_index)-delz,izpslave(i)-delz)
+        izmaxp   = izpslave(i)+nzpslave(i)+delz
+        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)+delz
 
         izsend(i) = izglobal - izfsslave(my_index)
         nzsend(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -489,9 +488,9 @@ c     --- Data to be sent
 
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
-        izglobal = max(izpslave(my_index)-1,izfsslave(i)-1)
-        izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
-        izmaxfs  = izfsslave(i)+nzfsslave(i)+1
+        izglobal = max(izpslave(my_index)-delz,izfsslave(i)-delz)
+        izmaxp   = izpslave(my_index)+nzpslave(my_index)+delz
+        izmaxfs  = izfsslave(i)+nzfsslave(i)+delz
 
         izrecv(i) = izglobal - izpslave(my_index)
         nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
@@ -503,12 +502,12 @@ c     --- Send the data out to processors that need it.
         if (nzsend(i) > 0) then
           if ( i /= my_index) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,izsend(i)),int(nzsend(i)*(nx+1)*(ny+1),MPIISZ),
+            call MPI_ISEND(phi(0,0,0,izsend(i)),int(nzsend(i)*(nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
-            phip(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
-     &        phi(:,:,izsend(i):izsend(i)+nzsend(i)-1)
+            phip(:,:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
+     &        phi(:,:,:,izsend(i):izsend(i)+nzsend(i)-1)
           endif
         endif
       enddo
@@ -517,7 +516,7 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           if (nzrecv(i) > 0) then
-            call MPI_RECV(phip(0,0,izrecv(i)),int(nzrecv(i)*(nxp+1)*(nyp+1),MPIISZ),
+            call MPI_RECV(phip(0,0,0,izrecv(i)),int(nzrecv(i)*(nxp+1)*(nyp+1),MPIISZ),
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
