@@ -20,7 +20,7 @@ class MultiGrid(SubcycledPoissonSolver):
   __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
                    'electrondensitymaxscale']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
-                   'mgmaxiters','mgtol','mgmaxlevels','mgform',
+                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
                    'lcndbndy','icndbndy','laddconductor'] 
 
   def __init__(self,lreducedpickle=1,**kw):
@@ -166,8 +166,8 @@ class MultiGrid(SubcycledPoissonSolver):
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
       self.setpotentialpforparticles(*args)
-      getphipforparticles3d(self.nx,self.ny,self.nz,self.potential,
-                            self.nxp,self.nyp,self.nzp,self.potentialp)
+      getphipforparticles3d(1,self.nx,self.ny,self.nz,self.potential,
+                            self.nxp,self.nyp,self.nzp,self.potentialp,1)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -270,7 +270,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.xmmin,self.ymmin,self.zmmin,
                        self.zmminglobal,top.zbeam,top.zgrid,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
-                       self.mgmaxlevels,mgerror,self.mgtol,
+                       self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
                        self.lbuildquads,
