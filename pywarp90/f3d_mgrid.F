@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.129 $, $Date: 2006/12/19 01:23:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.130 $, $Date: 2006/12/19 22:43:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -708,7 +708,7 @@ c         --- Add in resulting error.
           endif
           call expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,localbounds)
 #ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
