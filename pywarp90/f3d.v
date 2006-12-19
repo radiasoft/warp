@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.164 $, $Date: 2006/12/19 01:22:32 $
+#@(#) File F3D.V, version $Revision: 3.165 $, $Date: 2006/12/19 22:43:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.164 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.165 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -480,7 +480,7 @@ loadj3d(pgroup:ParticleGroup,ins:integer,nps:integer,is:integer,lzero:logical)
 setaboundaries3d(a(0:2,-1:nx+1,-1:ny+1,-1:nz+1):real,
                  nx:integer,ny:integer,nz:integer,zmmin:real,zmmax:real,
                  zmminglobal:real,zmmaxglobal:real,
-                 bounds(0:5):integer,lcylindrical:logical)
+                 bounds(0:5):integer,lcylindrical:logical,llongitudinal:logical)
              subroutine #
 perj3d(j:real,nx:integer,ny:integer,nz:integer,bound0:integer,boundxy:integer)
              subroutine #
@@ -513,7 +513,7 @@ setj3d(j(0:2,0:nx,0:ny,0:nz):real,j1d:real,np:integer,xp:real,yp:real,zp:real,
 getjforfieldsolve()
              subroutine #
 setjforfieldsolve3d(nx:integer,ny:integer,nz:integer,j(0:2,0:nx,0:ny,0:nz):real,
-                    nxp:integer,nyp:integer,nzp:integer,jp(0:2,0:nx,0:ny,0:nz):real,
+                    nxp:integer,nyp:integer,nzp:integer,jp(0:2,0:nxp,0:nyp,0:nzp):real,
                     nzpguard:integer,
                     my_index:integer,nslaves:integer,izfsslave:integer,
                     nzfsslave:integer,izpslave:integer,nzpslave:integer)

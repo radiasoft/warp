@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.31 $, $Date: 2006/12/19 01:23:09 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.32 $, $Date: 2006/12/19 22:43:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -314,16 +314,18 @@ c       --- system.
 c=============================================================================
       subroutine setaboundaries3d(a,nx,ny,nz,
      &                            zmmin,zmmax,zmminglobal,zmmaxglobal,
-     &                            bounds,lcylindrical)
+     &                            bounds,lcylindrical,llongitudinal)
       use Subtimersf3d
       use GlobalVars
       integer(ISZ):: nx,ny,nz
       real(kind=8):: a(0:2,-1:nx+1,-1:ny+1,-1:nz+1)
       real(kind=8):: zmmin,zmmax,zmminglobal,zmmaxglobal
       integer(ISZ):: bounds(0:5)
-      logical(ISZ):: lcylindrical
+      logical(ISZ):: lcylindrical,llongitudinal
 
 c  Sets the slices on the exterior of A, depending on the boundary conditions.
+c  When llongitudinal is true, set the longitudinal boundaries, otherwise
+c  skip that code block.
 
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -372,10 +374,7 @@ c       --- In this case, actually ny == 0. This ensures that d/dtheta is zero.
       endif
 
 c     --- With the cylindrical solver, the guard cells are already set.
-      if (.not. lcylindrical) then
-#ifdef MPIPARALLEL
-        call getaforfields3d(a,nx,ny,nz)
-#endif
+      if (llongitudinal .and. .not. lcylindrical) then
         if (bounds(4) == periodic .or. bounds(5) == periodic) then
 #ifdef MPIPARALLEL
           call perpot3d_slave(a,3,nx,ny,nz,1,1)
@@ -2069,12 +2068,19 @@ c     --- though they should never be needed during initialization.
 c     --- Rescale, replacing 1/eps0 with mu0
 c     bfield%a = bfield%a*mu0*eps0
 
-c     --- This is slightly inefficient in some cases, since for example, the
-c     --- MG solver already takes care of the longitudinal BC's.
+#ifdef MPIPARALLEL
+      if (bfstype <= 4) then
+        call getaforfields3d(bfield%a,bfield%nx,bfield%ny,bfield%nz)
+      endif
+#endif
+
+c     --- The last argument, llongitudinal, is only true for the FFT based
+c     --- solvers since those do not set the z guard cells.
       call setaboundaries3d(bfield%a,bfield%nx,bfield%ny,bfield%nz,
      &                      bfield%zmmin,bfield%zmmax,
      &                      bfield%zmminglobal,bfield%zmmaxglobal,
-     &                      bfield%bounds,bfield%lcylindrical)
+     &                      bfield%bounds,bfield%lcylindrical,
+     &                      bfstype <= 4)
 
       deallocate(atemp)
       if (bfstype > 4) deallocate(jtemp)
