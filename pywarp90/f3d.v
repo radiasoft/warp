@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.163 $, $Date: 2006/12/18 18:06:39 $
+#@(#) File F3D.V, version $Revision: 3.164 $, $Date: 2006/12/19 01:22:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.163 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.164 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -194,6 +194,7 @@ mgform      integer /1/   # When 1, MG operates on phi (and rho),
                           # when 2, MG operates on error (and residual)
 downpasses  integer /1/   # Number of downpasses
 uppasses    integer /1/   # Number of uppasses
+mgverbose   integer /1/   # Level of verbosity of multigrid solver
 bounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh, in order of
                           # lower, upper for x, y, z.
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
@@ -231,6 +232,7 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
+                 mgverbose:integer,
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
                  lbuildquads:logical,gridmode:integer,conductors:ConductorType,
@@ -416,6 +418,7 @@ mgtol(0:2)       real    /0./  # Absolute tolerance in change in last iteration
 mgerror(0:2)     real          # Maximum error after convergence
 mgform(0:2)      integer /1/   # When 1, MG operates on phi (and rho),
                           # when 2, MG operates on error (and residual)
+mgverbose(0:2)   integer /1/   # Level of verbosity of bfield MG solver
 downpasses(0:2)  integer /1/   # Number of downpasses
 uppasses(0:2)    integer /1/   # Number of uppasses
 bounds(0:5) integer  # Boundary conditions on grid surfaces
