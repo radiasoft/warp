@@ -101,6 +101,7 @@ Implements adaptive mesh refinement in 3d
       self.parents = [parent.blocknumber]
       self.root = parent.root
       self.my_index = 0
+      self.nslaves = 1
 
       # --- Make sure that refinement is an array of length three. If a scalar
       # --- is input, it is broadcast to all three axis.
@@ -346,20 +347,18 @@ it knows whether to re-register itself.
 
   def addchild(self,lower=None,upper=None,fulllower=None,fullupper=None,
                     mins=None,maxs=None,
-                    refinement=[2,2,2],nguard=None,nslaves=1):
+                    refinement=[2,2,2],nguard=None):
     """
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
                                      constructor.
-  -nslaves=1: defaults to one so it is not parallelized
     """
     if nguard is None: nguard = self.nguard
     try:
       child = self.__class__(parent=self,lower=lower,upper=upper,
                              fulllower=fulllower,fullupper=fullupper,
                              mins=mins,maxs=maxs,
-                             refinement=refinement,nguard=nguard,
-                             nslaves=nslaves,**self.kw)
+                             refinement=refinement,nguard=nguard,**self.kw)
       self.children.append(child)
       return child
     except AssertionError:
