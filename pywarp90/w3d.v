@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.247 $, $Date: 2006/12/18 17:55:09 $
+#@(#) File W3D.V, version $Revision: 3.248 $, $Date: 2006/12/19 01:25:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.247 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.248 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -846,6 +846,9 @@ bpusht3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
 xpush3d(np,xp(np):real,yp(np):real,zp(np):real,
         uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,dt:real)
              subroutine # Particle position advance
+ebcancel3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+           exp(np):real,eyp(np):real,ezp(np):real,bxp(np):real,byp(np):real,bzp(np):real)
+             subroutine # E+vxB cancellation routine
 seteears()  subroutine # Sets eearsofz, the axial confining field
 sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
