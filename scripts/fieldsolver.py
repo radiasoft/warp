@@ -65,7 +65,7 @@ package. Only w3d and wxy have field solves defined.
          w3d.solvergeom == w3d.XZgeom or
          w3d.solvergeom == w3d.Rgeom  or
          w3d.solvergeom == w3d.Zgeom)):
-      getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+      getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
                  w3d.dx,w3d.dy,w3d.dz,
                  top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
