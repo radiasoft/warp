@@ -700,7 +700,7 @@ class SubcycledPoissonSolver(FieldSolver):
       else:
         self.field = 0.
 
-  def getpotentialpforparticles(self,indts,iselfb):
+  def getpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from potential to potentialp"
     if indts is not None:
       potentialpndts = self.returnpotentialp(lndts=1)
@@ -708,6 +708,15 @@ class SubcycledPoissonSolver(FieldSolver):
     else:
       potentialpselfb = self.returnpotentialp(lselfb=1)
       potentialpselfb[...,iselfb] = self.potential[...]
+
+  def getfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
+    "Copies from field to fieldp"
+    if indts is not None:
+      fieldpndts = self.returnfieldp(lndts=1)
+      fieldpndts[...,min(indts,w3d.nsndtsphi3d-1)] = self.field[...]
+    else:
+      fieldpselfb = self.returnfieldp(lselfb=1)
+      fieldpselfb[...,iselfb] = self.field[...]
 
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
@@ -720,8 +729,8 @@ class SubcycledPoissonSolver(FieldSolver):
       if top.pgroup.ldts[js]:
         indts = top.ndtstorho[top.pgroup.ndts[js]-1]
         self.setsourcepforparticles(0,indts,None)
-        zgrid = top.zgrid + (top.zgrid-top.zgridprv)*(top.pgroup.ndts[js]-1)
-        self.setsourcep(js,top.pgroup,zgrid)
+        #zgrid = top.zgrid + (top.zgrid-top.zgridprv)*(top.pgroup.ndts[js]-1)
+        self.setsourcep(js,top.pgroup,top.zgridndts[indts])
       if top.pgroup.iselfb[js] > -1:
         iselfb = top.pgroup.iselfb[js]
         self.setsourcepforparticles(None,None,iselfb)
@@ -837,7 +846,7 @@ class SubcycledPoissonSolver(FieldSolver):
     self.setarraysforfieldsolve(isourcepndtscopies,indts,iselfb)
     self.dosolve(iwhich,isourcepndtscopies,indts,iselfb)
     if iselfb is not None: self.selfbcorrection(iselfb)
-    self.getpotentialpforparticles(indts,iselfb)
+    self.getpotentialpforparticles(isourcepndtscopies,indts,iselfb)
 
   def solve(self,iwhich=0):
     self.allocatedataarrays()
@@ -960,7 +969,7 @@ of the arrays used by the particles"""
         # --- average of the old and the new
         # --- Otherwise, use the sourcep that is closest in time to the current
         # --- time.
-        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2.-1.:
+        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2-1:
           #sourcepndts[...,1,0] = (sourcepndts[...,1,0] +
           #     0.5*(sourcepndts[...,0,in1] + sourcepndts[...,1,in1]))
           tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] +
