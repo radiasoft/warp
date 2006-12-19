@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.70 2006/11/14 18:21:04 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.71 2006/12/19 22:45:04 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -19,7 +19,7 @@ top.nslaves = npes
 # --- has been changed. The compiled routine reorg_particles should probably
 # --- be called instead (but it is not callable from python yet).
 #def reorgparticles(top.pgroup):
-#  zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+#  zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
 # ---------------------------------------------------------------------------
 def gatherallzarray(a,zaxis=0):

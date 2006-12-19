@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.51 2006/11/30 19:14:49 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.52 2006/12/19 22:45:04 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -260,7 +260,7 @@ that has already been done.
   if reorg:
     reorgparticles(top.pgroup)
   else:
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
   # --- Update sizes of arrays for particles
   if(w3d.solvergeom == w3d.XYZgeom):
