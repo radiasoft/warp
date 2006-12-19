@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.182 2006/12/18 18:07:20 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.183 2006/12/19 22:51:24 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2162,7 +2162,7 @@ def ppxvx(iw=0,**kw):
   ii = selectparticles(iw=iw,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(getux(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+  return ppgeneric(getvx(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxvx.__doc__ = ppxvx.__doc__ + ppgeneric_doc("x","Vx")
@@ -4526,7 +4526,10 @@ def aplq():
     l = 1
     i = 1
     while l>0:
-      d=gist.wplq(i)
+      try:
+        d=gist.wplq(i)
+      except:
+        d=gist.get_style()
       l=len(d)
       if l>0:
         list=list+[d]
