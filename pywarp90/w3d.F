@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.328 $, $Date: 2006/12/20 18:35:50 $
+c@(#) File W3D.F, version $Revision: 3.329 $, $Date: 2006/12/20 19:39:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -524,7 +524,7 @@ c=============================================================================
       use InPart
       use Picglb3d
       use Ctl_to_pic
-      use Subcycling,Only: zgridndts,rhotondts
+      use Subcycling,Only: nsndts,zgridndts,rhotondts
 
 c  Takes a time step.
 c  This routine advances the mesh in the lab frame, sets the logicals
@@ -534,6 +534,7 @@ c  the routine STEP3D to do the step.
 
       real(kind=8):: zcorrection
       real(kind=8):: substarttime,wtime
+      integer(ISZ):: indts
       if (lw3dtimesubs) substarttime = wtime()
 
 c --- Announce that we're running
@@ -564,7 +565,13 @@ c       --- end of padvnc3d.
         zgridprv = zbeam
       endif
       zgrid = zbeam + dt*vbeamfrm + zcorrection
-      zgridndts = zbeam + dt*vbeamfrm*rhotondts + zcorrection
+      do indts=0,nsndts-1
+        if (mod(it-1,rhotondts(indts)) == 0) then
+c         --- Only update zgridndts on steps when the group of particles
+c         --- will be advanced.
+          zgridndts(indts) = zbeam + dt*vbeamfrm*rhotondts(indts) + zcorrection
+        endif
+      enddo
 c     --- zgrid is integer number of dz's
       if (lgridqnt) then
         zgrid = int(zgrid/dz + .5)*dz
