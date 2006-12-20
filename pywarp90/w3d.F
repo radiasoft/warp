@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.325 $, $Date: 2006/12/19 22:38:05 $
+c@(#) File W3D.F, version $Revision: 3.326 $, $Date: 2006/12/20 00:39:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -838,14 +838,15 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
      &     solvergeom == Zgeom)) then
-        if (maxval(pgroup%ndts) > 1) then
+        if (maxval(pgroup%ndts) > 1 .and. ndtsaveraging > 0) then
 c         --- Note that with subcycling, this option will be incorrect since
 c         --- the selfe for each ndts group is not (and will not) be
-c         --- calculated.
-          print*,"The efetch option 3 cannot be used with subcycling"
+c         --- calculated. Note that this does not apply to sampled averaging,
+c         --- in which cases all species use the same field.
+          print*,"The efetch option 3 cannot be used with subcycling option ",ndtsaveraging
           stop
         endif
-        call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
+        call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
      &                  boundxy,boundxy,boundxy,boundxy)
       endif
