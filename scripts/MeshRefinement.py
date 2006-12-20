@@ -273,9 +273,9 @@ Implements adaptive mesh refinement in 3d
 
     # --- Set up variable time steps
     if top.chdtspid > 0:
-      top.dxpid = nextpid()
-      top.dypid = nextpid()
-      top.dzpid = nextpid()
+      if top.dxpid == 0: top.dxpid = nextpid()
+      if top.dypid == 0: top.dypid = nextpid()
+      if top.dzpid == 0: top.dzpid = nextpid()
 
     # --- Get the current global block number and increment the counter.
     # --- Also, add self to the global list of blocks.
@@ -1042,6 +1042,14 @@ Also, this ends up with the input data remaining sorted.
 This is the old version of fetchfieldfrompositions that doesn't rely on having
 access to the particle group and does not sort the input data.
     """
+
+    if pgroup is not None and top.chdtspid > 0:
+      ipmin = w3d.ipminfsapi - 1
+      n = len(x)
+      dx = pgroup.pid[ipmin:ipmin+n,top.dxpid-1]
+      dy = pgroup.pid[ipmin:ipmin+n,top.dypid-1]
+      dz = pgroup.pid[ipmin:ipmin+n,top.dzpid-1]
+
     if len(self.children) > 0:
 
       ichild = zeros(len(x))
@@ -1053,12 +1061,16 @@ access to the particle group and does not sort the input data.
       # --- Create temporary arrays to hold the E field
       tex,tey,tez = zeros((3,len(ex)),'d')
       tbx,tby,tbz = zeros((3,len(bx)),'d')
+      if pgroup is not None and top.chdtspid > 0:
+        tdx,tdy,tdz = zeros((3,len(bx)),'d')
 
     else:
       isort = None
       nperchild = [len(x)]
       tex,tey,tez = ex,ey,ez
       tbx,tby,tbz = bx,by,bz
+      if pgroup is not None and top.chdtspid > 0:
+        tdx,tdy,tdz = dx,dy,dz
 
     # --- For each block, pass to it the particles in it's domain.
     i = 0
@@ -1068,10 +1080,9 @@ access to the particle group and does not sort the input data.
                                       tex[i:i+n],tey[i:i+n],tez[i:i+n],
                                       tbx[i:i+n],tby[i:i+n],tbz[i:i+n],pgroup)
       if pgroup is not None and top.chdtspid > 0:
-        ipmin = w3d.ipminfsapi - 1 + i
-        pgroup.pid[ipmin:ipmin+n,top.dxpid-1] = block.dx
-        pgroup.pid[ipmin:ipmin+n,top.dypid-1] = block.dy
-        pgroup.pid[ipmin:ipmin+n,top.dzpid-1] = block.dz
+        tdx[i:i+n] = block.dx
+        tdy[i:i+n] = block.dy
+        tdz[i:i+n] = block.dz
       i = i + n
 
     # --- Now, put the E fields back into the original arrays, unsorting
@@ -1079,6 +1090,9 @@ access to the particle group and does not sort the input data.
     if isort is not None:
       if len(tex) > 0: putsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
       if len(tbx) > 0: putsortedefield(len(tbx),isort,tbx,tby,tbz,bx,by,bz)
+      if pgroup is not None and top.chdtspid > 0:
+        # --- Note that these need to be unsorted just like the fields.
+        if len(tdx) > 0: putsortedefield(len(tdx),isort,tdx,tdy,tdz,dx,dy,dz)
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     """
