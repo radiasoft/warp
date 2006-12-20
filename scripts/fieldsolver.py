@@ -741,11 +741,9 @@ class SubcycledPoissonSolver(FieldSolver):
         if top.ldts[indts]:
           self.setsourcepforparticles(0,indts,None)
           self.aftersetsourcep(lzero)
-          self.makesourceperiodic()
       for iselfb in range(top.nsselfb):
         self.setsourcepforparticles(None,None,iselfb)
         self.aftersetsourcep(lzero)
-        self.makesourceperiodic()
 
       self.averagesourcepwithsubcycling()
 
@@ -844,6 +842,7 @@ class SubcycledPoissonSolver(FieldSolver):
   def dosolveonpotential(self,iwhich,isourcepndtscopies,indts,iselfb):
     "points source and potential appropriately and call the solving routine"
     self.setarraysforfieldsolve(isourcepndtscopies,indts,iselfb)
+    self.makesourceperiodic()
     self.dosolve(iwhich,isourcepndtscopies,indts,iselfb)
     if iselfb is not None: self.selfbcorrection(iselfb)
     self.getpotentialpforparticles(isourcepndtscopies,indts,iselfb)
