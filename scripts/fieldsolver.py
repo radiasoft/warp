@@ -729,7 +729,6 @@ class SubcycledPoissonSolver(FieldSolver):
       if top.pgroup.ldts[js]:
         indts = top.ndtstorho[top.pgroup.ndts[js]-1]
         self.setsourcepforparticles(0,indts,None)
-        #zgrid = top.zgrid + (top.zgrid-top.zgridprv)*(top.pgroup.ndts[js]-1)
         self.setsourcep(js,top.pgroup,top.zgridndts[indts])
       if top.pgroup.iselfb[js] > -1:
         iselfb = top.pgroup.iselfb[js]
