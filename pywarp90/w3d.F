@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.329 $, $Date: 2006/12/20 19:39:48 $
+c@(#) File W3D.F, version $Revision: 3.330 $, $Date: 2006/12/20 20:39:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -418,9 +418,9 @@ c  Load the particles, calculate the charge density
         allspecl    = .true.
       endif
       if (lsaveoldpos) then
-        xoldpid = nextpid()
-        yoldpid = nextpid()
-        zoldpid = nextpid()
+        if (xoldpid == 0) xoldpid = nextpid()
+        if (yoldpid == 0) yoldpid = nextpid()
+        if (zoldpid == 0) zoldpid = nextpid()
       endif
       call remark(" ---  done")
 
