@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.197 $, $Date: 2006/12/19 02:53:32 $
+c@(#) File TOP.F, version $Revision: 3.198 $, $Date: 2006/12/20 00:42:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2453,7 +2453,7 @@ c=============================================================================
       use GlobalVars
       use InGen
       use InPart
-      use SubCycling,Only: ndtstorho,zgridndts
+      use Subcycling,Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
       real(kind=8):: zmmax,zmmin,dz
 

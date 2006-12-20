@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.46 $, $Date: 2006/12/19 02:53:32 $
+c TOPSLAVE.M, version $Revision: 1.47 $, $Date: 2006/12/20 00:42:39 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -45,7 +45,7 @@ c===========================================================================
       use InPart
       use Parallel
       use Databuffers
-      use SubCycling, Only: ndtstorho,zgridndts
+      use Subcycling, Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
       real(kind=8):: zmmax,zmmin,dz
 
@@ -781,7 +781,7 @@ c=============================================================================
       use Subtimerstop
       use InPart
       use Parallel
-      use SubCycling, Only: ndtstorho,zgridndts
+      use Subcycling, Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
 c Check if all particles are within the mesh.  Returns number of particles
 c outside the mesh.
