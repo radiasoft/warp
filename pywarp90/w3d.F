@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.331 $, $Date: 2006/12/20 20:45:37 $
+c@(#) File W3D.F, version $Revision: 3.332 $, $Date: 2006/12/20 23:41:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2431,21 +2431,50 @@ c Check if particle is under or over the Courant condition limits (ccmin and ccm
 c and register the ones that fall outside the limits for change to group (or species) 
 c with appropriate time step.
 
-      integer(ISZ):: ipmin0,ip0,ips,myndts
+      integer(ISZ):: ip0,ips
       real(kind=8):: tdx,tdy,tdz
       real(kind=8):: dd,denorm,dbnorm,denorm_up,dbnorm_up,dex,dey,dez,dbx,dby,dbz
       integer(ISZ),allocatable::pisnearbycond(:)
       logical(ISZ):: ldfield_below_threshold,ldfield_below_threshold_up,l_pisnearbycond
       integer(ISZ):: ip,ndtsmax
       real(kind=8):: substarttime,wtime,ddx,ddy,ddz,dtgaminv
+      logical(ISZ):: ldownOK,lupOK
       if (lw3dtimesubs) substarttime = wtime()
+
+c     --- Set the flags saying whether particles of this species can move
+c     --- up or down to the next species. First, assume that they can.
+      ldownOK = .true.
+      lupOK = .true.
+c     --- Also, assume that the max ndts is the value of the this species
+      ndtsmax = pgroup%ndts(is-1)
+c     --- First, check if there are any more species above or below. If not,
+c     --- then set the flags appropriately.
+      if (is == 1) ldownOK = .false.
+      if (is == pgroup%ns) lupOK = .false.
+c     --- Now, check if the species below and above are the same species
+c     --- but with only ndts changed by a factor or 2.
+      if (ldownOK) then
+        if (pgroup%sq(is) /= pgroup%sq(is-1) .or.
+     &      pgroup%sm(is) /= pgroup%sm(is-1) .or.
+     &      pgroup%sw(is) /= pgroup%sw(is-1) .or.
+     &      pgroup%ndts(is-1) /= 2*pgroup%ndts(is-2)) then
+          ldownOK = .false.
+        endif
+      endif
+      if (lupOK) then
+        if (pgroup%sq(is) /= pgroup%sq(is+1) .or.
+     &      pgroup%sm(is) /= pgroup%sm(is+1) .or.
+     &      pgroup%sw(is) /= pgroup%sw(is+1) .or.
+     &      2*pgroup%ndts(is-1) /= pgroup%ndts(is)) then
+          lupOK = .false.
+        endif
+c       --- Since there is another slower species, reset ndtsmax.
+        if (lupOK) ndtsmax = pgroup%ndts(is)
+      endif
 
       tdx = dx
       tdy = dy
       tdz = dz
-      ndtsmax = 2**(pgroup%lvdtsmax-1)
-      myndts  = pgroup%ndts(is-1)
-      ipmin0=ipmin-1
       if (nxc>0) then
         allocate(pisnearbycond(np))
         call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
@@ -2455,7 +2484,7 @@ c with appropriate time step.
         l_pisnearbycond=.false.
       end if
       do ip=1,np
-        ip0=ipmin0+ip
+        ip0 = ipmin - 1 + ip
         if(tpid>0) then
           if ((time-pgroup%pid(ip0,tpid))<ndtsmax*dt) cycle
         endif
@@ -2477,7 +2506,7 @@ c with appropriate time step.
         dbnorm = dbfieldmax*sqrt(bxo(ip)*bxo(ip)+byo(ip)*byo(ip)+bzo(ip)*bzo(ip))
         ldfield_below_threshold = dex<=denorm .and. dey<=denorm .and. dez<=denorm .and. 
      &                            dbx<=dbnorm .and. dby<=dbnorm .and. dbz<=dbnorm
-        if (myndts<ndtsmax) then
+        if (lupOK) then
 c         --- the threshold on field change is lower for increasing time step in order to 
 c         --- minimize particles changing time steps back and forth due to constant crossing of threshold
           denorm_up = denorm*real(pgroup%ndts(is-1))/pgroup%ndts(is+1-1)
@@ -2495,10 +2524,10 @@ c         --- minimize particles changing time steps back and forth due to const
         dd = max(ddx,ddy,ddz)
 c       --- if dd<ccmin or dd>ccmax, register particle for move to group/species with 
 c       --- appropriate time step 
-        if(myndts>1 .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
+        if(ldownOK .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
 c         --- flag to move to group with smaller time step
           pgroup%pid(ip0,chdtspid) = -1.
-        elseif(myndts<ndtsmax .and. pgroup%lvdts(is+1) .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
+        elseif(lupOK .and. pgroup%lvdts(is+1) .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
      &         .not. l_pisnearbycond) then
 c         --- flag to move to group with larger time step
           pgroup%pid(ip0,chdtspid) = +1.
@@ -4511,6 +4540,14 @@ c     --- calculate values for sm, sq, and sw for each species.
           zlen = zimax_s(isid) - zimin_s(isid)
           pgroup%sw(js+1)=ibeam_s(isid)*zlen*sp_fract(isid)/
      &                   (vbeam_s(isid)*echarge*zion_s(isid)*nptot(js))
+        else if (js > 0 .and. pgroup%sw(js+1) == 0 .and.
+     &           pgroup%sq(js+1) == pgroup%sq(js) .and.
+     &           pgroup%sm(js+1) == pgroup%sm(js) .and.
+     &           pgroup%ndts(js) == 2*pgroup%ndts(js-1)) then
+c         --- Automatically set the sw for species with larger ndts since in
+c         --- general there will be no particles in those groups initially
+c         --- (so nptot will be zero and the above skipped).
+          pgroup%sw(js+1) = pgroup%sw(js)
         endif
 c       --- Don't zero out sw in case the user has set it.
 
