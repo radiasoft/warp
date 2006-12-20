@@ -682,7 +682,7 @@ relative to the parent.
     if len(self.children) > 0 and not lrootonly:
 
       ichild = zeros(len(x))
-      self.getichild(x,y,z,ichild)
+      self.getichild(x,y,z,ichild,zgrid)
 
       x,y,z,ux,uy,uz,gaminv,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wght)
 
@@ -810,7 +810,7 @@ been taken care of. This should only ever be called by the root block.
                             uxout,uyout,uzout,gaminvout,wghtout,nperchild)
       return xout,yout,zout,uxout,uyout,uzout,gaminvout,wghtout,nperchild
 
-  def getichild(self,x,y,z,ichild):
+  def getichild(self,x,y,z,ichild,zgrid):
     """
 Gathers the ichild for the setsourcep.
     """
@@ -824,10 +824,10 @@ Gathers the ichild for the setsourcep.
       getichild(self.blocknumber,len(x),x,y,z,ichild,
                 self.nx,self.ny,self.nz,self.childdomains,
                 self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                self.zmmin,self.zmmax,top.zgrid,
+                self.zmmin,self.zmmax,zgrid,
                 self.l2symtry,self.l4symtry)
       for child in self.children:
-        child.getichild(x,y,z,ichild)
+        child.getichild(x,y,z,ichild,zgrid)
 
   def zerosourcepinoverlap(self):
     """
@@ -980,6 +980,13 @@ gives a better initial guess for the field solver.
     else:
       for block in self.listofblocks:
         self.__class__.__bases__[1].setpotentialpforparticles(block,*args)
+
+  def setfieldpforparticles(self,*args):
+    if self is not self.root:
+      self.__class__.__bases__[1].setfieldpforparticles(self,*args)
+    else:
+      for block in self.listofblocks:
+        self.__class__.__bases__[1].setfieldpforparticles(block,*args)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
     # --- The fetchfield without sorting everything is faster, so use it.
