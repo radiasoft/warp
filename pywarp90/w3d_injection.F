@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.83 $, $Date: 2006/12/20 20:45:37 $
+c@(#) File w3d_injection.F, version $Revision: 1.84 $, $Date: 2006/12/20 23:38:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1909,7 +1909,7 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: ixmin,ixmax,iymin,iymax
       integer(ISZ):: inx,iny,iz
-      integer(ISZ):: is,isid,ip,ij,nn,nnmax,ij1,ij2
+      integer(ISZ):: js,is,isid,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
       real(kind=8):: circum
@@ -2080,17 +2080,28 @@ c Also set particle parameters: charge, mass and weight
         call alotpart(pgroup)
         sp_fract = sp_fract*total_frac
       endif
-      do is=1,pgroup%ns
-        isid = pgroup%sid(is-1) + 1
+      do js=0,pgroup%ns-1
+        isid = pgroup%sid(js) + 1
         if (maxval(pgroup%nps) /= 0) then
-          call chckpart(pgroup,is,int(injctspc*sp_fract(isid)/total_frac+1),
+          call chckpart(pgroup,js+1,int(injctspc*sp_fract(isid)/total_frac+1),
      &                  0,.true.)
         endif
-        if (pgroup%sq(is) == 0.) pgroup%sq(is) = zion_s(isid)*echarge
-        if (pgroup%sw(is) == 0. .and. npinje_s(isid) > 0)
-     &    pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is-1)/
-     &                    pgroup%sq(is))/npinje_s(isid)
-        if (pgroup%sm(is) == 0.) pgroup%sm(is) = aion_s(isid)*amu
+        if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(isid)*echarge
+        if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(isid)*amu
+        if (pgroup%sw(js+1) == 0.) then
+          if (npinje_s(isid) > 0) then
+            pgroup%sw(js+1) = (ibeam_s(isid)*dt*pgroup%ndts(js)/
+     &                      pgroup%sq(js+1))/npinje_s(isid)
+          else if (js > 0 .and.
+     &             pgroup%sq(js+1) == pgroup%sq(js) .and.
+     &             pgroup%sm(js+1) == pgroup%sm(js) .and.
+     &             pgroup%ndts(js) == 2*pgroup%ndts(js-1)) then
+c           --- Automatically set the sw for species with larger ndts since in
+c           --- general there will be no particles in those groups initially
+c           --- (so npinje_s will be zero and the above skipped).
+            pgroup%sw(js+1) = pgroup%sw(js)
+          endif
+        endif
       enddo
 
 c Set up finject array if not set by the user (if sum of finject = 0).
