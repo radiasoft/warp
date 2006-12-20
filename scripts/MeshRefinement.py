@@ -923,7 +923,7 @@ higher numbered blocks. This should only ever be called by the root block.
     # --- boundary conditions and the interior values as the initial
     # --- value.
     self.setpotentialfromparents()
-    self.__class__.__bases__[1].dosolve(self,iwhich)
+    self.__class__.__bases__[1].dosolve(self,iwhich,*args)
 
     # --- solve for children, using the routine which does the correct
     # --- referencing for subcycling and self-B correction
@@ -975,12 +975,11 @@ gives a better initial guess for the field solver.
   #--------------------------------------------------------------------------
 
   def setpotentialpforparticles(self,*args):
-    for block in self.listofblocks:
-      self.__class__.__bases__[1].setpotentialpforparticles(block,*args)
-
-  def setfieldpforparticles(self,*args):
-    for block in self.listofblocks:
-      self.__class__.__bases__[1].setfieldpforparticles(block,*args)
+    if self is not self.root:
+      self.__class__.__bases__[1].setpotentialpforparticles(self,*args)
+    else:
+      for block in self.listofblocks:
+        self.__class__.__bases__[1].setpotentialpforparticles(block,*args)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
     # --- The fetchfield without sorting everything is faster, so use it.
