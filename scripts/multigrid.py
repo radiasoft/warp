@@ -168,6 +168,11 @@ class MultiGrid(SubcycledPoissonSolver):
       self.setpotentialpforparticles(*args)
       getphipforparticles3d(1,self.nx,self.ny,self.nz,self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,1)
+    if self.efetch == 3:
+      self.setpotentialpforparticles(*args)
+      self.setfieldpforparticles(*args)
+      self.getselfe(recalculate=1)
+
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -203,7 +208,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.my_index == 0 or self.my_index == self.nslaves-1:
       status = request.wait()
 
-  def getfield(self,recalculate=0):
+  def getselfe(self,recalculate=0):
     if type(self.fieldp) != ArrayType:
       # --- This should only ever be done by an external routine, such as
       # --- a plotting function.
@@ -294,10 +299,6 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.plasmapotential,self.electrondensitymaxscale)
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
-
-    if self.efetch == 3:
-      self.setfieldpforparticles(args)
-      self.getfield(self,recalculate=1)
 
   ##########################################################################
   # Define the basic plot commands
