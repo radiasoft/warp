@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.327 $, $Date: 2006/12/20 00:42:39 $
+c@(#) File W3D.F, version $Revision: 3.328 $, $Date: 2006/12/20 18:35:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -370,7 +370,7 @@ c  Also allocate the dynamic internal lattice arrays.
 
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
-      if (efetch == 3 .and.
+      if (efetch == 3 .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
@@ -832,7 +832,7 @@ c  Field-solve for potential.
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (efetch == 3 .and.
+      if (efetch == 3 .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
