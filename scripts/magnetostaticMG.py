@@ -271,8 +271,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- Setup data for bends.
     rstar = fzeros(3+self.nz,'d')
     if top.bends:
-      setrstar(rstar,self.nz,self.dz,self.zmmin,
-               top.zgrid)
+      setrstar(rstar,self.nz,self.dz,self.zmmin,top.zgrid)
       self.linbend = min(rstar) < largepos
 
     self.source[...] = self.source*mu0*eps0
