@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.74 $, $Date: 2006/10/27 20:23:28 $
+c@(#) File WXY.M, version $Revision: 3.75 $, $Date: 2006/12/20 20:45:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -254,7 +254,7 @@ c  use a user-set npmax directly)
 
 c  Create a spot in the pid array for the particle time step size
 
-      dtpid = nextpid()
+      if (dtpid == 0) dtpid = nextpid()
 
 c  Load the particles, calculate the charge density
 
@@ -274,12 +274,12 @@ c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
 
       if (eomdamp /= 0.) then
-        exeomoldpid = nextpid()
-        eyeomoldpid = nextpid()
-        ezeomoldpid = nextpid()
-        exeomlagpid = nextpid()
-        eyeomlagpid = nextpid()
-        ezeomlagpid = nextpid()
+        if (exeomoldpid == 0) exeomoldpid = nextpid()
+        if (eyeomoldpid == 0) eyeomoldpid = nextpid()
+        if (ezeomoldpid == 0) ezeomoldpid = nextpid()
+        if (exeomlagpid == 0) exeomlagpid = nextpid()
+        if (eyeomlagpid == 0) eyeomlagpid = nextpid()
+        if (ezeomlagpid == 0) ezeomlagpid = nextpid()
       endif
 
 c  Create the dynamic arrays for "window" moments

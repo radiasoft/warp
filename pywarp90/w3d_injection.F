@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.82 $, $Date: 2006/12/12 00:00:59 $
+c@(#) File w3d_injection.F, version $Revision: 1.83 $, $Date: 2006/12/20 20:45:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1922,7 +1922,7 @@ c=============================================================================
 
 c Set wpid if needed and not set by user
       if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
-        wpid = nextpid()
+        if (wpid == 0) wpid = nextpid()
       endif
 
 c If delay on setting temperature of injected particles, then
@@ -1932,16 +1932,16 @@ c switched to positive when temperature has been added.
 
 c Set tpid if needed and not set by user
       if(l_inj_rec_inittime .and. tpid==0) then
-        tpid = nextpid()
+        if (tpid == 0) tpid = nextpid()
       end if
 
 c Set rpid if needed and not set by user
       if(l_inj_rec_initradius .and. rpid==0) then
-        rpid = nextpid()
+        if (rpid == 0) rpid = nextpid()
       end if
 
 c Set pid index for injection information for particles
-      injpid = nextpid()
+      if (injpid == 0) injpid = nextpid()
 
 c Make sure that space has been allocated for the arrays. This is needed
 c in case the user changes ninject or ns but doesn't explicitly allocate
