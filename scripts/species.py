@@ -130,6 +130,7 @@ for k in periodic_table.keys():
   P=periodic_table[k]['Period']
   exec(k+"=Atom(S,A,Z,G,P)")
 #  exec(k+"=periodic_table['"+k+"']")
+del k
 
 Electron=Particle(charge=-echarge,mass=emass,Symbol='e-')
 Positron=Particle(charge= echarge,mass=emass,Symbol='e+')
@@ -144,7 +145,22 @@ Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2')
 Water           = Molecule(mass=18.*amu, Symbol='H2O')
 
 class Species:
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',l_autodt=1):
+  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1):
+    """
+Creates a new species of particles. All arguments are optional.
+  - js=None: global species number (usually this should not be set)
+  - type=Electron: one of either an elementary particle, an element, or one of
+                   the predefined molecules
+  - charge=echarge: charge in Coulombs, will be obtained automatically from
+                    type or charge_state
+  - mass=emass: mass in kg, will be obtained automatically from type
+  - charge_state=0: charge_state of the ion or molecule
+  - weight=None: simulation weight, will be obtained automatically from
+                 other input
+  - name='': species name
+  - nautodt=1: number of species to setup for automatic subcycling.
+               The slowest will have dt = 2**(nautodt-1)*top.dt.
+    """
     self.jslist=[]
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
@@ -153,11 +169,13 @@ class Species:
     if type.__class__ is not Particle:
       self.charge_state=charge_state
     self.name=name
-    self.l_autodt=l_autodt
-    if l_autodt and top.pgroup.lvdtsmax>1:
-      for i in range(top.pgroup.lvdtsmax-1):
-        self.add_group()
-        top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+    self.nautodt = nautodt
+    if self.nautodt > 1 and top.chdtspid == 0: top.chdtspid = nextpid()
+    for i in range(nautodt-1):
+      self.add_group()
+      top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+      # --- zero out sp_fract for the extra species added with larger ndts
+      top.sp_fract[self.jslist[-1]] = 0.
         
   def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
