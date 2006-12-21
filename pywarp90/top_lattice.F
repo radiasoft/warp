@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.8 $, $Date: 2006/09/11 19:41:25 $
+c@(#) File top_lattice.F, version $Revision: 3.9 $, $Date: 2006/12/21 00:10:21 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2317,10 +2317,10 @@ c       --- z start.
       return
       end
 c=============================================================================
-      subroutine applyuniformfields(np,ez,bz)
+      subroutine applyuniformfields(np,ex,ey,ez,bx,by,bz)
       use InGen
       integer(ISZ):: np
-      real(kind=8):: ez(np),bz(np)
+      real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
 
 c Apply uniform fields.
 
