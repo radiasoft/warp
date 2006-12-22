@@ -212,15 +212,26 @@ Implements adaptive mesh refinement in 3d
       self.pbounds = self.root.pbounds.copy()
 
       # --- Check if the mesh doesn't reach the edge of the root grid.
-      # --- If not, switch to Dirichlet boundary.
+      # --- If not, switch to Dirichlet boundary. Also check to make sure
+      # --- that one side isn't periodic when the other is.
       self.bounds[::2] = where(self.fulllower > 0,0,self.bounds[::2])
       self.bounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
                                 0,self.bounds[1::2])
+      self.bounds[::2] = where((self.bounds[::2] == 2)&(self.bounds[1::2] != 2),
+                               0,self.bounds[::2])
+      self.bounds[1::2] = where((self.bounds[::2] == 2)&(self.bounds[1::2] != 2),
+                                0,self.bounds[1::2])
+
       self.l2symtry = self.root.l2symtry
       self.l4symtry = self.root.l4symtry
+
       self.pbounds[::2] = where(self.fulllower > 0,0,self.pbounds[::2])
       self.pbounds[1::2] = where(self.fullupper < self.root.dimsglobal*self.totalrefinement,
                                 0,self.pbounds[1::2])
+      self.pbounds[::2] = where((self.pbounds[::2] == 2)&(self.pbounds[1::2] != 2),
+                                0,self.pbounds[::2])
+      self.pbounds[1::2] = where((self.pbounds[::2] == 2)&(self.pbounds[1::2] != 2),
+                                 0,self.pbounds[1::2])
 
       # --- Create some temporaries for optimization
       self.fullloweroverrefinement = self.fulllower/self.refinement
