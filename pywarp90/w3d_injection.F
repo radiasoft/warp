@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.84 $, $Date: 2006/12/20 23:38:45 $
+c@(#) File w3d_injection.F, version $Revision: 1.85 $, $Date: 2006/12/22 00:10:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -174,7 +174,7 @@ c         --- Loop over species.
             isid = pgroup%sid(is-1) + 1
             inj_is = min(isid,inj_ns)
             vzinj = vzinject(ij,isid)
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             if (l_inj_user_particles) then
@@ -516,7 +516,7 @@ c level of rest of particles.
 c         loop over species and injection sources
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
             ipmin = pgroup%ins(is)
@@ -699,7 +699,7 @@ c           --- calculated by a call to getinj_phi from padvnc3d.
               vzinj = vzinject(ij,isid)
 
 c             --- Don't bother doing anything if finject is 0.
-              if (.not. pgroup%ldts(is) .or. finject(ij,isid) == 0.) cycle
+              if (.not. pgroup%ldts(is-1) .or. finject(ij,isid) == 0.) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 c             --- The factor to convert current density to particle number.
@@ -773,7 +773,7 @@ c               --- Loop over the species
 
 c                 --- Skip this species if the fraction is zero.
 c                 if (finject(ij,isid) == 0.) cycle
-                  if (.not. pgroup%ldts(is) .or. finject(ij,isid) == 0.) cycle
+                  if (.not. pgroup%ldts(is-1) .or. finject(ij,isid) == 0.) cycle
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
@@ -1120,7 +1120,7 @@ c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             ii = pgroup%ins(is) - npinje_s(isid)
             if (npinje_s(isid) > 0) then
               call stckxy3d(npinje_s(isid),pgroup%xp(ii),xmmax,xmmin,dx,
@@ -1134,7 +1134,7 @@ c         --- removal of particles outside the grid.
 
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
 c           --- Sum npinje_s to get the total number of particles injected.
             npinject = npinject + npinje_s(isid)
 
@@ -1149,7 +1149,7 @@ c         --- size, uniformly distributed between 0 and dt.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
 c           --- Skip this if no particles of this species were injected.
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
             if(npinje_s(isid)==0) cycle
 
@@ -1240,7 +1240,7 @@ c level of rest of particles.
 c         --- loop over species
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
@@ -1416,7 +1416,7 @@ c         --- zero ntinject for inject = 2 or 3
           if (inject == 2 .or. inject == 3) then
             do is=1,pgroup%ns
               isid = pgroup%sid(is-1) + 1
-              if (.not. pgroup%ldts(is)) cycle
+              if (.not. pgroup%ldts(is-1)) cycle
               ntinject(isid) = 0
             enddo
           endif
@@ -1427,7 +1427,7 @@ c         --- Loop over injection sources
 c           --- loop over species
             do is=1,pgroup%ns
               isid = pgroup%sid(is-1) + 1
-              if (.not. pgroup%ldts(is)) cycle
+              if (.not. pgroup%ldts(is-1)) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
               nti = 0
               qoverm = pgroup%sq(is)/pgroup%sm(is)
@@ -1603,7 +1603,7 @@ c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             ii = pgroup%ins(is) - ntinject(isid)
             if (ntinject(isid) > 0) then
               call stckxy3d(ntinject(isid),pgroup%xp(ii),xmmax,xmmin,dx,
@@ -1617,7 +1617,7 @@ c         --- removal of particles outside the grid.
 
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
 c           --- Sum ntinject to get the total number of particles injected.
             npinject = npinject + ntinject(isid)
 
@@ -1637,7 +1637,7 @@ c         --- size, uniformly distributed between 0 and dt.
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
 c           --- Skip this if no particles of this species were injected.
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
             if(ntinject(isid)==0) cycle
 
@@ -1723,7 +1723,7 @@ c level of rest of particles.
 c         --- loop over species
           do is=1,pgroup%ns
             isid = pgroup%sid(is-1) + 1
-            if (.not. pgroup%ldts(is)) cycle
+            if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
