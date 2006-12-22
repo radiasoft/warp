@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.188 $, $Date: 2006/12/19 02:53:31 $
+#@(#) File TOP.V, version $Revision: 3.189 $, $Date: 2006/12/22 00:13:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.188 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.189 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2014,9 +2014,8 @@ ins(ns)  _integer /1/  # Index of first particle in species
 nps(ns)  _integer /0/  # Number of particles in species
 sid(0:ns-1) _integer /-1/ # Global species index for each species
 ndts(0:ns-1) _integer /1/  # Stride for time step advance for each species
-ldts(ns) _logical /1/
-lvdts(ns+1)  _logical /1/
-lvdtsmax  integer /1/  # maximum number of ndts levels
+ldts(0:ns-1) _logical /1/
+lvdts(0:ns-1)  _logical /1/
 iselfb(0:ns-1) _integer /-1/ # Group number for particles that are affected by
                          # their own magnetic field, using the 1/gamma**2
                          # approximation. The correction is not applied to
