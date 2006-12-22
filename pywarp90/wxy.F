@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.76 $, $Date: 2006/12/22 00:09:43 $
+c@(#) File WXY.M, version $Revision: 3.77 $, $Date: 2006/12/22 19:05:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -46,6 +46,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use Io
       use Lattice
@@ -181,18 +182,9 @@ c  since all particles will be at the same element.
       zlmin = 0.
       zlmax = 0.
 
-c  Create the dynamic arrays for fields, contour plot workspace
-c  Also set vbeamfrm, adjust x and ymmin for symmetries and set
+c  Set vbeamfrm, adjust x and ymmin for symmetries and set
 c  so that by default izfsmax = nz (for full field solve).
 
-      if (nzfull == 0) nzfull = nz
-      nmxy  = max(nx,ny)
-      nmxyz = max(nx,ny,nzfull)
-      allocate(rho(0:nx,0:ny,0:nz))
-      allocate(phi(0:nx,0:ny,-1:nz+1))
-      call gallot("Fields3d", 0)
-
-      if (efetch == 3) call gallot("Efields3d",0)
       vbeamfrm = vbeam
       if (l2symtry) then
         ymmin = 0.
@@ -201,6 +193,40 @@ c  so that by default izfsmax = nz (for full field solve).
         ymmin = 0.
       endif
       if (izfsmax == 0) izfsmax = nz
+
+c  Setup arrays for potential and charge density for the particles.
+
+      nxp = nx
+      nyp = ny
+#ifndef MPIPARALLEL
+      nzp = nz
+      zmminp = zmmin
+      zmmaxp = zmmax
+#endif
+
+c  Create the dynamic arrays for fields
+
+      if (nzfull == 0) nzfull = nz
+      nmxy  = max(nx,ny)
+      nmxyz = max(nx,ny,nzfull)
+      call gallot("Fields3d", 0)
+      call setupSubcycling(pgroup)
+      call setupSelfB(pgroup)
+      call setupFields3dParticles()
+
+c  This is a kludge for now to get the arrays setup.
+
+      call assignrhoandphi(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+      call assignrhopandphip(rhopndts(:,:,:,0,0),phipndts(:,:,:,0))
+
+c  Setup arrays for option which uses the selfe.
+
+      if (efetch == 3 .and. fstype < 12) then
+        nx_selfe = nxp
+        ny_selfe = nyp
+        nz_selfe = nzp
+        call gallot("Efields3d",0)
+      endif
 
 c  Set the value of prwall, radius at which particles are lost
       if (prwall == 0.) prwall = xmmax - dx
@@ -811,7 +837,7 @@ c     --- fold in coordinate transformation associated with bends
       endif
 
 c     --- uniform fields
-      call applyuniformfields(np,ez,bz)
+      call applyuniformfields(np,ex,ey,ez,bx,by,bz)
 
 c     --- electrostatic multipole components
       call applyemlt(np,xp,yp,1,zbeam,dtl,dtr,dt,.true.,ex,ey,ez)
