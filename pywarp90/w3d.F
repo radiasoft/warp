@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.332 $, $Date: 2006/12/20 23:41:07 $
+c@(#) File W3D.F, version $Revision: 3.333 $, $Date: 2006/12/22 00:19:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1175,14 +1175,12 @@ c       --- Add on linear pressure term
       return
       end
 c=============================================================================
-      subroutine setuppadvncsubcyclingsampledaveraging(pgroup,it,is,
-     &                                                 center,lcycle)
+      subroutine setuppadvncsubcyclingsampledaveraging(pgroup,it,js,center)
       use ParticleGroupmodule
       use Subcycling
       type(ParticleGroup):: pgroup
-      integer(ISZ):: it,is
+      integer(ISZ):: it,js
       character(*):: center
-      logical(ISZ):: lcycle
 
 c  Advance species according to subcycling rule governed by ndts.
 c  The ndts groups are advanced as soon as all of the needed
@@ -1193,35 +1191,32 @@ c  The synchv is done on the last.
 c
 c  Note that (it-1) is used since it is advanced before this point.
 
-      if (mod(it-1,pgroup%ndts(is-1)) == 0 .and.
+      if (mod(it-1,pgroup%ndts(js)) == 0 .and.
      &    (center == "fullv" .or. center == "halfv")) then
-        pgroup%ldts(is) = .true.
-        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
-        if (itndts(ndtstorho(pgroup%ndts(is-1))) == it-1) then
-          itndts(ndtstorho(pgroup%ndts(is-1))) =
-     &          itndts(ndtstorho(pgroup%ndts(is-1))) + pgroup%ndts(is-1)
+        pgroup%ldts(js) = .true.
+        ldts(ndtstorho(pgroup%ndts(js))) = pgroup%ldts(js)
+        if (itndts(ndtstorho(pgroup%ndts(js))) == it-1) then
+          itndts(ndtstorho(pgroup%ndts(js))) =
+     &          itndts(ndtstorho(pgroup%ndts(js))) + pgroup%ndts(js)
         endif
-      elseif ((mod(it-1,pgroup%ndts(is-1)) == pgroup%ndts(is-1) - 1 .and.
+      elseif ((mod(it-1,pgroup%ndts(js)) == pgroup%ndts(js) - 1 .and.
      &        center == "synchv") .or. center == "gen") then
-        lcycle = .false.
+        pgroup%lvdts(js) = .true.
       else
-        pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
-        lcycle = .true.
-        if (center == "gen") lcycle = .false.
+        pgroup%ldts(js) = .false.
+        ldts(ndtstorho(pgroup%ndts(js))) = pgroup%ldts(js)
+        pgroup%lvdts(js) = .false.
       endif
       
       return
       end
 c=============================================================================
-      subroutine setuppadvncsubcyclingfullvaveraging(pgroup,it,is,
-     &                                               center,lcycle)
+      subroutine setuppadvncsubcyclingfullvaveraging(pgroup,it,js,center)
       use ParticleGroupmodule
       use Subcycling
       type(ParticleGroup):: pgroup
-      integer(ISZ):: it,is
+      integer(ISZ):: it,js
       character(*):: center
-      logical(ISZ):: lcycle
 
 c  Advance species according to subcycling rule governed by ndts.
 c  If ndts is even, then the particles can be advanced when the faster
@@ -1241,57 +1236,55 @@ c  field solve which will include that time centered rho average.
 
       integer(ISZ):: ndtstmp
 
-      ndtstmp = pgroup%ndts(is-1) - mod(pgroup%ndts(is-1),2)
-      if (mod(it-1,pgroup%ndts(is-1)) == ndtstmp/2 .and.
+      ndtstmp = pgroup%ndts(js) - mod(pgroup%ndts(js),2)
+      if (mod(it-1,pgroup%ndts(js)) == ndtstmp/2 .and.
      &        (center == "fullv" .or. center == "halfv")) then
-        pgroup%ldts(is) = .true.
-        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
-        if (itndts(ndtstorho(pgroup%ndts(is-1))) < it) then
-          itndts(ndtstorho(pgroup%ndts(is-1))) =
-     &               itndts(ndtstorho(pgroup%ndts(is-1))) + pgroup%ndts(is-1)
+        pgroup%ldts(js) = .true.
+        ldts(ndtstorho(pgroup%ndts(js))) = pgroup%ldts(js)
+        if (itndts(ndtstorho(pgroup%ndts(js))) < it) then
+          itndts(ndtstorho(pgroup%ndts(js))) =
+     &               itndts(ndtstorho(pgroup%ndts(js))) + pgroup%ndts(js)
         endif
-      elseif ((pgroup%ndts(is-1) == 1 .or.
-     &        (mod(it-1,pgroup%ndts(is-1)) == ndtstmp/2-1) .and.
+      elseif ((pgroup%ndts(js) == 1 .or.
+     &        (mod(it-1,pgroup%ndts(js)) == ndtstmp/2-1) .and.
      &         center == "synchv") .or. center == "gen") then
-        lcycle = .false.
+        pgroup%lvdts(js) = .true.
       else
-        pgroup%ldts(is) = .false.
-        ldts(ndtstorho(pgroup%ndts(is-1))) = pgroup%ldts(is)
-        lcycle = .true.
-        if (center == "gen") lcycle = .false.
+        pgroup%ldts(js) = .false.
+        ldts(ndtstorho(pgroup%ndts(js))) = pgroup%ldts(js)
       endif
 
       return
       end
 c=============================================================================
-      subroutine setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,
-     &                                               center,lcycle)
+      subroutine setuppadvncsubcyclinghalfvaveraging(pgroup,it,js,center)
       use ParticleGroupmodule
       use Subcycling
       type(ParticleGroup):: pgroup
-      integer(ISZ):: it,is
+      integer(ISZ):: it,js
       character(*):: center
-      logical(ISZ):: lcycle
 
       return
       end
 c=============================================================================
-      subroutine setuppadvncsubcyclingaveraging(pgroup,it,is,
-     &                                          center,lcycle)
+      subroutine setuppadvncsubcyclingaveraging(pgroup,it,center)
       use ParticleGroupmodule
       use Subcycling
       type(ParticleGroup):: pgroup
-      integer(ISZ):: it,is
+      integer(ISZ):: it
       character(*):: center
-      logical(ISZ):: lcycle
 
-      if (ndtsaveraging == 0) then
-        call setuppadvncsubcyclingsampledaveraging(pgroup,it,is,center,lcycle)
-      elseif (ndtsaveraging == 1) then
-        call setuppadvncsubcyclingfullvaveraging(pgroup,it,is,center,lcycle)
-      elseif (ndtsaveraging == 2) then
-        call setuppadvncsubcyclinghalfvaveraging(pgroup,it,is,center,lcycle)
-      endif
+      integer(ISZ):: js
+
+      do js=0,pgroup%ns-1
+        if (ndtsaveraging == 0) then
+          call setuppadvncsubcyclingsampledaveraging(pgroup,it,js,center)
+        elseif (ndtsaveraging == 1) then
+          call setuppadvncsubcyclingfullvaveraging(pgroup,it,js,center)
+        elseif (ndtsaveraging == 2) then
+          call setuppadvncsubcyclinghalfvaveraging(pgroup,it,js,center)
+        endif
+      enddo
 
       return
       end
@@ -1403,7 +1396,6 @@ c     --- Create local pointers to the arrays in pgroup.
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
-      logical(ISZ):: lcycle
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -1467,29 +1459,15 @@ c     call zeroarry (bendradi,nparpgrp)
       bendres = 0.
       bendradi = 0.
 
-c  Set lvdts array
-c  This needs to be calculated ahead of time since the value of lvdts is needed
-c  for speciess other that the one being looped over below.
-      if (ndtsaveraging == 0) then
-        do is=1,pgroup%ns
-          if (pgroup%ndts(is-1) == 1) then
-            pgroup%lvdts(is) = .true.
-          elseif (mod(it-1,pgroup%ndts(is-1)) == pgroup%ndts(is-1) - 1 .and.
-     &            center == "synchv") then
-            pgroup%lvdts(is) = .true.
-          else
-            pgroup%lvdts(is) = .false.
-          endif
-        enddo
-        pgroup%lvdts(pgroup%ns+1)=.false.
-      endif
-      
+c  Setup the setsubcycling flags for this advance. This is done ahead of
+c  time since the value of lvdts is needed for species other that the one
+c  being looped over below.
+      call setuppadvncsubcyclingaveraging(pgroup,it,center)
+
 c  Loop over species
       do is=1,pgroup%ns
+        if (.not. pgroup%ldts(is-1) .and. .not. pgroup%lvdts(is-1)) cycle
         isid = pgroup%sid(is-1) + 1
-        lcycle = .false.
-        call setuppadvncsubcyclingaveraging(pgroup,it,is,center,lcycle)
-        if (lcycle) cycle
 
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
@@ -1910,29 +1888,18 @@ c       --- Collect charge density and current
       elseif (center == 'synchv') then
 
 c       --- Rearrange particles group/species according to Courant condition.
-c       --- Note that the particle's old ndts values are saved during
-c       --- the rearrangement for the following synchv.
         if(chdtspid > 0) then
           call chgparticlesdts(pgroup)
 
 c         --- Recollect charge density and current
 c         --- Temporarily increment 'it' as if this was the start of the next
-c         --- fullv or halfv step. Also set zgridprv to zgrid since the
-c         --- particle positions are at zgrid and loadrho sets
-c         --- zgrdndts = zgrid + (zgrid-zgridprv)*(pgroup%ndts(is-1)-1).
+c         --- fullv or halfv step.
           it = it + 1
-          zgridprv_save = zgridprv
-          zgridprv = zgrid
-          do is=1,pgroup%ns
-            call setuppadvncsubcyclingaveraging(pgroup,it,is,'halfv',lcycle)
-          enddo
+          call setuppadvncsubcyclingaveraging(pgroup,it,'halfv')
           call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 c         call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-          zgridprv = zgridprv_save
           it = it - 1
-          do is=1,pgroup%ns
-            call setuppadvncsubcyclingaveraging(pgroup,it,is,center,lcycle)
-          enddo
+          call setuppadvncsubcyclingaveraging(pgroup,it,center)
 
         endif
 
@@ -1961,7 +1928,7 @@ c       --- Get the extrpolated particles for the species.
 c       --- This is only done after the positions have been advanced,
 c       --- in which case ldts will be true.
 c       --- Include time step size scaling for steady-state and slice modes.
-        if (pgroup%ldts(is)) then
+        if (pgroup%ldts(is-1)) then
           fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
           halfdt_s = 0.5*fulldt_s
 
@@ -2462,6 +2429,9 @@ c     --- but with only ndts changed by a factor or 2.
         endif
       endif
       if (lupOK) then
+c       --- Only allow particles to move up when the velocities and positions
+c       --- of the slower particles have been synchronized.
+        lupOK = pgroup%lvdts(is-1+1)
         if (pgroup%sq(is) /= pgroup%sq(is+1) .or.
      &      pgroup%sm(is) /= pgroup%sm(is+1) .or.
      &      pgroup%sw(is) /= pgroup%sw(is+1) .or.
@@ -2471,6 +2441,9 @@ c     --- but with only ndts changed by a factor or 2.
 c       --- Since there is another slower species, reset ndtsmax.
         if (lupOK) ndtsmax = pgroup%ndts(is)
       endif
+
+c     --- Do nothing if both flags are false
+      if (.not. ldownOK .and. .not. lupOK) return
 
       tdx = dx
       tdy = dy
@@ -2527,7 +2500,7 @@ c       --- appropriate time step
         if(ldownOK .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
 c         --- flag to move to group with smaller time step
           pgroup%pid(ip0,chdtspid) = -1.
-        elseif(lupOK .and. pgroup%lvdts(is+1) .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
+        elseif(lupOK .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
      &         .not. l_pisnearbycond) then
 c         --- flag to move to group with larger time step
           pgroup%pid(ip0,chdtspid) = +1.
@@ -6436,12 +6409,13 @@ c=============================================================================
 
       if (ndtsmax == 1) return
 
-c     --- During the generate, do the copy of the new rhop to the old rhop
-c     --- for group 0, which is normally done during the zerorhop call.
-      if (it == 0) rhopndts(:,:,:,1,0) = rhopndts(:,:,:,0,0)
+c     --- First, copy the rho of the fastest species into rhopndts(:,:,:,1,0)
+c     --- which is used for the field solve. Note that the old rho of this
+c     --- species is never used.
+      rhopndts(:,:,:,1,0) = rhopndts(:,:,:,0,0)
 
-c     --- Save the rho where the fastest particle's rho is. For now,
-c     --- assume that this is in1=0
+c     --- Save the rho where the fastest particle's rho is.
+c     --- This is always in1=0.
       do in1=1,nsndts-1
         if (it == 0) then
 c         --- At it==0, before the first step, always add the new rho.
@@ -6726,7 +6700,7 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
   
            if(solvergeom==XYZgeom) then
              ipmin = ins_u
-             if (pgroup%ldts(is)) then
+             if (pgroup%ldts(is-1)) then
 c              --- Only load the rho if the positions have been advanced.
                indts = ndtstorho(pgroup%ndts(is-1))
 c              zgridndts = zgrid + (zgrid-zgridprv)*(pgroup%ndts(is-1)-1)
@@ -7286,7 +7260,7 @@ c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
 
       do is=1,pgroup%ns
-        if (pgroup%ldts(is) .and. pgroup%nps(is) > 0) then
+        if (pgroup%ldts(is-1) .and. pgroup%nps(is) > 0) then
            ipmin = pgroup%ins(is)
            call stckxy3d(pgroup%nps(is),
      &                   pgroup%xp(ipmin),xmmax,xmmin,dx,
@@ -7302,7 +7276,7 @@ c     --- absorb particles passing through semitransparent disc
 
       do is=1,ns
 c       --- do it only if species was advanced on this time step
-        if (pgroup%ldts(is)) then
+        if (pgroup%ldts(is-1)) then
           call processlostpart(pgroup,is,clearlostpart,
      &                         time+dt*pgroup%ndts(is-1),zbeam)
         endif
