@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.334 $, $Date: 2006/12/22 19:11:54 $
+c@(#) File W3D.F, version $Revision: 3.335 $, $Date: 2006/12/22 19:31:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1270,7 +1270,7 @@ c=============================================================================
 
       integer(ISZ):: indts
 
-      do indts=0,nsndts
+      do indts=0,nsndts-1
         if (ndtsaveraging == 0) then
           call setuppadvncsubcyclingsampledaveraging(it,indts,center)
         elseif (ndtsaveraging == 1) then
