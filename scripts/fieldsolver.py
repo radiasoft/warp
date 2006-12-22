@@ -354,10 +354,9 @@ the diagnostic is of interest and is meaningfull.
     # --- Set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
       self.my_index = 0
-      if self.zmminglobal == self.zmmaxglobal:
-        self.nzfull = self.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
+      self.nzfull = self.nz
+      self.zmminglobal = self.zmmin
+      self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
       self.nxp = self.nx
