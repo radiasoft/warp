@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.200 $, $Date: 2006/12/22 00:12:34 $
+c@(#) File TOP.F, version $Revision: 3.201 $, $Date: 2006/12/22 19:06:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3704,8 +3704,8 @@ c     --- Find maximum value of ndts and use it to size the ndtstorho array
 
 c     --- Force the first subcycling group to be the one which advances
 c     --- every time step (even if no such group exists).
+      ndts(0) = 1
       ndtstorho(1) = 0
-      rhotondts(0) = 1
 
 c     --- Find any new time step sizes which havn't been included and add
 c     --- space to the rhopndts array.
@@ -3724,7 +3724,7 @@ c     --- space to the rhopndts array.
         do js = 0, pgroup%ns-1
           if (ndtstorho(pgroup%ndts(js)) == -2) then
             ndtstorho(pgroup%ndts(js)) = nsndtstemp
-            rhotondts(nsndtstemp) = pgroup%ndts(js)
+            ndts(nsndtstemp) = pgroup%ndts(js)
             nsndtstemp = nsndtstemp + 1
           endif
         enddo

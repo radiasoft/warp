@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.189 $, $Date: 2006/12/22 00:13:26 $
+#@(#) File TOP.V, version $Revision: 3.190 $, $Date: 2006/12/22 19:06:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.189 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.190 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2058,10 +2058,11 @@ nsndtsphi integer /0/     # The number of extra copies of the phi array.
                           # of subcycling.
 ndtstorho(ndtsmax) _integer /-1/ # Converts the step size factor to the
                                  # rho array index to use.
-rhotondts(0:nsndts-1) _integer   # Converts the rho index to the step
-                                 # factor used.
+ndts(0:nsndts-1) _integer /1/    # Timestep stride for subcycling groups
 ldts(0:nsndts-1) _logical /1/    # Set to true when the particle positions
                                  # have been advanced (and the rho updated)
+lvdts(0:nsndts-1) _logical /1/   # Set to true when the particle velocities
+                                 # have been advanced
 itndts(0:nsndts-1) _integer /0/  # The time level of the position of the
                                  # ndts group
 zgridndts(0:nsndts-1) _real      # z location of the grid for each ndts group
