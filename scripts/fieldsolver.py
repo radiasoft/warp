@@ -941,8 +941,9 @@ of the arrays used by the particles"""
     # --- looping is relative to the C ordering).
     tsourcepndts = transpose(sourcepndts)
 
-    # --- During the generate, do the copy of the new sourcep to the old sourcep
-    # --- for group 0, which is normally done during the zerosourcep call.
+    # --- Do the copy of the new sourcep to the old sourcep for group 0,
+    # --- the fastest group. Note that the old rho for this group is never
+    # --- used so that space in the array is used during the field solve.
     #sourcepndts[...,1,0] = sourcepndts[...,0,0]
     tsourcepndts[0,1,...] = tsourcepndts[0,0,...]
 
@@ -953,9 +954,9 @@ of the arrays used by the particles"""
         # --- At top.it==0, before the first step, always add the new sourcep.
         #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
         tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
-      elif top.rhotondts[in1]%2 == 1:
+      elif top.ndts[in1]%2 == 1:
         # --- Use the sourcep that is closest in time to the current time.
-        if ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2.-1.):
+        if ((top.it-1)%top.ndts[in1] > top.ndts[in1]/2.-1.):
           #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
           tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
         else:
@@ -966,12 +967,12 @@ of the arrays used by the particles"""
         # --- average of the old and the new
         # --- Otherwise, use the sourcep that is closest in time to the current
         # --- time.
-        if (top.it-1)%top.rhotondts[in1] == top.rhotondts[in1]/2-1:
+        if (top.it-1)%top.ndts[in1] == top.ndts[in1]/2-1:
           #sourcepndts[...,1,0] = (sourcepndts[...,1,0] +
           #     0.5*(sourcepndts[...,0,in1] + sourcepndts[...,1,in1]))
           tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] +
                0.5*(tsourcepndts[in1,0,...] + tsourcepndts[in1,1,...]))
-        elif ((top.it-1)%top.rhotondts[in1] > top.rhotondts[in1]/2.-1.):
+        elif ((top.it-1)%top.ndts[in1] > top.ndts[in1]/2.-1.):
           #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
           tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
         else:
