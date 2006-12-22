@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.75 $, $Date: 2006/12/20 20:45:37 $
+c@(#) File WXY.M, version $Revision: 3.76 $, $Date: 2006/12/22 00:09:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -967,7 +967,6 @@ c     --- Create local pointers to the arrays in pgroup.
       real(kind=8),pointer:: gaminv(:),pid(:,:)
       real(kind=8),pointer:: sm(:),sq(:),sw(:),dtscale(:)
       integer(ISZ),pointer:: ins(:),nps(:)
-      logical(ISZ),pointer:: ldts(:)
 
       integer(ISZ):: isid,is,ismax,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
@@ -1010,7 +1009,6 @@ c     --- Create local pointers to the arrays in pgroup.
       sw => pgroup%sw
       ins => pgroup%ins
       nps => pgroup%nps
-      ldts => pgroup%ldts
       dtscale => pgroup%dtscale
 
       ismax = maxval(pgroup%sid)+1
