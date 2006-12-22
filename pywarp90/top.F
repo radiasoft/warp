@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.199 $, $Date: 2006/12/20 19:40:59 $
+c@(#) File TOP.F, version $Revision: 3.200 $, $Date: 2006/12/22 00:12:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3767,7 +3767,6 @@ c=============================================================================
       
       integer(ISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns),is,ip,idest,ip0,idest0
       integer(ISZ):: ins_save(pgroup%ns),nps_save(pgroup%ns)
-      logical(ISZ):: ldts_save(pgroup%ns)
       real(kind=8):: pidtemp(pgroup%npid)
       real(kind=8):: temp
       integer(ISZ):: nup,ndown
@@ -3787,14 +3786,14 @@ c       --- to be moved to a different ndts group.
 
 c         --- If particle is going to a faster group, switch with lowest particle
 c         --- in the arrays.
-          if (is > 1 .and. pgroup%pid(ip0,chdtspid) < 0.) then
+          if (pgroup%pid(ip0,chdtspid) < 0.) then
 
             ip = ip0
             idest = pgroup%ins(is)
             pgroup%ins(is) = pgroup%ins(is) + 1
             pgroup%nps(is) = pgroup%nps(is) - 1
 
-          elseif (is < pgroup%ns .and. pgroup%pid(ip0,chdtspid) > 0.) then
+          elseif (pgroup%pid(ip0,chdtspid) > 0.) then
 
             ip = ip0
             idest = pgroup%ins(is) + pgroup%nps(is) - 1
@@ -3805,9 +3804,6 @@ c           --- Note that the particle swapped in stills need to be checked.
           else
             ip = -1
           endif
-
-c         --- This must be set for all particles since it will be used in the synchv
-c         --- instead of pgroup%ndts.
 
           if (ip > 0) then
 
