@@ -173,7 +173,6 @@ class MultiGrid(SubcycledPoissonSolver):
       self.setfieldpforparticles(*args)
       self.getselfe(recalculate=1)
 
-
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
       self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
@@ -246,8 +245,11 @@ class MultiGrid(SubcycledPoissonSolver):
     self.conductors.oddsubgrid.n = 0
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
+    # --- This is a temporary kludge, the same as is done in genericpf
+    self.phi = self.potential
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
+    del self.phi
 
   def dosolve(self,iwhich=0,*args):
     # --- Setup data for bends.
