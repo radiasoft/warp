@@ -388,6 +388,7 @@ Add a mesh refined block to this block.
     self.listofblocks = [self]
     self.childdomains = None
     self.children = []
+    self.finalized = false
 
   #--------------------------------------------------------------------------
   # --- The next several methods handle conductors
