@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.145 $, $Date: 2006/08/29 21:48:37 $
+c@(#) File DTOP.F, version $Revision: 3.146 $, $Date: 2007/01/10 21:43:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -45,7 +45,7 @@ c  Set builtin Hist arrays
         lgchange = .false.
 c       --- increase the size of Hist arrays if necessary
         if (jhist == lenhist) then
-          lenhist = lenhist + 100
+          lenhist = lenhist + max(100,int(0.5*lenhist))
           lgchange = .true.
         endif
 
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.145 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.146 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
