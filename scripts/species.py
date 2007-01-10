@@ -189,6 +189,9 @@ Creates a new species of particles. All arguments are optional.
         gchange('*')
         setuppgroup(top.pgroup)
       js=top.pgroup.ns-1
+      if js > 0:
+        top.pgroup.ins[js] = top.pgroup.ins[js-1]+top.pgroup.nps[js-1]
+      top.pgroup.ipmax_s[js] = top.pgroup.ins[js]+top.pgroup.nps[js]-1
       top.pgroup.sid[js] = js
     self.jslist.append(js)
     type=self.type
@@ -263,16 +266,28 @@ Creates a new species of particles. All arguments are optional.
     if dens is None:return density
   
   def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false,**kw):
-      if js is None:
-        js=self.jslist[0]
-      addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum,**kw)
+    if js is None:
+      js=self.jslist[0]
+    addparticles(x,y,z,vx,vy,vz,gi=gi,js=js,lmomentum=lmomentum,**kw)
       
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                      lmomentum=0,**kw):
-    x=xmin+(xmax-xmin)*RandomArray.random(np)
-    y=ymin+(ymax-ymin)*RandomArray.random(np)
-    z=zmin+(zmax-zmin)*RandomArray.random(np)
+                      lmomentum=0,spacing='random',**kw):
+    if spacing == 'random':
+      x=xmin+(xmax-xmin)*RandomArray.random(np)
+      y=ymin+(ymax-ymin)*RandomArray.random(np)
+      z=zmin+(zmax-zmin)*RandomArray.random(np)
+    elif spacing == 'uniform':
+      # --- Note that this assumes periodic boundaries so it does not
+      # --- put particles at xmax etc.
+      n = nint(np**(1./3.))
+      x,y,z = getmesh3d(xmin,(xmax-xmin)/n,n-1,
+                        ymin,(xmax-xmin)/n,n-1,
+                        zmin,(xmax-xmin)/n,n-1)
+      x.shape = (product(x.shape),)
+      y.shape = (product(y.shape),)
+      z.shape = (product(z.shape),)
+
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
     vz=RandomArray.normal(vzmean,vthz,np)
