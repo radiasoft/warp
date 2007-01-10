@@ -407,7 +407,9 @@ the diagnostic is of interest and is meaningfull.
       self.zmmaxp = self.zmminglobal + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
 
     if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
-    if self.dy == 0.: self.dy = (self.ymmax - self.ymmin)/self.ny
+    if self.dy == 0.:
+      if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
+      else:           self.dy = self.dx
     if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
