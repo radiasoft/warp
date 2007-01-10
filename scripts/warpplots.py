@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.184 2007/01/10 00:49:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.185 2007/01/10 17:23:32 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -155,10 +155,10 @@ Does the work needed to start writing plots to a file automatically
   if not prefix: prefix = arraytostr(top.runid)
   if makepsfile:
     pname = getnextfilename(prefix,'ps')
-    pnumb = pname[-7:-4]
+    pnumb = pname[-6:-3]
   else:
     pname = getnextfilename(prefix,'cgm')
-    pnumb = pname[-8:-5]
+    pnumb = pname[-7:-4]
   # --- Save the plotfile name and number, since it is not retreivable from gist.
   setup.pname = pname
   setup.pnumb = pnumb
