@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.183 2006/12/19 22:51:24 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.184 2007/01/10 00:49:28 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -143,6 +143,7 @@ Does the work needed to start writing plots to a file automatically
   # --- Give setup.pname a value. This is only needed for the parallel case
   # --- and is actually never used.
   setup.pname = '.000.cgm'
+  setup.pnumb = '000'
   # --- Only PE0 (or serial processor) should run this routine.
   if me > 0: return
   # --- Set cgmfilesize
@@ -154,10 +155,13 @@ Does the work needed to start writing plots to a file automatically
   if not prefix: prefix = arraytostr(top.runid)
   if makepsfile:
     pname = getnextfilename(prefix,'ps')
+    pnumb = pname[-7:-4]
   else:
     pname = getnextfilename(prefix,'cgm')
-  # --- Save the plotfile name, since it is not retreivable from gist.
+    pnumb = pname[-8:-5]
+  # --- Save the plotfile name and number, since it is not retreivable from gist.
   setup.pname = pname
+  setup.pnumb = pnumb
   # --- Create window(0), but have it only dump to the file pname for now.
   # --- Note that only plots made to window(0) are dumped to the file.
   gist.window(0,display='',hcp=pname,dump=1)
