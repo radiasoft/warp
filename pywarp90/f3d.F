@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.124 $, $Date: 2006/12/05 21:47:27 $
+c@(#) File F3D.M, version $Revision: 3.125 $, $Date: 2007/01/12 23:32:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -880,13 +880,6 @@ c         factor of .25/lx for cosqx and .25/ly for cosqy
 c            --- Invoke the inverse transform routines for the current z-slice
              call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
              call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c            --- set boundary elements to zero
-             do iy = 0, ny
-               a(nx,iy,iz) = 0.
-             enddo
-             do ix = 0, nx-1
-               a(ix,ny,iz) = 0.
-             enddo
 c            --- Normalize the array
              do iy = 0, ny-1
                do ix = 0, nx-1
@@ -903,14 +896,6 @@ c         factor of 2./lx for vsftx and .25/ly for cosqy
 c            --- Invoke the inverse transform routines for the current z-slice
              call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
              call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c            --- set boundary elements to zero
-             do iy = 0, ny
-               a(0 ,iy,iz) = 0.
-               a(nx,iy,iz) = 0.
-             enddo
-             do ix = 1, nx-1
-               a(ix,ny,iz) = 0.
-             enddo
 c            --- Normalize the array
              do iy = 0, ny-1
                do ix = 0, nx-1
@@ -926,14 +911,8 @@ c            --- Normalize the array
 c            --- Invoke the transform routines
              call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
              call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-c            --- Normalize the array, and set boundary elements to zero
-             do ix = 0, nx-1
-               a(ix,0 ,iz) = 0.
-               a(ix,ny,iz) = 0.
-             enddo
+c            --- Normalize the array
              do iy = 1, ny-1
-               a(0 ,iy,iz) = 0.
-               a(nx,iy,iz) = 0.
                do ix = 1, nx-1
                  a(ix,iy,iz) = a(ix,iy,iz) * norm
                enddo
