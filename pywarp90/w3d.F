@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.336 $, $Date: 2007/01/12 18:35:30 $
+c@(#) File W3D.F, version $Revision: 3.337 $, $Date: 2007/01/12 23:33:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8353,6 +8353,75 @@ c        call getphiforparticlesz()
       return
       end
 c===========================================================================
+      subroutine setinhomogeneousboundaries(phi,nx,ny,nz,dx,dy,dz,
+     &                                      bound0,boundnz,boundxy,
+     &                                      l2symtry,l4symtry)
+      use Constant
+      use GlobalVars
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
+      logical(ISZ):: l2symtry,l4symtry
+
+c Modify phi (which has rho copied into it), adding in an effective source
+c term to include inhomogeneous Dirichlet boundary conditions.
+c The algorithm is embarassingly simple.
+c Write phi = phi_interior + phi_boundary, where
+c phi_interior = 0 at the boundary and phi_boundary = 0 in the interior.
+c Then the Poisson equation becomes
+c del**2 phi_interior = - rho/eps0 - del**2 phi_boundary
+c When phi_interior is calculated, the term del**2 phi_boundary is trivially
+c evaluated and is only nonzero at the grid points one grid cell from the
+c boundary. For example, at ix = nx-1,
+c del**2 phi_boundary = phi_boundary(ix=nx)/dx**2
+c
+c Note that the effective source terms are multiplied by eps0 since it
+c will be treated the same way as rho and be divided by eps0.
+
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+
+      ixmin = 0
+      ixmax = nx
+      iymin = 0
+      iymax = ny
+      izmin = 0
+      izmax = nz
+      if (bound0 == dirichlet) izmin = 1
+      if (boundnz == dirichlet) izmax = nz - 1
+
+      if (boundxy == dirichlet) then
+        if (.not. l4symtry) ixmin = 1
+        if (.not. l2symtry .and. .not. l4symtry) iymin = 1
+        ixmax = nx - 1
+        iymax = ny - 1
+        if (.not. l4symtry) then
+          phi(1,iymin:iymax,izmin:izmax) = phi(1,iymin:iymax,izmin:izmax) +
+     &                           phi(0,iymin:iymax,izmin:izmax)/dx**2*eps0
+        endif
+        if (.not. l2symtry .and. .not. l4symtry) then
+          phi(ixmin:ixmax,1,izmin:izmax) = phi(ixmin:ixmax,1,izmin:izmax) +
+     &                           phi(ixmin:ixmax,0,izmin:izmax)/dy**2*eps0
+        endif
+        phi(nx-1,iymin:iymax,izmin:izmax) = phi(nx-1,iymin:iymax,izmin:izmax) +
+     &                           phi(nx,iymin:iymax,izmin:izmax)/dx**2*eps0
+        phi(ixmin:ixmax,ny-1,izmin:izmax) = phi(ixmin:ixmax,ny-1,izmin:izmax) +
+     &                           phi(ixmin:ixmax,ny,izmin:izmax)/dy**2*eps0
+      endif
+
+      if (bound0 == dirichlet) then
+        phi(ixmin:ixmax,iymin:iymax,1) = phi(ixmin:ixmax,iymin:iymax,1) +
+     &                         phi(ixmin:ixmax,iymin:iymax,0)/dz**2*eps0
+      endif
+
+      if (boundnz == dirichlet) then
+        phi(ixmin:ixmax,iymin:iymax,nz-1) = phi(ixmin:ixmax,iymin:iymax,nz-1) +
+     &                         phi(ixmin:ixmax,iymin:iymax,nz)/dz**2*eps0
+      endif
+
+      return
+      end
+c===========================================================================
       subroutine fieldsol3d(iwhich)
       use GlobalVars
       use Subtimers3d
@@ -8384,7 +8453,8 @@ c         The loop is in bendfieldsol3d
 
       real(kind=8):: timetemp
       real(kind=8):: substarttime,wtime
-      integer(ISZ):: izmin,izmax,tnz,indts,tmpnsndts,getnsndtsforsubcycling
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
       integer(ISZ):: isndts
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
@@ -8454,18 +8524,33 @@ c         --- If not in bend, call VP3D
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
      &        fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
      &        fstype == 8 .or. fstype == 9) then
+            ixmin = 0
+            ixmax = nx
+            iymin = 0
+            iymax = ny
             izmin = 0
             izmax = nz
+            if (boundxy == dirichlet) then
+              ixmin = 1
+              ixmax = nx-1
+              iymin = 1
+              iymax = ny-1
+            endif
             if (bound0  == dirichlet .and. my_index == 0) izmin = 1
             if (boundnz == dirichlet .and. my_index >= nslaves-1) izmax = nz-1
-            tnz = izmax - izmin + 1
+c           --- When copying rho into phi, be careful not to overwrite any
+c           --- boundary conditions in phi.
 #ifndef MPIPARALLEL
-            call copyarry(rhopndts(:,:,izmin,nrhopndtscopies-1,indts),
-     &                    phipndts(:,:,izmin,isndts),
-     &                    (nx+1)*(ny+1)*(tnz))
+            phipndts(ixmin:ixmax,iymin:iymax,izmin:izmax,isndts) = 
+     &        rhopndts(ixmin:ixmax,iymin:iymax,izmin:izmax,nrhopndtscopies-1,indts)
 #else
-            call copyarry(rho(:,:,izmin),phi(:,:,izmin),(nx+1)*(ny+1)*(tnz))
+            phi(ixmin:ixmax,iymin:iymax,izmin:izmax) = 
+     &        rho(ixmin:ixmax,iymin:iymax,izmin:izmax)
 #endif
+c           --- Apply inhomogeneous Dirichlet boundary conditions
+            call setinhomogeneousboundaries(phi,nx,ny,nz,dx,dy,dz,
+     &                                      bound0,boundnz,boundxy,
+     &                                      l2symtry,l4symtry)
           endif
           call vp3d(iwhich)
           call getphiforfields()
