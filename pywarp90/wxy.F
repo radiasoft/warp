@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.77 $, $Date: 2006/12/22 19:05:38 $
+c@(#) File WXY.M, version $Revision: 3.78 $, $Date: 2007/01/12 18:35:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -941,7 +941,7 @@ c         --- the locations where phi is known.
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry)
+     &                efetch,ex,ey,ez,l2symtry,l4symtry,.false.)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(ipmin:ipmin+ip-1) = zpo
@@ -949,10 +949,11 @@ c         --- in setdtp is still used.
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry)
+     &                efetch,ex,ey,ez,l2symtry,l4symtry,.false.)
         endif
       elseif(solvergeom==XYgeom) then
-        call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv)
+        call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv,
+     &                     efetch)
       end if
       return
       end

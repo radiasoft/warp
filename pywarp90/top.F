@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.201 $, $Date: 2006/12/22 19:06:44 $
+c@(#) File TOP.F, version $Revision: 3.202 $, $Date: 2007/01/12 18:35:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3732,7 +3732,7 @@ c     --- space to the rhopndts array.
 
 c     --- Make sure that nsndtsphi is set properly, and call the gchange
 c     --- to allocate phipndts.
-      if (ndtsaveraging == 0) then
+      if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
         nsndtsphi = 1
       else
         nsndtsphi = nsndts
@@ -3747,11 +3747,11 @@ c=============================================================================
 
       integer(ISZ):: tmpnsndts
 
-      if (ndtsaveraging == 0) then
+      if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
         tmpnsndts = 1
-      elseif (ndtsaveraging == 1) then
-        tmpnsndts = nsndts
       elseif (ndtsaveraging == 2) then
+        tmpnsndts = nsndts
+      elseif (ndtsaveraging == 3) then
         tmpnsndts = nsndts
       endif
 

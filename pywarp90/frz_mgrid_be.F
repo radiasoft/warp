@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.20 $, $Date: 2006/09/23 00:12:49 $
+c version $Revision: 1.21 $, $Date: 2007/01/12 18:35:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -247,7 +247,7 @@ c     --- Undo the change of rho
 
 !$OMP END PARALLEL
 
-      if (lfrztimesubs) timemultigridrzsolve = timemultigridrzsolve +
+      if (lfrztimesubs) timemultigridberzsolve = timemultigridberzsolve +
      &                                         wtime() - substarttime
 
       return

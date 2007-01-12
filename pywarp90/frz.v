@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.49 $, $Date: 2006/10/25 23:10:52 $
+#@(#) File FRZ.V, version $Revision: 3.50 $, $Date: 2007/01/12 18:35:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.49 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.50 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -194,6 +194,8 @@ add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
          # add a subgrid to the grid id
 del_subgrid(id:integer) subroutine
          # delete a subgrid and all its 'children'
+init_gridbnd(g:GRIDtype) subroutine
+         # Initialize the boundary instance
 del_conductors() subroutine
          # delete all conductors data on RZ grids
 get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
@@ -219,7 +221,7 @@ rhoweightrzgrid_weights(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,
          # deposits rho from weighted particles on the specified grid object
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
-fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real) subroutine
+fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
@@ -433,5 +435,5 @@ grid _GRIDtype
 
 ******** Subtimersfrz:
 lfrztimesubs logical /.false./
-timemultigridrzsolve   real /0./
+timemultigridberzsolve   real /0./
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.335 $, $Date: 2006/12/22 19:31:28 $
+c@(#) File W3D.F, version $Revision: 3.336 $, $Date: 2007/01/12 18:35:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -846,7 +846,7 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &     solvergeom == XYgeom .or.
      &     solvergeom == Rgeom  .or.
      &     solvergeom == Zgeom)) then
-        if (maxval(pgroup%ndts) > 1 .and. ndtsaveraging > 0) then
+        if (maxval(pgroup%ndts) > 1 .and. ndtsaveraging > 1) then
 c         --- Note that with subcycling, this option will be incorrect since
 c         --- the selfe for each ndts group is not (and will not) be
 c         --- calculated. Note that this does not apply to sampled averaging,
@@ -1271,11 +1271,11 @@ c=============================================================================
       integer(ISZ):: indts
 
       do indts=0,nsndts-1
-        if (ndtsaveraging == 0) then
+        if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
           call setuppadvncsubcyclingsampledaveraging(it,indts,center)
-        elseif (ndtsaveraging == 1) then
-          call setuppadvncsubcyclingfullvaveraging(it,indts,center)
         elseif (ndtsaveraging == 2) then
+          call setuppadvncsubcyclingfullvaveraging(it,indts,center)
+        elseif (ndtsaveraging == 3) then
           call setuppadvncsubcyclinghalfvaveraging(it,indts,center)
         endif
       enddo
@@ -6404,7 +6404,6 @@ c=============================================================================
       use Parallel,Only:my_index
 
       integer(ISZ):: in1,in2,in2tmp
-      real(kind=8):: wranf,oldornew
 
       if (ndtsmax == 1) return
 
@@ -6439,6 +6438,40 @@ c         --- time.
           else
             rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,1,in1)
           endif
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine averagerhowithslowweightedsubcycling()
+      use Picglb,Only: it
+      use Subcycling
+      use Fields3dParticles
+      use Parallel,Only:my_index
+
+      integer(ISZ):: in1,in2,in2tmp
+      real(kind=8):: weight
+
+      if (ndtsmax == 1) return
+
+c     --- First, copy the rho of the fastest species into rhopndts(:,:,:,1,0)
+c     --- which is used for the field solve. Note that the old rho of this
+c     --- species is never used.
+      rhopndts(:,:,:,1,0) = rhopndts(:,:,:,0,0)
+
+c     --- Save the rho where the fastest particle's rho is.
+c     --- This is always in1=0.
+      do in1=1,nsndts-1
+        if (it == 0) then
+c         --- At it==0, before the first step, always add the new rho.
+          rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) + rhopndts(:,:,:,0,in1)
+        else
+c         --- This needs checking !!! XXX
+          weight = mod(it-1,ndts(in1))/(ndts(in1)-1.)
+          rhopndts(:,:,:,1,0) = rhopndts(:,:,:,1,0) +
+     &       rhopndts(:,:,:,0,in1)*(1.-weight) +
+     &       rhopndts(:,:,:,1,in1)*(   weight)
         endif
       enddo
 
@@ -6647,11 +6680,11 @@ c       --- zero rhop if requested
             call setupFields3dParticles()
 c           --- Zero the rho copy for species when the positions
 c           --- are advanced.
-            if (ndtsaveraging == 0) then
+            if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
               call zerorhowithsampledsubcycling()
-            elseif (ndtsaveraging == 1) then
-              call zerorhowithfullvsubcycling()
             elseif (ndtsaveraging == 2) then
+              call zerorhowithfullvsubcycling()
+            elseif (ndtsaveraging == 3) then
               call zerorhowithhalfvsubcycling()
             endif
             call zerorhowithselfb()
@@ -6773,11 +6806,11 @@ c            --- loop over particle blocks
 c         --- Add together the rhop from the species with different time steps
 c         --- This must be done after all of the species has been deposited.
           if(solvergeom==XYZgeom) then
-            if (ndtsaveraging == 0) then
+            if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
               call averagerhowithsampledsubcycling()
-            elseif (ndtsaveraging == 1) then
-              call averagerhowithfullvsubcycling()
             elseif (ndtsaveraging == 2) then
+              call averagerhowithfullvsubcycling()
+            elseif (ndtsaveraging == 3) then
               call averagerhowithhalfvsubcycling()
             endif
           endif
@@ -6919,7 +6952,7 @@ c     --- been.
       if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
 
 c  For parallel version, each processor sends rho to neighboring processors
-c  whose field solve region overlap its particle region.
+c  whose field solve region overlap its particle regio.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho)
       else if(solvergeom==XYgeom) then
@@ -7092,9 +7125,10 @@ c     --- Don't do anything if there are no particles input.
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(pgroup%xp(ipmin),pgroup%zp(ipmin),ex,ez,ip,
-     &                      zgridprv)
+     &                      zgridprv,efetch)
       elseif(solvergeom==XYgeom) then
-         call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,0.)
+         call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,0.,
+     &                      efetch)
       elseif(solvergeom==Zgeom) then
          call fieldweightz(pgroup%zp(ipmin),ez,ip,zgridprv)
       elseif(solvergeom==Rgeom) then
@@ -7193,9 +7227,9 @@ c       --- and the data needs to be copied around.
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv)
       elseif(solvergeom==XZgeom) then
-        call fieldweightxz(x,z,ex,ez,n,zgridprv)
+        call fieldweightxz(x,z,ex,ez,n,zgridprv,efetch)
       elseif(solvergeom==XYgeom) then
-        call fieldweightxz(x,y,ex,ey,n,0.)
+        call fieldweightxz(x,y,ex,ey,n,0.,efetch)
       elseif(solvergeom==Zgeom) then
         call fieldweightz(z,ez,n,zgridprv)
       elseif(solvergeom==Rgeom) then
@@ -8391,7 +8425,8 @@ c     --- for the speices with the smallest timestep.
         isndts = min(indts,nsndtsphi3d-1)
 
         if (.not. ldts(indts) .and.
-     &      (ndtsaveraging == 0 .and. .not. any(ldts))) cycle
+     &      ((ndtsaveraging == 0 .or. ndtsaveraging == 1)
+     &       .and. .not. any(ldts))) cycle
 
 c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.

@@ -8405,7 +8405,7 @@ END if
   return
 end subroutine fieldweightrz
 
-subroutine fieldweightxz(xp,zp,ex,ez,np,zgrid)
+subroutine fieldweightxz(xp,zp,ex,ez,np,zgrid,efetch)
 USE multigridrz
 implicit none
 
@@ -8413,11 +8413,13 @@ INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ez
 REAL(8), INTENT(IN) :: zgrid
+INTEGER(ISZ), INTENT(IN) :: efetch
 
 REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, zmin0
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
+real(8),pointer :: tphi(:,:)
 
 IF( solvergeom==XYgeom) then
   zmin0 = 0.
@@ -8469,30 +8471,32 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     oddr = 1._8-ddr
     oddz = 1._8-ddz
 #ifdef MPIPARALLEL
-    ex(i) = 0.5*(oddr * oddz * (g%phip(jn-1,ln  )-g%phip(jn+1,ln  ))  &
-            + ddr  * oddz * (g%phip(jn  ,ln  )-g%phip(jn+2,ln  ))  &
-            + oddr * ddz  * (g%phip(jn-1,ln+1)-g%phip(jn+1,ln+1))  &
-            + ddr  * ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+2,ln+1)))*g%invdr
+    tphi => g%phip
 #else
-    ex(i) = 0.5*(oddr * oddz * (g%phi(jn-1,ln  )-g%phi(jn+1,ln  ))  &
-            + ddr  * oddz * (g%phi(jn  ,ln  )-g%phi(jn+2,ln  ))  &
-            + oddr * ddz  * (g%phi(jn-1,ln+1)-g%phi(jn+1,ln+1))  &
-            + ddr  * ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+2,ln+1)))*g%invdr
+    tphi => g%phi
 #endif
+    if (efetch == 4) then
+      ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
+             + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*g%invdr
+    else
+      ex(i) = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
+                 + ddr  * oddz * (tphi(jn  ,ln  )-tphi(jn+2,ln  ))  &
+                 + oddr * ddz  * (tphi(jn-1,ln+1)-tphi(jn+1,ln+1))  &
+                 + ddr  * ddz  * (tphi(jn  ,ln+1)-tphi(jn+2,ln+1)))*g%invdr
+    endif
     IF(l4symtry) then
       IF(xp(i)<0.) ex(i) = -ex(i)
     END if
-#ifdef MPIPARALLEL
-    ez(i) = 0.5*(oddr * oddz * (g%phip(jn  ,ln-1)-g%phip(jn  ,ln+1))  &
-               + ddr  * oddz * (g%phip(jn+1,ln-1)-g%phip(jn+1,ln+1))  &
-               + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
-               + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
-#else
-    ez(i) = 0.5*(oddr * oddz * (g%phi(jn  ,ln-1)-g%phi(jn  ,ln+1))  &
-               + ddr  * oddz * (g%phi(jn+1,ln-1)-g%phi(jn+1,ln+1))  &
-               + oddr * ddz  * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+2)))*g%invdz
-#endif
+    if (efetch == 4) then
+      print*,"efetch 4"
+      ez(i) = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
+             + ddr  * (tphi(jn+1,ln  )-tphi(jn+1,ln+1)))*g%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
+                 + ddr  * oddz * (tphi(jn+1,ln-1)-tphi(jn+1,ln+1))  &
+                 + oddr * ddz  * (tphi(jn  ,ln  )-tphi(jn  ,ln+2))  &
+                 + ddr  * ddz  * (tphi(jn+1,ln  )-tphi(jn+1,ln+2)))*g%invdz
+    endif
     IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
       IF(zp(i)<0.) ez(i) = -ez(i)
     END if
@@ -8518,30 +8522,31 @@ else
     oddr = 1._8-ddr
     oddz = 1._8-ddz
 #ifdef MPIPARALLEL
-    ex(i) = 0.5*(oddr * oddz * (basegrid%phip(jn-1,ln  )-basegrid%phip(jn+1,ln  ))  &
-            + ddr  * oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+2,ln  ))  &
-            + oddr * ddz  * (basegrid%phip(jn-1,ln+1)-basegrid%phip(jn+1,ln+1))  &
-            + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
+    tphi => basegrid%phip
 #else
-    ex(i) = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
-            + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
-            + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
-            + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
+    tphi => basegrid%phi
 #endif
+    if (efetch == 4) then
+      ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
+             + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*basegrid%invdr
+    else
+      ex(i) = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
+                 + ddr  * oddz * (tphi(jn  ,ln  )-tphi(jn+2,ln  ))  &
+                 + oddr * ddz  * (tphi(jn-1,ln+1)-tphi(jn+1,ln+1))  &
+                 + ddr  * ddz  * (tphi(jn  ,ln+1)-tphi(jn+2,ln+1)))*basegrid%invdr
+    endif
     IF(l4symtry) then
       IF(xp(i)<0.) ex(i) = -ex(i)
     END if
-#ifdef MPIPARALLEL
-    ez(i) = 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
-               + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
-               + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
-               + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
-#else
-    ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
-               + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
-               + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
-#endif
+    if (efetch == 4) then
+      ez(i) = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
+             + ddr  * (tphi(jn+1,ln  )-tphi(jn+1,ln+1)))*basegrid%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
+                 + ddr  * oddz * (tphi(jn+1,ln-1)-tphi(jn+1,ln+1))  &
+                 + oddr * ddz  * (tphi(jn  ,ln  )-tphi(jn  ,ln+2))  &
+                 + ddr  * ddz  * (tphi(jn+1,ln  )-tphi(jn+1,ln+2)))*basegrid%invdz
+    endif
     IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
       IF(zp(i)<0.) ez(i) = -ez(i)
     END if
@@ -9619,6 +9624,15 @@ INTEGER :: i
 
   return
 end subroutine mk_grids_ptr
+
+subroutine init_gridbnd(g)
+! intializes grid boundary quantities
+use multigridrz
+TYPE(GRIDtype), pointer :: g
+
+  call init_bnd(g,g%nr,g%nz,g%dr,g%dz,g%zmin,g%zmax)
+
+end subroutine init_gridbnd
 
 subroutine add_subgrid(id,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 USE multigridrz

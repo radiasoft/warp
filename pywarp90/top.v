@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.190 $, $Date: 2006/12/22 19:06:43 $
+#@(#) File TOP.V, version $Revision: 3.191 $, $Date: 2007/01/12 18:35:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.190 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.191 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2042,15 +2042,18 @@ pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
 *********** Subcycling dump:
 ndtsaveraging integer /0/ # Sets the type of averaging to do when using
-                          # subcycling. When 0, no averaging is done, only
-                          # the most recent charge density from each ndts
-                          # group is used. When 1, the averaging is done from
-                          # n-1/2 to n+1/2 and the two halves of the velocity
-                          # advance use the same self field. When 2, the
-                          # fields for the two velocity halves are different,
-                          # the first averaging from n-1/2 to n, the second
-                          # from n to n+1/2. Note that method 1 does not work
-                          # with even ndts step factors.
+                          # subcycling.
+                          # When 0, no averaging is done, the rho from
+                          # each ndts group closest in time is used.
+                          # When 1, use linear weighting of the old and new
+                          # rho of the slow particles.
+                          # When 2, average rho of the fast particles over
+                          # n-1/2 to n+1/2, and the two halves of the velocity
+                          # advance use the same self field. This does not work
+                          # with even ndts step factors. Not complete.
+                          # When 3, the fields for the two velocity halves are
+                          # different, the first averaging from n-1/2 to n,
+                          # the second from n to n+1/2. Not complete.
 ndtsmax integer /1/       # Maximum step size factor
 nsndts integer /0/        # Number of different step size factors
 nsndtsphi integer /0/     # The number of extra copies of the phi array.
