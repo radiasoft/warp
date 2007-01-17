@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.49 2006/11/20 22:45:14 dave Exp $"
+particles_version = "$Id: particles.py,v 1.50 2007/01/17 17:59:42 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1067,7 +1067,7 @@ def getvzrange(kwdict={}):
 
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
-def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,js=0,sid=None,
+def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,w=1.,js=0,sid=None,
                  lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false,
                  pgroup=None):
@@ -1138,9 +1138,12 @@ Adds particles to the simulation
   vz = array(vz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
   pid = array(pid)*ones([maxlen,top.npid],'d')
+  w = array(w)*ones(maxlen,'d')
 
   # --- Set time of creation
   if top.tpid>0: pid[:,top.tpid-1]=top.time
+  # --- Set weights
+  if top.wpid>0: pid[:,top.wpid-1]=w
   # --- Note that ssn is set in addpart
 
   # --- Set extent of domain
