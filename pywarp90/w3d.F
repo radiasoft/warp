@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.337 $, $Date: 2007/01/12 23:33:56 $
+c@(#) File W3D.F, version $Revision: 3.338 $, $Date: 2007/01/17 17:50:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -370,6 +370,7 @@ c  Also allocate the dynamic internal lattice arrays.
 
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
+      if (lvdadz) efetch=3
       if (efetch == 3 .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
@@ -857,6 +858,7 @@ c         --- in which cases all species use the same field.
         call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
      &                  boundxy,boundxy,boundxy,boundxy)
+        if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
       endif
 
 c  Set the potential near the emitting surface.
@@ -1327,6 +1329,8 @@ c     --- Correct position advance for slanted dipole entry/exit
       if (zoldpid == 0) then
         deallocate(zpo)
       endif
+      
+      if(pgroup%zshift(is)/=0.) pgroup%zp(ipmin:ipmin+np-1)=pgroup%zp(ipmin:ipmin+np-1)+pgroup%zshift(is)
 
       return
       end
@@ -6374,6 +6378,222 @@ c     --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
+      subroutine setrho3dw(rho,rho1d,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,depos,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    lcylindrical)
+      use GlobalVars
+      use Subtimers3d
+      use Parallel,Only:my_index
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      character(8):: depos
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c  Sets charge density using various algorithms
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+c--------------------------------------
+c  Direct deposition loop with precalculated integer conversions
+c--------------------------------------
+
+c        if (.not. lcylindrical) then
+        call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                       l2symtry,l4symtry)
+
+c        else
+c        call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+c     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+c     &                       l2symtry,l4symtry,lcylindrical)
+c        endif
+
+
+!$OMP END PARALLEL
+
+      if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
+      use GlobalVars
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj,kk
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g0,g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: u1next,v1next,w1next
+
+      g0 = wght*q/(dx*dy*dz)
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g0 = g0*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g0 = g0*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,gyfact,gxfact,
+!$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          g = g0*wfact(ip)
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gyfact = 1.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          g = g0*wfact(ip)
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gxfact = 1.
+          gyfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((yp(1) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (yp(1) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((yp(ip+1) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          g = g0*wfact(ip)
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
       subroutine zerorhowithsampledsubcycling()
       use Subcycling
       use Fields3dParticles
@@ -6735,12 +6955,22 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
              indts = ndtstorho(pgroup%ndts(is-1))
              if (ldts(indts)) then
 c              --- Only load the rho if the positions have been advanced.
-               call setrho3d(rhopndts(:,:,:,0,indts),
-     &                       rhopndts(:,:,:,0,indts),nps_u,
-     &                    pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                    zgridndts(indts),pgroup%uzp(ipmin),pgroup%sq(is),
-     &                    swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
-     &                    l2symtry,l4symtry,solvergeom==RZgeom)
+               if(wpid==0) then
+                 call setrho3d(rhopndts(:,:,:,0,indts),
+     &                         rhopndts(:,:,:,0,indts),nps_u,
+     &                         pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                         zgridndts(indts),pgroup%uzp(ipmin),pgroup%sq(is),
+     &                         swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                         l2symtry,l4symtry,solvergeom==RZgeom)
+               else
+                 call setrho3dw(rhopndts(:,:,:,0,indts),
+     &                          rhopndts(:,:,:,0,indts),nps_u,
+     &                          pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                          zgridndts(indts),pgroup%uzp(ipmin),
+     &                          pgroup%pid(ipmin,wpid),pgroup%sq(is),
+     &                          swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                          l2symtry,l4symtry,solvergeom==RZgeom)
+               endif
              endif
            elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
 c            --- loop over particle blocks
