@@ -16,7 +16,7 @@ except ImportError:
 class MagnetostaticMG(SubcycledPoissonSolver):
   
   __bfieldinputs__ = ['mgparam','downpasses','uppasses',
-                      'mgmaxiters','mgtol','mgmaxlevels','mgform',
+                      'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
                       'lcndbndy','icndbndy','laddconductor',
                       'lcylindrical','lanalyticbtheta'] 
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',

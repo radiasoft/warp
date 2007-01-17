@@ -291,7 +291,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.xmmin,self.ymmin,self.zmmin,
                          self.zmminglobal,top.zbeam,top.zgrid,
                          self.mgparam,mgiters,self.mgmaxiters,
-                         self.mgmaxlevels,mgerror,self.mgtol,
+                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
                          self.lbuildquads,self.gridmode,self.conductors,
