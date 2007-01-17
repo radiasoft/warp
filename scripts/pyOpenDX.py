@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.28 2006/06/29 18:11:10 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.29 2007/01/17 18:00:24 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -243,8 +243,8 @@ def viewgreyscalevolume(data,display=1,origins=None,deltas=None,name='WARP viz',
   
 ###########################################################################
 def viewparticles(x,y,z,v,labels=None,name=None,
-                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None,
-                  color=None,intensity=1.,opacity=0.5,colorbar=1,colormap=None,
+                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None,auto=0,
+                  color=None,intensity=1.,opacity=0.5,colorbar=1,colormap=None,cmin=None,cmax=None,
                   include_mins=None,include_maxs=None,exclude_mins=None,exclude_maxs=None):
   if stride==1:
     x = gatherarray(x)
@@ -342,14 +342,15 @@ def viewparticles(x,y,z,v,labels=None,name=None,
     moutput = ['output']
     (type,) = DXCallModule('Scale',minput,moutput)
 
-  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
-  moutput = ['glyphs']
-  (glyphs,) = DXCallModule('Glyph',minput,moutput)
+#  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
+#  moutput = ['glyphs']
+#  (glyphs,) = DXCallModule('Glyph',minput,moutput)
+  glyphs = DXGlyph(data=dxf,type=type,scale=size,ratio=ratio,auto=auto)
 
   if color is not None:
     if color=='auto' or colormap is not None:
       if colormap is None:
-        glyphs,colormap = DXAutoColor(glyphs,opacity=opacity,intensity=intensity)
+        glyphs,colormap = DXAutoColor(glyphs,opacity=opacity,intensity=intensity,min=cmin,max=cmax)
       else:
         glyphs = DXColor(glyphs,color=colormap,opacity=opacity)        
     elif color=='greyscale':
@@ -357,7 +358,7 @@ def viewparticles(x,y,z,v,labels=None,name=None,
     else:
       glyphs = DXColor(glyphs,color=color,opacity=opacity)
 
-  if color is not None and colorbar:
+  if color is not None and colorbar and display:
     dxcolorbar = DXColorBar(colormap)
 
   if display:
@@ -367,7 +368,7 @@ def viewparticles(x,y,z,v,labels=None,name=None,
       DXImage(glyphs,name=name,labels=labels,scale=scale)
   else:
     if color is not None and colorbar:
-      return glyphs,dxcolorbar
+      return glyphs,colormap
     else:
       return glyphs
 
@@ -435,7 +436,7 @@ Create a box
   - xmin,xmax,ymin,ymax,zmin,zmax: extent of the box
   """
   # --- Create a field containing two points on opposite side of the
-  # --- mesh and use it to find the boinding box.
+  # --- mesh and use it to find the bounding box.
   n = 2
   p = zeros((n,3),'d')
   p[:,0] = [xmin,xmax]
@@ -646,10 +647,22 @@ def DXScale(dxobject,scale):
     (dxobject_out,) = DXCallModule('Scale',minput,moutput)
     return dxobject_out
 
-def DXAutoAxes(dxobject,camera,labels,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.):
+def DXAppend(group,dxobject):
+    minput = {'input':group,'object':dxobject}
+    moutput = ['group']
+    (group,) = DXCallModule('Append',minput,moutput)
+    return group
+    
+def DXAutoAxes(dxobject,camera,labels,ticks=3,frame=0,adjust=1,grid=0,colors='grey',
+               annotation="all",labelscale=1.,font="variable",corners=None,
+               xticklocations=None,yticklocations=None,zticklocations=None,
+               xticklabels=None,yticklabels=None,zticklabels=None,):
     assert (len(labels) == 3),"Length of labels list must be three"
     DXReference(camera)
     labels = DXMakeStringList(labels)
+    if type(ticks)==type([]):ticks=DXIntegerList(ticks)
+    if type(annotation)==type([]):annotation=DXMakeStringList(annotation)
+    if type(colors)==type([]):colors=DXMakeStringList(colors)
     minput = {'input':dxobject,
               'camera':camera,
               'labels':labels,
@@ -659,7 +672,15 @@ def DXAutoAxes(dxobject,camera,labels,ticks=3,frame=0,adjust=1,grid=0,colors='gr
               'grid':grid,
               'colors':colors,
               'annotation':annotation,
-              'labelscale':labelscale}
+              'labelscale':labelscale,
+              'font':font}
+    if corners is not None:minput['corners']=DXVector(corners)
+    if xticklocations is not None:minput['xticklocations']=DXIntegerList(xticklocations)
+    if yticklocations is not None:minput['yticklocations']=DXIntegerList(yticklocations)
+    if zticklocations is not None:minput['zticklocations']=DXIntegerList(zticklocations)
+    if xticklabels is not None:minput['xticklabels']=DXMakeStringList(xticklabels)
+    if yticklabels is not None:minput['yticklabels']=DXMakeStringList(yticklabels)
+    if zticklabels is not None:minput['zticklabels']=DXMakeStringList(zticklabels)
     moutput = ['axes']
     (dxobject_out,) = DXCallModule('AutoAxes',minput,moutput)
     return dxobject_out
@@ -686,6 +707,21 @@ def DXAutoGrayScale(dxobject,opacity=0.5,hue=0.,saturation=0.):
     (dxobject_out,) = DXCallModule('AutoGrayScale',minput,moutput)
     return dxobject_out
 
+def DXCaption(string,position=None,flag=None,reference=None,alignment=None,
+              height=None,font=None,direction=None,up=None):
+    minput = {'string':string}
+    if position is not None:minput['position']=DXVector(position)
+    if flag is not None:minput['flag']=flag
+    if reference is not None:minput['reference']=DXVector(reference)
+    if alignment is not None:minput['alignment']=alignment
+    if height is not None:minput['height']=height
+    if font is not None:minput['font']=font
+    if direction is not None:minput['direction']=DXVector(direction)
+    if up is not None:minput['up']=DXVector(up)
+    moutput = ['caption']
+    (dxobject,) = DXCallModule('Caption',minput,moutput)
+    return dxobject
+
 def DXColor(dxobject,color=None,opacity=0.5,component='colors',delayed=0):
     if color is None:
       return dxobject
@@ -705,7 +741,9 @@ def DXColorBar(colormap,position=None,shape=None,horizontal=None,ticks=None,min=
     if min is not None:minput['min']=min
     if max is not None:minput['max']=max
     if label is not None:minput['label']=label
+    if type(colors)==type([]):colors=DXMakeStringList(colors)
     if colors is not None:minput['colors']=colors
+    if type(annotation)==type([]):annotation=DXMakeStringList(annotation)
     if annotation is not None:minput['annotation']=annotation
     if labelscale is not None:minput['labelscale']=labelscale
     if font is not None:minput['font']=font
@@ -859,6 +897,7 @@ def DXDescribe(dxobject,options="all"):
     DXCallModule('Describe',minput,moutput)
 
 def DXPrint(dxobject):
+    DXReference(dxobject)
     minput={'object':dxobject}
     moutput=[]
     DXCallModule('Print',minput,moutput)
@@ -871,12 +910,16 @@ array of vectors. For a scalar vector, just pass a list [vx,vy,vz] or a
 1-d array. 
     """
     if type(v) is type([]):v=array(v)
-#    v=array(v,Float32)
-#    v=v.astype(vtype)
     dxv = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,shape(v)[-1])
-#    DXAddArrayData(dxv,0,product(shape(v)[:-1]),array(v,Float32))
     DXAddArrayData(dxv,0,product(shape(v)[:-1]),v.astype(vtype))
     return dxv
+
+
+def DXIntegerList(i):
+  if type(i) is type([]):i=array(i)
+  dxi = DXNewArray(TYPE_INT,CATEGORY_REAL,0,1)
+  DXAddArrayData(dxi,0,shape(i)[0],i.astype(Int32))
+  return dxi
 
 def DXParticles(x,y,z,vx,vy,vz):
   # --- First combine particle data and create a DX array
@@ -902,6 +945,32 @@ def DXParticles(x,y,z,vx,vy,vz):
 
   return dxf
 
+def DXTube(x,y,z,c,diameter=None,ngon=None):
+  # --- First combine particle data and create a DX array
+  n = len(x)
+  p = zeros((n,3),'d')
+  p[:,0] = array(x)
+  p[:,1] = array(y)
+  p[:,2] = array(z)
+  dxp = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxp,0,n,p.astype(Float32))
+  dxc = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,1)
+  DXAddArrayData(dxc,0,n,array(c).astype(Float32))
+
+  # --- Create the field
+  dxf = DXNewField()
+  DXSetComponentValue(dxf,'positions',dxp)
+  DXSetComponentValue(dxf,'data',dxc)
+  DXEndField(dxf)
+
+  dxf2=DXConstruct(DXVector(p),counts=n,data=dxc)
+  minput = {'line':dxf2}
+  if diameter is not None:minput['diameter']=diameter
+  if ngon is not None:minput['ngon']=ngon
+  moutput = ['tube']
+  (dxobject,) = DXCallModule('Tube',minput,moutput)
+  return dxobject  
+
 def DXCamera(lookto=[0.,0.,0.],lookfrom=[0.,0.,1.],width=100.,resolution=640,aspect=0.75,up=[0,1,0],perspective=0,angle=30.,background='black'):
     minput = {'to':DXVector(lookto),
              'from':DXVector(lookfrom),
@@ -911,7 +980,7 @@ def DXCamera(lookto=[0.,0.,0.],lookfrom=[0.,0.,1.],width=100.,resolution=640,asp
               'up':DXVector(up),
               'perspective':perspective,
               'angle':angle,
-              'background':'black'}
+              'background':background}
     moutput = ['camera']
     (camera,) = DXCallModule('Camera',minput,moutput)
     return camera
@@ -932,12 +1001,22 @@ def DXAutocamera(dxobject,direction='front',width=100.,resolution=640,aspect=0.7
               'up':DXVector(up),
               'perspective':perspective,
               'angle':angle,
-              'background':'black'}
+              'background':background}
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
     return camera
 
 def DXCollect(dxobjects):
+  minput = {'object':dxobjects[0]}
+  n=len(dxobjects)
+  moutput=['group']
+  (group,) = DXCallModule('Collect',minput,moutput)
+  if n>1:
+    for i in range(1,n):
+      group = DXAppend(group,dxobjects[i])
+  return group
+
+def DXCollectold(dxobjects):
   minput = {'object':dxobjects[0]}
   n=len(dxobjects)
   if n>1:
