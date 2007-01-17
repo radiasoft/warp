@@ -184,10 +184,7 @@ Creates a new species of particles. All arguments are optional.
       else:
         condition = top.pgroup.sm[0]<>0.
       if condition:
-        top.ns+=1
-        top.pgroup.ns+=1
-        gchange('*')
-        setuppgroup(top.pgroup)
+        addspecies()
       js=top.pgroup.ns-1
       if js > 0:
         top.pgroup.ins[js] = top.pgroup.ins[js-1]+top.pgroup.nps[js-1]
