@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.191 $, $Date: 2007/01/12 18:35:29 $
+#@(#) File TOP.V, version $Revision: 3.192 $, $Date: 2007/01/17 17:49:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.191 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.192 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -954,6 +954,8 @@ efetch                    integer /1/
    # 3: indirect calculation from pre-calculated E (finite differences of phi)
    # Method 3 is generally fastest but requires lots of extra storage space.
    # Next best is 1.
+lvdadz                    logical /.false./
+   # sets on/off calculation of e=dA/dt=vdA/dz
 periinz                   logical /.true./
    # Specifies whether or not there is periodicity in z
 stickyz                   logical /.false./
@@ -2024,6 +2026,7 @@ fselfb(0:ns-1) _real   /0./ # The scaling factor, 1/gamma**2
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
+zshift(ns) _real /0./
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
 xp(npmax)       _real [m]       # X-positions of particles
