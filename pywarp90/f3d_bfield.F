@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.32 $, $Date: 2006/12/19 22:43:03 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.33 $, $Date: 2007/01/17 17:52:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -895,6 +895,33 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
           endif
         enddo
       endif
+
+      return
+      end
+c=========================================================================== 
+      subroutine getefroma3d(e,nx,ny,nz,dz,vframe)
+      use GlobalVars
+      use BFieldGrid
+      use Subtimersf3d
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: e(0:2,0:nx,0:ny,0:nz)
+      real(kind=8):: dz,vframe
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: substarttime,wtime,tdzi
+      if (lf3dtimesubs) substarttime = wtime()
+
+      tdzi = 0.5*vframe/dz
+
+      do iz=0,nz
+        do iy=0,ny
+          do ix=0,nx
+            e(0,ix,iy,iz) = e(0,ix,iy,iz)+tdzi*(bfield%a(0,ix ,iy ,iz+1) - bfield%a(0,ix ,iy ,iz-1))
+            e(1,ix,iy,iz) = e(1,ix,iy,iz)+tdzi*(bfield%a(1,ix ,iy ,iz+1) - bfield%a(1,ix ,iy ,iz-1))
+            e(2,ix,iy,iz) = e(2,ix,iy,iz)+tdzi*(bfield%a(2,ix ,iy ,iz+1) - bfield%a(2,ix ,iy ,iz-1))
+          enddo
+        enddo
+      enddo
 
       return
       end
