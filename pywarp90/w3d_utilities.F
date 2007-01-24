@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.16 $, $Date: 2006/12/18 17:54:46 $
+c@(#) File w3d_utilities.F, version $Revision: 1.17 $, $Date: 2007/01/24 22:12:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -414,7 +414,6 @@ c calculated. The grid cell size inverses are always calculated
       if (dx == LARGEPOS) defaultcount = defaultcount + 1
       if (xmin == +LARGEPOS) defaultcount = defaultcount + 1
       if (xmax == -LARGEPOS) defaultcount = defaultcount + 1
-      print*,nx,dx,xmin,xmax,dxi,defaultcount
 
       if (defaultcount > 1) then
         arecoordinatesconsist = .false.
