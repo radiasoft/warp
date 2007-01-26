@@ -166,7 +166,7 @@ Creates a new species of particles. All arguments are optional.
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
     self.charge=top.pgroup.sq[self.jslist[0]]
     self.mass=top.pgroup.sm[self.jslist[0]]
-    if type.__class__ is not Particle:
+    if type is None or type.__class__ is not Particle:
       self.charge_state=charge_state
     self.name=name
     self.nautodt = nautodt
@@ -198,7 +198,7 @@ Creates a new species of particles. All arguments are optional.
     try:
       top.pgroup.sq[js]=type.charge
     except:
-      if type.__class__ is not Particle:
+      if type is None or type.__class__ is not Particle:
         if charge_state is None:charge_state=self.charge_state
         top.pgroup.sq[js]=echarge*charge_state
       else:
@@ -277,10 +277,16 @@ Creates a new species of particles. All arguments are optional.
     elif spacing == 'uniform':
       # --- Note that this assumes periodic boundaries so it does not
       # --- put particles at xmax etc.
-      n = nint(np**(1./3.))
-      x,y,z = getmesh3d(xmin,(xmax-xmin)/n,n-1,
-                        ymin,(xmax-xmin)/n,n-1,
+      if ymax > ymin:
+        n = nint(np**(1./3.))
+        x,y,z = getmesh3d(xmin,(xmax-xmin)/n,n-1,
+                          ymin,(xmax-xmin)/n,n-1,
+                          zmin,(xmax-xmin)/n,n-1)
+      else:
+        n = nint(np**(1./2.))
+        x,z = getmesh2d(xmin,(xmax-xmin)/n,n-1,
                         zmin,(xmax-xmin)/n,n-1)
+        y = zeros((n,n),'d')
       x.shape = (product(x.shape),)
       y.shape = (product(y.shape),)
       z.shape = (product(z.shape),)
