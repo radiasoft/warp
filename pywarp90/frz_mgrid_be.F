@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.22 $, $Date: 2007/01/24 22:19:49 $
+c version $Revision: 1.23 $, $Date: 2007/01/29 17:03:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -1513,11 +1513,11 @@ c=============================================================================
         wzz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy-izz
         if (ixx+1 > iondensitygrid2d%nx) then
           ixx = iondensitygrid2d%nx-1
-          wxx = 0.
+          wxx = 1.
         endif
         if (izz+1 > iondensitygrid2d%ny) then
           izz = iondensitygrid2d%ny-1
-          wzz = 0.
+          wzz = 1.
         endif
         iondensitytmp =
      &       iondensitygrid2d%grid(ixx  ,izz  )*(1.-wxx)*(1.-wzz) +
