@@ -351,6 +351,23 @@ the diagnostic is of interest and is meaningfull.
           if self.pboundxy == periodic: self.pbounds[1] = reflect
           if self.pboundxy == periodic: self.pbounds[3] = reflect
 
+    # --- Check for zero length dimensions
+    if self.nx == 0:
+      self.xmmin = 0.
+      self.xmmax = 0.
+    elif self.xmmin == self.xmmax:
+      self.nx = 0
+    if self.ny == 0:
+      self.ymmin = 0.
+      self.ymmax = 0.
+    elif self.ymmin == self.ymmax:
+      self.ny = 0
+    if self.nz == 0:
+      self.zmmin = 0.
+      self.zmmax = 0.
+    elif self.zmmin == self.zmmax:
+      self.nz = 0
+
     # --- Set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
       self.my_index = 0
@@ -614,110 +631,56 @@ class SubcycledPoissonSolver(FieldSolver):
     if self.lreducedpickle and not self.lnorestoreonpickle:
       installafterrestart(self.allocatedataarrays)
 
-  def returnfieldp(self,lndts=None,lselfb=None):
+  def returnfieldp(self,indts,iselfb):
+    indts = min(indts,top.nsndtsphi-1)
     try:
-      fieldparray = self.fieldparray
+      return self.fieldparray[...,indts,iselfb]
     except AttributeError:
-      return None
-    if lndts is None and lselfb is None:
-      return fieldparray
-    elif lndts is not None:
-      return fieldparray[...,:top.nsndtsphi]
-    elif lselfb is not None:
-      return fieldparray[...,top.nsndtsphi:]
+      return 0.
 
-  def returnpotentialp(self,lndts=None,lselfb=None):
-    if lndts is None and lselfb is None:
-      return self.potentialparray
-    elif lndts is not None:
-      return self.potentialparray[...,:top.nsndtsphi]
-    elif lselfb is not None:
-      return self.potentialparray[...,top.nsndtsphi:]
+  def returnpotentialp(self,indts,iselfb):
+    indts = min(indts,top.nsndtsphi-1)
+    try:
+      return self.potentialparray[...,indts,iselfb]
+    except AttributeError:
+      return 0.
 
-  def returnsourcep(self,lndts=None,lselfb=None):
-    if lndts is None and lselfb is None:
-      return self.sourceparray
-    elif lndts is not None:
-      sourcep = self.sourceparray[...,:top.nrhopndtscopies*top.nsndts]
-      tsourcep = transpose(sourcep)
-      sss = list(shape(sourcep)[:-1])+[top.nrhopndtscopies,top.nsndts]
-      sss.reverse()
-      tsourcep.shape = sss
-      return transpose(tsourcep)
-    elif lselfb is not None:
-      return self.sourceparray[...,top.nrhopndtscopies*top.nsndts:]
+  def returnsourcep(self,isourcepndtscopies,indts,iselfb):
+    try:
+      return self.sourceparray[...,isourcepndtscopies,indts,iselfb]
+    except AttributeError:
+      return 0.
 
   def setsourcepforparticles(self,isourcepndtscopies,indts,iselfb):
-    if isourcepndtscopies is not None:
-      sourcepndts = self.returnsourcep(lndts=1)
-      self.sourcep = sourcepndts[...,isourcepndtscopies,indts]
-    else:
-      sourcepselfb = self.returnsourcep(lselfb=1)
-      self.sourcep = sourcepselfb[...,iselfb]
+    self.sourcep = self.returnsourcep(isourcepndtscopies,indts,iselfb)
 
   def setpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Sets potential reference to the currently active potential"
-    if indts is not None:
-      potentialpndts = self.returnpotentialp(lndts=1)
-      self.potentialp = potentialpndts[...,min(indts,w3d.nsndtsphi3d-1)]
-    else:
-      potentialpselfb = self.returnpotentialp(lselfb=1)
-      self.potentialp = potentialpselfb[...,iselfb]
+    self.potentialp = self.returnpotentialp(indts,iselfb)
 
   def setfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Sets field reference to the currently active field"
-    if indts is not None:
-      fieldpndts = self.returnfieldp(lndts=1)
-      if fieldpndts is not None:
-        self.fieldp = fieldpndts[...,min(indts,w3d.nsndtsphi3d-1)]
-      else:
-        self.fieldp = 0.
-    else:
-      fieldpselfb = self.returnfieldp(lselfb=1)
-      if fieldpselfb is not None:
-        self.fieldp = fieldpselfb[...,iselfb]
-      else:
-        self.fieldp = 0.
+    self.fieldp = self.returnfieldp(indts,iselfb)
+
+  def setsourceforfieldsolve(self,isourcepndtscopies,indts,iselfb):
+    # --- This is called at the end of loadrho just before the b.c.'s are set
+    self.source = self.returnsourcep(isourcepndtscopies,indts,iselfb)
 
   def setarraysforfieldsolve(self,isourcepndtscopies,indts,iselfb):
-    if isourcepndtscopies is not None:
-      sourcepndts = self.returnsourcep(lndts=1)
-      fieldpndts = self.returnfieldp(lndts=1)
-      potentialpndts = self.returnpotentialp(lndts=1)
-      self.source = sourcepndts[...,isourcepndtscopies,indts]
-      self.potential = potentialpndts[...,min(indts,w3d.nsndtsphi3d-1)]
-      if fieldpndts is not None:
-        self.field = fieldpndts[...,min(indts,w3d.nsndtsphi3d-1)]
-      else:
-        self.field = 0.
-    else:
-      sourcepselfb = self.returnsourcep(lselfb=1)
-      fieldpselfb = self.returnfieldp(lselfb=1)
-      potentialpselfb = self.returnpotentialp(lselfb=1)
-      self.source = sourcepselfb[...,iselfb]
-      self.potential = potentialpselfb[...,iselfb]
-      if fieldpselfb is not None:
-        self.field = fieldpselfb[...,iselfb]
-      else:
-        self.field = 0.
+    # --- This is called at the beginning of the field solve
+    self.source    = self.returnsourcep(isourcepndtscopies,indts,iselfb)
+    self.field     = self.returnfieldp(indts,iselfb)
+    self.potential = self.returnpotentialp(indts,iselfb)
 
   def getpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from potential to potentialp"
-    if indts is not None:
-      potentialpndts = self.returnpotentialp(lndts=1)
-      potentialpndts[...,min(indts,w3d.nsndtsphi3d-1)] = self.potential[...]
-    else:
-      potentialpselfb = self.returnpotentialp(lselfb=1)
-      potentialpselfb[...,iselfb] = self.potential[...]
+    potentialp = self.returnpotentialp(indts,iselfb)
+    potentialp[...] = self.potential
 
   def getfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from field to fieldp"
-    if indts is not None:
-      fieldpndts = self.returnfieldp(lndts=1)
-      fieldpndts[...,min(indts,w3d.nsndtsphi3d-1)] = self.field[...]
-    else:
-      fieldpselfb = self.returnfieldp(lselfb=1)
-      fieldpselfb[...,iselfb] = self.field[...]
+    fieldp = self.returnfieldp(indts,iselfb)
+    fieldp[...] = self.field
 
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
@@ -729,23 +692,28 @@ class SubcycledPoissonSolver(FieldSolver):
       if n == 0: continue
       if top.pgroup.ldts[js]:
         indts = top.ndtstorho[top.pgroup.ndts[js]-1]
-        self.setsourcepforparticles(0,indts,None)
-        self.setsourcep(js,top.pgroup,top.zgridndts[indts])
-      if top.pgroup.iselfb[js] > -1:
         iselfb = top.pgroup.iselfb[js]
-        self.setsourcepforparticles(None,None,iselfb)
-        self.setsourcep(js,top.pgroup,top.zgrid)
+        self.setsourcepforparticles(0,indts,iselfb)
+        self.setsourcep(js,top.pgroup,top.zgridndts[indts])
 
     if lzero:
       for indts in range(top.nsndts):
         if top.ldts[indts]:
-          self.setsourcepforparticles(0,indts,None)
-          self.aftersetsourcep(lzero)
-      for iselfb in range(top.nsselfb):
-        self.setsourcepforparticles(None,None,iselfb)
-        self.aftersetsourcep(lzero)
+          for iselfb in range(top.nsselfb):
+            self.setsourcepforparticles(0,indts,iselfb)
+            self.aftersetsourcep(lzero)
 
       self.averagesourcepwithsubcycling()
+
+      tmpnsndts = getnsndtsforsubcycling()
+      for indts in range(tmpnsndts-1,-1,-1):
+        if (not top.ldts[indts] and
+            ((top.ndtsaveraging == 0 or top.ndtsaveraging == 1)
+             and not sum(top.ldts))): cycle
+        for iselfb in range(top.nsselfb):
+          isndts = min(indts,top.nsndtsphi)
+          self.setsourceforfieldsolve(top.nrhopndtscopies-1,isndts,iselfb)
+          self.makesourceperiodic()
 
   def aftersetsourcep(self,lzero):
     "Anything that needs to be done to sourcep after the deposition"
@@ -794,27 +762,16 @@ class SubcycledPoissonSolver(FieldSolver):
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       args = [x,y,z,ex,ey,ez,bx,by,bz,w3d.pgroupfsapi]
 
-    js = w3d.jsfsapi
-    if js < 0: ndtstosource = 0
-    else:      ndtstosource = top.ndtstorho[top.pgroup.ndts[js]-1]
+    jsid = w3d.jsfsapi
+    if jsid < 0: indts = 0
+    else:        indts = top.ndtstorho[top.ndts[jsid]-1]
 
     tmpnsndts = getnsndtsforsubcycling()
-    indts = min(tmpnsndts-1,ndtstosource)
-    self.setpotentialpforparticles(None,indts,None)
-    self.setfieldpforparticles(None,indts,None)
+    indts = min(tmpnsndts-1,indts)
+    iselfb = top.iselfb[jsid]
+    self.setpotentialpforparticles(None,indts,iselfb)
+    self.setfieldpforparticles(None,indts,iselfb)
     self.fetchfieldfrompositions(*args,**kw)
-
-    # add self B correction as needed
-    if js >= 0 and top.pgroup.iselfb[js] > -1:
-      extemp = zeros(shape(x),'d')
-      eytemp = zeros(shape(y),'d')
-      eztemp = zeros(shape(z),'d')
-      self.setpotentialpforparticles(None,None,top.pgroup.iselfb[js])
-      self.setfieldpforparticles(None,None,top.pgroup.iselfb[js])
-      args = [x,y,z,extemp,eytemp,eztemp,None,None,None,w3d.pgroupfsapi]
-      self.fetchfieldfrompositions(*args,**kw)
-      ex[...] += extemp
-      ey[...] += eytemp
 
   def fetchpotential(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
@@ -826,25 +783,20 @@ class SubcycledPoissonSolver(FieldSolver):
     try:    potential = w3d.phifsapi
     except: potential = w3d.afsapi
 
-    js = w3d.jsfsapi
-    if js < 0: ndtstosource = 0
-    else:      ndtstosource = top.ndtstorho[top.pgroup.ndts[js]-1]
-    tmpnsndts = getnsndtsforsubcycling()
-    indts = min(tmpnsndts-1,ndtstosource)
-    self.setpotentialpforparticles(None,indts,None)
-    self.fetchpotentialfrompositions(x,y,z,potential)
+    jsid = w3d.jsfsapi
+    if jsid < 0: indts = 0
+    else:        indts = top.ndtstorho[top.ndts[jsid]-1]
 
-  def selfbcorrection(self,js):
-    "scale phispecies by -(1-1/gamma*2) store into top.fselfb"
-    phipselfb = self.getpotentialp(lselfb=1)
-    phipselfb[...,js] *= top.fselfb[js]
+    tmpnsndts = getnsndtsforsubcycling()
+    indts = min(tmpnsndts-1,indts)
+    iselfb = top.iselfb[jsid]
+    self.setpotentialpforparticles(None,indts,iselfb)
+    self.fetchpotentialfrompositions(x,y,z,potential)
 
   def dosolveonpotential(self,iwhich,isourcepndtscopies,indts,iselfb):
     "points source and potential appropriately and call the solving routine"
     self.setarraysforfieldsolve(isourcepndtscopies,indts,iselfb)
-    self.makesourceperiodic()
     self.dosolve(iwhich,isourcepndtscopies,indts,iselfb)
-    if iselfb is not None: self.selfbcorrection(iselfb)
     self.getpotentialpforparticles(isourcepndtscopies,indts,iselfb)
 
   def solve(self,iwhich=0):
@@ -857,11 +809,8 @@ class SubcycledPoissonSolver(FieldSolver):
     for indts in range(tmpnsndts-1,-1,-1):
       if (not top.ldts[indts] and
           (top.ndtsaveraging == 0 and not sum(top.ldts))): continue
-      self.dosolveonpotential(iwhich,top.nrhopndtscopies-1,indts,None)
-
-    # --- Solve for phi for groups which require the self B correction
-    for js in range(top.nsselfb):
-      self.dosolveonpotential(iwhich,None,None,js)
+      for iselfb in range(top.nsselfb-1,-1,-1):
+        self.dosolveonpotential(iwhich,top.nrhopndtscopies-1,indts,iselfb)
 
     gc.collect()
 
@@ -878,19 +827,17 @@ of the arrays used by the particles"""
     setupSubcycling(top.pgroup)
     setupSelfB(top.pgroup)
 
-    extrasourcepdim = top.nrhopndtscopies*top.nsndts + top.nsselfb
-    dims = list(pdims[0]) + [extrasourcepdim]
+    dims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,top.nsselfb]
     if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(dims):
       self.sourceparray = fzeros(dims,'d')
 
-    extrapotentialdim = top.nsndtsphi + top.nsselfb
-    dims = list(pdims[-1]) + [extrapotentialdim]
+    dims = list(pdims[-1]) + [top.nsndtsphi,top.nsselfb]
     if 'potentialparray' not in self.__dict__ or shape(self.potentialparray) != tuple(dims):
       self.potentialparray = fzeros(dims,'d')
 
     if len(pdims) == 3:
       # --- Also, create fieldparray
-      dims = list(pdims[1]) + [extrapotentialdim]
+      dims = list(pdims[1]) + [top.nsndtsphi,top.nsselfb]
       if 'fieldparray' not in self.__dict__ or shape(self.fieldparray) != tuple(dims):
         self.fieldparray = fzeros(dims,'d')
 
@@ -901,24 +848,20 @@ of the arrays used by the particles"""
       self.zerosourcepwithfullvsubcycling()
     elif top.ndtsaveraging == 2:
       self.zerosourcepwithhalfvsubcycling()
-    self.zerosourcepselfb()
 
   def zerosourcepwithsampledsubcycling(self):
     # --- Zero the sourcep copy for species when the positions
     # --- are advanced.
-    # --- sourcepndts(...,2,in1) holds the old sourcep which is still needed
+    # --- sourcepndts(...,2,indts,:) holds the old sourcep which is still needed
     # --- for the faster advanced groups.
     # --- Note the operation is faster on the transposed arrays (since the
     # --- looping is relative to the C ordering).
-    sourcepndts = self.returnsourcep(lndts=1)
-    for in1 in range(top.nsndts):
-      if top.ldts[in1]:
-        tsourcepndts = transpose(sourcepndts)
+    tsourcep = transpose(self.sourceparray)
+    for indts in range(top.nsndts):
+      if top.ldts[indts]:
         if top.nrhopndtscopies == 2:
-          #sourcepndts[...,1,in1] = sourcepndts[...,0,in1]
-          tsourcepndts[in1,1,...] = tsourcepndts[in1,0,...]
-        #sourcepndts[...,0,in1] = 0.
-        tsourcepndts[in1,0,...] = 0.
+          tsourcep[:,indts,1,...] = tsourcep[:,indts,0,...]
+        tsourcep[:,indts,0,...] = 0.
 
   def zerosourcepwithfullvsubcycling(self):
     raise "fullv subcycling not yet implemented"
@@ -937,53 +880,37 @@ of the arrays used by the particles"""
   def averagesourcepwithsampledsubcycling(self):
     if top.ndtsmax == 1: return
 
-    sourcepndts = self.returnsourcep(lndts=1)
-
     # --- Note the operation is faster on the transposed arrays (since the
     # --- looping is relative to the C ordering).
-    tsourcepndts = transpose(sourcepndts)
+    tsourcep = transpose(self.sourceparray)
 
     # --- Do the copy of the new sourcep to the old sourcep for group 0,
     # --- the fastest group. Note that the old rho for this group is never
     # --- used so that space in the array is used during the field solve.
-    #sourcepndts[...,1,0] = sourcepndts[...,0,0]
-    tsourcepndts[0,1,...] = tsourcepndts[0,0,...]
+    tsourcep[:,0,1,...] = tsourcep[:,0,0,...]
 
     # --- Save the sourcep where the fastest particle's sourcep is. For now,
     # --- assume that this is in1=0
     for in1 in range(1,top.nsndts):
       if top.it == 0:
         # --- At top.it==0, before the first step, always add the new sourcep.
-        #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
-        tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
+        tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,0,...]
       elif top.ndts[in1]%2 == 1:
         # --- Use the sourcep that is closest in time to the current time.
         if ((top.it-1)%top.ndts[in1] > top.ndts[in1]/2.-1.):
-          #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
-          tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
+          tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,0,...]
         else:
-          #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,1,in1])
-          tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,1,...])
+          tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,1,...]
       else:
         # --- When ndts is even, at the mid point of the step, take the
         # --- average of the old and the new
         # --- Otherwise, use the sourcep that is closest in time to the current
         # --- time.
         if (top.it-1)%top.ndts[in1] == top.ndts[in1]/2-1:
-          #sourcepndts[...,1,0] = (sourcepndts[...,1,0] +
-          #     0.5*(sourcepndts[...,0,in1] + sourcepndts[...,1,in1]))
-          tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] +
-               0.5*(tsourcepndts[in1,0,...] + tsourcepndts[in1,1,...]))
+          tsourcep[:,0,1,...] = (tsourcep[:,0,1,...] +
+               0.5*(tsourcep[:,in1,0,...] + tsourcep[:,in1,1,...]))
         elif ((top.it-1)%top.ndts[in1] > top.ndts[in1]/2.-1.):
-          #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,0,in1])
-          tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,0,...])
+          tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,0,...]
         else:
-          #sourcepndts[...,1,0] = (sourcepndts[...,1,0] + sourcepndts[...,1,in1])
-          tsourcepndts[0,1,...] = (tsourcepndts[0,1,...] + tsourcepndts[in1,1,...])
-
-  def zerosourcepselfb(self):
-    sourcepselfb = self.returnsourcep(lselfb=1)
-    tsourcepselfb = transpose(sourcepselfb)
-    #sourcepselfb[...] = 0.
-    tsourcepselfb[...] = 0.
+          tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,1,...]
 
