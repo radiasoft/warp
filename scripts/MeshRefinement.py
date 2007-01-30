@@ -658,6 +658,10 @@ not be fetched from there (it is set negative).
     for block in self.listofblocks:
       self.__class__.__bases__[1].setsourcepforparticles(block,*args)
 
+  def setsourceforfieldsolve(self,*args):
+    for block in self.listofblocks:
+      self.__class__.__bases__[1].setsourceforfieldsolve(block,*args)
+
   def allocatedataarrays(self):
     # --- If not root, than only allocate the arrays of this block
     if self != self.root:
