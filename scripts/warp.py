@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.130 2007/01/26 19:18:35 dave Exp $"
+warp_version = "$Id: warp.py,v 1.131 2007/01/30 02:31:23 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -349,6 +349,7 @@ def addspecies(newns=1,pgroup=None,sid=None):
   gchange("InjectVars")
   gchange("LostParticles")
   gchange("ExtPart")
+  gchange("SelfB")
   # --- top.pgroup is special since it always has top.ns species.
   top.pgroup.ns = top.ns
   if sid is None: sid = iota(top.ns-newns,top.ns-1)
@@ -974,6 +975,7 @@ from lattice import *
 from drawlattice import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGridRZ
+from multigridRZ import MultiGridImplicitRZ
 from MeshRefinement import MRBlock
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
