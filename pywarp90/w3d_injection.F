@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.85 $, $Date: 2006/12/22 00:10:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.86 $, $Date: 2007/01/30 01:37:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -38,7 +38,7 @@ c first cleans up the particle arrays and makes sure that there is enough room
 c for the new particles.  The second is the coding for constant current
 c injection.  The third part is for space-charge limited injection.
 
-      integer(ISZ):: is,isid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,i1,i2
+      integer(ISZ):: is,jsid,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,i1,i2
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,vavez,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rsign,dr,dri
@@ -55,7 +55,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: i1x,i1y,i1z
       real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
-      real(kind=8):: cl_const(pgroup%ns),jton(pgroup%ns),vzconst(pgroup%ns)
+      real(kind=8):: cl_const(0:pgroup%ns-1),jton(0:pgroup%ns-1),vzconst(0:pgroup%ns-1)
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       real(kind=8),pointer:: ppvz(:)
       integer(ISZ):: spreadx, spready
@@ -171,9 +171,9 @@ c         --- loop over injection sources
 c         --- Loop over species.
           do is=1,pgroup%ns
             if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is -1 
-            isid = pgroup%sid(is-1) + 1
-            inj_is = min(isid,inj_ns)
-            vzinj = vzinject(ij,isid)
+            jsid = pgroup%sid(is-1)
+            inj_is = min(jsid+1,inj_ns)
+            vzinj = vzinject(ij,jsid+1)
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
@@ -189,7 +189,7 @@ c             --- Check if there is enough room for the new injected particles.
 
             else
 
-              rnn = rnpinje_s(isid)*finject(ij,isid)
+              rnn = rnpinje_s(jsid+1)*finject(ij,jsid+1)
 c             --- Add a random number to the number of particles injected
 c             --- so that the average number of particles injected is
 c             --- correct.  For example, if rnn < 1., without the
@@ -329,14 +329,14 @@ c               --- Save the particle data
                 pgroup%xp(ii) = xt(ip)
                 pgroup%yp(ii) = yt(ip)
                 pgroup%zp(ii) = zs
-                vtx = vzinj*0.5*emitx_s(isid)*ainji + vthperp_s(isid)
-                vty = vzinj*0.5*emity_s(isid)*binji + vthperp_s(isid)
+                vtx = vzinj*0.5*emitx_s(jsid+1)*ainji + vthperp_s(jsid+1)
+                vty = vzinj*0.5*emity_s(jsid+1)*binji + vthperp_s(jsid+1)
                 pgroup%uxp(ii) = vzinj*(apinj*pgroup%xp(ii)*ainji + xpinj) + vtx*uxt(ip)
                 pgroup%uyp(ii) = vzinj*(bpinj*pgroup%yp(ii)*binji + ypinj) + vty*uyt(ip)
                 if(l_inj_addtempz_abs) then
-                  pgroup%uzp(ii) = vzinj + abs(0.5*vthz_s(isid)*uzt(ip))
+                  pgroup%uzp(ii) = vzinj + abs(0.5*vthz_s(jsid+1)*uzt(ip))
                 else
-                  pgroup%uzp(ii) = vzinj + 0.5*vthz_s(isid)*uzt(ip)
+                  pgroup%uzp(ii) = vzinj + 0.5*vthz_s(jsid+1)*uzt(ip)
                 endif
 c               --- Save the particle weight
                 if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)
@@ -370,7 +370,7 @@ c               --- save radius of creation if rpid > 0
                   pgroup%pid(ii,rpid) = sqrt(pgroup%xp(ii)**2+pgroup%yp(ii)**2)
                 endif
 c               --- increment particle counter
-                npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
+                npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
                 inj_prev(ixx        ,iyy        ,ij,inj_is) =
      &          inj_prev(ixx        ,iyy        ,ij,inj_is) + (1.-wxx)*(1.-wyy)
                 inj_prev(ixx+spreadx,iyy        ,ij,inj_is) =
@@ -383,10 +383,10 @@ c               --- increment particle counter
             enddo
 
 c           --- Get actual number of particles injected and ipmin
-            nn = npinjtmp(isid,ij)
+            nn = npinjtmp(jsid+1,ij)
 
 c           --- Sum npinje_s to get the total number of particles injected.
-            npinje_s(isid) = npinje_s(isid) + nn
+            npinje_s(jsid+1) = npinje_s(jsid+1) + nn
             npinject     = npinject     + nn
 
 c           --- make injected particles live particles
@@ -408,11 +408,11 @@ c             --- and the particle arrays are unallocated.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                   pgroup%xp(i1:i2),
      &                                   pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),at,bt,apt)
-              call fetchb3dfrompositions(is,nn,pgroup%xp(i1:i2),
+              call fetchb3dfrompositions(jsid,nn,pgroup%xp(i1:i2),
      &                                   pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),xt,yt,zt)
             else
@@ -453,13 +453,13 @@ c           --- Set fractional time to advance particles
 
 c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
-            zmid = 0.5*(zimax_s(isid) - zimin_s(isid)) - vzinj*fulldt_s*(it+1)
-            zleni = 1./dvnz(zimax_s(isid) - zimin_s(isid))
+            zmid = 0.5*(zimax_s(jsid+1) - zimin_s(jsid+1)) - vzinj*fulldt_s*(it+1)
+            zleni = 1./dvnz(zimax_s(jsid+1) - zimin_s(jsid+1))
             do ip=1,nn
               ii = pgroup%ins(is) - 1 + ip
               ztilt = bpt(ip)*vzinj
               pgroup%uzp(ii) = pgroup%uzp(ii) -
-     &                         vzinj*vtilt_s(isid)*(zmid+ztilt)*zleni
+     &                         vzinj*vtilt_s(jsid+1)*(zmid+ztilt)*zleni
             enddo
 
 c           --- do half velocity advance with E fields
@@ -515,7 +515,7 @@ c level of rest of particles.
 
 c         loop over species and injection sources
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
@@ -524,7 +524,7 @@ c         loop over species and injection sources
             do ij=1,ninject
               ipmin = ipmin + nn
 c             --- Get number of particles injected
-              nn = npinjtmp(isid,ij)
+              nn = npinjtmp(jsid+1,ij)
               if(nn==0) cycle
 
 c             --- Make sure there is enough temp space
@@ -535,11 +535,11 @@ c             --- Make sure there is enough temp space
 
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
-                call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,
+                call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
      &                                     pgroup%xp(ipmin),
      &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     at,bt,apt)
-                call fetchb3dfrompositions(is,nn,pgroup%xp(ipmin),
+                call fetchb3dfrompositions(jsid,nn,pgroup%xp(ipmin),
      &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                                     xt,yt,zt)
               else
@@ -695,21 +695,21 @@ c           --- The potential drop in front of the surface is now
 c           --- calculated by a call to getinj_phi from padvnc3d.
 
             do is=1,pgroup%ns
-              isid = pgroup%sid(is-1) + 1
-              vzinj = vzinject(ij,isid)
+              jsid = pgroup%sid(is-1)
+              vzinj = vzinject(ij,jsid+1)
 
 c             --- Don't bother doing anything if finject is 0.
-              if (.not. pgroup%ldts(is-1) .or. finject(ij,isid) == 0.) cycle
+              if (.not. pgroup%ldts(is-1) .or. finject(ij,jsid+1) == 0.) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
               if(l_inj_rz) then
-                jton(isid) = pi*ainj*inj_dx*fulldt_s/
+                jton(jsid) = pi*ainj*inj_dx*fulldt_s/
      &                     abs(pgroup%sq(is))/pgroup%sw(is)
               else
-                jton(isid) = inj_dx*inj_dy*fulldt_s/
+                jton(jsid) = inj_dx*inj_dy*fulldt_s/
      &                     abs(pgroup%sq(is))/pgroup%sw(is)
               end if
 
@@ -724,15 +724,15 @@ c             --- Concentric Spheres", PhysRev, 1924.
                 else
                   sphericalcorrection = 1.
                 endif
-                cl_const(isid) = 4./9.*eps0*
+                cl_const(jsid) = 4./9.*eps0*
      &                   (2.*abs(pgroup%sq(is))/pgroup%sm(is))**.5/
-     &                   ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(isid)
+     &                   ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(jsid)
               endif
 
 c             --- The constant terms in the expression for the normal
 c             --- velocity from the Child-Langmuir solution. Note that this
 c             --- is only strictly correct for planar emission.
-              vzconst(isid) = 2./9.*sqrt(2.)*
+              vzconst(jsid) = 2./9.*sqrt(2.)*
      &                      (abs(pgroup%sq(is))/pgroup%sm(is))**1.5/
      &                      (inj_dz*inj_d(ij))**2
 
@@ -768,17 +768,17 @@ c               --- rectangular.
                 if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) cycle
 c               --- Loop over the species
                 do is=1,pgroup%ns
-                  isid = pgroup%sid(is-1) + 1
-                  inj_is = min(isid,inj_ns)
+                  jsid = pgroup%sid(is-1)
+                  inj_is = min(jsid+1,inj_ns)
 
 c                 --- Skip this species if the fraction is zero.
-c                 if (finject(ij,isid) == 0.) cycle
-                  if (.not. pgroup%ldts(is-1) .or. finject(ij,isid) == 0.) cycle
+c                 if (finject(ij,jsid+1) == 0.) cycle
+                  if (.not. pgroup%ldts(is-1) .or. finject(ij,jsid+1) == 0.) cycle
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
 c                   --- Child-Langmuir
-                    rnn = cl_const(isid)*abs(inj_phi(ix,iy,ij))**1.5/
+                    rnn = cl_const(jsid)*abs(inj_phi(ix,iy,ij))**1.5/
      &                    cos(inj_angl(ix,iy,ij))
                     rnn = sign(rnn,pgroup%sq(is)*inj_phi(ix,iy,ij))
                   elseif (inject == 3) then
@@ -808,12 +808,12 @@ c                 --- Force injected current to be between the range
 c                 --- jmininj to jmaxinj.  The absolute values are used
 c                 --- so that this works with either positive ions
 c                 --- and electron.
-                  rnn = min(rnn,jmaxinj(ij)*jton(isid))
-                  rnn = max(rnn,jmininj(ij)*jton(isid))
+                  rnn = min(rnn,jmaxinj(ij)*jton(jsid))
+                  rnn = max(rnn,jmininj(ij)*jton(jsid))
 
 c                 --- Scale the number of particles by the fraction of the
 c                 --- total for this species.
-                  rnn = rnn*finject(ij,isid)
+                  rnn = rnn*finject(ij,jsid+1)
 
 c                 --- Save the number of particles injected
                   inj_np(ix,iy,ij,inj_is) = inj_np(ix,iy,ij,inj_is) + rnn
@@ -850,20 +850,20 @@ c                 --- that there is enough room available in case the
 c                 --- first estimate is wrong.
                   if(.not.l_inj_regular) then
                     if(.not.l_inj_rz) then
-                      call chckpart(pgroup,is,max(nn+npinje_s(isid),
+                      call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
      &                              int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
                     else
-                      call chckpart(pgroup,is,max(nn+npinje_s(isid),
+                      call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
      &                              int(nn*ainj*dxi)),0,.true.)
                     end if
                   else
-                    call chckpart(pgroup,is,max(nn+npinje_s(isid),
+                    call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
      &                            int((inj_nx+1)*(inj_ny+1))),0,.true.)
                   end if
 
 c                 --- loop to load new particles
                   do ip=1,nn
-                    ii = pgroup%ins(is) - npinje_s(isid) - 1
+                    ii = pgroup%ins(is) - npinje_s(jsid+1) - 1
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
 
@@ -1015,7 +1015,7 @@ c                   --- pid(ii,injpid)*dt.
      &                      inj_phi(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
      &                      inj_phi(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
      &                      inj_phi(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
-                    vznorm = vzconst(isid)*abs(vnorm)**1.5*
+                    vznorm = vzconst(jsid)*abs(vnorm)**1.5*
      &                       (pgroup%pid(ii,injpid)*fulldt_s)**2
                     if (inj_d(ij) < 0.) vznorm = -vznorm
 
@@ -1034,8 +1034,8 @@ c                   --- are probably not correct.
      &                               (bpinj*pgroup%yp(ii)*binji + ypinj)
      &                      - (vznorm + vzinj)*sin(az)*sin(aa))
                     if(.not. l_inj_delay_temp) then
-                      vtx = vzinj*0.5*emitx_s(isid)*ainji + vthperp_s(isid)
-                      vty = vzinj*0.5*emity_s(isid)*binji + vthperp_s(isid)
+                      vtx = vzinj*0.5*emitx_s(jsid+1)*ainji + vthperp_s(jsid+1)
+                      vty = vzinj*0.5*emity_s(jsid+1)*binji + vthperp_s(jsid+1)
                       pgroup%uxp(ii) = pgroup%uxp(ii) + spreadx*vtx*
      &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
                       pgroup%uyp(ii) = pgroup%uyp(ii) + spready*vty*
@@ -1050,10 +1050,10 @@ c                   --- as lost particles when the other terms are zero.
                     pgroup%uzp(ii) = vzinj*cos(az) + vznorm*cos(az) + SMALLPOS
                     if(.not. l_inj_delay_temp) then
                       if(l_inj_addtempz_abs) then
-                        pgroup%uzp(ii) = pgroup%uzp(ii) + abs(vthz_s(isid)*
+                        pgroup%uzp(ii) = pgroup%uzp(ii) + abs(vthz_s(jsid+1)*
      &                   wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.))
                       else
-                        pgroup%uzp(ii) = pgroup%uzp(ii) + vthz_s(isid)*
+                        pgroup%uzp(ii) = pgroup%uzp(ii) + vthz_s(jsid+1)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                       end if
                     end if
@@ -1084,8 +1084,8 @@ c                   --- Save SSN
                     end if
 
 c                   --- increment particle counter
-                    npinje_s(isid) = npinje_s(isid) + 1
-                    npinjtmp(isid,ij) = npinjtmp(isid,ij) + 1
+                    npinje_s(jsid+1) = npinje_s(jsid+1) + 1
+                    npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
                     inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) + 1.
 
                   enddo
@@ -1099,9 +1099,9 @@ c           --- end loop over iy
 
 c           --- Transform particles to lab frame
             do is=1,pgroup%ns
-              isid = pgroup%sid(is-1) + 1
+              jsid = pgroup%sid(is-1)
               ii = pgroup%ins(is) - npinje_s(is)
-              nn = npinjtmp(isid,ij)
+              nn = npinjtmp(jsid+1,ij)
               if (nn > 0) then
 c               --- The check if nn > 0 is needed since if npmax was zero
 c               --- and no particles were injected then npmax stays zero
@@ -1119,11 +1119,11 @@ c         --- end of loop over injection sources
 c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
-            ii = pgroup%ins(is) - npinje_s(isid)
-            if (npinje_s(isid) > 0) then
-              call stckxy3d(npinje_s(isid),pgroup%xp(ii),xmmax,xmmin,dx,
+            ii = pgroup%ins(is) - npinje_s(jsid+1)
+            if (npinje_s(jsid+1) > 0) then
+              call stckxy3d(npinje_s(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
      &                      pgroup%yp(ii),ymmax,
      &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
      &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
@@ -1133,29 +1133,29 @@ c         --- removal of particles outside the grid.
           enddo
 
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
 c           --- Sum npinje_s to get the total number of particles injected.
-            npinject = npinject + npinje_s(isid)
+            npinject = npinject + npinje_s(jsid+1)
 
 c           --- make injected particles live particles
-            pgroup%ins(is) = pgroup%ins(is) - npinje_s(isid)
-            pgroup%nps(is) = pgroup%nps(is) + npinje_s(isid)
+            pgroup%ins(is) = pgroup%ins(is) - npinje_s(jsid+1)
+            pgroup%nps(is) = pgroup%nps(is) + npinje_s(jsid+1)
           enddo
 
 c         --- Now, advance the particles off of the emitting surface using
 c         --- isochronous leapfrog.  Each particle has it's own time step
 c         --- size, uniformly distributed between 0 and dt.
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
 c           --- Skip this if no particles of this species were injected.
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
-            if(npinje_s(isid)==0) cycle
+            if(npinje_s(jsid+1)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
-            if (npinje_s(isid) > npgrp) then
-              npgrp = npinje_s(isid)
+            if (npinje_s(jsid+1) > npgrp) then
+              npgrp = npinje_s(jsid+1)
               call gchange("Setpwork3d",0)
             endif
 
@@ -1184,9 +1184,9 @@ c           --- Assume that injection will never be done inside a bend.
 c           --- Create equivalences
 c           --- In this section of code, this is purely for convenience
 c           --- and to make the following code look cleaner.
-            nn = npinje_s(isid)
+            nn = npinje_s(jsid+1)
             i1 = pgroup%ins(is)
-            i2 = pgroup%ins(is)+npinje_s(isid)-1
+            i2 = pgroup%ins(is)+npinje_s(jsid+1)-1
             xx => pgroup%xp(i1:i2)
             yy => pgroup%yp(i1:i2)
             zz => pgroup%zp(i1:i2)
@@ -1198,9 +1198,9 @@ c           --- and to make the following code look cleaner.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1239,14 +1239,14 @@ c with position, and then move velocity one half timestep back to match time
 c level of rest of particles.
 c         --- loop over species
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
-            if(npinje_s(isid)==0) cycle
-            nn = npinje_s(isid)
+            if(npinje_s(jsid+1)==0) cycle
+            nn = npinje_s(jsid+1)
 #else
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
@@ -1302,8 +1302,8 @@ c           --- Assume that injection will never be done inside a bend.
 
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
-            i1 = pgroup%ins(is)+ntinject(isid)
-            i2 = pgroup%ins(is)+ntinject(isid)+npinje_s(isid)-1
+            i1 = pgroup%ins(is)+ntinject(jsid+1)
+            i2 = pgroup%ins(is)+ntinject(jsid+1)+npinje_s(jsid+1)-1
             tt(1:nn) = fulldt_s*(pgroup%pid(i1:i2,injpid) -
      &                       int(pgroup%pid(i1:i2,injpid)))
 c           --- Create equivalences
@@ -1343,9 +1343,9 @@ c           --- only particles that have been injected this time step.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1378,8 +1378,8 @@ c           --- Advance relativistic Gamma factor
 
 #ifdef MPIPARALLEL
 c           --- Copy data back into the particle arrays
-            i1 = pgroup%ins(is)+ntinject(isid)
-            i2 = pgroup%ins(is)+ntinject(isid)+pgroup%nps(is)-1
+            i1 = pgroup%ins(is)+ntinject(jsid+1)
+            i2 = pgroup%ins(is)+ntinject(jsid+1)+pgroup%nps(is)-1
             pgroup%xp(i1:i2) = UNPACK(xx,mask>0.,pgroup%xp(i1:i2))
             pgroup%yp(i1:i2) = UNPACK(yy,mask>0.,pgroup%yp(i1:i2))
             pgroup%zp(i1:i2) = UNPACK(zz,mask>0.,pgroup%zp(i1:i2))
@@ -1415,9 +1415,9 @@ c the variable 'inject'.
 c         --- zero ntinject for inject = 2 or 3
           if (inject == 2 .or. inject == 3) then
             do is=1,pgroup%ns
-              isid = pgroup%sid(is-1) + 1
+              jsid = pgroup%sid(is-1)
               if (.not. pgroup%ldts(is-1)) cycle
-              ntinject(isid) = 0
+              ntinject(jsid+1) = 0
             enddo
           endif
 
@@ -1426,7 +1426,7 @@ c         --- Loop over injection sources
 
 c           --- loop over species
             do is=1,pgroup%ns
-              isid = pgroup%sid(is-1) + 1
+              jsid = pgroup%sid(is-1)
               if (.not. pgroup%ldts(is-1)) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
               nti = 0
@@ -1491,7 +1491,7 @@ c                 --- This does not take into account any variation in a and bti
 
 c                 --- number of particles injected in grid cell
                   if (inject == 1) then
-                    rnn = ntinject(isid)*ftinject(isid,ij)/real(nttinj(ij)*nztinj(ij))
+                    rnn = ntinject(jsid+1)*ftinject(jsid+1,ij)/real(nttinj(ij)*nztinj(ij))
                   elseif (inject == 2) then
 c                   --- Const for inject = 2.  Denominator includes factor for
 c                   --- emitting on concentric cylinders.  See I. Langmuir,
@@ -1500,7 +1500,7 @@ c                   --- Concentric Spheres", PhysRev, 1924.
                     const = 4./9.*eps0*(2.*abs(qoverm))**.5*dri**2*
      &                      fulldt_s*area/abs(pgroup%sq(is))/pgroup%sw(is)/
      &                      (1. - 0.8*dr*rinji + 0.66*(dr*rinji)**2)
-                    tinjprev(ith,iz,ij) = ftinject(isid,ij)*(
+                    tinjprev(ith,iz,ij) = ftinject(jsid+1,ij)*(
      &                                    inj_param*const*abs(vavez)**1.5 +
      &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
                     rnn = tinjprev(ith,iz,ij)
@@ -1527,17 +1527,17 @@ c                   --- get charge density at injection point
      &                   rhop(i1x+1,i1y  ,i1z+1)*    w1x *(1.-w1y)*    w1z  +
      &                   rhop(i1x+1,i1y+1,i1z+1)*    w1x *    w1y *    w1z
                     rnn=(eps0*vavez*dri - rr*abs(dr))*area/
-     &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(isid,ij)
+     &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(jsid+1,ij)
                   endif
                   rnn = min(rnn,
      &                      abs(jmaxtinj(ij)*area*fulldt_s/pgroup%sq(is)/
-     &                      pgroup%sw(is)*ftinject(isid,ij)))
+     &                      pgroup%sw(is)*ftinject(jsid+1,ij)))
                   nn = int(rnn + wranf())
 
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
-                  call chckpart(pgroup,is,ntinject(isid) + nn*nttinj(ij)*nztinj(ij),
+                  call chckpart(pgroup,is,ntinject(jsid+1) + nn*nttinj(ij)*nztinj(ij),
      &                          0,.true.)
                   call chckpart(pgroup,is,nn,0,.true.)
 
@@ -1550,15 +1550,15 @@ c                   --- calculate position of new particle
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
                     pgroup%xp(ii) = xtinject(ij) + (ainj*(1.-wz) + ainjp1*wz)*cos(t)
                     pgroup%yp(ii) = ytinject(ij) + (binj*(1.-wz) + binjp1*wz)*sin(t)
-                    vtx = 0.5*vztinject(ij)*emitx_s(isid)/(circum/(2.*pi)) + 
-     &                    vthperp_s(isid)
-                    vty = 0.5*vztinject(ij)*emity_s(isid)/(circum/(2.*pi)) + 
-     &                    vthperp_s(isid)
+                    vtx = 0.5*vztinject(ij)*emitx_s(jsid+1)/(circum/(2.*pi)) + 
+     &                    vthperp_s(jsid+1)
+                    vty = 0.5*vztinject(ij)*emity_s(jsid+1)/(circum/(2.*pi)) + 
+     &                    vthperp_s(jsid+1)
                     pgroup%uxp(ii) = vnorm*cos(t) +
      &                    vtx*wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
                     pgroup%uyp(ii) = vnorm*sin(t) +
      &                    vty*wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
-                    pgroup%uzp(ii) = vznorm + vthz_s(isid)*
+                    pgroup%uzp(ii) = vznorm + vthz_s(jsid+1)*
      &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                     if (pgroup%uzp(ii) == 0.) pgroup%uzp(ii) = SMALLPOS
                     if (lrelativ) then
@@ -1590,7 +1590,7 @@ c                   --- increment random number counter
 
 c             --- Set number of particles that were injected for inject = 2 or 3
               if (inject == 2 .or. inject == 3) then
-                ntinject(isid) = ntinject(isid) + nti
+                ntinject(jsid+1) = ntinject(jsid+1) + nti
               endif
 
 c           --- end loop over species
@@ -1602,11 +1602,11 @@ c         --- end loop over transverse injection sources
 c         --- Call transverse particle scraping routine to force
 c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
-            ii = pgroup%ins(is) - ntinject(isid)
-            if (ntinject(isid) > 0) then
-              call stckxy3d(ntinject(isid),pgroup%xp(ii),xmmax,xmmin,dx,
+            ii = pgroup%ins(is) - ntinject(jsid+1)
+            if (ntinject(jsid+1) > 0) then
+              call stckxy3d(ntinject(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
      &                      pgroup%yp(ii),ymmax,
      &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
      &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
@@ -1616,14 +1616,14 @@ c         --- removal of particles outside the grid.
           enddo
 
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
 c           --- Sum ntinject to get the total number of particles injected.
-            npinject = npinject + ntinject(isid)
+            npinject = npinject + ntinject(jsid+1)
 
 c           --- make injected particles live particles
-            pgroup%ins(is) = pgroup%ins(is) - ntinject(isid)
-            pgroup%nps(is) = pgroup%nps(is) + ntinject(isid)
+            pgroup%ins(is) = pgroup%ins(is) - ntinject(jsid+1)
+            pgroup%nps(is) = pgroup%nps(is) + ntinject(jsid+1)
           enddo
 
 c         --- print warning if no particles were injected
@@ -1635,15 +1635,15 @@ c         --- Now, advance the particles off of the emitting surface using
 c         --- isochronous leapfrog.  Each particle has it's own time step
 c         --- size, uniformly distributed between 0 and dt.
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
 c           --- Skip this if no particles of this species were injected.
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
-            if(ntinject(isid)==0) cycle
+            if(ntinject(jsid+1)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
-            if (ntinject(isid) > npgrp) then
-              npgrp = ntinject(isid)
+            if (ntinject(jsid+1) > npgrp) then
+              npgrp = ntinject(jsid+1)
               call gchange("Setpwork3d",0)
             endif
 
@@ -1672,9 +1672,9 @@ c           --- Assume that injection will never be done inside a bend.
 c           --- Create equivalences
 c           --- In this section of code, this is purely for convenience
 c           --- and to make the following code look cleaner.
-            nn = ntinject(isid)
+            nn = ntinject(jsid+1)
             i1 = pgroup%ins(is)
-            i2 = pgroup%ins(is)+ntinject(isid)-1
+            i2 = pgroup%ins(is)+ntinject(jsid+1)-1
             xx => pgroup%xp(i1:i2)
             yy => pgroup%yp(i1:i2)
             zz => pgroup%zp(i1:i2)
@@ -1686,9 +1686,9 @@ c           --- and to make the following code look cleaner.
 
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
             endif
             call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1722,14 +1722,14 @@ c with position, and then move velocity one half timestep back to match time
 c level of rest of particles.
 c         --- loop over species
           do is=1,pgroup%ns
-            isid = pgroup%sid(is-1) + 1
+            jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
             fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
-            if(ntinject(isid)==0) cycle
-            nn = ntinject(isid)
+            if(ntinject(jsid+1)==0) cycle
+            nn = ntinject(jsid+1)
 #else
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
@@ -1786,7 +1786,7 @@ c           --- Assume that injection will never be done inside a bend.
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
             i1 = pgroup%ins(is)
-            i2 = pgroup%ins(is)+ntinject(isid)-1
+            i2 = pgroup%ins(is)+ntinject(jsid+1)-1
             tt(1:nn) = fulldt_s*(pgroup%pid(i1:i2,injpid) -
      &                       int(pgroup%pid(i1:i2,injpid)))
 c           --- Create equivalences
@@ -1826,9 +1826,9 @@ c           --- only particles that have been injected this time step.
 
 c           --- calculate new E self-fields
             if (linj_efromgrid) then
-              call fetche3dfrompositions(is,pgroup%ndts(is-1),nn,xx,yy,zz,
+              call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(is,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
             endif
             call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1909,7 +1909,7 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: ixmin,ixmax,iymin,iymax
       integer(ISZ):: inx,iny,iz
-      integer(ISZ):: js,is,isid,ip,ij,nn,nnmax,ij1,ij2
+      integer(ISZ):: js,is,jsid,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
       real(kind=8):: circum
@@ -2081,17 +2081,17 @@ c Also set particle parameters: charge, mass and weight
         sp_fract = sp_fract*total_frac
       endif
       do js=0,pgroup%ns-1
-        isid = pgroup%sid(js) + 1
+        jsid = pgroup%sid(js)
         if (maxval(pgroup%nps) /= 0) then
-          call chckpart(pgroup,js+1,int(injctspc*sp_fract(isid)/total_frac+1),
+          call chckpart(pgroup,js+1,int(injctspc*sp_fract(jsid+1)/total_frac+1),
      &                  0,.true.)
         endif
-        if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(isid)*echarge
-        if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(isid)*amu
+        if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
+        if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
         if (pgroup%sw(js+1) == 0.) then
-          if (npinje_s(isid) > 0) then
-            pgroup%sw(js+1) = (ibeam_s(isid)*dt*pgroup%ndts(js)/
-     &                      pgroup%sq(js+1))/npinje_s(isid)
+          if (npinje_s(jsid+1) > 0) then
+            pgroup%sw(js+1) = (ibeam_s(jsid+1)*dt*pgroup%ndts(js)/
+     &                      pgroup%sq(js+1))/npinje_s(jsid+1)
           else if (js > 0 .and.
      &             pgroup%sq(js+1) == pgroup%sq(js) .and.
      &             pgroup%sm(js+1) == pgroup%sm(js) .and.
@@ -2167,10 +2167,10 @@ c points if not already set.
 
 c In case there is no axial injection, set the particle weight.
       do is=1,pgroup%ns
-        isid = pgroup%sid(is-1) + 1
-        if (pgroup%sw(is) == 0. .and. ntinject(isid) > 0) then
-          pgroup%sw(is) = (ibeam_s(isid)*dt*pgroup%ndts(is-1)/
-     &                     pgroup%sq(is))/ntinject(isid)
+        jsid = pgroup%sid(is-1)
+        if (pgroup%sw(is) == 0. .and. ntinject(jsid+1) > 0) then
+          pgroup%sw(is) = (ibeam_s(jsid+1)*dt*pgroup%ndts(is-1)/
+     &                     pgroup%sq(is))/ntinject(jsid+1)
         endif
       enddo
 
