@@ -145,6 +145,20 @@ class MultiGrid(SubcycledPoissonSolver):
               self.xmminp,self.xmmaxp,self.ymminp,self.ymmaxp,self.zmminp,self.zmmaxp,
               self.l2symtry,self.l4symtry)
 
+  def setsourceforfieldsolve(self,*args):
+    if self.nslaves <= 1:
+      SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    else:
+      # --- This needs checking.
+      sourcedims,potentialdims = self.getdims()
+      if 'source' not in self.__dict__ or shape(self.source) != tuple(sourcedims):
+        self.source = fzeros(sourcedims,'d')
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
+                            self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
+                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                            self.izfsslave,self.nzfsslave)
+
   def setarraysforfieldsolve(self,*args):
     if self.nslaves <= 1:
       SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
@@ -155,11 +169,6 @@ class MultiGrid(SubcycledPoissonSolver):
         self.source = fzeros(sourcedims,'d')
       if 'potential' not in self.__dict__ or shape(self.potential) != tuple(potentialdims):
         self.potential = fzeros(potentialdims,'d')
-      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
-                            self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
-                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-                            self.izfsslave,self.nzfsslave)
 
   def getpotentialpforparticles(self,*args):
     if self.nslaves <= 1:
