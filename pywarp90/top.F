@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.202 $, $Date: 2007/01/12 18:35:29 $
+c@(#) File TOP.F, version $Revision: 3.203 $, $Date: 2007/01/30 01:19:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3937,29 +3937,27 @@ c Setups in the bookkeepping variables and arrays for particle which require
 c the self B correction.
 c These are generic and can be used by any field solver.
 
-      integer(ISZ):: js1,js2,isid
+      integer(ISZ):: js1,js2,jsid
 
       logical(ISZ):: lnew
 
 c     --- Find any new species with different fselfb.
       do js1=0,pgroup%ns-1
-        isid = pgroup%sid(js1) + 1
-        if (pgroup%fselfb(js1) > 0.) then
-          lnew = .true.
-          do js2=0,nsselfb-1
-            if (pgroup%fselfb(js1) == fselfb(js2)) then
-              lnew = .false.
-              pgroup%iselfb(js1) = js2
-              iselfb(isid) = js2
-            endif
-          enddo
-          if (lnew) then
-            nsselfb = nsselfb + 1
-            call gchange("SelfB",0)
-            pgroup%iselfb(js1) = nsselfb
-            iselfb(isid) = nsselfb
-            fselfb(nsselfb) = pgroup%fselfb(js1)
+        jsid = pgroup%sid(js1)
+        lnew = .true.
+        do js2=0,nsselfb-1
+          if (pgroup%fselfb(js1) == fselfb(js2)) then
+            lnew = .false.
+            pgroup%iselfb(js1) = js2
+            iselfb(jsid) = js2
           endif
+        enddo
+        if (lnew) then
+          nsselfb = nsselfb + 1
+          call gchange("SelfB",0)
+          pgroup%iselfb(js1) = nsselfb-1
+          iselfb(jsid) = nsselfb-1
+          fselfb(nsselfb-1) = pgroup%fselfb(js1)
         endif
       enddo
 
