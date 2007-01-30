@@ -8488,7 +8488,6 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
       IF(xp(i)<0.) ex(i) = -ex(i)
     END if
     if (efetch == 4) then
-      print*,"efetch 4"
       ez(i) = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
              + ddr  * (tphi(jn+1,ln  )-tphi(jn+1,ln+1)))*g%invdz
     else
