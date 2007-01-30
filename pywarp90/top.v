@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.192 $, $Date: 2007/01/17 17:49:37 $
+#@(#) File TOP.V, version $Revision: 3.193 $, $Date: 2007/01/30 01:20:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.192 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.193 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2018,11 +2018,11 @@ sid(0:ns-1) _integer /-1/ # Global species index for each species
 ndts(0:ns-1) _integer /1/  # Stride for time step advance for each species
 ldts(0:ns-1) _logical /1/
 lvdts(0:ns-1)  _logical /1/
-iselfb(0:ns-1) _integer /-1/ # Group number for particles that are affected by
-                         # their own magnetic field, using the 1/gamma**2
-                         # approximation. The correction is not applied to
-                         # group number -1.
-fselfb(0:ns-1) _real   /0./ # The scaling factor, 1/gamma**2
+iselfb(0:ns-1) _integer /0/ # Group number for particles that are affected by
+                            # their own magnetic field, using the 1/gamma**2
+                            # approximation. The correction is not applied to
+                            # group number -1.
+fselfb(0:ns-1) _real   /1./ # The scaling factor, 1/gamma**2
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
@@ -2085,11 +2085,11 @@ getnsndtsforsubcycling()
 *********** SelfB:
 nsselfb integer /0/     # Number of groups with different gammas that
                         # require the 1/gamma**2 correction.
-fselfb(nsselfb) _real /0./ # The scaling factor, 1/gamma**2
-iselfb(ns) _integer /-1/ # Group number for particles that are affected by
-                         # their own magnetic field, using the 1/gamma**2
-                         # approximation. The correction is not applied to
-                         # group number -1.
+fselfb(0:nsselfb-1) _real /1./ # The scaling factor, 1/gamma**2
+iselfb(0:ns-1) _integer /0/ # Group number for particles that are affected by
+                            # their own magnetic field, using the 1/gamma**2
+                            # approximation. Note that by default, group 0
+                            # has gamma == 1.
 setupSelfB(pgroup:ParticleGroup)
                         subroutine
                         # Sets up data for particle requiring self B correction
