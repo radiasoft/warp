@@ -67,6 +67,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
 
     # --- Create a conductor object, which by default is empty.
     self.conductorlist = []
+    self.conductors = None
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
@@ -219,7 +220,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
     return ((1+self.nx,1+self.nz),
-            (1+self.nx+2*self.nguardx,3+self.nz+2*self.nguardz))
+            (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
 
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
@@ -247,25 +248,32 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
     n  = len(x)
     if n == 0: return
+    sourcep = transpose(self.sourcep)
+    sourcep.shape = (1+self.nxp,1,1+self.nzp)
+    sourcep = transpose(sourcep)
     if top.wpid == 0:
-      rhoweightrzgrid(self.grid,x,y,z,n,q*w,self.nx,self.nz,self.dx,self.dz,
-                      self.xmmin,top.zgrid)
+      setrho3d(sourcep,sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+               self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
-      rhoweightrzgrid_weights(self.grid,x,y,z,wght,n,q*w,self.nx,self.nz,self.dx,self.dz,
-                      self.xmmin,top.zgrid)
-      
+      setrho3dw(sourcep,sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+                self.solvergeom==w3d.RZgeom)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
-           self.xmmin,self.ymmin,self.zmmin,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
+    sete3d(self.potential,self.field,n,x,y,z,top.zgridprv,
+           self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
+           self.dx,self.dy,self.dz,
+           self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
-  def fetchpotentialfrompositions(self,x,y,z,phi):
+  def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
@@ -276,7 +284,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     xmmax = self.xmmax + self.nguardx*self.dx
     zmmin = self.zmmin - self.nguardz*self.dz
     zmmax = self.zmmax + self.nguardz*self.dz
-    getgrid2d(n,r,z,phi,nx,nz,self.phi,
+    getgrid2d(n,r,z,potential,nx,nz,self.potential,
               xmmin,xmmax,zmmin,zmmax,
               self.l2symtry,self.l4symtry)
 
@@ -366,10 +374,355 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
+##############################################################################
+class MultiGridImplicitRZ(SubcycledPoissonSolver):
+  """
+This solves the modified Poisson equation which includes the suseptibility
+tensor that appears from the direct implicit scheme.
+It currently uses the generic sparse matrix solver SuperLU. The various
+multigrid input parameters are maintained for future use, but are ignored now.
 
-# --- This can only be done after MultiGridRZ is defined.
+Initially, conductors are not implemented.
+  """
+  
+  __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
+                   'electrondensitymaxscale']
+  __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
+                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
+                   'lcndbndy','icndbndy','laddconductor'] 
+  __frzinputs__ = ['mgridrz_ncycles','nguardx','nguardz']
+
+  def __init__(self,lreducedpickle=1,**kw):
+    self.solvergeom = w3d.RZgeom
+    kw['lreducedpickle'] = lreducedpickle
+
+    # --- Force xmmin to be zero if using RZgeom
+    if self.solvergeom == w3d.RZgeom:
+      self.xmmin = 0.
+
+    # --- Force ny (which is not used here)
+    self.ny = 0
+
+    SubcycledPoissonSolver.__init__(self,kwdict=kw)
+    self.solvergeom = w3d.solvergeom
+    if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
+      self.solvergeom = w3d.RZgeom
+    self.ncomponents = 1
+
+    # --- Kludge - make sure that the multigrid3df routines never sets up
+    # --- any conductors. This is not really needed here.
+    f3d.gridmode = 1
+
+    # --- Save input parameters
+    for name in MultiGridImplicitRZ.__w3dinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(w3d,name))
+      if kw.has_key(name): del kw[name]
+    for name in MultiGridImplicitRZ.__f3dinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(f3d,name))
+      if kw.has_key(name): del kw[name]
+    for name in MultiGridImplicitRZ.__frzinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(frz,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(frz,name))
+      if kw.has_key(name): del kw[name]
+
+    # --- If there are any remaning keyword arguments, raise an error.
+    assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
+
+    self.nxguard = self.nguardx
+    self.nyguard = 0
+    self.nzguard = self.nguardz
+
+    # --- Create a conductor object, which by default is empty.
+    self.conductorlist = []
+    self.conductors = None
+
+    # --- Give these variables dummy initial values.
+    self.mgiters = 0
+    self.mgerror = 0.
+
+  def __setstate__(self,dict):
+    SubcycledPoissonSolver.__setstate__(self,dict)
+    if self.lreducedpickle and not self.lnorestoreonpickle:
+      # --- Regenerate the conductor data
+      conductorlist = self.conductorlist
+      self.conductorlist = []
+      for conductor in conductorlist:
+        self.installconductor(conductor)
+
+  def getpdims(self):
+    # --- Returns the dimensions of the arrays used by the particles
+    return ((1+self.nxp,1+self.nzp),
+            (1+self.nxp+2*self.nguardx,1+self.nzp+2*self.nguardz))
+
+  def getdims(self):
+    # --- Returns the dimensions of the arrays used by the field solver
+    return ((1+self.nx,1+self.nz),
+            (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
+
+  def loadrho(self,lzero=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
+
+  def fetche(self,*args):
+    SubcycledPoissonSolver.fetchfield(self,*args)
+
+  def setsourcep(self,js,pgroup,zgrid):
+    n  = pgroup.nps[js]
+    if n == 0: return
+    i  = pgroup.ins[js] - 1
+    x  = pgroup.xp[i:i+n]
+    y  = pgroup.yp[i:i+n]
+    z  = pgroup.zp[i:i+n]
+    ux = zeros((0,), 'd')
+    uy = zeros((0,), 'd')
+    uz = pgroup.uzp[i:i+n]
+    gaminv = zeros((0,), 'd')
+    q  = pgroup.sq[js]
+    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    if top.wpid == 0: wght = zeros((0,), 'd')
+    else:             wght = pgroup.pid[i:i+n,top.wpid-1]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+    n  = len(x)
+    if n == 0: return
+    sourcep = transpose(self.sourcep)
+    sourcep.shape = (1+self.nxp,1,1+self.nzp)
+    sourcep = transpose(sourcep)
+    if top.wpid == 0:
+      setrho3d(sourcep,sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+               self.solvergeom==w3d.RZgeom)
+    else:
+      # --- Need top.pid(:,top.wpid)
+      setrho3dw(sourcep,sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+                self.solvergeom==w3d.RZgeom)
+      
+
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+    # --- Only sets the E field from the potential
+    n = len(x)
+    if n == 0: return
+    sete3d(self.potential,self.field,n,x,y,z,top.zgridprv,
+           self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
+           self.dx,self.dy,self.dz,
+           self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+
+  def fetchpotentialfrompositions(self,x,y,z,potential):
+    n = len(x)
+    if n == 0: return
+    if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
+    else:                           r = x
+    nx = self.nx + 2*self.nguardx
+    nz = self.nz + 2*self.nguardz
+    xmmin = self.xmmin - self.nguardx*self.dx
+    xmmax = self.xmmax + self.nguardx*self.dx
+    zmmin = self.zmmin - self.nguardz*self.dz
+    zmmax = self.zmmax + self.nguardz*self.dz
+    getgrid2d(n,r,z,potential,nx,nz,self.potential,
+              xmmin,xmmax,zmmin,zmmax,
+              self.l2symtry,self.l4symtry)
+
+  def setarraysforfieldsolve(self,*args):
+    if self.nslaves <= 1:
+      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
+    else:
+      raise "MultiGridImplicitRZ not parallelized"
+
+  def getpotentialpforparticles(self,*args):
+    if self.nslaves <= 1:
+      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
+    else:
+      raise "MultiGridImplicitRZ not parallelized"
+
+  def makesourceperiodic(self):
+    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
+      self.source[0,:] = self.source[0,:] + self.source[-1,:]
+      self.source[-1,:] = self.source[0,:]
+    if self.pbounds[0] == 1 and not self.l4symtry:
+       self.source[0,:] = 2.*self.source[0,:]
+    if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
+      if self.nslaves > 1:
+        raise "MultiGridImplicitRZ not parallelized"
+        #self.makesourceperiodic_parallel()
+      else:
+        self.source[:,0] = self.source[:,0] + self.source[:,-1]
+        self.source[:,-1] = self.source[:,0]
+    if self.pbounds[4] == 1: self.source[:,0] = 2.*self.source[:,0]
+    if self.pbounds[5] == 1: self.source[:,-1] = 2.*self.source[:,-1]
+
+  def installconductor(self,conductor,
+                            xmin=None,xmax=None,
+                            ymin=None,ymax=None,
+                            zmin=None,zmax=None,
+                            dfill=top.largepos):
+    if conductor in self.conductorlist: return
+    self.conductorlist.append(conductor)
+    installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
+                      top.zbeam,
+                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      solvergeom=self.solvergeom,gridrz=self.grid)
+
+  def hasconductors(self):
+    "This is not used anywhere"
+    return 1
+   #return (self.conductors.interior.n > 0 or
+   #        self.conductors.evensubgrid.n > 0 or
+   #        self.conductors.oddsubgrid.n > 0)
+
+  def clearconductors(self):
+    "This is only used by realboundaries"
+    pass
+    #self.conductors.interior.n = 0
+    #self.conductors.evensubgrid.n = 0
+    #self.conductors.oddsubgrid.n = 0
+
+  def find_mgparam(self,lsavephi=false,resetpasses=1):
+    "This needs to be thought through"
+    pass
+    #find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+    #             solver=self,pkg3d=self)
+
+  def dosolve(self,iwhich=0,*args):
+    #self.grid.rho = self.source
+    #self.grid.phi = self.potential
+    #solve_mgridrz(self.grid,self.mgtol,false)
+    #self.mgiters = nb_iters
+    ##self.mgerror = mgerror[0] # not saved anywhere
+
+    # --- Use direct matrix solver
+    t0 = wtime()
+    n = self.nx*self.nz
+    nrhs = 1
+    b = -self.source[:-1,:-1]/eps0
+    phi = self.potential[1:-1,1:-1]
+    info = zeros(1)
+
+    values = fzeros((5,n),'d')
+    rowind = fzeros((5,n))
+    colptr = arange(n+1)*5 + 1
+    rowcnt = zeros(n)
+    rmmin = self.xmmin
+    dr = self.dx
+    dz = self.dz
+    drsqi = 1./dr**2
+    dzsqi = 1./dz**2
+    nr = self.nx
+    nz = self.nz
+    coeffikm1 = dzsqi
+    coeffikp1 = dzsqi
+    for iz in range(0,nz):
+      for ix in range(0,nr):
+        icol = iz*nr + ix
+        r = rmmin + ix*dr
+        if r == 0.:
+          coeffik = - 4.*drsqi - 2.*dzsqi
+          coeffim1k = 0
+          coeffip1k = 4.*drsqi
+        else:
+          coeffik = - 2.*drsqi - 2.*dzsqi
+          coeffim1k = (r-0.5*dr)/r*drsqi
+          coeffip1k = (r+0.5*dr)/r*drsqi
+          if ix == nr-1:
+            b[ix,iz] += -coeffip1k*phi[ix+1,iz]
+            coeffip1k = 0.
+
+        vtemp = [coeffikm1,coeffim1k,coeffik,coeffip1k,coeffikp1]
+        rtemp = [-nr+icol,-1+icol,0+icol,+1+icol,+nr+icol]
+        if rtemp[0] < 0:
+          # --- Periodic Z boundary condition
+          rtemp = rtemp[1:] + [rtemp[0] + nz*nr]
+          vtemp = vtemp[1:] + [vtemp[0]]
+        if rtemp[0] < 0:
+          # --- Throw away point "below" r=0 axis at iz=0.
+          del rtemp[0]
+          del vtemp[0]
+        if rtemp[-1] >= n:
+          # --- Periodic Z boundary condition
+          rtemp = [rtemp[-1] - nz*nr] + rtemp[:-1]
+          vtemp = [vtemp[-1]]         + vtemp[:-1]
+        if rtemp[-1] >= n:
+          # --- Throw away point beyond r=nr, iz=nz
+          del rtemp[-1]
+          del vtemp[-1]
+  
+        for i in range(len(rtemp)):
+          irow = rowcnt[rtemp[i]]
+          values[irow,rtemp[i]] = vtemp[i]
+          rowind[irow,rtemp[i]] = icol + 1
+          rowcnt[rtemp[i]] += 1
+
+    # --- There are two values of rowind that are unset, the (i-1) term
+    # --- for (ix,iz)=(0,0) and the (i+1) term for (ix,iz)=(nx,nz).
+    # --- Give the first one a fake value (since the coefficient is zero
+    # --- anway.
+    rowind[-1,0] = rowind[-2,0] + 1
+    # --- The other is ignored by decrementing the last value of colptr.
+    colptr[-1] -= 1
+
+    self.values = values
+    self.rowind = rowind
+    self.colptr = colptr
+    nnz = colptr[-1] - 1
+
+    t1 = wtime()
+    superlu_dgssv(n,nnz,nrhs,values,rowind,colptr,b,info)
+    t2 = wtime()
+
+    self.potential[1:-2,1:-2] = b
+    self.potential[0,1:-2] = self.potential[2,1:-2]
+    self.potential[-1,1:-2] = 2*self.potential[-2,1:-2]-self.potential[-3,1:-2]
+    self.potential[:,-2:] = self.potential[:,1:3]
+    self.potential[:,0] = self.potential[:,-3]
+    t3 = wtime()
+
+    print "Solve time = ",t2 - t1
+    print "Total time = ",t3 - t0
+    self.fstime = t2 - t1
+    self.tottime = t3 - t0
+
+  ##########################################################################
+  # Define the basic plot commands
+  def genericpf(self,kw,pffunc):
+    kw['conductors'] = self.conductors
+    kw['solver'] = self
+    # --- This is a temporary kludge until the plot routines are updated to
+    # --- use source and potential instead of rho and phi.
+    sdims,pdims = self.getdims()
+    sdims = [sdims[1],1,sdims[0]]
+    pdims = [pdims[1],1,pdims[0]]
+    source = transpose(self.source)
+    source.shape = sdims
+    source = transpose(source)
+    potential = transpose(self.potential)
+    print potential.shape,pdims
+    potential.shape = pdims
+    potential = transpose(potential)
+    self.rho = source
+    self.phi = potential
+    pffunc(**kw)
+    del self.rho,self.phi
+  def pfzx(self,**kw): self.genericpf(kw,pfzx)
+  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
+  def pfzr(self,**kw): self.genericpf(kw,pfzx)
+  def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
+
+
+# --- This can only be done after MultiGridRZ and MultiGridImplicitRZ are defined.
 try:
   psyco.bind(MultiGridRZ)
+  psyco.bind(MultiGridImplicitRZ)
 except NameError:
   pass
 
