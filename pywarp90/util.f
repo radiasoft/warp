@@ -1,6 +1,6 @@
 #include "top.h"
 c************************************************************************** 
-c@(#) File UTIL.M, version $Revision: 1.3 $ $Date: 2004/03/05 15:10:22 $
+c@(#) File UTIL.M, version $Revision: 1.4 $ $Date: 2007/01/30 01:16:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c Contains various utility routines that are part of the TOP package.
@@ -22,7 +22,10 @@ c        dvbksb(u,w,v,m,n,mp,np,b,x,tmp)          subroutine
 c        dvdcmp(a,m,n,mp,np,w,v,tmp)              subroutine
 c        dvdfit(x,y,ndata,ndatap,a,basis,ma,map,  subroutine 
 c               u,w,v,tmp,tol,chisq)
-c     From LAPACK and BLAS
+c     From LAPACK and BLAS - Note that some have WARP appended to the name
+c                            meaning that they have integer the same length
+c                            as C longs. The names distinguishes them from
+c                            any in an included external library.
 c        dgemm
 c        dgemv
 c        dlasyf
@@ -1241,7 +1244,7 @@ c
       return
       end
 c***********************************************************************
-      SUBROUTINE DGEMM ( TRANSA, TRANSB, M, N, K, ALPHA, A, LDA, B, LDB,
+      SUBROUTINE DGEMMWARP ( TRANSA, TRANSB, M, N, K, ALPHA, A, LDA, B, LDB,
      $                   BETA, C, LDC )
 *     .. Scalar Arguments ..
       character(1)::     TRANSA, TRANSB
@@ -1431,7 +1434,7 @@ c***********************************************************************
          INFO = 13
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DGEMM ', INFO )
+         CALL XERBLA( 'DGEMMWARP ', INFO )
          RETURN
       END IF
 *
@@ -1550,11 +1553,11 @@ c***********************************************************************
 *
       RETURN
 *
-*     End of DGEMM .
+*     End of DGEMMWARP .
 *
       END
 c************************************************************************** 
-      SUBROUTINE DGEMV ( TRANS, M, N, ALPHA, A, LDA, X, INCX,
+      SUBROUTINE DGEMVWARP ( TRANS, M, N, ALPHA, A, LDA, X, INCX,
      $                   BETA, Y, INCY )
 *     .. Scalar Arguments ..
       real(kind=8)::   ALPHA, BETA
@@ -1689,7 +1692,7 @@ c**************************************************************************
          INFO = 11
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DGEMV ', INFO )
+         CALL XERBLA( 'DGEMVWARP ', INFO )
          RETURN
       END IF
 *
@@ -1811,7 +1814,7 @@ c**************************************************************************
 *
       RETURN
 *
-*     End of DGEMV .
+*     End of DGEMVWARP .
 *
       END
 c************************************************************************** 
@@ -1927,7 +1930,7 @@ c**************************************************************************
       external::         LSAME, IDAMAX
 *     ..
 *     .. External Subroutines ..
-      external::         DCOPY, DGEMM, DGEMV, DSCAL, DSWAP
+      external::         DCOPY, DGEMMWARP, DGEMVWARP, DSCAL, DSWAP
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        ABS, MAX, MIN, SQRT
@@ -1963,7 +1966,7 @@ c**************************************************************************
 *
          CALL DCOPY( K, A( 1, K ), 1, W( 1, KW ), 1 )
          IF( K.LT.N )
-     $      CALL DGEMV( 'No transpose', K, N-K, -ONE, A( 1, K+1 ), LDA,
+     $      CALL DGEMVWARP( 'No transpose', K, N-K, -ONE, A( 1, K+1 ), LDA,
      $                  W( K, KW+1 ), LDW, ONE, W( 1, KW ), 1 )
 *
          KSTEP = 1
@@ -2004,7 +2007,7 @@ c**************************************************************************
                CALL DCOPY( K-IMAX, A( IMAX, IMAX+1 ), LDA,
      $                     W( IMAX+1, KW-1 ), 1 )
                IF( K.LT.N )
-     $            CALL DGEMV( 'No transpose', K, N-K, -ONE, A( 1, K+1 ),
+     $            CALL DGEMVWARP( 'No transpose', K, N-K, -ONE, A( 1, K+1 ),
      $                        LDA, W( IMAX, KW+1 ), LDW, ONE,
      $                        W( 1, KW-1 ), 1 )
 *
@@ -2138,14 +2141,14 @@ c**************************************************************************
 *           Update the upper triangle of the diagonal block
 *
             DO 40 JJ = J, J + JB - 1
-               CALL DGEMV( 'No transpose', JJ-J+1, N-K, -ONE,
+               CALL DGEMVWARP( 'No transpose', JJ-J+1, N-K, -ONE,
      $                     A( J, K+1 ), LDA, W( JJ, KW+1 ), LDW, ONE,
      $                     A( J, JJ ), 1 )
    40       CONTINUE
 *
 *           Update the rectangular superdiagonal block
 *
-            CALL DGEMM( 'No transpose', 'Transpose', J-1, JB, N-K, -ONE,
+            CALL DGEMMWARP( 'No transpose', 'Transpose', J-1, JB, N-K, -ONE,
      $                  A( 1, K+1 ), LDA, W( J, KW+1 ), LDW, ONE,
      $                  A( 1, J ), LDA )
    50    CONTINUE
@@ -2190,7 +2193,7 @@ c**************************************************************************
 *        Copy column K of A to column K of W and update it
 *
          CALL DCOPY( N-K+1, A( K, K ), 1, W( K, K ), 1 )
-         CALL DGEMV( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ), LDA,
+         CALL DGEMVWARP( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ), LDA,
      $               W( K, 1 ), LDW, ONE, W( K, K ), 1 )
 *
          KSTEP = 1
@@ -2230,7 +2233,7 @@ c**************************************************************************
                CALL DCOPY( IMAX-K, A( IMAX, K ), LDA, W( K, K+1 ), 1 )
                CALL DCOPY( N-IMAX+1, A( IMAX, IMAX ), 1, W( IMAX, K+1 ),
      $                     1 )
-               CALL DGEMV( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ),
+               CALL DGEMVWARP( 'No transpose', N-K+1, K-1, -ONE, A( K, 1 ),
      $                     LDA, W( IMAX, 1 ), LDW, ONE, W( K, K+1 ), 1 )
 *
 *              JMAX is the column-index of the largest off-diagonal
@@ -2361,7 +2364,7 @@ c**************************************************************************
 *           Update the lower triangle of the diagonal block
 *
             DO 100 JJ = J, J + JB - 1
-               CALL DGEMV( 'No transpose', J+JB-JJ, K-1, -ONE,
+               CALL DGEMVWARP( 'No transpose', J+JB-JJ, K-1, -ONE,
      $                     A( JJ, 1 ), LDA, W( JJ, 1 ), LDW, ONE,
      $                     A( JJ, JJ ), 1 )
   100       CONTINUE
@@ -2369,7 +2372,7 @@ c**************************************************************************
 *           Update the rectangular subdiagonal block
 *
             IF( J+JB.LE.N )
-     $         CALL DGEMM( 'No transpose', 'Transpose', N-J-JB+1, JB,
+     $         CALL DGEMMWARP( 'No transpose', 'Transpose', N-J-JB+1, JB,
      $                     K-1, -ONE, A( J+JB, 1 ), LDA, W( J, 1 ), LDW,
      $                     ONE, A( J+JB, J ), LDA )
   110    CONTINUE
@@ -5110,7 +5113,7 @@ c**************************************************************************
       external::         LSAME, ILAENV
 *     ..
 *     .. External Subroutines ..
-      external::         DGEMM, DPBTF2, DPOTF2, DSYRK, DTRSM, XERBLA
+      external::         DGEMMWARP, DPBTF2, DPOTF2, DSYRK, DTRSMWARP, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       intrinsic::        MIN
@@ -5207,7 +5210,7 @@ c**************************************************************************
 *
 *                    Update A12
 *
-                     CALL DTRSM( 'Left', 'Upper', 'Transpose',
+                     CALL DTRSMWARP( 'Left', 'Upper', 'Transpose',
      $                           'Non-unit', IB, I2, ONE, AB( KD+1, I ),
      $                           LDAB-1, AB( KD+1-IB, I+IB ), LDAB-1 )
 *
@@ -5230,14 +5233,14 @@ c**************************************************************************
 *
 *                    Update A13 (in the work array).
 *
-                     CALL DTRSM( 'Left', 'Upper', 'Transpose',
+                     CALL DTRSMWARP( 'Left', 'Upper', 'Transpose',
      $                           'Non-unit', IB, I3, ONE, AB( KD+1, I ),
      $                           LDAB-1, WORK, LDWORK )
 *
 *                    Update A23
 *
                      IF( I2.GT.0 )
-     $                  CALL DGEMM( 'Transpose', 'No Transpose', I2, I3,
+     $                  CALL DGEMMWARP( 'Transpose', 'No Transpose', I2, I3,
      $                              IB, -ONE, AB( KD+1-IB, I+IB ),
      $                              LDAB-1, WORK, LDWORK, ONE,
      $                              AB( 1+IB, I+KD ), LDAB-1 )
@@ -5307,7 +5310,7 @@ c**************************************************************************
 *
 *                    Update A21
 *
-                     CALL DTRSM( 'Right', 'Lower', 'Transpose',
+                     CALL DTRSMWARP( 'Right', 'Lower', 'Transpose',
      $                           'Non-unit', I2, IB, ONE, AB( 1, I ),
      $                           LDAB-1, AB( 1+IB, I ), LDAB-1 )
 *
@@ -5330,14 +5333,14 @@ c**************************************************************************
 *
 *                    Update A31 (in the work array).
 *
-                     CALL DTRSM( 'Right', 'Lower', 'Transpose',
+                     CALL DTRSMWARP( 'Right', 'Lower', 'Transpose',
      $                           'Non-unit', I3, IB, ONE, AB( 1, I ),
      $                           LDAB-1, WORK, LDWORK )
 *
 *                    Update A32
 *
                      IF( I2.GT.0 )
-     $                  CALL DGEMM( 'No transpose', 'Transpose', I3, I2,
+     $                  CALL DGEMMWARP( 'No transpose', 'Transpose', I3, I2,
      $                              IB, -ONE, WORK, LDWORK,
      $                              AB( 1+IB, I ), LDAB-1, ONE,
      $                              AB( 1+KD-IB, I+IB ), LDAB-1 )
@@ -5833,7 +5836,7 @@ c**************************************************************************
       EXTERNAL::         LSAME, DDOT
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL::         DGEMV, DSCAL, XERBLA
+      EXTERNAL::         DGEMVWARP, DSCAL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC::        MAX, SQRT
@@ -5880,7 +5883,7 @@ c**************************************************************************
 *           Compute elements J+1:N of row J.
 *
             IF( J.LT.N ) THEN
-               CALL DGEMV( 'Transpose', J-1, N-J, -ONE, A( 1, J+1 ),
+               CALL DGEMVWARP( 'Transpose', J-1, N-J, -ONE, A( 1, J+1 ),
      $                     LDA, A( 1, J ), 1, ONE, A( J, J+1 ), LDA )
                CALL DSCAL( N-J, ONE / AJJ, A( J, J+1 ), LDA )
             END IF
@@ -5905,7 +5908,7 @@ c**************************************************************************
 *           Compute elements J+1:N of column J.
 *
             IF( J.LT.N ) THEN
-               CALL DGEMV( 'No transpose', N-J, J-1, -ONE, A( J+1, 1 ),
+               CALL DGEMVWARP( 'No transpose', N-J, J-1, -ONE, A( J+1, 1 ),
      $                     LDA, A( J, 1 ), LDA, ONE, A( J+1, J ), 1 )
                CALL DSCAL( N-J, ONE / AJJ, A( J+1, J ), 1 )
             END IF
@@ -5923,7 +5926,7 @@ c**************************************************************************
 *
       END
 c************************************************************************** 
-      SUBROUTINE DTRSM ( SIDE, UPLO, TRANSA, DIAG, M, N, ALPHA, A, LDA,
+      SUBROUTINE DTRSMWARP ( SIDE, UPLO, TRANSA, DIAG, M, N, ALPHA, A, LDA,
      $                   B, LDB )
 *     .. Scalar Arguments ..
       CHARACTER(1)::     SIDE, UPLO, TRANSA, DIAG
@@ -6103,7 +6106,7 @@ c**************************************************************************
          INFO = 11
       END IF
       IF( INFO.NE.0 )THEN
-         CALL XERBLA( 'DTRSM ', INFO )
+         CALL XERBLA( 'DTRSMWARP ', INFO )
          RETURN
       END IF
 *
@@ -6297,7 +6300,7 @@ c**************************************************************************
 *
       RETURN
 *
-*     End of DTRSM .
+*     End of DTRSMWARP .
 *
       END
 c************************************************************************** 
