@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.338 $, $Date: 2007/01/17 17:50:50 $
+c@(#) File W3D.F, version $Revision: 3.339 $, $Date: 2007/01/30 01:35:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -22,6 +22,12 @@ c=============================================================================
       real(kind=8),target:: rhopindts(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipindts(0:nxp,0:nyp,-1:nzp+1)
       end subroutine assignrhopandphip
+
+      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      use Fields3dParticles
+      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
+      end subroutine assignrhoandphiforfieldsolve
 
       subroutine setrhoandphiforfieldsolve(rhopin,phipin)
       use Fields3dParticles
@@ -877,9 +883,9 @@ c  injection with new fields including injected particles.
 c  Call this here since getzmmnt needs to have lvdts updated.
 c  Note that it is still called in padvnc3d.
       if (caller == "w3dexe" .and. lspecial) then
-        call setuppadvncsubcyclingaveraging(it,"synchv")
+        call setuppadvncsubcyclingaveraging(it,"synchv",pgroup)
       elseif (caller == "w3dgen") then
-        call setuppadvncsubcyclingaveraging(it,"gen")
+        call setuppadvncsubcyclingaveraging(it,"gen",pgroup)
       endif
 
 c  Initialize the moments arrays which are calculated during the synchv and
@@ -1265,12 +1271,14 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine setuppadvncsubcyclingaveraging(it,center)
+      subroutine setuppadvncsubcyclingaveraging(it,center,pgroup)
+      use ParticleGroupmodule
       use Subcycling
       integer(ISZ):: it
       character(*):: center
+      type(ParticleGroup):: pgroup
 
-      integer(ISZ):: indts
+      integer(ISZ):: indts,js
 
       do indts=0,nsndts-1
         if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
@@ -1280,6 +1288,13 @@ c=============================================================================
         elseif (ndtsaveraging == 3) then
           call setuppadvncsubcyclinghalfvaveraging(it,indts,center)
         endif
+      enddo
+
+c     --- The pgroup%ldts variable should be removed since its not really needed.
+      do js=0,pgroup%ns-1
+        indts = ndtstorho(pgroup%ndts(js))
+        pgroup%ldts(js) = ldts(indts)
+        pgroup%lvdts(js) = lvdts(indts)
       enddo
 
       return
@@ -1460,12 +1475,7 @@ c     call zeroarry (bendradi,nparpgrp)
 c  Setup the setsubcycling flags for this advance. This is done ahead of
 c  time since the value of lvdts is needed for species other that the one
 c  being looped over below.
-      call setuppadvncsubcyclingaveraging(it,center)
-      do is=1,pgroup%ns
-        indts = ndtstorho(pgroup%ndts(is-1))
-        pgroup%ldts(is-1) = ldts(indts)
-        pgroup%lvdts(is-1) = lvdts(indts)
-      enddo
+      call setuppadvncsubcyclingaveraging(it,center,pgroup)
 
 c  Loop over species
       do is=1,pgroup%ns
@@ -1898,11 +1908,11 @@ c         --- Recollect charge density and current
 c         --- Temporarily increment 'it' as if this was the start of the next
 c         --- fullv or halfv step.
           it = it + 1
-          call setuppadvncsubcyclingaveraging(it,'halfv')
+          call setuppadvncsubcyclingaveraging(it,'halfv',pgroup)
           call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 c         call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
           it = it - 1
-          call setuppadvncsubcyclingaveraging(it,center)
+          call setuppadvncsubcyclingaveraging(it,center,pgroup)
 
         endif
 
@@ -2792,7 +2802,7 @@ c  Evaluation of E, vectorized over particles
 
            if (lcylindrical) then
              x = sqrt(xp(ip)**2 + yp(ip)**2)
-             y = 0.
+             y = ymmin
            else
              x = xp(ip)
              y = yp(ip)
@@ -2837,6 +2847,17 @@ c  Evaluation of E, vectorized over particles
      &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
      &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
      &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+
+           if (lcylindrical) then
+             if (x > 0.) then
+               ey(ip) = ex(ip)*yp(ip)/x
+               ex(ip) = ex(ip)*xp(ip)/x
+             else
+               ex(ip) = ex(ip)
+               ey(ip) = 0.
+             endif
+           endif
+
         enddo
 
       else
@@ -4630,14 +4651,13 @@ c--------------------------------------
       elseif (depos == "direct1") then
 
         if (.not. lcylindrical) then
-        call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
-     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
-     &                       l2symtry,l4symtry)
-
+          call setrho3ddirect1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                         l2symtry,l4symtry)
         else
-        call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
-     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
-     &                       l2symtry,l4symtry,lcylindrical)
+          call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
+     &                         nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                         l2symtry,l4symtry,lcylindrical)
         endif
 
 c--------------------------------------
@@ -6379,8 +6399,8 @@ c     --- scalar loop does the actual deposition
       end
 c=============================================================================
       subroutine setrho3dw(rho,rho1d,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,depos,
-     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
-     &                    lcylindrical)
+     &                     nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                     lcylindrical)
       use GlobalVars
       use Subtimers3d
       use Parallel,Only:my_index
@@ -6404,16 +6424,15 @@ c--------------------------------------
 c  Direct deposition loop with precalculated integer conversions
 c--------------------------------------
 
-c        if (.not. lcylindrical) then
-        call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
-     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
-     &                       l2symtry,l4symtry)
-
-c        else
-c        call setrho3ddirect2(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
-c     &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
-c     &                       l2symtry,l4symtry,lcylindrical)
-c        endif
+        if (.not. lcylindrical) then
+          call setrho3ddirect1w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+     &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                          l2symtry,l4symtry)
+        else
+          call setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+     &                          nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
+     &                          l2symtry,l4symtry,lcylindrical)
+        endif
 
 
 !$OMP END PARALLEL
@@ -6585,6 +6604,222 @@ c       --- normal loop
           rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
           rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
           rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      endif
+
+!$OMP END PARALLEL
+
+      return
+      end
+c=============================================================================
+      subroutine setrho3ddirect2w(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
+     &                    lcylindrical)
+      use GlobalVars
+      use Constant,Only: pi
+      integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
+      real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+
+c  Sets charge density
+c  No particle blocks are used (since there are no temporary arrays).
+c  Also, the float to integer conversions are precalculated.
+c  This seems to be the fastest version.
+
+      integer(ISZ):: ip,ii,jj,kk,ix
+      integer(ISZ):: iinext,jjnext,kknext
+      real(kind=8):: g0,g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: u1next,v1next,w1next
+
+c     --- Work array holding q/cell volume, the charge density per
+c     --- real particle. This is primarily needed for the RZ version
+c     --- since the cell volume there has radial dependence.
+      real(kind=8):: cdens(0:nx)
+c     --- Temp arrays to hold particle data
+c     --- These are needed when lcylindrical is true, in which case x=r, y=0.
+      real(kind=8):: x,y
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      if (lcylindrical) then
+        if (xmmin == 0.) then
+c         --- The factor 0.75 corrects for overdeposition due to linear
+c         --- weighting (for uniform distribution)
+c         --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+c         --- and Verboncoeur, J. of Comp. Phys.,
+          cdens(0) = 0.75/(pi*(0.5*0.5*dx*dx*dz))
+        else
+          cdens(0) = 1./(2.*pi*(xmmin)*dx*dz)
+        endif
+        do ix = 1,nx
+          cdens(ix) = 1./(2.*pi*(ix*dx+xmmin)*dx*dz)
+        enddo
+        cdens = cdens*wght*q
+      else
+        g0 = wght*q/(dx*dy*dz)
+        if (l2symtry) then
+c         --- The particle weight is reduced by a factor of 2 except near the
+c         --- transverse boundaries.
+          g0 = g0*0.5
+        elseif (l4symtry) then
+c         --- The particle weight is reduced by a factor of 4 except near the
+c         --- transverse boundaries.
+          g0 = g0*0.25
+        endif
+        cdens = g0
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ii,jj,kk,u1,u0,v1,v0,w1,w0,ip,gyfact,gxfact,
+!$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
+!$OMP&FIRSTPRIVATE(np)
+
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .and. .not. lcylindrical) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gyfact = 1.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          g = g0*wfact(ip)
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry .and. .not. lcylindrical) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        jjnext = int((abs(yp(1)) - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          gxfact = 1.
+          gyfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+          g = g0*wfact(ip)
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        if (lcylindrical) then
+          x = sqrt(xp(1)**2 + yp(1)**2)
+          y = 0.
+        else
+          x = xp(1)
+          y = yp(1)
+        endif
+        iinext = int((x - xmmin)*dxi)
+        jjnext = int((y - ymmin)*dyi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (x - xmmin)*dxi - iinext
+        v1next = (y - ymmin)*dyi - jjnext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          jj = jjnext
+          kk = kknext
+          u1 = u1next
+          v1 = v1next
+          w1 = w1next
+          if (ip < np) then
+            if (lcylindrical) then
+              x = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              y = 0.
+            else
+              x = xp(ip+1)
+              y = yp(ip+1)
+            endif
+            iinext = int((x - xmmin)*dxi)
+            jjnext = int((y - ymmin)*dyi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (x - xmmin)*dxi - iinext
+            v1next = (y - ymmin)*dyi - jjnext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+          u0 = u0*cdens(ii  )
+          u1 = u1*cdens(ii+1)
+          g = g0*wfact(ip)
+          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0
+          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0
+          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0
+          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0
+          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1
+          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1
+          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1
+          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1
         enddo
 !$OMP END DO
       endif
@@ -6865,7 +7100,8 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2,isid
-      integer(ISZ):: ip,ipmin,is,indts
+      integer(ISZ):: ip,ipmin,is,indts,tmpnsndts,isndts
+      integer(ISZ):: getnsndtsforsubcycling
       real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
       integer(ISZ):: allocerror
@@ -7044,6 +7280,40 @@ c         --- This must be done after all of the species has been deposited.
               call averagerhowithhalfvsubcycling()
             endif
           endif
+
+c         --- Loop over the subcyling groups and apply B.C.s to rho
+c         --- WARNING: this code is not correct for ndtsaveraging > 1 for the
+c         --- parallel code!!!
+c         --- The setrhoandphiforfieldsolve only allocates one rho array for
+c         --- the parallel code, but with ndtsaveraging > 1, multiple rho
+c         --- arrays will be needed. (In serial rho only points to memory
+c         --- in rhopndts and so implicitly allows multiple copies.)
+          tmpnsndts = getnsndtsforsubcycling()
+          do indts=tmpnsndts-1,0,-1
+            if (.not. ldts(indts) .and.
+     &          ((ndtsaveraging == 0 .or. ndtsaveraging == 1)
+     &           .and. .not. any(ldts))) cycle
+            isndts = min(indts,nsndtsphi3d-1)
+
+c           --- For serial version, the arrays rho and phi are pointed to the
+c           --- appropriate arrays for the current ndts group.
+c           --- For parallel version, each processor sends rho to neighboring
+c           --- processors whose field solve region overlap its particle region.
+            call assignrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
+     &                                        phipndts(:,:,:,isndts))
+            call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
+     &                                     phipndts(:,:,:,isndts))
+
+c           --- enforce periodicity
+c           --- This is done on the rho array, rather than rhop, since that will
+c           --- be used for the field solve. Also, in some cases, the rhop array
+c           --- will not cover the full axial extent of the system, so 
+c           --- periodicity can never be enforced on rho which does cover the full
+c           --- system.
+            call perrho3d()
+
+          enddo
+
         endif
 
       endif
@@ -7154,6 +7424,23 @@ c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       return
       end
 c=============================================================================
+      subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      use Fields3d
+      use Fields3dParticles
+      real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
+      real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
+
+#ifndef MPIPARALLEL
+
+c      --- Point rho to the block for the currently active ndts group.
+       rho => rhopin
+       phi => phipin
+
+#endif
+
+      return
+      end
+c=============================================================================
       subroutine setrhoandphiforfieldsolve(rhopin,phipin)
       use InGen
       use InGen3d
@@ -7168,13 +7455,7 @@ c=============================================================================
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
       real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
 
-#ifndef MPIPARALLEL
-
-c      --- Point rho to the block for the currently active ndts group.
-       rho => rhopin
-       phi => phipin
-
-#else
+#ifdef MPIPARALLEL
 
 c     --- The rho and phi arrays need to be allocated if they havn't already
 c     --- been.
@@ -7182,7 +7463,7 @@ c     --- been.
       if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
 
 c  For parallel version, each processor sends rho to neighboring processors
-c  whose field solve region overlap its particle regio.
+c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho)
       else if(solvergeom==XYgeom) then
@@ -7267,27 +7548,6 @@ c Ensures that the phip and rhop arrays are setup properly.
       nsselfb3d = nsselfb
       call gchange("Fields3dParticles",0)
 
-c     --- If either rhop of phip are not associated or either does not have
-c     --- the correct dimensions as given by nxp, etc, something 
-c     --- needs to be done for fix them.
-c     if (.not. associated(rhop) .or. .not. associated(phip) .or.
-c    &    ANY(ubound(phip) .ne. (/ nxp,nyp,nzp+1 /) ) .or.
-c    &    ANY(ubound(rhop) .ne. (/ nxp,nyp,nzp   /) )) then
-
-c       --- Free whatever the rhop and phip arrays are now refering to.
-c       call gfree('Fields3dParticles')
-
-c       if (ALL( (/ nxp,nyp,nzp /) == (/ nx,ny,nzfull /) )) then
-c         --- If the sizes of rhop and rho, and phip and phi, are the same,
-c         --- then associate rhop with rho and phip with phi
-c         rhop => rho
-c         phip => phi
-c       else
-c         --- If the sizes are not the same, then allocate the group
-c         call gallot('Fields3dParticles',0)
-c       endif
-c     endif
-
 c     --- rhop and phip have the special values for the species which are
 c     --- incremented every time step.
       call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies-1,0),
@@ -7337,7 +7597,7 @@ c     --- Don't do anything if there are no particles input.
 
       if(fstype == 12) then
         pgroupfsapi => pgroup
-        jsfsapi = is - 1
+        jsfsapi = pgroup%sid(is - 1)
         ipminfsapi = ipmin
         npfsapi = ip
         call execuser("fetcheregistered")
@@ -7378,7 +7638,7 @@ c     --- Don't do anything if there are no particles input.
       return
       end
 c=============================================================================
-      subroutine fetche3dfrompositions(is,ndts,n,x,y,z,ex,ey,ez)
+      subroutine fetche3dfrompositions(jsid,ndts,n,x,y,z,ex,ey,ez)
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -7391,7 +7651,7 @@ c=============================================================================
       use Fields3dParticles
       use Efields3d
       use FieldSolveAPI
-      integer(ISZ):: is,ndts,n
+      integer(ISZ):: jsid,ndts,n
       real(kind=8),target:: x(n),y(n),z(n),ex(n),ey(n),ez(n)
 
 c     --- Obtain the self-field from the electrostatic potential
@@ -7426,7 +7686,7 @@ c       --- and the data needs to be copied around.
         ezfsapi => ez
 #endif
         npfsapi = n
-        jsfsapi = is - 1
+        jsfsapi = jsid
         call execuser("fetcheregistered")
         npfsapi = 0
         jsfsapi = -1
@@ -7465,7 +7725,7 @@ c       --- and the data needs to be copied around.
       elseif(solvergeom==Rgeom) then
         call fieldweightr(x,y,ex,ey,n)
       elseif(solvergeom==AMRgeom) then
-        call cho_gete3d(n,x,y,z,zgridprv,ex,ey,ez,is,-1)
+        call cho_gete3d(n,x,y,z,zgridprv,ex,ey,ez,jsid,-1)
       else
         ex = 0.
         ey = 0.
@@ -8732,16 +8992,8 @@ c       --- For serial version, the arrays rho and phi are pointed to the
 c       --- appropriate arrays for the current ndts group.
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
-        call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
-     &                                 phipndts(:,:,:,isndts))
-
-c       --- enforce periodicity
-c       --- This is done on the rho array, rather than rhop, since that will
-c       --- be used for the field solve. Also, in some cases, the rhop array
-c       --- will not cover the full axial extent of the system, so 
-c       --- periodicity can never be enforced on rho which does cover the full
-c       --- system.
-        call perrho3d()
+        call assignrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
+     &                                    phipndts(:,:,:,isndts))
 
         if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 13) then
 c         --- SOR and multigrid field solvers - deal with bends directly and
@@ -8751,9 +9003,10 @@ c         --- Chombo knows nothing of bends and does its own b.c.'s
 
         else if (.not. linbend) then
 c         --- If not in bend, call VP3D
-          if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
-     &        fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
-     &        fstype == 8 .or. fstype == 9) then
+          if (iwhich .ne. 1 .and.
+     &        (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
+     &         fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
+     &         fstype == 8 .or. fstype == 9)) then
             ixmin = 0
             ixmax = nx
             iymin = 0
