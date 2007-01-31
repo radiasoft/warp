@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.144 2006/11/27 23:24:22 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.145 2007/01/31 19:21:49 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -392,29 +392,59 @@ Should never be directly created by the user.
     mins = self.getextent().mins
     maxs = self.getextent().maxs
     g = getregisteredsolver()
-    if g is None:
-      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]:
-        g = frz.basegrid
-      else:
-        g = w3d
-      interior = f3d.conductors.interior
+    if g is None and (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]):
+      g = frz.basegrid
+      phi = frz.basegrid.phi
+      phi.shape = [phi.shape[0],1,phi.shape[1]]
+      rho = frz.basegrid.rho
+      rho.shape = [rho.shape[0],1,rho.shape[1]]
+      nx = frz.basegrid.nr
+      ny = 0
+      nz = frz.basegrid.nz
+      dx = frz.basegrid.dr
+      dy = 1.
+      dz = frz.basegrid.dz
+      xmmin = frz.basegrid.rmin
+      xmmax = frz.basegrid.rmax
+      ymmin = mins[1]
+      ymmax = mins[1]
+      zmmin = frz.basegrid.zmin
+      zmmax = frz.basegrid.zmax
     else:
-      interior = g.conductors.interior
+      if g is None:
+        g = w3d
+        interior = f3d.conductors.interior
+      else:
+        interior = g.conductors.interior
+      phi = g.phi
+      rho = g.rho
+      nx = g.nx
+      ny = g.ny
+      nz = g.nz
+      dx = g.dx
+      dy = g.dy
+      dz = g.dz
+      xmmin = g.xmmin
+      xmmax = g.xmmax
+      ymmin = g.ymmin
+      ymmax = g.ymmax
+      zmmin = g.zmmin
+      zmmax = g.zmmax
 
     # compute mins and maxs
-    xmin = max(g.xmmin,mins[0])
-    ymin = max(g.ymmin,mins[1])
-    zmin = max(g.zmmin,mins[2])
-    xmax = min(g.xmmax,maxs[0])
-    ymax = min(g.ymmax,maxs[1])
-    zmax = min(g.zmmax,maxs[2])
+    xmin = max(xmmin,mins[0])
+    ymin = max(ymmin,mins[1])
+    zmin = max(zmmin,mins[2])
+    xmax = min(xmmax,maxs[0])
+    ymax = min(ymmax,maxs[1])
+    zmax = min(zmmax,maxs[2])
     # get box boundaries at nodes locations
-    ixmin = max(0,      int((xmin-g.xmmin)/g.dx))
-    iymin = max(0,      int((ymin-g.ymmin)/g.dy))
-    izmin = max(0,      int((zmin-g.zmmin)/g.dz))   
-    ixmax = min(g.nx, int((xmax-g.xmmin)/g.dx)+1)
-    iymax = min(g.ny, int((ymax-g.ymmin)/g.dy)+1)
-    izmax = min(g.nz, int((zmax-g.zmmin)/g.dz)+1)
+    ixmin = max(0,      int((xmin-xmmin)/dx))
+    iymin = max(0,      int((ymin-ymmin)/dy))
+    izmin = max(0,      int((zmin-zmmin)/dz))   
+    ixmax = min(nx, int((xmax-xmmin)/dx)+1)
+    iymax = min(ny, int((ymax-ymmin)/dy)+1)
+    izmax = min(nz, int((zmax-zmmin)/dz)+1)
 
     if me>0:izmin=max(izmin,2)
 
@@ -424,27 +454,27 @@ Should never be directly created by the user.
     # accumulate charge due to integral form of Gauss Law
     q = 0.
     if izmaxp>=izminp:
-     if 0<=izmax<g.nz:   
-       q += sum(sum(g.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
-                   -g.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*g.dx*g.dy/g.dz
-     if 0<izmin<=g.nz:    
-       q += sum(sum(g.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
-                   -g.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*g.dx*g.dy/g.dz
-     if 0<=ixmax<g.nx: 
-       q += sum(sum(g.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -g.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*g.dz*g.dy/g.dx
-     if 0<ixmin<=g.nx:     
-       q += sum(sum(g.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -g.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*g.dz*g.dy/g.dx
-     if 0<=iymax<g.ny:
-       q += sum(sum(g.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
-                   -g.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*g.dx*g.dz/g.dy
-     if 0<iymin<=g.ny:     
-       q += sum(sum(g.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
-                   -g.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*g.dx*g.dz/g.dy
+     if 0<=izmax<nz:   
+       q += sum(sum(phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
+                   -phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*dx*dy/dz
+     if 0<izmin<=nz:    
+       q += sum(sum(phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
+                   -phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*dx*dy/dz
+     if 0<=ixmax<nx: 
+       q += sum(sum(phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*dz*dy/dx
+     if 0<ixmin<=nx:     
+       q += sum(sum(phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
+                   -phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*dz*dy/dx
+     if 0<=iymax<ny:
+       q += sum(sum(phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
+                   -phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*dx*dz/dy
+     if 0<iymin<=ny:     
+       q += sum(sum(phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
+                   -phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*dx*dz/dy
 
      # compute total charge inside volume
-     qc = sum(sum(sum(g.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*g.dx*g.dy*g.dz
+     qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*dx*dy*dz
 
 # --- This block of code is needed if the rho in conductor interiors is
 # --- not zeroed out. Note that the setting of interior above is also needed.
@@ -453,10 +483,10 @@ Should never be directly created by the user.
      # --- potential and so is not represented in sum of Enormal and so is not
      # --- accounted for properly. It needs to be explicitly subtracted off
      # --- since it should not be included as image charge.)
-#     qinterior = cond_sumrhointerior(interior,g.nx,g.ny,g.nz,g.rho,
+#     qinterior = cond_sumrhointerior(interior,nx,ny,nz,rho,
 #                                     ixmin,ixmax,iymin,iymax,izmin,izmax)
      qinterior=0.
-     subcond_sumrhointerior(qinterior,interior,g.nx,g.ny,g.nz,g.rho,
+     subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
                                      ixmin,ixmax,iymin,iymax,izmin,izmax)
      qc = qc - qinterior
 
@@ -470,22 +500,22 @@ Should never be directly created by the user.
       qc=qc*2.
      if g.l2symtry or g.l4symtry:
       if iymin==0:
-        if 0<=izmax< g.nz: q -= 2.*sum(g.phi[ixmin:ixmax+1,iymin,izmaxp+1] -g.phi[ixmin:ixmax+1,iymin,izmaxp] )*g.dx*g.dy/g.dz
-        if 0< izmin<=g.nz: q -= 2.*sum(g.phi[ixmin:ixmax+1,iymin,izminp-1] -g.phi[ixmin:ixmax+1,iymin,izminp] )*g.dx*g.dy/g.dz
-        if 0<=ixmax< g.nx: q -= 2.*sum(g.phi[ixmax+1,iymin,izminp:izmaxp+1]-g.phi[ixmax,iymin,izminp:izmaxp+1])*g.dz*g.dy/g.dx
-        if 0< ixmin<=g.nx: q -= 2.*sum(g.phi[ixmin-1,iymin,izminp:izmaxp+1]-g.phi[ixmin,iymin,izminp:izmaxp+1])*g.dz*g.dy/g.dx
-        qc -= 2.*sum(sum(g.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*g.dx*g.dy*g.dz
+        if 0<=izmax< nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
+        if 0< izmin<=nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
+        if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
+        if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
+        qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*dx*dy*dz
      if g.l4symtry:
       if ixmin==0:
-        if 0<=izmax< g.nz: q -= 2.*sum(g.phi[ixmin,iymin:iymax+1,izmaxp+1] -g.phi[ixmin,iymin:iymax+1,izmaxp] )*g.dx*g.dy/g.dz
-        if 0< izmin<=g.nz: q -= 2.*sum(g.phi[ixmin,iymin:iymax+1,izminp-1] -g.phi[ixmin,iymin:iymax+1,izminp] )*g.dx*g.dy/g.dz
-        if 0<=iymax< g.ny: q -= 2.*sum(g.phi[ixmin,iymax+1,izminp:izmaxp+1]-g.phi[ixmin,iymax,izminp:izmaxp+1])*g.dx*g.dz/g.dy
-        if 0< iymin<=g.ny: q -= 2.*sum(g.phi[ixmin,iymin-1,izminp:izmaxp+1]-g.phi[ixmin,iymin,izminp:izmaxp+1])*g.dx*g.dz/g.dy
-        qc -= 2.*sum(sum(g.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*g.dx*g.dy*g.dz
+        if 0<=izmax< nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
+        if 0< izmin<=nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
+        if 0<=iymax< ny: q -= 2.*sum(phi[ixmin,iymax+1,izminp:izmaxp+1]-phi[ixmin,iymax,izminp:izmaxp+1])*dx*dz/dy
+        if 0< iymin<=ny: q -= 2.*sum(phi[ixmin,iymin-1,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dx*dz/dy
+        qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*dx*dy*dz
       if ixmin==0 and iymin==0:
-        if 0<=izmax< g.nz: q += (g.phi[ixmin,iymin,izmaxp+1]-g.phi[ixmin,iymin,izmaxp])*g.dx*g.dy/g.dz
-        if 0< izmin<=g.nz: q += (g.phi[ixmin,iymin,izminp-1]-g.phi[ixmin,iymin,izminp])*g.dx*g.dy/g.dz
-        qc += sum(g.rho[ixmin,iymin,izmin:izmax+1])*g.dx*g.dy*g.dz
+        if 0<=izmax< nz: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
+        if 0< izmin<=nz: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
+        qc += sum(rho[ixmin,iymin,izmin:izmax+1])*dx*dy*dz
     else:
       qc = 0.
       
@@ -500,12 +530,12 @@ Should never be directly created by the user.
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
       window(0)
-      zmin=g.zmmin+izmin*g.dz
-      zmax=g.zmmin+izmax*g.dz
-      xmin=g.xmmin+ixmin*g.dx
-      xmax=g.xmmin+ixmax*g.dx
-      ymin=g.ymmin+iymin*g.dy
-      ymax=g.ymmin+iymax*g.dy
+      zmin=zmmin+izmin*dz
+      zmax=zmmin+izmax*dz
+      xmin=xmmin+ixmin*dx
+      xmax=xmmin+ixmax*dx
+      ymin=ymmin+iymin*dy
+      ymax=ymmin+iymax*dy
       pldj([zmin,zmin,zmin,zmax],[xmin,xmin,xmax,xmin],[zmax,zmin,zmax,zmax],[xmin,xmax,xmax,xmax],color=blue,width=3)
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=blue,width=3)
