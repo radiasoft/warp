@@ -70,6 +70,8 @@ class MultiGrid(SubcycledPoissonSolver):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
       del dict['conductors']
+      if 'rho' in dict: del dict['rho']
+      if 'phi' in dict: del dict['phi']
     return dict
 
   def __setstate__(self,dict):
@@ -242,9 +244,12 @@ class MultiGrid(SubcycledPoissonSolver):
     self.phi = self.potential
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
-    del self.phi
 
   def dosolve(self,iwhich=0,*args):
+    # --- This is only done for convenience.
+    self.phi = self.potential
+    self.rho = self.source
+
     # --- Setup data for bends.
     rstar = fzeros(3+self.nz,'d')
     if top.bends:
@@ -300,12 +305,7 @@ class MultiGrid(SubcycledPoissonSolver):
   def genericpf(self,kw,pffunc):
     kw['conductors'] = self.conductors
     kw['solver'] = self
-    # --- This is a temporary kludge until the plot routines are updated to
-    # --- use source and potential instead of rho and phi.
-    self.rho = self.source
-    self.phi = self.potential
     pffunc(**kw)
-    del self.rho,self.phi
   def pfxy(self,**kw): self.genericpf(kw,pfxy)
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzy(self,**kw): self.genericpf(kw,pfzy)
