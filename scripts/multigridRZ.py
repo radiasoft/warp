@@ -289,15 +289,13 @@ class MultiGridRZ(SubcycledPoissonSolver):
               self.l2symtry,self.l4symtry)
 
   def setarraysforfieldsolve(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
-    else:
+    SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
+    if self.lparallel:
       raise "MultiGridRZ not parallelized"
 
   def getpotentialpforparticles(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
-    else:
+    SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
+    if self.lparallel:
       raise "MultiGridRZ not parallelized"
 
   def makesourceperiodic(self):
@@ -308,7 +306,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
        self.source[0,:] = 2.*self.source[0,:]
     if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nslaves > 1:
+      if self.lparallel:
         raise "MultiGridRZ not parallelized"
         #self.makesourceperiodic_parallel()
       else:
@@ -532,15 +530,13 @@ Initially, conductors are not implemented.
               self.l2symtry,self.l4symtry)
 
   def setarraysforfieldsolve(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
-    else:
+    SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
+    if self.lparallel:
       raise "MultiGridImplicitRZ not parallelized"
 
   def getpotentialpforparticles(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
-    else:
+    SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
+    if self.lparallel:
       raise "MultiGridImplicitRZ not parallelized"
 
   def makesourceperiodic(self):
@@ -551,7 +547,7 @@ Initially, conductors are not implemented.
        self.source[0,:] = 2.*self.source[0,:]
     if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nslaves > 1:
+      if self.lparallel:
         raise "MultiGridImplicitRZ not parallelized"
         #self.makesourceperiodic_parallel()
       else:

@@ -146,32 +146,16 @@ class MultiGrid(SubcycledPoissonSolver):
               self.l2symtry,self.l4symtry)
 
   def setsourceforfieldsolve(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
-    else:
-      # --- This needs checking.
-      sourcedims,potentialdims = self.getdims()
-      if 'source' not in self.__dict__ or shape(self.source) != tuple(sourcedims):
-        self.source = fzeros(sourcedims,'d')
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
 
-  def setarraysforfieldsolve(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
-    else:
-      # --- This needs checking.
-      sourcedims,potentialdims = self.getdims()
-      if 'source' not in self.__dict__ or shape(self.source) != tuple(sourcedims):
-        self.source = fzeros(sourcedims,'d')
-      if 'potential' not in self.__dict__ or shape(self.potential) != tuple(potentialdims):
-        self.potential = fzeros(potentialdims,'d')
-
   def getpotentialpforparticles(self,*args):
-    if self.nslaves <= 1:
+    if not self.lparallel:
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
       self.setpotentialpforparticles(*args)
@@ -196,7 +180,7 @@ class MultiGrid(SubcycledPoissonSolver):
        self.source[:,0,:] = 2.*self.source[:,0,:]
     if self.pbounds[3] == 1: self.source[:,-1,:] = 2.*self.source[:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nslaves > 1:
+      if self.lparallel:
         self.makesourceperiodic_parallel()
       else:
         self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]

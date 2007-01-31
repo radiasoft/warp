@@ -172,23 +172,10 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                           self.xmminp,self.ymminp,self.zmminp,
                           self.l2symtry,self.l4symtry,self.lcylindrical)
 
-  def setarraysforfieldsolve(self,*args):
-    if self.nslaves <= 1:
-      SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
-    else:
-      # --- This needs checking.
-      sourcedims,fielddims,potentialdims = self.getdims()
-      if 'source' not in self.__dict__ or shape(self.source) != tuple(sourcedims):
-        self.source = fzeros(sourcedims,'d')
-      if 'field' not in self.__dict__ or shape(self.field) != tuple(fielddims):
-        self.field = fzeros(fielddims,'d')
-      if 'potential' not in self.__dict__ or shape(self.potential) != tuple(potentialdims):
-        self.potential = fzeros(potentialdims,'d')
+  def setsourceforfieldsolve(self,*args):
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-     #setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
-     #                      self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
-     #                      self.my_index,self.nslaves,self.izpslave,self.nzpslave,
-     #                      self.izfsslave,self.nzfsslave)
       setjforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
                           self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                           self.my_index,self.nslaves,self.izpslave,self.nzpslave,
@@ -197,7 +184,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   def getpotentialpforparticles(self,*args):
     """Despite the name, this actually gets the field instead, since that is
        always used in the magnetostatic solver"""
-    if self.nslaves <= 1:
+    if not self.lparallel:
       SubcycledPoissonSolver.getfieldpforparticles(self,*args)
     else:
       self.setfieldpforparticles(*args)
@@ -218,7 +205,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
        self.source[:,:,0,:] = 2.*self.source[:,:,0,:]
     if self.pbounds[3] == 1: self.source[:,:,-1,:] = 2.*self.source[:,:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.nslaves > 1:
+      if self.lparallel:
         self.makesourceperiodic_parallel()
       else:
         self.source[:,:,:,0] = self.source[:,:,:,0] + self.source[:,:,:,-1]

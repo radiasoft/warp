@@ -369,7 +369,8 @@ the diagnostic is of interest and is meaningfull.
       self.nz = 0
 
     # --- Set parallel related parameters and calculate mesh sizes
-    if self.nslaves <= 1:
+    self.lparallel = (self.nslaves > 1)
+    if not self.lparallel:
       self.my_index = 0
       self.nzfull = self.nz
       self.zmminglobal = self.zmmin
@@ -618,6 +619,9 @@ class SubcycledPoissonSolver(FieldSolver):
       if 'sourceparray' in dict: del dict['sourceparray']
       if 'potentialparray' in dict: del dict['potentialparray']
       if 'fieldparray' in dict: del dict['fieldparray']
+      if 'sourcearray' in dict: del dict['sourcearray']
+      if 'potentialarray' in dict: del dict['potentialarray']
+      if 'fieldarray' in dict: del dict['fieldarray']
       if 'sourcep' in dict: del dict['sourcep']
       if 'potentialp' in dict: del dict['potentialp']
       if 'fieldp' in dict: del dict['fieldp']
@@ -651,6 +655,27 @@ class SubcycledPoissonSolver(FieldSolver):
     except AttributeError:
       return 0.
 
+  def returnfield(self,indts,iselfb):
+    indts = min(indts,top.nsndtsphi-1)
+    try:
+      return self.fieldarray[...,indts,iselfb]
+    except AttributeError:
+      return 0.
+
+  def returnpotential(self,indts,iselfb):
+    indts = min(indts,top.nsndtsphi-1)
+    try:
+      return self.potentialarray[...,indts,iselfb]
+    except AttributeError:
+      return 0.
+
+  def returnsource(self,indts,iselfb):
+    indts = min(indts,top.nsndtsphi-1)
+    try:
+      return self.sourcearray[...,indts,iselfb]
+    except AttributeError:
+      return 0.
+
   def setsourcepforparticles(self,isourcepndtscopies,indts,iselfb):
     self.sourcep = self.returnsourcep(isourcepndtscopies,indts,iselfb)
 
@@ -664,23 +689,29 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def setsourceforfieldsolve(self,isourcepndtscopies,indts,iselfb):
     # --- This is called at the end of loadrho just before the b.c.'s are set
-    self.source = self.returnsourcep(isourcepndtscopies,indts,iselfb)
+    self.source = self.returnsource(indts,iselfb)
 
   def setarraysforfieldsolve(self,isourcepndtscopies,indts,iselfb):
     # --- This is called at the beginning of the field solve
-    self.source    = self.returnsourcep(isourcepndtscopies,indts,iselfb)
-    self.field     = self.returnfieldp(indts,iselfb)
-    self.potential = self.returnpotentialp(indts,iselfb)
+    self.source    = self.returnsource(indts,iselfb)
+    self.field     = self.returnfield(indts,iselfb)
+    self.potential = self.returnpotential(indts,iselfb)
 
   def getpotentialpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from potential to potentialp"
-    potentialp = self.returnpotentialp(indts,iselfb)
-    potentialp[...] = self.potential
+    # --- In the serial case, potentialp and self.potential point to the
+    # --- same memory.
+    if lparallel:
+      potentialp = self.returnpotentialp(indts,iselfb)
+      potentialp[...] = self.potential
 
   def getfieldpforparticles(self,isourcepndtscopies,indts,iselfb):
     "Copies from field to fieldp"
-    fieldp = self.returnfieldp(indts,iselfb)
-    fieldp[...] = self.field
+    # --- In the serial case, fieldp and self.field point to the
+    # --- same memory.
+    if lparallel:
+      fieldp = self.returnfieldp(indts,iselfb)
+      fieldp[...] = self.field
 
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
@@ -818,28 +849,59 @@ class SubcycledPoissonSolver(FieldSolver):
     raise """getpdims must be supplied - it should return a list of the dimensions
 of the arrays used by the particles"""
 
-  def allocatedataarrays(self):
-    # --- Get base dimension of the arrays
-    pdims = self.getpdims()
+  def getdims(self):
+    raise """getdims must be supplied - it should return a list of the dimensions
+of the arrays used by the field solve"""
 
+  def allocatedataarrays(self):
     # --- Setup arrays, including extra copies for subcycling
     # --- and self B corrections.
     setupSubcycling(top.pgroup)
     setupSelfB(top.pgroup)
 
-    dims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,top.nsselfb]
-    if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(dims):
-      self.sourceparray = fzeros(dims,'d')
+    # --- Get base dimension of the arrays for the particles
+    pdims = self.getpdims()
 
-    dims = list(pdims[-1]) + [top.nsndtsphi,top.nsselfb]
-    if 'potentialparray' not in self.__dict__ or shape(self.potentialparray) != tuple(dims):
-      self.potentialparray = fzeros(dims,'d')
+    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,top.nsselfb]
+    if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(sourcedims):
+      self.sourceparray = fzeros(sourcedims,'d')
+
+    potentialdims = list(pdims[-1]) + [top.nsndtsphi,top.nsselfb]
+    if 'potentialparray' not in self.__dict__ or shape(self.potentialparray) != tuple(potentialdims):
+      self.potentialparray = fzeros(potentialdims,'d')
 
     if len(pdims) == 3:
       # --- Also, create fieldparray
-      dims = list(pdims[1]) + [top.nsndtsphi,top.nsselfb]
-      if 'fieldparray' not in self.__dict__ or shape(self.fieldparray) != tuple(dims):
-        self.fieldparray = fzeros(dims,'d')
+      fielddims = list(pdims[1]) + [top.nsndtsphi,top.nsselfb]
+      if 'fieldparray' not in self.__dict__ or shape(self.fieldparray) != tuple(fielddims):
+        self.fieldparray = fzeros(fielddims,'d')
+
+    if not self.lparallel:
+      # --- For the serial case, the array for the field solve is the same as
+      # --- the array for the particles.
+      self.sourcearray = self.sourceparray[...,top.nrhopndtscopies-1,:,:]
+      self.potentialarray = self.potentialparray[...,:,:]
+      if len(pdims) == 3:
+        self.fieldarray = self.fieldparray[...,:,:]
+    else:
+      # --- In parallel, the arrays for the field solver are separate arrays
+
+      # --- Get base dimension of the arrays for the field solver
+      dims = self.getdims()
+
+      sourcedims = list(dims[0]) + [top.nsndtsphi,top.nsselfb]
+      if 'sourcearray' not in self.__dict__ or shape(self.sourcearray) != tuple(sourcedims):
+        self.sourcearray = fzeros(sourcedims,'d')
+
+      potentialdims = list(dims[-1]) + [top.nsndtsphi,top.nsselfb]
+      if 'potentialarray' not in self.__dict__ or shape(self.potentialarray) != tuple(potentialdims):
+        self.potentialarray = fzeros(potentialdims,'d')
+
+      if len(dims) == 3:
+        # --- Also, create fieldarray
+        fielddims = list(dims[1]) + [top.nsndtsphi,top.nsselfb]
+        if 'fieldarray' not in self.__dict__ or shape(self.fieldarray) != tuple(fielddims):
+          self.fieldarray = fzeros(fielddims,'d')
 
   def zerosourcep(self):
     if top.ndtsaveraging == 0:
