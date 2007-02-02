@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.203 $, $Date: 2007/01/30 01:19:01 $
+c@(#) File TOP.F, version $Revision: 3.204 $, $Date: 2007/02/02 01:14:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3096,6 +3096,7 @@ c              true.
       if (ltoptimesubs) substarttime = wtime()
 
       call setuppgroup(pgroup)
+      if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
 
 c     --- Make sure that the particles are within the z extent of the domain,
 c     --- unless the input declares this to be so. Note that no check is made
@@ -3944,6 +3945,7 @@ c These are generic and can be used by any field solver.
 c     --- Find any new species with different fselfb.
       do js1=0,pgroup%ns-1
         jsid = pgroup%sid(js1)
+        if (jsid == -1) cycle
         lnew = .true.
         do js2=0,nsselfb-1
           if (pgroup%fselfb(js1) == fselfb(js2)) then
