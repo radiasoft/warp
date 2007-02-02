@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.145 2007/01/31 19:21:49 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.146 2007/02/02 19:04:26 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -394,10 +394,16 @@ Should never be directly created by the user.
     g = getregisteredsolver()
     if g is None and (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]):
       g = frz.basegrid
-      phi = frz.basegrid.phi
-      phi.shape = [phi.shape[0],1,phi.shape[1]]
-      rho = frz.basegrid.rho
-      rho.shape = [rho.shape[0],1,rho.shape[1]]
+      # --- Note that frz.basegrid.phi has fortran ordering and the .shape
+      # --- attribute can only be changed on C ordered arrays. The transpose
+      # --- converts from fortran to C ordering so shape can be applied.
+      # --- The modified array is then tranposed back.
+      phit = transpose(frz.basegrid.phi[1:-1,1:-1])
+      phit.shape = [phit.shape[0],1,phit.shape[1]]
+      phi = transpose(phit)
+      rhot = transpose(frz.basegrid.rho)
+      rhot.shape = [rhot.shape[0],1,rhot.shape[1]]
+      rho = transpose(rhot)
       nx = frz.basegrid.nr
       ny = 0
       nz = frz.basegrid.nz
