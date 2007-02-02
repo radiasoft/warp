@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.339 $, $Date: 2007/01/30 01:35:59 $
+c@(#) File W3D.F, version $Revision: 3.340 $, $Date: 2007/02/02 01:13:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7075,6 +7075,7 @@ c=============================================================================
 c=============================================================================
       subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
       use ParticleGroupmodule
+      use w3d_interfaces
       use GlobalVars
       use Subtimers3d
       use InGen
@@ -9014,9 +9015,9 @@ c         --- If not in bend, call VP3D
             izmin = 0
             izmax = nz
             if (boundxy == dirichlet) then
-              ixmin = 1
+              if (.not. l4symtry) ixmin = 1
               ixmax = nx-1
-              iymin = 1
+              if (.not. l2symtry .and. .not. l4symtry) iymin = 1
               iymax = ny-1
             endif
             if (bound0  == dirichlet .and. my_index == 0) izmin = 1
