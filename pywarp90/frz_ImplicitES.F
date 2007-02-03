@@ -1,26 +1,182 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.1 $, $Date: 2007/02/03 00:49:26 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.2 $, $Date: 2007/02/03 02:41:51 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
 c  David P. Grote, LLNL, (925)423-7194 or (510)495-2961
 c=============================================================================
-      subroutine mgsolveimplicitesrz(iwhich,nx,nz,nzfull,dx,dz,phi,rho,bounds,
-     &                            xmmin,zmmin,zmminglobal,zbeam,zgrid,
-     &                            mgparam,mgiters,mgmaxiters,
-     &                            mgmaxlevels,mgerror,mgtol,
-     &                            downpasses,uppasses,
-     &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                            gridmode,conductors,lrz,
-     &                            my_index,nslaves,izfsslave,nzfsslave)
+c=============================================================================
+c=============================================================================
+      module coefficientsmoduleesrz
+      contains
+      function getbfieldsongridesrz(nx,nz,nzfull,dx,dz,xmmin,zmmin,bounds) result(bongrid)
+      real(kind=8),pointer:: bongrid(:,:,:)
+      integer(ISZ):: nx,nz,nzfull
+      real(kind=8):: dx,dz,xmmin,zmmin
+      integer(ISZ):: bounds(0:5)
+
+      real(kind=8),allocatable:: xx(:),yy(:),zz(:),uz(:),gaminv(:)
+      real(kind=8),allocatable:: ex(:),ey(:),ez(:),bendres(:),bendradi(:)
+      integer(ISZ)::ix,iz
+
+c     --- Allocate space for B field
+      allocate(bongrid(-1:nx+1,-3:nz+3,0:2))
+
+c     --- Create temporary space to hold the coordinates of the grid
+c     --- needed to look up the B fields.
+      allocate(xx(0:nx),yy(0:nx),zz(0:nx),uz(0:nx),gaminv(0:nx))
+      allocate(ex(0:nx),ey(0:nx),ez(0:nx))
+      allocate(bendres(0:nx),bendradi(0:nx))
+
+c     --- Fill the transverse position arrays.
+      do ix=0,nx
+        xx(ix) = xmmin + ix*dx
+        yy(ix) = 0.
+      enddo
+
+c     --- Get the B field, one iz line at a time. One iz is done at a
+c     --- time to save memory.
+      do iz=0,nz
+        zz = zmmin + iz*dz
+        call exteb3d(1+nx,xx,yy,zz,uz,gaminv,0.,0.,
+     &               bongrid(0:nx,iz,0),bongrid(0:nx,iz,1),bongrid(0:nx,iz,2),
+     &               ex,ey,ez,1.,1.,bendres,bendradi,1.,1.)
+      enddo
+
+c     --- Apply the boundary conditions, setting the values in the guard cells.
+      call applyboundaryconditionsesrz(bongrid,nx,0,nz,nzfull,1,0,3,3,bounds)
+
+      deallocate(xx,yy,zz,uz,gaminv)
+      deallocate(ex,ey,ez)
+      deallocate(bendres,bendradi)
+
+      return
+      end function getbfieldsongridesrz
+c=============================================================================
+      function getcoefficientsesrz(nx,nz,dx,dz,xmmin,ns,qomdt,chi0,bongrid,
+     &                             lcndbndy,icndbndy,conductors,lrz)
+     &result(coeffs)
+      use ConductorTypemodule
+      real(kind=8),pointer:: coeffs(:,:,:,:)
+      integer(ISZ):: nx,nz,ns
+      real(kind=8):: dx,dz,xmmin
+      real(kind=8):: qomdt(0:ns-1)
+      real(kind=8):: chi0(-1:nx+1,-3:nz+3,0:ns-1)
+      real(kind=8):: bongrid(-1:nx+1,-3:nz+3,0:2)
+      integer(ISZ):: icndbndy
+      type(ConductorType):: conductors
+      logical(ISZ):: lcndbndy,lrz
+
+      real(kind=8),pointer:: chi(:,:,:,:)
+      integer(ISZ):: ix,iz,js
+      integer(ISZ):: ixmin,ixmax,izmin,izmax
+      real(kind=8):: ox,oy,oz,oo
+      real(kind=8):: rr,rrm,rrp
+
+      allocate(coeffs(0:2,0:2,0:nx,0:nz))
+      allocate(chi(0:1,0:1,-1:nx+1,-1:nz+1))
+
+c     --- First, generate the chi tensor from chi0 and the B field.
+      chi = 0.
+      do js=0,ns-1
+        do iz=-1,nz+1
+          do ix=-1,nx+1
+
+            ox = 0.5*qomdt(js)*bongrid(ix,iz,0)
+            oy = 0.5*qomdt(js)*bongrid(ix,iz,1)
+            oz = 0.5*qomdt(js)*bongrid(ix,iz,2)
+            oo = 1./(1. + sqrt(ox**2 + oy**2 + oz**2))
+
+            chi(0,0,ix,iz) = chi(0,0,ix,iz) + chi0(ix,iz,js)*oo*(1. + ox**2)
+            chi(0,1,ix,iz) = chi(0,1,ix,iz) + chi0(ix,iz,js)*oo*(ox*oz + oy)
+            chi(1,0,ix,iz) = chi(1,0,ix,iz) + chi0(ix,iz,js)*oo*(ox*oz - oy)
+            chi(1,1,ix,iz) = chi(1,1,ix,iz) + chi0(ix,iz,js)*oo*(1. + oz**2)
+
+          enddo
+        enddo
+      enddo
+
+c     --- If xmmin == 0, then the case of r=0 is included and must be treated
+c     --- specially.
+      ixmin = 0
+      if (xmmin == 0.) ixmin = 1
+
+      do iz=0,nz
+        if (xmmin == 0.) then
+          ix = 0
+
+c         --- The r=0 case
+          coeffs(1,1,ix,iz) = -2.*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
+     &                        -2.*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
+     &                        -(1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
+     &                        -(1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
+          coeffs(2,1,ix,iz) = +2.*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
+          coeffs(0,1,ix,iz) = +2.*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
+          coeffs(1,2,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
+          coeffs(1,0,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
+          coeffs(2,2,ix,iz) = 0.
+          coeffs(0,2,ix,iz) = 0.
+          coeffs(2,0,ix,iz) = 0.
+          coeffs(0,0,ix,iz) = 0.
+
+        endif
+
+c       --- The general case
+        do ix=ixmin,nx
+          rr = xmmin + ix*dx
+          rrm = (rr - 0.5*dx)/rr
+          rrp = (rr + 0.5*dx)/rr
+
+          coeffs(1,1,ix,iz) = -rrp*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
+     &                        -rrm*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
+     &                        -    (1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
+     &                        -    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
+          coeffs(2,1,ix,iz) = +rrp*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
+          coeffs(0,1,ix,iz) = +rrm*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
+          coeffs(1,2,ix,iz) = +0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
+     &                        +    (1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
+          coeffs(1,0,ix,iz) = -0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
+     &                        +    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
+          coeffs(2,2,ix,iz) = +0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dx)
+     &                        +0.5*    chi(0,1,ix  ,iz+1)/(2.*dx*dz)
+          coeffs(0,2,ix,iz) = -0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dx)
+     &                        -0.5*    chi(0,1,ix  ,iz+1)/(2.*dx*dz)
+          coeffs(2,0,ix,iz) = -0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dx)
+     &                        -0.5*    chi(0,1,ix  ,iz-1)/(2.*dx*dz)
+          coeffs(0,0,ix,iz) = +0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dx)
+     &                        +0.5*    chi(0,1,ix  ,iz-1)/(2.*dx*dz)
+
+        enddo
+      enddo
+
+      deallocate(chi)
+
+      return
+      end function getcoefficientsesrz
+      end module coefficientsmoduleesrz
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine mgsolveimplicites2d(iwhich,nx,nz,nzfull,dx,dz,phi,rho,ns,qomdt,chi0,
+     &                               bounds,xmmin,zmmin,zmminglobal,zbeam,zgrid,
+     &                               mgparam,mgiters,mgmaxiters,
+     &                               mgmaxlevels,mgerror,mgtol,
+     &                               downpasses,uppasses,
+     &                               lcndbndy,laddconductor,icndbndy,lbuildquads,
+     &                               gridmode,conductors,lrz,
+     &                               my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersfrz
       use ConductorTypemodule
       use Constant
+      use coefficientsmoduleesrz
       integer(ISZ):: iwhich
-      integer(ISZ):: nx,nz,nzfull
+      integer(ISZ):: nx,nz,nzfull,ns
       real(kind=8):: phi(0:nx,-1:nz+1)
       real(kind=8):: rho(0:nx,0:nz)
+      real(kind=8):: chi0(0:nx,0:nz,0:ns-1)
+      real(kind=8):: qomdt(0:ns-1)
       real(kind=8):: dx,dz
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmmin,zmmin,zmminglobal,zbeam,zgrid
@@ -44,10 +200,12 @@ c grid cell dimensions are roughly equal. Roughly equal means that
 c   2/3 dx < dz < 4/3 dx
 c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3. Currently, it is still
 c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
+c
+c Note that chi0 is the (q/m/2*rho*dt**2) for each implicit species.
 
       integer(ISZ):: i,k,ix,iz
       real(kind=8),pointer:: bongrid(:,:,:)
-      real(kind=8),pointer:: rho0(:,:)
+      real(kind=8),pointer:: chi0temp(:,:,:)
       real(kind=8),allocatable:: phisave(:,:)
       integer(ISZ):: localbounds(0:5)
       integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
@@ -56,19 +214,20 @@ c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
       character(72):: errline
       integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
-      if (lf3dtimesubs) substarttime = wtime()
+      if (lfrztimesubs) substarttime = wtime()
 
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
 c     --- Fill the B field array
 c     --- This will be passed to vcycle and coarsened appropriately.
-      bongrid => getbfieldsongridesrz(nx,nz,nzfull,dx,dz,xmin,zmin,bounds)
+      bongrid => getbfieldsongridesrz(nx,nz,nzfull,dx,dz,xmmin,zmmin,bounds)
+c     --- Parallel B.C.s are set below.
 
 c     --- Create copy of rho with extra guard cells, and fill it in.
-      allocate(rho0(-1:nx+1,-3:nz+3))
-      rho0(0:nx,0:nz) = rho
-      call applyboundaryconditionsesrz(rho0,nx,0,nz,nzfull,1,0,3,1,bounds)
+      allocate(chi0temp(-1:nx+1,-3:nz+3,0:ns-1))
+      chi0temp(0:nx,0:nz,:) = chi0
+      call applyboundaryconditionsesrz(chi0temp,nx,0,nz,nzfull,1,0,3,ns,bounds)
 c     --- Parallel B.C.s are set below.
 
 c     --- Determine the points that make up the conductor.  This takes extra
@@ -115,8 +274,14 @@ c    &                    whosendingright,izsendingright)
 c     call mgexchange_phiperiodic(nx,0,nz,nzfull,phi,localbounds,1,0,0,1,
 c    &                            my_index,nslaves,izfsslave,
 c    &                            whosendingleft,whosendingright)
-      call applyparallelboundaryconditionsesrz(rho0,nx,0,nz,nzfull,
-     &                                         1,0,3,1,1,bounds,
+      call applyparallelboundaryconditionsesrz(bongrid,nx,0,nz,nzfull,
+     &                                         1,0,3,3,1,bounds,
+     &                                         my_index,nslaves,
+     &                                         izfsslave,nzfsslave,
+     &                                         whosendingleft,izsendingleft,
+     &                                         whosendingright,izsendingright)
+      call applyparallelboundaryconditionsesrz(chi0temp,nx,0,nz,nzfull,
+     &                                         1,0,3,ns,1,bounds,
      &                                         my_index,nslaves,
      &                                         izfsslave,nzfsslave,
      &                                         whosendingleft,izsendingleft,
@@ -141,7 +306,7 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- Do one vcycle.
-        call vcycleesrz(0,nx,nz,nzfull,dx,dz,phi,rho,rho0,bongrid,
+        call vcycleesrz(0,nx,nz,nzfull,dx,dz,xmmin,phi,rho,ns,qomdt,chi0temp,bongrid,
      &                  bounds,mgparam,mgmaxlevels,
      &                  downpasses,uppasses,lcndbndy,icndbndy,conductors,lrz,
      &                  my_index,nslaves,izfsslave,nzfsslave)
@@ -195,8 +360,8 @@ c     --- Make a print out.
       return
       end
 c=============================================================================
-      RECURSIVE subroutine vcycleesrz(mglevel,nx,nz,nzfull,dx,dz,
-     &                                phi,rho,rho0,bongrid,globalbounds,
+      RECURSIVE subroutine vcycleesrz(mglevel,nx,nz,nzfull,dx,dz,xmmin,
+     &                                phi,rho,ns,qomdt,chi0,bongrid,globalbounds,
      &                                mgparam,
      &                                mgmaxlevels,downpasses,uppasses,
      &                                lcndbndy,icndbndy,conductors,lrz,
@@ -206,10 +371,11 @@ c=============================================================================
       use coefficientsmoduleesrz
       use formggetarraysuminterface
       integer(ISZ):: mglevel
-      integer(ISZ):: nx,nz,nzfull
-      real(kind=8):: dx,dz
+      integer(ISZ):: nx,nz,nzfull,ns
+      real(kind=8):: dx,dz,xmmin
       real(kind=8):: phi(0:nx,-1:nz+1),rho(0:nx,0:nz)
-      real(kind=8):: rho0(-1:nx,-3:nz+3),bongrid(-1:nx,-3:nz+3,0:2)
+      real(kind=8):: chi0(-1:nx,-3:nz+3,0:ns-1),bongrid(-1:nx,-3:nz+3,0:2)
+      real(kind=8):: qomdt(0:ns-1)
       integer(ISZ):: globalbounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
@@ -224,7 +390,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       logical(ISZ):: partialcoarsening
       real(kind=8),pointer:: coeffs(:,:,:,:)
       real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
-      real(kind=8),allocatable:: rho0coarse(:,:),bongridcoarse(:,:,:)
+      real(kind=8),allocatable:: chi0coarse(:,:,:),bongridcoarse(:,:,:)
       real(kind=8),allocatable:: res(:,:)
       integer(ISZ):: i,ic,iszone=1
       real(kind=8):: ff
@@ -245,7 +411,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Get the finite difference coefficients for the Poisson operator at
 c     --- the current level of refinement.
-      coeffs => getcoefficientsesrz(nx,nz,dx,dz,xmin,zmin,q,m,dt,rho0,bongrid,
+      coeffs => getcoefficientsesrz(nx,nz,dx,dz,xmmin,ns,qomdt,chi0,bongrid,
      &                              lcndbndy,icndbndy,conductors,lrz)
 
       localbounds = globalbounds
@@ -387,10 +553,10 @@ c       --- Alloate new work space
      &           nxcoarse,nzcoarse
           stop
         endif
-        allocate(rho0coarse(-1:nxcoarse+1,-3:nzcoarse+3),stat=allocerror)
+        allocate(chi0coarse(-1:nxcoarse+1,-3:nzcoarse+3,0:ns-1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleesrz: allocation error ",allocerror,
-     &           ": could not allocate rho0coarse to shape ",
+     &           ": could not allocate chi0coarse to shape ",
      &           nxcoarse,nzcoarse
           stop
         endif
@@ -404,7 +570,7 @@ c       --- Alloate new work space
 
         rhocoarse = 0.
         phicoarse = 0.
-        rho0coarse = 0.
+        chi0coarse = 0.
         bongridcoarse = 0.
 
 c       --- Restriction
@@ -418,18 +584,20 @@ c       --- Restriction
           if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
         endif
 
-        call restrictes3d(nx,0,nz,nzfull,rho0,1,1,3,
-     &                    nxcoarse,0,nzcoarse,nzfullcoarse,rho0coarse,1,1,3,
+        do ic=0,ns-1
+        call restrictes3d(nx,0,nz,nzfull,chi0(:,:,ic),1,1,3,
+     &                    nxcoarse,0,nzcoarse,nzfullcoarse,chi0coarse(:,:,ic),1,1,3,
      &                    localbounds,localboundsc,lzoffset)
+        enddo
         do ic=0,2
           call restrictes3d(nx,0,nz,nzfull,bongrid(:,:,ic),1,1,3,
      &                      nxcoarse,0,nzcoarse,nzfullcoarse,bongridcoarse(:,:,ic),1,1,3,
      &                      localbounds,localboundsc,lzoffset)
         enddo
-        call applyboundaryconditionsesrz(rho0coarse,nxcoarse,0,nzcoarse,nzfullcoarse,1,0,3,1,localboundsc)
+        call applyboundaryconditionsesrz(chi0coarse,nxcoarse,0,nzcoarse,nzfullcoarse,1,0,3,ns,localboundsc)
         call applyboundaryconditionsesrz(bongridcoarse,nxcoarse,0,nzcoarse,nzfullcoarse,1,0,3,3,localboundsc)
-        call applyparallelboundaryconditionsesrz(rho0coarse,nxcoarse,0,nzcoarse,nzfullcoarse,
-     &                                           1,0,3,1,1,localboundsc,
+        call applyparallelboundaryconditionsesrz(chi0coarse,nxcoarse,0,nzcoarse,nzfullcoarse,
+     &                                           1,0,3,ns,1,localboundsc,
      &                                           my_index,nslaves,
      &                                           izfsslavec,nzfsslavec,
      &                                           whosendingleftc,izsendingleftc,
@@ -443,7 +611,8 @@ c       --- Restriction
 
 c       --- Continue at the next coarsest level.
         call vcycleesrz(mglevel+iszone,nxcoarse,nzcoarse,nzfullcoarse,
-     &                  dxcoarse,dzcoarse,phicoarse,rhocoarse,rho0coarse,bongridcoarse,
+     &                  dxcoarse,dzcoarse,xmmin,
+     &                  phicoarse,rhocoarse,ns,qomdt,chi0coarse,bongridcoarse,
      &                  globalbounds,mgparam,
      &                  mgmaxlevels,downpasses,uppasses,
      &                  lcndbndy,icndbndy,conductors,lrz,
@@ -472,7 +641,7 @@ c       --- Add in resulting error.
 
         deallocate(res)
         deallocate(phicoarse,rhocoarse)
-        deallocate(rho0coarse,bongridcoarse)
+        deallocate(chi0coarse,bongridcoarse)
 
       endif
 
@@ -506,6 +675,7 @@ c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.
 
       integer(ISZ):: parity,s_parity,e_parity
+      integer(ISZ):: ixmin,ixmax,izmin,izmax,ix,iz,ix1
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -581,6 +751,7 @@ c     --- Exchange phi in the z guard planes
 c=============================================================================
       subroutine residualesrz(nx,nz,nzfull,phi,rho,coeffs,res,
      &                        mglevel,bounds,mgparam)
+      use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,-1:nz+1),rho(0:nx,0:nz)
@@ -755,7 +926,7 @@ c=============================================================================
 c=============================================================================
       subroutine applyboundaryconditionsesrz(u,nx,ny,nz,nzfull,
      &                                       delx,dely,delz,ncomp,bounds)
-      integer(ISZ):: nx,ny,nz,delx,dely,delz,ncomp
+      integer(ISZ):: nx,ny,nz,nzfull,delx,dely,delz,ncomp
       real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz,ncomp)
       integer(ISZ):: bounds(0:5)
 
@@ -798,7 +969,7 @@ c=============================================================================
      &                                               izfsslave,nzfsslave,
      &                                               whosendingleft,izsendingleft,
      &                                               whosendingright,izsendingright)
-      integer(ISZ):: nx,ny,nz,delx,dely,delz,ncomp
+      integer(ISZ):: nx,ny,nz,nzfull,delx,dely,delz,ncomp,zsend
       real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz,ncomp)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
@@ -828,157 +999,4 @@ c=============================================================================
 
       return
       end
-c=============================================================================
-c=============================================================================
-c=============================================================================
-      module coefficientsmoduleesrz
-      function getbfieldsongridesrz(nx,nz,nzfull,dx,dz,xmin,zmin,bounds) result(bongrid)
-      real(kind=8),pointer:: bongrid(:,:,:)
-      integer(ISZ):: nx,nz,nzfull
-      real(kind-8):: dx,dz,xmin,zmin
-      integer(ISZ):: bounds(0:5)
-
-      real(kind=8),allocatable:: xx(:),yy(:),zz(:),uz(:),gaminv(:)
-      real(kind=8),allocatable:: ex(:),ey(:),ez(:),bendres(:),bendradi(:)
-      integer(ISZ)::ix,iz
-
-c     --- Allocate space for B field
-      allocate(bongrid(-1:nx+1,-3:nz+3,0:2))
-
-c     --- Create temporary space to hold the coordinates of the grid
-c     --- needed to look up the B fields.
-      allocate(xx(0:nx),yy(0:nx),zz(0:nx),uz(0:nx),gaminv(0:nx))
-      allocate(ex(0:nx),ey(0:nx),ez(0:nx))
-      allocate(bendres(0:nx),bendradi(0:nx))
-
-c     --- Fill the transverse position arrays.
-      do ix=0,nx
-        xx(ix) = xmmin + ix*dx
-        yy(ix) = 0.
-      enddo
-
-c     --- Get the B field, one iz line at a time. One iz is done at a
-c     --- time to save memory.
-      do iz=0,nz
-        zz = zmmin + iz*dz
-        exteb3d(1+nx,xx,yy,zz,uz,gaminv,0.,0.,
-     &          bongrid(0:nx,iz,0),bongrid(0:nx,iz,1),bongrid(0:nx,iz,2),
-     &          ex,ey,ez,1.,1.,bendres,bendradi,1.,1.)
-      enddo
-
-c     --- Apply the boundary conditions, setting the values in the guard cells.
-      call applyboundaryconditionsesrz(bongrid,nx,0,nz,nzfull,1,0,3,3,bounds)
-      call applyparallelboundaryconditionsesrz(bongrid,nx,0,nz,nzfull,
-     &                                         1,0,3,3,1,bounds,
-     &                                         my_index,nslaves,
-     &                                         izfsslave,nzfsslave,
-     &                                         whosendingleft,izsendingleft,
-     &                                         whosendingright,izsendingright)
-
-      deallocate(xx,yy,zz,uz,gaminv)
-      deallocate(ex,ey,ez)
-      deallocate(bendres,bendradi)
-
-      return
-      end
-c=============================================================================
-      function getcoefficientsesrz(nx,nz,dx,dz,xmin,zmin,q,m,dt,rho0,bongrid,
-     &                             lcndbndy,icndbndy,conductors,lrz)
-     &result(coeffs)
-      use ConductorTypemodule
-      real(kind=8),pointer:: coeffs(:,:,:,:)
-      integer(ISZ):: nx,nz
-      real(kind-8):: dx,dz,xmin,zmin
-      real(kind-8):: q,m,dt
-      real(kind-8):: rho0(-1:nx+1,-3:nz+3)
-      real(kind-8):: bongrid(-1:nx+1,-3:nz+3,0:2)
-      integer(ISZ):: icndbndy
-      type(ConductorType):: conductors
-      logical(ISZ):: lcndbndy,lrz
-
-      integer(ISZ):: ix,iz
-      integer(ISZ):: ixmin,ixmax,izmin,izmax
-      real(kind=8):: r1,ox,oy,oz,oo
-      real(kind=8):: rr,rrm,rrp
-
-      allocate(coeffs(0:2,0:2,0:nx,0:nz))
-      allocate(chi(0:1,0:1,-1:nx+1,-1:nz+1))
-
-c     --- First, generate the chi tensor from rho0 and the B field.
-      do iz=-1,nz+1
-        do ix=-1,nx+1
-
-          r1 = 0.5*rho0(ix,iz)*q/m*dt**2
-
-          ox = 0.5*q/m*dt*bongrid(ix,iz,0)
-          oy = 0.5*q/m*dt*bongrid(ix,iz,1)
-          oz = 0.5*q/m*dt*bongrid(ix,iz,2)
-          oo = 1./(1. + sqrt(ox**2 + oy**2 + oz**2))
-
-          chi(0,0,ix,iz) = r1*oo*(1. + ox**2)
-          chi(0,1,ix,iz) = r1*oo*(ox*oz + oy)
-          chi(1,0,ix,iz) = r1*oo*(ox*oz - oy)
-          chi(1,1,ix,iz) = r1*oo*(1. + oz**2)
-
-        enddo
-      enddo
-
-c     --- If xmin == 0, then the case of r=0 is included and must be treated
-c     --- specially.
-      ixmin = 0
-      if (xmin == 0.) ixmin = 1
-
-      do iz=0,nz
-        if (xmin == 0.) then
-          ix = 0
-
-c         --- The r=0 case
-          coeffs(1,1,ix,iz) = -2.*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
-     &                        -2.*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
-     &                        -(1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
-     &                        -(1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-          coeffs(2,1,ix,iz) = +2.*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
-          coeffs(0,1,ix,iz) = +2.*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
-          coeffs(1,2,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
-          coeffs(1,0,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-          coeffs(2,2,ix,iz) = 0.
-          coeffs(0,2,ix,iz) = 0.
-          coeffs(2,0,ix,iz) = 0.
-          coeffs(0,0,ix,iz) = 0.
-
-        endif
-
-c       --- The general case
-        do ix=ixmin,nx
-          rr = xmin + ix*dx
-          rrm = (rr - 0.5*dx)/rr
-          rrp = (rr + 0.5*dx)/rr
-
-          coeffs(1,1,ix,iz) = -rrp*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
-     &                        -rrm*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
-     &                        -    (1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
-     &                        -    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-          coeffs(2,1,ix,iz) = +rrp*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
-          coeffs(0,1,ix,iz) = +rrm*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
-          coeffs(1,2,ix,iz) = +0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
-     &                        +    (1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
-          coeffs(1,0,ix,iz) = -0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
-     &                        +    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-          coeffs(2,2,ix,iz) = +0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dr)
-     &                        +0.5*    chi(0,1,ix  ,iz+1)/(2.*dr*dz)
-          coeffs(0,2,ix,iz) = -0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dr)
-     &                        -0.5*    chi(0,1,ix  ,iz+1)/(2.*dr*dz)
-          coeffs(2,0,ix,iz) = -0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dr)
-     &                        -0.5*    chi(0,1,ix  ,iz-1)/(2.*dr*dz)
-          coeffs(0,0,ix,iz) = +0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dr)
-     &                        +0.5*    chi(0,1,ix  ,iz-1)/(2.*dr*dz)
-
-        enddo
-      enddo
-
-      deallocate(chi)
-
-      return
-      end
-      end module coefficientsmodule
 c=============================================================================
