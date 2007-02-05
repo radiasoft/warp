@@ -145,7 +145,8 @@ Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2')
 Water           = Molecule(mass=18.*amu, Symbol='H2O')
 
 class Species:
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1):
+  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
+                    fselfb=None):
     """
 Creates a new species of particles. All arguments are optional.
   - js=None: global species number (usually this should not be set)
@@ -174,6 +175,7 @@ Creates a new species of particles. All arguments are optional.
     for i in range(nautodt-1):
       self.add_group()
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+      if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
       # --- zero out sp_fract for the extra species added with larger ndts
       top.sp_fract[self.jslist[-1]] = 0.
         
