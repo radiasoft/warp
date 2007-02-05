@@ -86,9 +86,20 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
+
+    # --- If there are any relativistic groups, them turn on the code
+    # --- which uses the selfe array.
+    if max(top.fselfb) > 0.:
+      self.efetch = 3
+      # --- Number of fields (E and B)
+      nfields = 2
+    else:
+      # --- Number of fields (E only)
+      nfields = 1
+
     if self.efetch == 3:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
-              (3,1+self.nxp,1+self.nyp,1+self.nzp),
+              (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
               (1+self.nxp,1+self.nyp,3+self.nzp))
     else:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
@@ -140,6 +151,12 @@ class MultiGrid(SubcycledPoissonSolver):
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    if max(top.fselfb) > 0.:
+      assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
+      setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,top.zgridprv,bx,by,bz,
+             self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+             self.xmminp,self.ymminp,self.zmminp,
+             self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
@@ -166,7 +183,19 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.efetch == 3:
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
+      indts = args[1]
+      iselfb = args[2]
+      # --- If this is the first group, set make sure that fieldp gets
+      # --- zeroed out. Otherwise, the data in fieldp is accumulated.
+      lzero = ((indts == 0) and (iselfb == 0))
+      if lzero:
+        tfieldp = transpose(self.fieldp)
+        tfieldp[...] = 0.
       self.getselfe(recalculate=1)
+      # --- If top.fslefb(iselfb) > 0, then calculate and include the
+      # --- approximate correction terms A and dA/dt.
+      self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+      self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -206,12 +235,44 @@ class MultiGrid(SubcycledPoissonSolver):
     if type(self.fieldp) != ArrayType:
       # --- This should only ever be done by an external routine, such as
       # --- a plotting function.
-      self.fieldp = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp),'d')
+      self.fieldp = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp,1),'d')
     if recalculate:
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
-                 self.fieldp,self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                 self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
+                 self.dx,self.dy,self.dz,
                  self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
     return self.fieldp
+
+  def getselfb(self,fieldp,fselfb,potentialp):
+    Az = (fselfb/clight**2)*potentialp[:,:,1:-1]
+    fieldp[0,:,1:-1,:,1] += (Az[:,2:,:] - Az[:,:-2,:])/(2.*self.dy)
+    print 'getselb ',maxnd(abs(Az)),fselfb,maxnd(abs(fieldp[0,:,1:-1,:,1]))
+    fieldp[1,1:-1,:,:,1] -= (Az[2:,:,:] - Az[:-2,:,:])/(2.*self.dx)
+    if self.bounds[2] == 1 or self.l2symtry or self.l4symtry:
+      pass
+    elif self.bounds[2] == 0:
+      fieldp[0,:,0,:,1] += (Az[:,1,:] - Az[:,0,:])/(self.dy)
+    elif self.bounds[2] == 2:
+      fieldp[0,:,0,:,1] += (Az[:,1,:] - Az[:,-2,:])/(2.*self.dy)
+    if self.bounds[3] == 0:
+      fieldp[0,:,-1,:,1] += (Az[:,-1,:] - Az[:,-2,:])/(self.dy)
+    elif self.bounds[3] == 2:
+      fieldp[0,:,-1,:,1] += (Az[:,1,:] - Az[:,-2,:])/(2.*self.dy)
+    if self.bounds[0] == 1 or self.l4symtry:
+      pass
+    elif self.bounds[0] == 0:
+      fieldp[1,0,:,:,1] -= (Az[1,:,:] - Az[0,:,:])/(self.dx)
+    elif self.bounds[0] == 2:
+      fieldp[1,0,:,:,1] -= (Az[1,:,:] - Az[-2,:,:])/(2.*self.dx)
+    if self.bounds[1] == 0:
+      fieldp[1,-1,:,:,1] -= (Az[-1,:,:] - Az[-2,:,:])/(self.dx)
+    elif self.bounds[1] == 2:
+      fieldp[1,-1,:,:,1] -= (Az[1,:,:] - Az[-2,:,:])/(2.*self.dx)
+    
+  def adddadttoe(self,fieldp,fselfb,potentialp):
+    """Ez = -dA/dt = -beta**2 dphi/dz"""
+    Ez = -(fselfb/clight)**2*(potentialp[:,:,2:]-potentialp[:,:,:-2])/(2.*self.dz)
+    fieldp[2,:,:,:,0] += Ez
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
