@@ -269,7 +269,8 @@ the diagnostic is of interest and is meaningfull.
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
                    'my_index','nslaves','lfsautodecomp','zslave','lautodecomp']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
-                    'lreducedpickle':1,'lnorestoreonpickle':0}
+                    'lreducedpickle':1,'lnorestoreonpickle':0,
+                    'ldosolve':1}
 
   def __init__(self,**kw):
     try:
@@ -831,6 +832,7 @@ class SubcycledPoissonSolver(FieldSolver):
     self.getpotentialpforparticles(isourcepndtscopies,indts,iselfb)
 
   def solve(self,iwhich=0):
+    if not self.ldosolve: return
     self.allocatedataarrays()
     # --- Loop over the subcyling groups and do any field solves that
     # --- are necessary.
