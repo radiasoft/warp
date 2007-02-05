@@ -639,7 +639,7 @@ class SubcycledPoissonSolver(FieldSolver):
   def returnfieldp(self,indts,iselfb):
     indts = min(indts,top.nsndtsphi-1)
     try:
-      return self.fieldparray[...,indts,iselfb]
+      return self.fieldparray[...,indts]
     except AttributeError:
       return 0.
 
@@ -659,7 +659,7 @@ class SubcycledPoissonSolver(FieldSolver):
   def returnfield(self,indts,iselfb):
     indts = min(indts,top.nsndtsphi-1)
     try:
-      return self.fieldarray[...,indts,iselfb]
+      return self.fieldarray[...,indts]
     except AttributeError:
       return 0.
 
@@ -796,7 +796,7 @@ class SubcycledPoissonSolver(FieldSolver):
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
-    else:        indts = top.ndtstorho[top.ndts[jsid]-1]
+    else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
 
     tmpnsndts = getnsndtsforsubcycling()
     indts = min(tmpnsndts-1,indts)
@@ -817,7 +817,7 @@ class SubcycledPoissonSolver(FieldSolver):
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
-    else:        indts = top.ndtstorho[top.ndts[jsid]-1]
+    else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
 
     tmpnsndts = getnsndtsforsubcycling()
     indts = min(tmpnsndts-1,indts)
@@ -874,7 +874,7 @@ of the arrays used by the field solve"""
 
     if len(pdims) == 3:
       # --- Also, create fieldparray
-      fielddims = list(pdims[1]) + [top.nsndtsphi,top.nsselfb]
+      fielddims = list(pdims[1]) + [top.nsndtsphi]
       if 'fieldparray' not in self.__dict__ or shape(self.fieldparray) != tuple(fielddims):
         self.fieldparray = fzeros(fielddims,'d')
 
@@ -901,7 +901,7 @@ of the arrays used by the field solve"""
 
       if len(dims) == 3:
         # --- Also, create fieldarray
-        fielddims = list(dims[1]) + [top.nsndtsphi,top.nsselfb]
+        fielddims = list(dims[1]) + [top.nsndtsphi]
         if 'fieldarray' not in self.__dict__ or shape(self.fieldarray) != tuple(fielddims):
           self.fieldarray = fzeros(fielddims,'d')
 
