@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.340 $, $Date: 2007/02/02 01:13:32 $
+c@(#) File W3D.F, version $Revision: 3.341 $, $Date: 2007/02/05 22:33:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7599,12 +7599,14 @@ c     --- Don't do anything if there are no particles input.
       if(fstype == 12) then
         pgroupfsapi => pgroup
         jsfsapi = pgroup%sid(is - 1)
+        ndtsfsapi = pgroup%ndts(is - 1)
         ipminfsapi = ipmin
         npfsapi = ip
         call execuser("fetcheregistered")
         NULLIFY(pgroupfsapi)
         jsfsapi = -1
         npfsapi = 0
+        ndtsfsapi = 0
       elseif(solvergeom==XYZgeom) then
         tmpnsndts = getnsndtsforsubcycling()
         indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
@@ -7688,9 +7690,11 @@ c       --- and the data needs to be copied around.
 #endif
         npfsapi = n
         jsfsapi = jsid
+        ndtsfsapi = ndts
         call execuser("fetcheregistered")
         npfsapi = 0
         jsfsapi = -1
+        ndtsfsapi = 0
 #if defined(XLF) || defined(XLF2)
         ex = exfsapi
         ey = eyfsapi
@@ -7744,10 +7748,14 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
 
+      integer(ISZ):: jsid,ndts
+
 c     --- Don't do anything if there are no particles input.
       if (ip == 0) return
 
-      call fetchb3dfrompositions(is,ip,
+      jsid = pgroup%sid(is-1)
+      ndts = pgroup%ndts(is-1)
+      call fetchb3dfrompositions(jsid,ndts,ip,
      &                           pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                           pgroup%zp(ipmin),
      &                           pgroup%bx(ipmin),pgroup%by(ipmin),
@@ -8067,6 +8075,7 @@ c     --- Don't do anything if there are no particles input.
 c     --- Call the appropriate routine to get the phi
       if (fstype == 12) then
         jsfsapi = -1
+        ndtsfsapi = 1
         npfsapi = n
         xfsapi => x
         yfsapi => y

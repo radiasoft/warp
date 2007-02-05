@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.250 $, $Date: 2007/01/30 01:36:20 $
+#@(#) File W3D.V, version $Revision: 3.251 $, $Date: 2007/02/05 22:33:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.250 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.251 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -381,6 +381,7 @@ selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
 
 *********** FieldSolveAPI:
 jsfsapi     integer
+ndtsfsapi   integer
 npfsapi     integer
 ipminfsapi  integer
 lzerorhofsapi logical /.true./
