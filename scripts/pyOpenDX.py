@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.29 2007/01/17 18:00:24 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.30 2007/02/05 17:55:15 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -226,7 +226,7 @@ def viewcoloredvolume(data,display=1,origins=None,deltas=None,name='WARP viz',op
   if display:
     DXImage(dxobject,camera=None,name=name)
   else:
-    return fxobject
+    return dxobject
   
 def viewgreyscalevolume(data,display=1,origins=None,deltas=None,name='WARP viz',opacity=0.5,hue=0.,saturation=0.):
   if origins is None: origins = [0.,0.,0.]
@@ -725,6 +725,7 @@ def DXCaption(string,position=None,flag=None,reference=None,alignment=None,
 def DXColor(dxobject,color=None,opacity=0.5,component='colors',delayed=0):
     if color is None:
       return dxobject
+    if type(color) in [type([]),type(()),type(ones(0))]:color=DXVector(color)
     minput = {'input':dxobject,'color':color,'opacity':opacity,'delayed':delayed}
     moutput = ['colored']
     (dxobject_out,) = DXCallModule('Color',minput,moutput)
@@ -1026,7 +1027,8 @@ def DXCollectold(dxobjects):
   (group,) = DXCallModule('Collect',minput,moutput)
   return group
 
-def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None,ticks=3,frame=0,adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.,direction='front'):
+def DXImage(object,camera=None,name=None,labels=None,hardware=1,scale=None,ticks=3,frame=0,
+            adjust=1,grid=0,colors='grey',annotation="all",labelscale=1.,direction='front'):
   """
 Displays an image of the input object, allowing mouse controls for moving the
 image. Default mode is rotation. Press 1 for panning, 2 for zooming.
