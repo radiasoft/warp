@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.86 $, $Date: 2007/01/30 01:37:51 $
+c@(#) File w3d_injection.F, version $Revision: 1.87 $, $Date: 2007/02/05 22:30:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -409,11 +409,10 @@ c             --- and the particle arrays are unallocated.
 c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                   pgroup%xp(i1:i2),
-     &                                   pgroup%yp(i1:i2),
+     &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),at,bt,apt)
-              call fetchb3dfrompositions(jsid,nn,pgroup%xp(i1:i2),
-     &                                   pgroup%yp(i1:i2),
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
+     &                                   pgroup%xp(i1:i2),pgroup%yp(i1:i2),
      &                                   pgroup%zp(i1:i2),xt,yt,zt)
             else
               at = 0.
@@ -536,12 +535,11 @@ c             --- Make sure there is enough temp space
 c             --- calculate new E self-fields
               if (linj_efromgrid) then
                 call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,
-     &                                     pgroup%xp(ipmin),
-     &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                                     at,bt,apt)
-                call fetchb3dfrompositions(jsid,nn,pgroup%xp(ipmin),
-     &                                     pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                                     xt,yt,zt)
+     &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                                     pgroup%zp(ipmin),at,bt,apt)
+                call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,
+     &                                     pgroup%xp(ipmin),pgroup%yp(ipmin),
+     &                                     pgroup%zp(ipmin),xt,yt,zt)
               else
                 at = 0.
                 bt = 0.
@@ -1200,7 +1198,8 @@ c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
+     &                                   bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1345,7 +1344,8 @@ c           --- calculate new E self-fields
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
+     &                                   bx,by,bz)
             endif
             call inj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1688,7 +1688,8 @@ c           --- get E self-field at initial positions
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
+     &                                   bx,by,bz)
             endif
             call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 
@@ -1828,7 +1829,8 @@ c           --- calculate new E self-fields
             if (linj_efromgrid) then
               call fetche3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
      &                                   ex,ey,ez)
-              call fetchb3dfrompositions(jsid,nn,xx,yy,zz,bx,by,bz)
+              call fetchb3dfrompositions(jsid,pgroup%ndts(is-1),nn,xx,yy,zz,
+     &                                   bx,by,bz)
             endif
             call tinj_sete3d(nn,xx,yy,zz,id,ex,ey,ez)
 

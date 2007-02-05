@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.34 $, $Date: 2007/01/30 01:16:57 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.35 $, $Date: 2007/02/05 22:30:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1764,7 +1764,7 @@ c     --- when nsndtsj==0 and oldnsndtsj>0.
       return
       end
 c=============================================================================
-      subroutine fetchb3dfrompositions(jsid,n,x,y,z,bx,by,bz)
+      subroutine fetchb3dfrompositions(jsid,ndts,n,x,y,z,bx,by,bz)
       use GlobalVars
       use Subtimersf3d
       use Picglb
@@ -1774,7 +1774,7 @@ c=============================================================================
       use BFieldGrid
       use FieldSolveAPI
       use f3d_bfield_interfaces
-      integer(ISZ):: jsid,n
+      integer(ISZ):: jsid,ndts,n
       real(kind=8),target:: x(n),y(n),z(n),bx(n),by(n),bz(n)
 
 c     --- Obtain the magnetic field
@@ -1803,6 +1803,7 @@ c       --- and the data needs to be copied around.
 #endif
         npfsapi = n
         jsfsapi = jsid
+        ndtsfsapi = ndts
         if (bfstype == 12) then
           call execuser("bfetchbregistered")
         else
@@ -1861,6 +1862,7 @@ c     --- Call the appropriate routine to get the A
         afsapi => a
         npfsapi = n
         jsfsapi = -1
+        ndtsfsapi = 1
         if (bfstype == 12) then
           call execuser("bfetcharegistered")
         else
@@ -1868,6 +1870,7 @@ c     --- Call the appropriate routine to get the A
         endif
         npfsapi = 0
         jsfsapi = -1
+        ndtsfsapi = 0
         nullify(xfsapi)
         nullify(yfsapi)
         nullify(zfsapi)

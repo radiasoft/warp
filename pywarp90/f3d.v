@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.165 $, $Date: 2006/12/19 22:43:03 $
+#@(#) File F3D.V, version $Revision: 3.166 $, $Date: 2007/02/05 22:31:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.165 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.166 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -521,7 +521,7 @@ setjforfieldsolve3d(nx:integer,ny:integer,nz:integer,j(0:2,0:nx,0:ny,0:nz):real,
 setupbfieldsforparticles3d(ns:integer,ndts:integer,it:integer,
                            bfield:BFieldGridType,bfieldp:BFieldGridType)
              subroutine #
-fetchb3dfrompositions(is:integer,n:integer,x(n):real,y(n):real,z(n):real,
+fetchb3dfrompositions(jsid:integer,ndts:integer,n:integer,x(n):real,y(n):real,z(n):real,
                       bx(n):real,by(n):real,bz(n):real)
              subroutine #
 fetcha(n:integer,x(n):real,y(n):real,z(n):real,a(n):real)
