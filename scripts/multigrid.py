@@ -187,7 +187,10 @@ class MultiGrid(SubcycledPoissonSolver):
       iselfb = args[2]
       # --- If this is the first group, set make sure that fieldp gets
       # --- zeroed out. Otherwise, the data in fieldp is accumulated.
-      lzero = ((indts == 0) and (iselfb == 0))
+      # --- This coding relies on the fact that fieldsolver does the
+      # --- loops in descending order.
+      tmpnsndts = getnsndtsforsubcycling()
+      lzero = ((indts == tmpnsndts-1) and (iselfb == top.nsselfb-1))
       if lzero:
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
