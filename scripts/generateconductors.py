@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.147 2007/02/03 01:20:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.148 2007/02/07 23:45:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -400,7 +400,7 @@ Should never be directly created by the user.
       # --- The modified array is then tranposed back.
       phit = transpose(frz.basegrid.phi)
       phit.shape = [phit.shape[0],1,phit.shape[1]]
-      phi = transpose(phit)[1:-1,:,1:-1]
+      phi = transpose(phit)[1:-1,:,:]
       rhot = transpose(frz.basegrid.rho)
       rhot.shape = [rhot.shape[0],1,rhot.shape[1]]
       rho = transpose(rhot)
@@ -416,6 +416,9 @@ Should never be directly created by the user.
       ymmax = mins[1]
       zmmin = frz.basegrid.zmin
       zmmax = frz.basegrid.zmax
+      # --- This needs to be fixed to handle mesh refinement properly
+      l2symtry = w3d.l2symtry
+      l4symtry = w3d.l4symtry
     else:
       if g is None:
         g = w3d
@@ -436,6 +439,8 @@ Should never be directly created by the user.
       ymmax = g.ymmax
       zmmin = g.zmmin
       zmmax = g.zmmax
+      l2symtry = g.l2symtry
+      l4symtry = g.l4symtry
 
     # compute mins and maxs
     xmin = max(xmmin,mins[0])
@@ -456,77 +461,90 @@ Should never be directly created by the user.
 
     izminp = izmin+1
     izmaxp = izmax+1
+
+    if w3d.solvergeom in [w3d.RZgeom]:
+      # --- The rfac is to take into account the r dtheta term in the integrals.
+      rfac = 2.*pi*(iota(ixmin,ixmax)*dx + xmmin)
+      rfac.shape = (rfac.shape[0],1)
+      rmin = 2.*pi*((ixmin - 0.5)*dx + xmmin)
+      rmax = 2.*pi*((ixmax + 0.5)*dx + xmmin)
+    else:
+      rfac = ones([ixmax-ixmin+1,iymax-iymin+1],'d')
+      rmin = 1.
+      rmax = 1.
     
     # accumulate charge due to integral form of Gauss Law
     q = 0.
-    if izmaxp>=izminp:
-     if 0<=izmax<nz:   
-       q += sum(sum(phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
-                   -phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*dx*dy/dz
-     if 0<izmin<=nz:    
-       q += sum(sum(phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
-                   -phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*dx*dy/dz
-     if 0<=ixmax<nx: 
-       q += sum(sum(phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*dz*dy/dx
-     if 0<ixmin<=nx:     
-       q += sum(sum(phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
-                   -phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*dz*dy/dx
-     if 0<=iymax<ny:
-       q += sum(sum(phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
-                   -phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*dx*dz/dy
-     if 0<iymin<=ny:     
-       q += sum(sum(phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
-                   -phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*dx*dz/dy
+    qc = 0.
+    if izmaxp >= izminp:
 
-     # compute total charge inside volume
-     qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*dx*dy*dz
+      # compute total charge inside volume
+      qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1]*rfac[:,:,NewAxis])))*dx*dy*dz
 
 # --- This block of code is needed if the rho in conductor interiors is
 # --- not zeroed out. Note that the setting of interior above is also needed.
-     # --- subtract off any charge inside of the conductors (This charge is
-     # --- included in the sum over rho, but it does not affect the
-     # --- potential and so is not represented in sum of Enormal and so is not
-     # --- accounted for properly. It needs to be explicitly subtracted off
-     # --- since it should not be included as image charge.)
-#     qinterior = cond_sumrhointerior(interior,nx,ny,nz,rho,
-#                                     ixmin,ixmax,iymin,iymax,izmin,izmax)
-     qinterior=0.
-     subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
-                                     ixmin,ixmax,iymin,iymax,izmin,izmax)
-     qc = qc - qinterior
+      # --- subtract off any charge inside of the conductors (This charge is
+      # --- included in the sum over rho, but it does not affect the
+      # --- potential and so is not represented in sum of Enormal and so is not
+      # --- accounted for properly. It needs to be explicitly subtracted off
+      # --- since it should not be included as image charge.)
+      qinterior=zeros(1,'d')
+      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]:
+        cond_sumrhointerior2d(qinterior,g,nx,nz,rho[:,0,:],ixmin,ixmax,izmin,izmax)
+      else:
+        subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
+                               ixmin,ixmax,iymin,iymax,izmin,izmax)
+      qc = qc - qinterior[0]
 
+      # --- Sum the normal E field on the surface of the volume
+      if 0<=izmax<nz:   
+        q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ]
+                      -phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ])*rfac))*dx*dy/dz
+      if 0<izmin<=nz:    
+        q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ]
+                      -phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ])*rfac))*dx*dy/dz
+      if 0<=ixmax<nx: 
+        q += sum(sum(( phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1]
+                      -phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1])*rmax))*dz*dy/dx
+      if 0<ixmin<=nx:     
+        q += sum(sum(( phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1]
+                      -phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1])*rmin))*dz*dy/dx
+      if 0<=iymax<ny:
+        q += sum(sum(( phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1]
+                      -phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1])))*dx*dz/dy
+      if 0<iymin<=ny:
+        q += sum(sum(( phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1]
+                      -phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1])))*dx*dz/dy
 
-     # correct for symmetries
-     if g.l4symtry:
-      q=q*4.
-      qc=qc*4.
-     elif g.l2symtry:
-      q=q*2.
-      qc=qc*2.
-     if g.l2symtry or g.l4symtry:
-      if iymin==0:
-        if 0<=izmax< nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
-        if 0< izmin<=nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
-        if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
-        if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
-        qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*dx*dy*dz
-     if g.l4symtry:
-      if ixmin==0:
-        if 0<=izmax< nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
-        if 0< izmin<=nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
-        if 0<=iymax< ny: q -= 2.*sum(phi[ixmin,iymax+1,izminp:izmaxp+1]-phi[ixmin,iymax,izminp:izmaxp+1])*dx*dz/dy
-        if 0< iymin<=ny: q -= 2.*sum(phi[ixmin,iymin-1,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dx*dz/dy
-        qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*dx*dy*dz
-      if ixmin==0 and iymin==0:
-        if 0<=izmax< nz: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
-        if 0< izmin<=nz: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
-        qc += sum(rho[ixmin,iymin,izmin:izmax+1])*dx*dy*dz
-    else:
-      qc = 0.
+      # correct for symmetries (this will never be done for RZ so rfac is not needed)
+      if l4symtry:
+       q=q*4.
+       qc=qc*4.
+      elif l2symtry:
+       q=q*2.
+       qc=qc*2.
+      if l2symtry or l4symtry:
+       if iymin==0:
+         if 0<=izmax< nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
+         if 0< izmin<=nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
+         if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
+         if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
+         qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*dx*dy*dz
+      if l4symtry:
+       if ixmin==0:
+         if 0<=izmax< nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
+         if 0< izmin<=nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
+         if 0<=iymax< ny: q -= 2.*sum(phi[ixmin,iymax+1,izminp:izmaxp+1]-phi[ixmin,iymax,izminp:izmaxp+1])*dx*dz/dy
+         if 0< iymin<=ny: q -= 2.*sum(phi[ixmin,iymin-1,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dx*dz/dy
+         qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*dx*dy*dz
+       if ixmin==0 and iymin==0:
+         if 0<=izmax< nz: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
+         if 0< izmin<=nz: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
+         qc += sum(rho[ixmin,iymin,izmin:izmax+1])*dx*dy*dz
       
     q  = parallelsum(q)
     qc = parallelsum(qc)
+    print q,qc
     
     self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
