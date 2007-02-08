@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.51 $, $Date: 2007/02/07 23:42:50 $
+#@(#) File FRZ.V, version $Revision: 3.52 $, $Date: 2007/02/08 00:30:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.51 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.52 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -178,7 +178,7 @@ setconductorvoltagerz_id(id:integer,volt:real) subroutine
          # set voltage on conductor given its ID
 cond_sumrhointerior2d(rhosum:real,grid:GRIDtype,nx:integer,nz:integer,
                       rho(0:nx,0:nz):real,ixmin:integer,ixmax:integer,
-                      izmin:integer,izmax:integer) subroutine
+                      izmin:integer,izmax:integer,dr:real,rmmin:real) subroutine
          # Sums rho in the interior of the conductor
 calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,

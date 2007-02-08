@@ -10261,14 +10261,16 @@ enddo
 return
 end subroutine setconductorvoltagerz_id
 
-subroutine cond_sumrhointerior2d(rhosum,grid,nx,nz,rho,ixmin,ixmax,izmin,izmax)
+subroutine cond_sumrhointerior2d(rhosum,grid,nx,nz,rho,ixmin,ixmax,izmin,izmax,dr,rmmin)
 ! Sum up rho in the interior of the conductors within the specified extent.
+use Constant
 use GRIDtypemodule
 use BNDtypemodule
 use CONDtypemodule
 INTEGER(ISZ):: nx,nz,ixmin,ixmax,izmin,izmax
 REAL(kind=8):: rhosum,rho(0:nx,0:nz)
 TYPE(GRIDtype):: grid
+REAL(kind=8):: dr,rmmin
 
 INTEGER(ISZ) :: ic, i, ix,iz
 TYPE(CONDtype), pointer :: c
@@ -10286,7 +10288,7 @@ do ic = 1, grid%bndfirst%nb_conductors
     iz = c%kcond(i) - 1
     if (ixmin <= ix .and. ix <= ixmax .and.\
         izmin <= iz .and. iz <= izmax) then
-      rhosum = rhosum + rho(ix,iz)
+      rhosum = rhosum + rho(ix,iz)*2.*pi*(ix*dr + rmmin)
     endif
   enddo
 enddo
