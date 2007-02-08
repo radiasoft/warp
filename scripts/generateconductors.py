@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.148 2007/02/07 23:45:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.149 2007/02/08 00:29:06 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -490,11 +490,11 @@ Should never be directly created by the user.
       # --- since it should not be included as image charge.)
       qinterior=zeros(1,'d')
       if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]:
-        cond_sumrhointerior2d(qinterior,g,nx,nz,rho[:,0,:],ixmin,ixmax,izmin,izmax)
+        cond_sumrhointerior2d(qinterior,g,nx,nz,rho[:,0,:],ixmin,ixmax,izmin,izmax,dx,xmmin)
       else:
         subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
                                ixmin,ixmax,iymin,iymax,izmin,izmax)
-      qc = qc - qinterior[0]
+      qc = qc - qinterior[0]*dx*dy*dz
 
       # --- Sum the normal E field on the surface of the volume
       if 0<=izmax<nz:   
@@ -544,7 +544,6 @@ Should never be directly created by the user.
       
     q  = parallelsum(q)
     qc = parallelsum(qc)
-    print q,qc
     
     self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
