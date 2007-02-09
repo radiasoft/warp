@@ -135,7 +135,7 @@ class MultiGrid(SubcycledPoissonSolver):
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
     n  = len(x)
     if n == 0: return
-    setrho3d(self.sourcep,self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+    setrho3d(self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)

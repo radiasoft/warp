@@ -158,7 +158,7 @@ class FieldSolver3dBase(object):
   def setrho(self,x,y,z,uz,q,w):
     n = len(x)
     if n == 0: return
-    setrho3d(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+    setrho3d(self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
