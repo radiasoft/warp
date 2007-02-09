@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.149 2007/02/08 00:29:06 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.150 2007/02/09 19:01:59 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -476,7 +476,7 @@ Should never be directly created by the user.
     # accumulate charge due to integral form of Gauss Law
     q = 0.
     qc = 0.
-    if izmaxp >= izminp:
+    if ixmax >= ixmin and iymax >= iymin and izmaxp >= izminp:
 
       # compute total charge inside volume
       qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1]*rfac[:,:,NewAxis])))*dx*dy*dz
