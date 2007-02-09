@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.341 $, $Date: 2007/02/05 22:33:57 $
+c@(#) File W3D.F, version $Revision: 3.342 $, $Date: 2007/02/09 00:19:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4596,7 +4596,7 @@ c     --- Apply particle boundary conditions
       return
       end
 c=============================================================================
-      subroutine setrho3d(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
+      subroutine setrho3d(rho,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                    lcylindrical)
       use GlobalVars
@@ -4607,7 +4607,6 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
@@ -4623,7 +4622,7 @@ c  Vectorized deposition loop
 c--------------------------------------
       if (depos == "vector") then
 
-        call setrho3dvector(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3dvector(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
      &                      nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                      l2symtry,l4symtry)
 
@@ -4665,7 +4664,7 @@ c  Vectorized deposition loop with precalculated integer conversions
 c--------------------------------------
       else if (depos == "vector1") then
 
-        call setrho3dvector1(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,
+        call setrho3dvector1(rho,np,xp,yp,zp,zgrid,uzp,q,wght,
      &                       nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                       l2symtry,l4symtry)
 
@@ -6398,7 +6397,7 @@ c     --- scalar loop does the actual deposition
       return
       end
 c=============================================================================
-      subroutine setrho3dw(rho,rho1d,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,depos,
+      subroutine setrho3dw(rho,np,xp,yp,zp,zgrid,uzp,wfact,q,wght,depos,
      &                     nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry,
      &                     lcylindrical)
       use GlobalVars
@@ -6409,7 +6408,6 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np), wfact(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
@@ -7193,15 +7191,13 @@ c          --- mode, it is assumed that dtscale has not been changed from 1.
              if (ldts(indts)) then
 c              --- Only load the rho if the positions have been advanced.
                if(wpid==0) then
-                 call setrho3d(rhopndts(:,:,:,0,indts),
-     &                         rhopndts(:,:,:,0,indts),nps_u,
+                 call setrho3d(rhopndts(:,:,:,0,indts),nps_u,
      &                         pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                         zgridndts(indts),pgroup%uzp(ipmin),pgroup%sq(is),
      &                         swtmp,depos,nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                         l2symtry,l4symtry,solvergeom==RZgeom)
                else
-                 call setrho3dw(rhopndts(:,:,:,0,indts),
-     &                          rhopndts(:,:,:,0,indts),nps_u,
+                 call setrho3dw(rhopndts(:,:,:,0,indts),nps_u,
      &                          pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                          zgridndts(indts),pgroup%uzp(ipmin),
      &                          pgroup%pid(ipmin,wpid),pgroup%sq(is),

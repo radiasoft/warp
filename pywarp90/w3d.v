@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.251 $, $Date: 2007/02/05 22:33:57 $
+#@(#) File W3D.V, version $Revision: 3.252 $, $Date: 2007/02/09 00:19:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.251 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.252 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -862,13 +862,13 @@ getselfe3d(phi(0:nx,0:ny,-1:nz+1):real,nx:integer,ny:integer,nz:integer,
            dx:real,dy:real,dz:real,
            boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer)
              subroutine # Calculates the self-E via finite difference of phi
-setrho3d(rho(0:nx,0:ny,0:nz):real,rho1d:real,
+setrho3d(rho(0:nx,0:ny,0:nz):real,
          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
          q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
          dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
          l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Computes charge density
-setrho3dw(rho(0:nx,0:ny,0:nz):real,rho1d:real,
+setrho3dw(rho(0:nx,0:ny,0:nz):real,
           np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
           wfact(np):real,
           q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
