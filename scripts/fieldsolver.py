@@ -617,7 +617,13 @@ class SubcycledPoissonSolver(FieldSolver):
   def __getstate__(self):
     dict = FieldSolver.__getstate__(self)
     if self.lreducedpickle:
-      if 'sourceparray' in dict: del dict['sourceparray']
+      if self.lnorestoreonpickle or top.nrhopndtscopies == 1:
+        # --- Note that the sourcep must be preserved if there
+        # --- is subcycling since it will contain old data
+        # --- which cannot be restored. If lnorestoreonpickle
+        # --- is true, then sourcep can be deleted anyway since
+        # --- it will not be used.
+        if 'sourceparray' in dict: del dict['sourceparray']
       if 'potentialparray' in dict: del dict['potentialparray']
       if 'fieldparray' in dict: del dict['fieldparray']
       if 'sourcearray' in dict: del dict['sourcearray']
@@ -633,6 +639,7 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def __setstate__(self,dict):
     FieldSolver.__setstate__(self,dict)
+    if 'sourceparray' in dict: self.sourceparray = makefortranordered(self.sourceparray)
     if self.lreducedpickle and not self.lnorestoreonpickle:
       installafterrestart(self.allocatedataarrays)
 
