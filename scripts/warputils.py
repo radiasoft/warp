@@ -21,8 +21,9 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
 """
 from warp import *
 from __future__ import generators # needed for yield statement for P2.2
+import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.14 2006/10/31 01:53:55 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.15 2007/02/09 00:16:40 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -198,6 +199,31 @@ def avend(x,defaultval=0.):
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)/len(xtemp)
+
+def makefortranordered(x):
+  """Given an array, returns the same data but with fortran ordering. 
+If the array already has the correct ordering, the array is just
+returned as is. Otherwise, a new array is created and the data copied."""
+  assert type(x) is ArrayType,"Input value must be an array."
+  # --- Pick any package, since all have the getstrides method
+  pkg = packageobject(getcurrpkg())
+  # --- An array is fortran ordered if the strides are increasing,
+  # --- starting at the elemental size. This means that the first
+  # --- index varies the fastest in memory.
+  strides = pkg.getstrides(x)
+  fordered = 1
+  ss = struct.calcsize(x.typecode())
+  for id in range(len(x.shape)):
+    if strides[id] != ss: fordered = 0
+    ss = ss*x.shape[id]
+  
+  if fordered:
+    # --- No change needed.
+    return x
+  else:
+    xf = fzeros(x.shape,x.typecode())
+    xf[...] = x
+    return xf
 
 # Gets next available filename with the format 'root.nnn.suffix'.
 def getnextfilename(root,suffix):
