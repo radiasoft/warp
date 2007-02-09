@@ -326,6 +326,7 @@ it knows whether to re-register itself.
     for child in self.children:
       child.lreducedpickle = self.lreducedpickle
     dict = self.__class__.__bases__[1].__getstate__(self)
+    dict['_unpicklingcount'] = len(self.root.listofblocks)
     if self.lreducedpickle:
       # --- Remove the big objects from the dictionary. This can be
       # --- regenerated upon the restore.
@@ -333,28 +334,28 @@ it knows whether to re-register itself.
     return dict
 
   def __setstate__(self,dict):
+    _unpicklingcount = dict['_unpicklingcount']
+    del dict['_unpicklingcount']
     self.__class__.__bases__[1].__setstate__(self,dict)
-   #self.makefortranordered('potential')
-   #self.makefortranordered('source')
-   #self.makefortranordered('field')
-    if (self == self.root and self.lreducedpickle and
-        not self.lnorestoreonpickle):
-      # --- It is assumed that at this point, all of the children have been
-      # --- restored.
+    try:
+      self.root._unpicklingcount -= 1
+    except AttributeError:
+      self.root._unpicklingcount = _unpicklingcount - 1
+    if (self.root._unpicklingcount == 0 and
+        self.lreducedpickle and not self.lnorestoreonpickle):
+      del self.root._unpicklingcount
+      # --- At this point, all of the children have been restored.
       # --- Regenerate childdomains
-      self.initializechilddomains()
+      self.root.initializechilddomains()
       # --- If source and potential weren't saved, make sure that they are setup.
       # --- Though, this may not always be the right thing to do.
       # --- These can only be done at the end of the restart since only then
       # --- is it gauranteed that the particles are read in.
-      installafterrestart(self.loadsource)
-      installafterrestart(self.solve)
-
-  def makefortranordered(self,vname):
-    a = getattr(self,vname)
-    if type(a) is ArrayType:
-      setattr(self,vname,fzeros(shape(a),a.typecode()))
-      getattr(self,vname)[...] = a
+      if 'sourceparray' not in dict:
+        # --- Note that sourcep is only deleted when subsycling is not being
+        # --- done and so doesn't then need to be restored.
+        installafterrestart(self.root.loadsource)
+      installafterrestart(self.root.solve)
 
   def addchild(self,lower=None,upper=None,fulllower=None,fullupper=None,
                     mins=None,maxs=None,
