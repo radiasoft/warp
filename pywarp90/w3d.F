@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.342 $, $Date: 2007/02/09 00:19:42 $
+c@(#) File W3D.F, version $Revision: 3.343 $, $Date: 2007/02/09 20:35:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7129,10 +7129,13 @@ c       --- Use user registered solver to load rho
         call execuser("loadrhoregistered")
       else
 
+c       --- This is always done with the built in solvers
+c       --- (even with the RZ solver which does use the w3d.rho array)
+        call setupFields3dParticles()
+
 c       --- zero rhop if requested
         if (lzero) then
           if (solvergeom == XYZgeom) then
-            call setupFields3dParticles()
 c           --- Zero the rho copy for species when the positions
 c           --- are advanced.
             if (ndtsaveraging == 0 .or. ndtsaveraging == 1) then
