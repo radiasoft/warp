@@ -871,7 +871,7 @@ of the arrays used by the field solve"""
     # --- Get base dimension of the arrays for the particles
     pdims = self.getpdims()
 
-    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,top.nsselfb]
+    sourcedims = list(pdims[0]) + [top.nrhopndtscopies,top.nsndts,max(1,top.nsselfb)]
     if 'sourceparray' not in self.__dict__ or shape(self.sourceparray) != tuple(sourcedims):
       self.sourceparray = fzeros(sourcedims,'d')
 
