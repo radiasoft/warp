@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.185 2007/01/10 17:23:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.186 2007/02/12 17:21:08 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4533,7 +4533,10 @@ def aplq():
       try:
         d=gist.wplq(i)
       except:
-        d=gist.get_style()
+        try:
+          d=gist.get_style()
+        except:
+          return list
       l=len(d)
       if l>0:
         list=list+[d]
