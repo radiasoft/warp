@@ -750,12 +750,7 @@ Ctrl+=            Default font size.
         return {'panel':panel,'gui':gui,'winout':winout,'title':title,'type':type}
          
     def HandleGistEvents(self):
-      try:
-        v = gist.__version__
-        pyg_pending()
-        pyg_idler()
-      except:
-        ygdispatch()
+      refresh()
 
     def AddPalette(self,name):
         exec("[wxID_WARPRUNMNUPALLETTE"+name+"] = map(lambda _init_coll_mnuPalette_Items: wxNewId(), range(1))")
