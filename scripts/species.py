@@ -172,6 +172,7 @@ Creates a new species of particles. All arguments are optional.
     self.name=name
     self.nautodt = nautodt
     if self.nautodt > 1 and top.chdtspid == 0: top.chdtspid = nextpid()
+    if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
     for i in range(nautodt-1):
       self.add_group()
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
