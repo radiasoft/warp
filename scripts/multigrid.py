@@ -273,7 +273,7 @@ class MultiGrid(SubcycledPoissonSolver):
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""
-    Ez = -(fselfb/clight)**2*(potentialp[:,:,2:]-potentialp[:,:,:-2])/(2.*self.dz)
+    Ez = (fselfb/clight)**2*(potentialp[:,:,2:]-potentialp[:,:,:-2])/(2.*self.dz)
     fieldp[2,:,:,:,0] += Ez
 
   def installconductor(self,conductor,
