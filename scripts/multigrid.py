@@ -249,7 +249,6 @@ class MultiGrid(SubcycledPoissonSolver):
   def getselfb(self,fieldp,fselfb,potentialp):
     Az = (fselfb/clight**2)*potentialp[:,:,1:-1]
     fieldp[0,:,1:-1,:,1] += (Az[:,2:,:] - Az[:,:-2,:])/(2.*self.dy)
-    print 'getselb ',maxnd(abs(Az)),fselfb,maxnd(abs(fieldp[0,:,1:-1,:,1]))
     fieldp[1,1:-1,:,:,1] -= (Az[2:,:,:] - Az[:-2,:,:])/(2.*self.dx)
     if self.bounds[2] == 1 or self.l2symtry or self.l4symtry:
       pass
@@ -310,6 +309,11 @@ class MultiGrid(SubcycledPoissonSolver):
                  solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
+    # --- set for longitudinal relativistic contraction 
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
     # --- This is only done for convenience.
     self.phi = self.potential
     self.rho = self.source
@@ -334,10 +338,10 @@ class MultiGrid(SubcycledPoissonSolver):
     mgerror = zeros(1,'d')
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
-                       self.dx,self.dy,self.dz,self.potential,self.source,
+                       self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                        rstar,self.linbend,self.bounds,
-                       self.xmmin,self.ymmin,self.zmmin,
-                       self.zmminglobal,top.zbeam,top.zgrid,
+                       self.xmmin,self.ymmin,self.zmmin*zfact,
+                       self.zmminglobal*zfact,top.zbeam*zfact,top.zgrid*zfact,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
@@ -348,10 +352,10 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
-                         self.dx,self.dy,self.dz,self.potential,self.source,
+                         self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                          star,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmmin,
-                         self.zmminglobal,top.zbeam,top.zgrid,
+                         self.xmmin,self.ymmin,self.zmmin*zfact,
+                         self.zmminglobal*zfact,top.zbeam*zfact,top.zgrid*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
