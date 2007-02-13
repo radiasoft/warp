@@ -19,7 +19,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.13 2006/10/26 23:50:42 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.14 2007/02/13 00:40:49 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -58,11 +58,8 @@ Class for generating secondaries
     self.l_record_timing=0
 #    self.condids={}
 #    self.emitted={}
-    if set_params_user is None:
-      self.set_params_user=self.set_params
-    else:
-      self.set_params_user=set_params_user
-    self.set_params_user(pos.maxsec,pos.mat_number)
+    self.set_params_user=set_params_user
+    self.call_set_params_user(pos.maxsec,pos.mat_number)
     self.min_age=min_age
     if self.min_age is not None:
       w3d.l_inj_rec_inittime=true
@@ -92,12 +89,10 @@ Class for generating secondaries
     self.secelec_dele   = zeros(1,'d')
     self.secelec_delr   = zeros(1,'d')
     self.secelec_delts  = zeros(1,'d')
-    if l_txphysics:
-    # set arrays for txphysics
-      self.emitted_e=txphysics.doubleArray(1000)
-      self.emitted_bn=txphysics.doubleArray(1000)
-      self.emitted_bt=txphysics.doubleArray(1000)
-      self.emitted_bz=txphysics.doubleArray(1000)
+    # set work arrays for txphysics
+    # --- This is done in a separate method since it will be called from
+    # --- multiple places, here and in setstate.
+    self.creattxphysicsarrays()
     # set arrays for emitted particles
     self.npmax=4096
     self.nps={}
@@ -120,6 +115,49 @@ Class for generating secondaries
         else:                m = material[iis][ics]
         self.add(js,cond,issec[iis][ics],m)
     
+  def creattxphysicsarrays(self):
+    if l_txphysics:
+      self.emitted_e=txphysics.doubleArray(1000)
+      self.emitted_bn=txphysics.doubleArray(1000)
+      self.emitted_bt=txphysics.doubleArray(1000)
+      self.emitted_bz=txphysics.doubleArray(1000)
+
+  def __getstate__(self):
+    dict = self.__dict__.copy()
+
+    # --- Functions cannot be pickled, so set_params_user has
+    # --- to be specially handled. If it is defined, then only save
+    # --- the name of the function so that it can be restored later.
+    # --- This is dealt with in call_set_params_user so nothing needs
+    # --- to happen in setstate. It is done there since this instance
+    # --- may be restore before the function.
+    if self.set_params_user is not None:
+      try:
+        dict['set_params_user'] = self.set_params_user.__name__
+      except AttrbiuteError:
+        print ("Warning: Secondaries set_params_user function '%s' is not "+
+               "a proper function and will not be saved")%self.set_params_user
+        dict['set_params_user'] = None
+
+    # --- These arrays are swig arrays and cannot be pickled.
+    # --- They are only temporary arrays and don't need to be
+    # --- restore so they can just be deleted. They are recreated
+    # --- in the setstate below.
+    try:
+      del dict['emitted_e']
+      del dict['emitted_bn']
+      del dict['emitted_bt']
+      del dict['emitted_bz']
+    except KeyError:
+      pass
+
+    return dict
+
+  def __setstate__(self,dict):
+    'Restore the dictionary and recreate the txphysics arrays'
+    self.__dict__.update(dict)
+    self.creattxphysicsarrays()
+
   def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,scale_factor=None):
     if material is None: material = conductor.material
     if interaction_type is None:
@@ -657,6 +695,25 @@ Class for generating secondaries
     if self.l_record_timing:t4 = time.clock()
 #    print 'time Secondaries = ',time.clock()-t1,'s',t2-t1,t3-t2,t4-t3
     
+  def call_set_params_user(self,maxsec,mat_num=None):
+    if self.set_params_user is None:
+      self.set_params(maxsec,mat_num)
+    else:
+      if type(self.set_params_user) is StringType:
+        # --- This is needed primarily since a user defined function cannot be
+        # --- directly picklable and so only the name is saved.
+        import __main__
+        try:
+          self.set_params_user = __main__.__dict__[self.set_params_user]
+        except KeyError:
+          # --- Maybe this should raise an error?
+          print "Warning: Secondaries set_params_user function '%s' is not defined."%self.set_params_user
+      if callable(self.set_params_user):
+        self.set_params_user(maxsec,mat_num)
+      else:
+        # --- Maybe this should raise an error?
+        print "Warning: Secondaries set_params_user function '%s' is not callable."%self.set_params_user
+
   def set_params(self,maxsec,mat_num=None):
 # This routine sets the parameters for a given material.
 # Written by Peter Stoltz.  All values taken from Furman's paper 
@@ -998,7 +1055,7 @@ components of the secondaries (dimensionless).
  
    if  itype<>pos.mat_number:
     pos.mat_number=itype
-    self.set_params_user(maxsec,pos.mat_number)
+    self.call_set_params_user(maxsec,pos.mat_number)
 
    ndelerm=0
    ndeltspm=0
