@@ -6,32 +6,28 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 from warp import *
 import RandomArray
 
-class Particle:
-  def __init__(self,mass=None,charge=None,Symbol=None):
+class Particle(object):
+  def __init__(self,mass=None,charge=None,Symbol=None,name=None):
     self.Symbol=Symbol
+    self.name = name
     if mass is not None:
       self.mass=mass
       self.M=self.mass
     if charge is not None:
       self.charge=charge
       self.Q=self.charge
-    return
     
 class Atom(Particle):
-  def __init__(self,Symbol,A,Z,Group,Period):
-    Particle.__init__(self,mass=A*amu)
-    self.Symbol=Symbol
+  def __init__(self,Symbol,A,Z,Group,Period,name=None):
+    Particle.__init__(self,mass=A*amu,Symbol=Symbol,name=name)
     self.A=A
     self.Z=Z
     self.Group=Group
     self.Period=Period
-    return
 
 class Molecule(Particle):
-  def __init__(self,Symbol,mass):
-    Particle.__init__(self,mass=mass)
-    self.Symbol=Symbol
-    return
+  def __init__(self,Symbol,mass,name=None):
+    Particle.__init__(self,mass=mass,Symbol=Symbol,name=name)
 
 periodic_table={}
 periodic_table['Hydrogen']={'A': 1.0079400000000001, 'Symbol': 'H', 'Z': 1, 'Group': 1, 'Period': 1}
@@ -44,25 +40,25 @@ periodic_table['Nitrogen']={'A': 14.0067, 'Symbol': 'N', 'Z': 7, 'Group': 15, 'P
 periodic_table['Oxygen']={'A': 15.9994, 'Symbol': 'O', 'Z': 8, 'Group': 16, 'Period': 2}
 periodic_table['Fluorine']={'A': 18.998403199999998, 'Symbol': 'F', 'Z': 9, 'Group': 17, 'Period': 2}
 periodic_table['Neon']={'A': 20.1797, 'Symbol': 'Ne', 'Z': 10, 'Group': 18, 'Period': 2}
-periodic_table['Sodium ']={'A': 22.98977, 'Symbol': 'Na', 'Z': 11, 'Group': 1, 'Period': 3}
+periodic_table['Sodium']={'A': 22.98977, 'Symbol': 'Na', 'Z': 11, 'Group': 1, 'Period': 3}
 periodic_table['Magnesium']={'A': 24.305, 'Symbol': 'Mg', 'Z': 12, 'Group': 2, 'Period': 3}
-periodic_table['Aluminium ']={'A': 26.981538, 'Symbol': 'Al', 'Z': 13, 'Group': 13, 'Period': 3}
+periodic_table['Aluminium']={'A': 26.981538, 'Symbol': 'Al', 'Z': 13, 'Group': 13, 'Period': 3}
 periodic_table['Silicon']={'A': 28.0855, 'Symbol': 'Si', 'Z': 14, 'Group': 14, 'Period': 3}
 periodic_table['Phosphorus']={'A': 30.973761, 'Symbol': 'P', 'Z': 15, 'Group': 15, 'Period': 3}
 periodic_table['Sulfur']={'A': 32.064999999999998, 'Symbol': 'S', 'Z': 16, 'Group': 16, 'Period': 3}
 periodic_table['Chlorine']={'A': 35.453000000000003, 'Symbol': 'Cl', 'Z': 17, 'Group': 17, 'Period': 3}
 periodic_table['Argon']={'A': 39.948, 'Symbol': 'Ar', 'Z': 18, 'Group': 18, 'Period': 3}
-periodic_table['Potassium ']={'A': 39.098300000000002, 'Symbol': 'K', 'Z': 19, 'Group': 1, 'Period': 4}
+periodic_table['Potassium']={'A': 39.098300000000002, 'Symbol': 'K', 'Z': 19, 'Group': 1, 'Period': 4}
 periodic_table['Calcium']={'A': 40.078000000000003, 'Symbol': 'Ca', 'Z': 20, 'Group': 2, 'Period': 4}
 periodic_table['Scandium']={'A': 44.955910000000003, 'Symbol': 'Sc', 'Z': 21, 'Group': 3, 'Period': 4}
 periodic_table['Titanium']={'A': 47.866999999999997, 'Symbol': 'Ti', 'Z': 22, 'Group': 4, 'Period': 4}
 periodic_table['Vanadium']={'A': 50.941499999999998, 'Symbol': 'V', 'Z': 23, 'Group': 5, 'Period': 4}
 periodic_table['Chromium']={'A': 51.996099999999998, 'Symbol': 'Cr', 'Z': 24, 'Group': 6, 'Period': 4}
 periodic_table['Manganese']={'A': 54.938048999999999, 'Symbol': 'Mn', 'Z': 25, 'Group': 7, 'Period': 4}
-periodic_table['Iron ']={'A': 55.844999999999999, 'Symbol': 'Fe', 'Z': 26, 'Group': 8, 'Period': 4}
+periodic_table['Iron']={'A': 55.844999999999999, 'Symbol': 'Fe', 'Z': 26, 'Group': 8, 'Period': 4}
 periodic_table['Cobalt']={'A': 58.933199999999999, 'Symbol': 'Co', 'Z': 27, 'Group': 9, 'Period': 4}
 periodic_table['Nickel']={'A': 58.693399999999997, 'Symbol': 'Ni', 'Z': 28, 'Group': 10, 'Period': 4}
-periodic_table['Copper ']={'A': 63.545999999999999, 'Symbol': 'Cu', 'Z': 29, 'Group': 11, 'Period': 4}
+periodic_table['Copper']={'A': 63.545999999999999, 'Symbol': 'Cu', 'Z': 29, 'Group': 11, 'Period': 4}
 periodic_table['Zinc']={'A': 65.409000000000006, 'Symbol': 'Zn', 'Z': 30, 'Group': 12, 'Period': 4}
 periodic_table['Gallium']={'A': 69.722999999999999, 'Symbol': 'Ga', 'Z': 31, 'Group': 13, 'Period': 4}
 periodic_table['Germanium']={'A': 72.640000000000001, 'Symbol': 'Ge', 'Z': 32, 'Group': 14, 'Period': 4}
@@ -80,28 +76,28 @@ periodic_table['Technetium']={'A': 98.0, 'Symbol': 'Tc', 'Z': 43, 'Group': 7, 'P
 periodic_table['Ruthenium']={'A': 101.06999999999999, 'Symbol': 'Ru', 'Z': 44, 'Group': 8, 'Period': 5}
 periodic_table['Rhodium']={'A': 102.9055, 'Symbol': 'Rh', 'Z': 45, 'Group': 9, 'Period': 5}
 periodic_table['Palladium']={'A': 106.42, 'Symbol': 'Pd', 'Z': 46, 'Group': 10, 'Period': 5}
-periodic_table['Silver ']={'A': 28.0855, 'Symbol': 'Ag', 'Z': 47, 'Group': 11, 'Period': 5}
+periodic_table['Silver']={'A': 28.0855, 'Symbol': 'Ag', 'Z': 47, 'Group': 11, 'Period': 5}
 periodic_table['Cadmium']={'A': 112.411, 'Symbol': 'Cd', 'Z': 48, 'Group': 12, 'Period': 5}
 periodic_table['Indium']={'A': 114.818, 'Symbol': 'In', 'Z': 49, 'Group': 13, 'Period': 5}
-periodic_table['Tin ']={'A': 118.70999999999999, 'Symbol': 'Sn', 'Z': 50, 'Group': 14, 'Period': 5}
-periodic_table['Antimony ']={'A': 121.76000000000001, 'Symbol': 'Sb', 'Z': 51, 'Group': 15, 'Period': 5}
+periodic_table['Tin']={'A': 118.70999999999999, 'Symbol': 'Sn', 'Z': 50, 'Group': 14, 'Period': 5}
+periodic_table['Antimony']={'A': 121.76000000000001, 'Symbol': 'Sb', 'Z': 51, 'Group': 15, 'Period': 5}
 periodic_table['Tellurium']={'A': 127.59999999999999, 'Symbol': 'Te', 'Z': 52, 'Group': 16, 'Period': 5}
 periodic_table['Iodine']={'A': 126.90447, 'Symbol': 'I', 'Z': 53, 'Group': 17, 'Period': 5}
 periodic_table['Xenon']={'A': 131.29300000000001, 'Symbol': 'Xe', 'Z': 54, 'Group': 18, 'Period': 5}
-periodic_table['Caesium ']={'A': 132.90545, 'Symbol': 'Cs', 'Z': 55, 'Group': 1, 'Period': 6}
+periodic_table['Caesium']={'A': 132.90545, 'Symbol': 'Cs', 'Z': 55, 'Group': 1, 'Period': 6}
 periodic_table['Barium']={'A': 137.327, 'Symbol': 'Ba', 'Z': 56, 'Group': 2, 'Period': 6}
 periodic_table['Lutetium']={'A': 174.96700000000001, 'Symbol': 'Lu', 'Z': 71, 'Group': 3, 'Period': 6}
 periodic_table['Hafnium']={'A': 178.49000000000001, 'Symbol': 'Hf', 'Z': 72, 'Group': 4, 'Period': 6}
 periodic_table['Tantalum']={'A': 180.9479, 'Symbol': 'Ta', 'Z': 73, 'Group': 5, 'Period': 6}
-periodic_table['Tungsten ']={'A': 183.84, 'Symbol': 'W', 'Z': 74, 'Group': 6, 'Period': 6}
+periodic_table['Tungsten']={'A': 183.84, 'Symbol': 'W', 'Z': 74, 'Group': 6, 'Period': 6}
 periodic_table['Rhenium']={'A': 186.20699999999999, 'Symbol': 'Re', 'Z': 75, 'Group': 7, 'Period': 6}
 periodic_table['Osmium']={'A': 190.22999999999999, 'Symbol': 'Os', 'Z': 76, 'Group': 8, 'Period': 6}
 periodic_table['Iridium']={'A': 192.21700000000001, 'Symbol': 'Ir', 'Z': 77, 'Group': 9, 'Period': 6}
 periodic_table['Platinum']={'A': 195.078, 'Symbol': 'Pt', 'Z': 78, 'Group': 10, 'Period': 6}
-periodic_table['Gold ']={'A': 196.96655000000001, 'Symbol': 'Au', 'Z': 79, 'Group': 11, 'Period': 6}
-periodic_table['Mercury ']={'A': 200.59, 'Symbol': 'Hg', 'Z': 80, 'Group': 12, 'Period': 6}
+periodic_table['Gold']={'A': 196.96655000000001, 'Symbol': 'Au', 'Z': 79, 'Group': 11, 'Period': 6}
+periodic_table['Mercury']={'A': 200.59, 'Symbol': 'Hg', 'Z': 80, 'Group': 12, 'Period': 6}
 periodic_table['Thallium']={'A': 204.38329999999999, 'Symbol': 'Tl', 'Z': 81, 'Group': 13, 'Period': 6}
-periodic_table['Lead ']={'A': 207.19999999999999, 'Symbol': 'Pb', 'Z': 82, 'Group': 14, 'Period': 6}
+periodic_table['Lead']={'A': 207.19999999999999, 'Symbol': 'Pb', 'Z': 82, 'Group': 14, 'Period': 6}
 periodic_table['Bismuth']={'A': 208.98038, 'Symbol': 'Bi', 'Z': 83, 'Group': 15, 'Period': 6}
 periodic_table['Polonium']={'A': 210.0, 'Symbol': 'Po', 'Z': 84, 'Group': 16, 'Period': 6}
 periodic_table['Astatine']={'A': 210.0, 'Symbol': 'At', 'Z': 85, 'Group': 17, 'Period': 6}
@@ -128,21 +124,21 @@ for k in periodic_table.keys():
   Z=periodic_table[k]['Z']
   G=periodic_table[k]['Group']
   P=periodic_table[k]['Period']
-  exec(k+"=Atom(S,A,Z,G,P)")
+  exec(k+"=Atom(S,A,Z,G,P,name='%s')"%k)
 #  exec(k+"=periodic_table['"+k+"']")
 del k
 
-Electron=Particle(charge=-echarge,mass=emass,Symbol='e-')
-Positron=Particle(charge= echarge,mass=emass,Symbol='e+')
+Electron=Particle(charge=-echarge,mass=emass,Symbol='e-',name='Electron')
+Positron=Particle(charge= echarge,mass=emass,Symbol='e+',name='Positron')
 
-Proton = Particle(mass=  amu, Symbol='P')
+Proton = Particle(mass=  amu, Symbol='P',name='Proton')
 
-Dihydrogen = Molecule(mass=  2.*amu, Symbol='H2')
-Dinitrogen = Molecule(mass=28.*amu, Symbol='N2')
-Dioxygen   = Molecule(mass=32.*amu, Symbol='O2')
-Carbon_Monoxide = Molecule(mass=28.*amu, Symbol='CO')
-Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2')
-Water           = Molecule(mass=18.*amu, Symbol='H2O')
+Dihydrogen = Molecule(mass= 2.*amu, Symbol='H2',name='Dihydrogen')
+Dinitrogen = Molecule(mass=28.*amu, Symbol='N2',name='Dinitrogen')
+Dioxygen   = Molecule(mass=32.*amu, Symbol='O2',name='Dioxygen')
+Carbon_Monoxide = Molecule(mass=28.*amu, Symbol='CO',name='Carbon_Monoxide')
+Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2',name='Carbon_Dioxide')
+Water           = Molecule(mass=18.*amu, Symbol='H2O',name='Water')
 
 class Species:
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
@@ -180,6 +176,17 @@ Creates a new species of particles. All arguments are optional.
       # --- zero out sp_fract for the extra species added with larger ndts
       top.sp_fract[self.jslist[-1]] = 0.
         
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    import species
+    # --- Check if the type is already declared in this module.
+    # --- If it is, replace it with the one defined here since they
+    # --- are supposed to be singletons.
+    try:
+      self.type = species.__dict__[self.type.name]
+    except (KeyError,AttributeError):
+      pass
+
   def add_group(self,js=None,charge=None,mass=None,charge_state=None,weight=None):   
     if js is None:
       if top.pgroup.ns==0:
