@@ -118,13 +118,6 @@ class EM2D(object):
     # --- Handle laser inputs
     self.setuplaser()
 
-  def __getstate__(self):
-    dict = self.__dict__.copy()
-    return dict
-
-  def __setstate__(self,dict):
-    self.__dict__.update(dict)
-
   def allocatefieldarrays(self):
     # --- Code transcribed from init_fields
     self.field = EM2D_FIELDtype()
