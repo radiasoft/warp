@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.46 2006/09/15 17:56:41 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.47 2007/02/13 00:27:44 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -88,7 +88,8 @@ conductors are an argument.
 
   def installscraper(self):
     # --- Install the call to scrape particles
-    installparticlescraper(self.scrapeall)
+    if not isinstalledparticlescraper(self.scrapeall):
+      installparticlescraper(self.scrapeall)
 
   def disable(self):
     if isinstalledparticlescraper(self.scrapeall):
@@ -96,10 +97,6 @@ conductors are an argument.
 
   def __setstate__(self,dict):
     # --- This is called when the instance is unpickled.
-    # --- WARNING!!! When an instance in unpickled, the conductors referrenced
-    # --- will be copies of the original conductors passed in - the restarted
-    # --- run will have two copies, the original one (if it still exists) and
-    # --- a copy refered to by the instances conductor list.
     self.__dict__.update(dict)
     self.installscraper()
 
