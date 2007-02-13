@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.68 2006/09/11 19:16:41 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.69 2007/02/13 00:26:50 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -707,12 +707,14 @@ Constructor arguments:
   def enable(self):
     # --- Turns on the realboundaries
     # --- The routine setboundary will be called before every field-solve.
-    installbeforefs(self.setboundary)
+    if not isinstalledbeforefs(self.setboundary):
+      installbeforefs(self.setboundary)
   #----------------------------------------------------------------------------
   def __setstate__(self,dict):
     global _initialmeshparams,_realboundarycount
     self.__dict__.update(dict)
-    installbeforefs(self.initialsetboundary)
+    if not isinstalledbeforefs(self.initialsetboundary):
+      installbeforefs(self.initialsetboundary)
     # --- Restore these quantities which are otherwise not saved.
     try:
       _initialmeshparams = self._initialmeshparams
