@@ -1,13 +1,12 @@
 """Controller operations
 
-For each time, the following three functions are defined.
+For each controller, the following three functions are defined.
 install___: Installs a function to be called at that specified time
 uninstall___: Uninstalls the function (so it won't be called anymore)
 isinstalled___: Checks if the function is installed
 
 The functions all take a function or instance method as an argument. Note that
-if an instance method is used, the user must not delete the instance,
-otherwise the method will not be called and it will be removed from the list.
+if an instance method is used, an extra reference to the method's object is saved.
 
 Functions can be called at the following times:
 aftergenerate: immediately after the generate is complete
@@ -50,7 +49,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.14 2006/06/29 17:48:58 jlvay Exp $"
+controllers_version = "$Id: controllers.py,v 1.15 2007/02/13 00:31:26 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -58,24 +57,27 @@ def controllersdoc():
 #from warp import *
 import warp
 from types import *
-import weakref
 import copy
 import time
 
 class ControllerFunction:
   """
-# --- Class to handle the function lists.
-# --- Note that for functions passed in that are methods of a class instance,
-# --- a weak reference is saved. If this is not done, the the reference to the
-# --- instance's method in the function list will preserve a reference to the
-# --- instance. That means that the instance would not be deleted when all
-# --- other references are deleted. If the user deletes an instance that
-# --- has a method referred to in a function list, then that method will also
-# --- be removed from the list.
-#
-# --- This class also provides what is effectively a picklable function
-# --- reference. Though it is not complete, since in some cases, functions
-# --- won't be restorable.
+Class to handle the function lists.
+
+Note that for functions passed in that are methods of a class instance,
+a full reference of the instance is saved. This extra reference means
+that the object will not actually deleted if the user deletes the
+original reference.  This is good since the user does not need to keep
+the reference to the object (for example it can be created using a local
+variable in a function). It is also good since this allows the installed
+method to transfer across a dump and restart. It may be bad if the user
+thinks an object was deleted, but it actually isn't since it had (unkown
+to the user) installed a method in one of the controllers.
+
+This class also provides what is effectively a picklable function
+reference. Though it is not complete, since in some cases, functions
+won't be restorable. For example, functions typed in interactively cannot
+be restored since the source is not saved anywhere.
   """
 
   def __init__(self,name=None,lcallonce=0):
@@ -92,14 +94,14 @@ class ControllerFunction:
 
   def __getstate__(self):
     """
-    The instance is picklable. Only functions in the list are preserved, and
-    only by their names. The list of functions names replaces the funcs
-    attribute in the dictionary returned. Note that nothing special is
-    needed on a restore since the function names will automatically be
-    converted back into functions the first time they are called
-    (so there is no __setstate__).
-    The ControllerFunctionContainer class below ensures that top level
-    controllers are restored properly.
+The instance is picklable. Only the names of functions are save. A full
+reference to a method's object is saved. The names of functions replace
+the funcs attribute in the dictionary returned. Note that nothing
+special is needed on a restore since the function names will
+automatically be converted back into functions the first time they are
+called (so there is no __setstate__).
+The ControllerFunctionContainer class below ensures that top level
+controllers are restored properly.
     """
     dict = self.__dict__.copy()
     del dict['funcs']
@@ -113,11 +115,15 @@ class ControllerFunction:
     "Checks if there are any functions installed"
     return len(self.funcs) > 0
 
+  def getmethodobject(self,func):
+    return func[0]
+
   def controllerfuncnames(self):
-    "Returns the names of the functions in the list, skipping methods"
+    """Returns the names of the functions in the list, and any methods
+       (which are stored in lists)"""
     for f in self.funcs:
       if type(f) == ListType:
-        continue
+        result = f
       elif type(f) == StringType:
         import __main__
         if f in __main__.__dict__:
@@ -132,7 +138,7 @@ class ControllerFunction:
     funclistcopy = copy.copy(self.funcs)
     for f in funclistcopy:
       if type(f) == ListType:
-        object = f[0]()
+        object = self.getmethodobject(f)
         if object is None:
           self.funcs.remove(f)
           continue
@@ -162,9 +168,9 @@ class ControllerFunction:
 
   def installfuncinlist(self,f):
     if type(f) == MethodType:
-      # --- If the function is a method of a class instance, then save a weak
+      # --- If the function is a method of a class instance, then save a full
       # --- reference to that instance and the method name.
-      finstance = weakref.ref(f.im_self)
+      finstance = f.im_self
       fname = f.__name__
       self.funcs.append([finstance,fname])
     else:
@@ -178,7 +184,7 @@ class ControllerFunction:
         self.funcs.remove(f)
         return
       elif type(func) == ListType and type(f) == MethodType:
-        object = func[0]()
+        object = self.getmethodobject(func)
         if f.im_self is object and f.__name__ == func[1]:
           self.funcs.remove(func)
           return
@@ -195,7 +201,7 @@ class ControllerFunction:
       if f == func:
         return 1
       elif type(func) == ListType and type(f) == MethodType:
-        object = func[0]()
+        object = self.getmethodobject(func)
         if f.im_self is object and f.__name__ == func[1]:
           return 1
       elif type(func) == StringType:
@@ -248,19 +254,28 @@ Anything that may have already been installed will therefore be unaffected.
     self.__dict__.update(dict)
     for c in self.clist:
       for f in c.funcs:
-        # --- Check if f is already in the original list of functions,
-        # --- and skip it if it is. Both the function name (f) and the
-        # --- actual function in main are checked.
-        # --- This will be the case if, for example, the user execs the
-        # --- original input file, which sets up some functions, before
-        # --- doing the restart.
-        origfuncs = controllers.__dict__[c.name].funcs
-        try:
-          ffunc = __main__.__dict__[f]
-        except KeyError:
-          ffunc = None
-        if (f not in origfuncs and ffunc not in origfuncs):
-          controllers.__dict__[c.name].installfuncinlist(f)
+        if type(f) is StringType:
+          # --- Check if f is already in the original list of functions,
+          # --- and skip it if it is. Both the function name (f) and the
+          # --- actual function in main are checked.
+          # --- This will be the case if, for example, the user execs the
+          # --- original input file, which sets up some functions, before
+          # --- doing the restart.
+          origfuncs = controllers.__dict__[c.name].funcs
+          try:
+            ffunc = __main__.__dict__[f]
+          except KeyError:
+            ffunc = None
+          if (f not in origfuncs and ffunc not in origfuncs):
+            controllers.__dict__[c.name].installfuncinlist(f)
+        else:
+          # --- Otherwise, f is a method, so it can be directly installed.
+          # --- A check is still made to ensure it isn't installed twice.
+          # --- The check is only needed temporarily until the classes
+          # --- are fixed to not resinstall in the getstate.
+          ffunc = getattr(f[0],f[1])
+          if not controllers.__dict__[c.name].isinstalledfuncinlist(ffunc):
+            controllers.__dict__[c.name].installfuncinlist(ffunc)
     # --- The clist is obtained from the original instance in the controllers
     # --- module so that the list contains references to the original
     # --- controller instances. This is needed, since in the next dump,
