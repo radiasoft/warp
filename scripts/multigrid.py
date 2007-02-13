@@ -54,6 +54,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
     self.conductorlist = []
+    self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
@@ -69,20 +70,37 @@ class MultiGrid(SubcycledPoissonSolver):
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
+      # --- Delete the conductorobject since it can be big
       del dict['conductors']
+      # --- Put all of the conductors in the newconductorlist so that they
+      # --- will be reinstalled after the restore.
+      dict['newconductorlist'] += self.conductorlist
+      dict['conductorlist'] = []
       if 'rho' in dict: del dict['rho']
       if 'phi' in dict: del dict['phi']
     return dict
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
-    if self.lreducedpickle and not self.lnorestoreonpickle:
-      # --- Regenerate the conductor data
-      self.conductors = ConductorType()
-      conductorlist = self.conductorlist
+    if 'newconductorlist' not in self.__dict__:
+      # --- For backwards compatibility
+      self.newconductorlist = self.conductorlist
       self.conductorlist = []
-      for conductor in conductorlist:
-        self.installconductor(conductor)
+    if self.lreducedpickle and not self.lnorestoreonpickle:
+      # --- Create a new (and now empty) conductor object.
+      # --- Any conductors will be installed when it is referenced.
+      self.conductors = ConductorType()
+
+  def getconductorobject(self):
+    "Checks for and installs any new conductors before returning the object"
+    # --- This method is needed since during a restore from a pickle, this
+    # --- object may be restored before the conductors. This delays the
+    # --- installation of the conductors until they are really needed,
+    # --- which will only happen after the restoration is complete.
+    for conductor in self.newconductorlist:
+      self.installconductor(conductor)
+    self.newconductorlist = []
+    return self.conductors
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
@@ -140,7 +158,8 @@ class MultiGrid(SubcycledPoissonSolver):
              self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
     if self.lzerorhointerior:
-      cond_zerorhointerior(self.conductors.interior,self.nxp,self.nyp,self.nzp,
+      conductorobject = self.getconductorobject()
+      cond_zerorhointerior(conductorobject.interior,self.nxp,self.nyp,self.nzp,
                            self.sourcep)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
@@ -283,6 +302,8 @@ class MultiGrid(SubcycledPoissonSolver):
                             dfill=top.largepos):
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
+    # --- Note that this uses the conductorobject directly since it is called
+    # --- by getconductorobject.
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       top.zbeam,
                       self.nx,self.ny,self.nz,self.nzfull,
@@ -293,11 +314,16 @@ class MultiGrid(SubcycledPoissonSolver):
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
   def hasconductors(self):
-    return (self.conductors.interior.n > 0 or
-            self.conductors.evensubgrid.n > 0 or
-            self.conductors.oddsubgrid.n > 0)
+    conductorobject = self.getconductorobject()
+    return (conductorobject.interior.n > 0 or
+            conductorobject.evensubgrid.n > 0 or
+            conductorobject.oddsubgrid.n > 0)
 
   def clearconductors(self):
+    "Should the conductorlist and newconductorlist be cleared also?"
+    # --- This uses the conductor object directly since there is not point in
+    # --- installing any new conductors (which would be done by
+    # --- getconductorobject).
     self.conductors.interior.n = 0
     self.conductors.evensubgrid.n = 0
     self.conductors.oddsubgrid.n = 0
@@ -336,6 +362,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
+    conductorobject = self.getconductorobject()
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
@@ -346,9 +373,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
                        self.lcndbndy,self.laddconductor,self.icndbndy,
-                       self.lbuildquads,
-                       self.gridmode,
-                       self.conductors,
+                       self.lbuildquads,self.gridmode,conductorobject,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
@@ -360,7 +385,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
-                         self.lbuildquads,self.gridmode,self.conductors,
+                         self.lbuildquads,self.gridmode,conductorobject,
                          self.my_index,self.nslaves,self.izfsslave,
                          self.nzfsslave,
                          self.iondensity,self.electrontemperature,
@@ -371,7 +396,7 @@ class MultiGrid(SubcycledPoissonSolver):
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
-    kw['conductors'] = self.conductors
+    kw['conductors'] = self.getconductorobject()
     kw['solver'] = self
     pffunc(**kw)
   def pfxy(self,**kw): self.genericpf(kw,pfxy)
@@ -406,8 +431,9 @@ class MultiGrid(SubcycledPoissonSolver):
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
+    conductorobject = self.getconductorobject()
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
-                    self.dx,self.dy,self.dz,self.conductors,
+                    self.dx,self.dy,self.dz,conductorobject,
                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
     # --- Preset rho to increase performance (reducing the number of
@@ -454,12 +480,12 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- voltages rather than zero as is done otherwise for residual
       # --- correction form since it is operating on the error.
       if self.mgform == 2:
-        cond_potmg(self.conductors.interior,
+        cond_potmg(conductorobject.interior,
                    self.nx,self.ny,self.nz,phisave,0,self.mgform,true)
         residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
                  phisave,rhosave,res,0,localbounds,
                  self.mgparam,self.mgform,true,
-                 self.lcndbndy,self.icndbndy,self.conductors)
+                 self.lcndbndy,self.icndbndy,conductorobject)
     #ifdef MPIPARALLEL
     #  mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
     #                 my_index,nslaves,izfsslave,nzfsslave,
@@ -478,7 +504,7 @@ class MultiGrid(SubcycledPoissonSolver):
                   self.rstar,self.linbend,bendx,self.bounds,
                   self.mgparam,self.mgform,self.mgmaxlevels,
                   self.downpasses,self.uppasses,self.lcndbndy,
-                  self.icndbndy,self.conductors)
+                  self.icndbndy,conductorobject)
 
       # --- If using residual correction form, add the resulting error to phi.
       if self.mgform == 2: add(self.phi,phisave,self.phi)

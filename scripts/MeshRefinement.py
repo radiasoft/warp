@@ -396,6 +396,12 @@ Add a mesh refined block to this block.
   #--------------------------------------------------------------------------
 
   def installconductor(self,conductor,dfill=top.largepos):
+    # --- This check is needed since sometimes during a restore from a pickle,
+    # --- this routine may be called by a parent, when it is being restored,
+    # --- before this instance is restored, in which case no attributes,
+    # --- including 'parents', has been set yet.
+    if 'parents' not in self.__dict__: return
+    # --- Make sure that this gets called only once per tree traversal.
     if not self.isfirstcall(): return
     self.__class__.__bases__[1].installconductor(self,conductor,dfill=dfill)
     for child in self.children:
@@ -409,7 +415,7 @@ Add a mesh refined block to this block.
 
   def getconductors(self,alllevels=1,result=None):
     if result is None: result = []
-    result.append(self.conductors)
+    result.append(self.getconductorobject())
     if alllevels:
       for child in self.children:
         child.getconductors(alllevels,result)
@@ -419,8 +425,9 @@ Add a mesh refined block to this block.
                           setvinject=false):
     'Recursively calls setconductorvoltage for base and all children'
     if not self.isfirstcall(): return
+    conductorobject = self.getconductorobject()
     setconductorvoltage(voltage,condid,discrete,setvinject,
-                        conductors=self.conductors)
+                        conductors=self.getconductorobject())
     for child in self.children:
       child.setconductorvoltage(voltage,condid,discrete)
 
@@ -1822,14 +1829,15 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
     self.phisave[:,:,:] = self.phi
-    cond_potmg(self.conductors.interior,
+    conductorobject = self.getconductorobject()
+    cond_potmg(conductorobject.interior,
                self.nx,self.ny,self.nz,self.phisave,0,false,
                2,true)
     residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
              self.phisave,self.rhosave,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
-             self.mgparam,2,true,self.lcndbndy,self.icndbndy,self.conductors)
+             self.mgparam,2,true,self.lcndbndy,self.icndbndy,conductorobject)
     self.rho[:,:,:] = self.res[:,:,1:-1]
     self.phi[:,:,:] = 0.
     print 1,self.res[10,10,10]
@@ -1914,8 +1922,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
+    conductorobject = self.getconductorobject()
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
-                    self.dx,self.dy,self.dz,self.conductors,
+                    self.dx,self.dy,self.dz,conductorobject,
                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
     # --- Preset rho to increase performance (reducing the number of
@@ -1951,6 +1960,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     # --- very few iterations are done.
     self.mgiters = 0
     self.mgerror = 2.*self.mgtol + 1.
+    conductorobject = self.getconductorobject()
     while (self.mgerror > self.mgtol and self.mgiters < self.mgmaxiters):
       self.mgiters = self.mgiters + 1
  
@@ -1964,7 +1974,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                   self.boundxy,self.bound0,self.boundnz,
                   self.mgparam,self.mgform,self.mgmaxlevels,
                   self.downpasses,self.uppasses,self.lcndbndy,
-                  self.icndbndy,self.conductors)
+                  self.icndbndy,conductorobject)
 
       self.mgerror = self.solve2up()
 
@@ -2005,14 +2015,15 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
     self.phisave[:,:,:] = self.phi
-    cond_potmg(self.conductors.interior,
+    conductorobject = self.getconductorobject()
+    cond_potmg(conductorobject.interior,
                self.nx,self.ny,self.nz,self.phisave,0,false,
                2,true)
     residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
              self.phisave,self.rhosave,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
-             self.mgparam,2,true,self.lcndbndy,self.icndbndy,self.conductors)
+             self.mgparam,2,true,self.lcndbndy,self.icndbndy,conductorobject)
     self.rho[:,:,:] = self.res[:,:,1:-1]
     self.phi[:,:,:] = 0.
 
@@ -2022,14 +2033,14 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                      dxsqi,dysqi,dzsqi,self.linbend,
                      self.l2symtry,self.l4symtry,self.bendx,
                      self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
-                     self.lcndbndy,self.icndbndy,self.conductors)
+                     self.lcndbndy,self.icndbndy,conductorobject)
 
     residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
              self.phi,self.rho,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
              self.mgparam,2,false,
-             self.lcndbndy,self.icndbndy,self.conductors)
+             self.lcndbndy,self.icndbndy,conductorobject)
 
     for child in self.children:
       child.solve2down()
@@ -2053,6 +2064,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     dxsqi  = 1./self.dx**2
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
+    conductorobject = self.getconductorobject()
     for parentnumber in self.parents:
       parent = self.getblockfromnumber(parentnumber)
       s1 = maximum(self.fulllower,parent.fulllower*self.refinement)
@@ -2072,7 +2084,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                      dxsqi,dysqi,dzsqi,self.linbend,
                      self.l2symtry,self.l4symtry,self.bendx,
                      self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
-                     self.lcndbndy,self.icndbndy,self.conductors)
+                     self.lcndbndy,self.icndbndy,conductorobject)
 
     childrenserror = 0.
     for child in self.children:

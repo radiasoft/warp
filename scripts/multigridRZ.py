@@ -66,8 +66,9 @@ class MultiGridRZ(SubcycledPoissonSolver):
     self.nzguard = self.nguardz
 
     # --- Create a conductor object, which by default is empty.
-    self.conductorlist = []
     self.conductors = None
+    self.conductorlist = []
+    self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
@@ -84,13 +85,18 @@ class MultiGridRZ(SubcycledPoissonSolver):
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
+    if 'newconductorlist' not in self.__dict__:
+      self.newconductorlist = self.conductorlist
+      self.conductorlist = []
     if self.lreducedpickle and not self.lnorestoreonpickle:
       self.initializegrid()
-      # --- Regenerate the conductor data
-      conductorlist = self.conductorlist
-      self.conductorlist = []
-      for conductor in conductorlist:
-        self.installconductor(conductor)
+
+  def getconductorobject(self):
+    # --- Regenerate the conductor data
+    for conductor in self.newconductorlist:
+      self.installconductor(conductor)
+    self.newconductorlist = []
+    return None
 
   def initializegrid(self):
     self.grid = GRIDtype()
@@ -332,16 +338,10 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def hasconductors(self):
     "This is not used anywhere"
     return 1
-   #return (self.conductors.interior.n > 0 or
-   #        self.conductors.evensubgrid.n > 0 or
-   #        self.conductors.oddsubgrid.n > 0)
 
   def clearconductors(self):
     "This is only used by realboundaries"
     pass
-    #self.conductors.interior.n = 0
-    #self.conductors.evensubgrid.n = 0
-    #self.conductors.oddsubgrid.n = 0
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
     "This needs to be thought through"
@@ -350,6 +350,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     #             solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
+    self.getconductorobject()
     self.grid.rho = self.source
     self.grid.phi = self.potential
     solve_mgridrz(self.grid,self.mgtol,false)
@@ -359,7 +360,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
-    kw['conductors'] = self.conductors
+    kw['conductors'] = self.getconductorobject()
     kw['solver'] = self
     # --- This is a temporary kludge until the plot routines are updated to
     # --- use source and potential instead of rho and phi.
@@ -436,8 +437,9 @@ Initially, conductors are not implemented.
     self.nzguard = self.nguardz
 
     # --- Create a conductor object, which by default is empty.
-    self.conductorlist = []
     self.conductors = None
+    self.conductorlist = []
+    self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
@@ -445,12 +447,15 @@ Initially, conductors are not implemented.
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
-    if self.lreducedpickle and not self.lnorestoreonpickle:
-      # --- Regenerate the conductor data
-      conductorlist = self.conductorlist
+    if 'newconductorlist' not in self.__dict__:
+      self.newconductorlist = self.conductorlist
       self.conductorlist = []
-      for conductor in conductorlist:
-        self.installconductor(conductor)
+
+  def getconductorobject(self):
+    # --- Regenerate the conductor data
+    for conductor in self.newconductorlist:
+      self.installconductor(conductor)
+    self.newconductorlist = []
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
@@ -573,16 +578,10 @@ Initially, conductors are not implemented.
   def hasconductors(self):
     "This is not used anywhere"
     return 1
-   #return (self.conductors.interior.n > 0 or
-   #        self.conductors.evensubgrid.n > 0 or
-   #        self.conductors.oddsubgrid.n > 0)
 
   def clearconductors(self):
     "This is only used by realboundaries"
     pass
-    #self.conductors.interior.n = 0
-    #self.conductors.evensubgrid.n = 0
-    #self.conductors.oddsubgrid.n = 0
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
     "This needs to be thought through"
@@ -596,6 +595,7 @@ Initially, conductors are not implemented.
     #solve_mgridrz(self.grid,self.mgtol,false)
     #self.mgiters = nb_iters
     ##self.mgerror = mgerror[0] # not saved anywhere
+    self.getconductorobject()
 
     # --- Use direct matrix solver
     t0 = wtime()
@@ -691,7 +691,7 @@ Initially, conductors are not implemented.
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
-    kw['conductors'] = self.conductors
+    kw['conductors'] = self.getconductorobject()
     kw['solver'] = self
     # --- This is a temporary kludge until the plot routines are updated to
     # --- use source and potential instead of rho and phi.

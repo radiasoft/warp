@@ -69,6 +69,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
     self.conductorlist = []
+    self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = zeros(3)
@@ -95,17 +96,24 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
       del dict['conductors']
+      dict['newconductorlist'] += self.conductorlist
+      dict['conductorlist'] = []
     return dict
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
+    if 'newconductorlist' not in self.__dict__:
+      self.newconductorlist = self.conductorlist
+      self.conductorlist = []
     if self.lreducedpickle and not self.lnorestoreonpickle:
       # --- Regenerate the conductor data
       self.conductors = ConductorType()
-      conductorlist = self.conductorlist
-      self.conductorlist = []
-      for conductor in conductorlist:
-        self.installconductor(conductor)
+
+  def getconductorobject(self):
+    for conductor in self.newconductorlist:
+      self.installconductor(conductor)
+    self.newconductorlist = []
+    return self.conductors
 
   def getpdims(self):
     # --- Returns the dimensions of the jp, bp, and ap arrays
@@ -241,9 +249,10 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                       conductors=self.conductors)
 
   def hasconductors(self):
-    return (self.conductors.interior.n > 0 or
-            self.conductors.evensubgrid.n > 0 or
-            self.conductors.oddsubgrid.n > 0)
+    conductorobject = self.getconductorobject()
+    return (conductorobject.interior.n > 0 or
+            conductorobject.evensubgrid.n > 0 or
+            conductorobject.oddsubgrid.n > 0)
 
   def clearconductors(self):
     self.conductors.interior.n = 0
@@ -262,6 +271,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       self.linbend = min(rstar) < largepos
 
     self.source[...] = self.source*mu0*eps0
+    conductorobject = self.getconductorobject()
 
     if self.lcylindrical:
       init_bworkgrid(self.nx,self.nz,self.dx,self.dz,
@@ -300,7 +310,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                          self.downpasses[id],self.uppasses[id],
                          self.lcndbndy,self.laddconductor,
                          self.icndbndy,false,
-                         self.gridmode,self.conductors,
+                         self.gridmode,conductorobject,
                          self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
 
     # --- This is slightly inefficient in some cases, since for example, the
@@ -325,7 +335,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
-    #kw['conductors'] = self.conductors
+    #kw['conductors'] = self.getconductorobject()
     kw['solver'] = self
     # --- This is a temporary kludge until the plot routines are updated to
     # --- use source and potential instead of rho and phi.
