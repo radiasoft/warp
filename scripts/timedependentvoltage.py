@@ -94,7 +94,8 @@ Input for constructor:
     if doitnow: fieldsol(-1)
 
   def enable(self):
-    installbeforefs(self.applyvoltage)
+    if not isinstalledbeforefs(self.applyvoltage):
+      installbeforefs(self.applyvoltage)
 
   def disable(self):
     import __main__
