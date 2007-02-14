@@ -12,6 +12,7 @@ Functions can be called at the following times:
 aftergenerate: immediately after the generate is complete
 beforefs: before the field solve
 afterfs: after the field solve
+beforelr: before the rho is deposited
 beforestep: before the time step
 afterstep: after the time step
 particlescraper: at the time that the particle boundary conditions are applied
@@ -31,6 +32,8 @@ installbeforefs, uninstallbeforefs, isinstalledbeforefs
 
 installafterfs, uninstallafterfs, isinstalledafterfs
 
+installbeforeloadrho, uninstallbeforeloadrho, isinstalledbeforeloadrho
+
 installbeforestep, uninstallbeforestep, isinstalledbeforestep
 
 installafterstep, uninstallafterstep, isinstalledafterstep
@@ -49,7 +52,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.15 2007/02/13 00:31:26 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.16 2007/02/14 20:49:19 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -331,16 +334,21 @@ def isinstalledafterfs(f):
   return afterfs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
-def installbeforelr(f):
+def installbeforeloadrho(f):
   "Adds a function to the list of functions called before a load rho"
   beforelr.installfuncinlist(f)
   warp.w3d.lbeforelr = warp.true
-def uninstallbeforelr(f):
+def uninstallbeforeloadrho(f):
   "Removes the function from the list of functions called before a load rho"
   beforelr.uninstallfuncinlist(f)
   if not beforelr.hasfuncsinstalled(): warp.w3d.lbeforelr = warp.false
-def isinstalledbeforelr(f):
+def isinstalledbeforeloadrho(f):
   return beforelr.isinstalledfuncinlist(f)
+
+# --- This are defined for backwards compatibility
+installbeforelr = installbeforeloadrho
+uninstallbeforelr = uninstallbeforeloadrho
+isinstalledbeforelr = isinstalledbeforeloadrho
 
 # ----------------------------------------------------------------------------
 def installparticlescraper(f):
