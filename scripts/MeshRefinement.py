@@ -1192,6 +1192,69 @@ Gathers the ichild for the fetchfield_allsort.
         child.getichild_positiveonly(x,y,z,ichild)
 
   #--------------------------------------------------------------------------
+  # --- Extra user interface methods
+  #--------------------------------------------------------------------------
+
+  def setadvectionvelocity(self,v):
+    """Sets the velocity at which the refined grids move relative to this grid,
+Note also that position relative to which the advection is done is reset
+to zero."""
+    self.advectionvelocity = v
+    self.advectionpostion = 0.
+    if self.advectionvelocity == 0:
+      if isinstalledbeforeloadrho(self.advectioncontrol):
+        uninstallbeforeloadrho(self.advectioncontrol)
+    else:
+      if not isinstalledbeforeloadrho(self.advectioncontrol):
+        installbeforeloadrho(self.advectioncontrol)
+
+  def advectioncontrol(self):
+    i1 = nint((self.advectionpostion)/self.dz)
+    i2 = nint((self.advectionpostion + self.advectionvelocity*top.dt)/self.dz)
+    zzadvect = self.dz*(i2-i1)
+    self.advectchildren(zzadvect,i2-i1,root=self)
+    self.advectionpostion = self.advectionpostion + self.advectionvelocity*top.dt
+
+  def advectchildren(self,zzadvect,nzadvect,root):
+    if nzadvect == 0: return
+    if self != root:
+      # --- Advect all of the variables of the children holding z positions.
+      if not self.isfirstcall(): return
+      self.fullloweroverrefinement[-1] += nzadvect
+      self.fullupperoverrefinement[-1] += nzadvect
+      # --- The nzadvect for the parent was passed in so increase it
+      # --- appropriately.
+      nzadvect *= self.refinement[-1]
+      self.zmmin += zzadvect
+      self.zmmax += zzadvect
+      self.zmminp += zzadvect
+      self.zmmaxp += zzadvect
+      self.mins[-1] += zzadvect
+      self.maxs[-1] += zzadvect
+      self.zmesh[:] += zzadvect
+      self.lower[-1] += nzadvect
+      self.upper[-1] += nzadvect
+      self.fulllower[-1] += nzadvect
+      self.fullupper[-1] += nzadvect
+
+    else:
+      # --- Advect the data in the childdomains on the root grid.
+      childdomains = self.getchilddomains(self.fulllower,self.fullupper,
+                                          upperedge=1)
+      if nzadvect > 0:
+        for iz in range(self.nz,nzadvect-1,-1):
+          childdomains[...,iz] = childdomains[...,iz-nzadvect]
+        childdomains[...,:nzadvect] = self.blocknumber
+      elif nzadvect < 0:
+        for iz in range(0,self.nz-nzadvect+1):
+          childdomains[...,iz] = childdomains[...,iz+nzadvect]
+        childdomains[...,self.nz-nzadvect+1:] = self.blocknumber
+
+    # --- Now do the advection in the children
+    for child in self.children:
+      child.advectchildren(zzadvect,nzadvect,root)
+    
+  #--------------------------------------------------------------------------
   # --- Utility methods
   #--------------------------------------------------------------------------
 
