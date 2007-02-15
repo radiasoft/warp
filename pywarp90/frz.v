@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.53 $, $Date: 2007/02/15 01:05:13 $
+#@(#) File FRZ.V, version $Revision: 3.54 $, $Date: 2007/02/15 23:33:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.53 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.54 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -440,6 +440,25 @@ children  _OVERLAPtype
 
 %%%%%%%% GRDPTRtype:
 grid _GRIDtype
+
+$******** SuperLUInterface:
+$superlu_dgssv(n:integer,nnz:integer,nrhs:integer,
+$              values:real,rowind:integer,colptr:integer,
+$              b:real,info:integer)
+$             subroutine
+
+******** ImplicitMG2D:
+coeffs1(:,:,:,:) _real
+mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
+                    dx:real,dz:real,phi:real,rho:real,ns:integer,qomdt:real,chi0:real,bounds:integer,
+                    xmmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
+                    mgparam:real,mgiters:integer,mgmaxiters:integer,
+                    mgmaxlevels:integer,mgerror:real,mgtol:real,
+                    downpasses:integer,uppasses:integer,
+                    lcndbndy:logical,laddconductor:logical,icndbndy:integer,lbuildquads:logical,
+                    gridmode:integer,conductors:ConductorType,lrz:logical,
+                    my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
+            subroutine
 
 ******** Subtimersfrz:
 lfrztimesubs logical /.false./
