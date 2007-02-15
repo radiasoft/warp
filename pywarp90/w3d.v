@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.252 $, $Date: 2007/02/09 00:19:42 $
+#@(#) File W3D.V, version $Revision: 3.253 $, $Date: 2007/02/15 01:05:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.252 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.253 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -446,6 +446,8 @@ electrondensitymaxscale(nberegions) _real /2./
      # Limit of electron density relative to iondensity. This should be large
      # enough to not affect the solution, but small enough to prevent
      # divergences during field solve.
+logelecdenmaxscale(nberegions)  _real # Log of electrondensitymaxscale, 
+       # calculated by code
 xbemin(nberegions) _real /-LARGEPOS/ [m]
      # Minimum of the extent in x over which Boltzmann electrons are included
 xbemax(nberegions) _real /+LARGEPOS/ [m]
@@ -458,13 +460,21 @@ zbemin(nberegions) _real /-LARGEPOS/ [m]
      # Minimum of the extent in z over which Boltzmann electrons are included
 zbemax(nberegions) _real /+LARGEPOS/ [m]
      # Maximum of the extent in z over which Boltzmann electrons are included
-luseparticleldensity(nberegions) _logical /0/
-     # When true, use the density from the particles rather than the specified
-     # constant iondensity. Only applies now to the RZ solver.
+luseparticledensity(nberegions) _integer /0/
+                     # When nonzero, use density from the particles
+                                # rather than the specified constant iondensity.
+                                # For 1, uses local density; for 2, uses value
+                                # averaged over z.
+                                # Only applies now to the RZ solver.
 lclampphitophimax(nberegions) _logical /0/
      # When true, the potential is clamped to phimax, which is calculated
      # assuming that the max electron density is the max of iondensity and
      # the density from ion particles. Only applies now to the RZ solver.
+lnormtoavboltzfac   logical /.false./  # If true, divide Boltzmann factor by its z average.
+                                       # Use in conjunction with luseparticledensity = 2
+luselinboltz    logical    /.false./   # If 1, use linearized Boltzmann response
+                                       # to get Boltzmann electron response whose z-av
+                                       # value = z-av value of ion density (quasineutral)
 liondensitygrid3d(nberegions)       _logical /0/
 iondensitygrid3d        Grid3dtype # Allows a spatially varying iondensity,
                                    # or is used when luseparticleldensity is
@@ -477,8 +487,7 @@ iondensitygrid2d        Grid2dtype # Allows a spatially varying iondensity,
                                    # or is used when luseparticleldensity is
                                    # true
 lelectrontemperaturegrid2d(nberegions) _logical /0/
-electrontemperaturegrid2d  Grid2dtype # Allows a spatially varying electron
-                                      # temperature
+electrontemperaturegrid2d  Grid2dtype # Electron temperature on code's 2D grid
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
@@ -622,7 +631,7 @@ alpha0(1000)     _real     /0./
 acntr(1000)      _real /.5/    # centering parameter for predictor-corrector
 usealphacalc(1000) _real  /1./  # fraction of calculated interpolation parameter
                          # to use; will use (1-usealphacalc)*alpha0.
-notusealphcalc(1000) _real /0./ # 1-usealphacalc, calculated by code
+notusealphcalc(1000) _real /0./ # alpha0*(1-usealphacalc), calculated by code
 dksmall       real  /1.e-20/ # small parameter for safe divides
 igradb   integer  /2/    #  parameter to select method of calculating grad B
                          # 1 for lookup table, 2 for assumed quadrupole
@@ -635,10 +644,35 @@ ipalpha       integer /1/   # power of sqrt(1+omegadt) in setting alpha.
                             # allowed values for now are  1 or 2.  
                             # If any other value, then uses the arbitrary 
                             # (real) power palpha in a slower calculation
+                            # Note, only absolute value matters for alpha.
+                            # Sign of ipalpha determines whether omegadt
+                            # is multiplied by 2 (2x as long dt) for 
+                            # ipredcor = 0.  (Done for ipalpha>0, not 
+                            # for ipalpha < 0.)
 palpha        real  /0.5/    # power of (1+omegadt) in setting alpha
                             # used only if ipalpha != 1 or 2.
-npredcor      integer /1/   # number of times to do predictor-corrector
+npredcorv      integer /1/   # number of times to do predictor-corrector
                             # update of effective velocities
+npcmax         integer /-1/  # maximum number of corrector steps for
+                            # global predictor-corrector. If it is negative,
+                            # do old-style prediction from step 0 to 1; number
+                            # of iterations is then -npcmax - 1.
+ipcmax         integer      # max number of predictor-corrector iterations 
+                            # used (0 if no interpolated species, npcmax if 
+                            # there IS an interpolated species and npcmax>0).
+                            # Calculated by code.
+ipredcor       integer /0/  # flag to designate predictor/corrector for step3d
+icalceps       integer /0/  # flag to calculate polarization 
+                            # correction to Poisson solver if interpolating
+iusing2deps    integer      # flag set by code if 2D polarization is calcluated
+polfac               /1./   # multiplier on polarization term
+lnonlinpol logical /.true./ # if 1, use nonlinear polarization; if 0, linear with a constant
+                            # value for omega_p^2/omega_c^2 given by omegpsqomegcsq
+omegpomegcsq(1000) _real /1./  # The constant value of omega_p^2/omega_c^2 per species
+igetextdrift   integer /0/  # flag to invoke a python method "getextradrift"
+                            # added directly to veff's after getveff.
+epsilon2d       Grid2dtype # Allows a spatially varying dielectric constant
+epszfac2d       Grid2dtype # spatially varying epsilon_z/epsilon_x
 
 *********** DKInterptmp:
 # This group contains temporary data for the drift-kinetic interpolation
@@ -649,8 +683,10 @@ bsqi(npint)     _real [1/T**2]    # 1/B^2
 bsq(npint)      _real [1/T**2]    # B^2
 uparoverB(npint) _real [m/s*T]    # v_parallel/B
 uparsq(npint)   _real [m**2/s**2] # vparallel^2
+uparsq_new(npint) _real [m**2/s**2] # vparallel^2, udated v's
 uperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
 usq(npint)      _real [m**2/s**2] # v^2
+usq_new(npint)  _real [m**2/s**2] # v^2, updated v's
 vbx(npint)      _real [m/s]       # x magnetic drift velocity
 vby(npint)      _real [m/s]       # y magnetic drift velocity
 vbz(npint)      _real [m/s]       # z magnetic drift velocity
@@ -746,8 +782,13 @@ $    subroutine #  sets E,B at particle arrays; determines interpolation
 $               #  parameter alpha and its complement alphabar
 getgradbsq(np,is,ipmin,x(np):real,y(np):real,z(np):real,gaminv(np):real,dt:real) 
          subroutine    #  calculates or fetches grad B^2 components
+getalphas(np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real)
+          subroutine   # calculate interpolation parameter alpha
 geteb(pgroup:ParticleGroup,np,is,ipmin,x(np):real,y(np):real,z(np):real,dt:real) 
           subroutine   #  fetch E and B fields
+set_polarization(rho(0:nx,0:nz),nx,nz,dx:real,dz:real,xmin:real,zmin:real)
+          subroutine   # calculates x polarization and ratio of z to x polarization
+                       # x-y geometry only, for now.
 $setvdrifts(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
 $           ux(np):real,uy(np):real,uz(np):real,predcor:string)
 $    subroutine #  calculates vdrifts from ExB and gradB

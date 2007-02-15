@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.194 $, $Date: 2007/02/05 22:32:29 $
+#@(#) File TOP.V, version $Revision: 3.195 $, $Date: 2007/02/15 01:05:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.194 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.195 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1984,6 +1984,17 @@ xoldpid   integer /0/  # position of particles previous position in x in array p
 yoldpid   integer /0/  # position of particles previous position in y in array pid
                        # (FORTRAN indexed: based 1)                  
 zoldpid   integer /0/  # position of particles previous position in z in array pid
+uxoldpid   integer /0/  # position of particles previous x velocity in array pid
+                       # (FORTRAN indexed: based 1)                  
+uyoldpid   integer /0/  # position of particles previous y velocity in array pid
+                       # (FORTRAN indexed: based 1)                  
+uzoldpid   integer /0/  # position of particles previous z velocity in array pid
+                       # (FORTRAN indexed: based 1)                  
+vdxoldpid   integer /0/  # position of particles previous x drift velocity in array pid
+                       # (FORTRAN indexed: based 1)                  
+vdyoldpid   integer /0/  # position of particles previous y drift velocity in array pid
+                       # (FORTRAN indexed: based 1)                  
+vdzoldpid   integer /0/  # position of particles previous z drift velocity in array pid
                        # (FORTRAN indexed: based 1)                  
 dxpid   integer /0/    # position of particles dx grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
@@ -1991,9 +2002,24 @@ dypid   integer /0/    # position of particles dy grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
 dzpid   integer /0/    # position of particles dz grid cell size in array pid
                        # (FORTRAN indexed: based 1)                  
+bxpid   integer /0/  # position of particles Bx field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bypid   integer /0/  # position of particles By field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bzpid   integer /0/  # position of particles Bz field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bxoldpid   integer /0/  # position of particles old Bx field in array pid
+                       # (FORTRAN indexed: based 1)                  
+byoldpid   integer /0/  # position of particles old By field in array pid
+                       # (FORTRAN indexed: based 1)                  
+bzoldpid   integer /0/  # position of particles old Bz field in array pid
+                       # (FORTRAN indexed: based 1)                  
 chdtspid integer /0/   # position of particle pid for dts change
                        # (FORTRAN indexed: based 1)
+uparBopid  integer /0/ # position of particles uparallel * B in array pid
+
 ssn    integer   /1/   # next particles 'social security number' available
+
 lsaveoldpos logical /.false./ # Flag setting whether old particle positions are saved
 particlesortbyindex(pgroup:ParticleGroup,pindex(np):integer,pindexmin:integer,
                     ipmin:integer,np:integer,

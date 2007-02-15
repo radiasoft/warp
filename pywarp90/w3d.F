@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.343 $, $Date: 2007/02/09 20:35:36 $
+c@(#) File W3D.F, version $Revision: 3.344 $, $Date: 2007/02/15 01:05:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -703,6 +703,7 @@ c=============================================================================
       use Particles, Only: pgroup,nplive
       use Picglb
       use Picglb3d
+      use DKInterp
       use LatticeInternal
       use GridBoundary3d
       use Z_Moments,Only: tempmaxp,tempminp,tempzmmnts0,tempzmmnts
@@ -718,8 +719,12 @@ c  of run.
       real(kind=8):: getbeamcom
       logical(ISZ):: thisstep,thiszbeam,dolabwn
       real(kind=8):: zbeaml,zbeamr
-      integer(ISZ):: k
+      integer(ISZ):: k,ipc,is
+      integer(ISZ):: ioldsetup,ihasinterp
       real(kind=8):: substarttime,wtime
+c     Assumes ioldsetup is initialized to zero by compiler; the following
+c     saves it between calls to this subroutine
+      save ioldsetup
       if (lw3dtimesubs) substarttime = wtime()
 
 c --- Set the internal lattice variables. This is not generally necessary at
@@ -752,36 +757,65 @@ c  Main particle advance: x to t.l. it; v to t.l. it-1/2
 c  Half-step in v from t.l. it-1   if last step was "special"
 c  Full-step in v from t.l. it-3/2 if last step not "special"
 c  No step at all if generating.
+c  Above applies to a non-interpolated species (conventional warp).
+c  For a species using interpolated mover, we allow the option of 
+c  a predictor-corrector scheme.  The number of corrector steps is set
+c  by npcmax; for npcmax > = 0, the predictor step is centered, going from
+c  t.l. it-2 to t.l. it.   For npcmax < 0, predictor step is uncentered
+c  going from level it-1 to it, and in this case number of corrector
+c  steps is -npcmax -1.  To recover earlier coding without this option,
+c  set npcmax = -1.
 
-      if (caller == "w3dexe") then
-        if (lspecial) then
-          call padvnc3d ("halfv",pgroup)
-        else
-          call padvnc3d ("fullv",pgroup)
-        endif
+c    set up for predictor-corrector loop if there is an interpolated species
+      ipcmax = 0
+      ihasinterp = 0
+      do is = 1,ns
+         if (interpdk(is) > 0 .and. npcmax .ge. 0) ipcmax=npcmax
+         if (interpdk(is) > 0 .and. npcmax < 0) ipcmax = -npcmax-1
+         if (interpdk(is) > 0) ihasinterp = 1
+      enddo
+c     Don't do corrector on a generate
+      if (caller == "w3dgen") ipcmax = 0
+      if (ihasinterp == 1 .and. ioldsetup .ne. 1) then
+         call oldsetup()
+c        sets up pid arrays to store old values, and sets up pointers
+         ioldsetup = 1
+      endif
 
-c       --- This is done here in case padvnc3d is called for multiple
-c       --- pgroups
-        if (lbeamcom) then
-c         --- Set zbeam so that it follows the center of mass of the beam.
-          zbeam = getbeamcom(pgroup) - zbeamcomoffset
+c     BEGIN predictor-corrector loop
+      do ipc = 0,ipcmax
+         ipredcor = ipc
 
-        else
-c         --- Advance beam frame location using the nominal beam frame velocity.
-c          if (lgridqnt) then
-c            zbeam = zbeam+vbeamfrm*dt
-c          else
-            zbeam = zgrid
-c          endif
-        endif
+         if (caller == "w3dexe") then
+            if (lspecial) then
+               call padvnc3d ("halfv",pgroup)
+            else
+               call padvnc3d ("fullv",pgroup)
+            endif
+
+c           --- This is done here in case padvnc3d is called for multiple
+c           --- pgroups
+            if (lbeamcom) then
+c           --- Set zbeam so that it follows the center of mass of the beam.
+               zbeam = getbeamcom(pgroup) - zbeamcomoffset
+
+
+            else
+c            --- Advance beam frame location using the nominal beam frame velocity.
+c             if (lgridqnt) then
+c               zbeam = zbeam+vbeamfrm*dt
+c             else
+               zbeam = zgrid
+c             endif
+            endif
 
 c       --- zgridprv needs to be updated for the "synchv" step
 c       --- Note that zgridprv is also set at the beginning of w3dexe
-        zgridprv = zgrid
+            zgridprv = zgrid
 
-        time = time + dt
+            if (ipc == 0) time = time + dt
 
-      endif
+         endif
 
 c  The next two variables are the left and right ends of the range centered
 c  about the end of the current time step plus/minus one half a step.
@@ -791,88 +825,93 @@ c  on the time step which ends closest to the value given in the controlling
 c  arrays.
 c  The absolute values are taken so that if dt < 0 or vbeamfrm < 0, then
 c  it will still be true that zbeaml < zbeamr.
-      zbeaml   = zbeam - abs(0.5*vbeamfrm*dt)
-      zbeamr   = zbeam + abs(0.5*vbeamfrm*dt)
+         zbeaml   = zbeam - abs(0.5*vbeamfrm*dt)
+         zbeamr   = zbeam + abs(0.5*vbeamfrm*dt)
 
 c  Set logical flags to determine if "always" or "seldom" phase space 
 c  plots, restart dumps, final timesteps, and moment accumulations should 
 c  be done at the end of this step.
 
-      lfinishd = (it >= nt) .or. (time >= tstop*(1.-MACHEPS)) .or.
+         lfinishd = (it >= nt) .or. (time >= tstop*(1.-MACHEPS)) .or.
      &                             (zbeam >= zstop)
-      lalways  = thisstep (it           ,itplalways,NCONTROL) .or.
+         lalways  = thisstep (it           ,itplalways,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplalways,NCONTROL) .or.
      &           thisstep (it           ,itplfreq,  NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplfreq,  NCONTROL)
-      lseldom  = thisstep (it           ,itplseldom,NCONTROL) .or.
+         lseldom  = thisstep (it           ,itplseldom,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplseldom,NCONTROL) .or.
      &           thisstep (it           ,itplps,    NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplps,    NCONTROL)
-      lmoments = thisstep (it           ,itmomnts,NCONTROL) .or.
+         lmoments = thisstep (it           ,itmomnts,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzmomnts,NCONTROL)
-      if (nhist /= 0) then
-        lhist  = mod(it,nhist) == 0
-      else
-        lhist  = .false.
-      endif
-      ldump    = mod(it, itdump) == 0
-      llabwn   = dolabwn()
-      lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or.
+         if (nhist /= 0) then
+            lhist  = mod(it,nhist) == 0
+         else
+            lhist  = .false.
+         endif
+         ldump    = mod(it, itdump) == 0
+         llabwn   = dolabwn()
+         lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or.
      &            lmoments .or. lhist .or. llabwn .or. llast .or.
      &            (it == 0) .or. allspecl)
 
 c  Set the "gap" electric field.
 
-      call setegap
+         call setegap
 
 c  Charge density contour plot diagnostics.  Note -- these diagnostics 
 c  are done at this phase of the particle advance to allow for the eventual 
 c  use of a single array for rho and phi.   
 
-      if (lalways .or. lseldom) call pltfld3d("rho",ALWAYS)
-      if (lseldom)            call pltfld3d("rho",SELDOM)
+         if (lalways .or. lseldom) call pltfld3d("rho",ALWAYS)
+         if (lseldom)            call pltfld3d("rho",SELDOM)
 
 c  Set lattice; this is done just before field solve, and so is
 c  relative to ZBEAM in the same way that self-fields are.
 
-      call setlatt
+
+         call setlatt
 
 c  Field-solve for potential.
 
-      if (lbeforefs) call execuser("beforefs")
-      call fieldsol3d(-1)
-      call bfieldsol3d(-1)
-      if (lafterfs) call execuser("afterfs")
+         if (lbeforefs) call execuser("beforefs")
+         call fieldsol3d(-1)
+         call bfieldsol3d(-1)
+         if (lafterfs) call execuser("afterfs")
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (efetch == 3 .and. fstype < 12 .and.
-     &    (solvergeom == XYZgeom .or.
-     &     solvergeom == RZgeom .or.
-     &     solvergeom == XZgeom .or.
-     &     solvergeom == XYgeom .or.
-     &     solvergeom == Rgeom  .or.
-     &     solvergeom == Zgeom)) then
-        if (maxval(pgroup%ndts) > 1 .and. ndtsaveraging > 1) then
-c         --- Note that with subcycling, this option will be incorrect since
-c         --- the selfe for each ndts group is not (and will not) be
-c         --- calculated. Note that this does not apply to sampled averaging,
-c         --- in which cases all species use the same field.
-          print*,"The efetch option 3 cannot be used with subcycling option ",ndtsaveraging
-          stop
-        endif
-        call getselfe3d(phip,nxp,nyp,nzp,selfe,
+         if (efetch == 3 .and. fstype < 12 .and.
+     &        (solvergeom == XYZgeom .or.
+     &        solvergeom == RZgeom .or.
+     &        solvergeom == XZgeom .or.
+     &        solvergeom == XYgeom .or.
+     &        solvergeom == Rgeom  .or.
+     &        solvergeom == Zgeom)) then
+            if (maxval(pgroup%ndts) > 1 .and. ndtsaveraging > 1) then
+c           --- Note that with subcycling, this option will be incorrect since
+c           --- the selfe for each ndts group is not (and will not) be
+c           --- calculated. Note that this does not apply to sampled averaging,
+c           --- in which cases all species use the same field.
+               print*,"The efetch option 3 cannot be used with subcycling option ",ndtsaveraging
+               stop
+            endif
+            call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
      &                  boundxy,boundxy,boundxy,boundxy)
-        if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
-      endif
+            if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
+         endif
 
 c  Set the potential near the emitting surface.
 c     call getinj_phi()
 c     call gettinj_phi()
 
 c  Set the transverse E fields near any defined apertures.
-      call set_aperture_e()
+         call set_aperture_e()
+
+c  END predictor-corrector loop on ipc
+      enddo
+      ipredcor = 0
 
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
@@ -1311,9 +1350,14 @@ c=============================================================================
 
       real(kind=8),pointer:: zpo(:)
 
-      if (xoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
-      if (yoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
-      if (zoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
+      if (interpdk == 0) then
+         if (xoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
+         if (yoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
+         if (zoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
+      endif
+c     Store old positions if not interpolating; if we are interpolating this 
+c     is done in xpush3dinterp in a more complicated way to allow for
+c     predictor-corrector.
 
       if (zoldpid > 0) then
         zpo => pgroup%pid(ipmin:ipmin+np-1,zoldpid)
@@ -1481,6 +1525,18 @@ c  Loop over species
       do is=1,pgroup%ns
         if (.not. pgroup%ldts(is-1) .and. .not. pgroup%lvdts(is-1)) cycle
         isid = pgroup%sid(is-1) + 1
+c
+c  If this is a corrector step, do nothing for a non-interpolated species
+        if (interpdk(isid) == 0 .and. ipredcor > 0) cycle 
+c
+c  If this is a predictor step for an interpolated
+c  species, save the current uxp's as old velocities.
+c  Note ipredcor = 0 for a synchv step so we are also storing
+c  old v's in that case as well.
+c  
+        if (interpdk(isid) == 1 .and. ipredcor == 0 .and. 
+     &       (center .ne. "halfv" .or. it == 1 .or. .not. allspecl))
+     &        call storeoldu(pgroup,isid)
 
 c Include the scaling factors in the time step size, both the one for
 c subcycling and step size scaling for steady-state and slice modes.
@@ -1615,30 +1671,37 @@ c           --- Apply cancellation of E+VxB correction
      &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
      &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- First half-electric field increment to momenta
-            call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c           Only do a vpush for ipredcor = 0.  But will still
+c           need to calculate gradB for ipredcor = 1; this is
+c           part of mugrdbpush. So must do explicitly in xpush3dintrp
+c           for ipredcor = 1.
+            if (ipredcor == 0) then
+              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                   ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c           --- Advance relativistic Gamma factor
-            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c             --- Advance relativistic Gamma factor
+              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
-c           --- Magnetic field increment to momenta
-c           --- If interpolating with drift kinetics, must do half
-c           ---  a mu grad B correction before and half after Bpush
-            if (interpdk(isid) .ne. 0) then
+c             --- Magnetic field increment to momenta
+c             --- If interpolating with drift kinetics, must do half
+c             ---  a mu grad B correction before and half after Bpush
+              if (interpdk(isid) .ne. 0) then
 c               call setptrs(bx(ipmin),by(ipmin),bz(ipmin),
 c    &                       ex(ipmin),ey(ipmin),ez(ipmin))
-               call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
-            endif
-            call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+                call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
+              endif
+              call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                   bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
      &                   fulldt_s,ibpush)
-            if (interpdk(isid) .ne. 0)
+              if (interpdk(isid) .ne. 0)
      &        call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
-c           --- Final half-electric field increment to momenta
-            call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c             --- Final half-electric field increment to momenta
+              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c           --- Advance relativistic Gamma factor
-            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c             --- Advance relativistic Gamma factor
+              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
+c           end of predictor-only if for vpush
+            endif
 c           --- Position advance
             call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
      &                             fulldt_s,bendres,bendradi)
@@ -1647,6 +1710,14 @@ c         --- HALFV
      &             allspecl)) .or. (center == "hbor2" .and.
      &             interpdk(isid) .ne. 0)) then
 c           --- drift-kinetic-interpolated species are always treated
+c           --- with full-v steps except when initalizing, which is
+c           --- optionally taken care of by "hbor2" option
+c           --- The hbor1 option does 1st half of a Boris step,
+c           --- hbor2 does 2nd half.  This means for hbor1, the sequence
+c           --- epush, mugradbpush (if interpolating), bpush, for 1/2 dt,
+c           --- and for hbor2, bpush, mugradbpush, epush for 1/2 dt.  
+c           --- Use hbor1 to push from a half step to an integer step; hbor2
+c           --- to push from integer to half.
 c           --- with full-v steps except when initalizing, which is
 c           --- optionally taken care of by "hbor2" option
 c           --- The hbor1 option does 1st half of a Boris step,
@@ -1680,26 +1751,32 @@ c           --- Apply cancellation of E+VxB correction
      &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
      &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- Magnetic field increment to momenta
-            if (interpdk(isid) .ne. 0) then
-              call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+c               Only do a vpush for ipredcor = 0.  But will still
+c               need to calculate gradB for ipredcor = 1; this is
+c               part of mugrdbpush.
+            if (ipredcor == 0) then
+              if (interpdk(isid) .ne. 0) then
+                call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                     bx(ipmin),by(ipmin),bz(ipmin),
      &                     sq(is),sm(is),fulldt_s,-1)
-c              --- If interpolating with drift kinetics, must do 
-c              ---  a mu grad B correction.  Since may be calling
-c              ---  this on first timestep, must make sure grad B's are
-c              ---  calculated, so last arg = 1.
-               call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
-            else
-               call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+c               --- If interpolating with drift kinetics, must do 
+c               ---  a mu grad B correction.  Since may be calling
+c               ---  this on first timestep, must make sure grad B's are
+c               ---  calculated, so last arg = 1.
+                 call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
+              else
+                 call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      bx(ipmin),by(ipmin),bz(ipmin),
      &                      sq(is),sm(is),halfdt_s,ibpush)
-c           --- Final half-electric field increment to momenta
-            endif
-            call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c             --- Final half-electric field increment to momenta
+              endif
+              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                   ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c           --- Advance relativistic Gamma factor
-            call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
+c             --- Advance relativistic Gamma factor
+              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                    gamadv,lrelativ)
+c           end of predictor-only loop
+            endif
 c           --- Position advance
             if (center .ne. "hbor2") then
 c             --- hbor2 just does a v advance, no x push
@@ -1730,7 +1807,6 @@ c           --- during a gen step.
      &          .or. allspecl)) 
      &          .or. center == "gen" .or. (center == "hbor1"
      &          .and. interpdk(isid) .ne. 0)) then
-
 c             --- drift-kinetic-interpolated species are always treated
 c             --- with full-v steps except in initial setup, when we want
 c             --- a half-v step packwards.  center = "hbor2" provides
@@ -2140,8 +2216,10 @@ c  Push the particle velocity with B field
 
       if (lw3dtimesubs) substarttime = wtime()
       const = q*ddt*0.5/m
-      if (ibpush == 1) then
+      if (ibpush == 1 .or. ibpush == 3) then
 c        --- fast b-field rotation algorithm
+c        --- ibpush = 3 uses this also for fullv but this routine is 
+c        --- called with ibpush = -1 for halfv or synchv
          do ip=1,np
             tx = gaminv(ip)*bx(ip)*const
             ty = gaminv(ip)*by(ip)*const
@@ -7072,6 +7150,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
+      use w3d_interfaces
       use ParticleGroupmodule
       use w3d_interfaces
       use GlobalVars

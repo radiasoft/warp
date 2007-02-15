@@ -21,20 +21,8 @@ c     This version has relativistic corrections.  Basic approach:
 c       gamma should be updated from full Boris velocity push,
 c       as it is only the Epush that affects gamma.
 c     
-c============================================================================ 
-c      subroutine setptrs(bx,by,bz,ex,ey,ez)
-c      use DKInterptmp
-c      real(kind=8), target:: bx(:),by(:),bz(:),ex(:),ey(:),ez(:)
-c      bxd => bx
-c      byd => by
-c      bzd => bz
-c      exd => ex
-c      eyd => ey
-c      ezd => ez
-c      return
-c      end
 c============================================================================
-      subroutine mugrdbpush(pgroup,npd,is,ipmin,dtb,dt,needcalcgradb)
+      subroutine mugrdbpush(pgroup,npd,is,ipmin,dtb,needcalcgradb)
 c     Determines effective B to use in an extra bpush to implement
 c     the mu dB/ds correction for the parallel velocity and the
 c     corresponding change in uperp.  This change is of the form
@@ -50,12 +38,14 @@ c      q is electron charge.
       use DKInterptmp
       use InGen, only: ibpush
       type(ParticleGroup):: pgroup
-      integer(ISZ):: npd,is,ipmin,needcalcgradb
-      real(kind=8):: dtb,dt
+      integer(ISZ):: npd,is,isid,ipmin,needcalcgradb
+      real(kind=8):: dtb
 c
       integer(ISZ):: ip,ipmin1,i
       real(kind=8):: bdbsqds,coef,bxeff(npd),byeff(npd),bzeff(npd)
       real(kind=8):: vxbx,vxby,vxbz
+
+      isid = pgroup%sid(is-1) + 1
 
 c     Note: fields are set in padvnc3d before calling mugrdbpush.
 c     So we don't need to calculate them here, but we do need
@@ -64,9 +54,11 @@ c     if this is the grad B push before the B push.
 c     Note grdbsq(i,) is dbsqdz, dbsqdx, dbsqdy for i=1,2,3.
 
       if (needcalcgradb .ne. 0) call getgradbsq(npd,is,pgroup%xp(ipmin),
-     & pgroup%yp(ipmin),pgroup%zp(ipmin),pgroup%gaminv(ipmin),dt,
+     & pgroup%yp(ipmin),pgroup%zp(ipmin),
      & pgroup%bx(ipmin),pgroup%by(ipmin),pgroup%bz(ipmin))
-c     print*,"start mugrdb, uxp,dtb = ", pgroup%uxp(ipmin),needcalcgradb,dtb
+      if (needcalcgradb .ne. 0) call getalphas(pgroup,npd,isid,ipmin,
+     & 2.*dtb)
+c      print*,"start mugrdb, uxp,dtb = ", pgroup%uxp(ipmin),needcalcgradb,dtb
 
       ipmin1=ipmin-1
       do i = 1,npd
@@ -86,7 +78,8 @@ c       The following are gamma*(v x B) so no further gammas needed
       call bpush3d(npd,pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &             pgroup%gaminv(ipmin),
      &             bxeff,byeff,bzeff,pgroup%sq(is),pgroup%sm(is),dtb,ibpush)
-c     print*,"end mugrdb, uxp = ", uxp(ipmin)
+c      print*,"end mugrdb, uxp,uyp,bx = ", pgroup%uxp(ipmin),pgroup%uyp(ipmin),
+c     &  pgroup%bx(ipmin)
       return
       end
 c=========================================================================
@@ -100,27 +93,79 @@ c     3D xpush with interpolation between drift kinetic and full PIC
       use Picglb
       use InMesh3d
       use Picglb3d
-      use Particles, only: chdtspid
+c      use Particles, only: chdtspid
+      use Particles,Only: xoldpid,yoldpid,zoldpid,
+     &                    bxoldpid,byoldpid,bzoldpid
       type(ParticleGroup):: pgroup
-      integer(ISZ):: npd,is,ipmin
+      integer(ISZ):: npd,is,isid,ipmin
       integer(ISZ):: ip,i,ipmin1,ipc
       real(kind=8):: xpr(npd),ypr(npd),zpr(npd),xbar(npd),dt
       real(kind=8):: ybar(npd),zbar(npd)
-      real(kind=8):: acntrbar
+      real(kind=8):: acntrbar,dtuse
       real(kind=8):: uxscratch(npd),uyscratch(npd),uzscratch(npd)
       real(kind=8):: gaminvscratch(npd)
+      real(kind=8),pointer:: xold(:),yold(:),zold(:)
+      real(kind=8),pointer:: bxold(:),byold(:),bzold(:)
+c     declare some pointers
+      xold => pgroup%pid(:,xoldpid)
+      yold => pgroup%pid(:,yoldpid)
+      zold => pgroup%pid(:,zoldpid)
+      bxold => pgroup%pid(:,bxoldpid)
+      byold => pgroup%pid(:,byoldpid)
+      bzold => pgroup%pid(:,bzoldpid)
+
+      isid = pgroup%sid(is-1) + 1
+
+c     Time step for xpush is 2 dt for ipredcor = 0, dt for ipredcor = 1
+c      but on first timestep there is no old value, so just iterate
+c      from level 0 to level 1 twice
+c      print*
+c      print*,"start xpushintrp,xold,yold,zold,x,y,z = ",ipredcor,xold(1),yold(1),
+c     & zold(1),pgroup%xp(1),pgroup%yp(1),pgroup%zp(1)
+c      print*, "and uxp,uyp,uzp =", pgroup%uxp(1),pgroup%uyp(1),pgroup%uzp(1)
+      dtuse = dt
+c      print*, "ipredcor = ", ipredcor
+      if (npcmax .ge. 0 .and. ipredcor == 0 .and. it > 1) dtuse = 2.*dt
+c      print*, "it = ", it
 c     get effective velocities for old positions
+c     We must calculate grad B and B^2 now for ipredcor = 1; 
+c     for ipredcor = 0 it is done by the calls to mugrdbpush in padvnc3d.
+c     If npcmax >= 0, we need to calculate the interpolation factors 
+c     separately for ipredcor = 0 (timestep different than for mugrdbush).
+      if (ipredcor > 0) call getgradbsq(npd,isid,pgroup%xp(ipmin),
+     & pgroup%yp(ipmin),pgroup%zp(ipmin),pgroup%bx(ipmin),pgroup%by(ipmin),
+     & pgroup%bz(ipmin))
+      if (npcmax .ge. 0) 
+     &      call getalphas(pgroup,npd,isid,ipmin,dtuse)
       call getveff(pgroup,npd,is,ipmin,pgroup%xp(ipmin),pgroup%yp(ipmin),
-     &             pgroup%zp(ipmin),
-     &             pgroup%ex(ipmin),pgroup%ey(ipmin),pgroup%ez(ipmin),
-     &             pgroup%bx(ipmin),pgroup%by(ipmin),pgroup%bz(ipmin),
-     &             "predictor",dt)
+     &             pgroup%zp(ipmin),"predictor",dt)
+c      print *,"xp,vxeff,vbx,vex,alpha = ",pgroup%xp(ipmin),uxeff(1),vbx(1),vex(1),alpha(1)
+
+c
+c     If we are doing corrector with average drifts,
+c.....save the old B's for use in constructing averages for corrector
+      if (ipredcor == 0) then
+         ipmin1=ipmin-1
+         do i = 1, npd
+            ip=i+ipmin1
+            bxold(ip) = pgroup%bx(ip)
+            byold(ip) = pgroup%by(ip)
+            bzold(ip) = pgroup%bz(ip)
+         enddo
+      endif
 c     push to get x': (predictor)
 c     If acntr is 0, skip to push to get final x
-      if (acntr(is) > 1.e-20) then
+      if (acntr(isid) > 1.e-20) then
 
+c      The following is a LOCAL predictor-corrector loop to get an
+c      approximation to v_d at half-integer steps.  This will not be used
+c      when we do the global predictor-corrector of step3d which entails
+c      predicting from n-1 to n+1, field solving, and then correcting
+c      n to n+1.   to exercise the latter be sure to set 
+c      npredcorv to zero.
+c
 c      BEGIN predictor-corrector loop for v_eff
-       do ipc = 1,npredcor
+       do ipc = 1,npredcorv
         ipmin1=ipmin-1
         do i=1,npd      
           ip=i+ipmin1
@@ -133,12 +178,12 @@ c       print*,npd,xpr(1),ypr(1),zpr(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
         call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,pgroup%gaminv(ipmin),
      &                dt)
 c       Now construct averaged positions; self.actr is centering param
-        acntrbar=1.-acntr(is)
+        acntrbar=1.-acntr(isid)
         do i=1,npd      
           ip=i+ipmin1
-          xbar(i)=acntr(is)*xpr(i)+acntrbar*pgroup%xp(ip)
-          ybar(i)=acntr(is)*ypr(i)+acntrbar*pgroup%yp(ip)
-          zbar(i)=acntr(is)*zpr(i)+acntrbar*pgroup%zp(ip)
+          xbar(i)=acntr(isid)*xpr(i)+acntrbar*pgroup%xp(ip)
+          ybar(i)=acntr(isid)*ypr(i)+acntrbar*pgroup%yp(ip)
+          zbar(i)=acntr(isid)*zpr(i)+acntrbar*pgroup%zp(ip)
         enddo
 c       Note need to make sure the trial position doesn't move a 
 c       particle out of bounds of the field array.  IF it does,
@@ -162,13 +207,15 @@ c       thing for absorbing b.c.'s.
         enddo
 c       Now get average velocity using these positions
         call getveff(pgroup,npd,is,ipmin,xbar,ybar,zbar,
-     &               pgroup%ex(ipmin),pgroup%ey(ipmin),pgroup%ez(ipmin),
-     &               pgroup%bx(ipmin),pgroup%by(ipmin),pgroup%bz(ipmin),
      &               "corrector",dt)
+c        print *,"xbar,npd,is,vxeff,vex,alpha = ",xbar(ipmin),npd,is,uxeff(1),vex(1),alpha(1)
        enddo
 c      END predictor-corrector loop for v_eff
 
       endif
+
+c     option to add extra drift from a python script called "LeeTangDrift"
+      if (igetextdrift > 0) call execuser("LeeTangDrift")
 
 c     Now do the final particle push (corrector) using these veffs.
 c     This time call xpush3d with xp, etc, so that the
@@ -178,10 +225,26 @@ c     (that is if alpha = 1), then
 c     the result of the final push will be identical to
 c     a full conventional push.
         
-c     print*,"xpush2",dt,alpha(1)
-c     print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+c     If this is a (global) predictor step we need to swap the x arrays
+c      so we are pushing from n-1 and also defining a new set of xold's
+c      for the next time step.  If it is a corrector step then copy
+c      x arrays so that we are pushing from n to n+1, step n in both
+c      xp and xold.  For predictor at step 1,just copy xp to xpold.
+c      Only do predictor swap if it>1 so there is something to swap.
+c      call swapxarrays(isid)
+c     temporary option
+      if (npcmax .ge. 0) call swapxarrays(pgroup,is)
+      if (npcmax < 0) call swapxarr2(pgroup,is)
+        
+c      print*,"xpush2",dt,alpha(1)
+c      print*,npd,pgroup%xp(1),pgroup%yp(1),pgroup%zp(1),uxeff(1),uyeff(1),uzeff(1),pgroup%gaminv(1)
       call xpush3d (npd,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &              uxeff,uyeff,uzeff,pgroup%gaminv(ipmin),dt)
+     &              uxeff,uyeff,uzeff,pgroup%gaminv(ipmin),dtuse)
+
+c      print*,"pushed",ipmin,pgroup%xp(1),pgroup%yp(1),pgroup%zp(1),
+c     &    uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+c      print*,"pushed, xpushintrp,xold,yold,zold,x,y,z = ",ipredcor,xold(1),yold(1),
+c     & zold(1),pgroup%xp(1),pgroup%yp(1),pgroup%zp(1)
 
       return
       end
@@ -192,88 +255,282 @@ c=========================================================================
       use DKInterptmp
 c     find uperp^2 and upar^2  (momentum/mass **2)
 c     calculate upar dot B
+      use ParticleGroupmodule
+      use Particles,Only: uxoldpid,uyoldpid,uzoldpid,bxoldpid,
+     &   byoldpid,bzoldpid,uparBopid
+      use Picglb
+      use DKInterp
+      use DKInterptmp
       type(ParticleGroup):: pgroup
       integer(ISZ):: npd,ipmin
 
-      real(kind=8):: uparB
-      integer(ISZ):: i,ip,ipmin1
+      real(kind=8):: uparB,uparoldB,uparBnew
+      integer(ISZ):: i,ip,ipmin1,ipmax
+      real(kind=8),pointer:: uxold(:),uyold(:),uzold(:),uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: bxold(:),byold(:),bzold(:),uparBo(:)
+      real(kind=8),pointer:: bx(:),by(:),bz(:)
+
+      ipmin1=ipmin-1
+      ipmax=ipmin1+npd
+c     declare some pointers
+      uxp => pgroup%uxp(ipmin:ipmax)
+      uyp => pgroup%uyp(ipmin:ipmax)
+      uzp => pgroup%uzp(ipmin:ipmax)
+      uxold => pgroup%pid(ipmin:ipmax,uxoldpid)
+      uyold => pgroup%pid(ipmin:ipmax,uyoldpid)
+      uzold => pgroup%pid(ipmin:ipmax,uzoldpid)
+      uparBo => pgroup%pid(ipmin:ipmax,uparBopid)
+      bxold => pgroup%pid(ipmin:ipmax,bxoldpid)
+      byold => pgroup%pid(ipmin:ipmax,byoldpid)
+      bzold => pgroup%pid(ipmin:ipmax,bzoldpid)
+      bx => pgroup%bx(ipmin:ipmax)
+      by => pgroup%by(ipmin:ipmax)
+      bz => pgroup%bz(ipmin:ipmax)
 
 c     print*,"*******SETTING UPERPPAR"
-c     print*,uxp(ipmin),uzp(ipmin),bx(1),bz(1)
+c     print*,uxp(ipmin),uzp(ipmin),bx(ipmin),bz(ipmin)
       ipmin1=ipmin-1
-      do i=1,npd
-         ip = i+ipmin1
-         uparB = pgroup%uxp(ip)*pgroup%bx(ip) +
-     &           pgroup%uyp(ip)*pgroup%by(ip) +
-     &           pgroup%uzp(ip)*pgroup%bz(ip)
-         uparoverB(i) = uparB*bsqi(i)
-         uparsq(i) = uparB**2*bsqi(i)
-c        total momentum per mass squared:
-         usq(i) = pgroup%uxp(ip)**2 + pgroup%uyp(ip)**2 + pgroup%uzp(ip)**2
-c         uperpsq(i)=usq(i)-uparsq(i)
-       enddo
+c     Following coding calculates the v's for the advanced u's.
+c     For global corrector this is all we need.
+c     average with corresponding quantities from old v's if this is
+c     predictor step.  The old v's are stored in uxpbar, ... at this time.
+      if (ipredcor == 0 .and. npcmax .ge. 0 .and. it > 1) then
+          do i=1, npd
+c           First generate upar with updated velocities and current-time
+c           fields
+c           Store it as global array for use on corrector
+            uparB = uxp(i)*bx(i) + uyp(i)*by(i) + uzp(i)*bz(i)
+            uparBo(i) = uparB*bsqi(i)
+c           Calculate upar**2 from new velocities and current-time fields;
+            uparsq_new(i) = uparB**2*bsqi(i)
+c           now average these with corresponding quantities using old
+c           v's for predictor
+            uparoldB = uxold(i)*bx(i) + uyold(i)*by(i) + uzold(i)*bz(i)
+            uparoverB(i) = 0.5*(uparBo(i)+uparoldB*bsqi(i))
+            uparsq(i) = 0.5*(uparsq_new(i)+uparoldB**2*bsqi(i))
+c           total momentum per mass squared:
+            usq_new(i) = uxp(i)**2+uyp(i)**2+uzp(i)**2
+            usq(i) = .5*(usq_new(i) + uxold(i)**2 + 
+     &           uyold(i)**2 + uzold(i)**2)
+c         if (i == 1) then
+c            print*, " second pass:"
+c            print*, ip,ipmin1
+c            print*, uparB,uparoverB(i)
+c         endif
+         enddo
+       elseif (ipredcor == 0 .and. (npcmax < 0 .or. it == 1)) then
+c      Predictor based on simple projection from step 0 to step 1
+         do i=1, npd
+c           First generate upar with updated velocities and current-time
+c           fields
+c           Store it as global array for use on corrector
+            uparB = uxp(i)*bx(i) + uyp(i)*by(i) + uzp(i)*bz(i)
+            uparBo(i) = uparB*bsqi(i)
+c           Calculate upar**2 from new velocities and current-time fields;
+            uparsq_new(i) = uparB**2*bsqi(i)
+c           For npcmax < 0 or it = 1 we are taking a step dt on predictor
+c            and using new fields with current unadvanced positions
+c            so uparoverB is the same as uparBo, the thing we save
+c            for the corrector
+            uparoverB(i) = uparBo(i)
+            uparsq(i) = uparsq_new(i)
+c           total momentum per mass squared:
+            usq_new(i) = uxp(i)**2+uyp(i)**2+uzp(i)**2
+            usq(i) = usq_new(i)
+c         if (i == 1) then
+c            print*, " second pass:"
+c            print*, ip,ipmin1
+c            print*, uparB,uparoverB(i)
+c         endif
+         enddo
+        else
+c.....  Corrector
+         do i=1,npd
+c.......   u dot (B_n + B_predicted)
+           uparBnew = uxp(i)*bx(i) + uyp(i)*by(i) + uzp(i)*bz(i)
+c           uparB = uparBo(i) + uparBnew
+c           bsumsq = (bx(i)+bxold(i))**2 + (by(i)+byold(i))**2
+c     &        + (bz(i)+bzold(i))**2
+c           uparoverB(i) = 0.5*(uparB*bsqi(i)+uparnoverBo(i))
+           uparoverB(i) = uparBnew*bsqi(i)
+c          above is uparallel(updated)/B(predicted); will get multiplied
+c          by B_j,predicted and combined with corresponding terms using
+c          B at current timestep in getveff.
+c          This is opposed to the following, which is upar squared
+c          using the new B's, for coefficients un vdrift(x_predicted)
+           usq(i) = uxp(i)**2+uyp(i)**2+uzp(i)**2
+           uparsq(i) = uparBnew**2*bsqi(i)
+c           uperpsq(i)=usq(i)-uparsq(i)
+c           if (i == 1) then
+c              print*, " first pass:"
+c              print*, ip,ipmin1
+c              print*, uparB,uparoverB(i)
+c           endif
+           enddo
+       endif
        return
        end
 
 c==========================================================================
-      subroutine getveff(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz,predcor,dt)
+      subroutine getveff(pgroup,npd,is,ipmin,x,y,z,predcor,dt)
 c     find the effective velocity to use in the xpush.
       use ParticleGroupmodule
+      use Particles,Only: uxoldpid,uyoldpid,uzoldpid,
+     &  vdxoldpid,vdyoldpid,vdzoldpid,uparBopid,bxoldpid,byoldpid,bzoldpid
+      use DKInterp
       use DKInterptmp
+      use Picglb
       type(ParticleGroup):: pgroup
-      integer(ISZ):: npd,is,ipmin
+
+      integer(ISZ):: npd,is,isid,ipmin
       character(*):: predcor
       real(kind=8):: dt
       real(kind=8):: x(npd),y(npd),z(npd)
-      real(kind=8):: ex(npd),ey(npd),ez(npd)
-      real(kind=8):: bx(npd),by(npd),bz(npd)
 
-      real(kind=8):: udkx,udky,udkz,gamasafe
-      integer(ISZ):: i,ip,ipmin1
+      real(kind=8):: udkx,udky,udkz,gamasafe,acntrbar
+      integer(ISZ):: i,ip,ipmin1,ipmax
+      real(kind=8),pointer:: uxp(:),uyp(:),uzp(:)
+      real(kind=8),pointer:: uxold(:),uyold(:),uzold(:),gaminv(:)
+      real(kind=8),pointer:: vdxold(:),vdyold(:),vdzold(:)
+      real(kind=8),pointer:: uparBo(:),bxold(:),byold(:),bzold(:)
+      real(kind=8),pointer:: ex(:),ey(:),ez(:)
+      real(kind=8),pointer:: bx(:),by(:),bz(:)
 
-c     On the predictor step, fields have been pre-computed.
-c     On the corrector step, need to recompute, as the
+      ipmin1=ipmin-1
+      ipmax=ipmin1+npd
+c     declare some pointers
+      uxold => pgroup%pid(ipmin:ipmax,uxoldpid)
+      uyold => pgroup%pid(ipmin:ipmax,uyoldpid)
+      uzold => pgroup%pid(ipmin:ipmax,uzoldpid)
+      uxp => pgroup%uxp(ipmin:ipmax)
+      uyp => pgroup%uyp(ipmin:ipmax)
+      uzp => pgroup%uzp(ipmin:ipmax)
+      gaminv => pgroup%gaminv(ipmin:ipmax)
+      vdxold => pgroup%pid(ipmin:ipmax,vdxoldpid)
+      vdyold => pgroup%pid(ipmin:ipmax,vdyoldpid)
+      vdzold => pgroup%pid(ipmin:ipmax,vdzoldpid)
+      uparBo => pgroup%pid(ipmin:ipmax,uparBopid)
+      bxold => pgroup%pid(ipmin:ipmax,bxoldpid)
+      byold => pgroup%pid(ipmin:ipmax,byoldpid)
+      bzold => pgroup%pid(ipmin:ipmax,bzoldpid)
+      bx => pgroup%bx(ipmin:ipmax)
+      by => pgroup%by(ipmin:ipmax)
+      bz => pgroup%bz(ipmin:ipmax)
+      ex => pgroup%ex(ipmin:ipmax)
+      ey => pgroup%ey(ipmin:ipmax)
+      ez => pgroup%ez(ipmin:ipmax)
+
+      isid = pgroup%sid(is-1) + 1
+
+c     On the v-predictor step, fields have been pre-computed.
+c     On the v-corrector step, need to recompute, as the
 c      positions have changed.  
-      if (predcor .eq. "corrector")
-     &  call setfields(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz,dt)
+      if (predcor .eq. "corrector") then
+         call setfields(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz,dt)
+         call getalphas(pgroup,npd,isid,ipmin,dt)
+c         print*,"called setfields, x,ey,ez",x(1),ey(1),ez(1)
+      endif
+
 c     in either case need proper uperp, upar:
       call getvperpparsq(pgroup,npd,ipmin)
 
 c     First, get the drift velocity
-      call getvdrift(npd,is,x,y,z,pgroup%gaminv,ex,ey,ez,bx,by,bz)
+      call getvdrift(pgroup,npd,is,ipmin,x,y,z)
 
-      ipmin1=ipmin-1
-      do i=1,npd
-         ip = i+ipmin1
-c     add in uparallel to get the drift-kinetic velocity
-c     recall that uparoverB is u_||/B momentum/mass/B
-         gamasafe = 1./(pgroup%gaminv(i)+SMALLPOS)
+      acntrbar = 1.-acntr(isid)
+      if (ipredcor > 0) then
+       do i=1,npd
+c      add in uparallel to get the drift-kinetic velocity
+c      recall that uparoverB is u_||/B momentum/mass/B
+         gamasafe = 1./(gaminv(i)+SMALLPOS)
+         udkx = (gamasafe*(acntr(isid)*vdx(i)+acntrbar*vdxold(i))
+     &        + acntr(isid)*uparoverB(i)*bx(i)+acntrbar*uparBo(i)*bxold(i))
+         udky = (gamasafe*(acntr(isid)*vdy(i)+acntrbar*vdyold(i))
+     &        + acntr(isid)*uparoverB(i)*by(i)+acntrbar*uparBo(i)*byold(i))
+         udkz = (gamasafe*(acntr(isid)*vdz(i)+acntrbar*vdzold(i))
+     &        + acntr(isid)*uparoverB(i)*bz(i)+acntrbar*uparBo(i)*bzold(i))
+
+c         if (i==1 .and. ipmin==1) print*, "in getveff",
+c     1      vdx(i),uparoverB(i),bx(i),udkx,alpha(1),uxp(1)
+c       calculate interpolated velocity
+         uxeff(i)=alpha(i)*uxp(i) + alphabar(i)*udkx
+         uyeff(i)=alpha(i)*uyp(i) + alphabar(i)*udky
+         uzeff(i)=alpha(i)*uzp(i) + alphabar(i)*udkz
+        enddo
+       endif
+
+      if (ipredcor == 0 .and. npcmax .ge. 0 .and. it > 1) then
+       do i=1,npd
+c      add in uparallel to get the drift-kinetic velocity
+c      recall that uparoverB is u_||/B momentum/mass/B
+         gamasafe = 1./(gaminv(i)+SMALLPOS)
          udkx = gamasafe*vdx(i) + uparoverB(i)*bx(i)
          udky = gamasafe*vdy(i) + uparoverB(i)*by(i)
          udkz = gamasafe*vdz(i) + uparoverB(i)*bz(i)
 
 c         if (i==1 .and. ipmin==1) print*, "in getveff",
 c     1      vdx(i),uparoverB(i),bx(i),vdkx,alpha(1),uxp(1)
-c     calculate interpolated velocity
-         uxeff(i)=alpha(i)*pgroup%uxp(ip) + alphabar(i)*udkx
-         uyeff(i)=alpha(i)*pgroup%uyp(ip) + alphabar(i)*udky
-         uzeff(i)=alpha(i)*pgroup%uzp(ip) + alphabar(i)*udkz
-       enddo
+c      calculate interpolated velocity
+           uxeff(i)=.5*alpha(i)*(uxp(i)+uxold(i)) + alphabar(i)*udkx
+           uyeff(i)=.5*alpha(i)*(uyp(i)+uyold(i)) + alphabar(i)*udky
+           uzeff(i)=.5*alpha(i)*(uzp(i)+uzold(i)) + alphabar(i)*udkz
+        enddo
+      endif
+      if (ipredcor == 0 .and. (npcmax < 0 .or. it == 1)) then
+c     Predictor based on simple projection from step 0 to step 1
+       do i=1,npd
+c      add in uparallel to get the drift-kinetic velocity
+c      recall that uparoverB is u_||/B momentum/mass/B
+         gamasafe = 1./(gaminv(i)+SMALLPOS)
+         udkx = gamasafe*vdx(i) + uparoverB(i)*bx(i)
+         udky = gamasafe*vdy(i) + uparoverB(i)*by(i)
+         udkz = gamasafe*vdz(i) + uparoverB(i)*bz(i)
+
+c         if (i==1 .and. ipmin==1) print*, "in getveff",
+c     1      vdx(i),uparoverB(i),bx(i),udkx,alpha(1),uxp(1)
+c      calculate interpolated velocity
+           uxeff(i)=alpha(i)*uxp(i) + alphabar(i)*udkx
+           uyeff(i)=alpha(i)*uyp(i) + alphabar(i)*udky
+           uzeff(i)=alpha(i)*uzp(i) + alphabar(i)*udkz
+        enddo
+       endif
+c       print*, "in getveff,uxp, uxeff,vex = ",ipredcor,uxp(1),uxeff(1),vex(1)
+c       print*, "ipredcor, uzp,uzold,uzeff",ipredcor,uzp(1),uzold(1),uzeff(1)
        return
        end
 
 c==========================================================================
-      subroutine getvdrift(npd,is,x,y,z,gaminv,ex,ey,ez,bx,by,bz)
+      subroutine getvdrift(pgroup,npd,is,ipmin,x,y,z)
 c     Assumes E, B, grad B^2 are pre-computed
       use DKInterp
       use DKInterptmp
-      integer(ISZ):: npd,is
-      real(kind=8):: x(npd),y(npd),z(npd),gaminv(npd)
-      real(kind=8):: ex(npd),ey(npd),ez(npd)
-      real(kind=8):: bx(npd),by(npd),bz(npd)
+      use ParticleGroupmodule
+      use Particles,Only: vdxoldpid,vdyoldpid,vdzoldpid
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: npd,is,isid,ip,ipmin,ipmin1,ipmax
+      real(kind=8):: x(npd),y(npd),z(npd)
 
       integer(ISZ):: i
       real(kind=8):: bgradbbx,bgradbby,bgradbbz,coeff
+      real(kind=8):: newcoef,vbxupdated,vbyupdated,vbzupdated
+
+      real(kind=8),pointer:: vdxold(:),vdyold(:),vdzold(:)
+      real(kind=8),pointer:: gaminv(:),bx(:),by(:),bz(:),ex(:),ey(:),ez(:)
+
+      ipmin1=ipmin-1
+      ipmax=ipmin1+npd
+      vdxold => pgroup%pid(ipmin:ipmax,vdxoldpid)
+      vdyold => pgroup%pid(ipmin:ipmax,vdyoldpid)
+      vdzold => pgroup%pid(ipmin:ipmax,vdzoldpid)
+      gaminv => pgroup%gaminv(ipmin:ipmax)
+      bx => pgroup%bx(ipmin:ipmax)
+      by => pgroup%by(ipmin:ipmax)
+      bz => pgroup%bz(ipmin:ipmax)
+      ex => pgroup%ex(ipmin:ipmax)
+      ey => pgroup%ey(ipmin:ipmax)
+      ez => pgroup%ez(ipmin:ipmax)
+
+      isid = pgroup%sid(is-1) + 1
 
 c     first, vgradb:
 c     calculate sum of curvature and grad-B drifts, assuming vacuum B field
@@ -285,6 +542,8 @@ c      call getgradbsq(npd,is,ipmin,x,y,z) -- only do it when fields
 c      are recomputed, so moved into setfields
 
 c     comps of B x grad B**2:
+c      print*, "IN GETVDRIFT, is,isid,ipmin1", is, isid, ipmin1
+c      print*, "ey,ez,by,bz,bsqi",ey(1),ez(1),by(1),bz(1),bsqi(1)
       do i=1,npd
         bgradbbx = by(i)*grdbsq(1,i) - bz(i)*grdbsq(3,i)
         bgradbby = bz(i)*grdbsq(2,i) - bx(i)*grdbsq(1,i)
@@ -292,7 +551,7 @@ c     comps of B x grad B**2:
 
 c      common coeff:
 c      Note should be gamma*m*v**2 ~ m u**2/gamma where u is momentum/mass
-        coeff = 0.25*m_over_q(is)*bsqi(i)**2*(usq(i) + uparsq(i))*gaminv(i)
+        coeff = 0.25*m_over_q(isid)*bsqi(i)**2*(usq(i) + uparsq(i))*gaminv(i)
 
 c      and now the components:
         vbx(i) = coeff*bgradbbx
@@ -313,11 +572,27 @@ c        vdz(i) = vez(i) + vbz(i) + vpolz(i)
         vdx(i) = vex(i) + vbx(i)
         vdy(i) = vey(i) + vby(i)
         vdz(i) = vez(i) + vbz(i)
+
+c       Need to store old vdrifts if averaging drifts
+        if (ipredcor == 0) then
+c       components of magnetic drift using timestep-n fields and
+c       updated velocities. This will determine vdrift_old for corrector
+          newcoef = 0.25*m_over_q(isid)*bsqi(i)**2*(usq_new(i) + uparsq_new(i))
+     &     *gaminv(i)
+          vbxupdated = newcoef*bgradbbx
+          vbyupdated = newcoef*bgradbby
+          vbzupdated = newcoef*bgradbbz
+          vdxold(i) = vex(i) + vbxupdated
+          vdyold(i) = vey(i) + vbyupdated
+          vdzold(i) = vez(i) + vbzupdated
+        endif
       enddo
+
 c      if (ipmin == 1) print*, "in getvdrift",
 c    1      vex(1),ey(1),bz(1),ez(1),by(1),bsqi(1),vdx(1)
 c     print*,"drifts, x,ex, bx,bsqi ", x(1),ex(1),bx(1),bsqi(1)
 c     print*,"vex,vbx,vdx",vex(1),vbx(1),vdx(1)
+c      print*, "ey,ez,by,bz,bsqi,vex",ey(5),ez(5),by(5),bz(5),bsqi(5),vex(5)
       return
       end
 
@@ -325,15 +600,16 @@ c=========================================================================
 c      subroutine getvpol(is,np,dt)
 c
 c      use DKInterptmep
-c      integer(ISZ):: is,np,dt
+c      integer(ISZ):: is,,isid,np,dt
 c      real(kind=8):: dvexdt,dveydt,dvezdg,qbsqi
 c      integer(ISZ):: i
 c      dti=1./dt
+c      isid = pgroup%sid(is-1) + 1
 c      do i=1,np
 c        dvexdt=(vex(i)-vexold(i))*dti
 c        dveydt=(vey(i)-veyold(i))*dti
 c        dvezdt=(vez(i)-vezold(i))*dti
-c        qbsqi=m_over_q(is)*bsqi(i)
+c        qbsqi=m_over_q(isid)*bsqi(i)
 c        vpolx(i) = (by(i)*dvezdt-bz(i)*dveydt)*qbsqi
 c        vpoly(i) = (bz(i)*dvexdt-bx(i)*dvezdt)*qbsqi
 c        vpolz(i) = (bx(i)*dveydt-by(i)*dvexdt)*qbsqi
@@ -358,11 +634,15 @@ c     sets ej and bj.
       real(kind=8):: x(npd),y(npd),z(npd),dt
       real(kind=8):: ex(npd),ey(npd),ez(npd)
       real(kind=8):: bx(npd),by(npd),bz(npd)
-      integer(ISZ):: i
+      integer(ISZ):: i,jsid
       real(kind=8):: dtr
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
+      jsid = pgroup%sid(is-1)
 c     print*,"*****SETTING FIELDS"
-      call fetche3d1(pgroup,npd,x,y,z)
+c      print*,"pre-fetche3d1,x,ey,ez = ",x(1),ey(1),ez(1)
+      call fetche3dfrompositions(jsid,pgroup%ndts(is-1),npd,x,y,z,ex,ey,ez)
+c      call fetche3d1(pgroup,npd,x,y,z)
+c      print*,"pre-othere3d,x,ey,ez = ",x(1),ey(1),ez(1)
 c      call fetche3d(pgroup,ipmin,npd,is)
 c     add in ears and uniform focusing E field pieces
       call othere3d(npd,x,y,z,zbeam,zimax,zimin,straight,ifeears,eears,
@@ -377,12 +657,12 @@ c      call geteb(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz)
      &             bx,by,bz,ex,ey,ez,pgroup%sm(is),
      &             pgroup%sq(is),bendres,bendradi,gammabar,dt)
 c     Now get the gradients of B**2
-      call getgradbsq(npd,is,x,y,z,pgroup%gaminv(ipmin),dt,bx,by,bz)
+      call getgradbsq(npd,is,x,y,z,bx,by,bz)
       return
       end
 
 c=========================================================================
-      subroutine getgradbsq(npd,is,x,y,z,gaminv,dt,bx,by,bz)
+      subroutine getgradbsq(npd,is,x,y,z,bx,by,bz)
 c      calculate grad B**2;  also calculates B^2, 1/B^2, and 
 c      interpolation parameter alpha and its complement
 c      Note shape of gradbsq is (3,npd), and the components
@@ -403,55 +683,23 @@ c         be set to 1 and BSQGRADdata gchanged.
 c      use InGen
       use BSQGRADdata
       integer(ISZ):: npd,is
-      real(kind=8):: x(npd),y(npd),z(npd),gaminv(npd),dt
+      real(kind=8):: x(npd),y(npd),z(npd)
       real(kind=8):: bx(npd),by(npd),bz(npd)
       integer(ISZ):: i,ip
       real(kind=8):: twobbrsqi,bsq_safe
-      real(kind=8):: omegacesq,omegadtsq
+c      print*,"entering getalpha from getgradbsq"
 c
 c     Assumes  E and B are already set, either via setfields
 c      or via calls in padvnc3d.
-c     Calculate B**2 and interpolation parameter
-      if (ipalpha == 1) then
-       do i=1,npd
+c     Calculate B**2 
+      do i=1,npd
           bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
           bsq_safe=bsq(i)+dksmall
           bsqi(i) = 1./bsq_safe
-c         calculate interpolation parameter, 0 if magnetized, 1 if not
-          omegacesq = gaminv(i)*gaminv(i)*qovermsq(is)*bsq(i)
-          omegadtsq = omegacesq*dt**2
-          alpha(i) = usealphacalc(is)/sqrt(1.+alphcoef*omegadtsq)  
-     &       + notusealphcalc(is)
-c         alpha(i) = 1./sqrt(1.+omegadtsq)
-c         alpha = 1./sqrt(1.+4.*omegadtsq)
-c         alpha=exp(-omegadtsq)
-          alphabar(i)=1.-alpha(i)
-       enddo
-      elseif (ipalpha == 2) then
-       do i=1,npd
-          bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
-          bsq_safe=bsq(i)+dksmall
-          bsqi(i) = 1./bsq_safe
-c         calculate interpolation parameter, 0 if magnetized, 1 if not
-          omegacesq = gaminv(i)*gaminv(i)*qovermsq(is)*bsq(i)
-          omegadtsq = omegacesq*dt**2
-          alpha(i) = usealphacalc(is)/(1.+alphcoef*omegadtsq)  
-     &       + notusealphcalc(is)
-          alphabar(i)=1.-alpha(i)
-       enddo
-      else
-       do i=1,npd
-          bsq(i)=bx(i)**2 + by(i)**2 + bz(i)**2
-          bsq_safe=bsq(i)+dksmall
-          bsqi(i) = 1./bsq_safe
-c         calculate interpolation parameter, 0 if magnetized, 1 if not
-          omegacesq = gaminv(i)*gaminv(i)*qovermsq(is)*bsq(i)
-          omegadtsq = omegacesq*dt**2
-          alpha(i) = usealphacalc(is)/(1.+alphcoef*omegadtsq)**palpha  
-     &       + notusealphcalc(is)
-          alphabar(i)=1.-alpha(i)
-       enddo
-      endif
+      enddo
+
+c     Now can calculate the interpolation parameters alpha
+c     Do this outside this routine.
 
       if (igradb == 1) then
 c       igradb == 1, get data from lookup table.
@@ -480,6 +728,56 @@ c         Note grdbsq(1,:) directly set by applybsqgrad
           grdbsq(2,i)=twobbrsqi*x(i)
           grdbsq(3,i)=twobbrsqi*y(i)
         enddo
+      endif
+      return
+      end
+
+c========================================================================
+      subroutine getalphas(pgroup,npd,isid,ipmin,dtuse)
+      use DKInterp
+      use DKInterptmp
+      use ParticleGroupmodule
+      use Particles,Only: vdxoldpid,vdyoldpid,vdzoldpid,
+     &  uparBopid,bxoldpid,byoldpid,bzoldpid
+c      use InGen
+c      use Picglb
+      type(ParticleGroup):: pgroup
+      integer(ISZ):: npd,is,isid,ipmin,ipmin1,ipmax
+      integer(ISZ):: i,ip
+      real(kind=8):: omegacesq,omegadtsq,dtuse
+      real(kind=8),pointer:: gaminv(:)
+
+      ipmin1=ipmin-1
+      ipmax=ipmin1+npd
+      gaminv => pgroup%gaminv(ipmin:ipmax)
+
+      if (abs(ipalpha) == 1) then
+       do i=1,npd
+c         calculate interpolation parameter, 0 if magnetized, 1 if not
+          omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
+          omegadtsq = omegacesq*dtuse**2
+          alpha(i) = usealphacalc(isid)/sqrt(1.+alphcoef*omegadtsq)  
+     &       + notusealphcalc(isid)
+          alphabar(i)=1.-alpha(i)
+       enddo
+      elseif (abs(ipalpha) == 2) then
+       do i=1,npd
+c         calculate interpolation parameter, 0 if magnetized, 1 if not
+          omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
+          omegadtsq = omegacesq*dtuse**2
+          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)  
+     &       + notusealphcalc(isid)
+          alphabar(i)=1.-alpha(i)
+       enddo
+      else
+       do i=1,npd
+c         calculate interpolation parameter, 0 if magnetized, 1 if not
+          omegacesq = gaminv(i)*gaminv(i)*qovermsq(isid)*bsq(i)
+          omegadtsq = omegacesq*dtuse**2
+          alpha(i) = usealphacalc(isid)/(1.+alphcoef*omegadtsq)**palpha  
+     &       + notusealphcalc(isid)
+          alphabar(i)=1.-alpha(i)
+       enddo
       endif
       return
       end
@@ -545,93 +843,210 @@ c     reset xp,yp,zp
       return
       end
 
-c=========================================================================
-c     subroutine setfields2(pgroup,npd,is,x,y,z,ux,uy,uz)
-c     sets ej and bj.
-c     use ParticleGroupmodule
-c     use DKInterp
-c     use DKInterptmp
-c     use InGen
-c     use InPart
-c     use Beam_acc
-c     use Z_arrays
-c     use Picglb
-c     use GlobalVars
-c     use Constant
-c     type(ParticleGroup):: pgroup
-c     integer(ISZ):: npd,is
-c     real(kind=8):: x(npd),y(npd),z(npd),ux(npd),uy(npd),uz(npd),gi(npd)
-c     integer(ISZ):: i
-c     real(kind=8):: dtr
-c     real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
-c     print*,"*****SETTING FIELDS"
-c     call fetche3d1(pgroup,npd,x,y,z)
-c      call fetche3d(pgroup,ipmin,npd,is)
-c     add in ears and uniform focusing E field pieces
-c     call othere3d(npd,x,y,z,zbeam,zimax,zimin,straight,ifeears,eears,
-c    &                     eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
-c    &                     ex,ey,ez,bx,by,bz)
-c      call geteb(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz)
-c     dtr=.5*dt
-c     bx(:)=0.;by(:)=0.;bz(:)=0.
-c     gi=1./sqrt(1.+(ux*ux+uy*uy+uz*uz)/clight**2)
-c     call exteb3d(npd,x,y,z,uz,gi,-dtr,dtr,
-c    &         bx,by,bz,ex,ey,ez,pgroup%sm(is),
-c    &         pgroup%sq(is),bendres,bendradi,gammabar,dt)
-c     Now get the gradients of B**2
-c     call getgradbsq(npd,is,x,y,z,gi,dt)
-c     return
-c     end
-
+c===========================================================================
+c OLDSETUP: sets up storage to store prior-step quantities
+c===========================================================================
+      subroutine oldsetup()
+c     Sets up storage in the pid array and makes pointers to its rows for
+c     xold, uxold, etc.
+      use Particles,Only: xoldpid,yoldpid,zoldpid,uxoldpid,uyoldpid,uzoldpid,
+     &  vdxoldpid,vdyoldpid,vdzoldpid,uparBopid,bxoldpid,byoldpid,bzoldpid
+      use ParticleGroupmodule
+      use DKInterp
+      integer(ISZ):: nextpid
+c      call gchange("Particles",0)
+      xoldpid = nextpid()
+      yoldpid = nextpid()
+      zoldpid = nextpid()
+      uxoldpid = nextpid()
+      uyoldpid = nextpid()
+      uzoldpid = nextpid()
+      vdxoldpid = nextpid()
+      vdyoldpid = nextpid()
+      vdzoldpid = nextpid()
+      bxoldpid = nextpid()
+      byoldpid = nextpid()
+      bzoldpid = nextpid()
+      uparBopid = nextpid()
+      return
+      end
+c=============================================================================
+c ARRAY UTILITIES
 c==========================================================================
-c     subroutine setvdrifts(pgroup,npd,is,x,y,z,ux,uy,uz,predcor)
-c     use ParticleGroupmodule
-c     use DKInterptmp
-c     use Constant
-c     find the effective velocity to use in the xpush.
-c     use Particles
-c     type(ParticleGroup):: pgroup
-c     integer(ISZ):: npd,is
-c     character(*):: predcor
-c     real(kind=8):: x(npd),y(npd),z(npd),ux(npd),uy(npd),uz(npd),gi(npd)
-
-c     real(kind=8):: udkx,udky,udkz,gamasafe
-c     integer(ISZ):: i,ip,ipmin1
-
-c     On the predictor step, fields have been pre-computed.
-c     On the corrector step, need to recompute, as the
-c      positions have changed.  
-c     if (predcor .eq. "corrector") call setfields2(pgroup,npd,is,x,y,z,ux,uy,uz)
-c     in either case need proper uperp, upar:
-c     call getvperpparsq2(npd,ux,uy,uz)
-
-c     First, get the drift velocity
-c     gi=1./sqrt(1.+(ux*ux+uy*uy+uz*uz)/clight**2)
-c     call getvdrift(npd,is,x,y,z,gi)
-
-c     return
-c     end
+      subroutine swapxarrays(pgroup,is)
+c     swapxarrays, swaps old, new particle arrays for predictor-corrector
+c     Specifically, on predictor step,
+c     this routine interchanges the contents of xp and
+c     xold, so that xp can be set to the previous (n-1) timestep x's
+c     while xold is set to the current timestep's x's for use in the
+c     next timestep.
+c     On corrector step it just copies xold into xp
+c     At t=0, it just copies xp into xold.
+      use DKInterp
+      use ParticleGroupmodule
+      use Particles,Only: xoldpid,yoldpid,zoldpid
+      use Picglb
+      type(ParticleGroup):: pgroup
+      real(kind=8):: xsave,ysave,zsave
+      integer(ISZ):: npd,ipmin,is,i
+      if (ipredcor == 0 .and. it > 1) then
+       do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+         xsave=pgroup%xp(i)
+         ysave=pgroup%yp(i)
+         zsave=pgroup%zp(i)
+         pgroup%xp(i)=pgroup%pid(i,xoldpid)
+         pgroup%yp(i)=pgroup%pid(i,yoldpid)
+         pgroup%zp(i)=pgroup%pid(i,zoldpid)
+         pgroup%pid(i,xoldpid)=xsave
+         pgroup%pid(i,yoldpid)=ysave
+         pgroup%pid(i,zoldpid)=zsave
+       enddo
+       return
+      endif
+      if (ipredcor > 0) then
+         do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%xp(i) =pgroup%pid(i,xoldpid)
+            pgroup%yp(i)=pgroup%pid(i,yoldpid)
+            pgroup%zp(i)=pgroup%pid(i,zoldpid)
+         enddo
+         return
+       endif
+       if (it == 1) then
+         do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+            pgroup%pid(i,xoldpid) =pgroup%xp(i)
+            pgroup%pid(i,yoldpid)=pgroup%yp(i)
+            pgroup%pid(i,zoldpid)=pgroup%zp(i)
+         enddo
+       endif
+      return
+      end
+c===========================================================================
+      subroutine storeoldu(pgroup,is)
+c     stores old uxp array in uxold
+      use ParticleGroupmodule
+      use Particles,Only: uxoldpid,uyoldpid,uzoldpid
+      type(ParticleGroup):: pgroup
+      integer (ISZ):: i,is
+      do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+         pgroup%pid(i,uxoldpid) = pgroup%uxp(i)
+         pgroup%pid(i,uyoldpid) = pgroup%uyp(i)
+         pgroup%pid(i,uzoldpid) = pgroup%uzp(i)
+      enddo
+      return
+      end
+c==========================================================================
+      subroutine swapxarr2(pgroup,is)
+c     saves current x as xold
+      use Particles,Only: xoldpid,yoldpid,zoldpid
+      use ParticleGroupmodule
+      use DKInterp
+      use Picglb
+      type(ParticleGroup):: pgroup
+      real(kind=8):: xsave,ysave,zsave
+      integer(ISZ):: npd,ipmin,is,i
+      if (ipredcor == 0) then
+        do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          pgroup%pid(i,xoldpid)=pgroup%xp(i)
+          pgroup%pid(i,yoldpid)=pgroup%yp(i)
+          pgroup%pid(i,zoldpid)=pgroup%zp(i)
+        enddo
+      else
+        do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+          pgroup%xp(i)=pgroup%pid(i,xoldpid)
+          pgroup%yp(i)=pgroup%pid(i,yoldpid)
+          pgroup%zp(i)=pgroup%pid(i,zoldpid)
+        enddo
+      endif
+      return
+      end
 c=========================================================================
-c     subroutine getvperpparsq2(npd,ux,uy,uz)
-c     use Particles
-c     use DKInterptmp
-c     find uperp^2 and upar^2  (momentum/mass **2)
-c     calculate upar dot B
-c     integer(ISZ):: npd
-c     real(kind=8):: ux(npd),uy(npd),uz(npd)
+      subroutine set_polarization(rho,nx,nz,dx,dz,xmin,zmin)
+c     Sets epsilon and epszfac if there is an intpolated species.
+c     For now this only works with rz solver
+      use Inpart
+      use Ingen
+      use DKInterp
+      use Constant
+      integer(ISZ):: nx,nz,i,ngrd,is,isid
+      real(kind=8):: dx,dz,xmin,zmin
+      real(kind=8):: xgrid(0:nx,0:nz),zgrid(0:nx,0:nz),ygrid(0:nx,0:nz)
+      real(kind=8):: Bx(0:nx,0:nz),By(0:nx,0:nz),Bz(0:nx,0:nz)
+      real(kind=8):: Bsq(0:nx,0:nz),alphabar(0:nx,0:nz)
+      real(kind=8):: omegapsq(0:nx,0:nz),omegacsq(0:nx,0:nz),rho(0:nx,0:nz)
+      logical(ISZ):: check
+c     Construct a grid of x and z values, so we can get
+c     values of B on it.
+c      print*, "IN SET_POL"
+ 
+c     create grid for epsilon and epszfac
+      epsilon2d%xmin=0.
+      epsilon2d%ymin=0.
+      epsilon2d%dx=dx
+      epsilon2d%dy=dz
+      epsilon2d%nx=nx
+      epsilon2d%ny=nz
+c     shifted by floors following convention of Dave for density
+      call setupgrid2dtype(epsilon2d,check)
+      if (.not. check) then
+          print*,"ERROR: inconsistent data for setting up epsilon"
+          stop
+      endif
+      epszfac2d%xmin=0.
+      epszfac2d%ymin=0.
+      epszfac2d%dx=dx
+      epszfac2d%dy=dz
+      epszfac2d%nx=nx
+      epszfac2d%ny=nz
+      call setupgrid2dtype(epszfac2d,check)
+      if (.not. check) then
+          print*,"ERROR: inconsistent data for setting up epszfac"
+          stop
+      endif
 
-c     real(kind=8):: uparB
-c     integer(ISZ):: i,ip,ipmin1
-
-c     print*,"*******SETTING UPERPPAR"
-c     do i=1,npd
-c        uparB = ux(i)*bx(i) + uy(i)*by(i) + uz(i)*bz(i)
-c        uparoverB(i) = uparB*bsqi(i)
-c        uparsq(i) = uparB**2*bsqi(i)
-c        total momentum per mass squared:
-c        usq(i) = ux(i)**2 + uy(i)**2 + uz(i)**2
-c         uperpsq(i)=usq(i)-uparsq(i)
-c      enddo
-c      return
-c      end
-c=========================================================================
+      ngrd = (nx+1)*(nz+1)
+      do i=0,nz
+         zgrid(:,i) = zmin + i*dz/nz
+      enddo
+      do i = 0,nx
+         xgrid(i,:) = xmin + i*dx/nx
+      enddo
+      ygrid(0:nx,0:nz) = 0.
+      Bx = 0.
+      By = 0.
+      Bz = 0.
+c     get B components on this grid
+      call applybgrd(ngrd,xgrid,ygrid,ngrd,zgrid,.false.,Bx,By,Bz)
+      Bsq=Bx*Bx+By*By+Bz*Bz
+c     calculate interpolation parameter, 0 if magnetized, 1 if not
+c     For now, nonrelativistic.  Need to think about appropriate
+c     generalization for fields
+c     For now check to see if ANY species is interpolated; if so
+c     calculate epsilon for the last such species.  Need to 
+c     generalize.
+      do is = 1,ns
+       if (interpdk(is) == 1) then
+        omegacsq = qovermsq(is)*Bsq
+c        print*, "qovermsq,Bsq,dt,omegacsq", qovermsq(is),Bsq(0,0),dt,
+c     &       omegacsq(0,0)
+        alphabar = 1. - usealphacalc(is)/sqrt(1.+alphcoef*omegacsq*dt**2)  
+     &       - notusealphcalc(is)
+c       We should introduce partial density fractions.  But for our test
+c       just take the total density if a species is interpolated
+        if (lnonlinpol) then
+          omegapsq = rho/(m_over_q(is)*eps0)
+c         temporarily borrow epsilon for polarization piece
+c         print*, "omegacsq, omegapsq ",omegacsq(0,0),omegapsq(0,0)
+          epsilon2d%grid = omegapsq*alphabar/omegacsq
+        else
+          epsilon2d%grid = omegpomegcsq(is)*alphabar
+        endif
+        epszfac2d%grid = 1.+epsilon2d%grid*(1.-Bz*Bz/Bsq)
+        epsilon2d%grid = 1. + epsilon2d%grid*(1.-Bx*Bx/Bsq)
+        epszfac2d%grid = epszfac2d%grid/(epsilon2d%grid+SMALLPOS)
+       endif
+c       print*, "epsilon2d = ", epsilon2d(1,1)
+      enddo
+         
+      return
+      end
+c

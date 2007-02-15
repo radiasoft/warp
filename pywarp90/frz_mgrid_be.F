@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.23 $, $Date: 2007/01/29 17:03:04 $
+c version $Revision: 1.24 $, $Date: 2007/02/15 01:05:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -16,19 +16,26 @@ c=============================================================================
       use PSOR3d
       use Conductor3d
       use Multigrid3d
+      use Constant
       use InGen3d, only:solvergeom,RZgeom
       use Constant, only:eps0
       use Parallel
+      use DKInterp, only:interpdk,icalceps,iusing2deps
 c     use ifcore
       type(GRIDtype):: grid
-      real(kind=8):: accuracy
+      real(kind=8):: accuracy,rmax,zmax
+c      real(kind=8),allocatable:: iondensityarray(:,:)
+c      real(kind=8),allocatable:: epsilon(:,:),epszfac(:,:)
+      real(kind=8)aviondensity
+c      real(kind=8),allocatable:: electrontemparray(:,:)
 c     integer(4):: fff
 
       integer(ISZ):: ixbemin,ixbemax,izbemin,izbemax,id
-      logical(ISZ):: lrz
+      integer(ISZ):: i,j, ip1
+      logical(ISZ):: lrz,lanyuseparticledensity
       integer(ISZ):: nlevels
       real(kind=8):: wr,wz
-      logical(ISZ):: lanyuseparticleldensity,check
+      logical(ISZ):: check,lzavparticledensity
 c     call for_set_fpe(FPE_M_TRAP_INV)
 c     fff = for_set_fpe(15_4)
 
@@ -38,11 +45,13 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(4) = grid%izlbnd
       bounds(5) = grid%izrbnd
 
-c     --- Check for luseparticleldensity
-      lanyuseparticleldensity = .false.
+c     --- Check for luseparticledensity
+      lanyuseparticledensity = .false.
+      lzavparticledensity = .false.
       do id=1,nberegions
-        if (luseparticleldensity(id)) then
-          lanyuseparticleldensity = .true.
+        if (luseparticledensity(id) > 0) then
+          lanyuseparticledensity = .true.
+          if (luseparticledensity(id) ==  2) lzavparticledensity = .true.
           liondensitygrid2d(id) = .true.
 c         --- Find the extrema of all of the regions
           iondensitygrid2d%xmin = min(xbemin(id),iondensitygrid2d%xmin)
@@ -55,8 +64,10 @@ c         --- Make sure that are within the grid bounds
           iondensitygrid2d%ymin = max(grid%zmin,iondensitygrid2d%ymin)
           iondensitygrid2d%ymax = min(grid%zmax,iondensitygrid2d%ymax)
         endif
+        logelecdenmaxscale(id) = log(electrondensitymaxscale(id))
       enddo
-      if (lanyuseparticleldensity) then
+c
+      if (lanyuseparticledensity) then
 c       --- Force the min's and max's to coincide with field grid values
 c       --- Note that the min's and max's are relative to the field grid,
 c       --- so for example, the location if xmin in the lab frame is
@@ -76,21 +87,59 @@ c       --- Now dx and dz can be set.
 c       --- This will calculate nx and nz and make sure the input is OK.
         call setupgrid2dtype(iondensitygrid2d,check)
         if (.not. check) then
-          print*,"ERROR: luseparticleldensity is being used but the input data is inconsistent"
-          stop
+           print*,"ERROR: luseparticledensity is being used but the input data is inconsistent"
+           stop
         endif
+c     NOTE there is no analagous coding for electrontemperaturegrid2d as the user should
+c     set this up in a python script -- need to set all attributes of that object.
+        
 c       --- Now, copy the rho data into the iondensitygrid2d grid
         ixbemin = iondensitygrid2d%xmin/grid%dr
         ixbemax = iondensitygrid2d%xmax/grid%dr
         izbemin = iondensitygrid2d%ymin/grid%dz
         izbemax = iondensitygrid2d%ymax/grid%dz
-        iondensitygrid2d%grid(:,:) = grid%rho(ixbemin+1:ixbemax+1,izbemin+1:izbemax+1)
+c       Copy rho's into iondensitygrid2d.  If luseparticledensity = 2, then
+c        use the z-averaged value of rho.
+        if (lzavparticledensity) then
+           do i = ixbemin,ixbemax
+              ip1 = i+1
+c           NOTE grid%rho is 1-based, not 0-based, hence 1 offsets
+              aviondensity = 0
+              do j=izbemin+2,izbemax
+                 aviondensity=aviondensity+grid%rho(i+1,j)
+              enddo
+              aviondensity = aviondensity+0.5*(grid%rho(ip1,izbemin+1)
+     &           + grid%rho(ip1,izbemax+1))
+              aviondensity = aviondensity/max(1,izbemax-izbemin)
+              iondensitygrid2d%grid(i,:)= aviondensity
+           enddo
+        else
+           iondensitygrid2d%grid(:,:) = grid%rho(ixbemin+1:ixbemax+1,izbemin+1:izbemax+1)
+        endif
         iondensitygrid2d%grid(:,:) = iondensitygrid2d%grid(:,:)/eps0
       endif
+c
 
 c     --- Set flag for whether to do cylindrical or Cartesian.
       lrz = (solvergeom == RZgeom)
       nlevels = grid%nlevels
+
+c     --- Create arrays for polarization dielectric function.  These
+c     will be set to 1 as default; if we are interpolating any species,
+c     we calculate the dielectric in set_polarization, in w3d_interp.F
+c     Note we need these whether or not there are electrons at a 
+c     particular location, so this is not bounded by ixbemin,ixmbemax
+c     or izbemin,izbemax
+ 
+      iusing2deps = 0
+      if (maxval(interpdk) > 0 .and. icalceps > 0) then
+        call set_polarization(grid%rho,
+     &    grid%nr,grid%nz,grid%dr,grid%dz,grid%rmin,grid%zmin)
+        iusing2deps = 1
+      endif
+c      print*,"epsilon,epszfac", epsilon(0,0),epszfac(0,0)
+c     The epsilon defined as above is normalized to eps0, and epszfac
+c     is the ratio of the epsilon for z derivs to that for x derivs.  
 
       call multigridberzsolve(grid%nr,grid%nz,grid%nz,grid%dr,grid%dz,
      &                        grid%phi,grid%rho,
@@ -121,6 +170,7 @@ c=============================================================================
       use BNDtypemodule
       use Constant
       use BoltzmannElectrons
+      use DKInterp, only: iusing2deps,epsilon2d
       integer(ISZ):: nx,nz,nzfull
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
       real(kind=8):: rho(0:nx,0:nz)
@@ -147,7 +197,7 @@ c grid cell dimensions are roughly equal. Roughly equal means that
 c   2/3 dx < dz < 4/3 dx
 c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3.
 
-      integer(ISZ):: i,ii,k,ix,iz
+      integer(ISZ):: i,ii,k,ix,iz,j
       real(kind=8),allocatable:: phisave(:,:)
       real(kind=8):: xminodx
       character(72):: errline
@@ -162,7 +212,11 @@ c     --- This is presumably already taken care of elsewhere.
 !$OMP&PRIVATE(ii,i,k,ix,iz)
 
 c     --- Prepare rho by dividing it by -eps0
-      rho = -rho/eps0
+      if (iusing2deps > 0) then
+         rho = -rho/(eps0*epsilon2d%grid)
+      else
+         rho = -rho/eps0
+      endif
       iondensity = iondensity/eps0
 
 c     --- Calculate grid min in grid cells.
@@ -242,7 +296,11 @@ c     --- Make a print out.
       deallocate(regionid)
 
 c     --- Undo the change of rho
-      rho = -rho*eps0
+      if (iusing2deps > 0) then
+         rho = -rho*eps0*epsilon2d%grid
+      else
+         rho = -rho*eps0
+      endif
       iondensity = iondensity*eps0
 
 !$OMP END PARALLEL
@@ -644,14 +702,18 @@ c boundaries are periodic.
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       integer(ISZ):: ix1
       integer(ISZ):: ic,ii,id
-      real(kind=8):: rr
-      real(kind=8):: rhoe,rhoeote,denom,Lphi,expo
-      real(kind=8):: iondensitytmp
+      real(kind=8):: rr,epsilontmp,normfac,phiav
+      real(kind=8):: rhoe(0:nx,0:nz),rhoeote(0:nx,0:nz),denom,Lphi,expo
+      real(kind=8)::  boltzfac(0:nx,0:nz)
+      real(kind=8):: iondensitytmp,electemptmp,boltzfac1,epszfactmp
       type(CONDtype):: cnd
+      integer,save:: printed=0
+      real(kind=8):: phiold
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmgberz(bnd,nx,nz,phi,mglevel)
       call condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
+c     print*, "IN RELAXBE, iondensity =", iondensity(0,0), iondensity(4,4)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -690,38 +752,68 @@ c       --- grid refinement.
           enddo
         endif
 
+c       precompute Boltzmann factor and some other arrays
+        do ix = ixmin,ixmax
+           do iz = izmin,izmax
+              rhoe(ix,iz) = 0.
+              rhoeote(ix,iz) = 0.
+              if (regionid(ix,iz) > 0) then
+                id = regionid(ix,iz)
+                call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
+                call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
+                call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
+                if (iondensitytmp .ne. 0. .and.
+     &              electrontemperature(id) .ne. 0) then
+                  expo=(phi(ix,iz)-plasmapotential(id))/electemptmp
+                  if (.not. luselinboltz) then
+                     boltzfac(ix,iz) = exp(min(expo,logelecdenmaxscale(id)))
+                  else
+                     boltzfac(ix,iz) = 1.+ min(expo,logelecdenmaxscale(id))
+                  endif
+c                  print*,ix,iz, epsilontmp
+                  rhoe(ix,iz) = iondensitytmp*boltzfac(ix,iz)/epsilontmp
+                  rhoeote(ix,iz) = rhoe(ix,iz)/(electemptmp)
+                  ix1 = ixmin + mod(ixmin + iz + parity,2)
+c                  if (ix == ix1+2 .and. iz==izmin+1 .and. printed .lt. 10) then
+c                     print*,"iondensity,boltzfac,epsilon,electemp ",
+c     &                iondensitytmp,boltzfac(ix,iz),epsilontmp,electemptmp,rhoeote(ix,iz)
+c                   endif
+                endif
+              endif
+           enddo
+c          Normalize to z-averaged Boltzmann factor if requestted
+           if (lnormtoavboltzfac) then
+              normfac=nz/sum(boltzfac(ix,1:nz))
+              boltzfac(ix,izmin:izmax) = boltzfac(ix,izmin:izmax)*normfac
+              rhoe(ix,izmin:izmax)=rhoe(ix,izmin:izmax)*normfac*
+     &         (1.-boltzfac(ix,izmin:izmax)/nz)
+              rhoeote(ix,izmin:izmax)=rhoeote(ix,izmin:izmax)*normfac
+c           Note this doesn't quite do the conventional thing for linearized
+c           Boltzmann, but it saves doing interpolation of Te a second time
+c           and should be approximately right whenver linearization is
+c           valid
+           endif
+        enddo
+
         if (lrz) then
 !$OMP DO
           do iz=izmin,izmax
 
             ix1 = ixmin + mod(ixmin + iz + parity,2)
             do ix=ix1,ixmax,2
-
-              rhoe = 0.
-              rhoeote = 0.
-              if (regionid(ix,iz) > 0) then
-                id = regionid(ix,iz)
-                call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
-                if (iondensitytmp .ne. 0. .and.
-     &              electrontemperature(id) .ne. 0) then
-                  expo=(phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
-                  expo = min(expo,log(electrondensitymaxscale(id)))
-                  rhoe = iondensitytmp*exp(expo)
-                  rhoeote = rhoe/electrontemperature(id)
-                endif
-              endif
+              call getlocalepszfac(ix,iz,dx,dz,epszfactmp)
               rr = ix + xminodx
               if (rr == 0.) then
-                denom = -4.*dxsqi - 2.*dzsqi - rhoeote
+                denom = -4.*dxsqi - 2.*epszfactmp - rhoeote(ix,iz)
                 Lphi =  4.*(phi(1,iz) - phi(0,iz))*dxsqi
-     &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*dzsqi
-     &                   - rhoe
+     &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*epszfactmp
+     &                   - rhoe(ix,iz)
               else
-                denom = -2.*dxsqi - 2.*dzsqi - rhoeote
+                denom = -2.*dxsqi - 2.*epszfactmp - rhoeote(ix,iz)
                 Lphi =  ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
      &                   (rr+0.5)*phi(ix+1,iz))*dxsqi/rr
-     &                + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
-     &                - rhoe
+     &                + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*epszfactmp
+     &                - rhoe(ix,iz)
               endif
               phi(ix,iz) = phi(ix,iz) - mgparam*(Lphi - rho(ix,iz))/denom
             enddo
@@ -734,25 +826,21 @@ c       --- grid refinement.
             ix1 = ixmin + mod(ixmin + iz + parity,2)
             do ix=ix1,ixmax,2
 
-              rhoe = 0.
-              denom = -2.*(dxsqi+dzsqi)
-              if (regionid(ix,iz) > 0) then
-                id = regionid(ix,iz)
-                call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
-                if (iondensitytmp .ne. 0. .and.
-     &              electrontemperature(id) .ne. 0) then
-                  expo=(phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
-                  expo = min(expo,log(electrondensitymaxscale(id)))
-                  rhoe = iondensitytmp*exp(expo)
-                  denom = denom - rhoe/electrontemperature(id)
-                endif
-              endif
+              call getlocalepszfac(ix,iz,dx,dz,epszfactmp)
+              denom = -2.*(dxsqi+epszfactmp)-rhoeote(ix,iz)
               Lphi =  (phi(ix-1,iz  )+phi(ix+1,iz  ))*dxsqi
-     &             +  (phi(ix  ,iz-1)+phi(ix  ,iz+1))*dzsqi
-     &              -  phi(ix,iz)*2.*(dxsqi+dzsqi) - rhoe
+     &             +  (phi(ix  ,iz-1)+phi(ix  ,iz+1))*epszfactmp
+     &              -  phi(ix,iz)*2.*(dxsqi+epszfactmp) - rhoe(ix,iz)
+              phiold = phi(ix,iz)
               phi(ix,iz) = phi(ix,iz) - mgparam*(Lphi - rho(ix,iz))/denom
+c              if (ix == ix1+2 .and. iz==izmin+1 .and. printed .lt. 1000) then
+c               print*, "printed,denom,Lphi,phiold,phi ", printed,denom,Lphi,phiold,phi(ix,iz)
+c               print*, "dxsqi,epszfacdz,rhoeote",dxsqi,epszfactmp,rhoeote(ix,iz)
+               printed = printed + 1
+c              endif
             enddo
           enddo
+c          print*, "summed phi =", sum(phi)
 !$OMP END DO
         endif
            
@@ -778,6 +866,15 @@ c       --- guard planes are updated with the most recent values.
 c     --- end of loop over even and odd points
       enddo
 
+c     If we are normalizing Boltzman factor to its average, then 
+c     we need to fix the absolute value of phi.  For now do this by
+c     making the average of phi = 0.  THIS ONLY MAKES SENSE FOR 
+c     DOUBLY PERIODIC SYSTEM.
+      if (lnormtoavboltzfac) then
+         phiav = sum(phi(1:nx,1:nz))/(nx*nz)
+         phi = phi - phiav
+      endif
+c      print*, "end of relaxberez, phi = ", phi(ixmax,izmax),phi(ixmax,izmax-1)
       return
       end
 c=============================================================================
@@ -881,7 +978,7 @@ c not include Lphi.
       integer(ISZ):: ic,ii,i1,i2
       integer(ISZ):: ix,iz,id
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
-      real(kind=8):: iondensitytmp
+      real(kind=8):: iondensitytmp,electemptmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -1029,13 +1126,14 @@ c         --- calculate the new phi based on the boundary conditions
             denom = - Cx*delxsqi - Cz*delzsqi
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
+              call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
               if (iondensitytmp .ne. 0. .and.
-     &            electrontemperature(id) .ne. 0) then
-                expo = (pik - plasmapotential(id))/electrontemperature(id)
+     &            electemptmp .ne. 0) then
+                expo = (pik - plasmapotential(id))/electemptmp
                 expo = min(expo,log(electrondensitymaxscale(id)))
                 rhoe = iondensitytmp*exp(expo)
-                denom = denom - rhoe/electrontemperature(id)
+                denom = denom - rhoe/electemptmp
               endif
             endif
             Lphi = (pxm+pxp)*delxsqi + (pzm+pzp)*delzsqi - rhoe
@@ -1110,6 +1208,8 @@ c=============================================================================
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       real(kind=8):: phi(-1:nx+1,-1:nz+1)
       real(kind=8):: Lphi(-1:nx+1,-1:nz+1)
+      real(kind=8):: boltzfac(0:nx,0:nz)
+      real(kind=8):: iondenstmp,normfac,epszfactmp
       integer(ISZ):: regionid(0:nx,0:nz)
       integer(ISZ):: mglevel,bounds(0:5)
       logical(ISZ):: lrz,lcndbndy
@@ -1120,11 +1220,11 @@ c Calculate the Lphi on the grid including the BE term.
 c Note that this is note quite the residual since it does not have the
 c source term included, and so will no go to zero at convergence.
 
-      real(kind=8):: rhoe,expo
+      real(kind=8):: rhoe(-1:nx+1,-1:nz+1),expo,epsilontmp
       real(kind=8):: rr
       integer(ISZ):: ix,iz,ic,id
       integer(ISZ):: ixmin,ixmax,izmin,izmax
-      real(kind=8):: iondensitytmp
+      real(kind=8):: iondensitytmp,electemptmp
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
@@ -1136,6 +1236,40 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
+c     precompute Boltzmann factor and some other arrays
+      do ix = ixmin,ixmax
+         do iz = izmin,izmax
+            rhoe(ix,iz) = 0.
+            if (regionid(ix,iz) > 0) then
+               id = regionid(ix,iz)
+               call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
+               call getlocaldens(ix,iz,dx,dz,id,iondenstmp)
+               call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
+               if (iondensitytmp .ne. 0. .and.
+     &              electrontemperature(id) .ne. 0) then
+                  expo=(phi(ix,iz)-plasmapotential(id))/electemptmp
+                  if (.not. luselinboltz) then
+                     boltzfac(ix,iz) = exp(min(expo,logelecdenmaxscale(id)))
+                  else
+                     boltzfac(ix,iz) = 1.+ min(expo,logelecdenmaxscale(id))
+                  endif
+                  rhoe(ix,iz) = iondensitytmp*boltzfac(ix,iz)/epsilontmp
+               endif
+            endif
+         enddo
+c          Normalize to z-averaged Boltzmann factor if requestted
+         if (lnormtoavboltzfac) then
+            normfac=nz/sum(boltzfac(ix,1:nz))
+            boltzfac(ix,izmin:izmax) = boltzfac(ix,izmin:izmax)*normfac
+            rhoe(ix,izmin:izmax)=rhoe(ix,izmin:izmax)*normfac*
+     &         (1.-boltzfac(ix,izmin:izmax)/nz)
+c           Note this doesn't quite do the conventional thing for linearized
+c           Boltzmann, but it saves doing interpolation of Te a second time
+c           and should be approximately right whenver linearization is
+c           valid
+         endif
+      enddo
+
       Lphi = 0.
 c     --- Calculate the Lphi.
       if (lrz) then
@@ -1144,29 +1278,17 @@ c       --- RZ
         do iz=izmin,izmax
 
           do ix=ixmin,ixmax
-
-            rhoe = 0.
-            if (regionid(ix,iz) > 0) then
-              id = regionid(ix,iz)
-              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
-              if (iondensitytmp .ne. 0. .and.
-     &            electrontemperature(id) .ne. 0) then
-                expo = (phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
-                expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensitytmp*exp(expo)
-              endif
-            endif
-
+            call getlocalepszfac(ix,iz,dx,dz,epszfactmp)
             rr = ix + xminodx
             if (rr == 0.) then
               Lphi(ix,iz) = 4*(phi(1,iz) - phi(0,iz))*dxsqi
-     &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*dzsqi
-     &                   - rhoe
+     &                   + (phi(0,iz-1) - 2.*phi(0,iz) + phi(0,iz+1))*epszfactmp
+     &                   - rhoe(ix,iz)
             else
               Lphi(ix,iz) = ((rr-0.5)*phi(ix-1,iz) - 2*rr*phi(ix,iz) +
      &                      (rr+0.5)*phi(ix+1,iz))*dxsqi/rr
-     &                   + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
-     &                   - rhoe
+     &                   + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*epszfactmp
+     &                   - rhoe(ix,iz)
             endif
 
           enddo
@@ -1179,21 +1301,11 @@ c       --- XZ
 
           do ix=ixmin,ixmax
 
-            rhoe = 0.
-            if (regionid(ix,iz) > 0) then
-              id = regionid(ix,iz)
-              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
-              if (iondensitytmp .ne. 0. .and.
-     &            electrontemperature(id) .ne. 0) then
-                expo = (phi(ix,iz)-plasmapotential(id))/electrontemperature(id)
-                expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensitytmp*exp(expo)
-              endif
-            endif
+            call getlocalepszfac(ix,iz,dx,dz,epszfactmp)
 
             Lphi(ix,iz) = (phi(ix-1,iz) - 2.*phi(ix,iz) + phi(ix+1,iz))*dxsqi
-     &                  + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*dzsqi
-     &                  - rhoe
+     &                  + (phi(ix,iz-1) - 2.*phi(ix,iz) + phi(ix,iz+1))*epszfactmp
+     &                  - rhoe(ix,iz)
 
           enddo
         enddo
@@ -1262,7 +1374,7 @@ c include the dels.
       integer(ISZ):: ic,ii
       integer(ISZ):: ix,iz,id
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
-      real(kind=8):: iondensitytmp
+      real(kind=8):: iondensitytmp,electemptmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -1384,10 +1496,10 @@ c         --- calculate the new phi based on the boundary conditions
             rhoe = 0.
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
-              call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+              call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
               if (iondensitytmp .ne. 0. .and.
-     &            electrontemperature(id) .ne. 0) then
-                expo = (pik - plasmapotential(id))/electrontemperature(id)
+     &            electemptmp .ne. 0) then
+                expo = (pik - plasmapotential(id))/electemptmp
                 expo = min(expo,log(electrondensitymaxscale(id)))
                 rhoe = iondensitytmp*exp(expo)
               endif
@@ -1451,7 +1563,7 @@ c=============================================================================
 
       integer(ISZ):: ix,iz,id
       real(kind=8):: expo,phimax,rhomax
-      real(kind=8):: iondensitytmp
+      real(kind=8):: iondensitytmp,electemptmp
 
 c     --- Clamp phi to phimax. The phimax is calculated assuming that
 c     --- the max electron density will be the max of the iondensity and 
@@ -1460,10 +1572,11 @@ c     --- and the ion particle density (rho).
         do ix=0,nx
           if (regionid(ix,iz) > 0) then
             id = regionid(ix,iz)
-            call getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+            call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
+            call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
             if (iondensitytmp == 0.) cycle
-            rhomax = max(1.,-rho(ix,iz)/iondensitytmp)
-            phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
+            rhomax = max(electrondensitymaxscale(id),-rho(ix,iz)/iondensitytmp)
+            phimax = plasmapotential(id)+electemptmp*log(rhomax)
             if (phi(ix,iz) > phimax) phi(ix,iz) = phimax
           endif
         enddo
@@ -1494,23 +1607,27 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
       return
       end
 c=============================================================================
-      subroutine getiondensitytmp(ix,iz,dx,dz,id,iondensitytmp)
+      subroutine getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
+c     generate interpolated local iondensity and electron temperature
       use BoltzmannElectrons
       integer(ISZ):: ix,iz,id
-      real(kind=8):: dx,dz
+      real(kind=8):: dx,dz,reixx,reizz
       real(kind=8):: iondensitytmp
 
       real(kind=8):: xx,zz,wxx,wzz
       integer(ISZ):: ixx,izz
 
+c      print*,"ix,iz,id,liondensitygrid2d ", ix,iz,id,liondensitygrid2d
       iondensitytmp = 0.
       if (liondensitygrid2d(id)) then
         xx = ix*dx
         zz = iz*dz
-        ixx = (xx - iondensitygrid2d%xmin)/iondensitygrid2d%dx
-        izz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy
-        wxx = (xx - iondensitygrid2d%xmin)/iondensitygrid2d%dx-ixx
-        wzz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy-izz
+        reixx = (xx - iondensitygrid2d%xmin)/iondensitygrid2d%dx
+        reizz = (zz - iondensitygrid2d%ymin)/iondensitygrid2d%dy
+        ixx = reixx
+        izz = reizz
+        wxx = reixx-ixx
+        wzz = reizz-izz
         if (ixx+1 > iondensitygrid2d%nx) then
           ixx = iondensitygrid2d%nx-1
           wxx = 1.
@@ -1524,9 +1641,138 @@ c=============================================================================
      &       iondensitygrid2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
      &       iondensitygrid2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
      &       iondensitygrid2d%grid(ixx+1,izz+1)*    wxx *    wzz
+
       else if (iondensity(id) .ne. 0.) then
         iondensitytmp = iondensity(id)
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine getlocaltemp(ix,iz,dx,dz,id,electemptmp)
+c     generate interpolated local electemp and electron temperature
+      use BoltzmannElectrons
+      integer(ISZ):: ix,iz,id
+      real(kind=8):: dx,dz,reixx,reizz
+      real(kind=8):: electemptmp
+
+      real(kind=8):: xx,zz,wxx,wzz
+      integer(ISZ):: ixx,izz
+
+c      print*,"ix,iz,id,electemperature ", ix,iz,id,electrontemperature(id)
+      electemptmp = 0.
+      if (lelectrontemperaturegrid2d(id)) then
+        xx = ix*dx
+        zz = iz*dz
+        reixx = (xx - electrontemperaturegrid2d%xmin)/electrontemperaturegrid2d%dx
+        reizz = (zz - electrontemperaturegrid2d%ymin)/electrontemperaturegrid2d%dy
+        ixx = reixx
+        izz = reizz
+        wxx = reixx-ixx
+        wzz = reizz-izz
+        if (ixx+1 > electrontemperaturegrid2d%nx) then
+           ixx = electrontemperaturegrid2d%nx-1
+           wxx = 1.
+        endif
+        if (izz+1 > electrontemperaturegrid2d%ny) then
+           izz = electrontemperaturegrid2d%ny-1
+           wzz = 1.
+        endif
+        electemptmp =
+     &       electrontemperaturegrid2d%grid(ixx  ,izz  )*(1.-wxx)*(1.-wzz) +
+     &       electrontemperaturegrid2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
+     &       electrontemperaturegrid2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
+     &       electrontemperaturegrid2d%grid(ixx+1,izz+1)*    wxx *    wzz
+
+      else if (electrontemperature(id) .ne. 0.) then
+        electemptmp = electrontemperature(id)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine getlocalepsilon(ix,iz,dx,dz,epsilontmp)
+c     generate interpolated local epsilon2d and electron temperature
+      use DKInterp, only:interpdk,icalceps,epsilon2d,iusing2deps
+      use BoltzmannElectrons
+      integer(ISZ):: ix,iz,id
+      real(kind=8):: dx,dz,reixx,reizz
+      real(kind=8):: epsilontmp
+
+      real(kind=8):: xx,zz,wxx,wzz
+      integer(ISZ):: ixx,izz
+
+c      print*,"ix,iz,id,lepsilongrid2d ", ix,iz,id,lepsilon2d2d
+      epsilontmp = 0.
+      if (iusing2deps>0) then
+        xx = ix*dx
+        zz = iz*dz
+        reixx = (xx - epsilon2d%xmin)/epsilon2d%dx
+        reizz = (zz - epsilon2d%ymin)/epsilon2d%dy
+        ixx = reixx
+        izz = reizz
+        wxx = reixx-ixx
+        wzz = reizz-izz
+        if (ixx+1 > epsilon2d%nx) then
+           ixx = epsilon2d%nx-1
+           wxx = 1.
+        endif
+        if (izz+1 > epsilon2d%ny) then
+           izz = epsilon2d%ny-1
+           wzz = 1.
+        endif
+        epsilontmp =
+     &       epsilon2d%grid(ixx  ,izz  )*(1.-wxx)*(1.-wzz) +
+     &       epsilon2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
+     &       epsilon2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
+     &       epsilon2d%grid(ixx+1,izz+1)*    wxx *    wzz
+      else
+        epsilontmp = 1.
+      endif
+
+      return
+      end
+
+c=============================================================================
+      subroutine getlocalepszfac(ix,iz,dx,dz,epszfactmp)
+c     generate interpolated local epsilon2d and electron temperature
+      use DKInterp, only:interpdk,icalceps,epszfac2d,iusing2deps
+      use BoltzmannElectrons
+      integer(ISZ):: ix,iz,id
+      real(kind=8):: dx,dz,reixx,reizz
+      real(kind=8):: epszfactmp
+
+      real(kind=8):: xx,zz,wxx,wzz
+      integer(ISZ):: ixx,izz
+
+c      print*,"ix,iz,id,iusing2deps ", ix,iz,id,lepsilon2d2d
+      epszfactmp = 0.
+      if (iusing2deps>0) then
+        xx = ix*dx
+        zz = iz*dz
+        reixx = (xx - epszfac2d%xmin)/epszfac2d%dx
+        reizz = (zz - epszfac2d%ymin)/epszfac2d%dy
+        ixx = reixx
+        izz = reizz
+        wxx = reixx-ixx
+        wzz = reizz-izz
+        if (ixx+1 > epszfac2d%nx) then 
+           ixx = epszfac2d%nx-1
+           wxx = 1.
+        endif
+        if (izz+1 > epszfac2d%ny) then 
+           izz = epszfac2d%ny-1
+           wzz = 1.
+        endif
+        epszfactmp =
+     &       epszfac2d%grid(ixx  ,izz  )*(1.-wxx)*(1.-wzz) +
+     &       epszfac2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
+     &       epszfac2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
+     &       epszfac2d%grid(ixx+1,izz+1)*    wxx *    wzz
+      else
+        epszfactmp = 1.
+      endif
+      epszfactmp = epszfactmp/(dz*dz)
 
       return
       end

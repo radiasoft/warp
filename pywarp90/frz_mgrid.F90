@@ -8475,7 +8475,8 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
 #else
     tphi => g%phi
 #endif
-    if (efetch == 4) then
+    IF (efetch == 4) then
+    ! --- 2D counterpart of fetche3d's energy-conserving option
       ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
              + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*g%invdr
     else
@@ -8552,7 +8553,7 @@ else
   END do
 END if
 
-  return
+return
 end subroutine fieldweightxz
 
 subroutine fieldweightr(xp,yp,ex,ey,np)
