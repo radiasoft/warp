@@ -328,6 +328,10 @@ the diagnostic is of interest and is meaningfull.
           if self.boundxy == periodic: self.bounds[3] = neumann
           if self.forcesymmetries: self.xmmin = 0.
           if self.forcesymmetries: self.ymmin = 0.
+        if self.solvergeom == w3d.RZgeom:
+          self.bounds[0] = neumann
+          self.bounds[2] = neumann
+          self.bounds[3] = neumann
 
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
