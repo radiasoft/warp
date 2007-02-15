@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.2 $, $Date: 2007/02/03 02:41:51 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.3 $, $Date: 2007/02/15 23:31:57 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -34,6 +34,14 @@ c     --- Fill the transverse position arrays.
         xx(ix) = xmmin + ix*dx
         yy(ix) = 0.
       enddo
+      uz = -1.
+      gaminv = 1.
+      bendres = 0.
+      bendradi = LARGEPOS
+      ex = 0.
+      ey = 0.
+      ez = 0.
+      bongrid = 0.
 
 c     --- Get the B field, one iz line at a time. One iz is done at a
 c     --- time to save memory.
@@ -57,7 +65,9 @@ c=============================================================================
       function getcoefficientsesrz(nx,nz,dx,dz,xmmin,ns,qomdt,chi0,bongrid,
      &                             lcndbndy,icndbndy,conductors,lrz)
      &result(coeffs)
+      use Constant
       use ConductorTypemodule
+      use ImplicitMG2D
       real(kind=8),pointer:: coeffs(:,:,:,:)
       integer(ISZ):: nx,nz,ns
       real(kind=8):: dx,dz,xmmin
@@ -76,6 +86,8 @@ c=============================================================================
 
       allocate(coeffs(0:2,0:2,0:nx,0:nz))
       allocate(chi(0:1,0:1,-1:nx+1,-1:nz+1))
+c     --- Save python accessible reference to the coefficients
+      coeffs1 => coeffs
 
 c     --- First, generate the chi tensor from chi0 and the B field.
       chi = 0.
@@ -201,7 +213,7 @@ c   2/3 dx < dz < 4/3 dx
 c This keeps (max(dz,dx) - min(dz,dx))/dx < 1/3. Currently, it is still
 c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
 c
-c Note that chi0 is the (q/m/2*rho*dt**2) for each implicit species.
+c Note that chi0 is the (q/m/2*rho/eps0*dt**2) for each implicit species.
 
       integer(ISZ):: i,k,ix,iz
       real(kind=8),pointer:: bongrid(:,:,:)
@@ -393,7 +405,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8),allocatable:: chi0coarse(:,:,:),bongridcoarse(:,:,:)
       real(kind=8),allocatable:: res(:,:)
       integer(ISZ):: i,ic,iszone=1
-      real(kind=8):: ff
       integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dzcoarsesqi
@@ -574,8 +585,7 @@ c       --- Alloate new work space
         bongridcoarse = 0.
 
 c       --- Restriction
-        ff = 1.
-        call restrictes3d(nx,0,nz,nzfull,res,1,1,3,
+        call restrictes3d(nx,0,nz,nzfull,res,1,0,3,
      &                    nxcoarse,0,nzcoarse,nzfullcoarse,rhocoarse,0,0,0,
      &                    localbounds,localboundsc,lzoffset)
         if (larraysumdiagnostic) then
@@ -585,13 +595,13 @@ c       --- Restriction
         endif
 
         do ic=0,ns-1
-        call restrictes3d(nx,0,nz,nzfull,chi0(:,:,ic),1,1,3,
-     &                    nxcoarse,0,nzcoarse,nzfullcoarse,chi0coarse(:,:,ic),1,1,3,
-     &                    localbounds,localboundsc,lzoffset)
+          call restrictes3d(nx,0,nz,nzfull,chi0(:,:,ic),1,0,3,
+     &                      nxcoarse,0,nzcoarse,nzfullcoarse,chi0coarse(:,:,ic),1,0,3,
+     &                      localbounds,localboundsc,lzoffset)
         enddo
         do ic=0,2
-          call restrictes3d(nx,0,nz,nzfull,bongrid(:,:,ic),1,1,3,
-     &                      nxcoarse,0,nzcoarse,nzfullcoarse,bongridcoarse(:,:,ic),1,1,3,
+          call restrictes3d(nx,0,nz,nzfull,bongrid(:,:,ic),1,0,3,
+     &                      nxcoarse,0,nzcoarse,nzfullcoarse,bongridcoarse(:,:,ic),1,0,3,
      &                      localbounds,localboundsc,lzoffset)
         enddo
         call applyboundaryconditionsesrz(chi0coarse,nxcoarse,0,nzcoarse,nzfullcoarse,1,0,3,ns,localboundsc)
@@ -676,6 +686,7 @@ c ordering.
 
       integer(ISZ):: parity,s_parity,e_parity
       integer(ISZ):: ixmin,ixmax,izmin,izmax,ix,iz,ix1
+      integer(ISZ):: ixm1,ixp1,izm1,izp1
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -702,18 +713,26 @@ c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
 
         do iz=izmin,izmax
+          izm1 = iz - 1
+          izp1 = iz + 1
           ix1 = ixmin + mod(ixmin + iz + parity,2)
           do ix=ix1,ixmax,2
+            ixm1 = ix - 1
+            if (ix==0 .and. bounds(0) == 1) ixm1 = 1
+            if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
+            ixp1 = ix + 1
+            if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
+            if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
             phi(ix,iz) = mgparam*(rho(ix,iz)/eps0 +
-     &                            coeffs(0,0,ix,iz)*phi(ix-1,iz-1) +
-     &                            coeffs(1,0,ix,iz)*phi(ix  ,iz-1) +
-     &                            coeffs(2,0,ix,iz)*phi(ix+1,iz-1) +
-     &                            coeffs(0,1,ix,iz)*phi(ix-1,iz  ) +
-     &                            coeffs(2,1,ix,iz)*phi(ix+1,iz  ) +
-     &                            coeffs(0,2,ix,iz)*phi(ix-1,iz+1) +
-     &                            coeffs(1,2,ix,iz)*phi(ix  ,iz+1) +
-     &                            coeffs(2,2,ix,iz)*phi(ix+1,iz+1))/
+     &                            coeffs(0,0,ix,iz)*phi(ixm1,izm1) +
+     &                            coeffs(1,0,ix,iz)*phi(ix  ,izm1) +
+     &                            coeffs(2,0,ix,iz)*phi(ixp1,izm1) +
+     &                            coeffs(0,1,ix,iz)*phi(ixm1,iz  ) +
+     &                            coeffs(2,1,ix,iz)*phi(ixp1,iz  ) +
+     &                            coeffs(0,2,ix,iz)*phi(ixm1,izp1) +
+     &                            coeffs(1,2,ix,iz)*phi(ix  ,izp1) +
+     &                            coeffs(2,2,ix,iz)*phi(ixp1,izp1))/
      &                           (-coeffs(1,1,ix,iz)) +
      &                   (1.-mgparam)*phi(ix,iz)
 
@@ -790,7 +809,7 @@ c     --- Calculate the residual.
           if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
           if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
 
-          res(ix,iz) = (rho(ix,iz)/eps0 +
+          res(ix,iz) = rho(ix,iz) + eps0*(
      &                  coeffs(0,0,ix,iz)*phi(ixm1,izm1) +
      &                  coeffs(1,0,ix,iz)*phi(ix  ,izm1) +
      &                  coeffs(2,0,ix,iz)*phi(ixp1,izm1) +
@@ -861,10 +880,15 @@ c     --- Set the loop limits, always including edges.
       if (bounds(5) == 0) izcoarsemax = nzcoarse - 1
 
       dx = 1.*nx/nxcoarse
-      dy = 1.*ny/nycoarse
-      dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
-      dyi = 1.*nycoarse/ny
+      if (ny > 0) then
+        dy = 1.*ny/nycoarse
+        dyi = 1.*nycoarse/ny
+      else
+        dy = 1.
+        dyi = 1.
+      endif
+      dz = 1.*nzfull/nzfullcoarse
       dzi = 1.*nzfullcoarse/nzfull
 
 c     --- Do the loops.
