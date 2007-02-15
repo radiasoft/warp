@@ -1929,6 +1929,7 @@ END subroutine interpolate_any_1d
 
 function restrict_pof2(f, ixrbnd, izlbnd, izrbnd)
 ! restrict field from one grid to a coarser one. Each dimension is assumed to be a power of two.
+! Note that this is a generic 2-D routine and there is no special treatment for the cells on axis in RZ.
 implicit none
 
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: f
@@ -2051,6 +2052,7 @@ end function restrict_pof2
 
 function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
+! Note that this is a generic 2-D routine and there is no special treatment for the cells on axis in RZ.
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
@@ -2167,7 +2169,8 @@ subroutine subrestrict(unew, uold, nxnew, nznew, &
                        xminold, xmaxold, zminold, zmaxold,  &
                        xminnew, xmaxnew, zminnew, zmaxnew, &
                        izlbnd, izrbnd)
-! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
+! Restricts field from one grid to a coarser one. Each dimension may have any number of cells.
+! Note that this is a generic 2-D routine and there is no special treatment for the cells on axis in RZ.
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, izlbnd, izrbnd
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
@@ -10403,6 +10406,7 @@ end subroutine sum_neighbors
 subroutine multigridrzb(iwhich,iaxis,u0,rho0,nr0,nz0,accuracy)
 use BWorkRZ
 use GlobalVars,only: dirichlet
+use Constant,only:mu0
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, iaxis, nr0, nz0
 REAL(8), INTENT(IN OUT),TARGET :: u0(0:nr0+2,0:nz0+2)
@@ -10424,7 +10428,7 @@ integer(ISZ):: ixlbnd
     bworkgrid%lmagnetostatic = .false.
   endif
 
-  call solve_mgridrz(bworkgrid,accuracy,.true.)
+  call solve_mgridrz(bworkgrid,accuracy*mu0,.true.)
 
   bworkgrid%ixlbnd = ixlbnd
 
