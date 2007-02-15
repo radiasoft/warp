@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.130 $, $Date: 2006/12/19 22:43:42 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.131 $, $Date: 2007/02/15 23:36:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1181,7 +1181,7 @@ c The expansion is only transverse.
      &                           wy *    wz *phicoarse(nxcoarse,jy+1,jz+1)
             enddo
           endif
-          if (bounds(1) > 0) then
+          if (bounds(3) > 0) then
             do ix=0,nx-1
               jx = int(ix*dx)
               wx =     ix*dx - jx
