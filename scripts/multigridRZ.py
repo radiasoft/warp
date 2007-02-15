@@ -255,7 +255,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     n  = len(x)
     if n == 0: return
     sourcep = transpose(self.sourcep)
-    sourcep.shape = (1+self.nxp,1,1+self.nzp)
+    sourcep.shape = (1+self.nzp,1,1+self.nxp)
     sourcep = transpose(sourcep)
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
@@ -389,11 +389,13 @@ Initially, conductors are not implemented.
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __frzinputs__ = ['mgridrz_ncycles','nguardx','nguardz']
+  __frzinputs__ = ['nguardx','nguardz']
 
   def __init__(self,lreducedpickle=1,**kw):
     self.solvergeom = w3d.RZgeom
     kw['lreducedpickle'] = lreducedpickle
+    self.nguardx = 0
+    self.nguardz = 1
 
     # --- Force xmmin to be zero if using RZgeom
     if self.solvergeom == w3d.RZgeom:
@@ -437,13 +439,16 @@ Initially, conductors are not implemented.
     self.nzguard = self.nguardz
 
     # --- Create a conductor object, which by default is empty.
-    self.conductors = None
+    self.conductors = ConductorType()
     self.conductorlist = []
     self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
     self.mgerror = 0.
+
+    # --- Turn of build quads option
+    self.lbuildquads = false
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
@@ -456,6 +461,7 @@ Initially, conductors are not implemented.
     for conductor in self.newconductorlist:
       self.installconductor(conductor)
     self.newconductorlist = []
+    return self.conductors
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
@@ -494,7 +500,7 @@ Initially, conductors are not implemented.
     n  = len(x)
     if n == 0: return
     sourcep = transpose(self.sourcep)
-    sourcep.shape = (1+self.nxp,1,1+self.nzp)
+    sourcep.shape = (1+self.nzp,1,1+self.nxp)
     sourcep = transpose(sourcep)
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
@@ -573,7 +579,9 @@ Initially, conductors are not implemented.
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
-                      solvergeom=self.solvergeom,gridrz=self.grid)
+                      solvergeom=self.solvergeom,conductors=self.conductors,
+                      my_index=self.my_index,nslaves=self.nslaves,
+                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
   def hasconductors(self):
     "This is not used anywhere"
@@ -585,11 +593,44 @@ Initially, conductors are not implemented.
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
     "This needs to be thought through"
-    pass
-    #find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
-    #             solver=self,pkg3d=self)
+    self.phi = self.potential
+    # --- This is a kludge to get around the fieldsolve routine in
+    # --- find_mgparam having to know about 2d versus 3d arrays.
+    lsavephi = true
+    self.phi[...] = 0.
+    find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+                 solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
+    #self.dosolvesuperlu(iwhich,*args)
+    self.dosolvemg(iwhich,*args)
+
+  def dosolvemg(self,iwhich=0,*args):
+
+    qomdt = top.pgroup.sq/top.pgroup.sm*top.dt
+    chi0 = fzeros(self.source.shape,'d')
+    chi0[...] = 0.5*qomdt[0]*top.dt*self.source/eps0
+    mgiters = zeros(1)
+    mgerror = zeros(1,'d')
+    conductorobject = self.getconductorobject()
+
+    mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz,
+                        self.potential,self.source,
+                        top.ns,qomdt,chi0,
+                        self.bounds,self.xmmin,self.zmmin,self.zmminglobal,top.zbeam,top.zgrid,
+                        self.mgparam,mgiters,self.mgmaxiters,
+                        self.mgmaxlevels,mgerror,self.mgtol,
+                        self.downpasses,self.uppasses,
+                        self.lcndbndy,self.laddconductor,self.icndbndy,self.lbuildquads,
+                        self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+
+    self.mgiters = mgiters[0]
+    self.mgerror = mgerror[0]
+
+
+  def dosolvesuperlu(self,iwhich=0,*args):
+    "Note that this does not actually include the implicit susecptibility"
     #self.grid.rho = self.source
     #self.grid.phi = self.potential
     #solve_mgridrz(self.grid,self.mgtol,false)
