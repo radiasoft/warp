@@ -148,7 +148,7 @@ def fieldsolregistered():
 def fetcheregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetche()
+    f.fetche(lfirstsolver=(f==_fieldsolvers[0]))
 def fetchbregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
@@ -768,7 +768,7 @@ class SubcycledPoissonSolver(FieldSolver):
   def loadj(self,lzero=true,**kw):
     pass
 
-  def fetchfield(self,**kw):
+  def fetchfield(self,*args,**kw):
     'Fetches the field, uses arrays from w3d module FieldSolveAPI'
     if w3d.npfsapi == 0: return
     # --- First, check how the data is being passed.
@@ -805,6 +805,23 @@ class SubcycledPoissonSolver(FieldSolver):
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       args = [x,y,z,ex,ey,ez,bx,by,bz,w3d.pgroupfsapi]
 
+    # --- This is a kludgy fix to allow multiple fieldsolvers to be used
+    # --- at the same time.
+    # --- If this is not the first solver, then create temporary arrays
+    # --- for the field quantities which are later copied back into the
+    # --- originals. This needs to be done since the base field fetching
+    # --- routines set the fields rather then accumulate, so a second
+    # --- call would overwrite the fields from the first.
+    if not kw['lfirstsolver']:
+      exorig = ex
+      eyorig = ey
+      ezorig = ez
+      bxorig = bx
+      byorig = by
+      bzorig = bz
+      ex,ey,ez = zeros((3,len(ex)),'d')
+      bx,by,bz = zeros((3,len(bx)),'d')
+
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
     else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
@@ -814,7 +831,16 @@ class SubcycledPoissonSolver(FieldSolver):
     iselfb = top.iselfb[jsid]
     self.setpotentialpforparticles(None,indts,iselfb)
     self.setfieldpforparticles(None,indts,iselfb)
-    self.fetchfieldfrompositions(*args,**kw)
+    self.fetchfieldfrompositions(*args)
+
+    # --- Now copy the data into the original arrays.
+    if not kw['lfirstsolver']:
+      exorig[:] += ex
+      eyorig[:] += ey
+      ezorig[:] += ez
+      bxorig[:] += bx
+      byorig[:] += by
+      bzorig[:] += bz
 
   def fetchpotential(self):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
