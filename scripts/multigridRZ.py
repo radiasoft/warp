@@ -231,8 +231,8 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
 
-  def fetche(self,*args):
-    SubcycledPoissonSolver.fetchfield(self,*args)
+  def fetche(self,*args,**kw):
+    SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
@@ -476,8 +476,8 @@ Initially, conductors are not implemented.
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
 
-  def fetche(self,*args):
-    SubcycledPoissonSolver.fetchfield(self,*args)
+  def fetche(self,*args,**kw):
+    SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
