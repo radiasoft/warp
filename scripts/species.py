@@ -141,9 +141,7 @@ Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2',name='Carbon_Dioxide')
 Water           = Molecule(mass=18.*amu, Symbol='H2O',name='Water')
 
 class Species:
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
-                    fselfb=None):
-    """
+  """
 Creates a new species of particles. All arguments are optional.
   - js=None: global species number (usually this should not be set)
   - type=Electron: one of either an elementary particle, an element, or one of
@@ -157,7 +155,9 @@ Creates a new species of particles. All arguments are optional.
   - name='': species name
   - nautodt=1: number of species to setup for automatic subcycling.
                The slowest will have dt = 2**(nautodt-1)*top.dt.
-    """
+  """
+  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
+                    fselfb=None):
     self.jslist=[]
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
