@@ -53,8 +53,8 @@ fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
 	Forthon -a $(FCOMP) $(DEBUG) --macros top.v wrz dwrz.F
 
-frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz.v frzslave.F90
-	Forthon -a $(FCOMP) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90
+frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_ImplicitES.F frz.v frzslave.F90
+	Forthon -a $(FCOMP) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90 frz_ImplicitES.F
 
 herpy.$(SO): toppy.$(SO) her.F her.v
 	Forthon -a $(FCOMP) $(DEBUG) her
