@@ -270,7 +270,7 @@ the diagnostic is of interest and is meaningfull.
                    'my_index','nslaves','lfsautodecomp','zslave','lautodecomp']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
-                    'ldosolve':1}
+                    'ldosolve':1,'debug':0}
 
   def __init__(self,**kw):
     try:
@@ -727,6 +727,7 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
+    if not self.ldosolve: return
     if lzero is None: lzero = w3d.lzerorhofsapi
     self.allocatedataarrays()
     if lzero: self.zerosourcep()
@@ -737,6 +738,24 @@ class SubcycledPoissonSolver(FieldSolver):
         indts = top.ndtstorho[top.pgroup.ndts[js]-1]
         iselfb = top.pgroup.iselfb[js]
         self.setsourcepforparticles(0,indts,iselfb)
+
+        if self.debug:
+          i1 = top.pgroup.ins[js]-1
+          i2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
+          if self.nx > 0:
+            x = top.pgroup.xp[i1:i2]
+            assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
+                   "Particles out of range in x when depositing the source"
+          if self.ny > 0:
+            y = top.pgroup.yp[i1:i2]
+            assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
+                   "Particles out of range in y when depositing the source"
+          if self.nz > 0:
+            z = top.pgroup.zp[i1:i2]
+            assert (min(z) >= self.zmmin+top.zgridndts[indts] and
+                    max(z) < self.zmmax+top.zgridndts[indts]),\
+                   "Particles out of range in z when depositing the source"
+
         self.setsourcep(js,top.pgroup,top.zgridndts[indts])
 
     if lzero:
@@ -805,6 +824,17 @@ class SubcycledPoissonSolver(FieldSolver):
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       args = [x,y,z,ex,ey,ez,bx,by,bz,w3d.pgroupfsapi]
 
+    if self.debug:
+      if self.nx > 0:
+        assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
+               "Particles out of range in x when fetching the field"
+      if self.ny > 0:
+        assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
+               "Particles out of range in y when fetching the field"
+      if self.nz > 0:
+        assert min(z) >= self.zmmin+top.zgridprv and max(z) < self.zmmax+top.zgridprv,\
+               "Particles out of range in z when fetching the field"
+
     # --- This is a kludgy fix to allow multiple fieldsolvers to be used
     # --- at the same time.
     # --- If this is not the first solver, then create temporary arrays
@@ -851,6 +881,17 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- One of w3d.phifsapi or w3d.afsapi must be associated.
     try:    potential = w3d.phifsapi
     except: potential = w3d.afsapi
+
+    if self.debug:
+      if self.nx > 0:
+        assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
+               "Particles out of range in x when fetching the potential"
+      if self.ny > 0:
+        assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
+               "Particles out of range in y when fetching the potential"
+      if self.nz > 0:
+        assert min(z) >= self.zmmin and max(z) < self.zmmax,\
+               "Particles out of range in z when fetching the potential"
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
