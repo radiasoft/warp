@@ -289,11 +289,13 @@ Creates a new species of particles. All arguments are optional.
       # --- put particles at xmax etc.
       if ymax > ymin:
         n = nint(np**(1./3.))
+        np = n**3
         x,y,z = getmesh3d(xmin,(xmax-xmin)/n,n-1,
                           ymin,(xmax-xmin)/n,n-1,
                           zmin,(xmax-xmin)/n,n-1)
       else:
         n = nint(np**(1./2.))
+        np = n**2
         x,z = getmesh2d(xmin,(xmax-xmin)/n,n-1,
                         zmin,(xmax-xmin)/n,n-1)
         y = zeros((n,n),'d')
