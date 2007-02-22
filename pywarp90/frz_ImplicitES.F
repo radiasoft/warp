@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.3 $, $Date: 2007/02/15 23:31:57 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.4 $, $Date: 2007/02/22 00:26:56 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -480,8 +480,8 @@ c       --- Get the residual on the current grid.
         call residualesrz(nx,nz,nzfull,phi,rho,coeffs,res,
      &                    mglevel,localbounds,mgparam)
 #ifdef MPIPARALLEL
-        call applyparallelboundaryconditionsesrz(res,nx,ny,nz,nzfull,1,0,3,1,3
-     &                                           bounds,
+        call applyparallelboundaryconditionsesrz(res,nx,0,nz,nzfull,1,0,3,1,3,
+     &                                           localbounds,
      &                                           my_index,nslaves,
      &                                           izfsslave,nzfsslave,
      &                                           whosendingleft,izsendingleft,
