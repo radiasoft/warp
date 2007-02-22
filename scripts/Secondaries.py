@@ -19,7 +19,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.14 2007/02/13 00:40:49 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.15 2007/02/22 23:55:17 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -204,8 +204,8 @@ Class for generating secondaries
           self.pid[js]=fzeros([self.npmax,top.npid],'d')
 
   def install(self):
-    if not isinstalledbeforelr(self.generate):
-      installbeforelr(self.generate)
+    if not isinstalledbeforeloadrho(self.generate):
+      installbeforeloadrho(self.generate)
 
   def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None,itype=None):
     if self.nps[js]+nn>self.npmax:self.flushpart(js)
