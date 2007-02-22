@@ -22,7 +22,7 @@ included, up B0'''.
 """
 from warp import *
 from lattice import addnewmmlt
-solenoid_version = "$Id: solenoid.py,v 1.2 2006/01/27 21:43:16 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.3 2007/02/22 23:00:12 sharp Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -116,14 +116,15 @@ def Br(r,z,zcent,k,R,l):
 #               (R**2 + (l/2. + z)**2)**-1.5)))/32.)
 
 
-def addsolenoid(zi,zf,ri,ro,current,nzpoints=10000,fringelen=10.):
+def addsolenoid(zi,zf,ri,ro,maxbz=None,current=0.,nzpoints=10000,fringelen=10.):
   """
 Adds a solenoid element as an mmlt lattice element.
  - zi: z start of the current sheet
  - zf: z end of the current sheet
  - ri: inner radius of the sheet
  - ro: outer radius of the sheet
- - current: current in the sheet, in units of Ampere-turns/meter
+ - maxbz: maximum Bz field in T; used to calculate current if specified
+ - current: current in the sheet, in units of Ampere-turns/meter; ignored for nonzero maxbz
  - nzpoints=10000: number of points in the table generated
  - fringelen=10.: length of region before and after the current sheet to
                   include the field fringe, in units of the sheet radius
@@ -133,6 +134,11 @@ by ri. The fringelen uses the actual sheet radius.
   zcent = (zi + zf)/2.
   R = (ri + ro)/2.
   l = (zf - zi)
+  
+  if maxbz is not None:
+    current = maxbz * sqrt(4.0*(R/l)**2 + 1.0) / mu0
+  if current == 0.0:
+    print 'warning: solenoid with zero current at zcent = %-6.3f' % zcent
   zs = zi - fringelen*R
   ze = zf + fringelen*R
   ap = ri
