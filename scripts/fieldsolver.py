@@ -923,7 +923,8 @@ class SubcycledPoissonSolver(FieldSolver):
       for iselfb in range(top.nsselfb-1,-1,-1):
         self.dosolveonpotential(iwhich,top.nrhopndtscopies-1,indts,iselfb)
 
-    gc.collect()
+    # --- Is this still needed? It seems to slow things down alot.
+    #gc.collect()
 
   def getpdims(self):
     raise """getpdims must be supplied - it should return a list of the dimensions
