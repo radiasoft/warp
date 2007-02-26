@@ -744,17 +744,22 @@ class SubcycledPoissonSolver(FieldSolver):
           i2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
           if self.nx > 0:
             x = top.pgroup.xp[i1:i2]
-            assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
-                   "Particles out of range in x when depositing the source"
+            assert min(abs(x-self.xmmin)) >= 0.,\
+                   "Particles in species %d have x below the grid when depositing the source"%js
+            assert max(x) < self.xmmax,\
+                   "Particles in species %d have x above the grid when depositing the source"%js
           if self.ny > 0:
             y = top.pgroup.yp[i1:i2]
-            assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
-                   "Particles out of range in y when depositing the source"
+            assert min(abs(y-self.ymmin)) >= 0.,\
+                   "Particles in species %d have y below the grid when depositing the source"%js
+            assert max(y) < self.ymmax,\
+                   "Particles in species %d have y above the grid when depositing the source"%js
           if self.nz > 0:
             z = top.pgroup.zp[i1:i2]
-            assert (min(z) >= self.zmmin+top.zgridndts[indts] and
-                    max(z) < self.zmmax+top.zgridndts[indts]),\
-                   "Particles out of range in z when depositing the source"
+            assert min(z) >= self.zmmin+top.zgridndts[indts],\
+                   "Particles in species %d have z below the grid when depositing the source"%js
+            assert max(z) < self.zmmax+top.zgridndts[indts],\
+                   "Particles in species %d have z above the grid when depositing the source"%js
 
         self.setsourcep(js,top.pgroup,top.zgridndts[indts])
 
@@ -825,15 +830,22 @@ class SubcycledPoissonSolver(FieldSolver):
       args = [x,y,z,ex,ey,ez,bx,by,bz,w3d.pgroupfsapi]
 
     if self.debug:
+      js = w3d.jsfsapi
       if self.nx > 0:
-        assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
-               "Particles out of range in x when fetching the field"
+        assert min(abs(x-self.xmmin)) >= 0.,\
+               "Particles in species %d have x below the grid when fetching the field"%js
+        assert max(x) < self.xmmax,\
+               "Particles in species %d have x above the grid when fetching the field"%js
       if self.ny > 0:
-        assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
-               "Particles out of range in y when fetching the field"
+        assert min(abs(y-self.ymmin)) >= 0.,\
+               "Particles in species %d have y below the grid when fetching the field"%js
+        assert max(y) < self.ymmax,\
+               "Particles in species %d have y above the grid when fetching the field"%js
       if self.nz > 0:
-        assert min(z) >= self.zmmin+top.zgridprv and max(z) < self.zmmax+top.zgridprv,\
-               "Particles out of range in z when fetching the field"
+        assert min(z) >= self.zmmin+top.zgridprv,\
+               "Particles in species %d have z below the grid when fetching the field"%js
+        assert max(z) < self.zmmax+top.zgridprv,\
+               "Particles in species %d have z above the grid when fetching the field"%js
 
     # --- This is a kludgy fix to allow multiple fieldsolvers to be used
     # --- at the same time.
@@ -884,14 +896,20 @@ class SubcycledPoissonSolver(FieldSolver):
 
     if self.debug:
       if self.nx > 0:
-        assert min(abs(x-self.xmmin)) >= 0. and max(x) < self.xmmax,\
-               "Particles out of range in x when fetching the potential"
+        assert min(abs(x-self.xmmin)) >= 0.,\
+               "Particles have x below the grid when fetching the potential"
+        assert max(x) < self.xmmax,\
+               "Particles have x below the grid when fetching the potential"
       if self.ny > 0:
-        assert min(abs(y-self.ymmin)) >= 0. and max(y) < self.ymmax,\
-               "Particles out of range in y when fetching the potential"
+        assert min(abs(y-self.ymmin)) >= 0.,\
+               "Particles have y below the grid when fetching the potential"
+        assert max(y) < self.ymmax,\
+               "Particles have y below the grid when fetching the potential"
       if self.nz > 0:
-        assert min(z) >= self.zmmin and max(z) < self.zmmax,\
-               "Particles out of range in z when fetching the potential"
+        assert min(z) >= self.zmmin,\
+               "Particles have z below the grid when fetching the potential"
+        assert max(z) < self.zmmax,\
+               "Particles have z below the grid when fetching the potential"
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
