@@ -963,8 +963,8 @@ c=========================================================================
       subroutine set_polarization(rho,nx,nz,dx,dz,xmin,zmin)
 c     Sets epsilon and epszfac if there is an intpolated species.
 c     For now this only works with rz solver
-      use Inpart
-      use Ingen
+      use InPart
+      use InGen
       use DKInterp
       use Constant
       integer(ISZ):: nx,nz,i,ngrd,is,isid
