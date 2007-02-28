@@ -267,10 +267,11 @@ the diagnostic is of interest and is meaningfull.
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
-                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp']
+                   'my_index','nslaves','lfsautodecomp','zslave','lautodecomp',
+                   'debug']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
-                    'ldosolve':1,'debug':0}
+                    'ldosolve':1}
 
   def __init__(self,**kw):
     try:
@@ -801,6 +802,9 @@ class SubcycledPoissonSolver(FieldSolver):
       # --- don't pass in a pgroup. Note the try is used since
       # --- in many cases, either the E's or B's will not be associated,
       # --- in which case an exception is raised.
+      x = w3d.xfsapi
+      y = w3d.yfsapi
+      z = w3d.zfsapi
       try:    ex = w3d.exfsapi
       except: ex = zeros((0,), 'd')
       try:    ey = w3d.eyfsapi
@@ -813,8 +817,7 @@ class SubcycledPoissonSolver(FieldSolver):
       except: by = zeros((0,), 'd')
       try:    bz = w3d.bzfsapi
       except: bz = zeros((0,), 'd')
-      args = [w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-              ex,ey,ez,bx,by,bz,w3d.getpyobject('pgroupfsapi')]
+      pgroup = w3d.getpyobject('pgroupfsapi')
     else:
       # --- Otherwise, use data from w3d.pgroupfsapi.
       ipmin = w3d.ipminfsapi
@@ -827,7 +830,7 @@ class SubcycledPoissonSolver(FieldSolver):
       bx = w3d.pgroupfsapi.bx[ipmin-1:ipmin-1+w3d.npfsapi]
       by = w3d.pgroupfsapi.by[ipmin-1:ipmin-1+w3d.npfsapi]
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
-      args = [x,y,z,ex,ey,ez,bx,by,bz,w3d.pgroupfsapi]
+      pgroup = w3d.pgroupfsapi
 
     if self.debug:
       js = w3d.jsfsapi
@@ -863,6 +866,8 @@ class SubcycledPoissonSolver(FieldSolver):
       bzorig = bz
       ex,ey,ez = zeros((3,len(ex)),'d')
       bx,by,bz = zeros((3,len(bx)),'d')
+
+    args = [x,y,z,ex,ey,ez,bx,by,bz,pgroup]
 
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
