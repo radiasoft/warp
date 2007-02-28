@@ -134,6 +134,9 @@ class MultiGrid(SubcycledPoissonSolver):
   def fetche(self,*args,**kw):
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
+  def fetchphi(self,*args,**kw):
+    SubcycledPoissonSolver.fetchpotential(self,*args,**kw)
+
   def setsourcep(self,js,pgroup,zgrid):
     n  = pgroup.nps[js]
     if n == 0: return
