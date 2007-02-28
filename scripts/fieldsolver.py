@@ -156,11 +156,11 @@ def fetchbregistered():
 def fetchphiregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetchphi()
+    f.fetchphi(lfirstsolver=(f==_fieldsolvers[0]))
 def fetcharegistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetcha()
+    f.fetcha(lfirstsolver=(f==_fieldsolvers[0]))
 def rhodiaregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
@@ -889,7 +889,7 @@ class SubcycledPoissonSolver(FieldSolver):
       byorig[:] += by
       bzorig[:] += bz
 
-  def fetchpotential(self):
+  def fetchpotential(self,*args,**kw):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
     if w3d.npfsapi == 0: return
     x = w3d.xfsapi
@@ -916,6 +916,11 @@ class SubcycledPoissonSolver(FieldSolver):
         assert max(z) < self.zmmax,\
                "Particles have z below the grid when fetching the potential"
 
+    # --- See notes in fetche about lfirstsolver
+    if not kw['lfirstsolver']:
+      potentialorig = potential
+      potential = zeros(potentialorig.shape,'d')
+
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
     else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
@@ -925,6 +930,9 @@ class SubcycledPoissonSolver(FieldSolver):
     iselfb = top.iselfb[jsid]
     self.setpotentialpforparticles(None,indts,iselfb)
     self.fetchpotentialfrompositions(x,y,z,potential)
+
+    if not kw['lfirstsolver']:
+      potentialorig[...] += potential
 
   def dosolveonpotential(self,iwhich,isourcepndtscopies,indts,iselfb):
     "points source and potential appropriately and call the solving routine"
