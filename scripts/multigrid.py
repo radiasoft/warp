@@ -153,6 +153,7 @@ class MultiGrid(SubcycledPoissonSolver):
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
     n  = len(x)
     if n == 0: return
+    if isinstance(self.sourcep,FloatType): return
     setrho3d(self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
@@ -166,6 +167,8 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
+    if self.efetch == 3 and isinstance(self.fieldp,FloatType): return
+    if self.efetch != 3 and isinstance(self.potentialp,FloatType): return
     sete3d(self.potentialp,self.fieldp,n,x,y,z,top.zgridprv,
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
@@ -179,6 +182,8 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def fetchpotentialfrompositions(self,x,y,z,phi):
     n = len(x)
+    if n == 0: return
+    if isinstance(self.potentialp,FloatType): return
     getgrid3d(n,x,y,z,phi,self.nxp,self.nyp,self.nzp,self.potentialp[:,:,1:-1],
               self.xmminp,self.xmmaxp,self.ymminp,self.ymmaxp,self.zmminp,self.zmmaxp,
               self.l2symtry,self.l4symtry)
@@ -187,6 +192,8 @@ class MultiGrid(SubcycledPoissonSolver):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      if isinstance(self.source,FloatType): return
+      if isinstance(self.sourcep,FloatType): return
       setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
@@ -197,6 +204,8 @@ class MultiGrid(SubcycledPoissonSolver):
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
       self.setpotentialpforparticles(*args)
+      if isinstance(self.potential,FloatType): return
+      if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nx,self.ny,self.nz,self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,1)
     if self.efetch == 3:
@@ -259,6 +268,8 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- a plotting function.
       self.fieldp = fzeros((3,1+self.nxp,1+self.nyp,1+self.nzp,1),'d')
     if recalculate:
+      if isinstance(self.potentialp,FloatType): return
+      if isinstance(self.fieldp,FloatType): return
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
                  self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
                  self.dx,self.dy,self.dz,
@@ -343,6 +354,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- This is only done for convenience.
     self.phi = self.potential
     self.rho = self.source
+    if isinstance(self.potential,FloatType): return
 
     # --- Setup data for bends.
     rstar = fzeros(3+self.nz,'d')
