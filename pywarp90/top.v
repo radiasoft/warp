@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.195 $, $Date: 2007/02/15 01:05:15 $
+#@(#) File TOP.V, version $Revision: 3.196 $, $Date: 2007/02/28 00:11:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.195 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.196 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -75,6 +75,9 @@ neumann   integer /1/        # constant for boundary condition (derivative = 0)
 periodic  integer /2/        # constant for boundary condition 
 absorb    integer /0/        # constant for particle absorption at boundaries
 reflect   integer /1/        # constant for particle reflection at boundaries
+
+*********** DebugFlags dump:
+debug logical /.false./ # When true, extensive debugging is done.
 
 *********** Timers dump parallel:
 starttime       real /0./ -dump # CPU start time (in seconds)
