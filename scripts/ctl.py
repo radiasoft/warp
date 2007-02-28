@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.13 2005/11/29 00:42:20 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.14 2007/02/28 00:28:55 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -33,6 +33,26 @@ def setinterrupt():
   _controlCrecieved = 0
   _defaultcontrolC = signal.signal(signal.SIGINT,_handlecontrolC)
 
+def _getcommand(ext1,ext2):
+  """
+This retreives the appropriate command, searching through the packages
+until it finds one which has the command. Note that the package can either
+be a fortran package (looking for ext1) or a instance of a class which
+inheritted from PackageClass (looking for ext2).
+  """
+  for p in package():
+    pkg = packageobject(p)
+    try:
+      command = getattr(pkg,p+ext1)
+      break
+    except:
+      pass
+    try:
+      command = getattr(pkg,ext2)
+      break
+    except:
+      pass
+  return command
 
 #############################################################################
 def generate(command=None):
@@ -40,12 +60,7 @@ def generate(command=None):
   #setinterrupt()
   a = wtime()
   if command is None:
-    for p in package():
-      try:
-        exec 'command = %s.%sgen'%(p,p)
-        break
-      except:
-        pass
+    command = _getcommand('gen','generate')
   command()
   controllers.aftergenerate()
   # --- Get generate time
@@ -55,12 +70,7 @@ def generate(command=None):
 def step(n=1,maxcalls=None,command=None):
   b = wtime()
   if command is None:
-    for p in package():
-      try:
-        exec 'command = %s.%sexe'%(p,p)
-        break
-      except:
-        pass
+    command = _getcommand('exe','step')
   if maxcalls is None: maxcalls = n
   top.maxcalls = int(maxcalls)
   ncalls = n
@@ -97,12 +107,7 @@ def step(n=1,maxcalls=None,command=None):
 def finish(command=None):
   #setinterrupt()
   if command is None:
-    for p in package():
-      try:
-        exec 'command = %s.%sfin'%(p,p)
-        break
-      except:
-        pass
+    command = _getcommand('fin','finish')
   try:
     command()
   except:
