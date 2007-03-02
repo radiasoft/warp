@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.186 2007/02/12 17:21:08 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.187 2007/03/02 20:55:39 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1804,7 +1804,7 @@ def ppzxy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   kw.setdefault('local',0)
-  ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
+  ii = selectparticles(iw=iw,win=top.ywindows,z=top.pgroup.yp,kwdict=kw)
   if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(getx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),kwdict=kw)
@@ -1815,7 +1815,7 @@ def ppzxy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.yplmin,top.yplmax)
-  ii = selectparticles(iw=iw,win=top.xwindows,z=top.xp,kwdict=kw)
+  ii = selectparticles(iw=iw,win=top.xwindows,z=top.pgroup.xp,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(gety(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),kwdict=kw)
 if sys.version[:5] != "1.5.1":
