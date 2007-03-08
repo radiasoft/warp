@@ -20,7 +20,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.187 2007/03/02 20:55:39 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.188 2007/03/08 18:13:01 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4236,12 +4236,12 @@ def pltfld3d(fld='phi',freqflag=always):
   window(0)
   nwindows = 9
   for i in xrange(nwindows):
-    if (top.icrhoxy[i] == freqflag and fld == "rho"): pcrhoxy[i]
-    if (top.icrhozx[i] == freqflag and fld == "rho"): pcrhozx[i]
-    if (top.icrhozy[i] == freqflag and fld == "rho"): pcrhozy[i]
-    if (top.icphixy[i] == freqflag and fld == "phi"): pcphixy[i]
-    if (top.icphizx[i] == freqflag and fld == "phi"): pcphizx[i]
-    if (top.icphizy[i] == freqflag and fld == "phi"): pcphizy[i]
+    if (w3d.icrhoxy[i] == freqflag and fld == "rho"): pcrhoxy[i]
+    if (w3d.icrhozx[i] == freqflag and fld == "rho"): pcrhozx[i]
+    if (w3d.icrhozy[i] == freqflag and fld == "rho"): pcrhozy[i]
+    if (w3d.icphixy[i] == freqflag and fld == "phi"): pcphixy[i]
+    if (w3d.icphizx[i] == freqflag and fld == "phi"): pcphizx[i]
+    if (w3d.icphizy[i] == freqflag and fld == "phi"): pcphizy[i]
   #if (top.icrhoxy4 == freqflag and fld == "rho"): pcrhoxy4
   #if (top.icrhozx4 == freqflag and fld == "rho"): pcrhozx4
   #if (top.icrhozy4 == freqflag and fld == "rho"): pcrhozy4
