@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.344 $, $Date: 2007/02/15 01:05:16 $
+c@(#) File W3D.F, version $Revision: 3.345 $, $Date: 2007/03/09 18:08:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2787,29 +2787,29 @@ c===========================================================================
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
 
-c  Sets self electric field for particles
-c  Note that the phi1d passed in is assumed to start at phi(0,0,-1).
-c  This is a change is behavior from what is was earlier. This change
-c  was made to avoid problems with bounds checking. phi needs to be accessed
-c  at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
-c  bounds checking turned on, this would be caught (even though the code was
-c  technically correct).
+c Gets self electric field for particles
+c Note that the phi1d passed in is assumed to start at phi(0,0,-1).
+c This is a change is behavior from what is was earlier. This change
+c was made to avoid problems with bounds checking. phi needs to be accessed
+c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
+c bounds checking turned on, this would be caught (even though the code was
+c technically correct).
 
-c  Algorithm notes: phi array is dimensioned (0:nx,0:ny,-1:nz+1) outside,
-c  but is made one dimensional in this routine
-c  so cell index into 1d phi array for vectorized deposition is:
-c     i + j*(nx+1) + k*(nx+1)*(ny+1)
-c  The field is:
-c     Ex = u0 * v0 * w0 * ex(i  ,j  ,k  )
-c        + u1 * v0 * w0 * ex(i+1,j  ,k  )
-c        + u0 * v1 * w0 * ex(i  ,j+1,k  )
-c        + ...
+c Algorithm notes: phi array is dimensioned (0:nx,0:ny,-1:nz+1) outside,
+c but is made one dimensional in this routine
+c so cell index into 1d phi array for vectorized deposition is:
+c    i + j*(nx+1) + k*(nx+1)*(ny+1)
+c The field is:
+c    Ex = u0*v0*w0*ex(i  ,j  ,k  )
+c       + u1*v0*w0*ex(i+1,j  ,k  )
+c       + u0*v1*w0*ex(i  ,j+1,k  )
+c       + ...
 
       integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,m,inext,jnext,knext
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
-      real(kind=8):: sx,sy
-      real(kind=8):: xi,yj,zk,x,y
+      real(kind=8):: sx,sy,ext,eyt,ezt
+      real(kind=8):: xi,yj,zk,x,y,xnext,ynext
       integer(ISZ):: noff(32)
       save noff
 
@@ -2823,7 +2823,7 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       if (lw3dtimesubs) substarttime = wtime()
 
       nnx  = nx + 1
-      nnxy = (nx + 1) * (ny + 1)
+      nnxy = (nx + 1)*(ny + 1)
 
 c  Evaluation of offsets occurs on the first call only provided
 c  local arrays are SAVE'd. nnxy is added to all offsets to account for
@@ -2866,316 +2866,393 @@ c     if (noff(1) /= -nnxy) then
 c     endif
 
 c  Evaluation of E, vectorized over particles
-      tdxi = 1. / (2. * dx)
-      tdyi = 1. / (2. * dy)
-      tdzi = 1. / (2. * dz)
+      tdxi = 1. / (2.*dx)
+      tdyi = 1. / (2.*dy)
+      tdzi = 1. / (2.*dz)
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
 
-      if (efetch == 1) then
+      if (efetch == 1 .or. efetch == 6) then
 
-      if (.not. (l2symtry .or. l4symtry)) then
-        do ip = 1, np
+        if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+            ynext = ymmin
+          else
+            xnext = xp(1)
+            ynext = yp(1)
+          endif
+          inext = (xnext - xmmin)*dxi
+          jnext = (ynext - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+          do ip = 1, np
 
-           if (lcylindrical) then
-             x = sqrt(xp(ip)**2 + yp(ip)**2)
-             y = ymmin
-           else
-             x = xp(ip)
-             y = yp(ip)
-           endif
+            i = inext
+            j = jnext
+            k = knext
+            x = xnext
+            y = ynext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+                ynext = ymmin
+              else
+                xnext = xp(ip+1)
+                ynext = yp(ip+1)
+              endif
+              inext = (xnext    - xmmin)*dxi
+              jnext = (ynext    - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
 
-           i =  (x      - xmmin) * dxi
-           j =  (y      - ymmin) * dyi
-           k =  (zp(ip) - zgrid - zmmin) * dzi
-           ind0 = i + j*nnx + k*nnxy
+            ind0 = i + j*nnx + k*nnxy
 
-           u1 = (x      - xmmin) * dxi - i
-           v1 = (y      - ymmin) * dyi - j
-           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+            u1 = (x      - xmmin)*dxi - i
+            v1 = (y      - ymmin)*dyi - j
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
-           u0 = 1. - u1
-           v0 = 1. - v1
-           w0 = 1. - w1
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
 
-           ex(ip)=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &                + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
-     &                + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
+            ext=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &              + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
+     &              + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &              + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
 
-           ey(ip)=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
+            eyt=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
+     &              + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
 
-           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
 
-           if (lcylindrical) then
-             if (x > 0.) then
-               ey(ip) = ex(ip)*yp(ip)/x
-               ex(ip) = ex(ip)*xp(ip)/x
-             else
-               ex(ip) = ex(ip)
-               ey(ip) = 0.
-             endif
-           endif
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
 
-        enddo
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
-      else
+          enddo
 
-c       --- Set offsets for indices on axis of symmetry.  The offsets change
-c       --- the sign of the grid cells which are on the negative side
-c       --- of the axis of symmetry.
-        soy = 2*nnx
-        sox = 0
-        if (l4symtry) sox = 2
+        else
 
-c       --- Set the signs of the E field for particles on negative side of
-c       --- the axis of symmetry.
-        sy = -1.
-        sx = 1.
-        if (l4symtry) sx = -1.
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          soy = 2*nnx
+          sox = 0
+          if (l4symtry) sox = 2
 
-c       --- special loop symmetry is used
-        do ip = 1, np
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
 
-           i =  (abs(xp(ip)) - xmmin)*dxi
-           j =  (abs(yp(ip)) - ymmin)*dyi
-           k =  (zp(ip) - zgrid - zmmin)*dzi
-           ind0 = i + j*nnx + k*nnxy
+c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          jnext = (abs(yp(1)) - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+          do ip = 1, np
 
-           u1 = (abs(xp(ip)) - xmmin)*dxi - i
-           v1 = (abs(yp(ip)) - ymmin)*dyi - j
-           w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              jnext = (abs(yp(ip+1)) - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
 
-           u0 = 1. - u1
-           v0 = 1. - v1
-           w0 = 1. - w1
+            ind0 = i + j*nnx + k*nnxy
 
-c          --- Set offsets for points on symmetry axis of grid.  The offset
-c          --- for points off the axis is zero.
-           ox = 0
-           oy = 0
-           if (i == 0 .and. xmmin == 0.) ox = sox
-           if (j == 0 .and. ymmin == 0.) oy = soy
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            v1 = (abs(yp(ip)) - ymmin)*dyi - j
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
-c          --- Adjust sign of E field for appropriate quadrant.
-           xsign = tdxi
-           ysign = tdyi
-           if (xp(ip) < 0.) xsign = sx*tdxi
-           if (yp(ip) < 0.) ysign = sy*tdyi
-          ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &                + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
-     &                + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
 
-          ey(ip)=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            oy = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+            if (j == 0 .and. ymmin == 0.) oy = soy
 
-           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-        enddo
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            ysign = tdyi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            if (yp(ip) < 0.) ysign = sy*tdyi
+            ext=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &               + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
+     &               + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &               + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
+     &               + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
+     &               + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
 
-      endif
+            eyt=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &               + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &               + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &               + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
+     &               + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
+     &               + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
+     &               + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
+     &               + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+
+            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        endif
 
 
       elseif (efetch == 2) then
 
-c     --- Allocate the temporary arrays
-c     --- The arrays are made allocatable so that memory is only created for them when
-c     --- efetch is 2.
+c       --- Allocate the temporary arrays
+c       --- The arrays are made allocatable so that memory is only
+c       --- created for them when efetch is 2.
         allocate(indx(33,np),p(33,np),u1p(np),v1p(np),w1p(np),stat=allocerror)
         if (allocerror /= 0) then
           print*,"sete3d: allocation error ",allocerror,
      &           ": could not allocate temp arrays to shape ",np
           stop
-      endif
+        endif
 
 
-C  WARNING: This coding does not include symmetries!
+c  WARNING: This coding does not include symmetries!
 c  NOTE: This section can probably be deleted since it is not really neccesary.
 c  Vectorized loop over particles setting up indices of cells from which
 c  to fetch phi, and weights for evaluating E at particle positions 
-      if (l2symtry .or. l4symtry) then
-        call remark("WARNING:sete3d - the algorithm does not take into account")
-        call remark("               symmetries. Set efetch=1 or 3 and restart.")
-        call kaboom(0)
-      endif
+        if (l2symtry .or. l4symtry) then
+          call remark("WARNING:sete3d - the algorithm does not take into account")
+          call remark("               symmetries. Set efetch=1 or 3 and restart.")
+          call kaboom(0)
+        endif
 
-      do ip = 1, np
+      do i  p = 1, np
 
-         i =  (xp(ip) - xmmin) * dxi
-         j =  (yp(ip) - ymmin) * dyi
-         k =  (zp(ip) - zgrid - zmmin) * dzi
-         ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
+          i =  (xp(ip) - xmmin)*dxi
+          j =  (yp(ip) - ymmin)*dyi
+          k =  (zp(ip) - zgrid - zmmin)*dzi
+          ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
 
-         indx( 1,ip) = ind0 + noff(1)
-         indx( 2,ip) = ind0 + noff(2)
-         indx( 3,ip) = ind0 + noff(3)
-         indx( 4,ip) = ind0 + noff(4)
-         indx( 5,ip) = ind0 + noff(5)
-         indx( 6,ip) = ind0 + noff(6)
-         indx( 7,ip) = ind0 + noff(7)
-         indx( 8,ip) = ind0 + noff(8)
-         indx( 9,ip) = ind0 + noff(9)
-         indx(10,ip) = ind0 + noff(10)
-         indx(11,ip) = ind0 + noff(11)
-         indx(12,ip) = ind0 + noff(12)
-         indx(13,ip) = ind0 + noff(13)
-         indx(14,ip) = ind0 + noff(14)
-         indx(15,ip) = ind0 + noff(15)
-         indx(16,ip) = ind0 + noff(16)
-         indx(17,ip) = ind0 + noff(17)
-         indx(18,ip) = ind0 + noff(18)
-         indx(19,ip) = ind0 + noff(19)
-         indx(20,ip) = ind0 + noff(20)
-         indx(21,ip) = ind0 + noff(21)
-         indx(22,ip) = ind0 + noff(22)
-         indx(23,ip) = ind0 + noff(23)
-         indx(24,ip) = ind0 + noff(24)
-         indx(25,ip) = ind0 + noff(25)
-         indx(26,ip) = ind0 + noff(26)
-         indx(27,ip) = ind0 + noff(27)
-         indx(28,ip) = ind0 + noff(28)
-         indx(29,ip) = ind0 + noff(29)
-         indx(30,ip) = ind0 + noff(30)
-         indx(31,ip) = ind0 + noff(31)
-         indx(32,ip) = ind0 + noff(32)
+          indx( 1,ip) = ind0 + noff(1)
+          indx( 2,ip) = ind0 + noff(2)
+          indx( 3,ip) = ind0 + noff(3)
+          indx( 4,ip) = ind0 + noff(4)
+          indx( 5,ip) = ind0 + noff(5)
+          indx( 6,ip) = ind0 + noff(6)
+          indx( 7,ip) = ind0 + noff(7)
+          indx( 8,ip) = ind0 + noff(8)
+          indx( 9,ip) = ind0 + noff(9)
+          indx(10,ip) = ind0 + noff(10)
+          indx(11,ip) = ind0 + noff(11)
+          indx(12,ip) = ind0 + noff(12)
+          indx(13,ip) = ind0 + noff(13)
+          indx(14,ip) = ind0 + noff(14)
+          indx(15,ip) = ind0 + noff(15)
+          indx(16,ip) = ind0 + noff(16)
+          indx(17,ip) = ind0 + noff(17)
+          indx(18,ip) = ind0 + noff(18)
+          indx(19,ip) = ind0 + noff(19)
+          indx(20,ip) = ind0 + noff(20)
+          indx(21,ip) = ind0 + noff(21)
+          indx(22,ip) = ind0 + noff(22)
+          indx(23,ip) = ind0 + noff(23)
+          indx(24,ip) = ind0 + noff(24)
+          indx(25,ip) = ind0 + noff(25)
+          indx(26,ip) = ind0 + noff(26)
+          indx(27,ip) = ind0 + noff(27)
+          indx(28,ip) = ind0 + noff(28)
+          indx(29,ip) = ind0 + noff(29)
+          indx(30,ip) = ind0 + noff(30)
+          indx(31,ip) = ind0 + noff(31)
+          indx(32,ip) = ind0 + noff(32)
 
-         u1p(ip) = (xp(ip) - xmmin) * dxi - i
-         v1p(ip) = (yp(ip) - ymmin) * dyi - j
-         w1p(ip) = (zp(ip) - zgrid - zmmin) * dzi - k
+          u1p(ip) = (xp(ip) - xmmin)*dxi - i
+          v1p(ip) = (yp(ip) - ymmin)*dyi - j
+          w1p(ip) = (zp(ip) - zgrid - zmmin)*dzi - k
 
-      enddo
+        enddo
 
-c  Vectorized fetch of phi over the 32 cells touched;
-
-      do ip = 1, np
-         do m = 1, 32
+c       --- Vectorized fetch of phi over the 32 cells touched;
+        do ip = 1, np
+          do m = 1, 32
             p(m,ip) = phi1d(indx(m,ip))
-         enddo
-      enddo
+          enddo
+        enddo
 
-c  Evaluation of E, vectorized over particles
+c       --- Evaluation of E, vectorized over particles
+        do ip = 1, np
 
-      do ip = 1, np
+          u1 = u1p(ip)
+          v1 = v1p(ip)
+          w1 = w1p(ip)
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
 
-         u1 = u1p(ip)
-         v1 = v1p(ip)
-         w1 = w1p(ip)
-         u0 = 1. - u1
-         v0 = 1. - v1
-         w0 = 1. - w1
+          ext = tdxi*(u0*v0*w0*(p( 7,ip) - p( 9,ip))
+     &                + u1*v0*w0*(p( 8,ip) - p(10,ip))
+     &                + u0*v1*w0*(p(11,ip) - p(13,ip)) 
+     &                + u1*v1*w0*(p(12,ip) - p(14,ip)) 
+     &                + u0*v0*w1*(p(19,ip) - p(21,ip))
+     &                + u1*v0*w1*(p(20,ip) - p(22,ip))
+     &                + u0*v1*w1*(p(23,ip) - p(25,ip)) 
+     &                + u1*v1*w1*(p(24,ip) - p(26,ip)))
 
-         ex(ip) = tdxi * (u0 * v0 * w0 * (p( 7,ip) - p( 9,ip))
-     &                  + u1 * v0 * w0 * (p( 8,ip) - p(10,ip))
-     &                  + u0 * v1 * w0 * (p(11,ip) - p(13,ip)) 
-     &                  + u1 * v1 * w0 * (p(12,ip) - p(14,ip)) 
-     &                  + u0 * v0 * w1 * (p(19,ip) - p(21,ip))
-     &                  + u1 * v0 * w1 * (p(20,ip) - p(22,ip))
-     &                  + u0 * v1 * w1 * (p(23,ip) - p(25,ip)) 
-     &                  + u1 * v1 * w1 * (p(24,ip) - p(26,ip)))
+          eyt = tdyi*(u0*v0*w0*(p( 5,ip) - p(12,ip)) 
+     &                + u1*v0*w0*(p( 6,ip) - p(13,ip))
+     &                + u0*v1*w0*(p( 8,ip) - p(15,ip)) 
+     &                + u1*v1*w0*(p( 9,ip) - p(16,ip)) 
+     &                + u0*v0*w1*(p(17,ip) - p(24,ip))
+     &                + u1*v0*w1*(p(18,ip) - p(25,ip))
+     &                + u0*v1*w1*(p(20,ip) - p(27,ip)) 
+     &                + u1*v1*w1*(p(21,ip) - p(28,ip)))
 
-         ey(ip) = tdyi * (u0 * v0 * w0 * (p( 5,ip) - p(12,ip)) 
-     &                  + u1 * v0 * w0 * (p( 6,ip) - p(13,ip))
-     &                  + u0 * v1 * w0 * (p( 8,ip) - p(15,ip)) 
-     &                  + u1 * v1 * w0 * (p( 9,ip) - p(16,ip)) 
-     &                  + u0 * v0 * w1 * (p(17,ip) - p(24,ip))
-     &                  + u1 * v0 * w1 * (p(18,ip) - p(25,ip))
-     &                  + u0 * v1 * w1 * (p(20,ip) - p(27,ip)) 
-     &                  + u1 * v1 * w1 * (p(21,ip) - p(28,ip)))
+          ezt = tdzi*(u0*v0*w0*(p( 1,ip) - p(20,ip)) 
+     &                + u1*v0*w0*(p( 2,ip) - p(21,ip))
+     &                + u0*v1*w0*(p( 3,ip) - p(24,ip)) 
+     &                + u1*v1*w0*(p( 4,ip) - p(25,ip)) 
+     &                + u0*v0*w1*(p( 8,ip) - p(29,ip))
+     &                + u1*v0*w1*(p( 9,ip) - p(30,ip))
+     &                + u0*v1*w1*(p(12,ip) - p(31,ip)) 
+     &                + u1*v1*w1*(p(13,ip) - p(32,ip)))
 
-         ez(ip) = tdzi * (u0 * v0 * w0 * (p( 1,ip) - p(20,ip)) 
-     &                  + u1 * v0 * w0 * (p( 2,ip) - p(21,ip))
-     &                  + u0 * v1 * w0 * (p( 3,ip) - p(24,ip)) 
-     &                  + u1 * v1 * w0 * (p( 4,ip) - p(25,ip)) 
-     &                  + u0 * v0 * w1 * (p( 8,ip) - p(29,ip))
-     &                  + u1 * v0 * w1 * (p( 9,ip) - p(30,ip))
-     &                  + u0 * v1 * w1 * (p(12,ip) - p(31,ip)) 
-     &                  + u1 * v1 * w1 * (p(13,ip) - p(32,ip)))
+          ex(ip) = ex(ip) + ext
+          ey(ip) = ey(ip) + eyt
+          ez(ip) = ez(ip) + ezt
 
-      enddo
+        enddo
 
 c       --- Free the memory
         deallocate(indx)
         deallocate(p, u1p, v1p, w1p)
 
       elseif (efetch == 3) then
+c       --- This uses the precalculated selfe instead of doing
+c       --- the finite differences here..
 
         if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+            ynext = ymmin
+          else
+            xnext = xp(1)
+            ynext = yp(1)
+          endif
+          inext = (xnext - xmmin)*dxi
+          jnext = (ynext - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
           do ip = 1, np
 
-            i = (xp(ip) - xmmin) * dxi
-            j = (yp(ip) - ymmin) * dyi
-            k = (zp(ip) - zgrid - zmmin) * dzi
+            i = inext
+            j = jnext
+            k = knext
+            x = xnext
+            y = ynext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+                ynext = ymmin
+              else
+                xnext = xp(ip+1)
+                ynext = yp(ip+1)
+              endif
+              inext = (xnext    - xmmin)*dxi
+              jnext = (ynext    - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
 
-            u1 = (xp(ip) - xmmin) * dxi - i
-            v1 = (yp(ip) - ymmin) * dyi - j
-            w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+            u1 = (x      - xmmin)*dxi - i
+            v1 = (y      - ymmin)*dyi - j
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
             u0 = 1. - u1
             v0 = 1. - v1
             w0 = 1. - w1
 
-            ex(ip) = u0*v0*w0*selfe(1,i  ,j  ,k  )
-     &             + u1*v0*w0*selfe(1,i+1,j  ,k  )
-     &             + u0*v1*w0*selfe(1,i  ,j+1,k  )
-     &             + u1*v1*w0*selfe(1,i+1,j+1,k  )
-     &             + u0*v0*w1*selfe(1,i  ,j  ,k+1)
-     &             + u1*v0*w1*selfe(1,i+1,j  ,k+1)
-     &             + u0*v1*w1*selfe(1,i  ,j+1,k+1)
-     &             + u1*v1*w1*selfe(1,i+1,j+1,k+1)
+            ext = u0*v0*w0*selfe(1,i  ,j  ,k  )
+     &          + u1*v0*w0*selfe(1,i+1,j  ,k  )
+     &          + u0*v1*w0*selfe(1,i  ,j+1,k  )
+     &          + u1*v1*w0*selfe(1,i+1,j+1,k  )
+     &          + u0*v0*w1*selfe(1,i  ,j  ,k+1)
+     &          + u1*v0*w1*selfe(1,i+1,j  ,k+1)
+     &          + u0*v1*w1*selfe(1,i  ,j+1,k+1)
+     &          + u1*v1*w1*selfe(1,i+1,j+1,k+1)
 
-            ey(ip) = u0*v0*w0*selfe(2,i  ,j  ,k  )
-     &             + u1*v0*w0*selfe(2,i+1,j  ,k  )
-     &             + u0*v1*w0*selfe(2,i  ,j+1,k  )
-     &             + u1*v1*w0*selfe(2,i+1,j+1,k  )
-     &             + u0*v0*w1*selfe(2,i  ,j  ,k+1)
-     &             + u1*v0*w1*selfe(2,i+1,j  ,k+1)
-     &             + u0*v1*w1*selfe(2,i  ,j+1,k+1)
-     &             + u1*v1*w1*selfe(2,i+1,j+1,k+1)
+            eyt = u0*v0*w0*selfe(2,i  ,j  ,k  )
+     &          + u1*v0*w0*selfe(2,i+1,j  ,k  )
+     &          + u0*v1*w0*selfe(2,i  ,j+1,k  )
+     &          + u1*v1*w0*selfe(2,i+1,j+1,k  )
+     &          + u0*v0*w1*selfe(2,i  ,j  ,k+1)
+     &          + u1*v0*w1*selfe(2,i+1,j  ,k+1)
+     &          + u0*v1*w1*selfe(2,i  ,j+1,k+1)
+     &          + u1*v1*w1*selfe(2,i+1,j+1,k+1)
 
-            ez(ip) = u0*v0*w0*selfe(3,i  ,j  ,k  )
-     &             + u1*v0*w0*selfe(3,i+1,j  ,k  )
-     &             + u0*v1*w0*selfe(3,i  ,j+1,k  )
-     &             + u1*v1*w0*selfe(3,i+1,j+1,k  )
-     &             + u0*v0*w1*selfe(3,i  ,j  ,k+1)
-     &             + u1*v0*w1*selfe(3,i+1,j  ,k+1)
-     &             + u0*v1*w1*selfe(3,i  ,j+1,k+1)
-     &             + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+            ezt = u0*v0*w0*selfe(3,i  ,j  ,k  )
+     &          + u1*v0*w0*selfe(3,i+1,j  ,k  )
+     &          + u0*v1*w0*selfe(3,i  ,j+1,k  )
+     &          + u1*v1*w0*selfe(3,i+1,j+1,k  )
+     &          + u0*v0*w1*selfe(3,i  ,j  ,k+1)
+     &          + u1*v0*w1*selfe(3,i+1,j  ,k+1)
+     &          + u0*v1*w1*selfe(3,i  ,j+1,k+1)
+     &          + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
           enddo
 
@@ -3188,11 +3265,19 @@ c         --- the axis of symmetry.
           if (l4symtry) sx = -1.
 
 c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          jnext = (abs(yp(1)) - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
           do ip = 1, np
 
-            i = (abs(xp(ip)) - xmmin)*dxi
-            j = (abs(yp(ip)) - ymmin)*dyi
-            k = (zp(ip) - zgrid - zmmin)*dzi
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              jnext = (abs(yp(ip+1)) - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
 
             u1 = (abs(xp(ip)) - xmmin)*dxi - i
             v1 = (abs(yp(ip)) - ymmin)*dyi - j
@@ -3208,82 +3293,125 @@ c           --- Adjust sign of E field for appropriate quadrant.
             if (xp(ip) < 0.) xsign = sx
             if (yp(ip) < 0.) ysign = sy
 
-            ex(ip) = xsign*(u0*v0*w0*selfe(1,i  ,j  ,k  )
-     &                    + u1*v0*w0*selfe(1,i+1,j  ,k  )
-     &                    + u0*v1*w0*selfe(1,i  ,j+1,k  )
-     &                    + u1*v1*w0*selfe(1,i+1,j+1,k  )
-     &                    + u0*v0*w1*selfe(1,i  ,j  ,k+1)
-     &                    + u1*v0*w1*selfe(1,i+1,j  ,k+1)
-     &                    + u0*v1*w1*selfe(1,i  ,j+1,k+1)
-     &                    + u1*v1*w1*selfe(1,i+1,j+1,k+1))
+            ext = xsign*(u0*v0*w0*selfe(1,i  ,j  ,k  )
+     &                 + u1*v0*w0*selfe(1,i+1,j  ,k  )
+     &                 + u0*v1*w0*selfe(1,i  ,j+1,k  )
+     &                 + u1*v1*w0*selfe(1,i+1,j+1,k  )
+     &                 + u0*v0*w1*selfe(1,i  ,j  ,k+1)
+     &                 + u1*v0*w1*selfe(1,i+1,j  ,k+1)
+     &                 + u0*v1*w1*selfe(1,i  ,j+1,k+1)
+     &                 + u1*v1*w1*selfe(1,i+1,j+1,k+1))
 
-            ey(ip) = ysign*(u0*v0*w0*selfe(2,i  ,j  ,k  )
-     &                    + u1*v0*w0*selfe(2,i+1,j  ,k  )
-     &                    + u0*v1*w0*selfe(2,i  ,j+1,k  )
-     &                    + u1*v1*w0*selfe(2,i+1,j+1,k  )
-     &                    + u0*v0*w1*selfe(2,i  ,j  ,k+1)
-     &                    + u1*v0*w1*selfe(2,i+1,j  ,k+1)
-     &                    + u0*v1*w1*selfe(2,i  ,j+1,k+1)
-     &                    + u1*v1*w1*selfe(2,i+1,j+1,k+1))
+            eyt = ysign*(u0*v0*w0*selfe(2,i  ,j  ,k  )
+     &                 + u1*v0*w0*selfe(2,i+1,j  ,k  )
+     &                 + u0*v1*w0*selfe(2,i  ,j+1,k  )
+     &                 + u1*v1*w0*selfe(2,i+1,j+1,k  )
+     &                 + u0*v0*w1*selfe(2,i  ,j  ,k+1)
+     &                 + u1*v0*w1*selfe(2,i+1,j  ,k+1)
+     &                 + u0*v1*w1*selfe(2,i  ,j+1,k+1)
+     &                 + u1*v1*w1*selfe(2,i+1,j+1,k+1))
 
-            ez(ip) =        u0*v0*w0*selfe(3,i  ,j  ,k  )
-     &                    + u1*v0*w0*selfe(3,i+1,j  ,k  )
-     &                    + u0*v1*w0*selfe(3,i  ,j+1,k  )
-     &                    + u1*v1*w0*selfe(3,i+1,j+1,k  )
-     &                    + u0*v0*w1*selfe(3,i  ,j  ,k+1)
-     &                    + u1*v0*w1*selfe(3,i+1,j  ,k+1)
-     &                    + u0*v1*w1*selfe(3,i  ,j+1,k+1)
-     &                    + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+            ezt =        u0*v0*w0*selfe(3,i  ,j  ,k  )
+     &                 + u1*v0*w0*selfe(3,i+1,j  ,k  )
+     &                 + u0*v1*w0*selfe(3,i  ,j+1,k  )
+     &                 + u1*v1*w0*selfe(3,i+1,j+1,k  )
+     &                 + u0*v0*w1*selfe(3,i  ,j  ,k+1)
+     &                 + u1*v0*w1*selfe(3,i+1,j  ,k+1)
+     &                 + u0*v1*w1*selfe(3,i  ,j+1,k+1)
+     &                 + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
           enddo
 
         endif
 
       elseif (efetch == 4) then
-c      --- Energy conserving
+c       --- Energy conserving
 
         if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+            ynext = ymmin
+          else
+            xnext = xp(1)
+            ynext = yp(1)
+          endif
+          inext = (xnext - xmmin)*dxi
+          jnext = (ynext - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
           do ip = 1, np
 
-             i =  (xp(ip) - xmmin) * dxi
-             j =  (yp(ip) - ymmin) * dyi
-             k =  (zp(ip) - zgrid - zmmin) * dzi
-             ind0 = i + j*nnx + k*nnxy
+            i = inext
+            j = jnext
+            k = knext
+            x = xnext
+            y = ynext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+                ynext = ymmin
+              else
+                xnext = xp(ip+1)
+                ynext = yp(ip+1)
+              endif
+              inext = (xnext    - xmmin)*dxi
+              jnext = (ynext    - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
 
-             u1 = (xp(ip) - xmmin) * dxi - i
-             v1 = (yp(ip) - ymmin) * dyi - j
-             w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+            ind0 = i + j*nnx + k*nnxy
 
-             u0 = 1. - u1
-             v0 = 1. - v1
-             w0 = 1. - w1
+            u1 = (x      - xmmin)*dxi - i
+            v1 = (y      - ymmin)*dyi - j
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
-             ex(ip)=dxi*(+v0*w0*phi1d(noff( 8)+ind0)
-     &                   -v0*w0*phi1d(noff( 9)+ind0)
-     &                   +v1*w0*phi1d(noff(12)+ind0)
-     &                   -v1*w0*phi1d(noff(13)+ind0)
-     &                   +v0*w1*phi1d(noff(20)+ind0)
-     &                   -v0*w1*phi1d(noff(21)+ind0)
-     &                   +v1*w1*phi1d(noff(24)+ind0)
-     &                   -v1*w1*phi1d(noff(25)+ind0))
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
 
-             ey(ip)=dyi*(+u0*w0*phi1d(noff( 8)+ind0)
-     &                   +u1*w0*phi1d(noff( 9)+ind0)
-     &                   -u0*w0*phi1d(noff(12)+ind0)
-     &                   -u1*w0*phi1d(noff(13)+ind0)
-     &                   +u0*w1*phi1d(noff(20)+ind0)
-     &                   +u1*w1*phi1d(noff(21)+ind0)
-     &                   -u0*w1*phi1d(noff(24)+ind0)
-     &                   -u1*w1*phi1d(noff(25)+ind0))
+            ext=dxi*(+v0*w0*phi1d(noff( 8)+ind0)
+     &               -v0*w0*phi1d(noff( 9)+ind0)
+     &               +v1*w0*phi1d(noff(12)+ind0)
+     &               -v1*w0*phi1d(noff(13)+ind0)
+     &               +v0*w1*phi1d(noff(20)+ind0)
+     &               -v0*w1*phi1d(noff(21)+ind0)
+     &               +v1*w1*phi1d(noff(24)+ind0)
+     &               -v1*w1*phi1d(noff(25)+ind0))
 
-             ez(ip)=dzi*(+u0*v0*phi1d(noff( 8)+ind0)
-     &                   +u1*v0*phi1d(noff( 9)+ind0)
-     &                   +u0*v1*phi1d(noff(12)+ind0)
-     &                   +u1*v1*phi1d(noff(13)+ind0)
-     &                   -u0*v0*phi1d(noff(20)+ind0)
-     &                   -u1*v0*phi1d(noff(21)+ind0)
-     &                   -u0*v1*phi1d(noff(24)+ind0)
-     &                   -u1*v1*phi1d(noff(25)+ind0))
+            eyt=dyi*(+u0*w0*phi1d(noff( 8)+ind0)
+     &               +u1*w0*phi1d(noff( 9)+ind0)
+     &               -u0*w0*phi1d(noff(12)+ind0)
+     &               -u1*w0*phi1d(noff(13)+ind0)
+     &               +u0*w1*phi1d(noff(20)+ind0)
+     &               +u1*w1*phi1d(noff(21)+ind0)
+     &               -u0*w1*phi1d(noff(24)+ind0)
+     &               -u1*w1*phi1d(noff(25)+ind0))
+
+            ezt=dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &               +u1*v0*phi1d(noff( 9)+ind0)
+     &               +u0*v1*phi1d(noff(12)+ind0)
+     &               +u1*v1*phi1d(noff(13)+ind0)
+     &               -u0*v0*phi1d(noff(20)+ind0)
+     &               -u1*v0*phi1d(noff(21)+ind0)
+     &               -u0*v1*phi1d(noff(24)+ind0)
+     &               -u1*v1*phi1d(noff(25)+ind0))
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
           enddo
 
@@ -3296,53 +3424,66 @@ c         --- the axis of symmetry.
           if (l4symtry) sx = -1.
 
 c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          jnext = (abs(yp(1)) - ymmin)*dyi
+          knext = (zp(1) - zgrid - zmmin)*dzi
           do ip = 1, np
+
+            i = inext
+            j = jnext
+            k = knext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              jnext = (abs(yp(ip+1)) - ymmin)*dyi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
   
-             i =  (abs(xp(ip)) - xmmin)*dxi
-             j =  (abs(yp(ip)) - ymmin)*dyi
-             k =  (zp(ip) - zgrid - zmmin)*dzi
-             ind0 = i + j*nnx + k*nnxy
+            ind0 = i + j*nnx + k*nnxy
 
-             u1 = (abs(xp(ip)) - xmmin)*dxi - i
-             v1 = (abs(yp(ip)) - ymmin)*dyi - j
-             w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            v1 = (abs(yp(ip)) - ymmin)*dyi - j
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
 
-             u0 = 1. - u1
-             v0 = 1. - v1
-             w0 = 1. - w1
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
 
-c            --- Adjust sign of E field for appropriate quadrant.
-             xsign = dxi
-             ysign = dyi
-             if (xp(ip) < 0.) xsign = sx*dxi
-             if (yp(ip) < 0.) ysign = sy*dyi
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = dxi
+            ysign = dyi
+            if (xp(ip) < 0.) xsign = sx*dxi
+            if (yp(ip) < 0.) ysign = sy*dyi
 
-             ex(ip)=xsign*(+v0*w0*phi1d(noff( 8)+ind0)
-     &                     -v0*w0*phi1d(noff( 9)+ind0)
-     &                     +v1*w0*phi1d(noff(12)+ind0)
-     &                     -v1*w0*phi1d(noff(13)+ind0)
-     &                     +v0*w1*phi1d(noff(20)+ind0)
-     &                     -v0*w1*phi1d(noff(21)+ind0)
-     &                     +v1*w1*phi1d(noff(24)+ind0)
-     &                     -v1*w1*phi1d(noff(25)+ind0))
+            ext=xsign*(+v0*w0*phi1d(noff( 8)+ind0)
+     &                 -v0*w0*phi1d(noff( 9)+ind0)
+     &                 +v1*w0*phi1d(noff(12)+ind0)
+     &                 -v1*w0*phi1d(noff(13)+ind0)
+     &                 +v0*w1*phi1d(noff(20)+ind0)
+     &                 -v0*w1*phi1d(noff(21)+ind0)
+     &                 +v1*w1*phi1d(noff(24)+ind0)
+     &                 -v1*w1*phi1d(noff(25)+ind0))
 
-             ey(ip)=ysign*(+u0*w0*phi1d(noff( 8)+ind0)
-     &                     +u1*w0*phi1d(noff( 9)+ind0)
-     &                     -u0*w0*phi1d(noff(12)+ind0)
-     &                     -u1*w0*phi1d(noff(13)+ind0)
-     &                     +u0*w1*phi1d(noff(20)+ind0)
-     &                     +u1*w1*phi1d(noff(21)+ind0)
-     &                     -u0*w1*phi1d(noff(24)+ind0)
-     &                     -u1*w1*phi1d(noff(25)+ind0))
+            eyt=ysign*(+u0*w0*phi1d(noff( 8)+ind0)
+     &                 +u1*w0*phi1d(noff( 9)+ind0)
+     &                 -u0*w0*phi1d(noff(12)+ind0)
+     &                 -u1*w0*phi1d(noff(13)+ind0)
+     &                 +u0*w1*phi1d(noff(20)+ind0)
+     &                 +u1*w1*phi1d(noff(21)+ind0)
+     &                 -u0*w1*phi1d(noff(24)+ind0)
+     &                 -u1*w1*phi1d(noff(25)+ind0))
 
-             ez(ip) = dzi*(+u0*v0*phi1d(noff( 8)+ind0)
-     &                     +u1*v0*phi1d(noff( 9)+ind0)
-     &                     +u0*v1*phi1d(noff(12)+ind0)
-     &                     +u1*v1*phi1d(noff(13)+ind0)
-     &                     -u0*v0*phi1d(noff(20)+ind0)
-     &                     -u1*v0*phi1d(noff(21)+ind0)
-     &                     -u0*v1*phi1d(noff(24)+ind0)
-     &                     -u1*v1*phi1d(noff(25)+ind0))
+            ezt = dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &                 +u1*v0*phi1d(noff( 9)+ind0)
+     &                 +u0*v1*phi1d(noff(12)+ind0)
+     &                 +u1*v1*phi1d(noff(13)+ind0)
+     &                 -u0*v0*phi1d(noff(20)+ind0)
+     &                 -u1*v0*phi1d(noff(21)+ind0)
+     &                 -u0*v1*phi1d(noff(24)+ind0)
+     &                 -u1*v1*phi1d(noff(25)+ind0))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
 
           enddo
 
@@ -3355,17 +3496,20 @@ c       --- are out of bounds.
         if (.not. (l2symtry .or. l4symtry)) then
           do ip = 1, np
 
-            xi =  (xp(ip) - xmmin) * dxi
-            yj =  (yp(ip) - ymmin) * dyi
-            zk =  (zp(ip) - zgrid - zmmin) * dzi
+            if (lcylindrical) then
+              x = sqrt(xp(ip)**2 + yp(ip)**2)
+              y = ymmin
+            else
+              x = xp(ip)
+              y = yp(ip)
+            endif
+
+            xi = (x      - xmmin)*dxi
+            yj = (y      - ymmin)*dyi
+            zk = (zp(ip) - zgrid - zmmin)*dzi
             if (xi < 0. .or. xi > nx .or.
      &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) then
-              ex(ip) = 0.
-              ey(ip) = 0.
-              ez(ip) = 0.
-              cycle
-            endif
+     &          zk < 0. .or. zk > nz) cycle
             i = int(xi)
             j = int(yj)
             k = int(zk)
@@ -3379,32 +3523,47 @@ c       --- are out of bounds.
             v0 = 1. - v1
             w0 = 1. - w1
 
-            ex(ip)=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
+            ext=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
+     &              + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
+     &              + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &              + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
 
-            ey(ip)=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
+            eyt=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
+     &              + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
 
-            ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
           enddo
 
         else
@@ -3430,12 +3589,7 @@ c         --- special loop symmetry is used
             zk =  (zp(ip) - zgrid - zmmin)*dzi
             if (xi < 0. .or. xi > nx .or.
      &          yj < 0. .or. yj > ny .or.
-     &          zk < 0. .or. zk > nz) then
-              ex(ip) = 0.
-              ey(ip) = 0.
-              ez(ip) = 0.
-              cycle
-            endif
+     &          zk < 0. .or. zk > nz) cycle
             i = int(xi)
             j = int(yj)
             k = int(zk)
@@ -3461,173 +3615,40 @@ c           --- Adjust sign of E field for appropriate quadrant.
             ysign = tdyi
             if (xp(ip) < 0.) xsign = sx*tdxi
             if (yp(ip) < 0.) ysign = sy*tdyi
-           ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
+            ext=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
+     &               + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
+     &               + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &               + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
+     &               + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
+     &               + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
 
-           ey(ip)=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
+            eyt=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
+     &               + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
+     &               + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
+     &               + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
+     &               + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
+     &               + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
+     &               + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
+     &               + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
 
-            ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                 + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                 + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                 + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                 + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                 + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                 + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                 + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+            ezt=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
+     &              + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
+     &              + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
+     &              + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
+     &              + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
           enddo
 
         endif
-
-      else if (efetch == 6) then
-
-c     --- Same as efetch=1 but the i,j,k and are precalculated for the next
-c     --- particle since the float to integer conversion can be slow
-
-      if (.not. (l2symtry .or. l4symtry)) then
-        inext = (xp(1) - xmmin) * dxi
-        jnext = (yp(1) - ymmin) * dyi
-        knext = (zp(1) - zgrid - zmmin) * dzi
-        do ip = 1, np
-
-           i = inext
-           j = jnext
-           k = knext
-           if (ip < np) then
-             inext = (xp(ip+1) - xmmin) * dxi
-             jnext = (yp(ip+1) - ymmin) * dyi
-             knext = (zp(ip+1) - zgrid - zmmin) * dzi
-           endif
-           ind0 = i + j*nnx + k*nnxy
-
-           u1 = (xp(ip) - xmmin) * dxi - i
-           v1 = (yp(ip) - ymmin) * dyi - j
-           w1 = (zp(ip) - zgrid - zmmin) * dzi - k
-
-           u0 = 1. - u1
-           v0 = 1. - v1
-           w0 = 1. - w1
-
-           ex(ip)=tdxi*(u0*v0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
-     &                + u0*v1*w0*(phi1d(noff(11)+ind0) - phi1d(noff(13)+ind0))
-     &                + u1*v1*w0*(phi1d(noff(12)+ind0) - phi1d(noff(14)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(23)+ind0) - phi1d(noff(25)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(24)+ind0) - phi1d(noff(26)+ind0)))
-
-           ey(ip)=tdyi*(u0*v0*w0*(phi1d(noff( 5)+ind0) - phi1d(noff(12)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 6)+ind0) - phi1d(noff(13)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(15)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 9)+ind0) - phi1d(noff(16)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(17)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(18)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(27)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(21)+ind0) - phi1d(noff(28)+ind0)))
-
-           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-        enddo
-
-      else
-
-c       --- Set offsets for indices on axis of symmetry.  The offsets change
-c       --- the sign of the grid cells which are on the negative side
-c       --- of the axis of symmetry.
-        soy = 2*nnx
-        sox = 0
-        if (l4symtry) sox = 2
-
-c       --- Set the signs of the E field for particles on negative side of
-c       --- the axis of symmetry.
-        sy = -1.
-        sx = 1.
-        if (l4symtry) sx = -1.
-
-c       --- special loop symmetry is used
-        inext = (abs(xp(1)) - xmmin)*dxi
-        jnext = (abs(yp(1)) - ymmin)*dyi
-        knext = (zp(1) - zgrid - zmmin)*dzi
-        do ip = 1, np
-
-           i = inext
-           j = jnext
-           k = knext
-           if (ip < np) then
-             inext = (abs(xp(ip+1)) - xmmin)*dxi
-             jnext = (abs(yp(ip+1)) - ymmin)*dyi
-             knext = (zp(ip+1) - zgrid - zmmin)*dzi
-           endif
-           ind0 = i + j*nnx + k*nnxy
-
-           u1 = (abs(xp(ip)) - xmmin)*dxi - i
-           v1 = (abs(yp(ip)) - ymmin)*dyi - j
-           w1 = (zp(ip) - zgrid - zmmin)*dzi - k
-
-           u0 = 1. - u1
-           v0 = 1. - v1
-           w0 = 1. - w1
-
-c          --- Set offsets for points on symmetry axis of grid.  The offset
-c          --- for points off the axis is zero.
-           ox = 0
-           oy = 0
-           if (i == 0 .and. xmmin == 0.) ox = sox
-           if (j == 0 .and. ymmin == 0.) oy = soy
-
-c          --- Adjust sign of E field for appropriate quadrant.
-           xsign = tdxi
-           ysign = tdyi
-           if (xp(ip) < 0.) xsign = sx*tdxi
-           if (yp(ip) < 0.) ysign = sy*tdyi
-          ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
-     &                + u0*v1*w0*(phi1d(noff(11)+ind0+ox)-phi1d(noff(13)+ind0))
-     &                + u1*v1*w0*(phi1d(noff(12)+ind0   )-phi1d(noff(14)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(23)+ind0+ox)-phi1d(noff(25)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(24)+ind0   )-phi1d(noff(26)+ind0)))
-
-          ey(ip)=ysign*(u0*v0*w0*(phi1d(noff( 5)+ind0+oy)-phi1d(noff(12)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 6)+ind0+oy)-phi1d(noff(13)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(15)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 9)+ind0   )-phi1d(noff(16)+ind0))
-     &                + u0*v0*w1*(phi1d(noff(17)+ind0+oy)-phi1d(noff(24)+ind0))
-     &                + u1*v0*w1*(phi1d(noff(18)+ind0+oy)-phi1d(noff(25)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(27)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(21)+ind0   )-phi1d(noff(28)+ind0)))
-
-           ez(ip)=tdzi*(u0*v0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
-     &                + u1*v0*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
-     &                + u0*v1*w0*(phi1d(noff( 3)+ind0) - phi1d(noff(24)+ind0))
-     &                + u1*v1*w0*(phi1d(noff( 4)+ind0) - phi1d(noff(25)+ind0))
-     &                + u0*v0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
-     &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
-     &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
-     &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-        enddo
-
-      endif
 
       endif
 
@@ -7674,6 +7695,13 @@ c     --- Don't do anything if there are no particles input.
       ey => pgroup%ey(ipmin:ipmin+ip-1)
       ez => pgroup%ez(ipmin:ipmin+ip-1)
 
+c     --- Zero out the particle's E field if requested (the default)
+      if (lresetparticlee) then
+        ex = 0.
+        ey = 0.
+        ez = 0.
+      endif
+
       if(fstype == 12) then
         pgroupfsapi => pgroup
         jsfsapi = pgroup%sid(is - 1)
@@ -7707,10 +7735,6 @@ c     --- Don't do anything if there are no particles input.
       elseif(solvergeom==AMRgeom) then
         call cho_gete3d(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                  zgridprv,ex,ey,ez,is,(ipmin-pgroup%ins(is))/nparpgrp)
-      else
-        ex = 0.
-        ey = 0.
-        ez = 0.
       endif
 
 !$OMP MASTER
@@ -7746,6 +7770,13 @@ c     --- particles group.
 
 c     --- Don't do anything if there are no particles input.
       if (n == 0) return
+
+c     --- Zero out the particle's E field if requested (the default)
+      if (lresetparticlee) then
+        ex = 0.
+        ey = 0.
+        ez = 0.
+      endif
 
       if(fstype == 12) then
 #if defined(XLF) || defined(XLF2)
@@ -8307,7 +8338,6 @@ c===========================================================================
 c Replaces the transverse E field for particles near an aperture described by
 c the variables in the group Apertures. This relys on the routine
 c set_aperture_e being called to fill the aper_ex and aper_ey arrays.
-
 
       real(kind=8):: zs,ze
       integer(ISZ):: ip,i,j,k,ia,izs,ize
@@ -9042,6 +9072,10 @@ c     --- If no field solve, return
 
 c     --- If a field solver is registered, call it and return.
       if (fstype == 12) then
+c       --- The registered field solvers shouldn't be called unless a full
+c       --- field solve is being called for.
+        if (iwhich > 0) return
+
         call execuser('fieldsolregistered')
 
 #ifdef MPIPARALLEL
