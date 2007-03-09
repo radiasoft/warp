@@ -464,19 +464,26 @@ Initially, conductors are not implemented.
     return self.conductors
 
   def getpdims(self):
+    # --- This is needed to set the top.nsimplicit variable.
+    setupImplicit(top.pgroup)
     # --- Returns the dimensions of the arrays used by the particles
-    return ((1+self.nxp,1+self.nzp),
+    # --- The extra dimension is to hold the charge density and the chi's
+    # --- for the implicit groups.
+    return ((1+self.nxp,1+self.nzp,1+top.nsimplicit),
             (1+self.nxp+2*self.nguardx,1+self.nzp+2*self.nguardz))
 
   def getdims(self):
+    # --- This is needed to set the top.nsimplicit variable.
+    setupImplicit(top.pgroup)
     # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nx,1+self.nz),
+    return ((1+self.nx,1+self.nz,1+top.nsimplicit),
             (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
 
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
 
   def fetche(self,*args,**kw):
+    if not top.lresetparticlee: return
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
@@ -491,17 +498,21 @@ Initially, conductors are not implemented.
     uz = pgroup.uzp[i:i+n]
     gaminv = zeros((0,), 'd')
     q  = pgroup.sq[js]
+    m  = pgroup.sm[js]
     w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    iimp = pgroup.iimplicit[js]
     if top.wpid == 0: wght = zeros((0,), 'd')
     else:             wght = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid):
     n  = len(x)
     if n == 0: return
-    sourcep = transpose(self.sourcep)
-    sourcep.shape = (1+self.nzp,1,1+self.nxp)
-    sourcep = transpose(sourcep)
+    # --- Create a temporary array to pass into setrho3d. This contributes
+    # --- differently to the charge density and to chi. Also, make it a
+    # --- 3-D array so it is accepted by setrho3d.
+    ss = self.sourcep.shape
+    sourcep = fzeros((ss[0],1,ss[1]),'d')
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
@@ -513,7 +524,8 @@ Initially, conductors are not implemented.
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
-      
+    self.sourcep[...,0] += sourcep[:,0,:]
+    self.sourcep[...,iimp+1] += sourcep[:,0,:]*q/m
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
     # --- Only sets the E field from the potential
@@ -552,20 +564,20 @@ Initially, conductors are not implemented.
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      self.source[0,:] = self.source[0,:] + self.source[-1,:]
-      self.source[-1,:] = self.source[0,:]
+      self.source[0,:,:] = self.source[0,:,:] + self.source[-1,:,:]
+      self.source[-1,:,:] = self.source[0,:,:]
     if self.pbounds[0] == 1 and not self.l4symtry:
-       self.source[0,:] = 2.*self.source[0,:]
-    if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
+       self.source[0,:,:] = 2.*self.source[0,:,:]
+    if self.pbounds[1] == 1: self.source[-1,:,:] = 2.*self.source[-1,:,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.lparallel:
         raise "MultiGridImplicitRZ not parallelized"
         #self.makesourceperiodic_parallel()
       else:
-        self.source[:,0] = self.source[:,0] + self.source[:,-1]
-        self.source[:,-1] = self.source[:,0]
-    if self.pbounds[4] == 1: self.source[:,0] = 2.*self.source[:,0]
-    if self.pbounds[5] == 1: self.source[:,-1] = 2.*self.source[:,-1]
+        self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
+        self.source[:,-1,:] = self.source[:,0,:]
+    if self.pbounds[4] == 1: self.source[:,0,:] = 2.*self.source[:,0,:]
+    if self.pbounds[5] == 1: self.source[:,-1,:] = 2.*self.source[:,-1,:]
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -602,21 +614,31 @@ Initially, conductors are not implemented.
                  solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
+    # --- Do the solve, including chi
     #self.dosolvesuperlu(iwhich,*args)
     self.dosolvemg(iwhich,*args)
 
   def dosolvemg(self,iwhich=0,*args):
 
-    qomdt = top.pgroup.sq/top.pgroup.sm*top.dt
-    chi0 = fzeros(self.source.shape,'d')
-    chi0[...] = 0.5*qomdt[0]*top.dt*self.source/eps0
+    qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
+    chi0 = 0.5*self.source[...,1:]*top.dt**2/eps0
+    """
+    # --- Test a linearly varying chi and parabolic phi
+    c1 = 10.
+    c2 = 2.
+    alpha = 10.
+    for iz in range(self.nz+1):
+      chi0[...,iz] = (c1 + c2*self.zmesh[iz])
+      self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
+    """
+    self.chi0 = chi0
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject()
 
     mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz,
                         self.potential,self.source,
-                        top.ns,qomdt,chi0,
+                        top.nsimplicit,qomdt,chi0,
                         self.bounds,self.xmmin,self.zmmin,self.zmminglobal,top.zbeam,top.zgrid,
                         self.mgparam,mgiters,self.mgmaxiters,
                         self.mgmaxlevels,mgerror,self.mgtol,
@@ -739,11 +761,10 @@ Initially, conductors are not implemented.
     sdims,pdims = self.getdims()
     sdims = [sdims[1],1,sdims[0]]
     pdims = [pdims[1],1,pdims[0]]
-    source = transpose(self.source)
+    source = transpose(self.source[...,0])
     source.shape = sdims
     source = transpose(source)
     potential = transpose(self.potential)
-    print potential.shape,pdims
     potential.shape = pdims
     potential = transpose(potential)
     self.rho = source
