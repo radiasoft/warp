@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.196 $, $Date: 2007/02/28 00:11:51 $
+#@(#) File TOP.V, version $Revision: 3.197 $, $Date: 2007/03/09 18:14:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.196 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.197 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2055,6 +2055,8 @@ fselfb(0:ns-1) _real   /0./ # The scaling factor, vz.
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
+limplicit(0:ns-1) _logical # Flags implicit particle species
+iimplicit(0:ns-1) _integer # Group number for implicit particles
 zshift(ns) _real /0./
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
@@ -2119,9 +2121,14 @@ iselfb(0:ns-1) _integer /0/ # Group number for particles that are affected by
                             # their own magnetic field, using the 1/gamma**2
                             # approximation. Note that by default, group 0
                             # has gamma == 1.
-setupSelfB(pgroup:ParticleGroup)
-                        subroutine
+setupSelfB(pgroup:ParticleGroup) subroutine
                         # Sets up data for particle requiring self B correction
+
+*********** ImplicitModule:
+nsimplicit integer /0/  # Number of implicit groups with different q/m values
+implicitfactor(0:ns-1) _real # Coefficients for chi for each implicit group
+setupImplicit(pgroup:ParticleGroup) subroutine
+                        # Sets up the bookkeepping for implicit particle species
 
 *********** Scraped_Particles dump:
 # Arrays for scraped particles
@@ -2191,6 +2198,9 @@ lhist                     logical
    # Flag set when histories are to be save (so moments will be calculated)
 lspecial                  logical
    # Flag set when this is a "special" timestep
+lresetparticlee           logical /.true./
+   # When true, the particle's E field is reset to zero at the beginning
+   # of each step.
 
 *********** ExtPart dump:
 # Arrays that hold particle data that is extrapolated to grid cell centers
@@ -2238,6 +2248,8 @@ getzmmnt_weights(np,xp(np):real,yp(np):real,zp(np):real,
          uxpo:real,uypo:real,uzpo:real,is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
+getlabwn()  subroutine # Gets the lab window moments from the z moments
+getvzofz()  subroutine
 setgamma(lrelativ)
             subroutine # Converts v to u, sets gammainv for all ptcls
 gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
@@ -2265,6 +2277,9 @@ zgapcorr(np:integer,zp(np):real,xp(np):real,uzp(np):real,gaminv(np):real,
          dtl:real,dtr:real,dt:real,m:real,q:real,time:real)
             subroutine # Adds z correction term for accelerating gap residence
                        # correction.
+acclbfrm(zcorrection)
+            subroutine # Gets the acceleration residence correction for
+                       # the beam frame
 
 *********** TopDiag:
 # Subroutines in package TOP
