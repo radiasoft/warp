@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.253 $, $Date: 2007/02/15 01:05:17 $
+#@(#) File W3D.V, version $Revision: 3.254 $, $Date: 2007/03/09 18:05:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.253 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.254 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -51,8 +51,8 @@ l2symtry             logical    /.false./  # Turns on 2-fold symmetry
 l4symtry             logical    /.false./  # Turns on 4-fold symmetry
 lbeforefs  logical    /.false./  # Turns on call to python function "beforefs"
 lafterfs   logical    /.false./  # Turns on call to python function "afterfs"
-lbeforelr  logical    /.false./  # Turns on call to python function "beforelr"
-lcallscraper  logical    /.false./  # Turns on call to python function "callscraper"
+lbeforelr logical /.false./ # Turns on call to python function "beforelr"
+lcallscraper   logical /.false./ # Turns on call to python function "callscraper"
 izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
 izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
 solvergeom integer    /0/  # Geometry of field solver
@@ -818,8 +818,10 @@ othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
          bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field
 getese3d()   subroutine # Computes electrostatic energy
+getese()     subroutine # Computes electrostatic energy
 gtlchg3d()   subroutine # Computes line charge density
-inject3d(itask:integer)
+gtlchg()     subroutine # Computes line charge density
+inject3d(itask:integer,pgroup:ParticleGroup)
              subroutine # Injection routine
 injctint(pgroup:ParticleGroup) subroutine # Initialization for injection
 fill_inj()   subroutine # Initializes arrays describing the geometry of the
@@ -924,9 +926,13 @@ setrho3dselect(rho(0:nx,0:ny,0:nz):real,rho1d:real,
                l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
 sezax3d()    subroutine # Sets EZAX, Ez on axix
+sezax()      subroutine # Sets EZAX, Ez on axix
 sphiax3d()   subroutine # Sets PHIAX, E. S. potential on axis
+sphiax()     subroutine # Sets PHIAX, E. S. potential on axis
 srhoax3d()   subroutine # Sets RHOAX, charge density on axis
+srhoax()     subroutine # Sets RHOAX, charge density on axis
 rhodia3d()   subroutine # Sets rhomid and rhomax diagnostics
+rhodia()     subroutine # Sets rhomid and rhomax diagnostics
 stckxy3d(np,xp(np):real,xmmax:real,xmmin:real,dx:real,
             yp(np):real,ymmax:real,ymmin:real,dy:real,
          zp(np):real,zmmin:real,dz:real,
@@ -968,6 +974,8 @@ loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
              epsx(np):real,epsy(np):real) subroutine
 setupFields3dParticles(ns,ndts,it) subroutine
 check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
+set_aperture_e() subroutine
+setuppadvncsubcyclingaveraging(it:integer,center:string,pgroup:ParticleGroup) subroutine
      
 *********** W3Dutilities:
 sortparticlesbyindex1(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
