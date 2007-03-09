@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.204 $, $Date: 2007/02/02 01:14:58 $
+c@(#) File TOP.F, version $Revision: 3.205 $, $Date: 2007/03/09 18:14:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3960,6 +3960,42 @@ c     --- Find any new species with different fselfb.
           pgroup%iselfb(js1) = nsselfb-1
           iselfb(jsid) = nsselfb-1
           fselfb(nsselfb-1) = pgroup%fselfb(js1)
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+      subroutine setupImplicit(pgroup)
+      use ParticleGroupmodule
+      use ImplicitModule
+      type(ParticleGroup):: pgroup
+
+c Setups the bookkeepping for implicit species.
+c These are generic and can be used by any field solver.
+
+      integer(ISZ):: js1,js2
+
+      logical(ISZ):: lnew
+      real(kind=8):: qom
+
+c     --- Find any new implicit species with different q/m
+      do js1=0,pgroup%ns-1
+        if (.not. pgroup%limplicit(js1)) continue
+c       --- First check if the q/m of this species has already been registered
+        lnew = .true.
+        do js2=0,nsimplicit-1
+          qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
+          if (qom == implicitfactor(js2)) lnew = .false.
+        enddo
+c       --- If not registered, then add it to the list.
+        if (lnew) then
+          nsimplicit = nsimplicit + 1
+          call gchange("ImplicitModule",0)
+          qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
+          implicitfactor(nsimplicit-1) = qom
+          pgroup%iimplicit(js1) = nsimplicit-1
         endif
       enddo
 
