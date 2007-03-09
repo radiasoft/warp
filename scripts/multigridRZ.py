@@ -278,6 +278,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -374,7 +375,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
 ##############################################################################
-class MultiGridImplicitRZ(SubcycledPoissonSolver):
+class MultiGridImplicit2D(SubcycledPoissonSolver):
   """
 This solves the modified Poisson equation which includes the suseptibility
 tensor that appears from the direct implicit scheme.
@@ -392,7 +393,7 @@ Initially, conductors are not implemented.
   __frzinputs__ = ['nguardx','nguardz']
 
   def __init__(self,lreducedpickle=1,**kw):
-    self.solvergeom = w3d.RZgeom
+    self.solvergeom = w3d.solvergeom
     kw['lreducedpickle'] = lreducedpickle
     self.nguardx = 0
     self.nguardz = 1
@@ -415,17 +416,17 @@ Initially, conductors are not implemented.
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGridImplicitRZ.__w3dinputs__:
+    for name in MultiGridImplicit2D.__w3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(w3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGridImplicitRZ.__f3dinputs__:
+    for name in MultiGridImplicit2D.__f3dinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
       if kw.has_key(name): del kw[name]
-    for name in MultiGridImplicitRZ.__frzinputs__:
+    for name in MultiGridImplicit2D.__frzinputs__:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(frz,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(frz,name))
@@ -450,11 +451,30 @@ Initially, conductors are not implemented.
     # --- Turn of build quads option
     self.lbuildquads = false
 
+  def __getstate__(self):
+    dict = SubcycledPoissonSolver.__getstate__(self)
+    if self.lreducedpickle:
+      # --- Delete the conductorobject since it can be big
+      del dict['conductors']
+      # --- Put all of the conductors in the newconductorlist so that they
+      # --- will be reinstalled after the restore.
+      dict['newconductorlist'] += self.conductorlist
+      dict['conductorlist'] = []
+      if 'rho' in dict: del dict['rho']
+      if 'phi' in dict: del dict['phi']
+      if 'chi0' in dict: del dict['chi0']
+    return dict
+
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
     if 'newconductorlist' not in self.__dict__:
+      # --- For backwards compatibility
       self.newconductorlist = self.conductorlist
       self.conductorlist = []
+    if self.lreducedpickle and not self.lnorestoreonpickle:
+      # --- Create a new (and now empty) conductor object.
+      # --- Any conductors will be installed when it is referenced.
+      self.conductors = ConductorType()
 
   def getconductorobject(self):
     # --- Regenerate the conductor data
@@ -536,6 +556,7 @@ Initially, conductors are not implemented.
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -555,12 +576,12 @@ Initially, conductors are not implemented.
   def setarraysforfieldsolve(self,*args):
     SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
     if self.lparallel:
-      raise "MultiGridImplicitRZ not parallelized"
+      raise "MultiGridImplicit2D not parallelized"
 
   def getpotentialpforparticles(self,*args):
     SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     if self.lparallel:
-      raise "MultiGridImplicitRZ not parallelized"
+      raise "MultiGridImplicit2D not parallelized"
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -571,7 +592,7 @@ Initially, conductors are not implemented.
     if self.pbounds[1] == 1: self.source[-1,:,:] = 2.*self.source[-1,:,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.lparallel:
-        raise "MultiGridImplicitRZ not parallelized"
+        raise "MultiGridImplicit2D not parallelized"
         #self.makesourceperiodic_parallel()
       else:
         self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
@@ -631,7 +652,13 @@ Initially, conductors are not implemented.
       chi0[...,iz] = (c1 + c2*self.zmesh[iz])
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
+
+    # --- This is only done for convenience.
+    self.phi = self.potential
+    self.rho = self.source[...,0]
     self.chi0 = chi0
+    if isinstance(self.potential,FloatType): return
+
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject()
@@ -641,7 +668,7 @@ Initially, conductors are not implemented.
                         top.nsimplicit,qomdt,chi0,
                         self.bounds,self.xmmin,self.zmmin,self.zmminglobal,top.zbeam,top.zgrid,
                         self.mgparam,mgiters,self.mgmaxiters,
-                        self.mgmaxlevels,mgerror,self.mgtol,
+                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                         self.downpasses,self.uppasses,
                         self.lcndbndy,self.laddconductor,self.icndbndy,self.lbuildquads,
                         self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
@@ -770,17 +797,16 @@ Initially, conductors are not implemented.
     self.rho = source
     self.phi = potential
     pffunc(**kw)
-    del self.rho,self.phi
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
 
-# --- This can only be done after MultiGridRZ and MultiGridImplicitRZ are defined.
+# --- This can only be done after MultiGridRZ and MultiGridImplicit2D are defined.
 try:
   psyco.bind(MultiGridRZ)
-  psyco.bind(MultiGridImplicitRZ)
+  psyco.bind(MultiGridImplicit2D)
 except NameError:
   pass
 
