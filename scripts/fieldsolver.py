@@ -148,7 +148,7 @@ def fieldsolregistered():
 def fetcheregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetche(lfirstsolver=(f==_fieldsolvers[0]))
+    f.fetche()
 def fetchbregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
@@ -156,11 +156,11 @@ def fetchbregistered():
 def fetchphiregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetchphi(lfirstsolver=(f==_fieldsolvers[0]))
+    f.fetchphi()
 def fetcharegistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.fetcha(lfirstsolver=(f==_fieldsolvers[0]))
+    f.fetcha()
 def rhodiaregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
@@ -850,23 +850,6 @@ class SubcycledPoissonSolver(FieldSolver):
         assert max(z) < self.zmmax+top.zgridprv,\
                "Particles in species %d have z above the grid when fetching the field"%js
 
-    # --- This is a kludgy fix to allow multiple fieldsolvers to be used
-    # --- at the same time.
-    # --- If this is not the first solver, then create temporary arrays
-    # --- for the field quantities which are later copied back into the
-    # --- originals. This needs to be done since the base field fetching
-    # --- routines set the fields rather then accumulate, so a second
-    # --- call would overwrite the fields from the first.
-    if not kw['lfirstsolver']:
-      exorig = ex
-      eyorig = ey
-      ezorig = ez
-      bxorig = bx
-      byorig = by
-      bzorig = bz
-      ex,ey,ez = zeros((3,len(ex)),'d')
-      bx,by,bz = zeros((3,len(bx)),'d')
-
     args = [x,y,z,ex,ey,ez,bx,by,bz,pgroup]
 
     jsid = w3d.jsfsapi
@@ -879,15 +862,6 @@ class SubcycledPoissonSolver(FieldSolver):
     self.setpotentialpforparticles(None,indts,iselfb)
     self.setfieldpforparticles(None,indts,iselfb)
     self.fetchfieldfrompositions(*args)
-
-    # --- Now copy the data into the original arrays.
-    if not kw['lfirstsolver']:
-      exorig[:] += ex
-      eyorig[:] += ey
-      ezorig[:] += ez
-      bxorig[:] += bx
-      byorig[:] += by
-      bzorig[:] += bz
 
   def fetchpotential(self,*args,**kw):
     'Fetches the potential, uses arrays from w3d module FieldSolveAPI'
@@ -916,11 +890,6 @@ class SubcycledPoissonSolver(FieldSolver):
         assert max(z) < self.zmmax,\
                "Particles have z below the grid when fetching the potential"
 
-    # --- See notes in fetche about lfirstsolver
-    if not kw['lfirstsolver']:
-      potentialorig = potential
-      potential = zeros(potentialorig.shape,'d')
-
     jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
     else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
@@ -930,9 +899,6 @@ class SubcycledPoissonSolver(FieldSolver):
     iselfb = top.iselfb[jsid]
     self.setpotentialpforparticles(None,indts,iselfb)
     self.fetchpotentialfrompositions(x,y,z,potential)
-
-    if not kw['lfirstsolver']:
-      potentialorig[...] += potential
 
   def dosolveonpotential(self,iwhich,isourcepndtscopies,indts,iselfb):
     "points source and potential appropriately and call the solving routine"
