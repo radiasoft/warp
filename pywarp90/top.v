@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.197 $, $Date: 2007/03/09 18:14:30 $
+#@(#) File TOP.V, version $Revision: 3.198 $, $Date: 2007/03/09 23:44:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.197 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.198 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2055,8 +2055,8 @@ fselfb(0:ns-1) _real   /0./ # The scaling factor, vz.
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
-limplicit(0:ns-1) _logical # Flags implicit particle species
-iimplicit(0:ns-1) _integer # Group number for implicit particles
+limplicit(0:ns-1) _logical /0/ # Flags implicit particle species
+iimplicit(0:ns-1) _integer /-1/ # Group number for implicit particles
 zshift(ns) _real /0./
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
