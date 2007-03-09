@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.78 $, $Date: 2007/01/12 18:35:30 $
+c@(#) File WXY.M, version $Revision: 3.79 $, $Date: 2007/03/09 18:06:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -929,7 +929,13 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: ipmin,ip,is
       real(kind=8), dimension(ip) :: ex,ey,ez,zpo
-            
+
+      if (lresetparticlee) then
+        ex = 0.
+        ey = 0.
+        ez = 0.
+      endif
+
       if(solvergeom/=XYgeom) then
 c       --- Obtain the self-field from the electrostatic potential
         if (lwithez) then
