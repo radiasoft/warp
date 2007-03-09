@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.254 $, $Date: 2007/03/09 18:05:30 $
+#@(#) File W3D.V, version $Revision: 3.255 $, $Date: 2007/03/09 23:32:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.254 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.255 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -325,12 +325,6 @@ nzpguard integer /0/ # Number of guard cells to add extending the grids beyond
                      # version.
 zmminp real      # Lower limit of z for grid for particles
 zmmaxp real      # Upper limit of z for grid for particles
-lrhosummedonboundaries logical /.false./
-                  # Auto set flag which determines whether rho has been
-                  # set up for the field solve yet. This is set to true
-                  # by setrhoforfieldsolve and false by loadrho.
-                  # This avoids double counting rho in parallel
-                  # when multiple field solves are done.
 nrhopndtscopies3d integer # Copy of nrhopndtscopies from top
 nsndts3d          integer # Copy of nsndts from top
 nsndtsphi3d       integer # Copy of nsndtsphi from top
