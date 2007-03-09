@@ -155,9 +155,16 @@ Creates a new species of particles. All arguments are optional.
   - name='': species name
   - nautodt=1: number of species to setup for automatic subcycling.
                The slowest will have dt = 2**(nautodt-1)*top.dt.
+  - fselfb=0.: z velocity to use when applying relativistic corrections.
+               No corrections are done if it is zero.
+  - limplicit=false: Flag to turn on the implicit particle advance for this
+                     species.
   """
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
-                    fselfb=None):
+                    fselfb=None,limplicit=None):
+    # --- Note that some default arguments are None in case the user had
+    # --- set the values in pgroup already, in which case they should not
+    # --- be overwritten here unless the inputs are explicitly set.
     self.jslist=[]
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
@@ -169,10 +176,12 @@ Creates a new species of particles. All arguments are optional.
     self.nautodt = nautodt
     if self.nautodt > 1 and top.chdtspid == 0: top.chdtspid = nextpid()
     if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
+    if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
     for i in range(nautodt-1):
       self.add_group()
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
       if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
+      if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
       # --- zero out sp_fract for the extra species added with larger ndts
       top.sp_fract[self.jslist[-1]] = 0.
         
