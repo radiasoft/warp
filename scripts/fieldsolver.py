@@ -52,14 +52,24 @@ package. Only w3d and wxy have field solves defined.
  - lafterfs=false:  when true, call functions installed be installafterfs
   """
   if lbeforefs: controllers.beforefs()
-  currpkg = package()[0]
-  if   (currpkg == "w3d"): fieldsol3d(iwhich)
-  elif (currpkg == "wxy"): fieldsolxy(iwhich)
+
+  if top.fstype == 12:
+    if iwhich > 0: return
+    starttime = wtime()
+    fieldsolregistered()
+    endtime = wtime()
+    top.fstime += endtime - starttime
+  else:
+    currpkg = package()[0]
+    if   (currpkg == "w3d"): fieldsol3d(iwhich)
+    elif (currpkg == "wxy"): fieldsolxy(iwhich)
+
   if lafterfs: controllers.afterfs()
+
   # --- Now do extra work, updating arrays which depend directly on phi,
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
-    if (top.efetch == 3 and
+    if (top.efetch == 3 and top.fstype != 12 and
         (w3d.solvergeom == w3d.XYZgeom or
          w3d.solvergeom == w3d.RZgeom or
          w3d.solvergeom == w3d.XZgeom or
@@ -69,12 +79,8 @@ package. Only w3d and wxy have field solves defined.
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
                  w3d.dx,w3d.dy,w3d.dz,
                  top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
-    if top.inject > 0:
-      try:
-        # --- This routine is not defined in pywarp77
-        getinj_phi()
-      except NameError:
-        pass
+    # --- Get the phi needed for injection
+    if top.inject > 0: getinj_phi()
 
 #=============================================================================
 def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
