@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.131 2007/01/30 02:31:23 dave Exp $"
+warp_version = "$Id: warp.py,v 1.132 2007/03/09 23:25:55 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -975,7 +975,7 @@ from lattice import *
 from drawlattice import *
 from multigrid import MultiGrid
 from multigridRZ import MultiGridRZ
-from multigridRZ import MultiGridImplicitRZ
+from multigridRZ import MultiGridImplicit2D
 from MeshRefinement import MRBlock
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
