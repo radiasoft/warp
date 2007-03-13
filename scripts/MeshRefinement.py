@@ -1135,7 +1135,7 @@ Fetches the potential, given a list of positions
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                             self.zmmin,self.zmmax,
-                            top.zgridprv,self.l2symtry,self.l4symtry)
+                            self.root.getzgridprv(),self.l2symtry,self.l4symtry)
 
       for block in [self]+self.children:
         # --- Get list of particles within the ith domain
@@ -1186,7 +1186,7 @@ Gathers the ichild for the fetchfield_allsort.
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmmin,self.zmmax,top.zgridprv,
+                            self.zmmin,self.zmmax,self.root.getzgridprv(),
                             self.l2symtry,self.l4symtry)
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
@@ -1314,6 +1314,36 @@ to zero."""
     result = fzeros(2*r-1,'d')
     result[...] = w
     return result
+
+  def setzgrid(self,zgrid):
+    if self == self.root:
+      # --- This calls the setzgrid from the field solver base class
+      self.__class__.__bases__[1].setzgrid(self,zgrid)
+    else:
+      # --- This makes sure that for children, the value of zgrid is
+      # --- determined by the root grid.
+      self.root.setzgrid(zgrid)
+
+  def getzgrid(self):
+    if self == self.root:
+      # --- This calls the getzgrid from the field solver base class
+      return self.__class__.__bases__[1].getzgrid(self)
+    else:
+      return self.root.getzgrid()
+
+  def getzgridprv(self):
+    if self == self.root:
+      # --- This calls the getzgridprv from the field solver base class
+      return self.__class__.__bases__[1].getzgridprv(self)
+    else:
+      return self.root.getzgridprv()
+
+  def getzgridndts(self):
+    if self == self.root:
+      # --- This calls the getzgridndts from the field solver base class
+      return self.__class__.__bases__[1].getzgridndts(self)
+    else:
+      return self.root.getzgridndts()
 
   def getpotentialp(self,lower=None,upper=None,**kw):
 #   if lower is None: lower = self.fulllower - array([0,0,1])
@@ -1540,7 +1570,7 @@ be plotted.
     if idim==2:
       yy,xx = xx,yy
     else:
-      xx = array(xx) + top.zbeam
+      xx = array(xx) + self.root.getzgrid()
     if self is self.root: accumulateplotlists()
     try:
       plg(yy,xx,color=color[0])
