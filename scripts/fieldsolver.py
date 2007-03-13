@@ -277,7 +277,8 @@ the diagnostic is of interest and is meaningfull.
                    'debug']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
-                    'ldosolve':1}
+                    'ldosolve':1,
+                    'gridvz':None}
 
   def __init__(self,**kw):
     try:
@@ -470,9 +471,45 @@ the diagnostic is of interest and is meaningfull.
       registersolver(self)
 
   # ---------------------------------------------------------------------
+  def advancezgrid(self):
+    if self.gridvz is None: return
+    # --- Advance the grid with its own velocity. This is only called
+    # --- when gridvz is not None.
+    try:                   self.itprevious
+    except AttributeError: self.itprevious = top.it
+    try:
+      self._zgrid
+    except AttributeError:
+      self.setzgrid(top.zgrid)
+    if self.itprevious < top.it:
+      self.itprevious = top.it
+      # --- This a new step, so advance zgrid
+      self._zgrid += top.dt*self.gridvz
+      self._zgridprv = self._zgrid
+
+  def setzgrid(self,zgrid):
+    if self.gridvz is None:
+      self.gridvz = top.vbeamfrm
+    self._zgrid = zgrid
+    self._zgridprv = zgrid
+
+  def getzgrid(self):
+    if self.gridvz is None: return top.zgrid
+    else:                   return self._zgrid
+
+  def getzgridprv(self):
+    if self.gridvz is None: return top.zgridprv
+    else:                   return self._zgridprv
+
+  def getzgridndts(self):
+    if self.gridvz is None: return top.zgridndts
+    else:                   return self._zgridndts
+
+  # ---------------------------------------------------------------------
   # --- These routines must at least be defined.
   def loadrho(self,lzero=true,**kw):
     'Charge deposition, uses particles from top directly'
+    self.advancezgrid()
     if lzero: self.zerorhop()
 
     for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,
@@ -732,8 +769,80 @@ class SubcycledPoissonSolver(FieldSolver):
       fieldp = self.returnfieldp(indts,iselfb)
       fieldp[...] = self.field
 
+  # ---------------------------------------------------------------------
+  def setupzgridndts(self):
+    # --- Check to len if zgridndts and update it appropriately if it
+    # --- has changed.
+    if len(self._zgridndts) < top.nsndts:
+      # --- Update ndtstozgrid
+      ndtstozgridnew = zeros(top.ndtsmax,'d')
+      nn = min(top.ndtsmax,len(self._ndtstozgrid))
+      ndtstozgridnew[:nn] = self._ndtstozgrid[:nn]
+      ndtstozgridnew[nn:] = self._zgrid
+      self._ndtstozgrid = ndtstozgridnew
+      # --- Now get zgridndts
+      self._zgridndts = take(self._ndtstozgrid,top.ndts-1)
+
+  def advancezgrid(self):
+    if self.gridvz is None: return
+    # --- This routine is called at the start of the loadsource routine
+    # --- Get initial values from top
+    try:
+      self.itprevious
+    except AttributeError:
+      self.itprevious = top.it
+    try:
+      self._zgrid
+    except AttributeError:
+      self.setzgrid(top.zgrid)
+    self.setupzgridndts()
+    if self.itprevious < top.it:
+      # --- This a new step, so advance zgrid.
+      self.itprevious = top.it
+      # --- Note that zgridprv is set
+      # --- to the advanced value of zgrid. This is done since this happens
+      # --- at the start of a loadsource. This loadsource only uses zgrid
+      # --- (actually zgridndts), but sete3d needs zgridprv. In a normal step,
+      # --- zgridprv is set to zgrid at the end of the particle advance.
+      # --- Setting it here is equivalent, since zgridprv is not used anyway
+      # --- until the next call to sete3d. A more precise version would set
+      # --- zgridprv after the field solve when the fields are then aligned
+      # --- with the rho (which is at zgrid).
+      if top.nsndts > 0:
+        for ndts in top.ndts:
+          if (top.it-1)%ndts == 0:
+            self._ndtstozgrid[ndts-1] = (self._zgrid + top.dt*self.gridvz*ndts)
+        self._zgridndts = take(self._ndtstozgrid,top.ndts-1)
+      self._zgrid += top.dt*self.gridvz
+      self._zgridprv = self._zgrid
+
+  def setzgrid(self,zgrid):
+    if self.gridvz is None:
+      self.gridvz = top.vbeamfrm
+    self._zgrid = zgrid
+    self._zgridprv = zgrid
+    self._zgridndts = []
+    self._ndtstozgrid = []
+    self.setupzgridndts()
+
+  def getzgrid(self):
+    if self.gridvz is None: return top.zgrid
+    else:                   return self._zgrid
+
+  def getzgridprv(self):
+    if self.gridvz is None: return top.zgridprv
+    else:                   return self._zgridprv
+
+  def getzgridndts(self):
+    if self.gridvz is None: return top.zgridndts
+    else:                   return self._zgridndts
+
+  # ---------------------------------------------------------------------
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
+    # --- Note that the grid location is advanced even if no field solve
+    # --- is being done.
+    self.advancezgrid()
     if not self.ldosolve: return
     if lzero is None: lzero = w3d.lzerorhofsapi
     self.allocatedataarrays()
@@ -763,12 +872,12 @@ class SubcycledPoissonSolver(FieldSolver):
                    "Particles in species %d have y above the grid when depositing the source"%js
           if self.nz > 0:
             z = top.pgroup.zp[i1:i2]
-            assert min(z) >= self.zmmin+top.zgridndts[indts],\
+            assert min(z) >= self.zmmin+self.getzgridndts()[indts],\
                    "Particles in species %d have z below the grid when depositing the source"%js
-            assert max(z) < self.zmmax+top.zgridndts[indts],\
+            assert max(z) < self.zmmax+self.getzgridndts()[indts],\
                    "Particles in species %d have z above the grid when depositing the source"%js
 
-        self.setsourcep(js,top.pgroup,top.zgridndts[indts])
+        self.setsourcep(js,top.pgroup,self.getzgridndts()[indts])
 
     if lzero:
       for indts in range(top.nsndts):
@@ -851,9 +960,9 @@ class SubcycledPoissonSolver(FieldSolver):
         assert max(y) < self.ymmax,\
                "Particles in species %d have y above the grid when fetching the field"%js
       if self.nz > 0:
-        assert min(z) >= self.zmmin+top.zgridprv,\
+        assert min(z) >= self.zmmin+self.getzgridprv(),\
                "Particles in species %d have z below the grid when fetching the field"%js
-        assert max(z) < self.zmmax+top.zgridprv,\
+        assert max(z) < self.zmmax+self.getzgridprv(),\
                "Particles in species %d have z above the grid when fetching the field"%js
 
     args = [x,y,z,ex,ey,ez,bx,by,bz,pgroup]
