@@ -167,7 +167,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
     n = len(x)
     if n == 0: return
-    setb3d(self.fieldp,n,x,y,z,top.zgridprv,bx,by,bz,
+    setb3d(self.fieldp,n,x,y,z,self.getzgridprv(),bx,by,bz,
            self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
            self.xmminp,self.ymminp,self.zmminp,
            self.l2symtry,self.l4symtry,self.lcylindrical)
@@ -175,7 +175,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   def fetchpotentialfrompositions(self,x,y,z,a):
     n = len(x)
     if n == 0: return
-    fetchafrompositions3d(self.potentialp,n,x,y,z,a,top.zgrid,
+    fetchafrompositions3d(self.potentialp,n,x,y,z,a,self.getzgrid(),
                           self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                           self.xmminp,self.ymminp,self.zmminp,
                           self.l2symtry,self.l4symtry,self.lcylindrical)
@@ -241,7 +241,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
-                      top.zbeam,
+                      self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
@@ -267,7 +267,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     # --- Setup data for bends.
     rstar = fzeros(3+self.nz,'d')
     if top.bends:
-      setrstar(rstar,self.nz,self.dz,self.zmmin,top.zgrid)
+      setrstar(rstar,self.nz,self.dz,self.zmmin,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
     self.source[...] = self.source*mu0*eps0
@@ -302,7 +302,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                          rstar,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin,
                          self.zmminglobal,
-                         top.zbeam,top.zgrid,
+                         self.getzgrid(),self.getzgrid(),
                          self.mgparam[id],self.mgform[id],
                          self.mgiters[id],self.mgmaxiters[id],
                          self.mgmaxlevels[id],self.mgerror[id],

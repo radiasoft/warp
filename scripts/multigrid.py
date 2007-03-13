@@ -172,13 +172,13 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if self.efetch == 3 and isinstance(self.fieldp,FloatType): return
     if self.efetch != 3 and isinstance(self.potentialp,FloatType): return
-    sete3d(self.potentialp,self.fieldp,n,x,y,z,top.zgridprv,
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     if max(top.fselfb) > 0.:
       assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
-      setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,top.zgridprv,bx,by,bz,
+      setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,self.getzgridprv(),bx,by,bz,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,
              self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
@@ -319,7 +319,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Note that this uses the conductorobject directly since it is called
     # --- by getconductorobject.
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
-                      top.zbeam,
+                      self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
@@ -366,11 +366,11 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- This commented out code does the same thing as the line below
       # --- setting linbend but is a bit more complicated. It is preserved
       # --- in case of some unforeseen problem with the code below.
-      #ii = (top.cbendzs <= self.zmmax+top.zgrid and
-      #                     self.zmmin+top.zgrid <= top.cbendze)
+      #ii = (top.cbendzs <= self.zmmax+zgrid and
+      #                     self.zmmin+zgrid <= top.cbendze)
       #self.linbend = sometrue(ii)
 
-      setrstar(rstar,self.nz,self.dz,self.zmmin,top.zgrid)
+      setrstar(rstar,self.nz,self.dz,self.zmmin,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -383,7 +383,7 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                        rstar,self.linbend,self.bounds,
                        self.xmmin,self.ymmin,self.zmmin*zfact,
-                       self.zmminglobal*zfact,top.zbeam*zfact,top.zgrid*zfact,
+                       self.zmminglobal*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
@@ -395,7 +395,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                          star,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin*zfact,
-                         self.zmminglobal*zfact,top.zbeam*zfact,top.zgrid*zfact,
+                         self.zmminglobal*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,

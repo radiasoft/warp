@@ -273,7 +273,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.potential,self.field,n,x,y,z,top.zgridprv,
+    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
@@ -330,7 +330,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
-                      top.zbeam,
+                      self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
@@ -551,7 +551,7 @@ Initially, conductors are not implemented.
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.potential,self.field,n,x,y,z,top.zgridprv,
+    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
@@ -608,7 +608,7 @@ Initially, conductors are not implemented.
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
-                      top.zbeam,
+                      self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
@@ -666,7 +666,8 @@ Initially, conductors are not implemented.
     mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz,
                         self.potential,self.source,
                         top.nsimplicit,qomdt,chi0,
-                        self.bounds,self.xmmin,self.zmmin,self.zmminglobal,top.zbeam,top.zgrid,
+                        self.bounds,self.xmmin,self.zmmin,self.zmminglobal,
+                        self.getzgrid(),self.getzgrid(),
                         self.mgparam,mgiters,self.mgmaxiters,
                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                         self.downpasses,self.uppasses,
