@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.346 $, $Date: 2007/03/09 23:32:22 $
+c@(#) File W3D.F, version $Revision: 3.347 $, $Date: 2007/03/13 22:52:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1985,9 +1985,9 @@ c         --- Temporarily increment 'it' as if this was the start of the next
 c         --- fullv or halfv step.
           it = it + 1
           call setuppadvncsubcyclingaveraging(it,'halfv',pgroup)
+          it = it - 1
           call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 c         call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-          it = it - 1
           call setuppadvncsubcyclingaveraging(it,center,pgroup)
 
         endif
