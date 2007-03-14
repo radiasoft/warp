@@ -10290,7 +10290,7 @@ do ic = 1, grid%bndfirst%nb_conductors
   do i = 1, c%ncond
     ix = c%jcond(i) - 1
     iz = c%kcond(i) - 1
-    if (ixmin <= ix .and. ix <= ixmax .and.\
+    if (ixmin <= ix .and. ix <= ixmax .and.&
         izmin <= iz .and. iz <= izmax) then
       rhosum = rhosum + rho(ix,iz)*2.*pi*(ix*dr + rmmin)
     endif
