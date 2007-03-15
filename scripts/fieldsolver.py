@@ -340,6 +340,9 @@ the diagnostic is of interest and is meaningfull.
           self.bounds[0] = neumann
           self.bounds[2] = neumann
           self.bounds[3] = neumann
+        elif self.solvergeom == w3d.XZgeom:
+          self.bounds[2] = neumann
+          self.bounds[3] = neumann
 
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
