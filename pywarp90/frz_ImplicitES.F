@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.5 $, $Date: 2007/03/09 23:43:36 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.6 $, $Date: 2007/03/20 19:03:59 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -67,7 +67,6 @@ c=============================================================================
      &result(coeffs)
       use Constant
       use ConductorTypemodule
-      use ImplicitMG2D
       real(kind=8),pointer:: coeffs(:,:,:,:)
       integer(ISZ):: nx,nz,ns
       real(kind=8):: dx,dz,xmmin
@@ -86,8 +85,6 @@ c=============================================================================
 
       allocate(coeffs(0:2,0:2,0:nx,0:nz))
       allocate(chi(0:1,0:1,-1:nx+1,-1:nz+1))
-c     --- Save python accessible reference to the coefficients
-      if (nx == 4 .and. nz == 4) coeffs1 => coeffs
 
 c     --- First, generate the chi tensor from chi0 and the B field.
       chi = 0.
@@ -419,7 +416,7 @@ c=============================================================================
       integer(ISZ):: nx,nz,nzfull,ns
       real(kind=8):: dx,dz,xmmin
       real(kind=8):: phi(0:nx,-1:nz+1),rho(0:nx,0:nz)
-      real(kind=8):: chi0(-1:nx,-3:nz+3,0:ns-1),bongrid(-1:nx,-3:nz+3,0:2)
+      real(kind=8):: chi0(-1:nx+1,-3:nz+3,0:ns-1),bongrid(-1:nx+1,-3:nz+3,0:2)
       real(kind=8):: qomdt(0:ns-1)
       integer(ISZ):: globalbounds(0:5)
       real(kind=8):: mgparam
@@ -582,8 +579,7 @@ c       --- Get processor with which to exchange data on coarse grid
 #endif
 
 c       --- Alloate new work space
-        allocate(phicoarse(0:nxcoarse,-1:nzcoarse+1),
-     &           stat=allocerror)
+        allocate(phicoarse(0:nxcoarse,-1:nzcoarse+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
@@ -681,7 +677,7 @@ c       --- Add in resulting error.
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V5 phi",mglevel,sss
         endif
-
+        
         deallocate(res)
         deallocate(phicoarse,rhocoarse)
         deallocate(chi0coarse,bongridcoarse)
@@ -1007,12 +1003,12 @@ c     --- Apply the boundary conditions, setting the values in the guard cells
       endif
 
       if (delz > 0) then
-        if (bounds(4) == 0) u(:,:,-1,:) = 0.
-        if (bounds(4) == 1) u(:,:,-1,:) = u(:,:,+1,:)
-        if (bounds(4) == 2 .and. nz == nzfull) u(:,:,-1,:) = u(:,:,nz-1,:)
-        if (bounds(5) == 0) u(:,:,nz+1,:) = 0.
-        if (bounds(5) == 1) u(:,:,nz+1,:) = u(:,:,nz-1,:)
-        if (bounds(5) == 2 .and. nz == nzfull) u(:,:,nz+1,:) = u(:,:,+1,:)
+        if (bounds(4) == 0) u(:,:,-delz:-1,:) = 0.
+        if (bounds(4) == 1) u(:,:,-delz:-1,:) = u(:,:,delz:+1:-1,:)
+        if (bounds(4) == 2 .and. nz == nzfull) u(:,:,-delz:-1,:) = u(:,:,nz-delz:nz-1,:)
+        if (bounds(5) == 0) u(:,:,nz+1:nz+delz,:) = 0.
+        if (bounds(5) == 1) u(:,:,nz+1:nz+delz,:) = u(:,:,nz-1:nz-delz:-1,:)
+        if (bounds(5) == 2 .and. nz == nzfull) u(:,:,nz+1:nz+delz,:) = u(:,:,+1:delz,:)
       endif
 
 c     --- Need code to set z guard planes for periodic B.C.'s for parallel
