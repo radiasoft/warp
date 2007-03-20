@@ -1148,7 +1148,7 @@ Fetches the potential, given a list of positions
         yc = take(y,ii)
         zc = take(z,ii)
         # --- Create temporary arrays to hold the potential
-        tpotential = zeros(shape(potential),'d')
+        tpotential = zeros(shape(xc),'d')
         # --- Now get the field
         if block == self:
           self.__class__.__bases__[1].fetchpotentialfrompositions(self,xc,yc,zc,tpotential)
