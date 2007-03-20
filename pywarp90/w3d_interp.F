@@ -200,9 +200,10 @@ c       thing for absorbing b.c.'s.
 
         do i=1,npd      
           if (gaminvscratch(i)==0.) then
-            xbar(i) = xpr(i)
-            ybar(i) = ypr(i)
-            zbar(i) = zpr(i)
+            ip=i+ipmin1
+            xbar(i) = pgroup%xp(ip)
+            ybar(i) = pgroup%yp(ip)
+            zbar(i) = pgroup%zp(ip)
           endif
         enddo
 c       Now get average velocity using these positions
