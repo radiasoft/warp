@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.55 $, $Date: 2007/03/09 23:44:57 $
+#@(#) File FRZ.V, version $Revision: 3.56 $, $Date: 2007/03/20 19:04:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.55 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.56 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -448,7 +448,6 @@ $              b:real,info:integer)
 $             subroutine
 
 ******** ImplicitMG2D:
-coeffs1(:,:,:,:) _real
 mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
                     dx:real,dz:real,phi:real,rho:real,ns:integer,qomdt:real,chi0:real,bounds:integer,
                     xmmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
