@@ -52,7 +52,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.16 2007/02/14 20:49:19 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.17 2007/03/21 02:25:25 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -181,6 +181,8 @@ controllers are restored properly.
 
   def uninstallfuncinlist(self,f):
     # --- An element by element search is needed
+    # --- f can be a function or method object, or a name (string).
+    # --- Note that method objects can not be removed by name.
     funclistcopy = copy.copy(self.funcs)
     for func in funclistcopy:
       if f == func:
@@ -193,6 +195,13 @@ controllers are restored properly.
           return
       elif type(func) == StringType:
         if f.__name__ == func:
+          self.funcs.remove(func)
+          return
+      elif type(f) == StringType:
+        if type(func) == StringType: funcname = func
+        elif type(func) == ListType: funcname = None
+        else:                        funcname = func.__name__
+        if f == funcname:
           self.funcs.remove(func)
           return
     raise 'Warning: no such function had been installed'
