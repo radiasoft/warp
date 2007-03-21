@@ -508,6 +508,11 @@ the diagnostic is of interest and is meaningfull.
     if self.gridvz is None: return top.zgridndts
     else:                   return self._zgridndts
 
+  def setgridvz(self,gridvz):
+    self.gridvz = gridvz
+    self._zgrid = top.zgrid
+    self._zgridprv = top.zgrid
+
   # ---------------------------------------------------------------------
   # --- These routines must at least be defined.
   def loadrho(self,lzero=true,**kw):
@@ -840,6 +845,14 @@ class SubcycledPoissonSolver(FieldSolver):
     if self.gridvz is None: return top.zgridndts
     else:                   return self._zgridndts
 
+  def setgridvz(self,gridvz):
+    self.gridvz = gridvz
+    self._zgrid = top.zgrid
+    self._zgridprv = top.zgrid
+    self._zgridndts = []
+    self._ndtstozgrid = []
+    self.setupzgridndts()
+
   # ---------------------------------------------------------------------
   def loadsource(self,lzero=None,**kw):
     'Charge deposition, uses particles from top directly'
@@ -950,7 +963,7 @@ class SubcycledPoissonSolver(FieldSolver):
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       pgroup = w3d.pgroupfsapi
 
-    if self.debug:
+    if self.debug and self.efetch != 5:
       js = w3d.jsfsapi
       if self.nx > 0:
         assert min(abs(x-self.xmmin)) >= 0.,\
