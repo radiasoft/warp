@@ -1112,11 +1112,11 @@ access to the particle group and does not sort the input data.
     # --- Now, put the E fields back into the original arrays, unsorting
     # --- the data
     if isort is not None:
-      if len(tex) > 0: putsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
-      if len(tbx) > 0: putsortedefield(len(tbx),isort,tbx,tby,tbz,bx,by,bz)
+      if len(tex) > 0: addsortedefield(len(tex),isort,tex,tey,tez,ex,ey,ez)
+      if len(tbx) > 0: addsortedefield(len(tbx),isort,tbx,tby,tbz,bx,by,bz)
       if pgroup is not None and top.chdtspid > 0:
         # --- Note that these need to be unsorted just like the fields.
-        if len(tdx) > 0: putsortedefield(len(tdx),isort,tdx,tdy,tdz,dx,dy,dz)
+        if len(tdx) > 0: addsortedefield(len(tdx),isort,tdx,tdy,tdz,dx,dy,dz)
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     """
