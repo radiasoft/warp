@@ -786,6 +786,7 @@ Initially, conductors are not implemented.
     kw['solver'] = self
     # --- This is a temporary kludge until the plot routines are updated to
     # --- use source and potential instead of rho and phi.
+    # --- This also makes the rho and phi arrays 3D
     sdims,pdims = self.getdims()
     sdims = [sdims[1],1,sdims[0]]
     pdims = [pdims[1],1,pdims[0]]
@@ -798,6 +799,8 @@ Initially, conductors are not implemented.
     self.rho = source
     self.phi = potential
     pffunc(**kw)
+    self.rho = self.source
+    self.phi = self.potential
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
