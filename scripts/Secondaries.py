@@ -19,7 +19,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.15 2007/02/22 23:55:17 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.16 2007/03/21 21:27:01 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -310,8 +310,8 @@ Class for generating secondaries
     else:
       ymin=w3d.ymmin
     ymax=w3d.ymmax
-    zmin=w3d.zmmin
-    zmax=w3d.zmmax
+    zmin=w3d.zmminglobal
+    zmax=w3d.zmmaxglobal
 
     if self.l_record_timing:t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
@@ -658,7 +658,7 @@ Class for generating secondaries
                            (ynew<ymin) or (ynew>ymax) or \
                            (znew<zmin) or (znew>zmax)
             if condition:
-              print 'WARNING: new particle outside boundaries',xnew,ynew,znew
+              print 'WARNING from secondaries: new particle outside boundaries, skip creation...',xnew,ynew,znew
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
