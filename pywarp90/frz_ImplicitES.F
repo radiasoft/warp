@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.6 $, $Date: 2007/03/20 19:03:59 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.7 $, $Date: 2007/03/21 02:26:15 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -393,6 +393,8 @@ c     --- Make a print out.
       endif
 
       deallocate(phisave)
+      deallocate(chi0temp)
+      deallocate(bongrid)
 
 !$OMP END PARALLEL
 
@@ -691,6 +693,8 @@ c     --- Do final SOR passes.
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
+
+      deallocate(coeffs)
 
       return
       end
