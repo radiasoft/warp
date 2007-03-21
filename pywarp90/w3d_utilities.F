@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.17 $, $Date: 2007/01/24 22:12:31 $
+c@(#) File w3d_utilities.F, version $Revision: 1.18 $, $Date: 2007/03/21 18:47:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -315,7 +315,7 @@ c       --- if not within grid, skip it
       return
       end
 c=============================================================================
-      subroutine putsortedefield(n,isort,tex,tey,tez,ex,ey,ez)
+      subroutine addsortedefield(n,isort,tex,tey,tez,ex,ey,ez)
       use Subtimers3d
       integer(ISZ):: n
       integer(ISZ):: isort(0:n-1)
@@ -326,13 +326,13 @@ c=============================================================================
       if (lw3dtimesubs) substarttime = wtime()
 
       do i=0,n-1
-        ex(isort(i)) = tex(i)
-        ey(isort(i)) = tey(i)
-        ez(isort(i)) = tez(i)
+        ex(isort(i)) = ex(isort(i)) + tex(i)
+        ey(isort(i)) = ey(isort(i)) + tey(i)
+        ez(isort(i)) = ez(isort(i)) + tez(i)
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timeputsortedefield = timeputsortedefield +
+      if (lw3dtimesubs) timeaddsortedefield = timeaddsortedefield +
      &                                        wtime() - substarttime
 !$OMP END MASTER
 

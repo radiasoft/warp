@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.255 $, $Date: 2007/03/09 23:32:21 $
+#@(#) File W3D.V, version $Revision: 3.256 $, $Date: 2007/03/21 18:47:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.255 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.256 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -1013,7 +1013,7 @@ getabsgrad3d(nx:integer,ny:integer,nz:integer,
              f(0:nx,0:ny,0:nz):real,gr(0:nx,0:ny,0:nz):real,
              dx:real,dy:real,dz:real)
       subroutine
-putsortedefield(n:integer,isort(0:n-1):integer,
+addsortedefield(n:integer,isort(0:n-1):integer,
                 tex(0:n-1):real,tey(0:n-1):real,tez(0:n-1):real,
                 ex(0:n-1):real,ey(0:n-1):real,ez(0:n-1):real)
       subroutine
@@ -1171,7 +1171,7 @@ timegetichildpositiveonly real /0./
 timeaddrhotoowner real /0./
 timegetrhofromowner real /0./
 timegetabsgrad real /0./
-timeputsortedefield real /0./
+timeaddsortedefield real /0./
 
 timeinit_w3d_parallel real /0./
 timesw_globalsum real /0./
