@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.7 $, $Date: 2007/03/21 02:26:15 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.8 $, $Date: 2007/03/22 21:42:27 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -478,6 +478,9 @@ c     --- the current level of refinement.
         sss = mggetarraysum(nx,0,nz,0,0,0,rho,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 rho",mglevel,sss
+        sss = mggetarraysum(nx,0,nz,1,0,3,chi0,
+     &                      izfsslave,nzfsslave,nslaves,my_index)
+        if (my_index == 0) print*,"V1 chi0",mglevel,sss
       endif
 
 c     --- Do initial SOR passes.
@@ -623,6 +626,9 @@ c       --- Restriction
           sss = mggetarraysum(nxcoarse,0,nzcoarse,0,0,0,rhocoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
           if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+          sss = mggetarraysum(nxcoarse,0,nzcoarse,1,0,3,chi0coarse,
+     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          if (my_index == 0) print*,"V3 chi0coarse",mglevel,sss
         endif
 
         do ic=0,ns-1
