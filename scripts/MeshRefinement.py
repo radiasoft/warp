@@ -401,8 +401,6 @@ Add a mesh refined block to this block.
     # --- before this instance is restored, in which case no attributes,
     # --- including 'parents', has been set yet.
     if 'parents' not in self.__dict__: return
-    # --- Make sure that this gets called only once per tree traversal.
-    if not self.isfirstcall(): return
     self.__class__.__bases__[1].installconductor(self,conductor,dfill=dfill)
     for child in self.children:
       child.installconductor(conductor,dfill=dfill)
