@@ -22,7 +22,7 @@ included, up B0'''.
 """
 from warp import *
 from lattice import addnewmmlt
-solenoid_version = "$Id: solenoid.py,v 1.3 2007/02/22 23:00:12 sharp Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.4 2007/03/23 16:53:34 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -116,7 +116,7 @@ def Br(r,z,zcent,k,R,l):
 #               (R**2 + (l/2. + z)**2)**-1.5)))/32.)
 
 
-def addsolenoid(zi,zf,ri,ro,maxbz=None,current=0.,nzpoints=10000,fringelen=10.):
+def addsolenoid(zi,zf,ri,ro,maxbz=None,current=0.,nzpoints=10000,fringelen=10.,**kw):
   """
 Adds a solenoid element as an mmlt lattice element.
  - zi: z start of the current sheet
@@ -151,6 +151,6 @@ by ri. The fringelen uses the actual sheet radius.
   msp[:,1] = B0ppp(z,zcent,current,R,l)
   nn = [0,0]
   vv = [0,1]
-  return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv)
+  return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv,**kw)
 
 
