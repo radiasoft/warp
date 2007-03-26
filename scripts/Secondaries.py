@@ -19,7 +19,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.16 2007/03/21 21:27:01 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.17 2007/03/26 17:53:43 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -611,7 +611,7 @@ Class for generating secondaries
                            (ynew<ymin) or (ynew>ymax) or \
                            (znew<zmin) or (znew>zmax)
              if condition:
-              print 'WARNING: new particle outside boundaries',xnew,ynew,znew
+              print 'WARNING from secondaries: new particle outside boundaries, skip creation...',xnew,ynew,znew
 #              self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
 #              xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
               self.outparts+=[[xnew,ynew,znew,xplost[i],yplost[i],zplost[i], \
@@ -671,9 +671,11 @@ Class for generating secondaries
             t.finish()
             tadd+=t.micro()
 
-    # make sure that all particles are added
+    # --- make sure that all particles are added
     for js in self.x.keys():
       self.flushpart(js)
+    # --- check for particle out of bounds and exchange particles among processors if needed
+    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
       
     if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
