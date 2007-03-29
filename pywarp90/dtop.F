@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.146 $, $Date: 2007/01/10 21:43:24 $
+c@(#) File DTOP.F, version $Revision: 3.147 $, $Date: 2007/03/29 19:54:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.146 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.147 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -670,19 +670,53 @@ c=============================================================================
       real(kind=8):: time,zbeam
 
 c  Loads character variable PLINE3 with time-dependent simulation params
-c  associated with the current time step.  These appear in the top line
+c  associated with the current time step. These appear in the top line
 c  of identifying information on each plot frame.
 
+      integer(ISZ):: ilogt,ilogz,ilogtdigs,ilogzdigs
+      character(3):: texp,zexp
 
-      if (zbeam < 2000.) then
-        write ( pline3,
-     &   '("Step",i7,", T =",f9.4,"x10|S2|-6  s, Zbeam =",f9.4," m")' )
-     &   it, time*1.e6, zbeam
+c     --- The time and zbeam are printed out with an exponent that is a
+c     --- multiple of 3 and the mantissa is between 1 and 999.
+c     --- The extra if statement deals with the cases where the quantity
+c     --- is very close to 10**(3i). The 5.e-5 is added since the f10.4 in the
+c     --- write statements will round up numbers within 5.e-5 of 10**(3i).
+      if (time == 0.) then
+        ilogt = 0.
       else
-        write ( pline3,
-     &   '("Step",i7,", T =",f9.4,"x10|S2|-6  s, Zbeam =",f9.4," km")' )
-     &   it, time*1.e6, zbeam/1000.
+        ilogt = int((log10(abs(time))-3.)/3.)*3
       endif
+      if (time/10.**ilogt+5.e-5 >= 1000.) ilogt = ilogt + 3
+      if (zbeam == 0.) then
+        ilogz = 0.
+      else
+        ilogz = int((log10(abs(zbeam))-3.)/3.)*3
+      endif
+      if (zbeam/10.**ilogz+5.e-5 >= 1000.) ilogz = ilogz + 3
+
+c     --- There is no left-justified format control, so it has to be dealt
+c     --- explicitly. A normal write into a string is done and if the first
+c     --- character is a space, it is removed. The ilogtdigs is used so that
+c     --- the last character can be skipped.
+c     --- The SP forces a + sign to be printed with ilogt > 0.
+      write (texp,'(SP,i3)') ilogt
+      ilogtdigs = 3
+      if (texp(1:1) == " ") then
+        texp(1:2) = texp(2:3)
+        texp(3:3) = " "
+        ilogtdigs = 2
+      endif
+      write (zexp,'(SP,i3)') ilogz
+      ilogzdigs = 3
+      if (zexp(1:1) == " ") then
+        zexp(1:2) = zexp(2:3)
+        zexp(3:3) = " "
+        ilogzdigs = 2
+      endif
+
+      write ( pline3,
+     & '("Step",i8,", T =",f10.4,"e",a," s, Zbeam =",f10.4,"e",a," m")' )
+     & it,time/10.**ilogt,texp(1:ilogtdigs),zbeam/10.**ilogz,zexp(1:ilogzdigs)
       write ( frameti, '("Step",i7)' ) it
 
       return
