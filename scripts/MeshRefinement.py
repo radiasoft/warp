@@ -737,8 +737,13 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
     assert self is self.root,"This should only be called by the root block"
     if npes == 0: return
 
-    # --- Make a list of nonblocking sends to wait for to finish.
-    parallelwaitlist = []
+    # --- This now uses blocking sends. There appears to be a memory leak in
+    # --- the asynchronuous, non-blocking, isend. Using isend would be more
+    # --- efficient, since with a blocking send, the processors are stopped,
+    # --- waiting for the neighbor to get the data. In the send to the left
+    # --- for example, processor 0 first receives the data from 1, unblocking
+    # --- it, which then receives it data from processor 2, unblocking it, etc.
+    # --- This process scales very poorly with a large number of processors.
 
     # --- All blocks first send the overlapping sourcep to the neighbors.
     # --- Note that the precedences for sourcep is handled locally so
@@ -752,7 +757,10 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
           l,u,pe = data
           sourcep = block.getsourcep(l,u)
           senddict.setdefault(othernumber,[]).append((l,u,sourcep))
-      parallelwaitlist.append(mpi.isend(senddict,me-1))
+      mpi.send(senddict,me-1)
+    if me < npes-1:
+      recvdictfromright = mpi.recv(me+1)[0]
+
     # --- Then to the right
     if me < npes-1:
       senddict = {}
@@ -761,30 +769,27 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
           l,u,pe = data
           sourcep = block.getsourcep(l,u)
           senddict.setdefault(othernumber,[]).append((l,u,sourcep))
-      parallelwaitlist.append(mpi.isend(senddict,me+1))
+      mpi.send(senddict,me+1)
+    if me > 0:
+      recvdictfromleft = mpi.recv(me-1)[0]
 
     # --- The parallel receives are done afterward since they are blocking. At
     # --- this point, all of the sends have been made so there should be little
     # --- waiting and no contention.
     # --- First receive the data from the right
     if me < npes-1:
-      recvdict = mpi.recv(me+1)[0]
-      for blocknumber,data in recvdict.items():
+      for blocknumber,data in recvdictfromright.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcep(l,u)
           add(ssourcep,osourcep,ssourcep)
     # --- The from the left
     if me > 0:
-      recvdict = mpi.recv(me-1)[0]
-      for blocknumber,data in recvdict.items():
+      for blocknumber,data in recvdictfromleft.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
           ssourcep = block.getsourcep(l,u)
           add(ssourcep,osourcep,ssourcep)
-
-    # --- This is not really necessary, but helps keeps things clean.
-    if len(parallelwaitlist) > 0: mpi.waitall(parallelwaitlist)
 
   def getsourcepfromoverlaps(self):
     """
