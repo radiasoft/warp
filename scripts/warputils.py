@@ -23,7 +23,7 @@ from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.15 2007/02/09 00:16:40 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.16 2007/03/31 01:08:43 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -273,6 +273,24 @@ logically Cartesian mesh.
  - converter=float: Function which converts the strings into numbers. This should
                     be the type of result desired. It should only be float or int,
                     unless you know what you are doing.
+
+Here's an example data file called 'testdata':
+----------------------------------------------
+this line is skipped
+1 0.0379
+2 0.0583
+3 0.0768
+4 0.1201
+----------------------------------------------
+This can be read in with either
+dd = getdatafromtextfile('testdata',nskip=1,dims=[2,4])
+or
+dd = getdatafromtextfile('testdata',nskip=1,dims=[4],nquantities=2)
+Both produce an array of shape (2,4) that looks like
+>>> print dd
+[[ 1.    , 2.    , 3.    , 4.    ,]
+ [ 0.0379, 0.0583, 0.0768, 0.1201,]]
+
   """
 
   # --- Get total number of data values and make an array big enough to hold
