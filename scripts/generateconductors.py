@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.150 2007/02/09 19:01:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.151 2007/04/03 00:54:25 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2139,9 +2139,20 @@ Cylinder aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,zlower=None,zupper=None,**kw):
+    if zlower is not None and zupper is not None:
+      length = zupper - zlower
+      zcent = 0.5*(zlower + zupper)
+      self.zlower = zlower
+      self.zupper = zupper
+    assert length is not None,\
+      "ZCylinder: either length or both zlower and zupper must be specified"
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            zcylinderconductorf,zcylinderconductord,
@@ -2235,9 +2246,20 @@ Outside of a cylinder aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,zlower=None,zupper=None,**kw):
+    if zlower is not None and zupper is not None:
+      length = zupper - zlower
+      zcent = 0.5*(zlower + zupper)
+      self.zlower = zlower
+      self.zupper = zupper
+    assert length is not None,\
+      "ZCylinderOut: either length or both zlower and zupper must be specified"
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zcylinderoutconductorf,zcylinderoutconductord,
@@ -2339,9 +2361,20 @@ Cylinder aligned with X-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - xlower,xupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and xcent. If both are
+                   given, then length and xcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,xlower=None,xupper=None,**kw):
+    if xlower is not None and xupper is not None:
+      length = xupper - xlower
+      xcent = 0.5*(xlower + xupper)
+      self.xlower = xlower
+      self.xupper = xupper
+    assert length is not None,\
+      "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
@@ -2357,9 +2390,20 @@ Cylinder aligned with X-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - xlower,xupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and xcent. If both are
+                   given, then length and xcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,xlower=None,xupper=None,**kw):
+    if xlower is not None and xupper is not None:
+      length = xupper - xlower
+      xcent = 0.5*(xlower + xupper)
+      self.xlower = xlower
+      self.xupper = xupper
+    assert length is not None,\
+      "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
@@ -2375,9 +2419,20 @@ Cylinder aligned with Y-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - ylower,yupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and ycent. If both are
+                   given, then length and ycent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,ylower=None,yupper=None,**kw):
+    if ylower is not None and yupper is not None:
+      length = yupper - ylower
+      ycent = 0.5*(ylower + yupper)
+      self.ylower = ylower
+      self.yupper = yupper
+    assert length is not None,\
+      "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
@@ -2393,9 +2448,20 @@ Cylinder aligned with Y-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - ylower,yupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and ycent. If both are
+                   given, then length and ycent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1,**kw):
+  def __init__(self,radius,length=None,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=1,ylower=None,yupper=None,**kw):
+    if ylower is not None and yupper is not None:
+      length = yupper - ylower
+      ycent = 0.5*(ylower + yupper)
+      self.ylower = ylower
+      self.yupper = yupper
+    assert length is not None,\
+      "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
@@ -2412,11 +2478,17 @@ Elliptical cylinder aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage,xcent,ycent,zcent,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage,xcent,ycent,zcent,condid=1,
+                    zlower=None,zupper=None,**kw):
     ZCylinder.__init__(self,radius,length,
-                            voltage,xcent,ycent,zcent,condid)
+                            voltage,xcent,ycent,zcent,condid,
+                            zlower=zlower,zupper=zupper)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
@@ -2446,11 +2518,17 @@ Outside an elliptical cylinder aligned with z-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - zlower,zupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and zcent. If both are
+                   given, then length and zcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    zlower=None,zupper=None,**kw):
     ZCylinderOut.__init__(self,radius,length,
-                               voltage,xcent,ycent,zcent,condid)
+                               voltage,xcent,ycent,zcent,condid,
+                               zlower=zlower,zupper=zupper)
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori,
@@ -2480,9 +2558,21 @@ Elliptical cylinder aligned with x-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - xlower,xupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and xcent. If both are
+                   given, then length and xcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    xlower=None,xupper=None,**kw):
+    if xlower is not None and xupper is not None:
+      length = xupper - xlower
+      xcent = 0.5*(xlower + xupper)
+      self.xlower = xlower
+      self.xupper = xupper
+    assert length is not None,\
+      "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2503,9 +2593,21 @@ Outside of an elliptical cylinder aligned with x-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - xlower,xupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and xcent. If both are
+                   given, then length and xcent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    xlower=None,xupper=None,**kw):
+    if xlower is not None and xupper is not None:
+      length = xupper - xlower
+      xcent = 0.5*(xlower + xupper)
+      self.xlower = xlower
+      self.xupper = xupper
+    assert length is not None,\
+      "XCylinder: either length or both xlower and xupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2526,9 +2628,20 @@ Elliptical cylinder aligned with y-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - ylower,yupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and ycent. If both are
+                   given, then length and ycent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,ylower=None,yupper=None,**kw):
+    if ylower is not None and yupper is not None:
+      length = yupper - ylower
+      ycent = 0.5*(ylower + yupper)
+      self.ylower = ylower
+      self.yupper = yupper
+    assert length is not None,\
+      "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
@@ -2549,9 +2662,20 @@ Outside of an elliptical cylinder aligned with y-axis
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=1: conductor id of cylinder, must be integer, or can be 'next' in
               which case a unique ID is chosen
+  - ylower,yupper: Optionally, the lower and upper extent of the cylinder
+                   can be specified instead of length and ycent. If both are
+                   given, then length and ycent are ignored. If only one is
+                   given, it is ignored.
   """
-  def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,**kw):
+  def __init__(self,ellipticity,radius,length=None,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,ylower=None,yupper=None,**kw):
+    if ylower is not None and yupper is not None:
+      length = yupper - ylower
+      ycent = 0.5*(ylower + yupper)
+      self.ylower = ylower
+      self.yupper = yupper
+    assert length is not None,\
+      "YCylinder: either length or both ylower and yupper must be specified"
     ZCylinderOut.__init__(self,radius,length,
                                voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
