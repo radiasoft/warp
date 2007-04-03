@@ -177,7 +177,11 @@ class MultiGrid(SubcycledPoissonSolver):
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     if max(top.fselfb) > 0.:
-      assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
+      #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
+      # --- For now, just skip the gather of the self B field if this was
+      # --- called directly from fetche3dfrompositions (in which case
+      # --- len(bx)==0).
+      if len(bx) != n: return
       setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,self.getzgridprv(),bx,by,bz,
              self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
              self.xmminp,self.ymminp,self.zmminp,
