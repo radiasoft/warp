@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.87 $, $Date: 2007/02/05 22:30:38 $
+c@(#) File w3d_injection.F, version $Revision: 1.88 $, $Date: 2007/04/03 00:34:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -339,7 +339,7 @@ c               --- Save the particle data
                   pgroup%uzp(ii) = vzinj + 0.5*vthz_s(jsid+1)*uzt(ip)
                 endif
 c               --- Save the particle weight
-                if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)
+                if (l_inj_rz) pgroup%pid(ii,wpid) = 2.*rt(ip)*winject(ij,is)
                 if (linj_includebz0) then
                   rt(ip) = sqrt((pgroup%xp(ii)+xinject(ij))**2 + (pgroup%yp(ii)+yinject(ij))**2)
                   tt(ip) = atan2(pgroup%yp(ii)+yinject(ij),pgroup%xp(ii)+xinject(ij))
@@ -931,6 +931,7 @@ c                     --- assign pid
                         pgroup%pid(ii,wpid) = 2.*r_tmp*ainji
                       end if
                     end if
+                    if (wpid > 0) pgroup%pid(ii,wpid) = pgroup%pid(ii,wpid)*winject(ij,is)
 
 c                   --- Find location of particle relative to source
 c                   --- grid. This is needed for zp and az, as well as
@@ -1436,6 +1437,10 @@ c             --- Load particles one azimuthal section at a time,
 c             --- only if there is a positive number of injected particles.
               do iz=0,nztinj(ij)-1
                 zm = ztinjmn(ij) + iz*dztinj(ij)
+
+c               --- Skip sections that are out of the grid
+                if (zm+dztinj(ij) < inj_zmmin .or. zm >= inj_zmmax) cycle
+
                 ainj = atinject(iz,ij)
                 binj = btinject(iz,ij)
                 ainjp1 = atinject(iz+1,ij)
@@ -1546,6 +1551,10 @@ c                 --- source.
 c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     pgroup%zp(ii) = zm + wz*dztinj(ij)
+
+c                   --- Only inject particles within the injection region.
+                    if (pgroup%zp(ii) < inj_zmmin .or. pgroup%zp(ii) >= inj_zmmax) cycle
+
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
                     t = aa + (t - .5)*2.*pi/nttinj(ij)
                     pgroup%xp(ii) = xtinject(ij) + (ainj*(1.-wz) + ainjp1*wz)*cos(t)
@@ -1582,6 +1591,13 @@ c                   --- Save SSN
                       pgroup%pid(ii,spid) = ssn
                       ssn = ssn+1
                     end if
+c                   --- Set particle weight to the scale factor (since nothing
+c                   --- here sets the weight). All particles are injected at
+c                   --- the same radius, whereas normally, the weight is scaled
+c                   --- by the radius.
+                    if (wpid > 0) then
+                      pgroup%pid(ii,wpid) = wtinject(ij,is)
+                    endif
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
                   enddo
