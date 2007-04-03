@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.198 $, $Date: 2007/03/09 23:44:16 $
+#@(#) File TOP.V, version $Revision: 3.199 $, $Date: 2007/04/03 00:35:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.198 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.199 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1202,6 +1202,8 @@ phiinject(ninject)   _real # phi angle of injection source
 vzinject(ninject,ns) _real /0./ [m/s] # Starting velocity.
                                       # For inject == 1, autoset to vbeam
 finject(ninject,ns) _real  # Species fraction for each source
+winject(ninject,ns) _real /1./ # Scale factor on the particle weight when
+                               # weighted particles are used (when wpid > 0)
 inj_zstart(ninject) _real /0./ [m] # Starting location relative to the emitting
                                    # surface location.
 inj_d(ninject)      _real /1./ # Distance from surface where phi is fetched.
@@ -1273,6 +1275,8 @@ xtinject(ntinj)    _real   # X location of center of transverse emitting surface
 ytinject(ntinj)    _real   # Y location of center of transverse emitting surface
 vztinject(ntinj) _real /0./ [m/s] # Starting velocity.
                                   # For inject == 1, autoset to vbeam
+wtinject(ntinj,ns) _real /1./ # Scale factor on the particle weight when
+                              # weighted particles are used (when wpid > 0)
 ntinject(ns)      _integer # Number of particles injected off of the
                            # transverse injection sources.
 jmaxtinj(ntinj)  _real /LARGEPOS/ # Maximum injected current for transverse injection.
