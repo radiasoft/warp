@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.151 2007/04/03 00:54:25 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.152 2007/04/03 01:07:16 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2484,7 +2484,7 @@ Elliptical cylinder aligned with z-axis
                    given, it is ignored.
   """
   def __init__(self,ellipticity,radius,length=None,
-                    voltage,xcent,ycent,zcent,condid=1,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     zlower=None,zupper=None,**kw):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid,
