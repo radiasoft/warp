@@ -14,13 +14,7 @@ import os
 import sys
 import string
 import __main__
-if me == 0:
-  try:
-    import pl3d
-    import plwf
-  except ImportError:
-    pass
-warpplots_version = "$Id: warpplots.py,v 1.188 2007/03/08 18:13:01 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.189 2007/04/03 00:39:08 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -238,7 +232,6 @@ def plotruninfo():
   ss = (arraytostr(top.pline3)+'\n'+
         arraytostr(top.pline2)+'\n'+
         arraytostr(top.pline1))
-  ss = re.sub(r'x10\|S2\|','e',ss)
   plt(ss,0.12,0.28,local=1)
   runmaker = arraytostr(top.runmaker)
   codeid = arraytostr(top.codeid)
@@ -1292,6 +1285,8 @@ Note that either the x and y coordinates or the grid must be passed in.
      #                               color=scolor,vrange=(xrange,yrange,zrange))
       vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
+      import pl3d
+      import plwf
       pl3d.orient3()
       pl3d.light3()
       plwf.plwf(grid,xmesh,ymesh,fill=grid,edges=0)
@@ -1681,6 +1676,7 @@ When finished, press return in the python window.
 Returns the final values of the parameters that can be passed to pl3d.rot3
 to reproduce the same orientation.
   """
+  import pl3d
   pl3d.gnomon(gnomon)
   [xmin3min,xmax3max,ymin3min,ymax3max,sys] = limits()
   while 1:
@@ -1710,6 +1706,7 @@ vertical the y angle. With button 2 pressed, horizontal changes the x angle.
 When finished, press return in the python window.
   - scale=4.: multiplicative factor to convert mouse movement to angle change
   """
+  import pl3d
   pl3d.gnomon(gnomon)
   pl3d.orient3(phi=0.,theta=0.)
   [xmin3min,xmax3max,ymin3min,ymax3max] = pl3d.draw3(1)
@@ -3036,25 +3033,28 @@ be from none to all three.
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
   else:             toptmp = solver
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    iy=0
+  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+    if len(solver.phi.shape) > 2:
+      iy=0
+    else:
+      iy = None
   try:
     if solver.nslaves <= 1: local = 1
   except:
     pass
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return solver.phi[:,:,1:-1]
+      return solver.phi[...,1:-1]
     if ix is not None and iy is None     and iz is None    :
-      return solver.phi[ix,:,1:-1]
+      return solver.phi[ix,...,1:-1]
     if ix is None     and iy is not None and iz is None    :
       return solver.phi[:,iy,1:-1]
     if ix is None     and iy is None     and iz is not None:
-      return solver.phi[:,:,iz+1]
+      return solver.phi[...,iz+1]
     if ix is not None and iy is not None and iz is None    :
       return solver.phi[ix,iy,1:-1]
     if ix is not None and iy is None     and iz is not None:
-      return solver.phi[ix,:,iz+1]
+      return solver.phi[ix,...,iz+1]
     if ix is None     and iy is not None and iz is not None:
       return solver.phi[:,iy,iz+1]
     if ix is not None and iy is not None and iz is not None:
@@ -3065,9 +3065,9 @@ be from none to all three.
       iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
     else:
       iz2 = iz1 + toptmp.nzfsslave[me] + 1
-    ppp = solver.phi[:,:,iz1+1:iz2+1]
+    ppp = solver.phi[...,iz1+1:iz2+1]
     if ix is not None and iy is None:
-      ppp = ppp[ix,:,:]
+      ppp = ppp[ix,...]
     elif ix is None and iy is not None:
       ppp = ppp[:,iy,:]
     elif ix is not None and iy is not None:
