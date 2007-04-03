@@ -1,5 +1,5 @@
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.1 2007/03/09 18:04:11 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.2 2007/04/03 00:50:49 dave Exp $"
 
 from warp import *
 
@@ -46,7 +46,7 @@ Handles implicit time stepping.
     self.zgridndtsold = top.zgridndts.copy()
     for js in range(top.ns):
       jsid = top.pgroup.sid[js] - 1
-      if top.pgroup.limplicit[js]:
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.pid[i1:i2,self.xoldpid ] = top.pgroup.xp[i1:i2]
@@ -66,7 +66,7 @@ Handles implicit time stepping.
     top.zgridndts[:] = self.zgridndtsold
     for js in range(top.ns):
       jsid = top.pgroup.sid[js] - 1
-      if top.pgroup.limplicit[js]:
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.xp [i1:i2] = top.pgroup.pid[i1:i2,self.xoldpid ]
@@ -80,7 +80,7 @@ Handles implicit time stepping.
   def saveOldE(self):
     for js in range(top.ns):
       jsid = top.pgroup.sid[js] - 1
-      if top.pgroup.limplicit[js]:
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.pid[i1:i2,self.exoldpid] = top.pgroup.ex[i1:i2]
@@ -90,7 +90,7 @@ Handles implicit time stepping.
   def restoreOldE(self,f=1.):
     for js in range(top.ns):
       jsid = top.pgroup.sid[js] - 1
-      if top.pgroup.limplicit[js]:
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.ex[i1:i2] = f*top.pgroup.pid[i1:i2,self.exoldpid]
@@ -100,7 +100,7 @@ Handles implicit time stepping.
   def averageOldAndNewE(self):
     for js in range(top.ns):
       jsid = top.pgroup.sid[js] - 1
-      if top.pgroup.limplicit[js]:
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
         top.pgroup.pid[i1:i2,self.exoldpid] = 0.5*(
