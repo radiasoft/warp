@@ -259,13 +259,13 @@ class MultiGridRZ(SubcycledPoissonSolver):
     sourcep = transpose(sourcep)
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
       setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
 
@@ -451,6 +451,10 @@ Initially, conductors are not implemented.
     # --- Turn of build quads option
     self.lbuildquads = false
 
+    # --- Turn on the chi kludge, where chi is set to be an average value
+    # --- of chi for grid cells where is it zero.
+    self.chikludge = 1
+
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
@@ -535,13 +539,13 @@ Initially, conductors are not implemented.
     sourcep = fzeros((ss[0],1,ss[1]),'d')
     if top.wpid == 0:
       setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                self.solvergeom==w3d.RZgeom)
     else:
       # --- Need top.pid(:,top.wpid)
       setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
     self.sourcep[...,0] += sourcep[:,0,:]
@@ -573,15 +577,52 @@ Initially, conductors are not implemented.
               xmmin,xmmax,zmmin,zmmax,
               self.l2symtry,self.l4symtry)
 
-  def setarraysforfieldsolve(self,*args):
-    SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
+  def setsourceforfieldsolve(self,*args):
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
-      raise "MultiGridImplicit2D not parallelized"
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      if isinstance(self.source,FloatType): return
+      if isinstance(self.sourcep,FloatType): return
+      for i in range(self.source.shape[2]):
+        source  = self.convert2dto3d(self.source[...,i])
+        sourcep = self.convert2dto3d(self.sourcep[...,i])
+        setrhoforfieldsolve3d(self.nx,self.ny,self.nz,source,
+                              self.nxp,self.nyp,self.nzp,sourcep,self.nzpguard,
+                              self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                              self.izfsslave,self.nzfsslave)
 
   def getpotentialpforparticles(self,*args):
-    SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
-    if self.lparallel:
-      raise "MultiGridImplicit2D not parallelized"
+    if not self.lparallel:
+      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
+    else:
+      assert self.nguardx == 0,"The parallel code will not work with nguardx > 0"
+      self.setpotentialpforparticles(*args)
+      if isinstance(self.potential,FloatType): return
+      if isinstance(self.potentialp,FloatType): return
+      potential  = self.convert2dto3d(self.potential)
+      potentialp = self.convert2dto3d(self.potentialp)
+      getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
+                            self.nxp,self.nyp,self.nzp,potentialp,1)
+    if self.efetch == 3:
+      # --- This probably doesn't work without fixes XXX
+      self.setpotentialpforparticles(*args)
+      self.setfieldpforparticles(*args)
+      indts = args[1]
+      iselfb = args[2]
+      # --- If this is the first group, set make sure that fieldp gets
+      # --- zeroed out. Otherwise, the data in fieldp is accumulated.
+      # --- This coding relies on the fact that fieldsolver does the
+      # --- loops in descending order.
+      tmpnsndts = getnsndtsforsubcycling()
+      lzero = ((indts == tmpnsndts-1) and (iselfb == top.nsselfb-1))
+      if lzero:
+        tfieldp = transpose(self.fieldp)
+        tfieldp[...] = 0.
+      self.getselfe(recalculate=1)
+      # --- If top.fslefb(iselfb) > 0, then calculate and include the
+      # --- approximate correction terms A and dA/dt.
+      self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+      self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -592,13 +633,24 @@ Initially, conductors are not implemented.
     if self.pbounds[1] == 1: self.source[-1,:,:] = 2.*self.source[-1,:,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.lparallel:
-        raise "MultiGridImplicit2D not parallelized"
-        #self.makesourceperiodic_parallel()
+        self.makesourceperiodic_parallel()
       else:
         self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
         self.source[:,-1,:] = self.source[:,0,:]
     if self.pbounds[4] == 1: self.source[:,0,:] = 2.*self.source[:,0,:]
     if self.pbounds[5] == 1: self.source[:,-1,:] = 2.*self.source[:,-1,:]
+
+  def makesourceperiodic_parallel(self):
+    tag = 70
+    if self.my_index == self.nslaves-1:
+      request = mpi.isend(self.source[:,self.nz,:],0,tag)
+      self.source[:,self.nz,:],status = mpi.recv(0,tag)
+    elif self.my_index == 0:
+      sourcetemp,status = mpi.recv(self.nslaves-1,tag)
+      self.source[:,0,:] = self.source[:,0,:] + sourcetemp
+      request = mpi.isend(self.source[:,0,:],self.nslaves-1,tag)
+    if self.my_index == 0 or self.my_index == self.nslaves-1:
+      status = request.wait()
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -643,6 +695,11 @@ Initially, conductors are not implemented.
 
     qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
     chi0 = 0.5*self.source[...,1:]*top.dt**2/eps0
+    # --- Kludge alart!!!
+    if self.chikludge:
+      for js in range(self.source.shape[-1]-1):
+        avechi = sumnd(chi0[...,js])/sumnd(where(chi0[...,js] == 0.,0.,1.))
+        chi0[...,js] = where(chi0[...,js]==0.,avechi,chi0[...,js])
     """
     # --- Test a linearly varying chi and parabolic phi
     c1 = 10.
@@ -654,8 +711,8 @@ Initially, conductors are not implemented.
     """
 
     # --- This is only done for convenience.
-    self.phi = self.potential
-    self.rho = self.source[...,0]
+    self.phi = (self.potential)
+    self.rho = (self.source[...,0])
     self.chi0 = chi0
     if isinstance(self.potential,FloatType): return
 
@@ -779,6 +836,14 @@ Initially, conductors are not implemented.
     self.fstime = t2 - t1
     self.tottime = t3 - t0
 
+  def convert2dto3d(self,x):
+    xdims = x.shape
+    xdims = [xdims[1],1,xdims[0]]
+    x = transpose(x)
+    x.shape = xdims
+    x = transpose(x)
+    return x
+
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
@@ -787,20 +852,9 @@ Initially, conductors are not implemented.
     # --- This is a temporary kludge until the plot routines are updated to
     # --- use source and potential instead of rho and phi.
     # --- This also makes the rho and phi arrays 3D
-    sdims,pdims = self.getdims()
-    sdims = [sdims[1],1,sdims[0]]
-    pdims = [pdims[1],1,pdims[0]]
-    source = transpose(self.source[...,0])
-    source.shape = sdims
-    source = transpose(source)
-    potential = transpose(self.potential)
-    potential.shape = pdims
-    potential = transpose(potential)
-    self.rho = source
-    self.phi = potential
+    self.rho = (self.source[...,0])
+    self.phi = (self.potential)
     pffunc(**kw)
-    self.rho = self.source
-    self.phi = self.potential
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
