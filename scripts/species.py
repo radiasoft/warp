@@ -288,29 +288,36 @@ Creates a new species of particles. All arguments are optional.
       
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                      lmomentum=0,spacing='random',**kw):
+                      lmomentum=0,spacing='random',nx=None,ny=None,nz=None,**kw):
     if spacing == 'random':
-      x=xmin+(xmax-xmin)*RandomArray.random(np)
-      y=ymin+(ymax-ymin)*RandomArray.random(np)
-      z=zmin+(zmax-zmin)*RandomArray.random(np)
+      x = RandomArray.random(np)
+      y = RandomArray.random(np)
+      z = RandomArray.random(np)
+
     elif spacing == 'uniform':
-      # --- Note that this assumes periodic boundaries so it does not
-      # --- put particles at xmax etc.
-      if ymax > ymin:
-        n = nint(np**(1./3.))
-        np = n**3
-        x,y,z = getmesh3d(xmin,(xmax-xmin)/n,n-1,
-                          ymin,(xmax-xmin)/n,n-1,
-                          zmin,(xmax-xmin)/n,n-1)
+      if ymax > ymin: dims = 3
+      else:           dims = 2
+      if nx is None: nx = nint(np**(1./dims))
+      if ny is None:
+        if dims == 3: ny = nint(np**(1./dims))
+        else:         ny = 1
+      if nz is None: nz = nint(np**(1./dims))
+      np = nx*ny*nz
+      if dims == 3:
+        x,y,z = getmesh3d(0.5/nx,1./nx,nx-1,
+                          0.5/ny,1./ny,ny-1,
+                          0.5/nz,1./nz,nz-1)
       else:
-        n = nint(np**(1./2.))
-        np = n**2
-        x,z = getmesh2d(xmin,(xmax-xmin)/n,n-1,
-                        zmin,(xmax-xmin)/n,n-1)
-        y = zeros((n,n),'d')
-      x.shape = (product(x.shape),)
-      y.shape = (product(y.shape),)
-      z.shape = (product(z.shape),)
+        x,z = getmesh2d(0.5/nx,1./nx,nx-1,
+                        0.5/nz,1./nz,nz-1)
+        y = zeros((nx,nz),'d')
+      x.shape = (np,)
+      y.shape = (np,)
+      z.shape = (np,)
+
+    x = xmin + (xmax - xmin)*x
+    y = ymin + (ymax - ymin)*y
+    z = zmin + (zmax - zmin)*z
 
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
@@ -323,12 +330,47 @@ Creates a new species of particles. All arguments are optional.
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                           lmomentum=0,**kw):
-    r=RandomArray.random(np)
+                           lmomentum=0,spacing='random',nr=None,nz=None,**kw):
+    """Creates particles, uniformly filling a cylinder.
+If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
+weights are set appropriately (weight=r/rmax). Otherwise, the particles are spaced uniformly
+in radius squared.
+ - np: total number of particles to load
+ - rmax: radius of cylinder
+ - zmin,zmax: z extent of the cylinder
+ - vthx, vthy, vthz: thermal velocity, defaults to 0.
+ - xmean,ymean: transverse center of the cylinder, defaults to 0.
+ - vxmean,vymean,vzmean: directed velocity, defaults to 0.
+ - js: particle species number, don't set it unless you mean it
+ - lmomentum=false: Set to false when velocities are input as velocities, true
+                    when input as massless momentum (as WARP stores them).
+                    Only used when top.lrelativ is true.
+ - spacing='random': either 'random' or 'uniform' particle spacing. For uniform,
+                     r and z are uniform, theta is still random
+ - nr,nz: for 'uniform' spacing, number of particles along r and z axis
+    """
+
+    if spacing == 'random':
+      r=RandomArray.random(np)
+      z=RandomArray.random(np)
+    else:
+      if nr is None: nr = nint(np**(1./2.))
+      if nz is None: nz = nint(np**(1./2.))
+      np = nr*nz
+      r,z = getmesh2d(0.5/nr,1./nr,nr-1,
+                      0.5/nz,1./nz,nz-1)
+      r.shape = (np,)
+      z.shape = (np,)
     theta=RandomArray.random(np)
-    x=xmean+rmax*sqrt(r)*cos(2.*pi*theta)
-    y=ymean+rmax*sqrt(r)*sin(2.*pi*theta)
-    z=zmin+(zmax-zmin)*RandomArray.random(np)
+
+    if top.wpid == 0:
+      r = sqrt(r)
+    else:
+      kw['w'] = r/rmax
+    x=xmean+rmax*r*cos(2.*pi*theta)
+    y=ymean+rmax*r*sin(2.*pi*theta)
+    z=zmin+(zmax-zmin)*z
+
     vx=RandomArray.normal(vxmean,vthx,np)
     vy=RandomArray.normal(vymean,vthy,np)
     vz=RandomArray.normal(vzmean,vthz,np)
