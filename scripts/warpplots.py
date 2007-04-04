@@ -14,7 +14,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.189 2007/04/03 00:39:08 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.190 2007/04/04 21:06:06 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3163,7 +3163,8 @@ be from none to all three.
       getselfe3d(solver.phip,solver.nxp,solver.nyp,solver.nzp,solver.selfe,
                  solver.nx_selfe,solver.ny_selfe,solver.nz_selfe,
                  solver.dx,solver.dy,solver.dz,
-                 solver.boundxy,solver.boundxy,solver.boundxy,solver.boundxy)
+                 solver.boundxy,solver.boundxy,solver.boundxy,solver.boundxy,
+                 true)
     else:
       solver.getselfe()
   if type(comp) == IntType: ic = comp

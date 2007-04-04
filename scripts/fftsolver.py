@@ -264,14 +264,15 @@ class FieldSolver3dBase(object):
   def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
-  def getselfe(self,recalculate=0):
+  def getselfe(self,recalculate=0,lzero=true):
     if type(self.selfe) != ArrayType:
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
       recalculate = 1
     if recalculate:
       getselfe3d(self.phi,self.nx,self.ny,self.nz,
                  self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3],
+                 lzero)
     return self.selfe
 
   def solve(self,iwhich=0):
