@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.79 $, $Date: 2007/03/09 18:06:22 $
+c@(#) File WXY.M, version $Revision: 3.80 $, $Date: 2007/04/04 21:04:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -729,7 +729,7 @@ c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy,.true.)
 
 c  Initialize the moments arrays which are calculated during the synchv and
 c  gen phases.

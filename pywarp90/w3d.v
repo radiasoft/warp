@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.256 $, $Date: 2007/03/21 18:47:11 $
+#@(#) File W3D.V, version $Revision: 3.257 $, $Date: 2007/04/04 21:04:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.256 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.257 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -897,7 +897,8 @@ getselfe3d(phi(0:nx,0:ny,-1:nz+1):real,nx:integer,ny:integer,nz:integer,
            selfe(3,0:nx,0:ny,0:nz):real,
            nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,
-           boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer)
+           boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer,
+           lzero:logical)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d(rho(0:nx,0:ny,0:nz):real,
          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,

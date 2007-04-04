@@ -8791,7 +8791,7 @@ IF(calcphi) then
     end do
   end do
 
-  call getselfe3d(phi3d,nr,nr,nz,selfe,nr,nr,nz,dr,dr,dz)
+  call getselfe3d(phi3d,nr,nr,nz,selfe,nr,nr,nz,dr,dr,dz,.true.)
 !write(o_line,*) 'sum(phi)',SUM(ABS(phi3d)),SUM(ABS(phi))
 endif
 

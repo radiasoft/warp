@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.347 $, $Date: 2007/03/13 22:52:14 $
+c@(#) File W3D.F, version $Revision: 3.348 $, $Date: 2007/04/04 21:04:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -898,7 +898,7 @@ c           --- in which cases all species use the same field.
             endif
             call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
-     &                  boundxy,boundxy,boundxy,boundxy)
+     &                  boundxy,boundxy,boundxy,boundxy,.true.)
             if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
          endif
 
@@ -3659,7 +3659,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz,boundx0,boundxn,boundy0,boundyn)
+     &                      dx,dy,dz,boundx0,boundxn,boundy0,boundyn,lzero)
       use GlobalVars
       use Subtimers3d
       integer(ISZ):: nx,ny,nz
@@ -3667,8 +3667,11 @@ c===========================================================================
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
       integer(ISZ):: boundx0,boundxn,boundy0,boundyn
+      logical(ISZ):: lzero
 
 c Calculate the self-E via finite differences of phi.
+c The E field is accumulated, ie. e = e - grad phi, but
+c will be zeroed out if lzero is true.
 
       integer(ISZ):: ix,iy,iz
       real(kind=8):: tdxi,tdyi,tdzi
@@ -3681,6 +3684,9 @@ c     --- Do some checking first.
         call kaboom(1)
       endif
 
+c     --- Zero out the E field is requested
+      if (lzero) selfe = 0.
+
       tdxi = 0.5/dx
       tdyi = 0.5/dy
       tdzi = 0.5/dz
@@ -3689,9 +3695,9 @@ c     --- Do the calculation for the bulk of the array
       do iz=0,nz
         do iy=1,ny-1
           do ix=1,nx-1
-            selfe(1,ix,iy,iz) = tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
-            selfe(2,ix,iy,iz) = tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
-            selfe(3,ix,iy,iz) = tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
+            selfe(1,ix,iy,iz) = selfe(1,ix,iy,iz) + tdxi*(phi(ix-1,iy  ,iz  ) - phi(ix+1,iy  ,iz  ))
+            selfe(2,ix,iy,iz) = selfe(2,ix,iy,iz) + tdyi*(phi(ix  ,iy-1,iz  ) - phi(ix  ,iy+1,iz  ))
+            selfe(3,ix,iy,iz) = selfe(3,ix,iy,iz) + tdzi*(phi(ix  ,iy  ,iz-1) - phi(ix  ,iy  ,iz+1))
           enddo
         enddo
       enddo
@@ -3701,42 +3707,42 @@ c     --- It is done always anyway since it is little work and also forces the
 c     --- value at the boundaries.
 c     --- Note that the z boundaries at taken care of above, taking advantage
 c     --- of the guard cells.
-      selfe(1,1:nx-1, 0,:) = tdxi*(phi(0:nx-2, 0,:) - phi(2:nx, 0,:))
-      selfe(1,1:nx-1,ny,:) = tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
-      selfe(2, 0,1:ny-1,:) = tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
-      selfe(2,nx,1:ny-1,:) = tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
+      selfe(1,1:nx-1, 0,:) = selfe(1,1:nx-1, 0,:) + tdxi*(phi(0:nx-2, 0,:) - phi(2:nx, 0,:))
+      selfe(1,1:nx-1,ny,:) = selfe(1,1:nx-1,ny,:) + tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
+      selfe(2, 0,1:ny-1,:) = selfe(2, 0,1:ny-1,:) + tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
+      selfe(2,nx,1:ny-1,:) = selfe(2,nx,1:ny-1,:) + tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
 
       if (boundx0 == dirichlet .or. boundx0 == neumann) then
         selfe(1, 0, :,:) = 0.
       else if (boundx0 == periodic) then
-        selfe(1, 0, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
+        selfe(1, 0, :,:) = selfe(1, 0, :,:) + tdxi*(phi(nx-1,:,:) - phi(1,:,:))
       endif
 
       if (boundxn == dirichlet .or. boundxn == neumann) then
         selfe(1,nx, :,:) = 0.
       else if (boundxn == periodic) then
-        selfe(1,nx, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
+        selfe(1,nx, :,:) = selfe(1,nx, :,:) + tdxi*(phi(nx-1,:,:) - phi(1,:,:))
       endif
 
       if (boundy0 == dirichlet .or. boundy0 == neumann) then
         selfe(2, :, 0,:) = 0.
       else if (boundy0 == periodic) then
-        selfe(2, :, 0,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
+        selfe(2, :, 0,:) = selfe(2, :, 0,:) + tdyi*(phi(:,ny-1,:) - phi(:,1,:))
       endif
 
       if (boundyn == dirichlet .or. boundyn == neumann) then
         selfe(2, :,ny,:) = 0.
       else if (boundyn == periodic) then
-        selfe(2, :,ny,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
+        selfe(2, :,ny,:) = selfe(2, :,ny,:) + tdyi*(phi(:,ny-1,:) - phi(:,1,:))
       endif
 
 c     --- Axial self field does not depend on the transverse boundary condition
-      selfe(3, 0,:,0:nz) = tdzi*(phi( 0,:,-1:nz-1) - phi( 0,:,1:nz+1))
-      selfe(3,nx,:,0:nz) = tdzi*(phi(nx,:,-1:nz-1) - phi(nx,:,1:nz+1))
-      selfe(3,1:nx-1, 0,0:nz) = tdzi*(phi(1:nx-1, 0,-1:nz-1) -
-     &                                phi(1:nx-1, 0,1:nz+1))
-      selfe(3,1:nx-1,ny,0:nz) = tdzi*(phi(1:nx-1,ny,-1:nz-1) -
-     &                                phi(1:nx-1,ny,1:nz+1))
+      selfe(3, 0,:,0:nz) = selfe(3, 0,:,0:nz) + tdzi*(phi( 0,:,-1:nz-1) - phi( 0,:,1:nz+1))
+      selfe(3,nx,:,0:nz) = selfe(3,nx,:,0:nz) + tdzi*(phi(nx,:,-1:nz-1) - phi(nx,:,1:nz+1))
+      selfe(3,1:nx-1, 0,0:nz) = selfe(3,1:nx-1, 0,0:nz) +
+     &                              tdzi*(phi(1:nx-1, 0,-1:nz-1) - phi(1:nx-1, 0,1:nz+1))
+      selfe(3,1:nx-1,ny,0:nz) = selfe(3,1:nx-1,ny,0:nz) +
+     &                              tdzi*(phi(1:nx-1,ny,-1:nz-1) - phi(1:nx-1,ny,1:nz+1))
 
 !$OMP MASTER
       if (lw3dtimesubs) timegetselfe3d = timegetselfe3d + wtime() - substarttime
