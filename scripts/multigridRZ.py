@@ -42,21 +42,9 @@ class MultiGridRZ(SubcycledPoissonSolver):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGridRZ.__w3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MultiGridRZ.__f3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(f3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MultiGridRZ.__frzinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(frz,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(frz,name))
-      if kw.has_key(name): del kw[name]
+    self.processdefaultsfrompackage(MultiGridRZ.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGridRZ.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MultiGridRZ.__frzinputs__,frz,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -416,21 +404,9 @@ Initially, conductors are not implemented.
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGridImplicit2D.__w3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MultiGridImplicit2D.__f3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(f3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MultiGridImplicit2D.__frzinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(frz,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(frz,name))
-      if kw.has_key(name): del kw[name]
+    self.processdefaultsfrompackage(MultiGridImplicit2D.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGridImplicit2D.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MultiGridImplicit2D.__frzinputs__,frz,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -618,7 +594,7 @@ Initially, conductors are not implemented.
       if lzero:
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
-      self.getselfe(recalculate=1)
+      self.getselfe(recalculate=1,lzero=lzero)
       # --- If top.fslefb(iselfb) > 0, then calculate and include the
       # --- approximate correction terms A and dA/dt.
       self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)

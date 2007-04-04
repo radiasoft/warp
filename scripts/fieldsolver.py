@@ -78,7 +78,7 @@ package. Only w3d and wxy have field solves defined.
       getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
                  w3d.dx,w3d.dy,w3d.dz,
-                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
+                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy,true)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
 
@@ -289,21 +289,9 @@ the diagnostic is of interest and is meaningfull.
       pass
 
     # --- Save input parameters
-    for name in FieldSolver.__w3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in FieldSolver.__topinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(top,name))
-      if kw.has_key(name): del kw[name]
-    for name,defvalue in FieldSolver.__flaginputs__.iteritems():
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,defvalue)
-      if kw.has_key(name): del kw[name]
+    self.processdefaultsfrompackage(FieldSolver.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(FieldSolver.__topinputs__,top,kw)
+    self.processdefaultsfromdict(FieldSolver.__flaginputs__,kw)
 
     # --- Make sure the top.nparpgrp is a large number. If it becomes too
     # --- small, fetche becomes inefficient since it is called many times,
@@ -455,6 +443,20 @@ the diagnostic is of interest and is meaningfull.
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
     self.iz_axis = nint(-self.zmminglobal/self.dz)
+
+  def processdefaultsfrompackage(self,defaults,package,kw):
+    for name in defaults:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(package,name))
+      if kw.has_key(name): del kw[name]
+
+  def processdefaultsfromdict(self,dict,kw):
+    for name,defvalue in dict.iteritems():
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,defvalue)
+      if kw.has_key(name): del kw[name]
 
   def __getstate__(self):
     dict = self.__dict__.copy()

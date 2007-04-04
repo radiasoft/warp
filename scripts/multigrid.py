@@ -37,16 +37,8 @@ class MultiGrid(SubcycledPoissonSolver):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    for name in MultiGrid.__w3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(w3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(w3d,name))
-      if kw.has_key(name): del kw[name]
-    for name in MultiGrid.__f3dinputs__:
-      if name not in self.__dict__:
-        #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
-        self.__dict__[name] = kw.get(name,getattr(f3d,name))
-      if kw.has_key(name): del kw[name]
+    self.processdefaultsfrompackage(MultiGrid.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid.__f3dinputs__,f3d,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -229,7 +221,7 @@ class MultiGrid(SubcycledPoissonSolver):
       if lzero:
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
-      self.getselfe(recalculate=1)
+      self.getselfe(recalculate=1,lzero=lzero)
       # --- If top.fslefb(iselfb) > 0, then calculate and include the
       # --- approximate correction terms A and dA/dt.
       self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
@@ -269,7 +261,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.my_index == 0 or self.my_index == self.nslaves-1:
       status = request.wait()
 
-  def getselfe(self,recalculate=0):
+  def getselfe(self,recalculate=0,lzero=true):
     if type(self.fieldp) != ArrayType:
       # --- This should only ever be done by an external routine, such as
       # --- a plotting function.
@@ -280,7 +272,8 @@ class MultiGrid(SubcycledPoissonSolver):
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
                  self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
                  self.dx,self.dy,self.dz,
-                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3],
+                 lzero)
     return self.fieldp
 
   def getselfb(self,fieldp,fselfb,potentialp):
