@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.348 $, $Date: 2007/04/04 21:04:34 $
+c@(#) File W3D.F, version $Revision: 3.349 $, $Date: 2007/04/05 22:28:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8910,7 +8910,7 @@ c      else if(solvergeom==Zgeom) then
 c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then
         call getphipforparticles3d(1,nx,ny,nz,phi,
-     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),1)
+     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),0,0,1)
       end if
 #endif
 
@@ -8918,13 +8918,14 @@ c        call getphipforparticlesz()
       end
 c===========================================================================
       subroutine getphipforparticles3d(nc,nx,ny,nz,phi,
-     &                                 nxp,nyp,nzp,phip,delz)
-      integer(ISZ):: nc,nx,ny,nz,nxp,nyp,nzp,delz
-      real(kind=8):: phi(0:nc-1,0:nx,0:ny,-delz:nz+delz)
-      real(kind=8):: phip(0:nc-1,0:nxp,0:nyp,-delz:nzp+delz)
+     &                                 nxp,nyp,nzp,phip,delx,dely,delz)
+      integer(ISZ):: nc,nx,ny,nz,nxp,nyp,nzp,delx,dely,delz
+      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
 
 #ifdef MPIPARALLEL
-        call getphipforparticles3d_parallel(nc,nx,ny,nz,phi,nxp,nyp,nzp,phip,delz)
+        call getphipforparticles3d_parallel(nc,nx,ny,nz,phi,nxp,nyp,nzp,phip,
+     &                                      delx,dely,delz)
 #endif
 
       return

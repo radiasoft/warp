@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.42 $, $Date: 2006/12/19 22:38:06 $
+c W3DSLAVE.M, version $Revision: 1.43 $, $Date: 2007/04/05 22:28:58 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -452,19 +452,19 @@ c  Only first and last processors do anything.
       end
 c=============================================================================
       subroutine getphipforparticles3d_parallel(nc,nx,ny,nz,phi,
-     &                                          nxp,nyp,nzp,phip,delz)
+     &                                          nxp,nyp,nzp,phip,delx,dely,delz)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nc,nx,ny,nz,delz
-      real(kind=8):: phi(0:nc-1,0:nx,0:ny,-delz:nz+delz)
+      integer(ISZ):: nc,nx,ny,nz,delx,dely,delz
+      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
       integer(ISZ):: nxp,nyp,nzp
-      real(kind=8):: phip(0:nc-1,0:nxp,0:nyp,-delz:nzp+delz)
+      real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
 
 c Get the phi for the extent where the particles are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
 c iz=-1 and +1.
 
-      integer(MPIISZ):: i
+      integer(MPIISZ):: i,nn
       integer(MPIISZ):: izglobal,izmaxp,izmaxfs
       integer(MPIISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
       integer(MPIISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
@@ -502,8 +502,8 @@ c     --- Send the data out to processors that need it.
         if (nzsend(i) > 0) then
           if ( i /= my_index) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,0,izsend(i)),int(nzsend(i)*(nx+1)*(ny+1),MPIISZ),
-     &                     MPI_DOUBLE_PRECISION,
+            nn = nc*(1+nx+2*delx)*(1+ny+2*dely)*nzsend(i)
+            call MPI_ISEND(phi(0,-delx,-dely,izsend(i)),nn,MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           else
             phip(:,:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
@@ -516,8 +516,8 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           if (nzrecv(i) > 0) then
-            call MPI_RECV(phip(0,0,0,izrecv(i)),int(nzrecv(i)*(nxp+1)*(nyp+1),MPIISZ),
-     &                    MPI_DOUBLE_PRECISION,
+            nn = nc*(1+nxp+2*delx)*(1+nyp+2*dely)*nzrecv(i)
+            call MPI_RECV(phip(0,-delx,-dely,izrecv(i)),nn,MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
         endif
