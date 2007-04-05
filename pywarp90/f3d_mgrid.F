@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.131 $, $Date: 2007/02/15 23:36:58 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.132 $, $Date: 2007/04/05 22:31:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -283,9 +283,9 @@ c       --- voltages rather than zero as is done otherwise for residual
 c       --- correction form since it is operating on the error.
         if (mgform == 2) then
           call cond_potmg(conductors%interior,
-     &                    nx,ny,nz,phisave,0,mgform,.true.)
-          call condbndymgint(conductors%evensubgrid,nx,ny,nz,phisave,bounds,0,icndbndy)
-          call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phisave,bounds,0,icndbndy)
+     &                    nx,ny,nz,0,0,1,phisave,0,mgform,.true.)
+          call condbndymgint(conductors%evensubgrid,nx,ny,nz,0,0,1,phisave,bounds,0,icndbndy)
+          call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,0,0,1,phisave,bounds,0,icndbndy)
           call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
@@ -706,7 +706,7 @@ c         --- Add in resulting error.
           if (lprintmgphimaxchange) then
             print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
           endif
-          call expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,localbounds)
+          call expand2d(nx,ny,nz,0,0,1,phi,nxcoarse,nycoarse,phicoarse,localbounds)
 #ifdef MPIPARALLEL
           call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
      &                                my_index,nslaves,izfsslave,
@@ -799,7 +799,7 @@ c         --- Continue at the next coarsest level.
           endif
 
 c         --- Add in resulting error.
-          call expand3d(nx,ny,nz,nzfull,phi,
+          call expand3d(nx,ny,nz,nzfull,0,0,1,phi,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  localbounds,lzoffset)
 #ifdef MPIPARALLEL
@@ -1048,11 +1048,12 @@ c     --- Set appropriate boundary values
       return
       end
 c=============================================================================
-      subroutine expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,bounds)
-      integer(ISZ):: nx,ny,nz
+      subroutine expand2d(nx,ny,nz,delx,dely,delz,phi,
+     &                    nxcoarse,nycoarse,phicoarse,bounds)
+      integer(ISZ):: nx,ny,nz,delx,dely,delz
       integer(ISZ):: nxcoarse,nycoarse
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1)
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: phicoarse(-delx:nxcoarse+delx,-dely:nycoarse+dely,-delz:nz+delz)
       integer(ISZ):: bounds(0:5)
 
 c Add the error on the coarser grid to the current value on the finer grid.
@@ -1117,13 +1118,13 @@ c     --- Set the loop limits, including edges when appropriate.
       return
       end
 c=============================================================================
-      subroutine expand3d(nx,ny,nz,nzfull,phi,
+      subroutine expand3d(nx,ny,nz,nzfull,delx,dely,delz,phi,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                    bounds,lzoffset)
-      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nx,ny,nz,nzfull,delx,dely,delz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1)
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: phicoarse(-delx:nxcoarse+delx,-dely:nycoarse+dely,-delz:nzcoarse+delz)
       integer(ISZ):: lzoffset
       integer(ISZ):: bounds(0:5)
 
@@ -1253,9 +1254,9 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
-     &                nx,ny,nz,phi,mglevel,mgform,.false.)
-      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
-      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
+     &                nx,ny,nz,0,0,1,phi,mglevel,mgform,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,0,0,1,phi,localbounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,0,0,1,phi,localbounds,mglevel,icndbndy)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -1571,12 +1572,12 @@ c     --- Apply altered difference equation to the points near the
 c     --- surface of the conductor boundaries.
       if (lcndbndy) then
         if (parity == 0) then
-         call condbndymg(conductors%evensubgrid,nx,ny,nz,phi,rho,
+         call condbndymg(conductors%evensubgrid,nx,ny,nz,0,0,1,phi,rho,
      &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
-         call condbndymg(conductors%oddsubgrid,nx,ny,nz,phi,rho,
+         call condbndymg(conductors%oddsubgrid,nx,ny,nz,0,0,1,phi,rho,
      &                   dxsqic,dysqic,dzsqic,spm1,mgparam,localbounds,
      &                   mglevel,mgform,icndbndy)
         endif
@@ -1584,9 +1585,9 @@ c     --- surface of the conductor boundaries.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
-     &                nx,ny,nz,phi,mglevel,mgform,.false.)
-      call condbndymgint(conductors%evensubgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
-      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
+     &                nx,ny,nz,0,0,1,phi,mglevel,mgform,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,ny,nz,0,0,1,phi,localbounds,mglevel,icndbndy)
+      call condbndymgint(conductors%oddsubgrid ,nx,ny,nz,0,0,1,phi,localbounds,mglevel,icndbndy)
 
 c     --- set phi in the z guard planes
       if (localbounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
@@ -1778,12 +1779,12 @@ c           --- current z-slice is in a bend only
       return
       end
 c=============================================================================
-      subroutine cond_potmg(interior,nx,ny,nz,phi,mglevel,
+      subroutine cond_potmg(interior,nx,ny,nz,delx,dely,delz,phi,mglevel,
      &                      mgform,mgform2init)
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
-      integer(ISZ):: nx,ny,nz,mglevel,mgform
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,delx,dely,delz,mglevel,mgform
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
       logical(ISZ):: mgform2init
 
 c Set conductor points to the desired potential.
@@ -2059,12 +2060,14 @@ c         --- Minus term is in bulk and plus term is Neumann subgrid
       return
       end
 c=============================================================================
-      subroutine condbndymg(subgrid,nx,ny,nz,phi,rho,dxsqic,dysqic,dzsqic,spm1,
+      subroutine condbndymg(subgrid,nx,ny,nz,delx,dely,delz,phi,rho,
+     &                      dxsqic,dysqic,dzsqic,spm1,
      &                      mgparam,localbounds,mglevel,mgform,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nz,delx,dely,delz,mglevel
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,mgparam
       integer(ISZ):: localbounds(0:5),mgform,icndbndy
 
@@ -2272,11 +2275,12 @@ c       --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine condbndymgint(subgrid,nx,ny,nz,phi,localbounds,mglevel,icndbndy)
+      subroutine condbndymgint(subgrid,nx,ny,nz,delx,dely,delz,phi,
+     &                         localbounds,mglevel,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,delx,dely,delz,mglevel
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
       integer(ISZ):: localbounds(0:5),icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -2360,13 +2364,14 @@ c       --- set temporaries for boundaries
       return
       end
 c=============================================================================
-      subroutine condbndyres(subgrid,nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,
+      subroutine condbndyres(subgrid,nx,ny,nz,delx,dely,delz,phi,rho,res,
+     &                       dxsqi,dysqi,dzsqi,
      &                       mgparam,localbounds,mglevel,
      &                       mgform,mgform2init,icndbndy)
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
-      integer(ISZ):: nx,ny,nz,mglevel
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,delx,dely,delz,mglevel
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
@@ -2699,10 +2704,10 @@ c     --- Zero the residual inside conductors.
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
-        call condbndyres(conductors%evensubgrid,nx,ny,nz,phi,rho,res,
+        call condbndyres(conductors%evensubgrid,nx,ny,nz,0,0,1,phi,rho,res,
      &                   dxsqi,dysqi,dzsqi,mgparam,localbounds,
      &                   mglevel,mgform,mgform2init,icndbndy)
-        call condbndyres(conductors%oddsubgrid,nx,ny,nz,phi,rho,res,
+        call condbndyres(conductors%oddsubgrid,nx,ny,nz,0,0,1,phi,rho,res,
      &                   dxsqi,dysqi,dzsqi,mgparam,localbounds,
      &                   mglevel,mgform,mgform2init,icndbndy)
       endif
