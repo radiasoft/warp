@@ -14,7 +14,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.190 2007/04/04 21:06:06 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.191 2007/04/05 15:36:46 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2048,7 +2048,330 @@ def ppzrp(iw=0,**kw):
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzrp.__doc__ = ppzrp.__doc__ + ppgeneric_doc('z',"r'")
-
+##########################################################################
+def ppxex(iw=0,**kw):
+  "Plots X-Ex"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ex vs X","X","Ex",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getex(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxex.__doc__ = ppxex.__doc__ + ppgeneric_doc('x',"ex")
+##########################################################################
+def ppxey(iw=0,**kw):
+  "Plots X-Ey"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxey,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ey vs X","X","Ey",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getey(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxey.__doc__ = ppxey.__doc__ + ppgeneric_doc('x',"ey")
+##########################################################################
+def ppxez(iw=0,**kw):
+  "Plots X-Ez"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ez vs X","X","Ez",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getez(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxez.__doc__ = ppxez.__doc__ + ppgeneric_doc('x',"ez")
+##########################################################################
+def ppxbx(iw=0,**kw):
+  "Plots X-Bx"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bx vs X","X","Bx",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbx(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxbx.__doc__ = ppxbx.__doc__ + ppgeneric_doc('x',"bx")
+##########################################################################
+def ppxby(iw=0,**kw):
+  "Plots X-By"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxby,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("By vs X","X","By",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getby(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxby.__doc__ = ppxby.__doc__ + ppgeneric_doc('x',"by")
+##########################################################################
+def ppxbz(iw=0,**kw):
+  "Plots X-Bz"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppxez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bz vs X","X","Bz",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbz(ii=ii,gather=0,**kw),getx(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxbz.__doc__ = ppxbz.__doc__ + ppgeneric_doc('x',"bz")
+##########################################################################
+def ppyex(iw=0,**kw):
+  "Plots Y-Ex"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ex vs Y","Y","Ex",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getex(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyex.__doc__ = ppyex.__doc__ + ppgeneric_doc('y',"ex")
+##########################################################################
+def ppyey(iw=0,**kw):
+  "Plots Y-Ey"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyey,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ey vs Y","Y","Ey",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getey(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyey.__doc__ = ppyey.__doc__ + ppgeneric_doc('y',"ey")
+##########################################################################
+def ppyez(iw=0,**kw):
+  "Plots Y-Ez"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ez vs Y","Y","Ez",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getez(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyez.__doc__ = ppyez.__doc__ + ppgeneric_doc('y',"ez")
+##########################################################################
+def ppybx(iw=0,**kw):
+  "Plots Y-Bx"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bx vs Y","Y","Bx",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbx(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppybx.__doc__ = ppybx.__doc__ + ppgeneric_doc('y',"bx")
+##########################################################################
+def ppyby(iw=0,**kw):
+  "Plots Y-By"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyby,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("By vs Y","Y","By",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getby(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyby.__doc__ = ppyby.__doc__ + ppgeneric_doc('y',"by")
+##########################################################################
+def ppybz(iw=0,**kw):
+  "Plots Y-Bz"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppyez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bz vs Y","Y","Bz",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbz(ii=ii,gather=0,**kw),gety(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppybz.__doc__ = ppybz.__doc__ + ppgeneric_doc('y',"bz")
+##########################################################################
+def ppzex(iw=0,**kw):
+  "Plots Z-Ex"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ex vs Z","Z","Ex",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getex(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzex.__doc__ = ppzex.__doc__ + ppgeneric_doc('z',"ex")
+##########################################################################
+def ppzey(iw=0,**kw):
+  "Plots Z-Ey"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzey,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ey vs Z","Z","Ey",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getey(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzey.__doc__ = ppzey.__doc__ + ppgeneric_doc('z',"ey")
+##########################################################################
+def ppzez(iw=0,**kw):
+  "Plots Z-Ez"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Ez vs Z","Z","Ez",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getez(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzez.__doc__ = ppzez.__doc__ + ppgeneric_doc('z',"ez")
+##########################################################################
+def ppzbx(iw=0,**kw):
+  "Plots Z-Bx"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzex,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bx vs Z","Z","Bx",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbx(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzbx.__doc__ = ppzbx.__doc__ + ppgeneric_doc('z',"bx")
+##########################################################################
+def ppzby(iw=0,**kw):
+  "Plots Z-By"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzby,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("By vs Z","Z","By",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getby(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzby.__doc__ = ppzby.__doc__ + ppgeneric_doc('z',"by")
+##########################################################################
+def ppzbz(iw=0,**kw):
+  "Plots Z-Bz"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzez,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Bz vs Z","Z","Bz",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getbz(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzbz.__doc__ = ppzbz.__doc__ + ppgeneric_doc('z',"bz")
 ##########################################################################
 def ppxy(iw=0,**kw):
   "Plots X-Y"
