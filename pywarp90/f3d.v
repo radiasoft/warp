@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.166 $, $Date: 2007/02/05 22:31:32 $
+#@(#) File F3D.V, version $Revision: 3.167 $, $Date: 2007/04/05 22:33:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.166 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.167 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -253,11 +253,11 @@ residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
 restrict2d(nx:integer,ny:integer,nz:integer,res(-1:nx+1,-1:ny+1,-3:nz+3):real,
            nxcoarse:integer,nycoarse:integer,
            rhocoarse(0:nxcoarse,0:nycoarse,0:nz):real,
-           ff:integer,bounds:integer)
+           ff:integer,bounds:integer,delx:integer,dely:integer)
    subroutine
    # Restricts phi in 2 transverse dimensions
-expand2d(nx:integer,ny:integer,nz:integer,phi(0:nx,0:ny,-1:nz+1):real,
-         nxcoarse:integer,nycoarse:integer,phicoarse(0:nx,0:ny,-1:nz+1):real,
+expand2d(nx:integer,ny:integer,nz:integer,delx:integer,dely:integer,delz:integer,phi(0:nx,0:ny,-1:nz+1):real,
+         nxcoarse:integer,nycoarse:integer,phicoarse(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
          bounds(0:5):integer)
    subroutine
    # Expands phi in 2 transverse dimensiosn
@@ -267,11 +267,11 @@ restrict3d(nx:integer,ny:integer,nz:integer,nzfull:integer,
            nzfullcoarse:integer,
            rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse):real,
            ff:real,bounds(0:5):integer,boundscoarse(0:5):integer,
-           lzoffset:integer)
+           lzoffset:integer,delx:integer,dely:integer)
    subroutine
    # Restricts phi in 3 dimensions
 expand3d(nx:integer,ny:integer,nz:integer,nzfull:integer,
-         phi(0:nx,0:ny,-1:nz+1):real,
+         delx:integer,dely:integer,delz:integer,phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
          nxcoarse:integer,nycoarse:integer,nzcoarse:integer,
          nzfullcoarse:integer,
          phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1):real,
@@ -288,7 +288,7 @@ sorhalfpass3d(parity:integer,mglevel:integer,
    subroutine
    # Performs one pass of SOR relaxation, either even or odd.
 cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
-           phi(0:nx,0:ny,-1:nz+1):real,
+           delx:integer,dely:integer,delz:integer,phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
            mglevel:integer,mgform:integer,mgform2init:logical)
     subroutine
     # Sets voltage on interior of conductors
@@ -404,7 +404,7 @@ zmminglobal real [m] # Global value of zmmin
 zmmaxglobal real [m] # Global value of zmmax
 
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
-icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
+icndbndy integer /2/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
 laddconductor logical /.false./ # When true, the python function
