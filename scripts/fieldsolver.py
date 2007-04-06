@@ -328,6 +328,7 @@ the diagnostic is of interest and is meaningfull.
           self.bounds[0] = neumann
           self.bounds[2] = neumann
           self.bounds[3] = neumann
+          if self.xmmin < 0.: self.xmmin = 0.
         elif self.solvergeom == w3d.XZgeom:
           self.bounds[2] = neumann
           self.bounds[3] = neumann
