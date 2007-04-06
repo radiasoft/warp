@@ -197,7 +197,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     else:
       self.setfieldpforparticles(*args)
       getphipforparticles3d(3,self.nx,self.ny,self.nz,self.field,
-                            self.nxp,self.nyp,self.nzp,self.fieldp,0)
+                            self.nxp,self.nyp,self.nzp,self.fieldp,0,0,0)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
