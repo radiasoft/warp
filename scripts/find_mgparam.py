@@ -1,7 +1,7 @@
 from warp import *
 import time
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.23 2007/02/15 23:53:38 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.24 2007/04/06 00:10:00 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -131,7 +131,10 @@ def field_solve(phisave,solver,pkg3d):
     if (pkg3d.boundxy > 0): iymax = pkg3d.ny
     if (pkg3d.bound0  > 0): izmin = 0
     if (pkg3d.boundnz > 0): izmax = pkg3d.nz
-    pkg3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+2] = 0.
+    if len(pkg3d.phi.shape) == 3:
+      pkg3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+2] = 0.
+    elif len(pkg3d.phi.shape) == 2:
+      pkg3d.phi[ixmin:ixmax+1,izmin+1:izmax+2] = 0.
   else:
     pkg3d.phi[...] = phisave
     
