@@ -366,7 +366,7 @@ in radius squared.
     if top.wpid == 0:
       r = sqrt(r)
     else:
-      kw['w'] = r/rmax
+      kw['w'] = 2*r
     x=xmean+rmax*r*cos(2.*pi*theta)
     y=ymean+rmax*r*sin(2.*pi*theta)
     z=zmin+(zmax-zmin)*z
