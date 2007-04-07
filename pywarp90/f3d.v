@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.167 $, $Date: 2007/04/05 22:33:37 $
+#@(#) File F3D.V, version $Revision: 3.168 $, $Date: 2007/04/07 00:43:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.167 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.168 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -240,6 +240,19 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  izfsslave:integer,nzfsslave:integer)
    subroutine
    # Solves Poisson's equation using the multigrid method. All input is
+   # through the argument list.
+multigrid2dsolve(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
+                 dx:real,dz:real,phi(-1:nx+1,-1:nz+1):real,rho(0:nx,0:nz):real,
+                 bounds(0:5):integer,
+                 xmmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
+                 mgparam:real,mgiters:integer,mgmaxiters:integer,
+                 mgmaxlevels:integer,mgerror:real,mgtol:real,
+                 downpasses:integer,uppasses:integer,
+                 lcndbndy:logical,laddconductor:logical,icndbndy:integer,lbuildquads:logical,
+                 gridmode:integer,conductors:ConductorType,lrz:logical,
+                 my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
+   subroutine
+   # Solves Poisson's equation in 2D using the multigrid method. All input is
    # through the argument list.
 residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
          dxsqi:real,dysqi:real,dzsqi:real,
