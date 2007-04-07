@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.152 2007/04/03 01:07:16 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.153 2007/04/07 00:51:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -150,7 +150,7 @@ Installs the given conductors.
   if conductors is None: conductors = f3d.conductors
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz,
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,installrz,gridrz,
            my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
@@ -1215,7 +1215,7 @@ Installs the data into the WARP database
     # --- only after all of the objects have been installed.
     if solvergeom is None: solvergeom = w3d.solvergeom
     if(installrz and
-       (solvergeom==w3d.RZgeom or solvergeom==w3d.XZgeom or solvergeom==w3d.XYgeom)):
+       (solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom])):
       conductors.interior.n = 0
       conductors.evensubgrid.n = 0
       conductors.oddsubgrid.n = 0
@@ -1629,7 +1629,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     nx=None,ny=None,nz=None,nzfull=None,
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
-                    gridrz=None,
+                    installrz=1,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None):
     """
 Creates a grid object which can generate conductor data.
@@ -1688,11 +1688,16 @@ Creates a grid object which can generate conductor data.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
-    if self.ny > 0:
+    if self.ny > 0 or not installrz:
       conductors = ConductorType()
-      getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                  conductors,
-                  self.my_index,self.nslaves,self.izslave,self.nzslave)
+      if self.ny > 0:
+        getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
+                    conductors,
+                    self.my_index,self.nslaves,self.izslave,self.nzslave)
+      else:
+        getmglevels(self.nx,self.nx,self.nz,self.nzfull,self.dx,self.dy,self.dz,
+                    conductors,
+                    self.my_index,self.nslaves,self.izslave,self.nzslave)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
