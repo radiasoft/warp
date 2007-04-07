@@ -381,9 +381,8 @@ class MultiGrid2D(SubcycledPoissonSolver):
     f3d.gridmode = 1
 
     # --- Save input parameters
-    self.processdefaultsfrompackage(MultiGridRZ2.__w3dinputs__,w3d,kw)
-    self.processdefaultsfrompackage(MultiGridRZ2.__f3dinputs__,f3d,kw)
-    self.processdefaultsfrompackage(MultiGridRZ2.__frzinputs__,frz,kw)
+    self.processdefaultsfrompackage(MultiGrid2D.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid2D.__f3dinputs__,f3d,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
