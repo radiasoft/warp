@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.349 $, $Date: 2007/04/05 22:28:57 $
+c@(#) File W3D.F, version $Revision: 3.350 $, $Date: 2007/04/07 22:55:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6874,7 +6874,7 @@ c     --- vectorized loop to compute indices, weights
 c       --- normal loop
         if (lcylindrical) then
           x = sqrt(xp(1)**2 + yp(1)**2)
-          y = 0.
+          y = ymmin
         else
           x = xp(1)
           y = yp(1)
@@ -6912,9 +6912,8 @@ c       --- normal loop
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
-          u0 = u0*cdens(ii  )
-          u1 = u1*cdens(ii+1)
-          g = g0*wfact(ip)
+          u0 = u0*cdens(ii  )*wfact(ip)
+          u1 = u1*cdens(ii+1)*wfact(ip)
           rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0
           rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0
           rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0
