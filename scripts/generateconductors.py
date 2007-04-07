@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.153 2007/04/07 00:51:15 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.154 2007/04/07 23:01:13 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2191,7 +2191,7 @@ Plots the r versus z
     rmin = kw.get('rmin',None)
     if rmin is None: rmin = 0.
     r = [self.radius,self.radius,rmin,rmin,self.radius]
-    z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+    z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
@@ -2300,7 +2300,7 @@ Plots the r versus z
     rmax = kw.get('rmax',None)
     if rmax is None: rmax = w3d.xmmax
     r = [self.radius,self.radius,rmax,rmax,self.radius]
-    z = self.zcent + self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+    z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
     self.plotdata(r,z,color=color,filled=filled,fullplane=fullplane)
 
 #============================================================================
