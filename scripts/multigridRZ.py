@@ -21,18 +21,12 @@ class MultiGridRZ(SubcycledPoissonSolver):
   __frzinputs__ = ['mgridrz_ncycles','nguardx','nguardz']
 
   def __init__(self,lreducedpickle=1,**kw):
-    self.solvergeom = w3d.RZgeom
     kw['lreducedpickle'] = lreducedpickle
-
-    # --- Force xmmin to be zero if using RZgeom
-    if self.solvergeom == w3d.RZgeom:
-      self.xmmin = 0.
 
     # --- Force ny (which is not used here)
     self.ny = 0
 
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
-    self.solvergeom = w3d.solvergeom
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
@@ -356,7 +350,314 @@ class MultiGridRZ(SubcycledPoissonSolver):
     self.rho = self.source
     self.phi = self.potential
     pffunc(**kw)
-    del self.rho,self.phi
+  def pfzx(self,**kw): self.genericpf(kw,pfzx)
+  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
+  def pfzr(self,**kw): self.genericpf(kw,pfzx)
+  def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
+
+##############################################################################
+##############################################################################
+class MultiGrid2D(SubcycledPoissonSolver):
+  
+  __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
+                   'electrondensitymaxscale']
+  __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
+                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
+                   'lcndbndy','icndbndy','laddconductor'] 
+
+  def __init__(self,lreducedpickle=1,**kw):
+    kw['lreducedpickle'] = lreducedpickle
+
+    # --- Force ny (which is not used here)
+    self.ny = 0
+
+    SubcycledPoissonSolver.__init__(self,kwdict=kw)
+    if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
+      self.solvergeom = w3d.RZgeom
+    self.ncomponents = 1
+
+    # --- Kludge - make sure that the multigrid3df routines never sets up
+    # --- any conductors. This is not really needed here.
+    f3d.gridmode = 1
+
+    # --- Save input parameters
+    self.processdefaultsfrompackage(MultiGridRZ2.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGridRZ2.__f3dinputs__,f3d,kw)
+    self.processdefaultsfrompackage(MultiGridRZ2.__frzinputs__,frz,kw)
+
+    # --- If there are any remaning keyword arguments, raise an error.
+    assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
+
+    # --- Create a conductor object, which by default is empty.
+    self.conductors = ConductorType()
+    self.conductorlist = []
+    self.newconductorlist = []
+
+    # --- Give these variables dummy initial values.
+    self.mgiters = 0
+    self.mgerror = 0.
+
+  def __getstate__(self):
+    dict = SubcycledPoissonSolver.__getstate__(self)
+    if self.lreducedpickle:
+      # --- Delete the conductorobject since it can be big
+      del dict['conductors']
+      # --- Put all of the conductors in the newconductorlist so that they
+      # --- will be reinstalled after the restore.
+      dict['newconductorlist'] += self.conductorlist
+      dict['conductorlist'] = []
+      if 'rho' in dict: del dict['rho']
+      if 'phi' in dict: del dict['phi']
+    return dict
+
+  def __setstate__(self,dict):
+    SubcycledPoissonSolver.__setstate__(self,dict)
+    if 'newconductorlist' not in self.__dict__:
+      # --- For backwards compatibility
+      self.newconductorlist = self.conductorlist
+      self.conductorlist = []
+    if self.lreducedpickle and not self.lnorestoreonpickle:
+      # --- Create a new (and now empty) conductor object.
+      # --- Any conductors will be installed when it is referenced.
+      self.conductors = ConductorType()
+
+  def getconductorobject(self):
+    "Checks for and installs any new conductors before returning the object"
+    # --- This method is needed since during a restore from a pickle, this
+    # --- object may be restored before the conductors. This delays the
+    # --- installation of the conductors until they are really needed,
+    # --- which will only happen after the restoration is complete.
+    for conductor in self.newconductorlist:
+      self.installconductor(conductor)
+    self.newconductorlist = []
+    return self.conductors
+
+  def getpdims(self):
+    # --- Returns the dimensions of the arrays used by the particles
+    return ((1+self.nxp,1+self.nzp),
+            (3+self.nxp,3+self.nzp))
+
+  def getdims(self):
+    # --- Returns the dimensions of the arrays used by the field solver
+    return ((1+self.nx,1+self.nz),
+            (3+self.nx,3+self.nz))
+
+  def loadrho(self,lzero=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
+
+  def fetche(self,*args,**kw):
+    SubcycledPoissonSolver.fetchfield(self,*args,**kw)
+
+  def setsourcep(self,js,pgroup,zgrid):
+    n  = pgroup.nps[js]
+    if n == 0: return
+    i  = pgroup.ins[js] - 1
+    x  = pgroup.xp[i:i+n]
+    y  = pgroup.yp[i:i+n]
+    z  = pgroup.zp[i:i+n]
+    ux = zeros((0,), 'd')
+    uy = zeros((0,), 'd')
+    uz = pgroup.uzp[i:i+n]
+    gaminv = zeros((0,), 'd')
+    q  = pgroup.sq[js]
+    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    if top.wpid == 0: wght = zeros((0,), 'd')
+    else:             wght = pgroup.pid[i:i+n,top.wpid-1]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+    n  = len(x)
+    if n == 0: return
+    sourcep = transpose(self.sourcep)
+    sourcep.shape = (1+self.nzp,1,1+self.nxp)
+    sourcep = transpose(sourcep)
+    if top.wpid == 0:
+      setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+               self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
+               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+               self.solvergeom==w3d.RZgeom)
+    else:
+      # --- Need top.pid(:,top.wpid)
+      setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
+                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+                self.solvergeom==w3d.RZgeom)
+
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+    # --- Only sets the E field from the potential
+    n = len(x)
+    if n == 0: return
+    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
+           self.xmmin-self.dx,self.ymmin,self.zmmin,
+           self.dx,self.dy,self.dz,
+           self.nx+2,self.ny,self.nz,self.efetch,
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    ey[...] = 0.
+
+  def fetchpotentialfrompositions(self,x,y,z,potential):
+    n = len(x)
+    if n == 0: return
+    if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
+    else:                           r = x
+    nx = self.nx + 2
+    nz = self.nz + 2
+    xmmin = self.xmmin - self.dx
+    xmmax = self.xmmax + self.dx
+    zmmin = self.zmmin - self.dz
+    zmmax = self.zmmax + self.dz
+    getgrid2d(n,r,z,potential,nx,nz,self.potential,
+              xmmin,xmmax,zmmin,zmmax,
+              self.l2symtry,self.l4symtry)
+
+  def setsourceforfieldsolve(self,*args):
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    if self.lparallel:
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      if isinstance(self.source,FloatType): return
+      if isinstance(self.sourcep,FloatType): return
+      source  = self.convert2dto3d(self.source)
+      sourcep = self.convert2dto3d(self.sourcep)
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,source,
+                            self.nxp,self.nyp,self.nzp,sourcep,self.nzpguard,
+                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                            self.izfsslave,self.nzfsslave)
+
+  def getpotentialpforparticles(self,*args):
+    if not self.lparallel:
+      SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
+    else:
+      self.setpotentialpforparticles(*args)
+      if isinstance(self.potential,FloatType): return
+      if isinstance(self.potentialp,FloatType): return
+      potential  = self.convert2dto3d(self.potential)
+      potentialp = self.convert2dto3d(self.potentialp)
+      getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
+                            self.nxp,self.nyp,self.nzp,potentialp,1,0,1)
+    if self.efetch == 3:
+      # --- This probably doesn't work without fixes XXX
+      self.setpotentialpforparticles(*args)
+      self.setfieldpforparticles(*args)
+      indts = args[1]
+      iselfb = args[2]
+      # --- If this is the first group, set make sure that fieldp gets
+      # --- zeroed out. Otherwise, the data in fieldp is accumulated.
+      # --- This coding relies on the fact that fieldsolver does the
+      # --- loops in descending order.
+      tmpnsndts = getnsndtsforsubcycling()
+      lzero = ((indts == tmpnsndts-1) and (iselfb == top.nsselfb-1))
+      if lzero:
+        tfieldp = transpose(self.fieldp)
+        tfieldp[...] = 0.
+      self.getselfe(recalculate=1,lzero=lzero)
+      if max(top.fselfb) > 0.:
+        # --- Calculate and include the
+        # --- approximate correction terms A and dA/dt.
+        self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+        self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
+
+  def makesourceperiodic(self):
+    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
+      self.source[0,:] = self.source[0,:] + self.source[-1,:]
+      self.source[-1,:] = self.source[0,:]
+    if self.pbounds[0] == 1 and not self.l4symtry:
+       self.source[0,:] = 2.*self.source[0,:]
+    if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
+      if self.lparallel:
+        self.makesourceperiodic_parallel()
+      else:
+        self.source[:,0] = self.source[:,0] + self.source[:,-1]
+        self.source[:,-1] = self.source[:,0]
+    if self.pbounds[4] == 1: self.source[:,0] = 2.*self.source[:,0]
+    if self.pbounds[5] == 1: self.source[:,-1] = 2.*self.source[:,-1]
+
+  def makesourceperiodic_parallel(self):
+    tag = 70
+    if self.my_index == self.nslaves-1:
+      request = mpi.isend(self.source[:,self.nz],0,tag)
+      self.source[:,self.nz],status = mpi.recv(0,tag)
+    elif self.my_index == 0:
+      sourcetemp,status = mpi.recv(self.nslaves-1,tag)
+      self.source[:,0] = self.source[:,0] + sourcetemp
+      request = mpi.isend(self.source[:,0],self.nslaves-1,tag)
+    if self.my_index == 0 or self.my_index == self.nslaves-1:
+      status = request.wait()
+
+  def installconductor(self,conductor,
+                            xmin=None,xmax=None,
+                            ymin=None,ymax=None,
+                            zmin=None,zmax=None,
+                            dfill=top.largepos):
+    if conductor in self.conductorlist: return
+    self.conductorlist.append(conductor)
+    installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
+                      self.getzgrid(),
+                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      installrz=0,
+                      solvergeom=self.solvergeom,conductors=self.conductors,
+                      my_index=self.my_index,nslaves=self.nslaves,
+                      izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+
+  def hasconductors(self):
+    conductorobject = self.getconductorobject()
+    return (conductorobject.interior.n > 0 or
+            conductorobject.evensubgrid.n > 0 or
+            conductorobject.oddsubgrid.n > 0)
+
+  def clearconductors(self):
+    "Should the conductorlist and newconductorlist be cleared also?"
+    # --- This uses the conductor object directly since there is not point in
+    # --- installing any new conductors (which would be done by
+    # --- getconductorobject).
+    self.conductors.interior.n = 0
+    self.conductors.evensubgrid.n = 0
+    self.conductors.oddsubgrid.n = 0
+
+  def find_mgparam(self,lsavephi=false,resetpasses=1):
+    self.phi = self.potential
+    find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
+                 solver=self,pkg3d=self)
+
+  def dosolve(self,iwhich=0,*args):
+    self.phi = self.potential
+    self.rho = self.source
+    mgiters = zeros(1)
+    mgerror = zeros(1,'d')
+    conductorobject = self.getconductorobject()
+
+    self.lbuildquads = false
+    multigrid2dsolve(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz,self.phi,self.rho,self.bounds,
+                     self.xmmin,self.zmmin,self.zmminglobal,self.getzgrid(),self.getzgrid(),
+                     self.mgparam,mgiters,self.mgmaxiters,
+                     self.mgmaxlevels,mgerror,self.mgtol,
+                     self.downpasses,self.uppasses,
+                     self.lcndbndy,self.laddconductor,self.icndbndy,self.lbuildquads,
+                     self.gridmode,conductorobject,self.solvergeom==w3d.RZgeom,
+                     self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+
+    self.mgiters = mgiters[0]
+    self.mgerror = mgerror[0]
+
+  def convert2dto3d(self,x):
+    xdims = x.shape
+    xdims = [xdims[1],1,xdims[0]]
+    x = transpose(x)
+    x.shape = xdims
+    x = transpose(x)
+    return x
+
+  ##########################################################################
+  # Define the basic plot commands
+  def genericpf(self,kw,pffunc):
+    kw['conductors'] = self.getconductorobject()
+    kw['solver'] = self
+    # --- This is a temporary kludge until the plot routines are updated to
+    # --- use source and potential instead of rho and phi.
+    self.rho = self.source
+    self.phi = self.potential
+    pffunc(**kw)
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
   def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
@@ -381,20 +682,14 @@ Initially, conductors are not implemented.
   __frzinputs__ = ['nguardx','nguardz']
 
   def __init__(self,lreducedpickle=1,**kw):
-    self.solvergeom = w3d.solvergeom
     kw['lreducedpickle'] = lreducedpickle
     self.nguardx = 0
     self.nguardz = 1
-
-    # --- Force xmmin to be zero if using RZgeom
-    if self.solvergeom == w3d.RZgeom:
-      self.xmmin = 0.
 
     # --- Force ny (which is not used here)
     self.ny = 0
 
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
-    self.solvergeom = w3d.solvergeom
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
@@ -571,14 +866,13 @@ Initially, conductors are not implemented.
     if not self.lparallel:
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
-      assert self.nguardx == 0,"The parallel code will not work with nguardx > 0"
       self.setpotentialpforparticles(*args)
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
       potential  = self.convert2dto3d(self.potential)
       potentialp = self.convert2dto3d(self.potentialp)
       getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
-                            self.nxp,self.nyp,self.nzp,potentialp,1)
+                            self.nxp,self.nyp,self.nzp,potentialp,self.nguardx,0,1)
     if self.efetch == 3:
       # --- This probably doesn't work without fixes XXX
       self.setpotentialpforparticles(*args)
@@ -595,10 +889,11 @@ Initially, conductors are not implemented.
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
       self.getselfe(recalculate=1,lzero=lzero)
-      # --- If top.fslefb(iselfb) > 0, then calculate and include the
-      # --- approximate correction terms A and dA/dt.
-      self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
-      self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
+      if max(top.fselfb) > 0.:
+        # --- Calculate and include the
+        # --- approximate correction terms A and dA/dt.
+        self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+        self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
