@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.24 $, $Date: 2007/02/15 01:05:15 $
+c version $Revision: 1.25 $, $Date: 2007/04/07 00:33:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -339,7 +339,6 @@ c=============================================================================
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dzsqi
-      logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
       real(kind=8),allocatable:: Lphi(:,:),Lphicoarse(:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:)
