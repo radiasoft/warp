@@ -5,7 +5,7 @@ class TimeVoltage:
 Makes the voltage on a conductor time dependent. One of several methods can be
 specified to calculate the voltage as a function of time.
 Input for constructor:
- - condid=0: Id (or list of id's) of the conductor which is to be varied
+ - condid=0: conductor or id of the conductor (or list of them) which is to be varied
  - discrete=true: z locations for plus/minus z subgrid points are round up/down.
  - setvinject=false: when true, top.vinject is set to the same voltage
  - doitnow=false: when true, applies the voltage and recalculates the fields
@@ -51,8 +51,15 @@ Input for constructor:
             voltfunc is not None),\
            "At least one method of calculating the voltage must be specified"
 
-    if type(condid) == IntType: self.condid = [condid]
-    else:                       self.condid = condid
+    # --- Make sure that condid is a sequence
+    if not operator.isSequenceType: condid = [condid]
+
+    # --- Loop over condid and get the id's of any conductors listed
+    for i in range(len(condid)):
+      if isinstance(condid[i],Assembly):
+        condid[i] = condid[i].condid
+
+    self.condid = condid
     self.tieffenback = tieffenback
     self.minvoltage = minvoltage
     self.maxvoltage = maxvoltage
