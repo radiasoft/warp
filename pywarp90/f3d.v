@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.168 $, $Date: 2007/04/07 00:43:51 $
+#@(#) File F3D.V, version $Revision: 3.169 $, $Date: 2007/04/13 21:09:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.168 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.169 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -182,6 +182,7 @@ mglevelspart(0:100)   logical      # List of flags for whether full or partial
 *********** Multigrid3d_diagnostic dump:
 lprintmgphimaxchange logical /.false./ # When true, prints the maximum change in phi
                                        # at each level of the multigrid field solver.
+lprintmgarraysumdiagnostic logical /.false./
 
 *********** Multigrid3d dump:
 mgparam     real    /1.2/ # Acceleration parameter for multigrid fieldsolver
