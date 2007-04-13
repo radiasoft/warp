@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.51 2007/04/03 00:43:44 dave Exp $"
+particles_version = "$Id: particles.py,v 1.52 2007/04/13 23:59:37 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1166,7 +1166,7 @@ Adds particles to the simulation
   if not lallindomain and zmmin == zmmax:
     print "=================================================================="
     print "Addparticles: warning - no particles will be loaded - you should"
-    print "either set lallindomain=false or set zmmin and zmmax so they are"
+    print "either set lallindomain=true or set zmmin and zmmax so they are"
     print "different from each other."
     print "=================================================================="
 
