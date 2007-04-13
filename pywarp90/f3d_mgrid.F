@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.133 $, $Date: 2007/04/07 00:43:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.134 $, $Date: 2007/04/13 21:09:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -535,7 +535,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
       real(kind=8):: sss(2)
-      logical(ISZ):: larraysumdiagnostic=.false.
 
       dxsqi = 1./dx**2
       dysqi = 1./dy**2
@@ -563,7 +562,7 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 phi",mglevel,sss
@@ -594,7 +593,7 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V2 phi",mglevel,sss
@@ -633,7 +632,7 @@ c       --- Get the residual on the current grid.
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
 #endif
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,ny,nz,1,1,3,res,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V3 res",mglevel,sss
@@ -775,7 +774,7 @@ c         --- routine.
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
      &                    localbounds,localboundsc,lzoffset,1,1)
-          if (larraysumdiagnostic) then
+          if (lprintmgarraysumdiagnostic) then
             sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,0,rhocoarse,
      &                          izfsslavec,nzfsslavec,nslaves,my_index)
             if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
@@ -789,7 +788,7 @@ c         --- Continue at the next coarsest level.
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
-          if (larraysumdiagnostic) then
+          if (lprintmgarraysumdiagnostic) then
             sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,1,phicoarse,
      &                          izfsslavec,nzfsslavec,nslaves,my_index)
             if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
@@ -815,7 +814,7 @@ c         --- Add in resulting error.
 
       endif
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V5 phi",mglevel,sss
@@ -4125,7 +4124,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
       real(kind=8):: sss(2)
-      logical(ISZ):: larraysumdiagnostic=.false.
 
       dxsqi = 1./dx**2
       dzsqi = 1./dz**2
@@ -4144,7 +4142,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
 #endif
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,0,nz,1,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V1 phi",mglevel,sss
@@ -4163,7 +4161,7 @@ c     --- Do initial SOR passes.
      &                 whosendingright,izsendingright)
       enddo
 
-      if (larraysumdiagnostic) then
+      if (lprintmgarraysumdiagnostic) then
         sss = mggetarraysum(nx,0,nz,1,0,1,phi,
      &                      izfsslave,nzfsslave,nslaves,my_index)
         if (my_index == 0) print*,"V2 phi",mglevel,sss
@@ -4205,7 +4203,7 @@ c       --- Get the residual on the current grid.
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nz,1,0,3,res,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V3 res",mglevel,sss
@@ -4290,7 +4288,7 @@ c       --- Restriction - note that no scaling factor is needed
      &                    nxcoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,
      &                    localbounds,localboundsc,lzoffset)
 
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,0,nzcoarse,0,0,0,rhocoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
           if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
@@ -4304,7 +4302,7 @@ c       --- Continue at the next coarsest level.
      &                lcndbndy,icndbndy,conductors,xminodx,lrz,
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,0,nzcoarse,1,0,1,phicoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
           if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
@@ -4320,7 +4318,7 @@ c       --- Add in resulting error.
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
-        if (larraysumdiagnostic) then
+        if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nz,1,0,1,phi,
      &                        izfsslave,nzfsslave,nslaves,my_index)
           if (my_index == 0) print*,"V5 phi",mglevel,sss
