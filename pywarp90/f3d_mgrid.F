@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.134 $, $Date: 2007/04/13 21:09:52 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.135 $, $Date: 2007/04/14 00:04:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -4054,10 +4054,10 @@ c         --- calculate global sorerror
 c     --- For Dirichlet boundary conditions, copy data into guard planes
 c     --- For other boundary conditions, the guard planes are used during
 c     --- the solve are so are already set.
-      if (bounds(0) == 0) phi(-1,:) = 2.*phi(0,:) - phi(1,:)
-      if (bounds(1) == 0) phi(nx+1,:) = 2.*phi(nx,:) - phi(nx-1,:)
-      if (bounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
-      if (bounds(5) == 0) phi(:,nz+1) = 2.*phi(:,nz) - phi(:,nz-1)
+      if (localbounds(0) == 0) phi(-1,:) = 2.*phi(0,:) - phi(1,:)
+      if (localbounds(1) == 0) phi(nx+1,:) = 2.*phi(nx,:) - phi(nx-1,:)
+      if (localbounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
+      if (localbounds(5) == 0) phi(:,nz+1) = 2.*phi(:,nz) - phi(:,nz-1)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -4314,6 +4314,10 @@ c       --- Add in resulting error.
      &                  localbounds,lzoffset)
         call applyboundaryconditions3d(nx,0,nz,nzfull,1,0,1,phi,localbounds)
 #ifdef MPIPARALLEL
+        call mgexchange_phi(nx,0,nz,nzfull,phi,localbounds,-1,1,0,1,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
         call mgexchange_phiperiodic(nx,0,nz,nzfull,phi,localbounds,1,1,0,1,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
