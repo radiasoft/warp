@@ -8286,7 +8286,7 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
   return
 end subroutine fieldweightrzold
 
-subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,zgrid)
+subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,zgrid,efetch)
 USE multigridrz
 implicit none
 
@@ -8294,6 +8294,7 @@ INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8) :: zgrid
+INTEGER(ISZ), INTENT(IN) :: efetch
 
 REAL(8) :: r, rpos, zpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
@@ -8331,15 +8332,26 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     oddr = 1._8-ddr
     oddz = 1._8-ddz
 #ifdef MPIPARALLEL
-    er = 0.5*(oddr * oddz * (g%phip(jn-1,ln  )-g%phip(jn+1,ln  ))  &
-            + ddr  * oddz * (g%phip(jn  ,ln  )-g%phip(jn+2,ln  ))  &
-            + oddr * ddz  * (g%phip(jn-1,ln+1)-g%phip(jn+1,ln+1))  &
-            + ddr  * ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+2,ln+1)))*g%invdr
+    IF (efetch == 4) then
+      ! --- 2D counterpart of fetche3d's energy-conserving option
+      er =     ( oddz * (g%phip(jn  ,ln  )-g%phip(jn+1,ln  ))  &
+              +  ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+1,ln+1)))*g%invdr
+    else
+      er = 0.5*(oddr * oddz * (g%phip(jn-1,ln  )-g%phip(jn+1,ln  ))  &
+              + ddr  * oddz * (g%phip(jn  ,ln  )-g%phip(jn+2,ln  ))  &
+              + oddr * ddz  * (g%phip(jn-1,ln+1)-g%phip(jn+1,ln+1))  &
+              + ddr  * ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+2,ln+1)))*g%invdr
+    endif
 #else
-    er = 0.5*(oddr * oddz * (g%phi(jn-1,ln  )-g%phi(jn+1,ln  ))  &
-            + ddr  * oddz * (g%phi(jn  ,ln  )-g%phi(jn+2,ln  ))  &
-            + oddr * ddz  * (g%phi(jn-1,ln+1)-g%phi(jn+1,ln+1))  &
-            + ddr  * ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+2,ln+1)))*g%invdr
+    IF (efetch == 4) then
+      er =     ( oddz * (g%phi(jn  ,ln  )-g%phi(jn+1,ln  ))  &
+              +  ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+1,ln+1)))*g%invdr
+    else
+      er = 0.5*(oddr * oddz * (g%phi(jn-1,ln  )-g%phi(jn+1,ln  ))  &
+              + ddr  * oddz * (g%phi(jn  ,ln  )-g%phi(jn+2,ln  ))  &
+              + oddr * ddz  * (g%phi(jn-1,ln+1)-g%phi(jn+1,ln+1))  &
+              + ddr  * ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+2,ln+1)))*g%invdr
+    endif
 #endif
     IF(r*g%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
@@ -8349,15 +8361,25 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
       ey(i) = 0._8
     END if
 #ifdef MPIPARALLEL
-    ez(i) = 0.5*(oddr * oddz * (g%phip(jn  ,ln-1)-g%phip(jn  ,ln+1))  &
-               + ddr  * oddz * (g%phip(jn+1,ln-1)-g%phip(jn+1,ln+1))  &
-               + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
-               + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
+    IF (efetch == 4) then
+      ez(i) =     (oddr * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+1))  &
+                 + ddr  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+1)))*g%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (g%phip(jn  ,ln-1)-g%phip(jn  ,ln+1))  &
+                 + ddr  * oddz * (g%phip(jn+1,ln-1)-g%phip(jn+1,ln+1))  &
+                 + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
+                 + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
+    endif
 #else
-    ez(i) = 0.5*(oddr * oddz * (g%phi(jn  ,ln-1)-g%phi(jn  ,ln+1))  &
-               + ddr  * oddz * (g%phi(jn+1,ln-1)-g%phi(jn+1,ln+1))  &
-               + oddr * ddz  * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+2)))*g%invdz
+    IF (efetch == 4) then
+      ez(i) =     (oddr * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+1))  &
+                 + ddr  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+1)))*g%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (g%phi(jn  ,ln-1)-g%phi(jn  ,ln+1))  &
+                 + ddr  * oddz * (g%phi(jn+1,ln-1)-g%phi(jn+1,ln+1))  &
+                 + oddr * ddz  * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+2))  &
+                 + ddr  * ddz  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+2)))*g%invdz
+    endif
 #endif
   END do
 else
@@ -8374,15 +8396,25 @@ else
     oddr = 1._8-ddr
     oddz = 1._8-ddz
 #ifdef MPIPARALLEL
-    er = 0.5*(oddr * oddz * (basegrid%phip(jn-1,ln  )-basegrid%phip(jn+1,ln  ))  &
-            + ddr  * oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+2,ln  ))  &
-            + oddr * ddz  * (basegrid%phip(jn-1,ln+1)-basegrid%phip(jn+1,ln+1))  &
-            + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
+    IF (efetch == 4) then
+      er =     ( oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+1,ln  ))  &
+              +  ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+1,ln+1)))*basegrid%invdr
+    else
+      er = 0.5*(oddr * oddz * (basegrid%phip(jn-1,ln  )-basegrid%phip(jn+1,ln  ))  &
+              + ddr  * oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+2,ln  ))  &
+              + oddr * ddz  * (basegrid%phip(jn-1,ln+1)-basegrid%phip(jn+1,ln+1))  &
+              + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
+    endif
 #else
-    er = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
-            + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
-            + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
-            + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
+    IF (efetch == 4) then
+      er =     ( oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+1,ln  ))  &
+              +  ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+1,ln+1)))*basegrid%invdr
+    else
+      er = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
+              + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
+              + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
+              + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
+    endif
 #endif
     IF(r*basegrid%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
@@ -8392,15 +8424,25 @@ else
       ey(i) = 0._8
     END if
 #ifdef MPIPARALLEL
-    ez(i) = 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
-               + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
-               + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
-               + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
+    IF (efetch == 4) then
+      ez(i) =     (oddr * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+1))  &
+                 + ddr  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+1)))*basegrid%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
+                 + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
+                 + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
+                 + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
+    endif
 #else
-    ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
-               + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
-               + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
+    IF (efetch == 4) then
+      ez(i) =     (oddr * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+1))  &
+                 + ddr  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+1)))*basegrid%invdz
+    else
+      ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
+                 + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
+                 + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
+                 + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
+    endif
 #endif
   END do
 END if
@@ -8718,7 +8760,7 @@ real(kind=8):: ex(ip),ey(ip),ez(ip)
 
   if(.not.mgridrz_deform) then
     call fieldweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
-                       ex,ey,ez,ip,zgridprv)
+                       ex,ey,ez,ip,zgridprv,efetch)
   else
     if(is==1 .and. ipmin==pgroup%ins(is)) call calc_phi3d_from_phirz()
     call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip, &
