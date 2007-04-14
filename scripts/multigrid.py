@@ -94,6 +94,12 @@ class MultiGrid(SubcycledPoissonSolver):
     self.newconductorlist = []
     return self.conductors
 
+  def setconductorvoltage(self,voltage,condid=0,discrete=false,
+                          setvinject=false):
+    'calls setconductorvoltage'
+    setconductorvoltage(voltage,condid,discrete,setvinject,
+                        conductors=self.getconductorobject())
+
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
 
