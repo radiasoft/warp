@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.35 $, $Date: 2007/02/05 22:30:38 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.36 $, $Date: 2007/04/14 00:09:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -144,6 +144,7 @@ c=============================================================================
       use Particles,Only: wpid
       use BFieldGrid
       use GridBoundary3d
+      use FieldSolveAPI, Only: lzerorhofsapi
       use f3d_bfield_interfaces
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
@@ -172,10 +173,11 @@ c     --- the parallel sums on boundaries will need to be done again.
 
       if (depos == 'none') return
 
-
       if (bfstype == 12) then
+        lzerorhofsapi = lzero
         call execuser("bloadjregistered")
       elseif (fstype == 12 .and. bfstype < 0) then
+        lzerorhofsapi = lzero
         call execuser("loadjregistered")
       elseif (bfstype >= 0) then
 
