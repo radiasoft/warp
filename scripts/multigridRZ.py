@@ -217,7 +217,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
-    n  = pgroup.nps[js]
+    n = pgroup.nps[js]
     if n == 0: return
     i  = pgroup.ins[js] - 1
     x  = pgroup.xp[i:i+n]
@@ -234,7 +234,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
 
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
-    n  = len(x)
+    n = len(x)
     if n == 0: return
     sourcep = transpose(self.sourcep)
     sourcep.shape = (1+self.nzp,1,1+self.nxp)
@@ -255,12 +255,12 @@ class MultiGridRZ(SubcycledPoissonSolver):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
-    ey[...] = 0.
+    #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -431,6 +431,12 @@ class MultiGrid2D(SubcycledPoissonSolver):
     self.newconductorlist = []
     return self.conductors
 
+  def setconductorvoltage(self,voltage,condid=0,discrete=false,
+                          setvinject=false):
+    'calls setconductorvoltage'
+    setconductorvoltage(voltage,condid,discrete,setvinject,
+                        conductors=self.getconductorobject())
+
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
     return ((1+self.nxp,1+self.nzp),
@@ -448,7 +454,7 @@ class MultiGrid2D(SubcycledPoissonSolver):
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
 
   def setsourcep(self,js,pgroup,zgrid):
-    n  = pgroup.nps[js]
+    n = pgroup.nps[js]
     if n == 0: return
     i  = pgroup.ins[js] - 1
     x  = pgroup.xp[i:i+n]
@@ -465,7 +471,7 @@ class MultiGrid2D(SubcycledPoissonSolver):
     self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
 
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
-    n  = len(x)
+    n = len(x)
     if n == 0: return
     sourcep = transpose(self.sourcep)
     sourcep.shape = (1+self.nzp,1,1+self.nxp)
@@ -486,12 +492,12 @@ class MultiGrid2D(SubcycledPoissonSolver):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx+2,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
-    ey[...] = 0.
+    #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -510,6 +516,7 @@ class MultiGrid2D(SubcycledPoissonSolver):
 
   def setsourceforfieldsolve(self,*args):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    self.rho = self.source
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
@@ -593,11 +600,12 @@ class MultiGrid2D(SubcycledPoissonSolver):
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
                       installrz=0,
                       solvergeom=self.solvergeom,conductors=self.conductors,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
+  installconductors = installconductor
 
   def hasconductors(self):
     conductorobject = self.getconductorobject()
@@ -825,12 +833,12 @@ Initially, conductors are not implemented.
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    sete3d(self.potential,self.field,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
-    ey[...] = 0.
+    #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -849,6 +857,7 @@ Initially, conductors are not implemented.
 
   def setsourceforfieldsolve(self,*args):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    self.rho = self.source
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
