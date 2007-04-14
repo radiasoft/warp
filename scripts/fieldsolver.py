@@ -142,11 +142,11 @@ def unregistersolver(solver):
 def loadrhoregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.loadrho(lzero=not top.laccumulate_rho)
+    f.loadrho()
 def loadjregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
-    f.loadj(lzero=not top.laccumulate_rho)
+    f.loadj()
 def fieldsolregistered():
   assert len(_fieldsolvers) > 0,"No solver has been registered"
   for f in _fieldsolvers:
@@ -231,7 +231,7 @@ def getregisteredbsolver():
   return _bfieldsolver[0]
 def bloadjregistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
-  _bfieldsolver[0].loadj(lzero=not top.laccumulate_rho)
+  _bfieldsolver[0].loadj()
 def bfieldsolregistered():
   assert _bfieldsolver[0] is not None,"No B solver has been registered"
   _bfieldsolver[0].solve()
