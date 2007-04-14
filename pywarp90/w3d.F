@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.350 $, $Date: 2007/04/07 22:55:29 $
+c@(#) File W3D.F, version $Revision: 3.351 $, $Date: 2007/04/14 00:07:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7822,7 +7822,7 @@ c       --- and the data needs to be copied around.
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
-        call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv)
+        call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch)
       elseif(solvergeom==XZgeom) then
         call fieldweightxz(x,z,ex,ez,n,zgridprv,efetch)
       elseif(solvergeom==XYgeom) then
