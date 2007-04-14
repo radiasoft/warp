@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.33 $, $Date: 2006/12/18 17:58:37 $
+c F3DSLAVE.M, version $Revision: 1.34 $, $Date: 2007/04/14 00:09:00 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1152,6 +1152,7 @@ c This only sends plane iz=0 when there are periodic boundary conditions.
       integer(MPIISZ):: mpistatus(MPI_STATUS_SIZE,nslaves)
       integer(MPIISZ):: mpirequest(nslaves),mpierror
       integer(MPIISZ):: messid = 10
+      integer(MPIISZ):: nn
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -1172,8 +1173,8 @@ c       --- on the waitall since that message would never be received.
         do ip=my_index+1,nslaves-1
           if (my_index == whosendingleft(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(-delx,-dely,zsend),
-     &                     int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+            nn = (nx+1+2*delx)*(ny+1+2*dely)
+            call MPI_ISEND(phi(-delx,-dely,zsend),nn,
      &                     MPI_DOUBLE_PRECISION,ip,messid,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1184,8 +1185,8 @@ c       --- See comments on loop above.
         do ip=0,my_index-1
           if (my_index == whosendingright(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(-delx,-dely,nz-zsend),
-     &                     int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+            nn = (nx+1+2*delx)*(ny+1+2*dely)
+            call MPI_ISEND(phi(-delx,-dely,nz-zsend),nn,
      &                     MPI_DOUBLE_PRECISION,ip,messid,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1195,8 +1196,8 @@ c       --- See comments on loop above.
       if (izfsslave(my_index)+nz == nzfull) then
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(-delx,-dely,nz+zsend),
-     &                   int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+          nn = (nx+1+2*delx)*(ny+1+2*dely)
+          call MPI_IRECV(phi(-delx,-dely,nz+zsend),nn,
      &                   MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                   messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
@@ -1205,8 +1206,8 @@ c       --- See comments on loop above.
       if (izfsslave(my_index) == 0 .and. zsend /= 0) then
         if (whosendingright(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(-delx,-dely,-zsend),
-     &                   int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+          nn = (nx+1+2*delx)*(ny+1+2*dely)
+          call MPI_IRECV(phi(-delx,-dely,-zsend),nn,
      &                   MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
      &                   messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
