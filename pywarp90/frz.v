@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.56 $, $Date: 2007/03/20 19:04:39 $
+#@(#) File FRZ.V, version $Revision: 3.57 $, $Date: 2007/04/14 00:08:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.56 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.57 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -224,7 +224,7 @@ rhoweightrzgrid_weights(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,
                         rgrid:real,zgrid:real) subroutine
          # deposits rho from weighted particles on the specified grid object
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
-fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
+fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
@@ -448,6 +448,8 @@ $              b:real,info:integer)
 $             subroutine
 
 ******** ImplicitMG2D:
+coeffs1(:,:,:,:) _real
+chi01(:,:,:) _real
 mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
                     dx:real,dz:real,phi:real,rho:real,ns:integer,qomdt:real,chi0:real,bounds:integer,
                     xmmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
@@ -457,6 +459,9 @@ mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
                     lcndbndy:logical,laddconductor:logical,icndbndy:integer,lbuildquads:logical,
                     gridmode:integer,conductors:ConductorType,lrz:logical,
                     my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
+            subroutine
+residuales2d(nx:integer,nz:integer,nzfull:integer,phi:real,rho:real,coeffs:real,res:real,
+             mglevel:integer,bounds(0:5):integer,mgparam:real)
             subroutine
 
 ******** Subtimersfrz:
