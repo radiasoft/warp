@@ -14,7 +14,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.191 2007/04/05 15:36:46 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.192 2007/04/17 23:36:22 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3239,37 +3239,43 @@ to all three.
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
   else:             toptmp = solver
-  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    if solver is w3d: solver = frz.basegrid
-    if iy is not None: iy = None
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      rho = frz.basegrid.rho[1:-1,1:-1]
+      iy = None
+    else:
+      rho = w3d.rho[:,:,1:-1]
+  else:
+    rho = solver.getrho()
+    if len(rho.shape) == 2: iy = None
   try:
-    if solver.nslaves <= 1: local = 1
+    if toptmp.nslaves <= 1: local = 1
   except:
     pass
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return solver.rho
+      return rho
     if ix is not None and iy is None     and iz is None    :
-      return solver.rho[ix,...]
+      return rho[ix,...]
     if ix is None     and iy is not None and iz is None    :
-      return solver.rho[:,iy,:]
+      return rho[:,iy,:]
     if ix is None     and iy is None     and iz is not None:
-      return solver.rho[...,iz]
+      return rho[...,iz]
     if ix is not None and iy is not None and iz is None    :
-      return solver.rho[ix,iy,:]
+      return rho[ix,iy,:]
     if ix is not None and iy is None     and iz is not None:
-      return solver.rho[ix,...,iz]
+      return rho[ix,...,iz]
     if ix is None     and iy is not None and iz is not None:
-      return solver.rho[:,iy,iz]
+      return rho[:,iy,iz]
     if ix is not None and iy is not None and iz is not None:
-      return solver.rho[ix,iy,iz]
+      return rho[ix,iy,iz]
   else:
     iz1 = 0
     if me < npes-1:
       iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
     else:
       iz2 = iz1 + toptmp.nzfsslave[me] + 1
-    ppp = solver.rho[...,iz1:iz2]
+    ppp = rho[...,iz1:iz2]
     if ix is not None and iy is None:
       ppp = ppp[ix,...]
     elif ix is None and iy is not None:
@@ -3297,32 +3303,38 @@ to all three.
   - iz = None:
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    if solver is w3d: solver = frz.basegrid
-    if iy is not None: iy = None
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      rho = frz.basegrid.rho[1:-1,1:-1]
+      iy = None
+    else:
+      rho = w3d.rho[:,:,1:-1]
+  else:
+    rho = solver.getrho()
+    if len(rho.shape) == 2: iy = None
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      solver.rho[...] = val
+      rho[...] = val
     if ix is not None and iy is None     and iz is None    :
-      solver.rho[ix,...] = val
+      rho[ix,...] = val
     if ix is None     and iy is not None and iz is None    :
-      solver.rho[:,iy,:] = val
+      rho[:,iy,:] = val
     if ix is None     and iy is None     and iz is not None:
-      solver.rho[...,iz] = val
+      rho[...,iz] = val
     if ix is not None and iy is not None and iz is None    :
-      solver.rho[ix,iy,:] = val
+      rho[ix,iy,:] = val
     if ix is not None and iy is None     and iz is not None:
-      solver.rho[ix,...,iz] = val
+      rho[ix,...,iz] = val
     if ix is None     and iy is not None and iz is not None:
-      solver.rho[:,iy,iz] = val
+      rho[:,iy,iz] = val
     if ix is not None and iy is not None and iz is not None:
-      solver.rho[ix,iy,iz] = val
+      rho[ix,iy,iz] = val
   else:
     print "Warning, setrho this is not yet implemented in parallel"
    #if me < npes-1:
-   #  ppp = solver.rho[:,:,:-top.grid_overlap]
+   #  ppp = rho[:,:,:-top.grid_overlap]
    #else:
-   #  ppp = solver.rho[:,:,:]
+   #  ppp = rho[:,:,:]
    #if ix is not None and iy is None    :
    #  ppp = ppp[ix,:,:]
    #elif ix is None and iy is not None:
@@ -3356,39 +3368,43 @@ be from none to all three.
   if solver is None: solver = (getregisteredsolver() or w3d)
   if solver == w3d: toptmp = top
   else:             toptmp = solver
-  if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    if len(solver.phi.shape) > 2:
-      iy=0
-    else:
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      phi = frz.basegrid.phi[1:-1,1:-1]
       iy = None
+    else:
+      phi = w3d.phi[:,:,1:-1]
+  else:
+    phi = solver.getphi()
+    if len(phi.shape) == 2: iy = None
   try:
-    if solver.nslaves <= 1: local = 1
+    if toptmp.nslaves <= 1: local = 1
   except:
     pass
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return solver.phi[...,1:-1]
+      return phi[...]
     if ix is not None and iy is None     and iz is None    :
-      return solver.phi[ix,...,1:-1]
+      return phi[ix,...]
     if ix is None     and iy is not None and iz is None    :
-      return solver.phi[:,iy,1:-1]
+      return phi[:,iy,:]
     if ix is None     and iy is None     and iz is not None:
-      return solver.phi[...,iz+1]
+      return phi[...,iz]
     if ix is not None and iy is not None and iz is None    :
-      return solver.phi[ix,iy,1:-1]
+      return phi[ix,iy,:]
     if ix is not None and iy is None     and iz is not None:
-      return solver.phi[ix,...,iz+1]
+      return phi[ix,...,iz]
     if ix is None     and iy is not None and iz is not None:
-      return solver.phi[:,iy,iz+1]
+      return phi[:,iy,iz]
     if ix is not None and iy is not None and iz is not None:
-      return solver.phi[ix,iy,iz+1]
+      return phi[ix,iy,iz]
   else:
     iz1 = 0
     if me < npes-1:
       iz2 = toptmp.izfsslave[me+1] - toptmp.izfsslave[me]
     else:
       iz2 = iz1 + toptmp.nzfsslave[me] + 1
-    ppp = solver.phi[...,iz1+1:iz2+1]
+    ppp = phi[...,iz1:iz2]
     if ix is not None and iy is None:
       ppp = ppp[ix,...]
     elif ix is None and iy is not None:
@@ -3417,31 +3433,38 @@ be from none to all three.
                from -1 to nz+1
   """
   if solver is None: solver = (getregisteredsolver() or w3d)
-  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
-    iy=0
+  if solver is w3d:
+    if solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]:
+      phi = frz.basegrid.phi[1:-1,1:-1]
+      iy = None
+    else:
+      phi = w3d.phi[:,:,1:-1]
+  else:
+    phi = solver.getphi()
+    if len(phi.shape) == 2: iy = None
   if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      solver.phi[:,:,1:-1] = val
+      phi[...] = val
     if ix is not None and iy is None     and iz is None    :
-      solver.phi[ix,:,1:-1] = val
+      phi[ix,...] = val
     if ix is None     and iy is not None and iz is None    :
-      solver.phi[:,iy,1:-1] = val
+      phi[:,iy,:] = val
     if ix is None     and iy is None     and iz is not None:
-      solver.phi[:,:,iz+1] = val
+      phi[...,iz] = val
     if ix is not None and iy is not None and iz is None    :
-      solver.phi[ix,iy,1:-1] = val
+      phi[ix,iy,:] = val
     if ix is not None and iy is None     and iz is not None:
-      solver.phi[ix,:,iz+1] = val
+      phi[ix,:,iz] = val
     if ix is None     and iy is not None and iz is not None:
-      solver.phi[:,iy,iz+1] = val
+      phi[:,iy,iz] = val
     if ix is not None and iy is not None and iz is not None:
-      solver.phi[ix,iy,iz+1] = val
+      phi[ix,iy,iz] = val
   else:
     print "Warning, setphi this is not yet implemented in parallel"
    #if me < npes-1:
-   #  ppp = solver.phi[:,:,1:solver.nz-top.grid_overlap+2]
+   #  ppp = phi[:,:,1:nz-top.grid_overlap+2]
    #else:
-   #  ppp = solver.phi[:,:,1:-1]
+   #  ppp = phi[:,:,1:-1]
    #if ix is not None and iy is None:
    #  ppp = ppp[ix,:,:]
    #elif ix is None and iy is not None:
