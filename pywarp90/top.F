@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.205 $, $Date: 2007/03/09 18:14:49 $
+c@(#) File TOP.F, version $Revision: 3.206 $, $Date: 2007/04/17 20:10:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1536,7 +1536,7 @@ c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
           if (wp(ip) > 0.) then
-            pmmnts( 1,ip) = wp(ip)*wp(ip)
+            pmmnts( 1,ip) = wp(ip)
             pmmnts( 2,ip) = xp(ip)*wp(ip)
             pmmnts( 3,ip) = yp(ip)*wp(ip)
             pmmnts( 4,ip) = zp(ip)*wp(ip)
@@ -1617,7 +1617,7 @@ c       --- sum particle moments into total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
           if (wp(ip) > 0.) then
-            zmmnts0( 1,js) = zmmnts0( 1,js) + wp(ip)*wp(ip)
+            zmmnts0( 1,js) = zmmnts0( 1,js) + wp(ip)
             zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)*wp(ip)
             zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)*wp(ip)
             zmmnts0( 4,js) = zmmnts0( 4,js) + zp(ip)*wp(ip)
