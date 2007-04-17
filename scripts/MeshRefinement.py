@@ -755,7 +755,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
       for block in self.listofblocks:
         for othernumber,data in block.overlapsparallelleft.items():
           l,u,pe = data
-          sourcep = block.getsourcep(l,u)
+          sourcep = block.getsourcepslice(l,u)
           senddict.setdefault(othernumber,[]).append((l,u,sourcep))
       mpi.send(senddict,me-1)
     if me < npes-1:
@@ -767,7 +767,7 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
       for block in self.listofblocks:
         for othernumber,data in block.overlapsparallelright.items():
           l,u,pe = data
-          sourcep = block.getsourcep(l,u)
+          sourcep = block.getsourcepslice(l,u)
           senddict.setdefault(othernumber,[]).append((l,u,sourcep))
       mpi.send(senddict,me+1)
     if me > 0:
@@ -781,14 +781,14 @@ Exchange sourcep in blocks overlapping blocks on neighboring processors.
       for blocknumber,data in recvdictfromright.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
-          ssourcep = block.getsourcep(l,u)
+          ssourcep = block.getsourcepslice(l,u)
           add(ssourcep,osourcep,ssourcep)
     # --- The from the left
     if me > 0:
       for blocknumber,data in recvdictfromleft.items():
         block = self.getblockfromnumber(blocknumber)
         for l,u,osourcep in data:
-          ssourcep = block.getsourcep(l,u)
+          ssourcep = block.getsourcepslice(l,u)
           add(ssourcep,osourcep,ssourcep)
 
   def getsourcepfromoverlaps(self):
@@ -810,8 +810,8 @@ been taken care of. This should only ever be called by the root block.
       for othernumber,overlapdomain in block.overlapshigher.items():
         other = block.getblockfromnumber(othernumber)
         l,u = overlapdomain
-        ssourcep = block.getsourcep(l,u)
-        osourcep = other.getsourcep(l,u)
+        ssourcep = block.getsourcepslice(l,u)
+        osourcep = other.getsourcepslice(l,u)
         add(ssourcep,osourcep,ssourcep)
         osourcep[...] = 0.
 
@@ -869,7 +869,7 @@ from gathersourcepfromchildren.
     """
     for othernumber,overlapdomain in self.overlapslower.items():
       l,u = overlapdomain
-      ssourcep = self.getsourcep(l,u)
+      ssourcep = self.getsourcepslice(l,u)
       ssourcep[...] = 0.
 
   def gathersourcepfromchildren(self):
@@ -928,8 +928,8 @@ higher numbered blocks. This should only ever be called by the root block.
       for othernumber,overlapdomain in block.overlapslower.items():
         other = block.getblockfromnumber(othernumber)
         l,u = overlapdomain
-        ssourcep = block.getsourcep(l,u)
-        osourcep = other.getsourcep(l,u)
+        ssourcep = block.getsourcepslice(l,u)
+        osourcep = other.getsourcepslice(l,u)
         ssourcep[...] = osourcep
 
   #--------------------------------------------------------------------------
@@ -1348,7 +1348,7 @@ to zero."""
     else:
       return self.root.getzgridndts()
 
-  def getpotentialp(self,lower=None,upper=None,**kw):
+  def getpotentialpslice(self,lower=None,upper=None,**kw):
 #   if lower is None: lower = self.fulllower - array([0,0,1])
 #   if upper is None: upper = self.fullupper + array([0,0,1])
     # --- Note that this takes into account the guard cells in z.
@@ -1357,24 +1357,24 @@ to zero."""
     iz1 = iz1 + 1
     iz2 = iz2 + 1
     return self.potentialp[...,ix1:ix2,iy1:iy2,iz1:iz2]
-  def getsourcep(self,lower=None,upper=None,r=[1,1,1]):
+  def getsourcepslice(self,lower=None,upper=None,r=[1,1,1]):
 #   if lower is None: lower = self.fulllower
 #   if upper is None: upper = self.fullupper
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     return self.sourcep[...,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
-  def getpotential(self,lower,upper):
+  def getpotentialslice(self,lower,upper):
     # --- Note that this takes into account the guard cells in z.
     ix1,iy1,iz1 = (lower - self.fulllower +
                    array([self.nxguard,self.nyguard,self.nzguard]))
     ix2,iy2,iz2 = (upper - self.fulllower + 1 +
                    array([self.nxguard,self.nyguard,self.nzguard]))
     return self.potential[...,ix1:ix2,iy1:iy2,iz1:iz2]
-  def getsource(self,lower,upper,r=[1,1,1]):
+  def getsourceslice(self,lower,upper,r=[1,1,1]):
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     return self.source[...,ix1:ix2:r[0],iy1:iy2:r[1],iz1:iz2:r[2]]
-  def getfield(self,lower=None,upper=None,comp=slice(None),r=[1,1,1]):
+  def getfieldslice(self,lower=None,upper=None,comp=slice(None),r=[1,1,1]):
     if lower is None: lower = self.lower
     if upper is None: upper = self.upper
     if type(comp) == StringType:
@@ -1700,11 +1700,11 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
 
   def getgetdataname(self,kw):
     if kw.get('plotselfe',0):
-      return 'getfield'
+      return 'getfieldslice'
     elif kw.get('plotrho',0):
-      return 'getsource'
+      return 'getsourceslice'
     else:
-      return 'getpotential'
+      return 'getpotentialslice'
 
   def pfxy(self,kwdict=None,**kw):
     if kwdict is None: kwdict = {}
