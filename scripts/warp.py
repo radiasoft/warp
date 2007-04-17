@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.134 2007/04/07 00:54:52 dave Exp $"
+warp_version = "$Id: warp.py,v 1.135 2007/04/17 23:25:49 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -829,12 +829,15 @@ Reads in data from file, redeposits charge density and does field solve
   package(__main__.__dict__["currpkg"])
   # --- Allocate all arrays appropriately
   gchange("*")
+  # --- Recreate the large field arrays for the built in field solvers.
+  setupFields3dParticles()
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
   if top.inject > 0: fill_inj()
   # --- Do some setup for the RZ solver
-  if getcurrpkg() == 'w3d' and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
+  if (getcurrpkg() == 'w3d' and top.fstype == 10 and
+      w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]):
     mk_grids_ptr()
   # --- Load the charge density (since it was not saved)
   if not (w3d.solvergeom in [w3d.RZgeom] or top.fstype == 12):
