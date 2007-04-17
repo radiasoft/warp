@@ -126,6 +126,31 @@ class MultiGrid(SubcycledPoissonSolver):
     return ((1+self.nx,1+self.ny,1+self.nz),
             (1+self.nx,1+self.ny,3+self.nz))
 
+  def getrho(self):
+    return self.source
+
+  def getphi(self):
+    'Returns the phi array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iy1 = self.nyguard
+    if iy1 == 0: iy1 = None
+    iy2 = -self.nyguard
+    if iy2 == 0: iy2 = None
+    iy = slice(iy1,iy2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potential[ix,iy,iz]
+
+  def getfield(self):
+    return self.field
+
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
 

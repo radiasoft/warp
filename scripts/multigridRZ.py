@@ -210,6 +210,26 @@ class MultiGridRZ(SubcycledPoissonSolver):
     return ((1+self.nx,1+self.nz),
             (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
 
+  def getrho(self):
+    return self.source
+
+  def getphi(self):
+    'Returns the phi array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potential[ix,iz]
+
+  def getfield(self):
+    return self.field
+
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
 
@@ -375,6 +395,9 @@ class MultiGrid2D(SubcycledPoissonSolver):
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
+    self.nxguard = 1
+    self.nyguard = 0
+    self.nzguard = 1
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.
@@ -446,6 +469,26 @@ class MultiGrid2D(SubcycledPoissonSolver):
     # --- Returns the dimensions of the arrays used by the field solver
     return ((1+self.nx,1+self.nz),
             (3+self.nx,3+self.nz))
+
+  def getrho(self):
+    return self.source
+
+  def getphi(self):
+    'Returns the phi array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potential[ix,iz]
+
+  def getfield(self):
+    return self.field
 
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
@@ -780,6 +823,26 @@ Initially, conductors are not implemented.
     # --- Returns the dimensions of the arrays used by the field solver
     return ((1+self.nx,1+self.nz,1+top.nsimplicit),
             (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
+
+  def getrho(self):
+    return self.source
+
+  def getphi(self):
+    'Returns the phi array without the guard cells'
+    ix1 = self.nxguard
+    if ix1 == 0: ix1 = None
+    ix2 = -self.nxguard
+    if ix2 == 0: ix2 = None
+    ix = slice(ix1,ix2)
+    iz1 = self.nzguard
+    if iz1 == 0: iz1 = None
+    iz2 = -self.nzguard
+    if iz2 == 0: iz2 = None
+    iz = slice(iz1,iz2)
+    return self.potential[ix,iz]
+
+  def getfield(self):
+    return self.field
 
   def loadrho(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
