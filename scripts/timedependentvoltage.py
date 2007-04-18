@@ -52,7 +52,7 @@ Input for constructor:
            "At least one method of calculating the voltage must be specified"
 
     # --- Make sure that condid is a sequence
-    if not operator.isSequenceType(condid): condid = [condid]
+    if not type(condid) in [ListType,TupleType]: condid = [condid]
 
     # --- Loop over condid and get the id's of any conductors listed
     for i in range(len(condid)):
