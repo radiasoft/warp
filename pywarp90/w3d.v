@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.258 $, $Date: 2007/04/05 22:28:57 $
+#@(#) File W3D.V, version $Revision: 3.259 $, $Date: 2007/04/20 23:43:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.258 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.259 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -841,7 +841,7 @@ fetchphi(n:integer,x(n):real,y(n):real,z(n):real,p(n):real)
              subroutine # Fetches the electrostatic potential at the given
                         # list of locations. It uses whatever geometry and
                         # field solver that is active.
-setupfields3dparticles(ns:integer,ndts:integer,it:integer)
+setupFields3dParticles() subroutine
              subroutine # Sets up the Fields3dParticles group
 setrhoandphiforfieldsolve(rhop:real,phip:real)
              subroutine # Copies data from rhop to rho - mainly for parallel
@@ -967,7 +967,6 @@ loadperpdist0(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
 loadperpdist(np:integer,x(np):real,y(np):real,xp(np):real,yp(np):real,
              rx(np):real,ry(np):real,rxp(np):real,ryp(np):real,
              epsx(np):real,epsy(np):real) subroutine
-setupFields3dParticles(ns,ndts,it) subroutine
 check_cc3d(pgroup:ParticleGroup,is:integer,ipmin:integer,np:integer) subroutine
 set_aperture_e() subroutine
 setuppadvncsubcyclingaveraging(it:integer,center:string,pgroup:ParticleGroup) subroutine
