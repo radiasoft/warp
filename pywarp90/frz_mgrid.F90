@@ -44,11 +44,12 @@ TYPE(GRDPTRtype), DIMENSION(:), ALLOCATABLE :: grids_ptr, gridinit
 
 contains
 
-subroutine init_basegrid(nr,nz,dr,dz,rmin,zmin)
+subroutine init_basegrid(nr,nz,dr,dz,rmin,zmin,l_parallel)
 !USE Multigrid3d
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+logical(ISZ), intent(in) :: l_parallel
 INTEGER(ISZ) :: i,j, nzp
 TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
@@ -59,7 +60,7 @@ TYPE(BNDtype), POINTER :: b
   endif
 
 #ifdef MPIPARALLEL
-  if(any(nzpslave/=nz)) then
+  if(l_parallel .and. any(nzpslave/=nz)) then
     write(0,*) 'Error: w3d.nz must be a multiple of the number of processes npes.'
     stop
   end if
@@ -80,16 +81,25 @@ TYPE(BNDtype), POINTER :: b
 !  call gallot("FRZmgrid_ptrs",0)
 
 #ifdef MPIPARALLEL
-  workfact = mgridrz_workfact
-  bg%nzp   = nzpslave(my_index)
-  bg%nrpar = nr
-  bg%nzpar = bg%nzp
+  bg%l_parallel=l_parallel
+  if(l_parallel) then
+    workfact = mgridrz_workfact
+    bg%nzp   = nzpslave(my_index)
+    bg%nrpar = nr
+    bg%nzpar = bg%nzp
+  else
+    bg%nzp   = nz
+    bg%nrpar = 0
+    bg%nzpar = 0
+  endif
 #else
+  bg%l_parallel=.false.
   bg%nzp   = nz
   bg%nrpar = 0
   bg%nzpar = 0
 #endif
   grids_nids=1
+  bg%levelref = 0
   bg%nr=nr
   bg%dr=dr
   bg%rmin=rmin
@@ -99,7 +109,11 @@ TYPE(BNDtype), POINTER :: b
   bg%nz=nz
 #ifdef MPIPARALLEL
 !  bg%zminp=zpslmin(my_index)
-  bg%zminp=zpslmin(0)+izpslave(my_index)*dz
+  if(bg%l_parallel) then
+    bg%zminp=zpslmin(0)+izpslave(my_index)*dz
+  else
+    bg%zminp=zmin
+  end if
 #else
   bg%zminp=zmin
 #endif
@@ -124,10 +138,13 @@ TYPE(BNDtype), POINTER :: b
   bg%npmin = mgridrz_levels_min
   bg%phi=0.
   bg%rho=0.
-#ifdef MPIPARALLEL
-  bg%phip=0.
-  bg%rhop=0.
-#endif
+  if(bg%l_parallel) then
+    bg%phip=0.
+    bg%rhop=0.
+  else
+    bg%rhop => bg%rho
+    bg%phip => bg%phi
+  endif
   bg%transit_min_r = 0
   bg%transit_max_r = 0
   bg%transit_min_z = 0
@@ -197,26 +214,30 @@ TYPE(BNDtype), POINTER :: b
 
   IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom)) then
     call init_bnd(bg,nr,nz,dr,dz,bg%zmin,bg%zmax)
-  END if
-  bg%nlevels=nlevels
+  else
+    nlevels=1
+  endif
+    bg%nlevels=nlevels
 
-!  do i = 1,bg%nlevels, 1
-!    bg%bnd(i)%izlbnd=bg%izlbnd
-!    bg%bnd(i)%izrbnd=bg%izrbnd
-!  END do
+!    do i = 1,bg%nlevels, 1
+!      bg%bnd(i)%izlbnd=bg%izlbnd
+!      bg%bnd(i)%izrbnd=bg%izrbnd
+!    END do
 
-  do i = 1, bg%nlevels
-    IF(i==1) then
-      b => bg%bndfirst
-    else
-      b => b%next
-    END if
-    IF(b%izlbnd==dirichlet)  b%v(:,1)      = v_dirichlet
-    IF(b%izrbnd==dirichlet)  b%v(:,b%nz+1) = v_dirichlet
-    IF(bg%ixlbnd==dirichlet) b%v(1,:)      = v_dirichlet
-    IF(bg%ixrbnd==dirichlet) b%v(b%nr+1,:) = v_dirichlet
-  END do
-  call setmglevels_rz(bg)
+  IF(.not.(solvergeom==Zgeom .or. solvergeom==Rgeom)) then
+    do i = 1, bg%nlevels
+      IF(i==1) then
+        b => bg%bndfirst
+      else
+        b => b%next
+      END if
+      IF(b%izlbnd==dirichlet)  b%v(:,1)      = v_dirichlet
+      IF(b%izrbnd==dirichlet)  b%v(:,b%nz+1) = v_dirichlet
+      IF(bg%ixlbnd==dirichlet) b%v(1,:)      = v_dirichlet
+      IF(bg%ixrbnd==dirichlet) b%v(b%nr+1,:) = v_dirichlet
+    END do
+    call setmglevels_rz(bg)
+  endif
   call mk_grids_ptr()
 
   if (lverbose>=1) then
@@ -265,6 +286,8 @@ REAL(8) :: dr,dz,rmin,zmin
 ! Allocate new grid and initialize variables.
 
   g => NewGRIDtype()
+  g%l_parallel=mothergrid%l_parallel
+  g%levelref = mothergrid%levelref+1
   nzs = 0
   g%nr=nr
   g%dr=dr
@@ -294,9 +317,15 @@ REAL(8) :: dr,dz,rmin,zmin
   g%nguardx = nguardx
   g%nguardz = nguardz
 #ifdef MPIPARALLEL
-  g%nzp   = nzpslave(my_index)
-  g%nrpar = nr
-  g%nzpar = g%nzp
+  if(g%l_parallel) then
+    g%nzp   = nzpslave(my_index)
+    g%nrpar = nr
+    g%nzpar = g%nzp
+  else
+    g%nzp   = nz
+    g%nrpar = 0
+    g%nzpar = 0
+  endif
 #else
   g%nzp   = nz
   g%nrpar = 0
@@ -332,6 +361,13 @@ REAL(8) :: dr,dz,rmin,zmin
   mgridrz_ngrids = ngrids
   g%phi=0.
   g%rho=0.
+  if(g%l_parallel) then
+    g%phip=0.
+    g%rhop=0.
+  else
+    g%rhop => g%rho
+    g%phip => g%phi
+  endif
   g%loc_part=g%gid(1)
   g%loc_part_fd=g%gid(1)
 
@@ -875,25 +911,31 @@ TYPE(BNDtype), pointer :: b
     nrc_old=nrc
     nzc_old=nzc
 #ifdef MPIPARALLEL
-    nzc = nzc * nslaves / nworkpproc
-    call evalnewgrid(nrc,nzc,drc,dzc)
-    nzc = nzc * nworkpproc / nslaves 
+    if(g%l_parallel) then
+      nzc = nzc * nslaves / nworkpproc
+      call evalnewgrid(nrc,nzc,drc,dzc)
+      nzc = nzc * nworkpproc / nslaves 
+    else
+      call evalnewgrid(nrc,nzc,drc,dzc)
+    endif
 #else
     call evalnewgrid(nrc,nzc,drc,dzc)
 #endif
     IF(nrc==nrc_old .AND. nzc==nzc_old) exit
     nlevels = nlevels + 1
 #ifdef MPIPARALLEL
-    IF(nslaves>1.and.nworkpproc<nslaves.and.nrc*nzc<=workfact*nr) then
-      nworkpproc = nworkpproc*2
-      nzc = nzc*2
-      nzc_old = nworkpproc*2
-    END if
+    if(g%l_parallel) then
+      IF(nslaves>1.and.nworkpproc<nslaves.and.nrc*nzc<=workfact*nr) then
+        nworkpproc = nworkpproc*2
+        nzc = nzc*2
+        nzc_old = nworkpproc*2
+      END if
 ! make sure that nz is even for parallel red/black Gauss-Seidel
-    IF(nzc/2/=NINT(0.5*REAL(nzc))) then
-      dzc = dzc * REAL(nzc,8)/REAL(nzc+1,8)
-      nzc=nzc+1
-    END if
+      IF(nzc/2/=NINT(0.5*REAL(nzc))) then
+        dzc = dzc * REAL(nzc,8)/REAL(nzc+1,8)
+        nzc=nzc+1
+      END if
+    endif
 #endif
   end do
 
@@ -940,13 +982,10 @@ TYPE(BNDtype), pointer :: b
     IF(i/=1) then
 !      call evalnewgrid(nrc,nzc,drc,dzc)
 #ifdef MPIPARALLEL
-    nzc = nzc * nslaves / nworkpproc
-    call evalnewgrid(nrc,nzc,drc,dzc)
-    nzc = nzc * nworkpproc / nslaves 
-#else
-    call evalnewgrid(nrc,nzc,drc,dzc)
-#endif
-#ifdef MPIPARALLEL
+    if(g%l_parallel) then
+      nzc = nzc * nslaves / nworkpproc
+      call evalnewgrid(nrc,nzc,drc,dzc)
+      nzc = nzc * nworkpproc / nslaves 
       IF(nslaves>1.and.nworkpproc<nslaves.and.nrc*nzc<=workfact*nr) then
         nworkpproc = nworkpproc*2
         b%l_merged=.true.
@@ -957,6 +996,11 @@ TYPE(BNDtype), pointer :: b
         dzc = dzc * REAL(nzc,8)/REAL(nzc+1,8)
         nzc=nzc+1
       END if
+    else
+      call evalnewgrid(nrc,nzc,drc,dzc)
+    endif
+#else
+    call evalnewgrid(nrc,nzc,drc,dzc)
 #endif
     END if
 !#ifdef MPIPARALLEL
@@ -970,9 +1014,11 @@ TYPE(BNDtype), pointer :: b
     b%zmax = zmmax
 
 #ifdef MPIPARALLEL
-    b%nworkpproc = nworkpproc
-    IF(my_index-nworkpproc>=0)      b%izlbnd = -(my_index-nworkpproc+1)
-    IF(my_index+nworkpproc<nslaves) b%izrbnd = -(my_index+nworkpproc+1)
+    if(g%l_parallel) then
+      b%nworkpproc = nworkpproc
+      IF(my_index-nworkpproc>=0)      b%izlbnd = -(my_index-nworkpproc+1)
+      IF(my_index+nworkpproc<nslaves) b%izrbnd = -(my_index+nworkpproc+1)
+    endif
 #endif
     b%nr = nrc
     b%nz = nzc
@@ -2050,7 +2096,7 @@ t_restrict = t_restrict + wtime()-t_before
 return
 end function restrict_pof2
 
-function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
+function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, l_parallel)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 ! Note that this is a generic 2-D routine and there is no special treatment for the cells on axis in RZ.
 implicit none
@@ -2058,6 +2104,7 @@ INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: restrict(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
+logical(ISZ), intent(in) :: l_parallel
 
 INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp
@@ -2100,6 +2147,7 @@ do kold = 1, nzold+1
 END do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -2108,6 +2156,7 @@ END do
       ddz(nzold+1) = 0.5_8*ddz(nzold+1)
       oddz(nzold+1) = 0.5_8*oddz(nzold+1)
     END if
+  endif
 #endif
 
 do jold = 1, nxold+1
@@ -2140,12 +2189,14 @@ do kold = 1, nzold+1
 end do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       rap(:,1) = 2.*rap(:,1)
     END if
     IF(izrbnd<0) then
       rap(:,nznew+1) = 2.*rap(:,nznew+1)
     END if
+  endif
 #endif
 do k = 1, nznew+1
   do j = 1, nxnew+1
@@ -2168,7 +2219,7 @@ END function restrict
 subroutine subrestrict(unew, uold, nxnew, nznew, &
                        xminold, xmaxold, zminold, zmaxold,  &
                        xminnew, xmaxnew, zminnew, zmaxnew, &
-                       izlbnd, izrbnd)
+                       izlbnd, izrbnd,l_parallel)
 ! Restricts field from one grid to a coarser one. Each dimension may have any number of cells.
 ! Note that this is a generic 2-D routine and there is no special treatment for the cells on axis in RZ.
 implicit none
@@ -2176,8 +2227,9 @@ INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, izlbnd, izrbnd
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), DIMENSION(1:nxnew+1,1:nznew+1), INTENT(OUT) :: unew
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
-REAL(8),allocatable :: rap(:,:)
+logical, intent(in) :: l_parallel
 
+REAL(8),allocatable :: rap(:,:)
 INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp
 REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
@@ -2221,6 +2273,7 @@ do kold = 1, nzold+1
 END do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -2229,6 +2282,7 @@ END do
       ddz(nzold+1) = 0.5_8*ddz(nzold+1)
       oddz(nzold+1) = 0.5_8*oddz(nzold+1)
     END if
+  end if
 #endif
 
 do jold = 1, nxold+1
@@ -2261,12 +2315,14 @@ do kold = 1, nzold+1
 end do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       rap(:,1) = 2.*rap(:,1)
     END if
     IF(izrbnd<0) then
       rap(:,nznew+1) = 2.*rap(:,nznew+1)
     END if
+  endif
 #endif
 do k = 1, nznew+1
   do j = 1, nxnew+1
@@ -2287,7 +2343,8 @@ return
 END subroutine subrestrict
 
 subroutine restrictlist(unew, uold, rhs, bnd, nxnew, nznew, nxold, nzold, voltfact, dr, dz, &
-                        xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew,lmagnetostatic)
+                        xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, &
+                        lmagnetostatic,l_parallel)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, nxold, nzold
@@ -2297,7 +2354,7 @@ REAL(8), DIMENSION(1:nxold,1:nzold), INTENT(IN) :: rhs
 REAL(8), DIMENSION(1:nxnew+1,1:nznew+1), INTENT(OUT) :: unew
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, voltfact, dr, dz
 REAL(8) :: rapp
-LOGICAL(ISZ):: lmagnetostatic
+LOGICAL(ISZ):: lmagnetostatic,l_parallel
 
 INTEGER(ISZ) :: nlocs
 INTEGER(ISZ) :: i, ic, jold, kold, j, k, jp, kp
@@ -2336,7 +2393,8 @@ END do
 ALLOCATE(res(nlocs),jlocs(nlocs),klocs(nlocs))
 
 call residbndrzwguard_list(res(1),jlocs(1),klocs(1),nlocs,f=uold(0,0),rhs=rhs(1,1), &
-                           bnd=bnd,nr=nxold,nz=nzold,dr=dr,dz=dz,rmin=0._8,voltfact=voltfact,lmagnetostatic=lmagnetostatic)
+                           bnd=bnd,nr=nxold,nz=nzold,dr=dr,dz=dz,rmin=0._8,voltfact=voltfact, &
+                           lmagnetostatic=lmagnetostatic)
 
 do kold = 1, nzold+1
   z = zminold + (kold-1)*dzold
@@ -2347,6 +2405,7 @@ do kold = 1, nzold+1
 END do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -2355,6 +2414,7 @@ END do
       ddz(nzold+1) = 0.5_8*ddz(nzold+1)
       oddz(nzold+1) = 0.5_8*oddz(nzold+1)
     END if
+  endif
 #endif
 
 do jold = 1, nxold+1
@@ -2395,7 +2455,7 @@ return
 END subroutine restrictlist
 
 function restrict_wbnd(uold, bnd, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, &
-                       ixrbnd, izlbnd, izrbnd)
+                       ixrbnd, izlbnd, izrbnd, l_parallel)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixrbnd, izlbnd, izrbnd
@@ -2403,6 +2463,7 @@ REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: restrict_wbnd(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
 TYPE(BNDtype) :: bnd
+logical(ISZ),intent(in)::l_parallel
 
 INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp, ic, ii, itot
@@ -2453,6 +2514,7 @@ do kold = 1, nzold+1
 END do
 
 #ifdef MPIPARALLEL
+  if(l_parallel) then
     IF(izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -2461,6 +2523,7 @@ END do
       ddz(nzold+1) = 0.5_8*ddz(nzold+1)
       oddz(nzold+1) = 0.5_8*oddz(nzold+1)
     END if
+  endif
 #endif
 
 do jold = 1, nxold+1
@@ -2478,9 +2541,13 @@ do kold = 1, nzold+1
   odelz = oddz(kold)
   do jold = 1, nxold+1
 #ifdef MPIPARALLEL
+   if(l_parallel) then
     IF((bndcurrent%izlbnd<0.and.kold>1).or.(bndcurrent%izrbnd<0.and.kold<nzold+1)) then
       IF(.NOT.(bnd%v(jold,kold)==v_vacuum.or.jold==1.or.jold==nxold+1)) cycle
     END if
+   else
+    IF(.NOT.bnd%v(jold,kold)==v_vacuum) cycle
+   endif
 #else
 !    IF(.NOT.(bnd%v(jold,kold).or.jold==1.or.jold==nxold+1.or.kold==1.or.kold==nzold+1)) cycle
     IF(.NOT.bnd%v(jold,kold)==v_vacuum) cycle
@@ -2931,7 +2998,8 @@ jold = nxold+1
 return
 END subroutine interp_bndwguard
 
-subroutine relaxbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd, lmagnetostatic)
+subroutine relaxbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, &
+                            ixlbnd, ixrbnd, izlbnd, izrbnd, lmagnetostatic, l_parallel)
 ! make a relaxation step. Grid is assumed to have guard cells.
 implicit none
 
@@ -2940,7 +3008,7 @@ REAL(8), INTENT(IN OUT) :: f(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN) :: rhs(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dr, dz, voltfact, mgparam, rmin
 TYPE(BNDtype), INTENT(IN OUT) :: bnd
-LOGICAL(ISZ):: lmagnetostatic
+LOGICAL(ISZ):: lmagnetostatic,l_parallel
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, lswinit, redblack, iil, iiu, ic, nri, nrf, nzi, nzf
 REAL(8) :: dt(nr+1), dt0, dttemp
@@ -3112,7 +3180,7 @@ do redblack = 1, 2
 #ifdef MPIPARALLEL
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
+  if(l_parallel) call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
 !  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
@@ -3131,7 +3199,8 @@ t_relax = t_relax + wtime()-t_before
 return
 END subroutine relaxbndrzwguard
 
-subroutine relaxbndrzwguard_jump(f,rhs,maxjump,curjump,bnd,nr,nz,dr,dz,rmin,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd)
+subroutine relaxbndrzwguard_jump(f,rhs,maxjump,curjump,bnd,nr,nz,dr,dz,rmin,nc,voltfact, &
+                                 mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd, l_parallel)
 ! make a relaxation step. Grid is assumed to have guard cells.
 ! NOTICE - the changes for the magnetostatic solver have not been implemented here!
 implicit none
@@ -3142,6 +3211,7 @@ REAL(8), INTENT(IN) :: rhs(nr+1,nz+1)
 INTEGER(ISZ), INTENT(IN) :: maxjump(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dr, dz, voltfact, mgparam, rmin
 TYPE(BNDtype), INTENT(IN OUT) :: bnd
+logical(ISZ), intent(in) :: l_parallel
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, lswinit, redblack, iil, iiu, ic, nri, nrf, nzi, nzf, jump
 REAL(8) :: dt, dt0, dtj,drj,dzj, r
@@ -3297,7 +3367,7 @@ do redblack = 1, 2
 #ifdef MPIPARALLEL
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
+  if(l_parallel) call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
 #endif
 
 END do !redblack=1, 2
@@ -3316,7 +3386,7 @@ return
 END subroutine relaxbndrzwguard_jump
 
 !pgi$r nobounds
-subroutine relaxbndxzwguard(f,rhs,bnd,nx,nz,dx,dz,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd)
+subroutine relaxbndxzwguard(f,rhs,bnd,nx,nz,dx,dz,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd, l_parallel)
 ! make a relaxation step. Grid is assumed to have guard cells.
 implicit none
 
@@ -3325,6 +3395,7 @@ REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN) :: rhs(1:,1:)!rhs(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dx, dz, voltfact, mgparam
 TYPE(BNDtype), INTENT(IN OUT) :: bnd
+logical(ISZ), intent(in) :: l_parallel
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, lswinit, redblack, iil, iiu, ic, nxi, nxf, nzi, nzf
 REAL(8) :: dt, cf0, cfx, cfz, cfrhs
@@ -3416,7 +3487,7 @@ do redblack = 1, 2
 #ifdef MPIPARALLEL
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
 !  call exchange_fbndz_rb(f,izlbnd,izrbnd,(redblack-1))
-  call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
+  if (l_parallel) call exchange_fbndz_rb(f,izlbnd,izrbnd,lsw-1)
 #endif
 
 call updateguardcellsrz(f=f, ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
@@ -4148,7 +4219,7 @@ end function residbndxzwguard
 
 !pgi$r nobounds
 RECURSIVE subroutine mgbndrzwguard(j, u, rhs, bnd, nr, nz, dr, dz, rmin, npre, npost, ncycle, sub, relax_only, npmin, mgparam,&
-                                   lmagnetostatic)
+                                   lmagnetostatic, l_parallel)
 ! performs a multigrid cycle. Grid is assumed to have guard cells.
 implicit none
 
@@ -4157,7 +4228,7 @@ REAL(8), DIMENSION(0:nr+2,0:nz+2), INTENT(IN OUT) :: u
 REAL(8), DIMENSION(1:nr+1,1:nz+1), INTENT(IN) :: rhs
 REAL(8) :: dr, dz, mgparam, rmin
 TYPE(BNDtype), pointer :: bnd
-LOGICAL(ISZ), INTENT(IN) :: sub, relax_only, lmagnetostatic
+LOGICAL(ISZ), INTENT(IN) :: sub, relax_only, lmagnetostatic, l_parallel
 
 REAL(8), DIMENSION(:,:), allocatable :: res, v, ressub
 INTEGER(ISZ) :: i,jj,ll
@@ -4184,10 +4255,11 @@ IF(j<=npmin .or. relax_only) then
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic, &
+                          l_parallel=l_parallel)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,l_parallel=l_parallel)
   END if
 else
   nrnext = bnd%next%nr
@@ -4201,10 +4273,11 @@ else
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic, &
+                          l_parallel=l_parallel)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd, l_parallel=l_parallel)
   END if
   IF(bnd%next%l_merged) then
 #ifdef MPIPARALLEL
@@ -4234,35 +4307,40 @@ else
   IF(solvergeom==RZgeom) then
     IF(vlocs) then
       call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,&
-                        lmagnetostatic)
+                        lmagnetostatic,l_parallel)
     else
       allocate(ressub(nr+1,nz+1))
       call residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
               dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
-              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub,lmagnetostatic=lmagnetostatic)
+              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub, &
+              lmagnetostatic=lmagnetostatic)
       call subrestrict(res(1,nzresmin), &
                              ressub, &
-                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,bnd%izlbnd,bnd%izrbnd)
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
+                             bnd%izlbnd,bnd%izrbnd,l_parallel)
       deallocate(ressub)
     END if
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     res(:,nzresmin:nzresmax) = restrict( &
                              residbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
                              ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd), &
-                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,l_parallel)
   END if
 !  END if
   call apply_voltage(res,bnd%next,0._8)
 #ifdef MPIPARALLEL
-  IF(bnd%next%l_merged) call merge_work(res,level,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-  call exchange_resbndz(rho=res,izlbnd=bnd%next%izlbnd,izrbnd=bnd%next%izrbnd)
+  if (l_parallel) then
+    IF(bnd%next%l_merged) call merge_work(res,level,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
+    call exchange_resbndz(rho=res,izlbnd=bnd%next%izlbnd,izrbnd=bnd%next%izrbnd)
+  endif
 #endif
   v = 0.0_8
   IF(.not.sub) inveps0 = 1.
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
     call mgbndrzwguard(j=j-1, u=v(0,0), rhs=res(1,1), bnd=bnd%next,  &
                        nr=nrnext, nz=nznext, dr=drnext, dz=dznext, rmin=rmin, npre=npre, npost=npost, &
-                       ncycle=ncycle, sub=.TRUE., relax_only=.false., npmin=npmin, mgparam=mgparam, lmagnetostatic=lmagnetostatic)
+                       ncycle=ncycle, sub=.TRUE., relax_only=.false., npmin=npmin, mgparam=mgparam, &
+                       lmagnetostatic=lmagnetostatic, l_parallel=l_parallel)
     level = j
   end do
   IF(.not.sub) inveps0 = 1./eps0
@@ -4274,16 +4352,17 @@ else
   call apply_voltagewguard(u,bnd,voltf)
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
 #ifdef MPIPARALLEL
-  if (.not. bnd%l_merged) then
+  if (l_parallel .and. .not. bnd%l_merged) then
     call exchange_fbndz(u,bnd%izlbnd,bnd%izrbnd)
   end if
 #endif
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npost,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=lmagnetostatic)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd, &
+                          lmagnetostatic=lmagnetostatic,l_parallel=l_parallel)
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,l_parallel=l_parallel)
   END if
   t_before = wtime()
   DEALLOCATE(res,v)
@@ -4299,7 +4378,7 @@ return
 end subroutine mgbndrzwguard
 
 subroutine mgbndrzwguard_jump(jmax, u, rhs, maxjump, bnd, nr, nz, dr, dz, &
-    rmin, npre, npost, ncycle, sub, relax_only, npmin, mgparam)
+    rmin, npre, npost, ncycle, sub, relax_only, npmin, mgparam, l_parallel)
 ! performs a multigrid cycle. Grid is assumed to have guard cells.
 implicit none
 
@@ -4309,7 +4388,7 @@ REAL(8), DIMENSION(1:nr+1,1:nz+1), INTENT(IN) :: rhs
 INTEGER(ISZ), DIMENSION(1:nr+1,1:nz+1), INTENT(IN) :: maxjump
 REAL(8) :: dr, dz, mgparam, rmin
 TYPE(BNDtype), pointer :: bnd
-LOGICAL(ISZ), INTENT(IN) :: sub, relax_only
+LOGICAL(ISZ), INTENT(IN) :: sub, relax_only, l_parallel
 
 REAL(8), DIMENSION(1:nr+1,1:nz+1) :: res
 REAL(8), DIMENSION(0:nr+2,0:nz+2) :: v
@@ -4340,14 +4419,16 @@ do j = jmax, 1, -1
   IF(j==1) then
     call relaxbndrzwguard(f=v(0,0),rhs=res(1,1), &
                           bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd,lmagnetostatic=.false.)
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd, &
+                          lmagnetostatic=.false.,l_parallel=l_parallel)
 !    call relaxbndrzwguard_jump(f=v(0,0),rhs=res(1,1), maxjump=maxjump(1,1), curjump=j, &
 !                               bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
 !                               ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
   else
     call relaxbndrzwguard_jump(f=v(0,0),rhs=res(1,1), maxjump=maxjump(1,1), curjump=j, &
                                bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,rmin=rmin,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                               ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
+                               ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd, &
+                               l_parallel=l_parallel)
   END if
 end do
 u = u + v
@@ -4399,7 +4480,8 @@ select case (ixrbnd)
       f(ixmax-1,:) = f(2,:) 
     case default
 end select
-select case (izlbnd)
+if(solvergeom/=Rgeom) then
+  select case (izlbnd)
     case (dirichlet)
       f(:,0) = 2.*f(:,1)-f(:,2)
     case (neumann)
@@ -4407,8 +4489,8 @@ select case (izlbnd)
     case (periodic)
       f(:,0) = f(:,izmax-3)
     case default
-end select
-select case (izrbnd)
+  end select
+  select case (izrbnd)
     case (dirichlet)
       f(:,izmax-1) = 2.*f(:,izmax-2)-f(:,izmax-3)
     case (neumann)
@@ -4416,7 +4498,8 @@ select case (izrbnd)
     case (periodic)
       f(:,izmax-1) = f(:,2)
     case default
-end select
+  end select
+endif
 
 t_updateguard = t_updateguard + wtime()-t_before
 end subroutine updateguardcellsrz
@@ -4589,7 +4672,7 @@ has_diverged = .false.
       call mgbndrzwguard(j=nlevels,u=grid%phi,rhs=grid%rho,bnd=grid%bndfirst,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          rmin=grid%rmin, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
-                         mgparam=grid%mgparam,lmagnetostatic=grid%lmagnetostatic)
+                         mgparam=grid%mgparam,lmagnetostatic=grid%lmagnetostatic,l_parallel=grid%l_parallel)
       maxerr_old = maxerr
       IF(vlocs) then
         maxerr = 0.
@@ -4600,7 +4683,7 @@ has_diverged = .false.
         maxerr = maxval(abs(grid%phi-uold))
       END if
 #ifdef MPIPARALLEL
-      maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
+      if(grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
@@ -4608,7 +4691,7 @@ has_diverged = .false.
       END if
       IF(maxerr/maxerr_old>1..and.j>1) then
 #ifdef MPIPARALLEL
-       IF(my_index==0) then
+       IF((grid%l_parallel .and. my_index==0) .or. .not. grid%l_parallel) then
 #endif
         write(o_line,*) 'WARNING multigridrz, calculation is diverging:';   call remark(trim(o_line))
         write(o_line,*) '        initial maximum error = ',maxerr_old;      call remark(trim(o_line))
@@ -4769,11 +4852,11 @@ has_diverged = .false.
                          rmin=grid%rmin, &
                          bnd=grid%bndfirst,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
-                         mgparam=grid%mgparam)
+                         mgparam=grid%mgparam,l_parallel=grid%l_parallel)
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
 #ifdef MPIPARALLEL
-      maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
+      if (grid%l_parallel) maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
@@ -4781,7 +4864,7 @@ has_diverged = .false.
       END if
       IF(maxerr/maxerr_old>=1..and.j>1) then
 #ifdef MPIPARALLEL
-       IF(my_index==0) then
+       IF((grid%l_parallel .and. my_index==0) .or. .not.grid%l_parallel) then
 #endif
         write(o_line,*) 'WARNING multigridrz, calculation is diverging:'; call remark(trim(o_line))
         write(o_line,*) '        initial maximum error = ',maxerr_old   ; call remark(trim(o_line))
@@ -4917,12 +5000,12 @@ real(8),allocatable :: phisave(:,:)
   izrbnd = grid%izrbnd
 
   IF(grid%gid(1)/=basegrid%gid(1)) then
-        call setphigridrz(grid%phi,                               &
-                          grid%rmin-grid%nguardx*grid%dr, &
-                          grid%zmin-grid%nguardz*grid%dz,         &
-                          grid%dr,grid%dz,                        &
-                          grid%nr+2*grid%nguardx,              &
-                          grid%nz+2*grid%nguardz,.true.)
+        call getphifromparents2d(grid%phi,                               &
+                                 grid%rmin-grid%nguardx*grid%dr,         &
+                                 grid%zmin-grid%nguardz*grid%dz,         &
+                                 grid%dr,grid%dz,                        &
+                                 grid%nr+2*grid%nguardx,                 &
+                                 grid%nz+2*grid%nguardz,grid%levelref,.true.)
   END if
 
   if (lsavephi) then
@@ -5039,7 +5122,7 @@ REAL(8), EXTERNAL :: wtime
   aftertime = wtime()
   time_field_solve = aftertime - beforetime
 #ifdef MPIPARALLEL
-  time_field_solve = mpi_global_compute_real(time_field_solve,MPI_MAX)
+  if(grid%l_parallel) time_field_solve = mpi_global_compute_real(time_field_solve,MPI_MAX)
 #endif
 
   return
@@ -5464,12 +5547,12 @@ INTEGER(ISZ) :: i, ic
                                 izrbnd=grid%izrbnd, &
                                 bnd_only=.false., quad=.false.)
       else
-        call setphigridrz(grid%phi,                               &
-                          grid%rmin-grid%nguardx*grid%dr, &
-                          grid%zmin-grid%nguardz*grid%dz,         &
-                          grid%dr,grid%dz,                        &
-                          grid%nr+2*grid%nguardx,              &
-                          grid%nz+2*grid%nguardz,.false.)
+        call getphifromparents2d(grid%phi,                               &
+                                 grid%rmin-grid%nguardx*grid%dr,         &
+                                 grid%zmin-grid%nguardz*grid%dz,         &
+                                 grid%dr,grid%dz,                        &
+                                 grid%nr+2*grid%nguardx,                 &
+                                 grid%nz+2*grid%nguardz,grid%levelref,.true.)
 !        CALL interpolate_any(unew=grid%phi,uold=grid%up%phi, &
 !                             nxnew=grid%nr, nznew=grid%nz, &
 !                             nxold=grid%up%nr, nzold=grid%up%nz, &
@@ -5557,8 +5640,6 @@ TYPE(CONDtype), POINTER :: c
 TYPE(BNDtype), POINTER :: b
 IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
 
-IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmin,zmmin)
-
 do igrid=1,ngrids
  IF(zmin>grids_ptr(igrid)%grid%zmax .OR. zmax<grids_ptr(igrid)%grid%zmin .OR. &
     rmax<grids_ptr(igrid)%grid%rmin) cycle
@@ -5630,8 +5711,6 @@ TYPE(BNDtype), POINTER :: b
 
 IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
 
-IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmin,zmmin)
-
 do igrid=1,ngrids
  IF(zmin>grids_ptr(igrid)%grid%zmax .OR. zmax<grids_ptr(igrid)%grid%zmin .OR. &
     xmin>grids_ptr(igrid)%grid%rmax .OR. xmax<grids_ptr(igrid)%grid%rmin) cycle
@@ -5689,8 +5768,6 @@ LOGICAL(ISZ) :: doloop
 TYPE(BNDtype), POINTER :: b
 
 IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
-
-IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmmin,zmmin)
 
 do igrid=1,ngrids
  nlevels=grids_ptr(igrid)%grid%nlevels
@@ -6426,6 +6503,8 @@ REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolx
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
 REAL(8):: substarttime
 
+#define RHO basegrid%rhop
+
 IF(np==0) return
 
 if(mgridrz_deform) then
@@ -6470,21 +6549,14 @@ IF(solvergeom==RZgeom) then
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-#ifdef MPIPARALLEL
-    basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + q * oddr * oddz * invvol(jn-1)
-    basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
-    basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
-    basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-    basegrid%rhominz = MIN(basegrid%rhominz,ln)
-    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
-#else
-    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + q * oddr * oddz * invvol(jn-1)
-    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
-    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
-    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-#endif
+    RHO(jn, ln)  = RHO(jn, ln)  + q * oddr * oddz * invvol(jn-1)
+    RHO(jnp,ln)  = RHO(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
+    RHO(jn, lnp) = RHO(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
+    RHO(jnp,lnp) = RHO(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
+!      basegrid%rhominr = MIN(basegrid%rhominr,jn)
+!      basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
+!      basegrid%rhominz = MIN(basegrid%rhominz,ln)
+!      basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
   end do
  END if
 else ! IF(solvergeom==XZgeom) then
@@ -6532,21 +6604,10 @@ else ! IF(solvergeom==XZgeom) then
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-#ifdef MPIPARALLEL
-    basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
-    basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
-    basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
-    basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-    basegrid%rhominz = MIN(basegrid%rhominz,ln)
-    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
-#else
-    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
-    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
-    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
-    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-#endif
+    RHO(jn, ln)  = RHO(jn, ln)  + qw * oddr * oddz * invvolxz
+    RHO(jnp,ln)  = RHO(jnp,ln)  + qw *  ddr * oddz * invvolxz
+    RHO(jn, lnp) = RHO(jn, lnp) + qw * oddr *  ddz * invvolxz
+    RHO(jnp,lnp) = RHO(jnp,lnp) + qw *  ddr *  ddz * invvolxz
   end do
  END if
 END if
@@ -6604,21 +6665,14 @@ IF(solvergeom==RZgeom) then
     jnp=jn+1
     lnp=ln+1
     qw = q*w(i)
-#ifdef MPIPARALLEL
     basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
     basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
     basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
     basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-    basegrid%rhominz = MIN(basegrid%rhominz,ln)
-    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
-#else
-    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
-    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
-    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
-    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
-#endif
+!    basegrid%rhominr = MIN(basegrid%rhominr,jn)
+!    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
+!    basegrid%rhominz = MIN(basegrid%rhominz,ln)
+!    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
   end do
  END if
 else ! IF(solvergeom==XZgeom) then
@@ -6667,21 +6721,14 @@ else ! IF(solvergeom==XZgeom) then
     jnp=jn+1
     lnp=ln+1
     qw = q0*w(i)
-#ifdef MPIPARALLEL
     basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
     basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
     basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
     basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-    basegrid%rhominz = MIN(basegrid%rhominz,ln)
-    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
-#else
-    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
-    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
-    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
-    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-#endif
+!      basegrid%rhominr = MIN(basegrid%rhominr,jn)
+!      basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
+!      basegrid%rhominz = MIN(basegrid%rhominz,ln)
+!      basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
   end do
  END if
 END if
@@ -6738,21 +6785,14 @@ IF(solvergeom==RZgeom) then
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-#ifdef MPIPARALLEL
     grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + q * oddr * oddz * invvol(jn-1)
     grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
     grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
     grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-    grid%rhominr = MIN(grid%rhominr,jn)
-    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
-    grid%rhominz = MIN(grid%rhominz,ln)
-    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
-#else
-    grid%rho(jn, ln)  = grid%rho(jn, ln)  + q * oddr * oddz * invvol(jn-1)
-    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
-    grid%rho(jn, lnp) = grid%rho(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
-    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-#endif
+!      grid%rhominr = MIN(grid%rhominr,jn)
+!      grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+!      grid%rhominz = MIN(grid%rhominz,ln)
+!      grid%rhomaxz = MAX(grid%rhomaxz,lnp)
   end do
 else ! IF(solvergeom==XZgeom) then
   invdr = 1._8/dr
@@ -6796,21 +6836,14 @@ else ! IF(solvergeom==XZgeom) then
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-#ifdef MPIPARALLEL
     grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
     grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
     grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
     grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-    grid%rhominr = MIN(grid%rhominr,jn)
-    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
-    grid%rhominz = MIN(grid%rhominz,ln)
-    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
-#else
-    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
-    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
-    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
-    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-#endif
+!      grid%rhominr = MIN(grid%rhominr,jn)
+!      grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+!      grid%rhominz = MIN(grid%rhominz,ln)
+!      grid%rhomaxz = MAX(grid%rhomaxz,lnp)
   end do
 END if
 
@@ -6866,21 +6899,14 @@ IF(solvergeom==RZgeom) then
     jnp=jn+1
     lnp=ln+1
     qw = q*w(i)
-#ifdef MPIPARALLEL
     grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
     grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
     grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
     grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
-    grid%rhominr = MIN(grid%rhominr,jn)
-    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
-    grid%rhominz = MIN(grid%rhominz,ln)
-    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
-#else
-    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvol(jn-1)
-    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvol(jnp-1)
-    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvol(jn-1)
-    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvol(jnp-1)
-#endif
+!      grid%rhominr = MIN(grid%rhominr,jn)
+!      grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+!      grid%rhominz = MIN(grid%rhominz,ln)
+!      grid%rhomaxz = MAX(grid%rhomaxz,lnp)
   end do
 else ! IF(solvergeom==XZgeom) then
   invdr = 1._8/dr
@@ -6925,21 +6951,14 @@ else ! IF(solvergeom==XZgeom) then
     jnp=jn+1
     lnp=ln+1
     qw = q0*w(i)
-#ifdef MPIPARALLEL
     grid%rhop(jn, ln)  = grid%rhop(jn, ln)  + qw * oddr * oddz * invvolxz
     grid%rhop(jnp,ln)  = grid%rhop(jnp,ln)  + qw *  ddr * oddz * invvolxz
     grid%rhop(jn, lnp) = grid%rhop(jn, lnp) + qw * oddr *  ddz * invvolxz
     grid%rhop(jnp,lnp) = grid%rhop(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-    grid%rhominr = MIN(grid%rhominr,jn)
-    grid%rhomaxr = MAX(grid%rhomaxr,jnp)
-    grid%rhominz = MIN(grid%rhominz,ln)
-    grid%rhomaxz = MAX(grid%rhomaxz,lnp)
-#else
-    grid%rho(jn, ln)  = grid%rho(jn, ln)  + qw * oddr * oddz * invvolxz
-    grid%rho(jnp,ln)  = grid%rho(jnp,ln)  + qw *  ddr * oddz * invvolxz
-    grid%rho(jn, lnp) = grid%rho(jn, lnp) + qw * oddr *  ddz * invvolxz
-    grid%rho(jnp,lnp) = grid%rho(jnp,lnp) + qw *  ddr *  ddz * invvolxz
-#endif
+!      grid%rhominr = MIN(grid%rhominr,jn)
+!      grid%rhomaxr = MAX(grid%rhomaxr,jnp)
+!      grid%rhominz = MIN(grid%rhominz,ln)
+!      grid%rhomaxz = MAX(grid%rhomaxz,lnp)
   end do
 END if
 
@@ -6996,15 +7015,10 @@ IF(np==0) return
     ddr = rpos-REAL(jn-1)
     oddr = 1._8-ddr
     jnp=jn+1
-#ifdef MPIPARALLEL
     basegrid%rhop(jn, 1)  = basegrid%rhop(jn, 1)  + q * oddr * invvol(jn-1)
     basegrid%rhop(jnp,1)  = basegrid%rhop(jnp,1)  + q *  ddr * invvol(jnp-1)
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-#else
-    basegrid%rho(jn, 1)  = basegrid%rho(jn, 1)  + q * oddr * invvol(jn-1)
-    basegrid%rho(jnp,1)  = basegrid%rho(jnp,1)  + q *  ddr * invvol(jnp-1)
-#endif
+!      basegrid%rhominr = MIN(basegrid%rhominr,jn)
+!      basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
   end do
  END if
 
@@ -7053,15 +7067,10 @@ IF(np==0) return
     oddr = 1._8-ddr
     jnp=jn+1
     qw = q*w(i)
-#ifdef MPIPARALLEL
     basegrid%rhop(jn, 1)  = basegrid%rhop(jn, 1)  + qw * oddr * invvol(jn-1)
     basegrid%rhop(jnp,1)  = basegrid%rhop(jnp,1)  + qw *  ddr * invvol(jnp-1)
-    basegrid%rhominr = MIN(basegrid%rhominr,jn)
-    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
-#else
-    basegrid%rho(jn, 1)  = basegrid%rho(jn, 1)  + qw * oddr  * invvol(jn-1)
-    basegrid%rho(jnp,1)  = basegrid%rho(jnp,1)  + qw *  ddr  * invvol(jnp-1)
-#endif
+!    basegrid%rhominr = MIN(basegrid%rhominr,jn)
+!    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
   end do
  END if
 
@@ -7114,15 +7123,10 @@ IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
     lnp=ln+1
-#ifdef MPIPARALLEL
     g%rhop(1,ln)  = g%rhop(1,ln)  + q * oddz * invdz(igrid)
     g%rhop(1,lnp) = g%rhop(1,lnp) + q * ddz  * invdz(igrid)
-    g%rhominz = MIN(g%rhominz,ln)
-    g%rhomaxz = MAX(g%rhomaxz,lnp)
-#else
-    g%rho(1,ln)  = g%rho(1,ln)  + q * oddz * invdz(igrid)
-    g%rho(1,lnp) = g%rho(1,lnp) + q * ddz  * invdz(igrid)
-#endif
+!      g%rhominz = MIN(g%rhominz,ln)
+!      g%rhomaxz = MAX(g%rhomaxz,lnp)
   end do
 else
   ! make charge deposition using CIC weighting
@@ -7133,15 +7137,10 @@ else
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
     lnp=ln+1
-#ifdef MPIPARALLEL
     basegrid%rhop(1,ln)  = basegrid%rhop(1,ln)  + q * oddz * invdz(1)
     basegrid%rhop(1,lnp) = basegrid%rhop(1,lnp) + q * ddz  * invdz(1)
-    basegrid%rhominz = MIN(basegrid%rhominz,ln)
-    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
-#else
-    basegrid%rho(1,ln)  = basegrid%rho(1,ln)  + q * oddz * invdz(1)
-    basegrid%rho(1,lnp) = basegrid%rho(1,lnp) + q * ddz  * invdz(1)
-#endif
+!      basegrid%rhominz = MIN(basegrid%rhominz,ln)
+!      basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
   end do
 END if
 
@@ -7217,7 +7216,7 @@ REAL(8), DIMENSION(nr+1,nz+1), INTENT(IN OUT) :: rho
     return
   END if
 #ifdef MPIPARALLEL
-  IF(rhop==1) then
+  IF(grids_ptr(id)%grid%l_parallel .and. rhop==1) then
     IF(SIZE(rho,1)/=SIZE(grids_ptr(id)%grid%rhop,1).or.SIZE(rho,2)/=SIZE(grids_ptr(id)%grid%rhop,2)) then
       write(o_line,*) 'Error, dimensions should be the same: ';        call remark(trim(o_line))
       write(o_line,*) 'Nr, Nz for rhop    : ',SIZE(rho,1),SIZE(rho,2); call remark(trim(o_line))
@@ -7254,7 +7253,7 @@ REAL(8), DIMENSION(nz+1), INTENT(IN OUT) :: rho
     return
   END if
 #ifdef MPIPARALLEL
-  IF(rhop==1) then
+  IF(grids_ptr(id)%grid%l_parallel .and. rhop==1) then
     IF(SIZE(rho)/=SIZE(grids_ptr(id)%grid%rhop,2)) then
       write(o_line,*) 'Error, dimensions should be the same: ';            call remark(trim(o_line))
       write(o_line,*) 'Nz for rhop    : ',SIZE(rho,1);                     call remark(trim(o_line))
@@ -7313,11 +7312,6 @@ LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 
 REAL(8), DIMENSION(:), ALLOCATABLE :: invdr, invdz, zmin
-#ifdef MPIPARALLEL
-#define RHO g%rhop
-#else
-#define RHO g%rho
-#endif
 
 ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
 
@@ -7355,10 +7349,10 @@ end do
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-    RHO(jn, ln)  = RHO(jn, ln)  + q * oddr * oddz * g%invvol(jn)
-    RHO(jnp,ln)  = RHO(jnp,ln)  + q *  ddr * oddz * g%invvol(jnp)
-    RHO(jn, lnp) = RHO(jn, lnp) + q * oddr *  ddz * g%invvol(jn)
-    RHO(jnp,lnp) = RHO(jnp,lnp) + q *  ddr *  ddz * g%invvol(jnp)
+    g%rhop(jn, ln)  = g%rhop(jn, ln)  + q * oddr * oddz * g%invvol(jn)
+    g%rhop(jnp,ln)  = g%rhop(jnp,ln)  + q *  ddr * oddz * g%invvol(jnp)
+    g%rhop(jn, lnp) = g%rhop(jn, lnp) + q * oddr *  ddz * g%invvol(jn)
+    g%rhop(jnp,lnp) = g%rhop(jnp,lnp) + q *  ddr *  ddz * g%invvol(jnp)
   end do
 
   DEALLOCATE(invdr,invdz,zmin)
@@ -7380,11 +7374,6 @@ LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 
 REAL(8), DIMENSION(:), ALLOCATABLE :: invdr, invdz, zmin
-#ifdef MPIPARALLEL
-#define RHO g%rhop
-#else
-#define RHO g%rho
-#endif
 
 ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
 
@@ -7422,10 +7411,10 @@ end do
     jnp=jn+1
     lnp=ln+1
     qw = q*wp(i)
-    RHO(jn, ln)  = RHO(jn, ln)  + qw * oddr * oddz * g%invvol(jn)
-    RHO(jnp,ln)  = RHO(jnp,ln)  + qw *  ddr * oddz * g%invvol(jnp)
-    RHO(jn, lnp) = RHO(jn, lnp) + qw * oddr *  ddz * g%invvol(jn)
-    RHO(jnp,lnp) = RHO(jnp,lnp) + qw *  ddr *  ddz * g%invvol(jnp)
+    g%rhop(jn, ln)  = g%rhop(jn, ln)  + qw * oddr * oddz * g%invvol(jn)
+    g%rhop(jnp,ln)  = g%rhop(jnp,ln)  + qw *  ddr * oddz * g%invvol(jnp)
+    g%rhop(jn, lnp) = g%rhop(jn, lnp) + qw * oddr *  ddz * g%invvol(jn)
+    g%rhop(jnp,lnp) = g%rhop(jnp,lnp) + qw *  ddr *  ddz * g%invvol(jnp)
   end do
 
   DEALLOCATE(invdr,invdz,zmin)
@@ -7447,11 +7436,6 @@ LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 
 REAL(8), DIMENSION(:), ALLOCATABLE :: invdx, invdz, zmin, invvol
-#ifdef MPIPARALLEL
-#define RHO g%rhop
-#else
-#define RHO g%rho
-#endif
 ALLOCATE(invdx(ngrids),invdz(ngrids),zmin(ngrids),invvol(ngrids))
 
 IF( solvergeom==XYgeom) then
@@ -7524,10 +7508,10 @@ end do
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-    RHO(jn, ln)  = RHO(jn, ln)  + qw * oddx * oddz * invvol(igrid)
-    RHO(jnp,ln)  = RHO(jnp,ln)  + qw *  ddx * oddz * invvol(igrid)
-    RHO(jn, lnp) = RHO(jn, lnp) + qw * oddx *  ddz * invvol(igrid)
-    RHO(jnp,lnp) = RHO(jnp,lnp) + qw *  ddx *  ddz * invvol(igrid)
+    g%rhop(jn, ln)  = g%rhop(jn, ln)  + qw * oddx * oddz * invvol(igrid)
+    g%rhop(jnp,ln)  = g%rhop(jnp,ln)  + qw *  ddx * oddz * invvol(igrid)
+    g%rhop(jn, lnp) = g%rhop(jn, lnp) + qw * oddx *  ddz * invvol(igrid)
+    g%rhop(jnp,lnp) = g%rhop(jnp,lnp) + qw *  ddx *  ddz * invvol(igrid)
   end do
 
   DEALLOCATE(invdx,invdz,zmin)
@@ -7549,11 +7533,6 @@ LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
 
 REAL(8), DIMENSION(:), ALLOCATABLE :: invdx, invdz, zmin, invvol
-#ifdef MPIPARALLEL
-#define RHO g%rhop
-#else
-#define RHO g%rho
-#endif
 
 ALLOCATE(invdx(ngrids),invdz(ngrids),zmin(ngrids),invvol(ngrids))
 
@@ -7628,10 +7607,10 @@ end do
     jnp=jn+1
     lnp=ln+1
     qw = q0*wp(i)
-    RHO(jn, ln)  = RHO(jn, ln)  + qw * oddx * oddz * invvol(igrid)
-    RHO(jnp,ln)  = RHO(jnp,ln)  + qw *  ddx * oddz * invvol(igrid)
-    RHO(jn, lnp) = RHO(jn, lnp) + qw * oddx *  ddz * invvol(igrid)
-    RHO(jnp,lnp) = RHO(jnp,lnp) + qw *  ddx *  ddz * invvol(igrid)
+    g%rhop(jn, ln)  = g%rhop(jn, ln)  + qw * oddx * oddz * invvol(igrid)
+    g%rhop(jnp,ln)  = g%rhop(jnp,ln)  + qw *  ddx * oddz * invvol(igrid)
+    g%rhop(jn, lnp) = g%rhop(jn, lnp) + qw * oddx *  ddz * invvol(igrid)
+    g%rhop(jnp,lnp) = g%rhop(jnp,lnp) + qw *  ddx *  ddz * invvol(igrid)
   end do
 
   DEALLOCATE(invdx,invdz,zmin)
@@ -7680,13 +7659,8 @@ end do
     ddr = rpos-REAL(jn-1)
     oddr = 1._8-ddr
     jnp=jn+1
-#ifdef MPIPARALLEL
     g%rhop(jn, 1) = g%rhop(jn, 1) + q * oddr * g%invvol(jn)
     g%rhop(jnp,1) = g%rhop(jnp,1) + q *  ddr * g%invvol(jnp)
-#else
-    g%rho(jn, 1)  = g%rho(jn, 1)  + q * oddr * g%invvol(jn)
-    g%rho(jnp,1)  = g%rho(jnp,1)  + q *  ddr * g%invvol(jnp)
-#endif
   end do
 
   DEALLOCATE(invdr)
@@ -7736,13 +7710,8 @@ end do
     oddr = 1._8-ddr
     jnp=jn+1
     qw = q*wp(i)
-#ifdef MPIPARALLEL
     g%rhop(jn, 1) = g%rhop(jn, 1) + qw * oddr * g%invvol(jn)
     g%rhop(jnp,1) = g%rhop(jnp,1) + qw *  ddr * g%invvol(jnp)
-#else
-    g%rho(jn, 1)  = g%rho(jn, 1)  + qw * oddr * g%invvol(jn)
-    g%rho(jnp,1)  = g%rho(jnp,1)  + qw *  ddr * g%invvol(jnp)
-#endif
   end do
 
   DEALLOCATE(invdr)
@@ -7775,15 +7744,11 @@ INTEGER(ISZ) :: ig
   end if
 
   do ig = 1, ngrids
-#ifdef MPIPARALLEL
     grids_ptr(ig)%grid%rhop=0.
     grids_ptr(ig)%grid%rhominr = grids_ptr(ig)%grid%nr+2
     grids_ptr(ig)%grid%rhomaxr = -1
     grids_ptr(ig)%grid%rhominz = grids_ptr(ig)%grid%nz+2
     grids_ptr(ig)%grid%rhomaxz = -1
-#else
-    grids_ptr(ig)%grid%rho=0.
-#endif
   end do
 
 return
@@ -7840,17 +7805,10 @@ INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
     oddr = 1._8-ddr
     jnp=jn+1
     lnp=ln+1
-#ifdef MPIPARALLEL
     basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + q * oddr * oddz * invvol(jn-1)
     basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
     basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
     basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-#else
-    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + q * oddr * oddz * invvol(jn-1)
-    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
-    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
-    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
-#endif
   end do
 
   return
@@ -7865,21 +7823,12 @@ INTEGER(ISZ) :: igrid, nr, nz
   do igrid = 1, ngrids
     nr = grids_ptr(igrid)%grid%nr
     nz = grids_ptr(igrid)%grid%nz
-#ifdef MPIPARALLEL
     if(solvergeom/=RZgeom) then
       IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rhop(1,:)    = 2._8*grids_ptr(igrid)%grid%rhop(1,:)
     END if
     IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rhop(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rhop(nr+1,:)
     IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rhop(:,1)    = 2._8*grids_ptr(igrid)%grid%rhop(:,1)
     IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rhop(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rhop(:,nz+1)
-#else
-    if(solvergeom/=RZgeom) then
-      IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rho(1,:)    = 2._8*grids_ptr(igrid)%grid%rho(1,:)
-    END if
-    IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rho(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rho(nr+1,:)
-    IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rho(:,1)    = 2._8*grids_ptr(igrid)%grid%rho(:,1)
-    IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rho(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rho(:,nz+1)
-#endif
   end do
 
   if(boundxy==periodic) then
@@ -7893,11 +7842,11 @@ INTEGER(ISZ) :: igrid, nr, nz
   end if
 
   IF((bound0==periodic .and. (solvergeom==RZgeom .or. solvergeom==XZgeom)) .or. (boundxy==periodic .and. solvergeom==XYgeom)) then
-#ifdef MPIPARALLEL
+    if (basegrid%l_parallel) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported on parallel platform, aborting.'
       call remark(trim(o_line))
       stop
-#endif
+    endif
     IF(ngrids>1) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
       call remark(trim(o_line))
@@ -7919,6 +7868,7 @@ end subroutine rhobndrz
 !  sets slice at nz+1 equal to the slice at 1
 
 #ifdef MPIPARALLEL
+   if(.not.basegrid%l_parallel) return
    call perpot3d_slave(basegrid%phi(:,0:basegrid%nz+2),1,basegrid%nr,0,basegrid%nz,basegrid%nguardx,0)
 #endif
 
@@ -7930,6 +7880,7 @@ USE multigridrz
 implicit none
 
 #ifdef MPIPARALLEL
+   if(.not.basegrid%l_parallel) return
    call persource3d_slave(basegrid%rho(0,0),1,basegrid%nr,0,basegrid%nz)
 #endif
 
@@ -7941,6 +7892,7 @@ implicit none
 #ifdef MPIPARALLEL
 INTEGER(ISZ) :: nzp
 
+ if(.not.basegrid%l_parallel) return
  IF(nzpslave(my_index)/=basegrid%nzp) then
   nzp=nzpslave(my_index)
   DEALLOCATE(basegrid%rhop,basegrid%phip)
@@ -7965,6 +7917,7 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: nr,nz
 REAL(8), DIMENSION(0:nr,0:nz), INTENT(IN OUT) :: rho
 
+  if(.not.basegrid%l_parallel) return
   call get_rho_from_rhop(basegrid)
 
   return
@@ -7977,6 +7930,7 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: nz
 REAL(8), DIMENSION(0:nz), INTENT(IN OUT) :: rho
 
+  if(.not.basegrid%l_parallel) return
   call get_rho_from_rhop(basegrid)
 
   return
@@ -8000,6 +7954,7 @@ INTEGER(ISZ), ALLOCATABLE :: wz(:)
 !write(o_line,*) my_index,'Enter get_rho_from_rhop'
 !call remark(trim(o_line))
 
+if(.not.grid%l_parallel) return
 grid%rho = 0.
 
 IF(testthis) then
@@ -8098,6 +8053,7 @@ subroutine getphiforparticlesrz()
 USE multigridrz
 implicit none
 
+  if(.not.basegrid%l_parallel) return
   call get_phip_from_phi(basegrid)
 
 end subroutine getphiforparticlesrz
@@ -8117,6 +8073,7 @@ logical(ISZ) :: testthis=.false.
 !write(o_line,*) my_index,'Enter get_phip_from_phi'
 !call remark(trim(o_line))
 
+if(.not.grid%l_parallel) return
 grid%phip = 0.
 
 IF(testthis) then
@@ -8331,7 +8288,6 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     IF (efetch == 4) then
       ! --- 2D counterpart of fetche3d's energy-conserving option
       er =     ( oddz * (g%phip(jn  ,ln  )-g%phip(jn+1,ln  ))  &
@@ -8342,17 +8298,6 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
               + oddr * ddz  * (g%phip(jn-1,ln+1)-g%phip(jn+1,ln+1))  &
               + ddr  * ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+2,ln+1)))*g%invdr
     endif
-#else
-    IF (efetch == 4) then
-      er =     ( oddz * (g%phi(jn  ,ln  )-g%phi(jn+1,ln  ))  &
-              +  ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+1,ln+1)))*g%invdr
-    else
-      er = 0.5*(oddr * oddz * (g%phi(jn-1,ln  )-g%phi(jn+1,ln  ))  &
-              + ddr  * oddz * (g%phi(jn  ,ln  )-g%phi(jn+2,ln  ))  &
-              + oddr * ddz  * (g%phi(jn-1,ln+1)-g%phi(jn+1,ln+1))  &
-              + ddr  * ddz  * (g%phi(jn  ,ln+1)-g%phi(jn+2,ln+1)))*g%invdr
-    endif
-#endif
     IF(r*g%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
       ey(i) = er*yp(i)/r
@@ -8360,7 +8305,6 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
       ex(i) = er
       ey(i) = 0._8
     END if
-#ifdef MPIPARALLEL
     IF (efetch == 4) then
       ez(i) =     (oddr * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+1))  &
                  + ddr  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+1)))*g%invdz
@@ -8370,17 +8314,6 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
                  + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
                  + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
     endif
-#else
-    IF (efetch == 4) then
-      ez(i) =     (oddr * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+1))  &
-                 + ddr  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+1)))*g%invdz
-    else
-      ez(i) = 0.5*(oddr * oddz * (g%phi(jn  ,ln-1)-g%phi(jn  ,ln+1))  &
-                 + ddr  * oddz * (g%phi(jn+1,ln-1)-g%phi(jn+1,ln+1))  &
-                 + oddr * ddz  * (g%phi(jn  ,ln  )-g%phi(jn  ,ln+2))  &
-                 + ddr  * ddz  * (g%phi(jn+1,ln  )-g%phi(jn+1,ln+2)))*g%invdz
-    endif
-#endif
   END do
 else
   ! make charge deposition using CIC weighting
@@ -8395,7 +8328,6 @@ else
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     IF (efetch == 4) then
       er =     ( oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+1,ln  ))  &
               +  ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+1,ln+1)))*basegrid%invdr
@@ -8405,17 +8337,6 @@ else
               + oddr * ddz  * (basegrid%phip(jn-1,ln+1)-basegrid%phip(jn+1,ln+1))  &
               + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
     endif
-#else
-    IF (efetch == 4) then
-      er =     ( oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+1,ln  ))  &
-              +  ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+1,ln+1)))*basegrid%invdr
-    else
-      er = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
-              + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
-              + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
-              + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
-    endif
-#endif
     IF(r*basegrid%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
       ey(i) = er*yp(i)/r
@@ -8423,7 +8344,6 @@ else
       ex(i) = er
       ey(i) = 0._8
     END if
-#ifdef MPIPARALLEL
     IF (efetch == 4) then
       ez(i) =     (oddr * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+1))  &
                  + ddr  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+1)))*basegrid%invdz
@@ -8433,17 +8353,6 @@ else
                  + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
                  + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
     endif
-#else
-    IF (efetch == 4) then
-      ez(i) =     (oddr * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+1))  &
-                 + ddr  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+1)))*basegrid%invdz
-    else
-      ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
-                 + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
-                 + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
-                 + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
-    endif
-#endif
   END do
 END if
 
@@ -8515,11 +8424,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     tphi => g%phip
-#else
-    tphi => g%phi
-#endif
     IF (efetch == 4) then
     ! --- 2D counterpart of fetche3d's energy-conserving option
       ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
@@ -8566,11 +8471,7 @@ else
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     tphi => basegrid%phip
-#else
-    tphi => basegrid%phi
-#endif
     if (efetch == 4) then
       ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
              + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*basegrid%invdr
@@ -8638,13 +8539,8 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     end do
     ddr = rpos-REAL(jn-1)
     oddr = 1._8-ddr
-#ifdef MPIPARALLEL
     er = 0.5*(oddr * (g%phip(jn-1,1 )-g%phip(jn+1,1 ))  &
             + ddr  * (g%phip(jn  ,1 )-g%phip(jn+2,1 ))  )*g%invdr
-#else
-    er = 0.5*(oddr * (g%phi(jn-1,1 )-g%phi(jn+1,1 ))  &
-            + ddr  * (g%phi(jn  ,1 )-g%phi(jn+2,1 ))  )*g%invdr
-#endif
     IF(r*g%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
       ey(i) = er*yp(i)/r
@@ -8661,13 +8557,8 @@ else
     jn = 1+INT(rpos)
     ddr = rpos-REAL(jn-1)
     oddr = 1._8-ddr
-#ifdef MPIPARALLEL
     er = 0.5*(oddr * (basegrid%phip(jn-1,1  )-basegrid%phip(jn+1,1  ))  &
             + ddr  * (basegrid%phip(jn  ,1  )-basegrid%phip(jn+2,1  ))  )*basegrid%invdr
-#else
-    er = 0.5*(oddr * (basegrid%phi(jn-1,1  )-basegrid%phi(jn+1,1  ))  &
-            + ddr  * (basegrid%phi(jn  ,1  )-basegrid%phi(jn+2,1  ))  )*basegrid%invdr
-#endif
     IF(r*basegrid%invdr>1.e-10) then
       ex(i) = er*xp(i)/r
       ey(i) = er*yp(i)/r
@@ -8717,13 +8608,8 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     end do
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     ez(i) = 0.5*(oddz * (g%phip(1,ln-1)-g%phip(1,ln+1))  &
                + ddz  * (g%phip(1,ln  )-g%phip(1,ln+2)))*g%invdz
-#else
-    ez(i) = 0.5*(oddz * (g%phi(1,ln-1)-g%phi(1,ln+1))  &
-               + ddz  * (g%phi(1,ln  )-g%phi(1,ln+2)))*g%invdz
-#endif
   END do
 else
   ! make charge deposition using CIC weighting
@@ -8733,13 +8619,8 @@ else
     ln = 1+INT(zpos)
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
-#ifdef MPIPARALLEL
     ez(i) = 0.5*(oddz * (basegrid%phip(1,ln-1)-basegrid%phip(1,ln+1))  &
                + ddz  * (basegrid%phip(1,ln  )-basegrid%phip(1,ln+2)))*basegrid%invdz
-#else
-    ez(i) = 0.5*(oddz * (basegrid%phi(1,ln-1)-basegrid%phi(1,ln+1))  &
-               + ddz  * (basegrid%phi(1,ln  )-basegrid%phi(1,ln+2)))*basegrid%invdz
-#endif
   END do
 END if
 
@@ -9092,11 +8973,11 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(g%loc_part(jn,ln)==igrid) then
+      IF(g%loc_part_fd(jn,ln)==igrid) then
         ingrid=.true.
       else
         igridold=igrid
-        igrid = g%loc_part(jn,ln)
+        igrid = g%loc_part_fd(jn,ln)
         g=>grids_ptr(igrid)%grid
         IF(r<g%rmin.or.r>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) then
           ingrid=.true.
@@ -9170,11 +9051,11 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     jn = 1+INT(xpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(g%loc_part(jn,ln)==igrid) then
+      IF(g%loc_part_fd(jn,ln)==igrid) then
         ingrid=.true.
       else
         igridold=igrid
-        igrid = g%loc_part(jn,ln)
+        igrid = g%loc_part_fd(jn,ln)
         g=>grids_ptr(igrid)%grid
         IF(x<g%rmin.or.x>=g%rmax.or.zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) then
           ingrid=.true.
@@ -9243,10 +9124,10 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     zpos = (zp(i)-g%zmin-zgrid)*g%invdz
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(g%loc_part(1,ln)==igrid) then
+      IF(g%loc_part_fd(1,ln)==igrid) then
         ingrid=.true.
       else
-        igrid = g%loc_part(1,ln)
+        igrid = g%loc_part_fd(1,ln)
         g=>grids_ptr(igrid)%grid
         zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         ln = 1+INT(zpos)
@@ -9273,11 +9154,11 @@ END if
   return
 end subroutine setphiz
 
-subroutine setphigridrz(p,rmin,zmin,dr,dz,nr,nz,bnd_only)
+subroutine getphifromparents2d(p,rmin,zmin,dr,dz,nr,nz,levelref,bnd_only)
 USE multigridrz
 implicit none
 
-INTEGER(ISZ), INTENT(IN) :: nr,nz
+INTEGER(ISZ), INTENT(IN) :: nr,nz,levelref
 REAL(8), DIMENSION(0:nr,0:nz), INTENT(IN OUT) :: p
 REAL(8), INTENT(IN) :: rmin, zmin, dr, dz
 LOGICAL, INTENT(IN) :: bnd_only
@@ -9290,9 +9171,9 @@ TYPE(GRIDtype), pointer :: g
 ! Collect phi using linear interpolation
 
 IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
-  do l = 0, nz!1, nz-1
+  do l = 0, nz
    z = zmin+l*dz
-   do j = 0, nr!1, nr-1
+   do j = 0, nr
     IF(bnd_only) then
       IF(j>1 .and. j<nr-1 .and. l>1 .and. l<nz-1) cycle
     END if
@@ -9301,32 +9182,35 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     g => basegrid
 !    IF(r<g%rmin.or.r>=g%rmax.or.z<g%zmin.or.z>=g%zmax) cycle
     ingrid=.false.
-    ingrid=.true.
     rpos = (r-g%rmin)*g%invdr
     zpos = (z-g%zmin)*g%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(g%loc_part(jn,ln)==igrid) then
+      IF(g%loc_part_fd(jn,ln)==igrid) then
         ingrid=.true.
       else
-        igrid = g%loc_part(jn,ln)
-        g=>grids_ptr(igrid)%grid
-!        IF(r<g%rmin.or.r>=g%rmax.or.z<g%zmin.or.z>=g%zmax) cycle
-        rpos = (r-g%rmin)*g%invdr
-        zpos = (z-g%zminp)*g%invdz
-        jn = 1+INT(rpos)
-        ln = 1+INT(zpos)
+        igrid = g%loc_part_fd(jn,ln)
+        if(levelref==grids_ptr(igrid)%grid%levelref) then
+          ingrid=.true.
+        else
+          g=>grids_ptr(igrid)%grid
+!          IF(r<g%rmin.or.r>=g%rmax.or.z<g%zmin.or.z>=g%zmax) cycle
+          rpos = (r-g%rmin)*g%invdr
+          zpos = (z-g%zminp)*g%invdz
+          jn = 1+INT(rpos)
+          ln = 1+INT(zpos)
+        end if
       END if
     end do
     ddr = rpos-REAL(jn-1)
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-    p(j,l) = oddr * oddz * g%phi(jn,  ln  )  &
-           + ddr  * oddz * g%phi(jn+1,ln  )  &
-           + oddr * ddz  * g%phi(jn,  ln+1)  &
-           + ddr  * ddz  * g%phi(jn+1,ln+1)
+    p(j,l) = oddr * oddz * g%phip(jn,  ln  )  &
+           + ddr  * oddz * g%phip(jn+1,ln  )  &
+           + oddr * ddz  * g%phip(jn,  ln+1)  &
+           + ddr  * ddz  * g%phip(jn+1,ln+1)
    END do
   END do
 else
@@ -9344,16 +9228,16 @@ else
     ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
-    p(j,l) = oddr * oddz * basegrid%phi(jn,  ln  )  &
-           + ddr  * oddz * basegrid%phi(jn+1,ln  )  &
-           + oddr * ddz  * basegrid%phi(jn,  ln+1)  &
-           + ddr  * ddz  * basegrid%phi(jn+1,ln+1)
+    p(j,l) = oddr * oddz * basegrid%phip(jn,  ln  )  &
+           + ddr  * oddz * basegrid%phip(jn+1,ln  )  &
+           + oddr * ddz  * basegrid%phip(jn,  ln+1)  &
+           + ddr  * ddz  * basegrid%phip(jn+1,ln+1)
    END do
   END do
 END if
 
   return
-end subroutine setphigridrz
+end subroutine getphifromparents2d
 
 !=============================================================================
 subroutine setbnd_subgrid_to_inj_d()
@@ -9605,13 +9489,14 @@ TYPE(BNDtype), POINTER :: b
   return
 end subroutine build_vlocs
 
-subroutine init_base(nr,nz,dr,dz,rmin,zmin)
+subroutine init_base(nr,nz,dr,dz,rmin,zmin,l_parallel)
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr,nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+logical(ISZ) :: l_parallel
 
- call init_basegrid(nr,nz,dr,dz,rmin,zmin)
+ call init_basegrid(nr,nz,dr,dz,rmin,zmin,l_parallel)
 
  return
 END subroutine init_base
@@ -9789,8 +9674,13 @@ TYPE(BNDtype), pointer :: b
     else
       mglevelsny(mglevel) = 0
 #ifdef MPIPARALLEL
-      mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
-      mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz!-1
+      if(grid%l_parallel) then
+        mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
+        mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz!-1
+      else
+        mglevelsnzfull(mglevel) = b%nz
+        mglevelsiz(mglevel) = 0
+      endif
 #else
       mglevelsnzfull(mglevel) = b%nz
       mglevelsiz(mglevel) = 0
@@ -10503,10 +10393,16 @@ TYPE(BNDtype), POINTER :: b
   inveps0 = 1./eps0
 
 #ifdef MPIPARALLEL
-  workfact = mgridrz_workfact
-  bg%nzp   = nzpslave(my_index)
-  bg%nrpar = nr
-  bg%nzpar = bg%nzp
+  if(bg%l_parallel) then
+    workfact = mgridrz_workfact
+    bg%nzp   = nzpslave(my_index)
+    bg%nrpar = nr
+    bg%nzpar = bg%nzp
+  else
+    bg%nzp   = nz
+    bg%nrpar = 0
+    bg%nzpar = 0
+  endif
 #else
   bg%nzp   = nz
   bg%nrpar = 0
@@ -10521,8 +10417,12 @@ TYPE(BNDtype), POINTER :: b
   bg%xmax=rmin+nr*dr
   bg%nz=nz
 #ifdef MPIPARALLEL
+  if(bg%l_parallel) then
 !  bg%zminp=zpslmin(my_index)
-  bg%zminp=zpslmin(0)+izpslave(my_index)*dz
+    bg%zminp=zpslmin(0)+izpslave(my_index)*dz
+  else
+    bg%zminp=zmin
+  endif
 #else
   bg%zminp=zmin
 #endif
@@ -10538,10 +10438,10 @@ TYPE(BNDtype), POINTER :: b
 
   bg%phi => u
   bg%rho => rho
-#ifdef MPIPARALLEL
-  bg%phip => u
-  bg%rhop => rho
-#endif
+  if(.not.bg%l_parallel) then
+    bg%phip => u
+    bg%rhop => rho
+  endif
   call GRIDtypechange(bg)
   bg%gid=1
   bg%loc_part=1
