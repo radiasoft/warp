@@ -1,5 +1,6 @@
 """Implements adaptive mesh refinement in 3d
 """
+from __future__ import generators
 from warp import *
 from multigrid import MultiGrid
 from find_mgparam import find_mgparam
@@ -92,6 +93,9 @@ Implements adaptive mesh refinement in 3d
 
       self.refinement = None
 
+      # --- The root block is always active
+      self.isactive = true
+
       # --- top.nparpgrp is now set in the init of the base class.
       
     else:
@@ -118,13 +122,26 @@ Implements adaptive mesh refinement in 3d
       self.forcesymmetries = 0
 
       if lower is None and upper is None:
-        # --- The grid mins and maxs are input.
+        # --- The grid mins and maxs are input. Convert them to arrays.
+        self.mins = array(mins)
+        self.maxs = array(maxs)
+
+        # --- Make sure that the input makes sense.
+        # --- Make sure that the block has a finite extent in all dimensions
+        assert alltrue(self.maxs>self.mins),\
+             "The child must have a finite extent in all dimensions"
+
+        # --- Save the input values. the actual values used will be modified
+        # --- by various constraints.
+        self.minsinput = self.mins.copy()
+        self.maxsinput = self.maxs.copy()
+        self.lowerinput = None
+        self.upperinput = None
+
         # --- The lower and upper are calculated to be an integer number of
         # --- parent grid cells times the refinement factor. The lower is
         # --- rounded down and upper rounded up to ensure that the block
         # --- includes the entire extent specified by mins and maxs.
-        self.mins = array(mins)
-        self.maxs = array(maxs)
         self.mins = maximum(self.mins,self.root.mins)
         self.maxs = minimum(self.maxs,self.root.maxs)
         self.lower = (nint(floor((self.mins - self.root.minsglobal)/parent.deltas))*
@@ -139,6 +156,18 @@ Implements adaptive mesh refinement in 3d
         # --- relative to the root grid, but scaled by the total refinement.
         self.lower = array(lower)
         self.upper = array(upper)
+
+        # --- Make sure that the input makes sense.
+        # --- Make sure that the block has a finite extent in all dimensions
+        assert alltrue(self.upper>self.lower),\
+             "The child must have a finite extent in all dimensions"
+
+        # --- Save the input values. the actual values used will be modified
+        # --- by various constraints.
+        self.minsinput = None
+        self.maxsinput = None
+        self.lowerinput = self.lower.copy()
+        self.upperinput = self.upper.copy()
 
       # --- In parallel, an extra grid cell in z can be added since the
       # --- information in the z guard planes of potential is correct.
@@ -188,24 +217,17 @@ Implements adaptive mesh refinement in 3d
       self.mins = self.root.minsglobal + self.fulllower*self.deltas
       self.maxs = self.root.minsglobal + self.fullupper*self.deltas
 
-      # --- This check below is not necessarily needed. Not doing it allows a
-      # --- child to be added to any parent one level coarser. It also avoids
+      # --- Note that it is not needed to check if the child overlaps the
+      # --- parent. This allows a child to be added to any parent and avoids
       # --- problems in the parallel version where a child may not intersect
-      # --- the root block on all processors.
+      # --- the root block on some processors.
 
-      # --- Make sure there is some overlap of the child with the parent
-      #mins = maximum(self.mins,parent.mins)
-      #maxs = minimum(self.maxs,parent.maxs)
-      #assert alltrue(maxs >= mins),\
-      #       "The child is not within the extent of the parent"
-
-      # --- Make sure that the block has a finite extent in all dimensions
-      # --- For the parallel case, this may just mean that on this processor,
-      # --- the block is outside the extent of the processors domain. This
-      # --- is OK, but still, the block should not be created.
-      # --- In the serial case this is always due to bad input.
-      assert alltrue(self.upper>self.lower),\
-             "The child must have a finite extent in all dimensions"
+      # --- Check if the block is active, i.e. has a finite extent.
+      # --- This should only happen in parallel, where blocks will not
+      # --- necessarily intersect to domain of some processors.
+      # --- This flag can also provide a way for a user to turn off blocks
+      # --- for testing purposes or otherwise.
+      self.isactive = alltrue(self.upper>self.lower)
 
       # --- First, just use same boundary conditions as root.
       self.bounds = self.root.bounds.copy()
@@ -366,20 +388,13 @@ Add a mesh refined block to this block.
                                      constructor.
     """
     if nguard is None: nguard = self.nguard
-    try:
-      child = self.__class__(parent=self,lower=lower,upper=upper,
-                             fulllower=fulllower,fullupper=fullupper,
-                             mins=mins,maxs=maxs,
-                             refinement=refinement,nguard=nguard,**self.kw)
-      self.children.append(child)
-      return child
-    except AssertionError:
-      # --- Getting here means that one of the assertions was flagged.
-      # --- If running in parallel, then just return since the assertions
-      # --- can be ignored (but without creating the child), while in
-      # --- serial, re-raise the error since it was likely due to bad
-      # --- user input.
-      if npes <= 1: raise
+    # --- Note that all exceptions should be reported.
+    child = self.__class__(parent=self,lower=lower,upper=upper,
+                           fulllower=fulllower,fullupper=fullupper,
+                           mins=mins,maxs=maxs,
+                           refinement=refinement,nguard=nguard,**self.kw)
+    self.children.append(child)
+    return child
 
   def resetroot(self):
     # --- No parents, so just create empty lists
@@ -401,7 +416,9 @@ Add a mesh refined block to this block.
     # --- before this instance is restored, in which case no attributes,
     # --- including 'parents', has been set yet.
     if 'parents' not in self.__dict__: return
+    # --- Call the installconductor from the inherited field solver class
     self.__class__.__bases__[1].installconductor(self,conductor,dfill=dfill)
+    # --- Call installconductor for all of the children.
     for child in self.children:
       child.installconductor(conductor,dfill=dfill)
 
@@ -493,6 +510,7 @@ Add a mesh refined block to this block.
 
   def findallchildren(self,blocklists):
     for block in blocklists[1]:
+      if not block.isactive: continue
       # --- Get extent of possible overlapping domain
       l = maximum(block.fullloweroverrefinement,self.fulllower)
       u = minimum(block.fullupperoverrefinement,self.fullupper)
@@ -551,6 +569,7 @@ only once, rather than twice for each parent as in the original.
     if (len(blocklists[0]) == 0 and
         len(blocklistsleft[0]) == 0 and
         len(blocklistsright[0]) == 0): return
+
     # --- Make the call for the next level.
     self.findoverlappingsiblings(blocklists[1:],
                                  blocklistsleft[1:],blocklistsright[1:])
@@ -563,7 +582,10 @@ only once, rather than twice for each parent as in the original.
 
       # --- Loop only over blocks that havn't been checked yet.
       del blocklistscopy[0]
+      if not block.isactive: continue
+
       for sibling in blocklistscopy:
+        if not sibling.isactive: continue
 
         # --- Get the area common to the block and its sibling.
         # --- Don't do anything if there is no overlap.
@@ -585,9 +607,11 @@ only once, rather than twice for each parent as in the original.
     # --- over odd numbered processors. Otherwise, the logic is the same
     # --- as above.
     for block in blocklists[0]:
+      if not block.isactive: continue
       for neighborlists,pe in zip([blocklistsleft[0],blocklistsright[0]],[me-1,me+1]):
         if pe < 0 or pe == npes: continue
         for neighborblock in neighborlists:
+          if not neighborblock.isactive: continue
           sl = maximum(neighborblock.fulllower,block.fulllower)
           su = minimum(neighborblock.fullupper,block.fullupper)
           if sl[0] >= su[0] or sl[1] >= su[1] or sl[2] >= su[2]: continue
@@ -662,10 +686,12 @@ not be fetched from there (it is set negative).
 
   def setsourcepforparticles(self,*args):
     for block in self.listofblocks:
+      if not block.isactive: continue
       self.__class__.__bases__[1].setsourcepforparticles(block,*args)
 
   def setsourceforfieldsolve(self,*args):
     for block in self.listofblocks:
+      if not block.isactive: continue
       self.__class__.__bases__[1].setsourceforfieldsolve(block,*args)
 
   def allocatedataarrays(self):
@@ -680,14 +706,17 @@ not be fetched from there (it is set negative).
     self.finalize()
     # --- Now loop over blocks, calling allocatedataarrays
     for block in self.listofblocks:
+      if not block.isactive: continue
       self.__class__.__bases__[1].allocatedataarrays(block)
 
   def zerosourcep(self):
     for block in self.listofblocks:
+      if not block.isactive: continue
       self.__class__.__bases__[1].zerosourcep(block)
 
   def averagesourcepwithsubcycling(self):
     for block in self.listofblocks:
+      if not block.isactive: continue
       self.__class__.__bases__[1].averagesourcepwithsubcycling(block)
 
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid,lrootonly=0):
@@ -714,11 +743,13 @@ relative to the parent.
     # --- For each block, pass to it the particles in it's domain.
     i = 0
     for block,n in zip(self.root.listofblocks,nperchild):
+      if n == 0: continue # does this cause problems? XXX
       self.__class__.__bases__[1].setsourcepatposition(block,x[i:i+n],y[i:i+n],
                                                        z[i:i+n],
                                                        ux[i:i+n],uy[i:i+n],
                                                        uz[i:i+n],gaminv[i:i+n],
                                                        wght[i:i+n],q,w,zgrid)
+      #print me,block.blocknumber,n,maxnd(block.sourcep)
       i = i + n
 
   def aftersetsourcep(self,lzero):
@@ -813,7 +844,9 @@ been taken care of. This should only ever be called by the root block.
         ssourcep = block.getsourcepslice(l,u)
         osourcep = other.getsourcepslice(l,u)
         add(ssourcep,osourcep,ssourcep)
+        if me==2 and block.blocknumber==4: print "bgetsourcepfromoverlaps ",me,block.blocknumber,maxnd(block.sourcep),othernumber
         osourcep[...] = 0.
+        if me==2 and block.blocknumber==4: print "agetsourcepfromoverlaps ",me,block.blocknumber,maxnd(block.sourcep)
 
   def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wght):
     if len(ux) == 0:
@@ -1006,6 +1039,7 @@ gives a better initial guess for the field solver.
       self.__class__.__bases__[1].setpotentialpforparticles(self,*args)
     else:
       for block in self.listofblocks:
+        if not block.isactive: continue
         self.__class__.__bases__[1].setpotentialpforparticles(block,*args)
 
   def setfieldpforparticles(self,*args):
@@ -1013,6 +1047,7 @@ gives a better initial guess for the field solver.
       self.__class__.__bases__[1].setfieldpforparticles(self,*args)
     else:
       for block in self.listofblocks:
+        if not block.isactive: continue
         self.__class__.__bases__[1].setfieldpforparticles(block,*args)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
@@ -1053,6 +1088,7 @@ Also, this ends up with the input data remaining sorted.
     # --- For each block, pass to it the particles in it's domain.
     i = 0
     for block,n in zip(self.root.listofblocks,nperchild):
+      if n == 0: continue
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                          x[i:i+n],y[i:i+n],z[i:i+n],
                                          ex[i:i+n],ey[i:i+n],ez[i:i+n],
@@ -1102,6 +1138,7 @@ access to the particle group and does not sort the input data.
     # --- For each block, pass to it the particles in it's domain.
     i = 0
     for block,n in zip(self.root.listofblocks,nperchild):
+      if n == 0: continue
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                       x[i:i+n],y[i:i+n],z[i:i+n],
                                       tex[i:i+n],tey[i:i+n],tez[i:i+n],
@@ -1421,6 +1458,7 @@ not given, it uses f3d.mgmaxiters.
 
   def find_mgparam(self,lsavephi=false,resetpasses=0):
     for block in self.listofblocks:
+      if not block.isactive: continue
       print "Finding mgparam for block number ",block.blocknumber,me
       # --- Temporarily remove the children so the solve is only done
       # --- on this block
@@ -1429,6 +1467,12 @@ not given, it uses f3d.mgmaxiters.
       self.__class__.__bases__[1].find_mgparam(block,lsavephi=lsavephi,resetpasses=resetpasses)
       # --- Restore the children
       block.children = childrensave
+
+  def walkblocks(self):
+    yield self
+    for child in self.children:
+      for b in child.walkblocks():
+        yield b
 
   def arraysliceoperation(self,ip,idim,getdataname,op,opnd,null,comp=None):
     """
