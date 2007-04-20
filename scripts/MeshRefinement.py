@@ -749,7 +749,6 @@ relative to the parent.
                                                        ux[i:i+n],uy[i:i+n],
                                                        uz[i:i+n],gaminv[i:i+n],
                                                        wght[i:i+n],q,w,zgrid)
-      #print me,block.blocknumber,n,maxnd(block.sourcep)
       i = i + n
 
   def aftersetsourcep(self,lzero):
@@ -844,9 +843,7 @@ been taken care of. This should only ever be called by the root block.
         ssourcep = block.getsourcepslice(l,u)
         osourcep = other.getsourcepslice(l,u)
         add(ssourcep,osourcep,ssourcep)
-        if me==2 and block.blocknumber==4: print "bgetsourcepfromoverlaps ",me,block.blocknumber,maxnd(block.sourcep),othernumber
         osourcep[...] = 0.
-        if me==2 and block.blocknumber==4: print "agetsourcepfromoverlaps ",me,block.blocknumber,maxnd(block.sourcep)
 
   def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wght):
     if len(ux) == 0:
