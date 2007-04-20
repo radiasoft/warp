@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.57 $, $Date: 2007/04/14 00:08:04 $
+#@(#) File FRZ.V, version $Revision: 3.58 $, $Date: 2007/04/20 21:21:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.57 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.58 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -184,7 +184,7 @@ calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real,zgrid:real) subroutine
          # computes factors for elliptical deformation in X and Y planes
-init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
+init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,l_parallel:logical) subroutine
          # initializes the base grid for RZ solver
 del_base() subroutine
          # removes the base grid
@@ -212,6 +212,8 @@ get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 reset_rzmgrid_rho() subroutine
          # sets rho to zero.
+rhoweightr(xp(np):real,yp(np):real,np:integer,q:real,nx:integer,dx:real,xmmin:real) subroutine
+         # deposit charge on radial grid
 rhoweightrz(xp:real,yp:real,zp:real,np:integer,q:real,nr:integer,nz:integer,
             dr:real,dz:real,rgrid:real,zgrid:real) subroutine
 rhoweightrzgrid(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,np:integer,
@@ -223,6 +225,7 @@ rhoweightrzgrid_weights(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,
                         q:real,nr:integer,nz:integer,dr:real,dz:real,
                         rgrid:real,zgrid:real) subroutine
          # deposits rho from weighted particles on the specified grid object
+fieldweightr(xp(np):real,yp(np):real,ex(np):real,ey(np):real,np:integer) subroutine
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
@@ -381,6 +384,7 @@ next                 _OVERLAPtype
 nguardx                   integer 
 nguardz                   integer  
 gid(1) _integer 
+levelref integer
 nlevels integer
 nr integer
 nz integer
@@ -428,6 +432,7 @@ transit_min_z integer
 transit_max_z integer
 mgparam real
 lmagnetostatic logical /.false./ # When true, includes extra terms in the Poisson equations for Ar and Atheta
+l_parallel logical /.true./ # If false, grid is not decomposed among processors
 bndfirst _BNDtype
 bndlast  _BNDtype
 next _GRIDtype
