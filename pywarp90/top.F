@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.206 $, $Date: 2007/04/17 20:10:51 $
+c@(#) File TOP.F, version $Revision: 3.207 $, $Date: 2007/04/21 00:43:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2795,6 +2795,12 @@ c appropriately.
 c     --- Call this here in case chckpart has been called before alotpart.
       call setuppgroup(pgroup)
 
+c     --- Make sure that 'is' is within the correct range
+      if (is < 1 .or. is > pgroup%ns) then
+        print*,"chckpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        return
+      endif
+
 c     --- Make sure that ins has a sensible value
       if (pgroup%ins(is) == 0 .and. pgroup%ipmax_s(is) == 0) pgroup%ins(is) = 1
 
@@ -2859,6 +2865,13 @@ c=============================================================================
       use InPart
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,ishift
+
+c     --- Make sure that 'is' is within the correct range
+      if (is < 1 .or. is > pgroup%ns) then
+        print*,"shftpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        return
+      endif
+
       if (pgroup%npid > 0) then
         call shftpartwork(is,ishift,pgroup%npmax,pgroup%ns,
      &                    pgroup%ipmax_s,pgroup%ins,pgroup%nps,pgroup%npid,
@@ -2905,6 +2918,12 @@ c the arrays.
       integer(ISZ):: ip
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Make sure that 'is' is within the correct range
+      if (is < 1 .or. is > ns) then
+        print*,"shftpartwork: warning: the input species is ",is,", but must be between 1 and ",ns
+        return
+      endif
 
 c     --- return if shift is zero
       if (ishift == 0) return
@@ -3096,6 +3115,13 @@ c              true.
       if (ltoptimesubs) substarttime = wtime()
 
       call setuppgroup(pgroup)
+
+c     --- Make sure that 'is' is within the correct range
+      if (is < 1 .or. is > pgroup%ns) then
+        print*,"addpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        return
+      endif
+
       if (pgroup%sid(is-1) == -1) pgroup%sid(is-1) = is-1
 
 c     --- Make sure that the particles are within the z extent of the domain,
@@ -3185,12 +3211,19 @@ c   2 : shift particles above down (they keep the same order)
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
 
-      if (is < 0) then
+      if (is < 1) then
         is1 = 1
         is2 = pgroup%ns
       else
         is1 = is
         is2 = is
+
+c       --- Make sure that 'is' is within the correct range
+        if (is < 1 .or. is > pgroup%ns) then
+          print*,"clearpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+          return
+        endif
+
       endif
 
       if (fillmethod == 1) then
@@ -3346,6 +3379,12 @@ c the routine which clears out the lost particles is called.
       real(kind=8):: usq
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
+
+c     --- Make sure that 'is' is within the correct range
+      if (is < 1 .or. is > pgroup%ns) then
+        print*,"processlostpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        return
+      endif
 
       if (lsavelostpart) then
 
