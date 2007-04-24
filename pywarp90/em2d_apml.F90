@@ -768,7 +768,8 @@ INTEGER(ISZ), INTENT(IN) :: j, k
 
 IF(k<1.or.k>bnd%ny+1.or.j<1.or.j>bnd%nx+1) then
   WRITE(0,*) 'Error ijk: ',j,k
-  stop
+  call kaboom("ijk: invalid input")
+  return
 END if
 
 IF(k<=bnd%nbndy+1) then
@@ -792,7 +793,8 @@ ELSEIF(j>=bnd%nx-bnd%nbndx) then
 ELSE
 
   WRITE(0,'("Error in function ijk: j=",i8," k=",i8)') j, k
-  stop
+  call kaboom("ijk: invalid input")
+  return
 
 END if
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.15 $, $Date: 2004/04/08 19:42:51 $
+c@(#) File CHO.F, version $Revision: 1.16 $, $Date: 2007/04/24 21:37:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -82,7 +82,8 @@ c         if (cho_status > 0) then
 c           print*,"Warning from chp_destroy, status = ",cho_status
 c         else if (cho_status < 0) then
 c           print*,"Fatal error from chp_destroy, status = ",cho_status
-c           stop
+c           call kaboom("cho_solve3d: Fatal error")
+c           return
 c         endif
 c       endif
 
@@ -92,7 +93,8 @@ c       --- Create a handle refering to an instance of the Chombo solver
           print*,"Warning from chp_create, status = ",cho_status
         else if (cho_status < 0) then
           print*,"Fatal error from chp_create, status = ",cho_status
-          stop
+          call kaboom("cho_solve3d: Fatal error")
+          return
         endif
 
 c       --- Initialize data describing the mesh and pass it to Chombo.
@@ -123,7 +125,8 @@ c       --- Initialize data describing the mesh and pass it to Chombo.
           print*,"Warning from chp_setgridparams, status = ",cho_status
         else if (cho_status < 0) then
           print*,"Fatal error from chp_setgridparams, status = ",cho_status
-          stop
+          call kaboom("cho_solve3d: Fatal error")
+          return
         endif
 
 c       --- Setup arrays describing the boundary conditions and pass them to
@@ -143,7 +146,8 @@ c       --- Chombo.
           print*,"Warning from chp_solverparams, status = ",cho_status
         else if (cho_status < 0) then
           print*,"Fatal error from chp_solverparams, status = ",cho_status
-          stop
+          call kaboom("cho_solve3d: Fatal error")
+          return
         endif
 
       endif
@@ -155,7 +159,8 @@ c       --- Make the call to Chombo to do the field solve.
           print*,"Warning from chp_solve, status = ",cho_status
         else if (cho_status < 0) then
           print*,"Fatal error from chp_solve, status = ",cho_status
-          stop
+          call kaboom("cho_solve3d: Fatal error")
+          return
         endif
       endif
 
@@ -198,7 +203,8 @@ c     --- array, there maybe a small problem with roundoff.
         print*,"Warning from chp_putparticles, status = ",cho_status
       else if (cho_status < 0) then
         print*,"Fatal error from chp_putparticles, status = ",cho_status
-        stop
+        call kaboom("chp_putparticles: Fatal error")
+        return
       endif
 
 c     --- Reset the particles z position.
@@ -243,7 +249,8 @@ c     --- array, there maybe a small problem with roundoff.
         print*,"Warning from chp_getefield, status = ",cho_status
       else if (cho_status < 0) then
         print*,"Fatal error from chp_getefield, status = ",cho_status
-        stop
+        call kaboom("cho_gete3d: Fatal error")
+        return
       endif
 
 c     --- Reset the particles z position.
@@ -287,7 +294,8 @@ c     --- array, there maybe a small problem with roundoff.
         print*,"Warning from chp_getphi, status = ",cho_status
       else if (cho_status < 0) then
         print*,"Fatal error from chp_getphi, status = ",cho_status
-        stop
+        call kaboom("cho_getphi: Fatal error")
+        return
       endif
 
 c     --- Reset the particles z position.
@@ -332,7 +340,8 @@ CCCCCCcall chp_getrho(cho_handle,cho_bunchid,np,1,xp,yp,zp,r,cho_status)
         print*,"Warning from chp_getrho, status = ",cho_status
       else if (cho_status < 0) then
         print*,"Fatal error from chp_getrho, status = ",cho_status
-        stop
+        call kaboom("cho_getrho: Fatal error")
+        return
       endif
 
 c     --- Reset the particles z position.

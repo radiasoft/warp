@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.88 $, $Date: 2007/04/03 00:34:10 $
+c@(#) File w3d_injection.F, version $Revision: 1.89 $, $Date: 2007/04/24 21:37:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1254,7 +1254,8 @@ c           --- are particles which still have noninteger pid(:,injpid).
             if (allocerror /= 0) then
               print*,"inject3d: allocation error ",allocerror,
      &               ": could not allocate mask to shape ",pgroup%nps(is)
-              stop
+              call kaboom("inject3d: allocation error")
+              return
             endif
 
             i1 = pgroup%ins(is)
@@ -1754,7 +1755,8 @@ c           --- are particles which still have noninteger pid(:,injpid).
             if (allocerror /= 0) then
               print*,"inject3d: allocation error ",allocerror,
      &               ": could not allocate mask to shape ",pgroup%nps(is)
-              stop
+              call kaboom("inject3d: allocation error")
+              return
             endif
 
             i1 = pgroup%ins(is)
@@ -2017,9 +2019,8 @@ c     --- Setup grids covering injection surfaces.
       inj_dz0 = inj_dz
       if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(real(inj_nz-1)*2.**(1./3.)+real(2-inj_nz))**3
       if(inj_nz > 1 .and. ninject > 1) then
-        write(0,*) 'inj_nz > 1 not yet supported for ninject > 1'
-        write(0,*) 'stop'
-        stop
+        call kaboom("injctint: inj_nz > 1 not yet supported for ninject > 1")
+        return
       end if
 
 c     --- Set mins for meshes around each source.
@@ -2361,9 +2362,9 @@ c Loop over the injection sources.
 c       --- Provide some simple error checking
         if (ainject(ij) >= abs(rinject(ij)) .or.
      &      binject(ij) >= abs(rinject(ij))) then
-          print*,"Error: the radius of curvature of the injection source must"
-          print*,"       be greater than its transverse radius"
-          stop
+          call kaboom("fill_inj: Error: the radius of curvature of the injection source must
+     & be greater than its transverse radius")
+          return
         endif
 
 c       --- Calculate the extent of the source plus guard cells.
@@ -2637,9 +2638,9 @@ c     --- If transforming to coordinates of source, subtract source center
             endif
           enddo
         else if (ishift == 2) then
-          print*,"Error: invalid ishift value - if you get this error,"
-          print*,"       report it to DPGrote@lbl.gov"
-          stop
+          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,
+     & report it to DPGrote@lbl.gov")
+          return
 c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
 c         do i=1,np
@@ -2721,9 +2722,9 @@ c     --- If transforming from coordinates of source, add source center
             endif
           enddo
         else if (ishift == 2) then
-          print*,"Error: invalid ishift value - if you get this error,"
-          print*,"       report it to DPGrote@lbl.gov"
-          stop
+          call kaboom("inj_transform: Error: invalid ishift value - if you get this error,
+     & report it to DPGrote@lbl.gov")
+          return
 c         --- This code is never used and so is commented out. Note also that
 c         --- vzinject now has a second dimension, ns.
 c         do i=1,np
@@ -4191,7 +4192,8 @@ c     --- initialize inj_phi_3d
       if (allocerror /= 0) then
         print*,"getinj_phi_mr: allocation error ",allocerror,
      &         ": could not allocate rhs and ab to shape ",inj_nz,nn
-        stop
+        call kaboom("getinj_phi_mr: allocation error")
+        return
       endif
 
       do ij = 1, inj_ninj
@@ -4251,7 +4253,8 @@ c       --- set temporaries
           write(0,*) 'ERROR in subroutine getinj_phi_mr at exit of call to LAPACK routine dpbsv'
           write(0,*) 'Info /= 0, info = ',info
           write(0,*) 'Stop'
-          stop
+          call kaboom("getinj_phi_mr: error in call to dpbsv")
+          return
         end if
         do iz = 1, inj_nz-1
           do irhs = 1, nrhs

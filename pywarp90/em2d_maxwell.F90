@@ -858,8 +858,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(jxjycoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in project_jxjy: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in project_jxjy: rap does not match grid sizes.")
+        return
       END if
 
       do k = 0, nyfin
@@ -906,8 +906,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(jxjycoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in interpol_jxjy: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in interpol_jxjy: rap does not match grid sizes.")
+        return
       END if
 
       if(.not.l_onfinegridfirst) then
@@ -978,8 +978,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(excoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in project_ex: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in project_ex: rap does not match grid sizes.")
+        return
       END if
 
       do k = 0, nyfin
@@ -1016,8 +1016,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(eycoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in project_ey: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in project_ey: rap does not match grid sizes.")
+        return
       END if
 
       do k = 0, nyfin-1
@@ -1054,8 +1054,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(bzcoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in project_bz: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in project_bz: rap does not match grid sizes.")
+        return
       END if
 
       do k = 0, nyfin-1
@@ -1096,8 +1096,8 @@ INTEGER :: which,i,j
       nycoarse = SIZE(bzcoarse,2)-2
 
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in project_bz: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in project_bz: rap does not match grid sizes.")
+        return
       END if
 
       do k = 0, nyfin-1
@@ -1127,8 +1127,8 @@ INTEGER :: which,i,j
       nxcoarse = SIZE(fcoarse,1)-2
       nycoarse = SIZE(fcoarse,2)-2
       IF(nxcoarse*rap/=nxfin .OR. nycoarse*rap/=nyfin) then
-        WRITE(0,*) 'Error in interpol: rap does not match grid sizes.'
-        stop
+        call kaboom("Error in interpol: rap does not match grid sizes.")
+        return
       END if
 
       do kf = 0, nyfin

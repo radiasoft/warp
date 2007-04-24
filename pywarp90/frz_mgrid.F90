@@ -61,8 +61,8 @@ TYPE(BNDtype), POINTER :: b
 
 #ifdef MPIPARALLEL
   if(l_parallel .and. any(nzpslave/=nz)) then
-    write(0,*) 'Error: w3d.nz must be a multiple of the number of processes npes.'
-    stop
+    call kaboom('Error: w3d.nz must be a multiple of the number of processes npes.')
+    return
   end if
 #endif
 
@@ -502,9 +502,9 @@ INTEGER(ISZ) :: jmin, jmax, lmin, lmax
           return
         END if
       case default
-        call remark("Argument WHICH has wrong value in subroutine set_overlaps.")
-        call remark("Valid values are p, n or c (for parent, neighbor or child).")
-        stop
+        call kaboom("Argument WHICH has wrong value in subroutine set_overlaps.&
+                   & Valid values are p, n or c (for parent, neighbor or child).")
+        return
   end select
   doit = .true.
   do while(doit)
@@ -1213,8 +1213,8 @@ bnd%nb_conductors = bnd%nb_conductors - 1
 
 IF(bnd%nb_conductors>0) then
   write(o_line,*) 'Error in del_cnds: nb_conductors>0.'
-  call remark(trim(o_line))
-  stop
+  call kaboom(trim(o_line))
+  return
 END if
 
 
@@ -4711,7 +4711,8 @@ has_diverged = .false.
           grid%npmin=grid%npmin+1
         else
           WRITE(0,*) 'Convergence cannot be achieved on grid ',grid%gid(1)
-          stop
+          call kaboom("Convergence cannot be achieved")
+          return
         END if
 !        grid%mgparam = 1.8
         IF(vlocs) then
@@ -5379,8 +5380,8 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
 
   IF(ninject>1) then
     write(o_line,*) 'ninject>1 not supported by multigridrzf_risetime, stopping.'
-    call remark(trim(o_line))
-    stop
+    call kaboom(trim(o_line))
+    return
   END if
 
 ! --- Calculate the charge density on the surface of the emitter.
@@ -7160,7 +7161,8 @@ REAL(8), DIMENSION(nr+1,nz+1), INTENT(IN) :: rho
     call remark(trim(o_line))
     write(o_line,*) 'given id = ',id,' while 1 < id < ',ngrids
     call remark(trim(o_line))
-    stop
+    call kaboom("set_rho_rz: Error, id out of bounds")
+    return
   END if
   IF(SIZE(rho,1)/=SIZE(grids_ptr(id)%grid%rho,1).or.SIZE(rho,2)/=SIZE(grids_ptr(id)%grid%rho,2)) then
     write(o_line,*) 'Error, dimensions should be the same: '
@@ -7169,7 +7171,8 @@ REAL(8), DIMENSION(nr+1,nz+1), INTENT(IN) :: rho
     call remark(trim(o_line))
     write(o_line,*) 'Nr, Nz for rho(id): ',SIZE(grids_ptr(id)%grid%rho,1),SIZE(grids_ptr(id)%grid%rho,2)
     call remark(trim(o_line))
-    stop
+    call kaboom("set_rho_rz: Error, dimensions should be the same")
+    return
   END if
   grids_ptr(id)%grid%rho=rho
 
@@ -7188,7 +7191,8 @@ REAL(8), INTENT(IN) :: fmix
     call remark(trim(o_line))
     write(o_line,*) 'given id = ',id,' while 1 < id < ',ngrids
     call remark(trim(o_line))
-    stop
+    call kaboom("mix_rho_rz: Error, id out of bounds")
+    return
   END if
   IF(SIZE(rho,1)/=SIZE(grids_ptr(id)%grid%rho,1).or.SIZE(rho,2)/=SIZE(grids_ptr(id)%grid%rho,2)) then
     write(o_line,*) 'Error, dimensions should be the same: '
@@ -7197,7 +7201,8 @@ REAL(8), INTENT(IN) :: fmix
     call remark(trim(o_line))
     write(o_line,*) 'Nr, Nz for rho(id): ',SIZE(grids_ptr(id)%grid%rho,1),SIZE(grids_ptr(id)%grid%rho,2)
     call remark(trim(o_line))
-    stop
+    call kaboom("mix_rho_rz: Error, dimensions should be the same")
+    return
   END if
   grids_ptr(id)%grid%rho=(1.-fmix)*grids_ptr(id)%grid%rho + fmix*rho
 
@@ -7834,8 +7839,8 @@ INTEGER(ISZ) :: igrid, nr, nz
   if(boundxy==periodic) then
     IF(ngrids>1) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
-      call remark(trim(o_line))
-      stop
+      call kaboom(trim(o_line))
+      return
     END if
     basegrid%rho(1,:) = basegrid%rho(1,:) + basegrid%rho(basegrid%nr+1,:)
     basegrid%rho(basegrid%nr+1,:) = basegrid%rho(1,:)
@@ -7844,13 +7849,13 @@ INTEGER(ISZ) :: igrid, nr, nz
   IF((bound0==periodic .and. (solvergeom==RZgeom .or. solvergeom==XZgeom)) .or. (boundxy==periodic .and. solvergeom==XYgeom)) then
     if (basegrid%l_parallel) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported on parallel platform, aborting.'
-      call remark(trim(o_line))
-      stop
+      call kaboom(trim(o_line))
+      return
     endif
     IF(ngrids>1) then
       write(o_line,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
-      call remark(trim(o_line))
-      stop
+      call kaboom(trim(o_line))
+      return
     END if
     basegrid%rho(:,1) = basegrid%rho(:,1) + basegrid%rho(:,basegrid%nz+1)
     basegrid%rho(:,basegrid%nz+1) = basegrid%rho(:,1)
@@ -9572,8 +9577,8 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 
   IF(id<1 .or. id>ngrids) then
     write(o_line,*) 'Fatal error in add_subgrid: id = ', id ,' WHILE id = (1,..,',ngrids,')'
-    call remark(trim(o_line))
-    stop
+    call kaboom(trim(o_line))
+    return
   END if
 
   call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,transit_min_r,transit_max_r,transit_min_z,transit_max_z)

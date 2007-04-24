@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.47 $, $Date: 2006/12/20 00:42:39 $
+c TOPSLAVE.M, version $Revision: 1.48 $, $Date: 2007/04/24 21:37:37 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -588,7 +588,8 @@ c     --- over every processor to find which one the particle is in.
       if (allocerror /= 0) then
         print*,"reorgparticles_parallel: allocation error ",allocerror,
      &         ": could not allocate zprocs to shape ",nzp
-        stop
+        call kaboom("reorgparticles_parallel: allocation error")
+        return
       endif
       do ip=0,nslaves-1
         izp1 = nzp - int((zpmax - zpslmin(ip))/dzp)
@@ -606,7 +607,8 @@ c     --- Next, create temporary arrays to hold the sorted particles.
       if (allocerror /= 0) then
         print*,"reorgparticles_parallel: allocation error ",allocerror,
      &         ": could not allocate ptemp and pprocs to shape ",ncoords,pnpmax
-        stop
+        call kaboom("reorgparticles_parallel: allocation error")
+        return
       endif
 
 c     --- Loop through the particles, finding to which processor each particle
@@ -711,7 +713,8 @@ c     --- Create space for incoming data
       if (allocerror /= 0) then
         print*,"reorgparticles_parallel: allocation error ",allocerror,
      &         ": could not allocate precv to shape ",ncoords,pnpmax
-        stop
+        call kaboom("reorgparticles_parallel: allocation error")
+        return
       endif
 
 c     --- Do the communication

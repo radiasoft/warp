@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.23 $, $Date: 2006/10/27 20:22:47 $
+c@(#) File WRZ.M, version $Revision: 3.24 $, $Date: 2007/04/24 21:37:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1578,10 +1578,9 @@ c  Set npgrp so Setpworkrz arrays are correct size
       if (xrandom .eq. "pseudo"  ) npgrp = nparpgrp
       if (xrandom .eq. "grid"    ) npgrp = nxstripe*nystripe
       if (npgrp .eq. 0) then
-        write (errline,'("ERROR: xrandom has an improper value = ",a8)')
+        write (errline,'("stptclrz: ERROR: xrandom has an improper value = ",a8)')
      &         xrandom
-        call remark (errline)
-        call kaboom (0)
+        call kaboom(errline)
       endif
  
       call gallot ("Setpworkrz", 0)
@@ -1654,10 +1653,9 @@ c          --- load uzt with linear distribution (-.5 < uzt < .5)
                  uzt(i) = rnrev(i+k-1+randoffset,dig5) - .5
                enddo
              else
-               write (errline,'("ERROR: vzrandom has an improper value = ",a8)')
+               write (errline,'("stptclrz: ERROR: vzrandom has an improper value = ",a8)')
      &               vzrandom
-               call remark (errline)
-               call kaboom (0)
+               call kaboom(errline)
              endif
            endif
 c          --- use cigar to adjust the z's
@@ -1691,10 +1689,9 @@ c          --- load uzt with gaussian distribution (mean 0, variance 1)
              elseif (vzrandom .eq. "digitrev") then
                call rnormdig(k+randoffset,i1-k+1,dig5,dig4,0.,uzt)
              else
-               write (errline,'("ERROR: vzrandom has an improper value = ",a8)')
+               write (errline,'("stptclrz: ERROR: vzrandom has an improper value = ",a8)')
      &               vzrandom
-               call remark (errline)
-               call kaboom (0)
+               call kaboom(errline)
              endif
            endif
 c          --- set perpscal to one first time through
@@ -1715,8 +1712,7 @@ c        --- fetch envelope
            icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct,
      &                       vzt,epsxt,epsyt,ibeamt)
            if (icheck .eq. 1) then
-              call remark ("ERROR: out-of-range z sent to ENVXPORT")
-              call kaboom (0)
+              call kaboom("stptclrz: ERROR: out-of-range z sent to ENVXPORT")
            endif
          else
 c          --- set only first time through
@@ -1772,10 +1768,9 @@ c          --- load normalized transverse velocity variables
              call rnormdig(k+randoffset,i1-k+1,dig3,dig4,0.,uxt)
              call rnormdig(k+randoffset,i1-k+1,dig4,dig3,0.,uyt)
            else
-             write (errline,'("ERROR: vtrandom has an improper value = ",a8)')
+             write (errline,'("stptclrz: ERROR: vtrandom has an improper value = ",a8)')
      &           vtrandom
-             call remark (errline)
-             call kaboom (0)
+             call kaboom(errline)
            endif
 
 c          --- use random numbers to load particles in polar coordinates
@@ -1816,10 +1811,9 @@ c          --- carve into normalized envelope
                endif
              enddo
            else
-             write (errline,'("ERROR: ldprfile has an improper value = ",a8)')
+             write (errline,'("stptclrz: ERROR: ldprfile has an improper value = ",a8)')
      &           ldprfile
-             call remark (errline)
-             call kaboom (0)
+             call kaboom(errline)
            endif
 
 c          --- transform to hollow beam of type one
@@ -1887,8 +1881,7 @@ c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
                uxt(i) = rnrev(i+k-1+randoffset,dig3)
              enddo
            else
-             call remark ("ERROR: xrandom cannot be grid for K-V load.")
-             call kaboom (0)
+             call kaboom("stptclrz: ERROR: xrandom cannot be grid for K-V load.")
            endif
 
 c          --- load x,y,ux, and uy evenly onto a 4-D ellipsoid
@@ -1918,10 +1911,9 @@ c          --- increment number of particles by size of current group
            ip = ip + i1-k+1
 
          else
-           write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
+           write (errline,'("stptclrz: ERROR: distrbtn has an improper value = ",a8)')
      &           distrbtn
-           call remark (errline)
-           call kaboom (0)
+           call kaboom(errline)
          endif
 
       enddo

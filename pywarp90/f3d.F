@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.125 $, $Date: 2007/01/12 23:32:46 $
+c@(#) File F3D.M, version $Revision: 3.126 $, $Date: 2007/04/24 21:37:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -386,8 +386,8 @@ c  This allows a non-power-of-2 for the tridiag in z field solver.
      & .or.(( nzfull .ne. 2**int( .5 + log(1.*nzfull) / log(2.) ) ) .and.
      &      ( iwhich .ne. 1 .and. iwhich .ne. 12 .and. iwhich .ne. 13 .and.
      &        iwhich .ne. 14 ) ) ) then
-         call remark("NX and NY must be powers of 2, NZ also unless using tridiag solver")
-         stop
+         call kaboom("NX and NY must be powers of 2, NZ also unless using tridiag solver")
+         return
       endif
 #endif
 
@@ -1263,7 +1263,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vpftz: allocation error ",allocerror,
      &           ": could not allocate aux1 to shape ",maxnaux1
-          stop
+          call kaboom("vpftz: allocation error")
+          return
         endif
       endif
       if (naux2 > maxnaux2) then
@@ -1273,7 +1274,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vpftz: allocation error ",allocerror,
      &           ": could not allocate aux2 to shape ",maxnaux2
-          stop
+          call kaboom("vpftz: allocation error")
+          return
         endif
       endif
 
@@ -1367,7 +1369,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vpftzi: allocation error ",allocerror,
      &           ": could not allocate aux1 to shape ",maxnaux1
-          stop
+          call kaboom("vpftzi: allocation error")
+          return
         endif
       endif
       if (naux2 > maxnaux2) then
@@ -1377,7 +1380,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vpftzi: allocation error ",allocerror,
      &           ": could not allocate aux2 to shape ",maxnaux2
-          stop
+          call kaboom("vpftzi: allocation error")
+          return
         endif
       endif
 
@@ -1806,8 +1810,8 @@ c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
       if (  ( nx .ne. 2**int( .5 + log(1.*nx) / log(2.) ) )
      & .or. ( ny .ne. 2**int( .5 + log(1.*ny) / log(2.) ) ) ) then
-         call remark("NX and NY must be powers of 2")
-         stop
+         call kaboom("NX and NY must be powers of 2")
+         return
       endif
 
 c  Set pointers into workspace needed by x and y sine transforms
@@ -2278,7 +2282,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vsftx: allocation error ",allocerror,
      &           ": could not allocate aux1 to shape ",maxnaux1
-          stop
+          call kaboom("vsftx: allocation error")
+          return
         endif
       endif
       if (naux2 > maxnaux2) then
@@ -2288,7 +2293,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vsftx: allocation error ",allocerror,
      &           ": could not allocate aux2 to shape ",maxnaux2
-          stop
+          call kaboom("vsftx: allocation error")
+          return
         endif
       endif
 
@@ -2409,7 +2415,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vsfty: allocation error ",allocerror,
      &           ": could not allocate aux1 to shape ",maxnaux1
-          stop
+          call kaboom("vsfty: allocation error")
+          return
         endif
       endif
       if (naux2 > maxnaux2) then
@@ -2419,7 +2426,8 @@ c     --- different from last time (deallocating if needed).
         if (allocerror /= 0) then
           print*,"vsfty: allocation error ",allocerror,
      &           ": could not allocate aux2 to shape ",maxnaux2
-          stop
+          call kaboom("vsfty: allocation error")
+          return
         endif
       endif
 
@@ -2485,13 +2493,15 @@ c     --- must allocate the work space each time.
       if (allocerror /= 0) then
         print*,"cosqx: allocation error ",allocerror,
      &         ": could not allocate aux1 to shape ",naux1
-        stop
+        call kaboom("cosqx: allocation error")
+        return
       endif
       allocate(aux2(naux2),stat=allocerror)
       if (allocerror /= 0) then
         print*,"cosqx: allocation error ",allocerror,
      &         ": could not allocate aux2 to shape ",naux2
-        stop
+        call kaboom("cosqx: allocation error")
+        return
       endif
 
 c     --- Initialize the auxiliary arrays
@@ -2632,13 +2642,15 @@ c     --- Allocate the work space needed by dcft
       if (allocerror /= 0) then
         print*,"cosqy: allocation error ",allocerror,
      &         ": could not allocate aux1 to shape ",naux1
-        stop
+        call kaboom("cosqy: allocation error")
+        return
       endif
       allocate(aux2(naux2),stat=allocerror)
       if (allocerror /= 0) then
         print*,"cosqy: allocation error ",allocerror,
      &         ": could not allocate aux2 to shape ",naux2
-        stop
+        call kaboom("cosqy: allocation error")
+        return
       endif
 
 c     --- Initialize the auxiliary arrays
@@ -3009,7 +3021,8 @@ c       --- Solve for fields, with the filtering turned off
           print*,"cmset3d: allocation error ",allocerror,
      &           ": could not allocate zerofilt to shape ",
      &           size(filt,1),size(filt,2)
-          stop
+          call kaboom("cmset3d: allocation error")
+          return
         endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
@@ -3043,9 +3056,8 @@ c     --- invert to get capacity matrix (checking for singular matrix)
 c     --- These routines don't seem to give as good a result as those below.
 c     call dsifa(cmat3d,nc3d,nc3d,kpvt3d,info)
 c     if (info .ne. 0) then
-c       call remark("ERROR: Capacity matrix is singular - it is likely that")
-c       call remark("two or more conductor points are within the same grid cell.")
-c       call kaboom(0)
+c       call kaboom("cmset3d: ERROR: Capacity matrix is singular - it is likely that
+c    & two or more conductor points are within the same grid cell.")
 c     endif
 c     call dsidi(cmat3d,nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
 
@@ -3060,10 +3072,9 @@ c     --- These routines are from LAPACK.
 #endif
 #endif
       if (info .ne. 0) then
-        call remark("ERROR: Capacity matrix is singular - it is likely that")
-        call remark("two or more conductor points are within the same grid cell.")
 c       print*,info
-        call kaboom(0)
+        call kaboom("cmset3d: ERROR: Capacity matrix is singular - it is likely that
+     & two or more conductor points are within the same grid cell.")
       endif
 c     --- pcond3d is passed as workspace.
 #if WORDSIZE == 64
@@ -3317,9 +3328,8 @@ c     --- invert to get capacity matrices (checking for singular matrix)
 c       --- These routines don't seem to give as good a result as those below.
 c       call dsifa(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,info)
 c       if (info .ne. 0) then
-c         call remark("ERROR: Capacity matrix is singular - it is likely that")
-c         call remark("two or more conductor points are within the same grid cell.")
-c         call kaboom(0)
+c         call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that
+c    & two or more conductor points are within the same grid cell.")
 c       endif
 c       call dsidi(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
 
@@ -3337,10 +3347,9 @@ c       --- These routines are from LAPACK.
 #endif
 #endif
         if (info .ne. 0) then
-          call remark("ERROR: Capacity matrix is singular - it is likely that")
-          call remark("two or more conductor points are within the same grid cell.")
 c         print*,info
-          call kaboom(0)
+          call kaboom("cmkzset3d: ERROR: Capacity matrix is singular - it is likely that
+     & two or more conductor points are within the same grid cell.")
         endif
 c       --- pcond3d is passed as workspace.
 #if WORDSIZE == 64
@@ -4005,7 +4014,8 @@ c  do 3-d field solve, turning filtering off
           print*,"setcap3d: allocation error ",allocerror,
      &           ": could not allocate zerofilt to shape ",
      &           size(filt,1),size(filt,2)
-          stop
+          call kaboom("setcap3d: allocation error")
+          return
         endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
@@ -4611,7 +4621,8 @@ c must be used as the one above for the shape of phisave.
       if (allocerror /= 0) then
         print*,"psor3df: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nsorerr
-        stop
+        call kaboom("psor3df: allocation error")
+        return
       endif
 
 c Set temporary variables (these are used to increase performance)

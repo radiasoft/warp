@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.18 $, $Date: 2007/03/21 18:47:11 $
+c@(#) File w3d_utilities.F, version $Revision: 1.19 $, $Date: 2007/04/24 21:37:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -593,9 +593,9 @@ c       --- not include the overlap.
 c       --- First check to make sure that all values are > 0.
         do i=0,nslaves-1
           if (nzfsslave(i) == 0) then
-            call remark("ERROR: nz for the field solver for each processor")
-            call remark("       must be greater than zero")
-            call kaboom(1)
+            call kaboom("domaindecomposefields: ERROR: nz for the field solver
+     & for each processor must be greater than zero")
+            return
           endif
         enddo
 
@@ -681,9 +681,9 @@ c       --- All values of zslave must be > 0.
         do i=0,nslaves-1
 c         if (zslave(i)/sumzslave*(zmmax-zmmin) <= 0.) then
           if (zslave(i) <= 0.) then
-            call remark("ERROR: The length of all particle domains must be")
-            call remark("       positive. Fix zslave appropriately.")
-            call kaboom(1)
+            call kaboom("domaindecomposeparticles: ERROR: The length of all
+     & particle domains must be positive. Fix zslave appropriately.")
+            return
           endif
         enddo
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.147 $, $Date: 2007/03/29 19:54:01 $
+c@(#) File DTOP.F, version $Revision: 3.148 $, $Date: 2007/04/24 21:37:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.147 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.148 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3079,22 +3079,22 @@ c --- computes mesh size for both grids
       dynew = (ymaxnew-yminnew) / nynew
 
 c --- check if new grid boundaries enclosed into old grid
-c --- if not, issue error message and stop
+c --- if not, issue error message
       if(xminnew<xminold .and. abs(xminnew-xminold)/dxnew>1.e-6) then
-        write(0,*) 'Error in grid2grid: xminnew < xminold'
-        stop
+        call kaboom("Error in grid2grid: xminnew < xminold")
+        return
       end if
       if(xmaxnew>xmaxold .and. abs(xmaxnew-xmaxold)/dxnew>1.e-6) then
-        write(0,*) 'Error in grid2grid: xmaxnew > xmaxold'
-        stop
+        call kaboom("Error in grid2grid: xmaxnew > xmaxold")
+        return
       end if
       if(yminnew<yminold .and. abs(yminnew-yminold)/dynew>1.e-6) then
-        write(0,*) 'Error in grid2grid: yminnew < yminold'
-        stop
+        call kaboom("Error in grid2grid: yminnew < yminold")
+        return
       end if
       if(ymaxnew>ymaxold .and. abs(ymaxnew-ymaxold)/dynew>1.e-6) then
-        write(0,*) 'Error in grid2grid: ymaxnew > ymaxold'
-        stop
+        call kaboom("Error in grid2grid: ymaxnew > ymaxold")
+        return
       end if
 
 c --- computes temporaries

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.10 $, $Date: 2003/10/23 23:30:56 $
+c@(#) File CIR.M, version $Revision: 3.11 $, $Date: 2007/04/24 21:37:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -911,7 +911,8 @@ c       --- or the current limit was exceeded;
 c       --- if so, print the current position s
         if (lfailed) then
           print *, " at s =", s
-          stop
+          call kaboom("derivs: slice overtaking happened")
+          return
         endif
 
 c       --- Now, set derivatives

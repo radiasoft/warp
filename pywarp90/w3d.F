@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.351 $, $Date: 2007/04/14 00:07:30 $
+c@(#) File W3D.F, version $Revision: 3.352 $, $Date: 2007/04/24 21:37:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -187,13 +187,15 @@ c --- if using old variables
 c --- using new variables
       if((bound0==periodic .and. boundnz/=periodic) .or.
      &   (bound0/=periodic .and. boundnz==periodic)) then
-         write(0,*) 'Error in setup of bound0 and boundnz: either both or none should be periodic, stopping.'
-         stop
+         call kaboom("w3dgen: Error in setup of bound0 and boundnz: either both
+     & or none should be periodic")
+         return
       end if
       if((pbound0==periodic .and. pboundnz/=periodic) .or.
      &   (pbound0/=periodic .and. pboundnz==periodic)) then
-         write(0,*) 'Error in setup of pbound0 and pboundnz: either both or none should be periodic, stopping.'
-         stop
+         call kaboom("w3dgen: Error in setup of pbound0 and pboundnz: either both
+     & or none should be periodic")
+         return
       end if
       if(bound0==periodic .or. boundnz==periodic) then
         bound0  = periodic
@@ -894,7 +896,8 @@ c           --- the selfe for each ndts group is not (and will not) be
 c           --- calculated. Note that this does not apply to sampled averaging,
 c           --- in which cases all species use the same field.
                print*,"The efetch option 3 cannot be used with subcycling option ",ndtsaveraging
-               stop
+               call kaboom("step3d: efetch option 3 cannot be used with subcycling option")
+               return
             endif
             call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
@@ -1506,7 +1509,8 @@ c     --- Create local pointers to the arrays in pgroup.
       if (allocerror /= 0) then
         print*,"padvnc3d: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",nszmmnt
-        stop
+        call kaboom("padvnc3d: allocation error")
+        return
       endif
 #endif
 
@@ -1925,7 +1929,8 @@ c     --- End of loop over speices.
         if (allocerror /= 0) then
           print*,"padvnc3d: allocation error ",allocerror,
      &           ": could not allocate temp arrays to shape ",nszmmnt,nthread
-          stop
+          call kaboom("padvnc3d: allocation error")
+          return
         endif
 !$OMP END SINGLE
         threadmaxp(:,:,ithread) = maxp
@@ -3056,7 +3061,8 @@ c       --- created for them when efetch is 2.
         if (allocerror /= 0) then
           print*,"sete3d: allocation error ",allocerror,
      &           ": could not allocate temp arrays to shape ",np
-          stop
+          call kaboom("sete3d: allocation error")
+          return
         endif
 
 
@@ -3065,9 +3071,8 @@ c  NOTE: This section can probably be deleted since it is not really neccesary.
 c  Vectorized loop over particles setting up indices of cells from which
 c  to fetch phi, and weights for evaluating E at particle positions 
         if (l2symtry .or. l4symtry) then
-          call remark("WARNING:sete3d - the algorithm does not take into account")
-          call remark("               symmetries. Set efetch=1 or 3 and restart.")
-          call kaboom(0)
+          call kaboom("sete3d: WARNING: the algorithm does not take into
+     & account symmetries. Set efetch=1 or 3 and restart.")
         endif
 
       do i  p = 1, np
@@ -3680,8 +3685,7 @@ c will be zeroed out if lzero is true.
 
 c     --- Do some checking first.
       if (nx /= nx_selfe .or. ny /= ny_selfe .or. nz /= nz_selfe) then
-        call remark("ERROR: the dimensions of phi and selfe must be the same")
-        call kaboom(1)
+        call kaboom("getselfe3d: ERROR: the dimensions of phi and selfe must be the same")
       endif
 
 c     --- Zero out the E field is requested
@@ -3825,10 +3829,9 @@ c  Set npgrp so arrays are correct size
       elseif (xrandom == "grid") then
         npgrp = nxstripe*nystripe
       else
-        write (errline,'("ERROR: xrandom has an improper value = ",a8)')
+        write (errline,'("stptcl3d: ERROR: xrandom has an improper value = ",a8)')
      &         xrandom
-        call remark (errline)
-        call kaboom (0)
+        call kaboom(errline)
       endif
 
 c  Set npm to be greater than zero if any particles are to be loaded.
@@ -3951,7 +3954,8 @@ c  Allocate scratch space for load. Must be done in the parallel block
       if (allocerror /= 0) then
         print*,"stptcl3d: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",npgrp
-        stop
+        call kaboom("stptcl3d: allocation error")
+        return
       endif
 
       do js=0,pgroup%ns-1
@@ -4167,8 +4171,7 @@ c            --- centroid
            icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct,
      &                       vzt,epsxt,epsyt,ibeamt)
            if (icheck == 1) then
-              call remark ("ERROR: out-of-range z sent to ENVXPORT")
-              call kaboom (0)
+              call kaboom("stptcl3d: ERROR: out-of-range z sent to ENVXPORT")
            endif
 c          --- set axial thermal velocity based on species .... note that 
 c          --- at present this is inconsistent with envxport not knowing about 
@@ -4355,10 +4358,9 @@ c            --- carve into normalized envelope
              enddo
 
            else
-             write (errline,'("ERROR: ldprfile has an improper value = ",a8)')
+             write (errline,'("stptcl3d: ERROR: ldprfile has an improper value = ",a8)')
      &           ldprfile
-             call remark (errline)
-             call kaboom (0)
+             call kaboom(errline)
            endif
 
 c          --- load normalized transverse velocity variables
@@ -4573,10 +4575,9 @@ c          --- increment number of particles by size of current group
            ip = ip + i1-k+1
 
          else
-           write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
+           write (errline,'("stptcl3d: ERROR: distrbtn has an improper value = ",a8)')
      &           distrbtn
-           call remark (errline)
-           call kaboom (0)
+           call kaboom(errline)
          endif
 
 c        --- Set flag to indicate that the loop has been passed through once
@@ -7050,8 +7051,7 @@ c         --- rho is zeroed for all of the odd cases
             call zeroarry(rhopndts(:,:,:,0,in1),(nxp+1)*(nyp+1)*(nzp+1))
           endif
         else
-          print*,"This version of subcyling is not supported with even step sizes."
-          stop
+          call kaboom("This version of subcyling is not supported with even step sizes.")
 c         --- rho is zeroed for even cases only when there is no group
 c         --- with half its time step size (since those cases already
 c         --- have a contribution added.
@@ -7162,8 +7162,7 @@ c=============================================================================
 
       if (ndtsmax == 1) return
 
-      print*,"Version 2 of averaging for subcyling is not yet supported"
-      stop
+      call kaboom("Version 2 of averaging for subcyling is not yet supported")
 
       return
       end
@@ -7566,8 +7565,7 @@ c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho)
       else if(solvergeom==XYgeom) then
-        call remark("XYgeom not tested in parallel")
-        stop
+        call kaboom("XYgeom not tested in parallel")
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho)
       elseif (solvergeom==XYZgeom) then
@@ -8196,8 +8194,7 @@ c     --- Call the appropriate routine to get the phi
       elseif (solvergeom==XZgeom) then
         call setphixz(n,x,y,z,p,zgrid)
       elseif (solvergeom==XYgeom) then
-        call remark("fetchphi not implemented in XY.")
-        stop
+        call kaboom("fetchphi not implemented in XY.")
       elseif (solvergeom==Zgeom) then
         call setphiz(n,z,p,zgrid)
       elseif (solvergeom==AMRgeom) then
@@ -8903,8 +8900,7 @@ c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
         call getphiforparticlesrz()
       elseif (solvergeom==XYgeom) then
-        call remark("getphipforparticles not implemented in parallel for XYgeom.")
-        stop
+        call kaboom("getphipforparticles not implemented in parallel for XYgeom.")
 c      else if(solvergeom==Zgeom) then
 c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then

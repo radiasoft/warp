@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.8 $, $Date: 2007/03/22 21:42:27 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.9 $, $Date: 2007/04/24 21:37:36 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -332,7 +332,8 @@ c    &                            whosendingleft,whosendingright)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,nz
-        stop
+        call kaboom("multigrid3dsolve: allocation error")
+        return
       endif
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -508,7 +509,8 @@ c     --- coarsening. This is the same check that is done in getmglevels.
         if (allocerror /= 0) then
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate res to shape ",nx,nz
-          stop
+          call kaboom("vcyclees2d: allocation error")
+          return
         endif
 
 c       --- Get the residual on the current grid.
@@ -589,28 +591,32 @@ c       --- Alloate new work space
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcyclees2d: allocation error")
+          return
         endif
         allocate(rhocoarse(0:nxcoarse,0:nzcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcyclees2d: allocation error")
+          return
         endif
         allocate(chi0coarse(-1:nxcoarse+1,-3:nzcoarse+3,0:ns-1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate chi0coarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcyclees2d: allocation error")
+          return
         endif
         allocate(bongridcoarse(-1:nxcoarse+1,-3:nzcoarse+3,0:2),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclees2d: allocation error ",allocerror,
      &           ": could not allocate bongridcoarse to shape ",
      &           nxcoarse,nzcoarse,3
-          stop
+          call kaboom("vcyclees2d: allocation error")
+          return
         endif
 
         rhocoarse = 0.

@@ -989,8 +989,8 @@ c     create grid for epsilon and epszfac
 c     shifted by floors following convention of Dave for density
       call setupgrid2dtype(epsilon2d,check)
       if (.not. check) then
-          print*,"ERROR: inconsistent data for setting up epsilon"
-          stop
+          call kaboom("set_polarization: ERROR: inconsistent data for setting up epsilon")
+          return
       endif
       epszfac2d%xmin=0.
       epszfac2d%ymin=0.
@@ -1000,8 +1000,8 @@ c     shifted by floors following convention of Dave for density
       epszfac2d%ny=nz
       call setupgrid2dtype(epszfac2d,check)
       if (.not. check) then
-          print*,"ERROR: inconsistent data for setting up epszfac"
-          stop
+          call kaboom("set_polarization: ERROR: inconsistent data for setting up epszfac")
+          return
       endif
 
       ngrd = (nx+1)*(nz+1)

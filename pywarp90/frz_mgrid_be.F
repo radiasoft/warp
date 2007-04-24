@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.25 $, $Date: 2007/04/07 00:33:14 $
+c version $Revision: 1.26 $, $Date: 2007/04/24 21:37:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -87,8 +87,8 @@ c       --- Now dx and dz can be set.
 c       --- This will calculate nx and nz and make sure the input is OK.
         call setupgrid2dtype(iondensitygrid2d,check)
         if (.not. check) then
-           print*,"ERROR: luseparticledensity is being used but the input data is inconsistent"
-           stop
+           call kaboom("ERROR: luseparticledensity is being used but the input data is inconsistent")
+           return
         endif
 c     NOTE there is no analagous coding for electrontemperaturegrid2d as the user should
 c     set this up in a python script -- need to set all attributes of that object.
@@ -228,7 +228,8 @@ c     --- integer multiple of dx.
       if (allocerror /= 0) then
         print*,"multigridrzsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,nz
-        stop
+        call kaboom("multigridrzsolve: allocation error")
+        return
       endif
 
 c     --- Create and setup array which holds the BE region ids
@@ -395,28 +396,32 @@ c       --- Alloate new work space
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
         allocate(rhocoarse(0:nxcoarse,0:nzcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
 
         allocate(Lphi(-1:nx+1,-1:nz+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate Lphi to shape ",nx,nz
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
         allocate(Lphicoarse(-1:nxcoarse+1,-1:nzcoarse+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate Lphicoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
  
 c     --- Create and setup array which holds the BE region ids
@@ -425,7 +430,8 @@ c     --- Create and setup array which holds the BE region ids
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate regionidcoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
         call setupregionidsbe2d(regionidcoarse,nxcoarse,nzcoarse,
      &                          dxcoarse,dzcoarse,xmmin,zmmin)
@@ -469,7 +475,8 @@ c       --- the corrections after relaxations.
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate phicoarsesave to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycleberz: allocation error")
+          return
         endif
         phicoarsesave = phicoarse
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.156 $, $Date: 2006/10/04 01:43:47 $
+c@(#) File DW3D.F, version $Revision: 3.157 $, $Date: 2007/04/24 21:37:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -878,14 +878,12 @@ c       --- azimuthal mode number l
 c       --- number of radial power terms nfit used in least-squares fit
         nfit = irpowmx/2 + 1 - (l+mod(irpowmx+1,2))/2
         if (nfit > nfitmx) then
-          call remark("routine multpole -- too many radial multipoles, inc. nfitmx")
-          call kaboom (0)  
+          call kaboom("multpwrk: too many radial multipoles, inc. nfitmx")
         endif  
 c       --- calculate number radial data points npts, min grid index ngmin 
         npts  = nmult*nfit
         if (npts > nptsmx) then 
-          call remark("routine multpole -- too many radial data points, inc. nptsmx")
-          call kaboom (0)  
+          call kaboom("multpwrk: too many radial data points, inc. nptsmx")
         endif 
         ngmin = (nres-1)*l/(2.*pi)
         if (ngmin < 2) ngmin = 2
@@ -899,13 +897,11 @@ c       --- check for bound errors
         endif  
         if ( (xcen + (npts-1+ngmin)*ds >= xmmax ) .or. 
      &       (xcen - (npts-1+ngmin)*ds <= xsymin)       ) then 
-          call remark("routine multpole -- data out of x-grid bound")
-          call kaboom (0)
+          call kaboom("multpwrk: data out of x-grid bound")
         endif   
         if ( (ycen + (npts-1+ngmin)*ds >= ymmax ) .or. 
      &       (ycen - (npts-1+ngmin)*ds <= ysymin)       ) then 
-          call remark("routine multpole -- data out of y-grid bound")
-          call kaboom (0) 
+          call kaboom("multpwrk: data out of y-grid bound")
         endif   
 c       --- calculate npts radial data points and a npts x (kmax-l)/2 basis 
 c       --- array of radial powers basis for use in radial least squares fit

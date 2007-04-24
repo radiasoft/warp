@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.80 $, $Date: 2007/04/04 21:04:34 $
+c@(#) File WXY.M, version $Revision: 3.81 $, $Date: 2007/04/24 21:37:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1078,7 +1078,8 @@ c  Zero the moments if center is synchv
         if (allocerror /= 0) then
           print*,"padvncxy: allocation error ",allocerror,
      &           ": could not allocate temp arrays to shape ",nszmmnt
-          stop
+          call kaboom("padvncxy: allocation error")
+          return
         endif
         maxp = -LARGEPOS
         minp = +LARGEPOS
@@ -1416,7 +1417,8 @@ c     --- End loop over species
         if (allocerror /= 0) then
           print*,"padvncxy: allocation error ",allocerror,
      &           ": could not allocate temp arrays to shape ",nszmmnt,nthread
-          stop
+          call kaboom("padvncxy: allocation error")
+          return
         endif
 !$OMP END SINGLE
         threadmaxp(:,:,ithread) = maxp

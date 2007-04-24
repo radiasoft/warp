@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.5 $, $Date: 2003/09/16 23:28:51 $
+c@(#) File FXY.M, version $Revision: 3.6 $, $Date: 2007/04/24 21:37:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -140,9 +140,8 @@ c     --- invert to get capacity matrix (checking for singular matrix)
 c     --- These routines don't seem to give as good a result as those below.
 c     call ssifa(cmatxy,ncxy,ncxy,kpvtxy,info)
 c     if (info .ne. 0) then
-c       print*,"ERROR: Capacity matrix is singular - it is likely that"
-c       print*,"two or more conductor points are within the same grid cell."
-c       call kaboom(0)
+c       call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that
+c    & two or more conductor points are within the same grid cell.")
 c     endif
 c     call ssidi(cmatxy,ncxy,ncxy,kpvtxy,tt1,tt2,xywork,001)
 
@@ -157,10 +156,9 @@ c     --- These routines are from LAPACK.
 #endif
 #endif
       if (info .ne. 0) then
-        print*,"ERROR: Capacity matrix is singular - it is likely that"
-        print*,"two or more conductor points are within the same grid cell."
         print*,info
-        call kaboom(0)
+        call kaboom("cmsetxy: ERROR: Capacity matrix is singular - it is likely that
+     & two or more conductor points are within the same grid cell.")
       endif
 c     --- pcond is passed as workspace.
 #if WORDSIZE == 64

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.207 $, $Date: 2007/04/21 00:43:58 $
+c@(#) File TOP.F, version $Revision: 3.208 $, $Date: 2007/04/24 21:37:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2798,6 +2798,7 @@ c     --- Call this here in case chckpart has been called before alotpart.
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"chckpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        call kaboom("chckpart: species number is invalid")
         return
       endif
 
@@ -2869,6 +2870,7 @@ c=============================================================================
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"shftpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        call kaboom("shftpart: species number is invalid")
         return
       endif
 
@@ -2922,6 +2924,7 @@ c the arrays.
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > ns) then
         print*,"shftpartwork: warning: the input species is ",is,", but must be between 1 and ",ns
+        call kaboom("shftpartwork: species number is invalid")
         return
       endif
 
@@ -2968,9 +2971,9 @@ c       --- Loop from -ishift above bottom of species block to top of live
 c       --- particles.  Note that particles will be clobbered if
 c       --- (ins(is) - ipmax_s(is-1)) < -ishift
         if (ins(is) - ipmax_s(is-1) < -ishift) then
-          print*,"WARNING: shftpart: particle data will be lost since there is"
-          print*,"                   not enough space in the arrays."
-          stop
+          call kaboom("shftpartwork: WARNING: shftpart: particle data will be
+     & lost since there is not enough space in the arrays.")
+          return
         endif
 
         do ip=ipmax_s(is-1)+1-ishift, ins(is)+nps(is)-1
@@ -3119,6 +3122,7 @@ c              true.
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"addpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        call kaboom("addpart: species number is invalid")
         return
       endif
 
@@ -3221,6 +3225,7 @@ c   2 : shift particles above down (they keep the same order)
 c       --- Make sure that 'is' is within the correct range
         if (is < 1 .or. is > pgroup%ns) then
           print*,"clearpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        call kaboom("clearpart: species number is invalid")
           return
         endif
 
@@ -3383,6 +3388,7 @@ c the routine which clears out the lost particles is called.
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"processlostpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
+        call kaboom("processlostpart: species number is invalid")
         return
       endif
 
@@ -4478,10 +4484,9 @@ c=============================================================================
         wrandom = mod((ifib1*(ii - 1.) + 0.5)/ifib2,1.0)
       else
         wrandom = 0.
-        write(errline,'("ERROR: random number generator method ",a8,
+        write(errline,'("wrandom: ERROR: random number generator method ",a8,
      &                  "not supported")') method
-        call remark (errline)
-        call kaboom (0)
+        call kaboom(errline)
       endif
 
       return
@@ -5347,7 +5352,8 @@ c=============================================================================
         if (allocerror /= 0) then
           print*,"set_tslice_locator: allocation error ",allocerror,
      &           ": could not allocate ntsloc to shape ",nztlocator,nztslices
-          stop
+          call kaboom("set_tslice_locator: allocation error")
+          return
         endif
 
         ntsloc = 0

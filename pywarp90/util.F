@@ -1,6 +1,6 @@
 #include "top.h"
 c************************************************************************** 
-c@(#) File UTIL.M, version $Revision: 1.4 $ $Date: 2007/01/30 01:16:11 $
+c@(#) File UTIL.M, version $Revision: 1.5 $ $Date: 2007/04/24 21:37:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c Contains various utility routines that are part of the TOP package.
@@ -1144,8 +1144,7 @@ c
             go to 3
           endif
           if (its.eq.30) then 
-            print*,"Routine dvdcmp - No convergence in 30 iterations"
-            call kaboom (0) 
+            call kaboom("dvdcmp: No convergence in 30 iterations")
           endif 
           x=w(l)
           nm=k-1

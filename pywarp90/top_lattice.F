@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.9 $, $Date: 2006/12/21 00:10:21 $
+c@(#) File top_lattice.F, version $Revision: 3.10 $, $Date: 2007/04/24 21:37:37 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -1075,8 +1075,8 @@ c           --- quadrupole symmetry
             bsqgrad(2,0,:,:,id) = 0.
             bsqgrad(3,:,0,:,id) = 0.
           else
-            print*,"bsqgrad symmetry value not supported"
-            stop
+            call kaboom("bsqgrad symmetry value not supported")
+            return
           endif
         endif
       enddo
@@ -2490,7 +2490,8 @@ c   bx, by   quadrupole magnetic field
       if (allocerror /= 0) then
         print*,"applyquad: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",npz
-        stop
+        call kaboom("applyquad: allocation error")
+        return
       endif
 
       vz  = uzp*gaminv
@@ -2608,7 +2609,8 @@ c   bx, by   dipole magnetic field
       if (allocerror /= 0) then
         print*,"applydipo: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",npz
-        stop
+        call kaboom("applydipo: allocation error")
+        return
       endif
 
       vz  = uzp*gaminv
@@ -2836,7 +2838,8 @@ c   bx, by   sextupole magnetic field
       if (allocerror /= 0) then
         print*,"applysext: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",npz
-        stop
+        call kaboom("applysext: allocation error")
+        return
       endif
 
       vz  = uzp*gaminv
@@ -2953,7 +2956,8 @@ c   bx, by, bz   magnetic field
       if (allocerror /= 0) then
         print*,"applyhele: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",np," and ",npz
-        stop
+        call kaboom("applyhele: allocation error")
+        return
       endif
 
       vz  = uzp*gaminv
@@ -3175,7 +3179,8 @@ c  and not once per particle per multipole component.
       if (allocerror /= 0) then
         print*,"applyemlt: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",np
-        stop
+        call kaboom("applyemlt: allocation error")
+        return
       endif
 
       do io=1,nemltol
@@ -3352,7 +3357,8 @@ c  and not once per particle per multipole component.
       if (allocerror /= 0) then
         print*,"applymmlt: allocation error ",allocerror,
      &         ": could not allocate temp arrays to shape ",np
-        stop
+        call kaboom("applymmlt: allocation error")
+        return
       endif
 
       do io=1,nmmltol

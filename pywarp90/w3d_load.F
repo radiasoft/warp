@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.18 $, $Date: 2005/05/18 17:00:52 $
+c@(#) File w3d_load.F, version $Revision: 1.19 $, $Date: 2007/04/24 21:37:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -134,8 +134,8 @@ c         --- density
 c     --- parabolic equilibrium 
       elseif(distrbtn == "PA"  .or. distrbtn == "Parabolic") then 
 
-        call remark("routine perp_cf_eq: Parabolic Eq option not implemented") 
-        call kaboom(0) 
+        call kaboom("perp_cf_eq: Parabolic Eq option not implemented") 
+        return
 
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
@@ -190,8 +190,8 @@ c       --- linear interpolation and scaling
 c     --- undefined option trap 
       else 
 
-        call remark("routine perp_cf_eq: distrbtn option not implemented") 
-        call kaboom(0) 
+        call kaboom("perp_cf_eq: distrbtn option not implemented") 
+        return
 
       endif 
 
@@ -381,8 +381,8 @@ c near the edge of the beam where it quickly breaks down.
 
       enddo 
 
-      call remark("routine te_den_exp: WARNING requested tol not reached") 
-c      call kaboom(0) 
+      call remark("te_den_exp: WARNING requested tol not reached") 
+c      call kaboom("te_den_exp: WARNING requested tol not reached") 
 
  100  continue 
 
@@ -440,8 +440,8 @@ c   (American Institute of Physics Conference Proceedings, 1994) vol 314, p 1.
 
       enddo 
 
-      call remark("routine te_denp_exp: WARNING requested tol not reached") 
-c      call kaboom(0) 
+      call remark("te_denp_exp: WARNING requested tol not reached") 
+c      call kaboom("te_denp_exp: WARNING requested tol not reached") 
 
  200  continue 
 
@@ -467,12 +467,12 @@ c
 c     Parameter error traps 
 
       if (frac .gt. 1 .or. frac .le. 0.) then 
-        call remark("routine te_rho_max: frac input not physical") 
-        call kaboom(0) 
+        call kaboom("te_rho_max: frac input not physical") 
+        return
       endif 
       if (delta .lt. 0.) then
-        call remark("routine te_rho_max: delta input not physical") 
-        call kaboom(0) 
+        call kaboom("te_rho_max: delta input not physical") 
+        return
       endif  
 
       if (delta .gt. 0.5) then  
@@ -765,8 +765,8 @@ c         --- a unit disk of radius u_max
 c     --- parabolic equilibrium 
       elseif(distrbtn == "PA"  .or. distrbtn == "Parabolic") then 
 
-        call remark("routine loadperpdist: distrbtn = PA not implemented") 
-        call kaboom(0) 
+        call kaboom("loadperpdist: distrbtn = PA not implemented") 
+        return
 
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
@@ -794,8 +794,8 @@ c         --- structure of wrandomgauss()
 c       --- undefined option trap 
       else 
 
-        call remark("routine loadperpdist: distrbtn option not implemented") 
-        call kaboom(0) 
+        call kaboom("loadperpdist: distrbtn option not implemented") 
+        return
  
       endif 
 
@@ -969,10 +969,10 @@ c         --- velocity spread.
         enddo 
 
       else 
-        write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
+        write (errline,'("loadperpdist0: ERROR: distrbtn has an improper value = ",a8)')
      &        distrbtn
-        call remark (errline)
-        call kaboom (0)
+        call kaboom(errline)
+        return
       endif
 
       return 
@@ -1089,8 +1089,8 @@ c    Press, Flannery, Teukolsky, and Vetterling (1986)
       real(kind=8):: BIGNI = 1.0e-10
 
       if ((n .lt. 2) .or. mod(n,1) .ne. 0.) then 
-        call remark('bad argument n in bessi(n,x)')
-        call kaboom(1) 
+        call kaboom('bessi: bad argument n')
+        return
       endif 
       
       if (x .eq. 0.) then 
@@ -1143,8 +1143,8 @@ c    Press, Flannery, Teukolsky, and Vetterling (1986)
       FA=func(A)
       FB=func(B)
       if(FB*FA .gt. 0.) then
-        call remark('Root must be bracketed for zbrent.') 
-        call kaboom(1)  
+        call kaboom('zbrent: Root must be bracketed') 
+        return
       endif 
       FC=FB
       do ITER=1,itmax
@@ -1202,8 +1202,7 @@ c    Press, Flannery, Teukolsky, and Vetterling (1986)
         FB=func(B)
       enddo
       zbrent = B
-      call remark('zbrent exceeding maximum iterations.')
-      call kaboom(1)
+      call kaboom('zbrent: exceeding maximum iterations')
 
       return
       end
@@ -1296,8 +1295,8 @@ c     load starting values
       X=x1
       H=(x2-x1)/float(nstep)
       if(X+H .eq. X) then
-        call remark('Stepsize not significant in rk_adv') 
-        call kaboom(1) 
+        call kaboom('rk_adv: Stepsize not significant in rk_adv') 
+        return
       endif 
 c     take nstep 4th order Runge-Kutta steps using rk4
       do K=1,nstep

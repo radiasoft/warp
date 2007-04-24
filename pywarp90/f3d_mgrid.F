@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.135 $, $Date: 2007/04/14 00:04:58 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.136 $, $Date: 2007/04/24 21:37:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -133,8 +133,8 @@ c     --- The following only used when mgform == 2
 
 c     --- Note that nx and ny must be even.
       if (mod(nx,2) == 1 .or. mod(ny,2) == 1) then
-        print*,"3D MULTIGRID field solver error, nx and ny must be even"
-        stop
+        call kaboom("3D MULTIGRID field solver error, nx and ny must be even")
+        return
       endif
 
 c     --- Initialize temporaries
@@ -246,13 +246,15 @@ c     --- Also setup parallel arrays.
         if (allocerror /= 0) then
           print*,"multigrid3dsolve: allocation error ",allocerror,
      &           ": could not allocate rhosave to shape ",nx,ny,nz
-          stop
+          call kaboom("multigrid3dsolve: allocation error")
+          return
         endif
         allocate(res(-1:nx+1,-1:ny+1,-3:nz+3),stat=allocerror)
         if (allocerror /= 0) then
           print*,"multigrid3dsolve: allocation error ",allocerror,
      &           ": could not allocate res to shape ",nx,ny,nz
-          stop
+          call kaboom("multigrid3dsolve: allocation error")
+          return
         endif
 !$OMP END SINGLE
         rhosave = rho
@@ -262,7 +264,8 @@ c     --- Also setup parallel arrays.
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,ny,nz
-        stop
+        call kaboom("multigrid3dsolve: allocation error")
+        return
       endif
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -611,7 +614,8 @@ c     --- coarsening. This is the same check that is done in getmglevels.
         if (allocerror /= 0) then
           print*,"vcycle: allocation error ",allocerror,
      &           ": could not allocate res to shape ",nx,ny,nz
-          stop
+          call kaboom("vcycle: allocation error")
+          return
         endif
 
 c       --- Get the residual on the current grid.
@@ -675,14 +679,16 @@ c         --- Alloate new work space
             print*,"vcycle: allocation error ",allocerror,
      &             ": could not allocate phicoarse to shape ",
      &             nxcoarse,nycoarse,nz
-            stop
+            call kaboom("vcycle: allocation error")
+            return
           endif
           allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nz),stat=allocerror)
           if (allocerror /= 0) then
             print*,"vcycle: allocation error ",allocerror,
      &             ": could not allocate rhocoarse to shape ",
      &             nxcoarse,nycoarse,nz
-            stop
+            call kaboom("vcycle: allocation error")
+            return
           endif
 
           phicoarse = 0.
@@ -754,14 +760,16 @@ c         --- Alloate new work space
             print*,"vcycle: allocation error ",allocerror,
      &             ": could not allocate phicoarse to shape ",
      &             nxcoarse,nycoarse,nzcoarse
-            stop
+            call kaboom("vcycle: allocation error")
+            return
           endif
           allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),stat=allocerror)
           if (allocerror /= 0) then
             print*,"vcycle: allocation error ",allocerror,
      &             ": could not allocate rhocoarse to shape ",
      &             nxcoarse,nycoarse,nzcoarse
-            stop
+            call kaboom("vcycle: allocation error")
+            return
           endif
 
           rhocoarse = 0.
@@ -3354,7 +3362,8 @@ c     --- First, sort conductor points
         if (allocerror /= 0) then
           print*,"checkconductors: allocation error ",allocerror,
      &           ": could not allocate isort to shape ",conductors%interior%n
-          stop
+          call kaboom("checkconductors: allocation error")
+          return
         endif
         nn = conductors%interior%n
         call isortconductor(nn,conductors%interior%ilevel,isort,
@@ -3374,7 +3383,8 @@ c     --- Sort even subgrid points
         if (allocerror /= 0) then
           print*,"checkconductors: allocation error ",allocerror,
      &           ": could not allocate isort to shape ",conductors%evensubgrid%n
-          stop
+          call kaboom("checkconductors: allocation error")
+          return
         endif
         nn = conductors%evensubgrid%n
         call isortconductor(nn,conductors%evensubgrid%ilevel,isort,
@@ -3395,7 +3405,8 @@ c     --- Sort odd subgrid points
         if (allocerror /= 0) then
           print*,"checkconductors: allocation error ",allocerror,
      &           ": could not allocate isort to shape ",conductors%oddsubgrid%n
-          stop
+          call kaboom("checkconductors: allocation error")
+          return
         endif
         nn = conductors%oddsubgrid%n
         call isortconductor(nn,conductors%oddsubgrid%ilevel,isort,
@@ -3446,7 +3457,8 @@ c Utility function for sort conductors
       if (allocerror /= 0) then
         print*,"iswapconductor: allocation error ",allocerror,
      &         ": could not allocate itemp to shape ",ni,nn
-        stop
+        call kaboom("iswapconductor: allocation error")
+        return
       endif
       itemp = icond
       do ic=1,nc
@@ -3467,7 +3479,8 @@ c Utility function for sort conductors
       if (allocerror /= 0) then
         print*,"rswapconductor: allocation error ",allocerror,
      &         ": could not allocate rtemp to shape ",ni,nn
-        stop
+        call kaboom("rswapconductor: allocation error")
+        return
       endif
       rtemp = rcond
       do ic=1,nc
@@ -3510,7 +3523,8 @@ c     --- Set the conductor points.
       if (allocerror /= 0) then
         print*,"checkconductors_work: allocation error ",allocerror,
      &         ": could not allocate iii to shape ",nx,ny,nz
-        stop
+        call kaboom("checkconductors_work: allocation error")
+        return
       endif
       iii = 0
       do ic=1,interior%n
@@ -4013,7 +4027,8 @@ c    &                            whosendingleft,whosendingright)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,nz
-        stop
+        call kaboom("multigrid3dsolve: allocation error")
+        return
       endif
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -4179,7 +4194,8 @@ c     --- coarsening. This is the same check that is done in getmglevels.
         if (allocerror /= 0) then
           print*,"vcycle2d: allocation error ",allocerror,
      &           ": could not allocate res to shape ",nx,nz
-          stop
+          call kaboom("vcycle2d: allocation error")
+          return
         endif
 
 c       --- Get the residual on the current grid.
@@ -4270,14 +4286,16 @@ c       --- Alloate new work space
           print*,"vcycle2d: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycle2d: allocation error")
+          return
         endif
         allocate(rhocoarse(0:nxcoarse,0:nzcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycle2d: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
      &           nxcoarse,nzcoarse
-          stop
+          call kaboom("vcycle2d: allocation error")
+          return
         endif
 
         rhocoarse = 0.
