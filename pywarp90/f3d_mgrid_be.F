@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.31 $, $Date: 2006/12/19 01:24:12 $
+c version $Revision: 1.32 $, $Date: 2007/04/24 21:34:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -151,13 +151,15 @@ c     --- Prepare rho by dividing it by -eps0
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phiwithbounds to shape ",nx,ny,nz
-        stop
+        call kaboom("multigrid3dsolve: allocation error")
+        return
       endif
       allocate(phisave(0:nx,0:ny,0:nz),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
      &         ": could not allocate phisave to shape ",nx,ny,nz
-        stop
+        call kaboom("multigrid3dsolve: allocation error")
+        return
       endif
 
 c     --- Create and setup array which holds the BE region ids
@@ -406,20 +408,23 @@ c       --- Alloate new work space
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
      &           nxcoarse,nycoarse,nzcoarse
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
         allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
      &           nxcoarse,nycoarse,nzcoarse
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
         allocate(Lphi(-1:nx+1,-1:ny+1,-1:nz+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate Lphi to shape ",nx,ny,nz
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
         allocate(Lphicoarse(-1:nxcoarse+1,-1:nycoarse+1,-1:nzcoarse+1),
      &           stat=allocerror)
@@ -427,7 +432,8 @@ c       --- Alloate new work space
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate Lphicoarse to shape ",
      &           nxcoarse,nycoarse,nzcoarse
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
 
 c     --- Create and setup array which holds the BE region ids
@@ -437,7 +443,8 @@ c     --- Create and setup array which holds the BE region ids
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate regionidcoarse to shape ",
      &           nxcoarse,nycoarse,nzcoarse
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
         call setupregionidsbe3d(regionidcoarse,nxcoarse,nycoarse,nzcoarse,
      &                          dxcoarse,dycoarse,dzcoarse,
@@ -449,12 +456,9 @@ c    &                             my_index,nslaves,izfsslave,nzfsslave,
 c    &                             whosendingleft,izsendingleft,
 c    &                             whosendingright,izsendingright)
         phicoarse = 0.
-        call restrictbe3d(nx,ny,nz,nzfull,phi,1,1,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,
-     &                    localbounds,localboundsc,lzoffset,
-     &                    my_index,nslaves,izfsslavec,nzfsslavec,
-     &                    whosendingleftc,izsendingleftc,
-     &                    whosendingrightc,izsendingrightc)
+        call restrictbe3d(nx,ny,nz,nzfull,phi,1,1,1,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,1,
+     &                    localbounds,localboundsc,lzoffset)
         call cond_potmgbe(conductors%interior,nxcoarse,nycoarse,nzcoarse,
      &                    phicoarse,mglevel+1)
         call applytransversebcbe3d(nxcoarse,nycoarse,nzcoarse,phicoarse,globalbounds)
@@ -478,12 +482,9 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
      &                             whosendingleft,izsendingleft,
      &                             whosendingright,izsendingright)
 #endif
-        call restrictbe3d(nx,ny,nz,nzfull,Lphi,1,1,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,
-     &                    localbounds,localbounds,lzoffset,
-     &                    my_index,nslaves,izfsslavec,nzfsslavec,
-     &                    whosendingleftc,izsendingleftc,
-     &                    whosendingrightc,izsendingrightc)
+        call restrictbe3d(nx,ny,nz,nzfull,Lphi,1,1,1,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,0,
+     &                    localbounds,localbounds,lzoffset)
 
         deallocate(Lphi)
 
@@ -510,7 +511,8 @@ c       --- the corrections after relaxations.
           print*,"vcyclebe: allocation error ",allocerror,
      &           ": could not allocate phicoarsesave to shape ",
      &           nxcoarse,nycoarse,nzcoarse
-          stop
+          call kaboom("vcyclebe: allocation error")
+          return
         endif
         phicoarsesave = phicoarse
 
@@ -557,25 +559,18 @@ c     --- Do final relaxation passes.
       return
       end
 c=============================================================================
-      subroutine restrictbe3d(nx,ny,nz,nzfull,u,delt,delz,
+      subroutine restrictbe3d(nx,ny,nz,nzfull,u,delx,dely,delz,
      &                        nxcoarse,nycoarse,nzcoarse,nzfullcoarse,ucoarse,
-     &                        delcx,delcz,
-     &                        bounds,boundscoarse,lzoffset,
-     &                        my_index,nslaves,izfsslavec,nzfsslavec,
-     &                        whosendingleftc,izsendingleftc,
-     &                        whosendingrightc,izsendingrightc)
+     &                        delcx,delcy,delcz,
+     &                        bounds,boundscoarse,lzoffset)
 
-      integer(ISZ):: nx,ny,nz,nzfull,delt,delz,delcx,delcz
+      integer(ISZ):: nx,ny,nz,nzfull,delx,dely,delz,delcx,delcy,delcz
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: u(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
-      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcx:nycoarse+delcx,-delcz:nzcoarse+delcz)
+      real(kind=8):: u(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcy:nycoarse+delcy,-delcz:nzcoarse+delcz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lzoffset
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
-      integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
-      integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
       
 c Restrict to a coarser grid.
 
@@ -617,8 +612,8 @@ c     --- Do the loops.
         do iycoarse=0,nycoarse
           iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
           iymax = int(floor((iycoarse+1)*dy - 1.e-10))
-          if (iymin < -delt) iymin = -delt
-          if (iymax > ny+delt) iymax = ny+delt
+          if (iymin < -dely) iymin = -dely
+          if (iymax > ny+dely) iymax = ny+dely
 
           do iy=iymin,iymax
             wy(iy-iymin) = 1. - abs(iycoarse - iy*dyi)
@@ -637,8 +632,8 @@ c     --- Do the loops.
           do ixcoarse=0,nxcoarse
             ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
             ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
-            if (ixmin < -delt) ixmin = -delt
-            if (ixmax > nx+delt) ixmax = nx+delt
+            if (ixmin < -delx) ixmin = -delx
+            if (ixmax > nx+delx) ixmax = nx+delx
 
             do ix=ixmin,ixmax
               wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
