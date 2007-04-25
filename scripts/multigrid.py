@@ -421,7 +421,7 @@ class MultiGrid(SubcycledPoissonSolver):
     else:
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
-                         star,self.linbend,self.bounds,
+                         rstar,self.linbend,self.bounds,
                          self.xmmin,self.ymmin,self.zmmin*zfact,
                          self.zmminglobal*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
@@ -430,9 +430,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.lcndbndy,self.laddconductor,self.icndbndy,
                          self.lbuildquads,self.gridmode,conductorobject,
                          self.my_index,self.nslaves,self.izfsslave,
-                         self.nzfsslave,
-                         self.iondensity,self.electrontemperature,
-                         self.plasmapotential,self.electrondensitymaxscale)
+                         self.nzfsslave)
     self.mgiters = mgiters[0]
     self.mgerror = mgerror[0]
 
