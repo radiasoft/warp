@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.169 $, $Date: 2007/04/13 21:09:53 $
+#@(#) File F3D.V, version $Revision: 3.170 $, $Date: 2007/04/25 21:00:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.169 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.170 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -336,16 +336,15 @@ multigridbe3dsolve(iwhich:integer,
              nx:integer,ny:integer,nz:integer,nzfull:integer,
              dx:real,dy:real,dz:real,phi:real,rho:real,
              rstar:real,linbend:logical,bounds:integer,
-             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+             xmmin:real,ymmin:real,zmmin:real,zmminglobal:real,
+             zbeam:real,zgrid:real,
              mgparam:real,mgiters:integer,mgmaxiters:integer,
-             mgmaxlevels:integer,mgerror:real,mgtol:real,
+             mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
              downpasses:integer,uppasses:integer,
              lcndbndy:logical,laddconductor:logical,icndbndy:integer,
              lbuildquads:logical,gridmode:integer,conductors:ConductorType,
              my_index:integer,nslaves:integer,
-             izfsslave:integer,nzfsslave:integer,
-             iondensity:real,electrontemperature:real,plasmapotential:real,
-             electrondensitymaxscale:real)
+             izfsslave:integer,nzfsslave:integer)
    subroutine
    # Solves Poisson's equation using the multigrid method, including the
    # Boltzmann electron term. All input is through the argument list.
