@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.136 $, $Date: 2007/04/24 21:37:36 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.137 $, $Date: 2007/04/26 18:11:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -520,7 +520,7 @@ c=============================================================================
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dysqi,dzsqi
-      logical(ISZ):: partialcoarsening
+      real(kind=8):: mingridsize
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8),allocatable:: res(:,:,:)
       integer(ISZ):: i,iszone=1
@@ -655,6 +655,20 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfull/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
+        mingridsize = min(dx,dy)
+        mingridsize = min(mingridsize,dz)
+
+        if (dx > 4./3.*mingridsize) then
+          nxcoarse = nx
+        endif
+        if (dy > 4./3.*mingridsize) then
+          nycoarse = ny
+        endif
+        if (dz > 4./3.*mingridsize) then
+          nzcoarse = nz
+          nzfullcoarse = nzfull
+        endif
+
         dxcoarse = dx*nx/nxcoarse
         dycoarse = dy*ny/nycoarse
         dzcoarse = dz*nzfull/nzfullcoarse
@@ -662,162 +676,101 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         dycoarsesqi = 1./dycoarse**2
         dzcoarsesqi = 1./dzcoarse**2
 
-c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
-c       --- all axis.  This is the same check that is done in getmglevels.
-c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
-        partialcoarsening = (dz > 4./3.*dx)
-#ifdef MPIPARALLEL
-c       --- This must be a global operation since, due to roundoff, each
-c       --- processor can get a different value if dz == 4./3.*dx.
-c       if (nslaves > 1) call parallellor(partialcoarsening)
-#endif
-        if (partialcoarsening) then
-
-c         --- Alloate new work space
-          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1),stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"vcycle: allocation error ",allocerror,
-     &             ": could not allocate phicoarse to shape ",
-     &             nxcoarse,nycoarse,nz
-            call kaboom("vcycle: allocation error")
-            return
-          endif
-          allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nz),stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"vcycle: allocation error ",allocerror,
-     &             ": could not allocate rhocoarse to shape ",
-     &             nxcoarse,nycoarse,nz
-            call kaboom("vcycle: allocation error")
-            return
-          endif
-
-          phicoarse = 0.
-
-c         --- Ratio of old to new constant needed to scale the residual for
-c         --- the restriction.
-          ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzsqi)
-          call restrict2d(nx,ny,nz,res,nxcoarse,nycoarse,rhocoarse,ff,
-     &                    localbounds,1,1)
-
-c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+iszone,nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,
-     &                dz,phicoarse,rhocoarse,
-     &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
-     &                mgmaxlevels,downpasses,uppasses,
-     &                lcndbndy,icndbndy,conductors,
-     &                my_index,nslaves,izfsslave,nzfsslave)
-
-c         --- Add in resulting error.
-          if (lprintmgphimaxchange) then
-            print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
-          endif
-          call expand2d(nx,ny,nz,0,0,1,phi,nxcoarse,nycoarse,phicoarse,localbounds)
-#ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
-     &                                my_index,nslaves,izfsslave,
-     &                                whosendingleft,whosendingright)
-#endif
-
-          deallocate(phicoarse,rhocoarse)
-        else
-
-          localboundsc = globalbounds
+        localboundsc = globalbounds
 
 #ifdef MPIPARALLEL
-c         --- Find domains in coarser grid
-          call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                    nzfull,nzfullcoarse)
-c         --- Reset value to corrected one
-          nzcoarse = nzfsslavec(my_index)
-c         --- Difference between starts and ends of coarse and fine grids.
-c         --- Should only be in the range 0-2.
-          lzoffsetall = (nzfullcoarse*izfsslave-nzfull*izfsslavec)
-          rzoffsetall = (nzfull*(izfsslavec + nzfsslavec) -
-     &                   nzfullcoarse*(izfsslave + nzfsslave))
-c         --- Note that the lzoffsetall and rzoffsetall can only be used in
-c         --- MPIPARALLEL sections since they will be unallocated in the
-c         --- serial code. So, separate scalars are used in code which is
-c         --- used in the serial version.
-          lzoffset = lzoffsetall(my_index)
-          rzoffset = rzoffsetall(my_index)
-c         --- Get processor with which to exchange data on coarse grid
-          call mggetexchangepes(nslaves,izfsslavec,nzfsslavec,my_index,
-     &                          globalbounds,nzfullcoarse,
-     &                          lzoffsetall,rzoffsetall,
-     &                          whosendingleftc,izsendingleftc,
-     &                          whosendingrightc,izsendingrightc)
-          if (izfsslavec(my_index) > 0) localboundsc(4) = -1
-          if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localboundsc(5) = -1
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                  nzfull,nzfullcoarse)
+c       --- Reset value to corrected one
+        nzcoarse = nzfsslavec(my_index)
+c       --- Difference between starts and ends of coarse and fine grids.
+c       --- Should only be in the range 0-2.
+        lzoffsetall = (nzfullcoarse*izfsslave-nzfull*izfsslavec)
+        rzoffsetall = (nzfull*(izfsslavec + nzfsslavec) -
+     &                 nzfullcoarse*(izfsslave + nzfsslave))
+c       --- Note that the lzoffsetall and rzoffsetall can only be used in
+c       --- MPIPARALLEL sections since they will be unallocated in the
+c       --- serial code. So, separate scalars are used in code which is
+c       --- used in the serial version.
+        lzoffset = lzoffsetall(my_index)
+        rzoffset = rzoffsetall(my_index)
+c       --- Get processor with which to exchange data on coarse grid
+        call mggetexchangepes(nslaves,izfsslavec,nzfsslavec,my_index,
+     &                        globalbounds,nzfullcoarse,
+     &                        lzoffsetall,rzoffsetall,
+     &                        whosendingleftc,izsendingleftc,
+     &                        whosendingrightc,izsendingrightc)
+        if (izfsslavec(my_index) > 0) localboundsc(4) = -1
+        if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localboundsc(5) = -1
 #else
-          lzoffset = 0
-          rzoffset = 0
+        lzoffset = 0
+        rzoffset = 0
 #endif
 
-c         --- Alloate new work space
-          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
-     &             stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"vcycle: allocation error ",allocerror,
-     &             ": could not allocate phicoarse to shape ",
-     &             nxcoarse,nycoarse,nzcoarse
-            call kaboom("vcycle: allocation error")
-            return
-          endif
-          allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"vcycle: allocation error ",allocerror,
-     &             ": could not allocate rhocoarse to shape ",
-     &             nxcoarse,nycoarse,nzcoarse
-            call kaboom("vcycle: allocation error")
-            return
-          endif
-
-          rhocoarse = 0.
-          phicoarse = 0.
-
-c         --- Restriction - note that scaling factor for residual is always
-c         --- 4 for full-coarsening and is compiled into the restriction
-c         --- routine.
-          ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
-          call restrict3d(nx,ny,nz,nzfull,res,
-     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
-     &                    localbounds,localboundsc,lzoffset,1,1)
-          if (lprintmgarraysumdiagnostic) then
-            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,0,rhocoarse,
-     &                          izfsslavec,nzfsslavec,nslaves,my_index)
-            if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
-          endif
-
-c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
-     &                dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
-     &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
-     &                mgmaxlevels,downpasses,uppasses,
-     &                lcndbndy,icndbndy,conductors,
-     &                my_index,nslaves,izfsslavec,nzfsslavec)
-
-          if (lprintmgarraysumdiagnostic) then
-            sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,1,phicoarse,
-     &                          izfsslavec,nzfsslavec,nslaves,my_index)
-            if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
-            sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
-     &                          izfsslave,nzfsslave,nslaves,my_index)
-            if (my_index == 0) print*,"V4 phi",mglevel,sss
-          endif
-
-c         --- Add in resulting error.
-          call expand3d(nx,ny,nz,nzfull,0,0,1,phi,
-     &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
-     &                  localbounds,lzoffset)
-#ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
-     &                                my_index,nslaves,izfsslave,
-     &                                whosendingleft,whosendingright)
-#endif
-
-          deallocate(phicoarse,rhocoarse)
+c       --- Alloate new work space
+        allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle: allocation error ",allocerror,
+     &           ": could not allocate phicoarse to shape ",
+     &           nxcoarse,nycoarse,nzcoarse
+          call kaboom("vcycle: allocation error")
+          return
+        endif
+        allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle: allocation error ",allocerror,
+     &           ": could not allocate rhocoarse to shape ",
+     &           nxcoarse,nycoarse,nzcoarse
+          call kaboom("vcycle: allocation error")
+          return
         endif
 
+        rhocoarse = 0.
+        phicoarse = 0.
+
+c       --- Restriction - note that scaling factor for residual is always
+c       --- 4 for full-coarsening and is compiled into the restriction
+c       --- routine.
+        ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
+        call restrict3d(nx,ny,nz,nzfull,res,
+     &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
+     &                  localbounds,localboundsc,lzoffset,1,1)
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,0,rhocoarse,
+     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
+        endif
+
+c       --- Continue at the next coarsest level.
+        call vcycle(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &              dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
+     &              rstar,linbend,bendx,globalbounds,mgparam,mgform,
+     &              mgmaxlevels,downpasses,uppasses,
+     &              lcndbndy,icndbndy,conductors,
+     &              my_index,nslaves,izfsslavec,nzfsslavec)
+
+        if (lprintmgarraysumdiagnostic) then
+          sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,1,phicoarse,
+     &                        izfsslavec,nzfsslavec,nslaves,my_index)
+          if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+          sss = mggetarraysum(nx,ny,nz,0,0,1,phi,
+     &                        izfsslave,nzfsslave,nslaves,my_index)
+          if (my_index == 0) print*,"V4 phi",mglevel,sss
+        endif
+
+c       --- Add in resulting error.
+        call expand3d(nx,ny,nz,nzfull,0,0,1,phi,
+     &                nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
+     &                localbounds,lzoffset)
+#ifdef MPIPARALLEL
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,0,1,
+     &                              my_index,nslaves,izfsslave,
+     &                              whosendingleft,whosendingright)
+#endif
+
+        deallocate(phicoarse,rhocoarse)
         deallocate(res)
 
       endif
@@ -1027,14 +980,20 @@ c     --- Do the loops.
             enddo
 
             r = 0.
+            w = 0.
             do iz=izmin,izmax
               do iy=iymin,iymax
                 do ix=ixmin,ixmax
                   r = r + wx(ix-ixmin)*wy(iy-iymin)*wz(iz-izmin)*res(ix,iy,iz)
+                  w = w + wx(ix-ixmin)*wy(iy-iymin)*wz(iz-izmin)
                 enddo
               enddo
             enddo
-            rhocoarse(ixcoarse,iycoarse,izcoarse) = w*r
+            if (w > 0.) then
+              rhocoarse(ixcoarse,iycoarse,izcoarse) = r*ff/w
+            else
+              rhocoarse(ixcoarse,iycoarse,izcoarse) = 0.
+            endif
 
           enddo
         enddo
@@ -2765,7 +2724,7 @@ c=============================================================================
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
-      logical(ISZ):: partialcoarsening
+      real(kind=8):: mingridsize
 
 c     --- Only do this calculation if it is needed. This
 c     --- is for parallel version. There, this is a global operation and
@@ -2776,11 +2735,6 @@ c     --- skip it.
       if (maxval(conductors%levellx) > 1 .or.
      &    maxval(conductors%levelly) > 1 .or.
      &    maxval(conductors%levellz) > 1) return
-
-c     call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,iszzero,1.,1.,1.,
-c    &                      conductors,
-c    &                      my_index,nslaves,izfsslave,nzfsslave)
-
 
       mglevel = 0
       izfsslavef = izfsslave
@@ -2826,33 +2780,26 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfullfine/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
+        mingridsize = min(dxfine,dyfine)
+        mingridsize = min(mingridsize,dzfine)
+
+        if (dxfine > 4./3.*mingridsize) then
+          nxcoarse = nxfine
+        endif
+        if (dyfine > 4./3.*mingridsize) then
+          nycoarse = nyfine
+        endif
+        if (dzfine > 4./3.*mingridsize) then
+          nzcoarse = nzfine
+          nzfullcoarse = nzfullfine
+        endif
+
         dxcoarse = dxfine*nxfine/nxcoarse
         dycoarse = dyfine*nyfine/nycoarse
         dzcoarse = dzfine*nzfullfine/nzfullcoarse
         cxf = dxcoarse/dxfine
         cyf = dycoarse/dyfine
         czf = dzcoarse/dzfine
-
-c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
-c       --- all axis.
-        partialcoarsening = (dzfine > 4./3.*dxfine)
-
-#ifdef MPIPARALLEL
-c       --- This must be a global operation since, due to roundoff, each
-c       --- processor can get a different value if dz == 4./3.*dx.
-c       if (nslaves > 1) call parallellor(partialcoarsening)
-#endif
-
-        if (partialcoarsening) then
-          nxfine = nxcoarse
-          nyfine = nycoarse
-          nzfullfine = nzfullfine
-          dxfine = dxcoarse
-          dyfine = dycoarse
-          mglevel = mglevel + 1
-          lx = lx*cxf
-          ly = ly*cyf
-        else
 
 #ifdef MPIPARALLEL
 c         --- Find domains in coarser grid
@@ -2876,100 +2823,11 @@ c         --- Set new value of nz
           izfsslavef = izfsslavec
           nzfsslavef = nzfsslavec
 
-        endif
       enddo
 
       return
       end
 c=============================================================================
-      RECURSIVE subroutine getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,
-     &                                      mglevel,lx,ly,lz,
-     &                                      conductors,
-     &                                      my_index,nslaves,izfsslave,nzfsslave)
-      use ConductorTypemodule
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: dx,dy,dz
-      integer(ISZ):: mglevel
-      real(kind=8):: lx,ly,lz
-      type(ConductorType):: conductors
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-
-c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
-
-      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
-      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
-      logical(ISZ):: partialcoarsening
-      integer(ISZ):: iszone=1
-
-#ifdef MPIPARALLEL
-      conductors%leveliz(mglevel) = izfsslave(my_index)
-      conductors%levelnz(mglevel) = nzfsslave(my_index)
-#else
-      conductors%leveliz(mglevel) = 0
-      conductors%levelnz(mglevel) = nz
-#endif
-      conductors%levellx(mglevel) = lx
-      conductors%levelly(mglevel) = ly
-      conductors%levellz(mglevel) = lz
-      conductors%levels = mglevel + 1
-
-      if (nx < 4 .or. ny < 4 .or. nzfull < 4 .or. mglevel == 100) return
-
-c     --- Calculate the size of the next coarsest grid. If the current
-c     --- size is twice and odd integer, the next coarsest size will be
-c     --- n/2+1, gauranteeing that it is even.
-c     --- Note that nzcoarse is only used if full-coarsening is done.
-      nxcoarse = nx/2
-      if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
-      nycoarse = ny/2
-      if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
-      nzcoarse = nz/2
-      if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
-      nzfullcoarse = nzfull/2
-      if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
-
-      dxcoarse = dx*nx/nxcoarse
-      dycoarse = dy*ny/nycoarse
-      dzcoarse = dz*nzfull/nzfullcoarse
-      cxf = dxcoarse/dx
-      cyf = dycoarse/dy
-      czf = dzcoarse/dz
-
-c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
-c     --- all axis.
-      partialcoarsening = (dz > 4./3.*dx)
-
-#ifdef MPIPARALLEL
-c     --- This must be a global operation since, due to roundoff, each
-c     --- processor can get a different value if dz == 4./3.*dx.
-c     if (nslaves > 1) call parallellor(partialcoarsening)
-#endif
-
-      if (partialcoarsening) then
-        call getmglevelsrecur(nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,dz,
-     &                        mglevel+iszone,lx*cxf,ly*cyf,lz,conductors,
-     &                        my_index,nslaves,izfsslave,nzfsslave)
-      else
-
-#ifdef MPIPARALLEL
-c       --- Find domains in coarser grid
-        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                  nzfull,nzfullcoarse)
-c       --- Set new value of nz
-        nzcoarse = nzfsslavec(my_index)
-#endif
-
-        call getmglevelsrecur(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
-     &                        dxcoarse,dycoarse,dzcoarse,
-     &                        mglevel+iszone,lx*cxf,ly*cyf,lz*czf,conductors,
-     &                        my_index,nslaves,izfsslavec,nzfsslavec)
-
-      endif
-
-      return
-      end
 c=============================================================================
 c=============================================================================
 c     --- These were only needed to get around a compiler bug that appears
@@ -4120,8 +3978,7 @@ c=============================================================================
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
-      real(kind=8):: dxsqi,dzsqi
-      logical(ISZ):: partialcoarsening
+      real(kind=8):: dxsqi,dzsqi,mingridsize
       real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
       real(kind=8),allocatable:: res(:,:)
       integer(ISZ):: i,iszone=1
@@ -4236,8 +4093,12 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfull/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
-        partialcoarsening = (dz > 4./3.*dx)
-        if (partialcoarsening) then
+        mingridsize = min(dx,dz)
+
+        if (dx > 4./3.*mingridsize) then
+          nxcoarse = nx
+        endif
+        if (dz > 4./3.*mingridsize) then
           nzcoarse = nz
           nzfullcoarse = nzfull
         endif
