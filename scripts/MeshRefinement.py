@@ -724,6 +724,16 @@ not be fetched from there (it is set negative).
       if not block.isactive: continue
       self.__class__.__bases__[1].averagesourcepwithsubcycling(block)
 
+  def saveprevioussource(self):
+    for block in self.listofblocks:
+      if not block.isactive: continue
+      self.__class__.__bases__[1].saveprevioussource(block)
+
+  def averagewithprevioussource(self,param):
+    for block in self.listofblocks:
+      if not block.isactive: continue
+      self.__class__.__bases__[1].averagewithprevioussource(block,param)
+
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid,lrootonly=0):
     """
 Given the list of particles, a charge and a weight, deposits the charge
