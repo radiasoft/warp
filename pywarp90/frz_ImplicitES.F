@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.9 $, $Date: 2007/04/24 21:37:36 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.10 $, $Date: 2007/04/26 18:12:03 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -432,7 +432,7 @@ c=============================================================================
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
-      logical(ISZ):: partialcoarsening
+      real(kind=8):: mingridsize
       real(kind=8),pointer:: coeffs(:,:,:,:)
       real(kind=8),allocatable:: phicoarse(:,:),rhocoarse(:,:)
       real(kind=8),allocatable:: chi0coarse(:,:,:),bongridcoarse(:,:,:)
@@ -542,8 +542,13 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfull/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
-        partialcoarsening = (dz > 4./3.*dx)
-        if (partialcoarsening) then
+        mingridsize = min(dx,dy)
+        mingridsize = min(mingridsize,dz)
+
+        if (dx > 4./3.*mingridsize) then
+          nxcoarse = nx
+        endif
+        if (dz > 4./3.*mingridsize) then
           nzcoarse = nz
           nzfullcoarse = nzfull
         endif

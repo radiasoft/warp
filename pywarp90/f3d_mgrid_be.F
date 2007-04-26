@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.32 $, $Date: 2007/04/24 21:34:02 $
+c version $Revision: 1.33 $, $Date: 2007/04/26 18:12:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -289,7 +289,7 @@ c=============================================================================
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dysqi,dzsqi
-      logical(ISZ):: partialcoarsening
+      real(kind=8):: mingridsize
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8),allocatable:: Lphi(:,:,:),Lphicoarse(:,:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:,:)
@@ -356,8 +356,16 @@ c       --- Note that nzcoarse is only used if full-coarsening is done.
         nzfullcoarse = nzfull/2
         if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
 
-        partialcoarsening = (dz > 4./3.*dx)
-        if (partialcoarsening) then
+        mingridsize = min(dx,dy)
+        mingridsize = min(mingridsize,dz)
+
+        if (dx > 4./3.*mingridsize) then
+          nxcoarse = nx
+        endif
+        if (dy > 4./3.*mingridsize) then
+          nycoarse = ny
+        endif
+        if (dz > 4./3.*mingridsize) then
           nzcoarse = nz
           nzfullcoarse = nzfull
         endif
@@ -581,10 +589,15 @@ c Restrict to a coarser grid.
 
 c     --- Set the loop limits, always including edges.
       dx = 1.*nx/nxcoarse
-      dy = 1.*ny/nycoarse
-      dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
-      dyi = 1.*nycoarse/ny
+      if (ny > 0) then
+        dy = 1.*ny/nycoarse
+        dyi = 1.*nycoarse/ny
+      else
+        dy = 1.
+        dyi = 1.
+      endif
+      dz = 1.*nzfull/nzfullcoarse
       dzi = 1.*nzfullcoarse/nzfull
 
 c     --- Do the loops.
