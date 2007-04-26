@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.154 2007/04/07 23:01:13 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.155 2007/04/26 23:26:40 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1620,6 +1620,8 @@ Constructor arguments:
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   - gridrz: RZ grid block to consider
+  - my_index,nslaves,izslave,nzslave: information for parallelization
+  - solver=w3d: object from which to get the grid size information
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata(installrz,gridmode) to install the data into the WARP database.
   """
@@ -1630,7 +1632,8 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                     installrz=1,gridrz=None,
-                    my_index=None,nslaves=None,izslave=None,nzslave=None):
+                    my_index=None,nslaves=None,izslave=None,nzslave=None,
+                    solver=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1639,23 +1642,29 @@ Creates a grid object which can generate conductor data.
     if self.zbeam is None: zbeam = top.zbeam
     else:                  zbeam = self.zbeam
 
-    self.nx = _default(nx,w3d.nx)
-    self.ny = _default(ny,w3d.ny)
-    self.nz = _default(nz,w3d.nz)
-    self.nzfull = _default(nzfull,w3d.nzfull)
+    if solver is None:
+      solver = w3d
+      solvertop = top
+    else:
+      solvertop = solver
+
+    self.nx = _default(nx,solver.nx)
+    self.ny = _default(ny,solver.ny)
+    self.nz = _default(nz,solver.nz)
+    self.nzfull = _default(nzfull,solver.nzfull)
     if self.nzfull == 0: self.nzfull = self.nz
-    self.xmmin = _default(xmmin,w3d.xmmin)
-    self.ymmin = _default(ymmin,w3d.ymmin)
-    self.zmmin = _default(zmmin,w3d.zmminglobal)
-    self.xmmax = _default(xmmax,w3d.xmmax)
-    self.ymmax = _default(ymmax,w3d.ymmax)
-    self.zmmax = _default(zmmax,w3d.zmmaxglobal)
-    self.l2symtry = _default(l2symtry,w3d.l2symtry)
-    self.l4symtry = _default(l4symtry,w3d.l4symtry)
-    self.my_index = _default(my_index,top.my_index)
-    self.nslaves = _default(nslaves,top.nslaves)
-    self.izslave = _default(izslave,top.izfsslave)
-    self.nzslave = _default(nzslave,top.nzfsslave)
+    self.xmmin = _default(xmmin,solver.xmmin)
+    self.ymmin = _default(ymmin,solver.ymmin)
+    self.zmmin = _default(zmmin,solver.zmminglobal)
+    self.xmmax = _default(xmmax,solver.xmmax)
+    self.ymmax = _default(ymmax,solver.ymmax)
+    self.zmmax = _default(zmmax,solver.zmmaxglobal)
+    self.l2symtry = _default(l2symtry,solver.l2symtry)
+    self.l4symtry = _default(l4symtry,solver.l4symtry)
+    self.my_index = _default(my_index,solvertop.my_index)
+    self.nslaves = _default(nslaves,solvertop.nslaves)
+    self.izslave = _default(izslave,solvertop.izfsslave)
+    self.nzslave = _default(nzslave,solvertop.nzfsslave)
     
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
