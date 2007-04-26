@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.56 2006/10/06 22:15:38 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.57 2007/04/26 23:33:31 dave Exp $"
 
 
 ##############################################################################
@@ -308,7 +308,11 @@ set when a current is specified"""
     top.inject = _oinject
 
     # --- turn off field solver
-    top.fstype = -1
+    solver = getregisteredsolver()
+    if solver is None:
+      top.fstype = -1
+    else:
+      solver.ldosolve = 0
 
     # --- Also, turn off the before and afterfs calls. This is done in case
     # --- the user has defined these functions, so they are not called at every
@@ -327,19 +331,23 @@ set when a current is specified"""
 
     # --- If rhoparam is not None, then save the previous rho
     if rhoparam is not None:
-     if(w3d.solvergeom<>w3d.RZgeom):
-      rhoprevious = w3d.rho + 0.
-     else:
-       for ig in range(frz.ngrids):
-         if(ig==0):
-           g = frz.basegrid
-           rhoprevious = [g.rho.copy()]
-         else:
-           try:
-             g = g.next
-           except:
-             g = g.down
-           rhoprevious = rhoprevious+[g.rho.copy()]
+      solver = getregisteredsolver()
+      if solver is None:
+        if(w3d.solvergeom<>w3d.RZgeom):
+         rhoprevious = w3d.rho + 0.
+        else:
+          for ig in range(frz.ngrids):
+            if(ig==0):
+              g = frz.basegrid
+              rhoprevious = [g.rho.copy()]
+            else:
+              try:
+                g = g.next
+              except:
+                g = g.down
+              rhoprevious = rhoprevious+[g.rho.copy()]
+      else:
+        solver.saveprevioussource()
 
     # --- Zero the charge density array
     # --- A call to loadrho is made since it will zero the charge density
@@ -515,20 +523,24 @@ set when a current is specified"""
     # --- If rhoparam is not None, mix in the previous rho with the
     # --- new rho
     if rhoparam is not None:
-     if(w3d.solvergeom<>w3d.RZgeom): 
-      w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
-     else:
-      frz.distribute_rho_rz()
-      for ig in range(frz.ngrids):
-        if(ig==0):
-          g = frz.basegrid
+      solver = getregisteredsolver()
+      if solver is None:
+        if(w3d.solvergeom<>w3d.RZgeom): 
+         w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
         else:
-          try:
-            g = g.next
-          except:
-            g = g.down
-        g.rho = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
-#       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
+         frz.distribute_rho_rz()
+         for ig in range(frz.ngrids):
+           if(ig==0):
+             g = frz.basegrid
+           else:
+             try:
+               g = g.next
+             except:
+               g = g.down
+           g.rho = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
+#          mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
+      else:
+        solver.averagewithprevioussource(rhoparam)
 
     # --- Restore the logicals for before and afterfs
     w3d.lbeforefs = lbeforefssave
@@ -537,7 +549,10 @@ set when a current is specified"""
     # --- Do field solve including newly accumulated charge density.
     top.fstype = _ofstype
     fieldsol(-1,lbeforefs=1,lafterfs=1)
-    top.fstype = -1
+    if solver is None:
+      top.fstype = -1
+    else:
+      solver.ldosolve = 0
 
     # --- Do final work for zmoments calculation
     if ((i == iter-1 or (gun_iter%nhist) == 0) and top.ifzmmnt > 0):
