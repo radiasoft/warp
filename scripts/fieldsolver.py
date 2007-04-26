@@ -862,7 +862,10 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- Note that the grid location is advanced even if no field solve
     # --- is being done.
     self.advancezgrid()
-    if not self.ldosolve: return
+    # --- If ldosolve is false, then skip the gather of rho, unless
+    # --- lzero is also false, in which case the solver is assumed to
+    # --- be gathering the source (for example during an EGUN iteration).
+    if not self.ldosolve and lzero: return
     if lzero is None: lzero = w3d.lzerorhofsapi
     self.allocatedataarrays()
     if lzero: self.zerosourcep()
@@ -1187,4 +1190,16 @@ of the arrays used by the field solve"""
           tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,0,...]
         else:
           tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,1,...]
+
+  def saveprevioussource(self):
+    # --- This is needed by the EGUN method, which needs the previous rho. Note
+    # --- that the subycling and selfb are ignored here since those models
+    # --- don't make sense with the EGUN mode.
+    self.sourceprevious = self.returnsource(0,0).copy()
+
+  def averagewithprevioussource(self,param):
+    # --- This is used by the EGUN method, to average the source over multiple
+    # --- iterations.
+    source = self.returnsource(0,0)
+    source[...] = (1.-param)*source + param*self.sourceprevious
 
