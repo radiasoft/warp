@@ -278,7 +278,8 @@ the diagnostic is of interest and is meaningfull.
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
                     'ldosolve':1,
-                    'gridvz':None}
+                    'gridvz':None,
+                    }
 
   def __init__(self,**kw):
     try:
@@ -444,6 +445,9 @@ the diagnostic is of interest and is meaningfull.
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
     self.iz_axis = nint(-self.zmminglobal/self.dz)
+
+    # --- Some flags
+    self.sourcepfinalized = 1
 
   def processdefaultsfrompackage(self,defaults,package,kw):
     for name in defaults:
@@ -901,26 +905,33 @@ class SubcycledPoissonSolver(FieldSolver):
 
         self.setsourcep(js,top.pgroup,self.getzgridndts()[indts])
 
-    if lzero:
-      for indts in range(top.nsndts):
-        if top.ldts[indts]:
-          for iselfb in range(top.nsselfb):
-            self.setsourcepforparticles(0,indts,iselfb)
-            self.aftersetsourcep(lzero)
+    # --- Only finalize the source if lzero is true, which means the this
+    # --- call to loadsource should be a complete operation.
+    self.sourcepfinalized = 0
+    if lzero: self.finalizesourcep()
 
-      self.averagesourcepwithsubcycling()
-
-      tmpnsndts = getnsndtsforsubcycling()
-      for indts in range(tmpnsndts-1,-1,-1):
-        if (not top.ldts[indts] and
-            ((top.ndtsaveraging == 0 or top.ndtsaveraging == 1)
-             and not sum(top.ldts))): cycle
+  def finalizesourcep(self):
+    if self.sourcepfinalized: return
+    self.sourcepfinalized = 1
+    for indts in range(top.nsndts):
+      if top.ldts[indts]:
         for iselfb in range(top.nsselfb):
-          isndts = min(indts,top.nsndtsphi)
-          self.setsourceforfieldsolve(top.nrhopndtscopies-1,isndts,iselfb)
-          self.makesourceperiodic()
+          self.setsourcepforparticles(0,indts,iselfb)
+          self.aftersetsourcep()
 
-  def aftersetsourcep(self,lzero):
+    self.averagesourcepwithsubcycling()
+
+    tmpnsndts = getnsndtsforsubcycling()
+    for indts in range(tmpnsndts-1,-1,-1):
+      if (not top.ldts[indts] and
+          ((top.ndtsaveraging == 0 or top.ndtsaveraging == 1)
+           and not sum(top.ldts))): cycle
+      for iselfb in range(top.nsselfb):
+        isndts = min(indts,top.nsndtsphi)
+        self.setsourceforfieldsolve(top.nrhopndtscopies-1,isndts,iselfb)
+        self.makesourceperiodic()
+
+  def aftersetsourcep(self):
     "Anything that needs to be done to sourcep after the deposition"
     pass
 
@@ -1045,6 +1056,10 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def solve(self,iwhich=0):
     if not self.ldosolve: return
+    # --- This is only needed in cases when the source is accumulated over
+    # --- multiple steps, and can only be finalized (e.g. made periodic)
+    # --- at this point.
+    self.finalizesourcep()
     self.allocatedataarrays()
     # --- Loop over the subcyling groups and do any field solves that
     # --- are necessary.
