@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.58 2007/04/27 21:14:02 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.59 2007/04/27 23:06:18 dave Exp $"
 
 
 ##############################################################################
@@ -334,7 +334,7 @@ set when a current is specified"""
       solver = getregisteredsolver()
       if solver is None:
         if(w3d.solvergeom<>w3d.RZgeom):
-         rhoprevious = w3d.rho + 0.
+          rhoprevious = w3d.rho + 0.
         else:
           for ig in range(frz.ngrids):
             if(ig==0):
@@ -537,7 +537,7 @@ set when a current is specified"""
                g = g.next
              except:
                g = g.down
-           g.rho = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
+           g.rho[...] = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
 #          mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
       else:
         solver.averagewithprevioussource(rhoparam)
