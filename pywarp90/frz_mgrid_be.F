@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.27 $, $Date: 2007/04/27 21:23:43 $
+c version $Revision: 1.28 $, $Date: 2007/04/27 22:30:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -16,7 +16,6 @@ c=============================================================================
       use PSOR3d
       use Conductor3d
       use Multigrid3d
-      use Constant
       use InGen3d, only:solvergeom,RZgeom
       use Constant, only:eps0
       use Parallel
@@ -769,7 +768,7 @@ c       precompute Boltzmann factor and some other arrays
                 call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
                 call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
                 if (iondensitytmp .ne. 0. .and.
-     &              electrontemperature(id) .ne. 0) then
+     &              electemptmp .ne. 0) then
                   expo=(phi(ix,iz)-plasmapotential(id))/electemptmp
                   if (.not. luselinboltz) then
                      boltzfac(ix,iz) = exp(min(expo,logelecdenmaxscale(id)))
@@ -1242,6 +1241,11 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
+c     --- These are set here to avoid complaints from valgrind about
+c     --- uninitialized variables.
+      iondensitytmp = 0.
+      electemptmp = 0.
+
 c     precompute Boltzmann factor and some other arrays
       do ix = ixmin,ixmax
          do iz = izmin,izmax
@@ -1252,7 +1256,7 @@ c     precompute Boltzmann factor and some other arrays
                call getlocaldens(ix,iz,dx,dz,id,iondenstmp)
                call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
                if (iondensitytmp .ne. 0. .and.
-     &              electrontemperature(id) .ne. 0) then
+     &              electemptmp .ne. 0) then
                   expo=(phi(ix,iz)-plasmapotential(id))/electemptmp
                   if (.not. luselinboltz) then
                      boltzfac(ix,iz) = exp(min(expo,logelecdenmaxscale(id)))
