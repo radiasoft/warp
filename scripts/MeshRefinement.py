@@ -766,14 +766,12 @@ relative to the parent.
                                                        wght[i:i+n],q,w,zgrid)
       i = i + n
 
-  def aftersetsourcep(self,lzero):
+  def aftersetsourcep(self):
     # --- distribute charge density among blocks
-    if lzero:
-      # --- propagate sourcep between blocks
-      self.getsourcepfromoverlaps()
-      self.gathersourcepfromchildren()
-      self.exchangesourcepwithneighbors()
-      self.restoresourcepinoverlaps()
+    self.getsourcepfromoverlaps()
+    self.gathersourcepfromchildren()
+    self.exchangesourcepwithneighbors()
+    self.restoresourcepinoverlaps()
 
   def exchangesourcepwithneighbors(self):
     """
