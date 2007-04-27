@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.26 $, $Date: 2007/04/24 21:37:36 $
+c version $Revision: 1.27 $, $Date: 2007/04/27 21:23:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -1503,6 +1503,7 @@ c         --- calculate the new phi based on the boundary conditions
             if (regionid(ix,iz) > 0) then
               id = regionid(ix,iz)
               call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
+              call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
               if (iondensitytmp .ne. 0. .and.
      &            electemptmp .ne. 0) then
                 expo = (pik - plasmapotential(id))/electemptmp
