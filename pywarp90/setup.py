@@ -37,16 +37,8 @@ builddir = dummybuild.build_temp
 
 warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho','em2d']
 
-# --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
-# --- files are always put in a build/temp directory relative to where the
-# --- source file is, rather than relative to the main build directory.
-if sys.hexversion >= 0x020300f0:
-  pymodprefix = builddir
-else:
-  pymodprefix = ''
-
 def makeobjects(pkg):
-  return [pkg+'.o',pkg+'_p.o',os.path.join(pymodprefix,pkg+'pymodule.o')]
+  return [pkg+'.o',pkg+'_p.o',pkg+'pymodule.o']
 
 warpobjects = []
 for pkg in warppkgs:
@@ -74,6 +66,14 @@ if parallel:
   library_dirs = fcompiler.libdirs + ['/usr/lpp/ppe.poe/lib']
   libraries = fcompiler.libs + ['mpi']
   #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
+
+# --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
+# --- files are always put in a build/temp directory relative to where the
+# --- source file is, rather than relative to the main build directory.
+# --- This tells distutils to put the objects in the same directory
+# --- as the source files.
+if sys.hexversion >= 0x020300f0:
+  sys.argv += ['--build-temp','']
 
 setup (name = "warpC",
        version = '3.0',
