@@ -271,14 +271,14 @@ class MultiGridRZ(SubcycledPoissonSolver):
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
-           self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
+           self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     #ey[...] = 0.
 
@@ -531,14 +531,14 @@ class MultiGrid2D(SubcycledPoissonSolver):
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
-           self.nx+2,self.ny,self.nz,self.efetch,
+           self.nx+2,self.ny,self.nz,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     #ey[...] = 0.
 
@@ -582,7 +582,7 @@ class MultiGrid2D(SubcycledPoissonSolver):
       potentialp = self.convert2dto3d(self.potentialp)
       getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
                             self.nxp,self.nyp,self.nzp,potentialp,1,0,1)
-    if self.efetch == 3:
+    if sometrue(top.efetch == 3):
       # --- This probably doesn't work without fixes XXX
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
@@ -892,14 +892,14 @@ Initially, conductors are not implemented.
     self.sourcep[...,0] += sourcep[:,0,:]
     self.sourcep[...,iimp+1] += sourcep[:,0,:]*q/m
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
-           self.nx+2*self.nguardx,self.ny,self.nz,self.efetch,
+           self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     #ey[...] = 0.
 
@@ -944,7 +944,7 @@ Initially, conductors are not implemented.
       potentialp = self.convert2dto3d(self.potentialp)
       getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
                             self.nxp,self.nyp,self.nzp,potentialp,self.nguardx,0,1)
-    if self.efetch == 3:
+    if sometrue(top.efetch == 3):
       # --- This probably doesn't work without fixes XXX
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)

@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.25 2007/04/17 23:28:14 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.26 2007/05/02 21:38:27 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -200,7 +200,7 @@ Resizes the transverse size of the mesh
     w3d.iy_axis = nint(-w3d.ymmin/w3d.dy)
 
   # --- Fix selfe if needed
-  if top.efetch == 3:
+  if sometrue(top.efetch == 3):
     w3d.nx_selfe = w3d.nxp
     w3d.ny_selfe = w3d.nyp
     gchange('Efields3d')

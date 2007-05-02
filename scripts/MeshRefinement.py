@@ -1060,14 +1060,14 @@ gives a better initial guess for the field solver.
         if not block.isactive: continue
         self.__class__.__bases__[1].setfieldpforparticles(block,*args)
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- The fetchfield without sorting everything is faster, so use it.
     # --- It is faster because the extra sorting takes a not insignificant
     # --- amount of time, more than unsorting the E arrays.
-    self.fetchfieldfrompositionswithoutsort(x,y,z,ex,ey,ez,bx,by,bz,pgroup)
-    #self.fetchfieldfrompositionswithpsort(x,y,z,ex,ey,ez,bx,by,bz,pgroup)
+    self.fetchfieldfrompositionswithoutsort(x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
+    #self.fetchfieldfrompositionswithpsort(x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
 
-  def fetchfieldfrompositionswithsort(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositionswithsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     """
 Given the list of particles, fetch the E fields.
 This first gets the blocknumber of the block where each of the particles are
@@ -1102,7 +1102,7 @@ Also, this ends up with the input data remaining sorted.
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                          x[i:i+n],y[i:i+n],z[i:i+n],
                                          ex[i:i+n],ey[i:i+n],ez[i:i+n],
-                                         bx[i:i+n],by[i:i+n],bz[i:i+n],pgroup)
+                                         bx[i:i+n],by[i:i+n],bz[i:i+n],js,pgroup)
       if pgroup is not None and top.chdtspid > 0:
         ipmin = w3d.ipminfsapi - 1 + i
         pgroup.pid[ipmin:ipmin+n,top.dxpid-1] = block.dx
@@ -1110,7 +1110,7 @@ Also, this ends up with the input data remaining sorted.
         pgroup.pid[ipmin:ipmin+n,top.dzpid-1] = block.dz
       i = i + n
 
-  def fetchfieldfrompositionswithoutsort(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositionswithoutsort(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     """
 This is the old version of fetchfieldfrompositions that doesn't rely on having
 access to the particle group and does not sort the input data.
@@ -1152,7 +1152,7 @@ access to the particle group and does not sort the input data.
       self.__class__.__bases__[1].fetchfieldfrompositions(block,
                                       x[i:i+n],y[i:i+n],z[i:i+n],
                                       tex[i:i+n],tey[i:i+n],tez[i:i+n],
-                                      tbx[i:i+n],tby[i:i+n],tbz[i:i+n],pgroup)
+                                      tbx[i:i+n],tby[i:i+n],tbz[i:i+n],js,pgroup)
       if pgroup is not None and top.chdtspid > 0:
         tdx[i:i+n] = block.dx
         tdy[i:i+n] = block.dy

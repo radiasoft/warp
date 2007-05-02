@@ -14,7 +14,7 @@ class FieldSolver3dBase(object):
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __f3dinputs__ = []
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','nslaves']
   __flaginputs__ = {'forcesymmetries':1}
 
   def __init__(self,useselfb=0,**kw):
@@ -130,7 +130,7 @@ class FieldSolver3dBase(object):
     self.rho = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
     self.phi = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
     self.rstar = fzeros(3+self.nz,'d')
-    if self.efetch == 3:
+    if sometrue(top.efetch == 3):
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
       self.nx_selfe = self.nx
       self.ny_selfe = self.ny
@@ -170,12 +170,12 @@ class FieldSolver3dBase(object):
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
 
-  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions(self,js,x,y,z,ex,ey,ez):
     n = len(x)
     if n == 0: return
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
@@ -254,7 +254,7 @@ class FieldSolver3dBase(object):
       status = request.wait()
 
   def fetche(self):
-    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+    self.fetchefrompositions(w3d.jsfsapi,w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
   def fetchb(self):
@@ -594,11 +594,11 @@ Transverse 2-D field solver, ignores self Ez and Bz.
   def fetche(self):
 
     if w3d.jsfsapi == self.beamspecies:
-      self.beamsolver.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+      self.beamsolver.fetchefrompositions(w3d.jsfsapi,w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                                           w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
       if self.ignorebeamez: w3d.ezfsapi = 0.
     else:
-      self.backgroundsolver.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,
+      self.backgroundsolver.fetchefrompositions(w3d.jsfsapi,w3d.xfsapi,w3d.yfsapi,
                                                 w3d.zfsapi,
                                                 w3d.exfsapi,w3d.eyfsapi,
                                                 w3d.ezfsapi)

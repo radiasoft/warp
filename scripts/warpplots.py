@@ -14,7 +14,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.192 2007/04/17 23:36:22 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.193 2007/05/02 21:38:26 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3495,7 +3495,7 @@ be from none to all three.
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if top.efetch != 3 or solver.nx_selfe == 0:
+  if alltrue(top.efetch != 3) or solver.nx_selfe == 0:
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
     solver.nx_selfe = solver.nxp

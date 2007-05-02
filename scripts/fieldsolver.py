@@ -69,7 +69,7 @@ package. Only w3d and wxy have field solves defined.
   # --- Now do extra work, updating arrays which depend directly on phi,
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
-    if (top.efetch == 3 and top.fstype != 12 and
+    if (sometrue(top.efetch == 3) and top.fstype != 12 and
         (w3d.solvergeom == w3d.XYZgeom or
          w3d.solvergeom == w3d.RZgeom or
          w3d.solvergeom == w3d.XZgeom or
@@ -272,7 +272,7 @@ the diagnostic is of interest and is meaningfull.
                    'zmminglobal','zmmaxglobal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch',
+  __topinputs__ = ['pbound0','pboundnz','pboundxy',
                    'my_index','nslaves','lfsautodecomp','zslave','lautodecomp',
                    'debug']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
@@ -980,27 +980,29 @@ class SubcycledPoissonSolver(FieldSolver):
       bz = w3d.pgroupfsapi.bz[ipmin-1:ipmin-1+w3d.npfsapi]
       pgroup = w3d.pgroupfsapi
 
-    if self.debug and self.efetch != 5:
-      js = w3d.jsfsapi
+    jsid = w3d.jsfsapi
+    if jsid < 0: js = 0
+    else:        js = jsid
+
+    if self.debug and top.efetch[js] != 5:
       if self.nx > 0:
         assert min(abs(x-self.xmmin)) >= 0.,\
-               "Particles in species %d have x below the grid when fetching the field"%js
+               "Particles in species %d have x below the grid when fetching the field"%jsid
         assert max(x) < self.xmmax,\
-               "Particles in species %d have x above the grid when fetching the field"%js
+               "Particles in species %d have x above the grid when fetching the field"%jsid
       if self.ny > 0:
         assert min(abs(y-self.ymmin)) >= 0.,\
-               "Particles in species %d have y below the grid when fetching the field"%js
+               "Particles in species %d have y below the grid when fetching the field"%jsid
         assert max(y) < self.ymmax,\
-               "Particles in species %d have y above the grid when fetching the field"%js
+               "Particles in species %d have y above the grid when fetching the field"%jsid
       if self.nz > 0:
         assert min(z) >= self.zmmin+self.getzgridprv(),\
-               "Particles in species %d have z below the grid when fetching the field"%js
+               "Particles in species %d have z below the grid when fetching the field"%jsid
         assert max(z) < self.zmmax+self.getzgridprv(),\
-               "Particles in species %d have z above the grid when fetching the field"%js
+               "Particles in species %d have z above the grid when fetching the field"%jsid
 
-    args = [x,y,z,ex,ey,ez,bx,by,bz,pgroup]
+    args = [x,y,z,ex,ey,ez,bx,by,bz,jsid,pgroup]
 
-    jsid = w3d.jsfsapi
     if jsid < 0: indts = 0
     else:        indts = top.ndtstorho[w3d.ndtsfsapi-1]
 

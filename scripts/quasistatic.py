@@ -134,7 +134,7 @@ class Quasistatic:
             np = iu-il
             # --- gather self-forces
             if self.l_verbose:print 'fieldweight' # MR OK
-            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch)
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch[js])
             if self.l_verbose:print 'epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                     self.ex[:np],self.ey[:np],self.ez[:np],pg.sq[js],pg.sm[js],0.5*self.dt)
@@ -156,7 +156,7 @@ class Quasistatic:
             iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
             np = iu-il
             if self.l_verbose:print 'fieldweight' # MR OK
-            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch)
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch[js])
             if self.l_verbose:print 'epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                     self.ex[:np],self.ey[:np],self.ez[:np],pg.sq[js],pg.sm[js],0.5*self.dt)
@@ -295,7 +295,7 @@ class Quasistatic2:
             np = iu-il
             # --- gather self-forces
             if self.l_verbose:print 'fieldweight' # MR OK
-            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch)
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch[js])
             if self.l_verbose:print 'epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                     self.ex[:np],self.ey[:np],self.ez[:np],pg.sq[js],pg.sm[js],0.5*self.dt)
@@ -317,7 +317,7 @@ class Quasistatic2:
             iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
             np = iu-il
             if self.l_verbose:print 'fieldweight' # MR OK
-            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch)
+            fieldweightxz(pg.xp[il:iu],pg.yp[il:iu],self.ex[:np],self.ey[:np],np,top.zgrid,top.efetch[js])
             if self.l_verbose:print 'epush'
             epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                     self.ex[:np],self.ey[:np],self.ez[:np],pg.sq[js],pg.sm[js],0.5*self.dt)

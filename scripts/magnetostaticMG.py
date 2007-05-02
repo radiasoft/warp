@@ -164,7 +164,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
            self.xmminp,self.ymminp,self.zmminp,
            self.l2symtry,self.l4symtry,self.lcylindrical)
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     n = len(x)
     if n == 0: return
     setb3d(self.fieldp,n,x,y,z,self.getzgridprv(),bx,by,bz,

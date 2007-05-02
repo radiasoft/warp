@@ -103,17 +103,20 @@ class MultiGrid(SubcycledPoissonSolver):
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
 
-    # --- If there are any relativistic groups, them turn on the code
+    # --- If there are any relativistic groups, then turn on the code
     # --- which uses the selfe array.
     if max(top.fselfb) > 0.:
-      self.efetch = 3
+      # --- This is probably redundant, but it shouldn't hurt.
+      # --- This forces all species to use the precalculated E field
+      # --- if any have the B correction.
+      top.efetch = 3
       # --- Number of fields (E and B)
       nfields = 2
     else:
       # --- Number of fields (E only)
       nfields = 1
 
-    if self.efetch == 3:
+    if sometrue(top.efetch == 3):
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
               (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
               (1+self.nxp,1+self.nyp,3+self.nzp))
@@ -189,15 +192,19 @@ class MultiGrid(SubcycledPoissonSolver):
       cond_zerorhointerior(conductorobject.interior,self.nxp,self.nyp,self.nzp,
                            self.sourcep)
 
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,pgroup=None):
+  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    if self.efetch == 3 and isinstance(self.fieldp,FloatType): return
-    if self.efetch != 3 and isinstance(self.potentialp,FloatType): return
+    if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
+    if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
+    if pgroup is None:
+      js = 0
+    else:
+      js = t
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
-           self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,self.efetch,
+           self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
     if max(top.fselfb) > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
@@ -238,7 +245,7 @@ class MultiGrid(SubcycledPoissonSolver):
       if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nx,self.ny,self.nz,self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,0,0,1)
-    if self.efetch == 3:
+    if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
       indts = args[1]
@@ -344,6 +351,7 @@ class MultiGrid(SubcycledPoissonSolver):
                             dfill=top.largepos):
     if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
+
     # --- Note that this uses the conductorobject directly since it is called
     # --- by getconductorobject.
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
