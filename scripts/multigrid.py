@@ -198,10 +198,6 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    if pgroup is None:
-      js = 0
-    else:
-      js = t
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
