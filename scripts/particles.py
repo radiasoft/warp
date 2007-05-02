@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.52 2007/04/13 23:59:37 dave Exp $"
+particles_version = "$Id: particles.py,v 1.53 2007/05/02 21:42:21 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -731,6 +731,40 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   if len(ii) > 0:
     ez = getattrwithsuffix(pgroup,'ez',suffix)
     result = take(ez,ii)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def geter(iw=0,gather=1,bcast=None,**kw):
+  "Returns the Er field applied to the particles"
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+    theta = arctan2(take(y,ii),take(x,ii))
+    result = take(ex,ii)*cos(theta) + take(ey,ii)*sin(theta)
+  else:
+    result = array([],'d')
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getetheta(iw=0,gather=1,bcast=None,**kw):
+  "Returns the Etheta field applied to the particles"
+  if bcast is None: bcast = _particlebcastdefault[0]
+  ii = selectparticles(iw=iw,kwdict=kw)
+  suffix,object,pgroup = _getobjectpgroup(kw)
+  if len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+    theta = arctan2(take(y,ii),take(x,ii))
+    result = -take(ex,ii)*sin(theta) + take(ey,ii)*cos(theta)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
