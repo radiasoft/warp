@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.89 $, $Date: 2007/04/24 21:37:38 $
+c@(#) File w3d_injection.F, version $Revision: 1.90 $, $Date: 2007/05/02 17:57:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1923,7 +1923,6 @@ c=============================================================================
       use Setpwork3d
       use Picglb3d
       use Parallel
-      use Obsolete3d,obs_inj_d=>inj_d,obs_inj_f=>inj_f
       type(ParticleGroup):: pgroup
 
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -2030,27 +2029,6 @@ c     --- Set mins for meshes around each source.
 
 c     --- Set inject z min and max.
       call updateinj_zmminmax()
-
-c Check if the user has set the obsolete values of inj_d or inj_f.
-c If so, then copy values to the new variables in top.
-      if (obs_inj_d /= 0.) then
-        inj_d = obs_inj_d
-        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        call remark("Notice: The variable inj_d has been moved to the top")
-        call remark("        package. Please fix your input files accordingly.")
-        call remark("        Your simulation will run ok now, but in future")
-        call remark("        versions, it will stop with an error.")
-        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-      endif
-      if (obs_inj_f /= 0.) then
-        inj_f = obs_inj_f
-        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        call remark("Notice: The variable inj_f has been moved to the top")
-        call remark("        package. Please fix your input files accordingly.")
-        call remark("        Your simulation will run ok now, but in future")
-        call remark("        versions, it will stop with an error.")
-        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-      endif
 
 c Set value of vzinject for inject==1 if not already set. For other
 c types of injection, vzinject is assumed to be zero, since the starting
