@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.58 $, $Date: 2007/04/20 21:21:39 $
+#@(#) File FRZ.V, version $Revision: 3.59 $, $Date: 2007/05/02 21:34:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.58 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.59 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -289,6 +289,7 @@ getanalyticbtheta(bfield:BFieldGridType) subroutine
          # Performs and optional ananlytic calculation of Btheta
 updateguardcells2d() subroutine
          # update guard cells of 2D multigrid solver
+setrhopandphiprz() subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
