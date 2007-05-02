@@ -1,5 +1,5 @@
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.2 2007/04/03 00:50:49 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.3 2007/05/02 21:41:56 dave Exp $"
 
 from warp import *
 
@@ -44,8 +44,7 @@ Handles implicit time stepping.
     self.zgridold = top.zgrid
     self.zgridprvold = top.zgridprv
     self.zgridndtsold = top.zgridndts.copy()
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
@@ -64,8 +63,7 @@ Handles implicit time stepping.
     top.zgrid = self.zgridold
     top.zgridprv = self.zgridprvold
     top.zgridndts[:] = self.zgridndtsold
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
@@ -78,8 +76,7 @@ Handles implicit time stepping.
         top.pgroup.gaminv[i1:i2] = top.pgroup.pid[i1:i2,self.gaminvoldpid]
 
   def saveOldE(self):
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
@@ -88,8 +85,7 @@ Handles implicit time stepping.
         top.pgroup.pid[i1:i2,self.ezoldpid] = top.pgroup.ez[i1:i2]
 
   def restoreOldE(self,f=1.):
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
@@ -98,8 +94,7 @@ Handles implicit time stepping.
         top.pgroup.ez[i1:i2] = f*top.pgroup.pid[i1:i2,self.ezoldpid]
 
   def averageOldAndNewE(self):
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
         i1 = top.pgroup.ins[js] - 1
         i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
@@ -115,8 +110,7 @@ Handles implicit time stepping.
 
   def fetche(self):
     top.lresetparticlee = true
-    for js in range(top.ns):
-      jsid = top.pgroup.sid[js] - 1
+    for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js]:
         fetche3d(top.pgroup,top.pgroup.ins[js],top.pgroup.nps[js],js+1)
     top.lresetparticlee = false
