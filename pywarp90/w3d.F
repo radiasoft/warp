@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.352 $, $Date: 2007/04/24 21:37:38 $
+c@(#) File W3D.F, version $Revision: 3.353 $, $Date: 2007/05/02 21:31:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -379,7 +379,7 @@ c  Also allocate the dynamic internal lattice arrays.
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
       if (lvdadz) efetch=3
-      if (efetch == 3 .and. fstype < 12 .and.
+      if (ANY(efetch == 3) .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
      &     solvergeom == XZgeom .or.
@@ -883,7 +883,7 @@ c  Field-solve for potential.
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-         if (efetch == 3 .and. fstype < 12 .and.
+         if (ANY(efetch == 3) .and. fstype < 12 .and.
      &        (solvergeom == XYZgeom .or.
      &        solvergeom == RZgeom .or.
      &        solvergeom == XZgeom .or.
@@ -7661,7 +7661,8 @@ c=============================================================================
       use Subtimers3d
       use Picglb
       use Picglb3d
-      use InGen
+      use InGen,Only: fstype
+      use InPart,Only: efetch
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -7709,16 +7710,16 @@ c     --- Zero out the particle's E field if requested (the default)
         indts = min(tmpnsndts-1,ndtstorho(pgroup%ndts(is-1)))
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,efetch,
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,efetch(is),
      &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(pgroup%xp(ipmin),pgroup%zp(ipmin),ex,ez,ip,
-     &                      zgridprv,efetch)
+     &                      zgridprv,efetch(is))
       elseif(solvergeom==XYgeom) then
          call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,0.,
-     &                      efetch)
+     &                      efetch(is))
       elseif(solvergeom==Zgeom) then
          call fieldweightz(pgroup%zp(ipmin),ez,ip,zgridprv)
       elseif(solvergeom==Rgeom) then
@@ -7739,7 +7740,8 @@ c=============================================================================
       use Subtimers3d
       use Picglb
       use Picglb3d
-      use InGen
+      use InGen,Only: fstype
+      use InPart,Only: efetch
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -7755,7 +7757,7 @@ c     --- This is nearly the same as fetche except that the positions
 c     --- are passed in via the argument list rather than through the
 c     --- particles group.
 
-      integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling
+      integer(ISZ):: indts,tmpnsndts,getnsndtsforsubcycling,is
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -7767,6 +7769,13 @@ c     --- Zero out the particle's E field if requested (the default)
         ex = 0.
         ey = 0.
         ez = 0.
+      endif
+
+c     --- Get the species number for efetch
+      if (jsid < 0) then
+        is = 1
+      else
+        is = jsid + 1
       endif
 
       if(fstype == 12) then
@@ -7818,13 +7827,13 @@ c       --- and the data needs to be copied around.
         call sete3d(phipndts(:,:,:,indts),selfe,n,
      &              x,y,z,
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch,ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
+     &              efetch(is),ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
       elseif(solvergeom==RZgeom) then
-        call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch)
+        call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch(is))
       elseif(solvergeom==XZgeom) then
-        call fieldweightxz(x,z,ex,ez,n,zgridprv,efetch)
+        call fieldweightxz(x,z,ex,ez,n,zgridprv,efetch(is))
       elseif(solvergeom==XYgeom) then
-        call fieldweightxz(x,y,ex,ey,n,0.,efetch)
+        call fieldweightxz(x,y,ex,ey,n,0.,efetch(is))
       elseif(solvergeom==Zgeom) then
         call fieldweightz(z,ez,n,zgridprv)
       elseif(solvergeom==Rgeom) then

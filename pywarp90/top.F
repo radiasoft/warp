@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.208 $, $Date: 2007/04/24 21:37:37 $
+c@(#) File TOP.F, version $Revision: 3.209 $, $Date: 2007/05/02 21:31:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3977,6 +3977,7 @@ c=============================================================================
       subroutine setupSelfB(pgroup)
       use ParticleGroupmodule
       use SelfB
+      use InPart,Only: efetch
       type(ParticleGroup):: pgroup
 
 c Setups in the bookkeepping variables and arrays for particle which require
@@ -4007,6 +4008,11 @@ c     --- Find any new species with different fselfb.
           fselfb(nsselfb-1) = pgroup%fselfb(js1)
         endif
       enddo
+
+c     --- When the B correction is being done for any species, then
+c     --- force all species to use efetch version 3, which makes use of the
+c     --- precalculated E field (which will include the inductive effects).
+      if (ANY(pgroup%fselfb .ne. 0.)) efetch = 3
 
       return
       end

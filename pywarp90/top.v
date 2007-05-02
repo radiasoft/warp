@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.199 $, $Date: 2007/04/03 00:35:03 $
+#@(#) File TOP.V, version $Revision: 3.200 $, $Date: 2007/05/02 21:31:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.199 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.200 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -950,13 +950,6 @@ laccumulate_rho           logical /.false./
    # zeroed each time step before the deposition.)
 gamadv                    character*8 /"stndrd"/
    # Specifies type of gamma advance, "stndrd", "fast 1", or "fast 2"
-efetch                    integer /1/
-   # Specifies type of fetch used to set internal E field
-   # 1: direct calculation from phi
-   # 2: direct calculation from phi, vectorization over 8 grid cell corners
-   # 3: indirect calculation from pre-calculated E (finite differences of phi)
-   # Method 3 is generally fastest but requires lots of extra storage space.
-   # Next best is 1.
 lvdadz                    logical /.false./
    # sets on/off calculation of e=dA/dt=vdA/dz
 periinz                   logical /.true./
@@ -1133,6 +1126,17 @@ xpcent_s(ns)   _real    [m]     /0./
    # Center X' of each species
 ypcent_s(ns)   _real    [m]     /0./
    # Center Y' of each species
+
+efetch(ns)     _integer /1/
+   # Specifies type of fetch used to set internal E field
+   # 1: direct calculation from phi
+   # 2: direct calculation from phi, vectorization over 8 grid cell corners
+   #    (not recommended)
+   # 3: indirect calculation from pre-calculated E (finite differences of phi)
+   # 4: energy conserving - uses nearest grid point interpolation
+   # 5: same as 1, but checks for particles out of bounds
+   # Method 3 is generally fastest but requires lots of extra storage space.
+   # Next best is 1.
 
 vtilt           real    [1]   /0./
    # Velocity tilt, vz = vbeam*[1+vtilt*(zmid-z)/(zimax-zimin)]

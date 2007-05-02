@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.24 $, $Date: 2007/04/24 21:37:39 $
+c@(#) File WRZ.M, version $Revision: 3.25 $, $Date: 2007/05/02 21:31:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -316,7 +316,7 @@ c  Call the field solver so  we can plot phi on axis at t=0
 c  Call seterz to fill E_z and E_r arrays
          call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
+     &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call setexte(it,dt,dz,vbeam,nr,nz)
 
 c  If we are looking at a mode which is initially excited, find the index
@@ -615,7 +615,7 @@ c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
 c  Call seterz to fill E_z and E_r arrays
          call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
+     &                efetch(1),er,et,ez,frext,erfld,ezfld,eoffrz)
          call getforce
          call setexte(it,dt,dz,vbeam,nr,nz)
       endif
@@ -1075,11 +1075,11 @@ c  Call seterz to fill E_z and E_r arrays
          if (it .le. 1) then
          call seterz (-1,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
+     &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          else
          call seterz (0,phi,force,1,pgroup%xp(1),pgroup%zp(1),zbeam,
      &                rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
+     &                efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
          endif
          call setexte(it,dt,dz,vbeam,nr,nz)
  
@@ -1088,7 +1088,7 @@ c  Loop over particle block, and move each block seperately
             ip = min(nparpgrp, pgroup%ins(is)+pgroup%nps(is)-ipmin)
             call seterz (1,phi,force,ip,pgroup%xp(ipmin),pgroup%zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
-     &                   efetch,er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
+     &                   efetch(is),er(ipmin),et(ipmin),ez(ipmin),frext,erfld,ezfld,eoffrz)
             call othererz(ip,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
      &                    eearsofz,dr,dz,nr,nz,zmmin,er(ipmin),et(ipmin),ez(ipmin),
@@ -1373,7 +1373,7 @@ c=============================================================================
      &                   erfld,ezfld,eoffrz)
       use Constant
       use LinearBeam
-      use InPart
+      use InPart,Only: zimin,zimax
       integer(ISZ):: np,itask,nr,nz
       real(kind=8):: zbeam,rmmin,zmmin,zmmax,dr,dz,eoffrz
       real(kind=8):: phi(0:nr,-1:nz+1), force(0:nr,0:nz), rp(np), zp(np)

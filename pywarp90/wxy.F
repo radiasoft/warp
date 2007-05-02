@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.81 $, $Date: 2007/04/24 21:37:39 $
+c@(#) File WXY.M, version $Revision: 3.82 $, $Date: 2007/05/02 21:31:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -221,7 +221,7 @@ c  This is a kludge for now to get the arrays setup.
 
 c  Setup arrays for option which uses the selfe.
 
-      if (efetch == 3 .and. fstype < 12) then
+      if (ANY(efetch == 3) .and. fstype < 12) then
         nx_selfe = nxp
         ny_selfe = nyp
         nz_selfe = nzp
@@ -727,7 +727,7 @@ c  Field-solve for potential
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
-      if (efetch == 3)
+      if (ANY(efetch == 3))
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy,.true.)
 
@@ -919,7 +919,7 @@ c=============================================================================
       use Subtimersxy
       use Picglb
       use Picglb3d
-      use InGen
+      use InPart,Only: efetch
       use InGenxy
       use InGen3d
       use InMesh3d
@@ -947,7 +947,7 @@ c         --- the locations where phi is known.
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
      &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry,.false.)
+     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(ipmin:ipmin+ip-1) = zpo
@@ -955,11 +955,11 @@ c         --- in setdtp is still used.
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry,.false.)
+     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.)
         endif
       elseif(solvergeom==XYgeom) then
         call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv,
-     &                     efetch)
+     &                     efetch(is))
       end if
       return
       end
