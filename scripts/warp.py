@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.135 2007/04/17 23:25:49 dave Exp $"
+warp_version = "$Id: warp.py,v 1.136 2007/05/02 21:45:13 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -724,12 +724,41 @@ def fixrestoreswitholdparticlearrays(filename):
                    zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
                    resetrho=false,dofieldsol=false,resetmoments=false)
 
+def fixrestorewithscalarefetch(filename):
+  "If the dump file has efetch as a scalar, broadcast it to the efetch array"
+  ff = PR.PR(filename,verbose=0)
+  efetch = ff.read('efetch@top')
+  if isinstance(efetch,IntType):
+    gchange("InPart")
+    top.efetch = efetch
+  ff.close()
+
+def fixrestorewithbasegridwithoutl_parallel(filename):
+  ff = PR.PR(filename,verbose=0)
+  # --- First check is frz.basegrid is defined
+  if frz.getpyobject('basegrid') is None: return
+
+  try:
+    # --- Then check if the basegrid in the file has the l_parallel attribute
+    ff.read('l_parallel@basegrid@frz')
+  except:
+    # --- if l_parallel is not found, then set it appropriately
+    for i in range(frz.ngrids):
+      if i == 0:
+        g = frz.basegrid
+      else:
+        try:    g = g.next
+        except: g = g.down
+      g.l_parallel = lparallel
+
 def restoreolddump(filename):
-  pass
   #fixrestoresfrombeforeelementoverlaps(filename)
   #fixrestoreswithmomentswithoutspecies(filename)
   #fixrestoreswithoriginalparticlearrays(filename)
   #fixrestoreswitholdparticlearrays(filename)
+  fixrestorewithscalarefetch(filename)
+  fixrestorewithbasegridwithoutl_parallel(filename)
+  pass
 
 ##############################################################################
 ##############################################################################
@@ -831,6 +860,8 @@ Reads in data from file, redeposits charge density and does field solve
   gchange("*")
   # --- Recreate the large field arrays for the built in field solvers.
   setupFields3dParticles()
+  if w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
+    setrhopandphiprz()
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
