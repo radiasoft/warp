@@ -8634,7 +8634,7 @@ end subroutine fieldweightz
 
 subroutine setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
 use ParticleGroupmodule
-use InGen
+use InPart,Only: efetch
 use multigridrz
 use FRZmgrid
 use Efields3d
@@ -8646,7 +8646,7 @@ real(kind=8):: ex(ip),ey(ip),ez(ip)
 
   if(.not.mgridrz_deform) then
     call fieldweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
-                       ex,ey,ez,ip,zgridprv,efetch)
+                       ex,ey,ez,ip,zgridprv,efetch(is))
   else
     if(is==1 .and. ipmin==pgroup%ins(is)) call calc_phi3d_from_phirz()
     call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip, &
@@ -8654,7 +8654,7 @@ real(kind=8):: ex(ip),ey(ip),ez(ip)
                 zgridprv,0.,0.,basegrid%zmin, &
                 basegrid%dr,basegrid%dr,basegrid%dz, &
                 mgridrz_nx,mgridrz_ny,mgridrz_nz, &
-                efetch,ex,ey,ez,l2symtry,l4symtry)
+                efetch(is),ex,ey,ez,l2symtry,l4symtry)
   end if
 
 end subroutine setemgridrz
@@ -10252,6 +10252,31 @@ INTEGER(ISZ) :: i
 
 return
 end subroutine init_gridinit
+
+subroutine setrhopandphiprz()
+USE multigridrz
+INTEGER(ISZ) :: i
+TYPE(GRIDtype), pointer :: g
+
+  ! --- For nonparallel grids, assign rhop and phip to point
+  ! --- to rho and phi.
+  do i = 1, ngrids
+    if (i==1) then
+      g => basegrid
+    else
+      IF(associated(g%next)) then
+        g => g%next
+      else
+        g => g%down
+      END if
+    END if
+    if (.not. g%l_parallel) then
+      g%phip => g%phi
+      g%rhop => g%rho
+    endif
+  end do
+
+end subroutine setrhopandphiprz
 
 subroutine change_loc_part()
 USE multigridrz
