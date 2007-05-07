@@ -277,7 +277,7 @@ the diagnostic is of interest and is meaningfull.
                    'debug']
   __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
-                    'ldosolve':1,
+                    'ldosolve':1,'l_internal_dosolve':1,
                     'gridvz':None,
                     }
 
@@ -522,17 +522,18 @@ the diagnostic is of interest and is meaningfull.
 
   # ---------------------------------------------------------------------
   # --- These routines must at least be defined.
-  def loadrho(self,lzero=true,**kw):
+  def loadrho(self,pgroup=None,lzero=true,**kw):
     'Charge deposition, uses particles from top directly'
+    if pgroup is None: pgroup = top.pgroup
     self.advancezgrid()
     if lzero: self.zerorhop()
 
-    for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,
-                          top.pgroup.nps,top.pgroup.sq,top.pgroup.sw):
+    for js,i,n,q,w in zip(arange(pgroup.ns),pgroup.ins-1,
+                          pgroup.nps,pgroup.sq,pgroup.sw):
       if n > 0:
-        self.setrhop(top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],
-                     top.pgroup.zp[i:i+n],top.pgroup.uzp[i:i+n],
-                     q,w*top.pgroup.dtscale[js])
+        self.setrhop(pgroup.xp[i:i+n],pgroup.yp[i:i+n],
+                     pgroup.zp[i:i+n],pgroup.uzp[i:i+n],
+                     q,w*pgroup.dtscale[js])
 
   def loadj(self,lzero=true,**kw):
     'Charge deposition, uses particles from top directly'
@@ -861,10 +862,11 @@ class SubcycledPoissonSolver(FieldSolver):
     self.setupzgridndts()
 
   # ---------------------------------------------------------------------
-  def loadsource(self,lzero=None,**kw):
+  def loadsource(self,lzero=None,pgroups=None,**kw):
     'Charge deposition, uses particles from top directly'
     # --- Note that the grid location is advanced even if no field solve
     # --- is being done.
+    if pgroups is None: pgroups = [top.pgroup]
     self.advancezgrid()
     # --- If ldosolve is false, then skip the gather of rho, unless
     # --- lzero is also false, in which case the solver is assumed to
@@ -874,36 +876,37 @@ class SubcycledPoissonSolver(FieldSolver):
     self.allocatedataarrays()
     if lzero: self.zerosourcep()
 
-    for js,n in zip(arange(top.pgroup.ns),top.pgroup.nps):
+    for pgroup in pgroups:
+     for js,n in zip(arange(pgroup.ns),pgroup.nps):
       if n == 0: continue
-      if top.pgroup.ldts[js]:
-        indts = top.ndtstorho[top.pgroup.ndts[js]-1]
-        iselfb = top.pgroup.iselfb[js]
+      if pgroup.ldts[js]:
+        indts = top.ndtstorho[pgroup.ndts[js]-1]
+        iselfb = pgroup.iselfb[js]
         self.setsourcepforparticles(0,indts,iselfb)
 
         if self.debug:
-          i1 = top.pgroup.ins[js]-1
-          i2 = top.pgroup.ins[js]+top.pgroup.nps[js]-1
+          i1 = pgroup.ins[js]-1
+          i2 = pgroup.ins[js]+pgroup.nps[js]-1
           if self.nx > 0:
-            x = top.pgroup.xp[i1:i2]
+            x = pgroup.xp[i1:i2]
             assert min(abs(x-self.xmmin)) >= 0.,\
                    "Particles in species %d have x below the grid when depositing the source"%js
             assert max(x) < self.xmmax,\
                    "Particles in species %d have x above the grid when depositing the source"%js
           if self.ny > 0:
-            y = top.pgroup.yp[i1:i2]
+            y = pgroup.yp[i1:i2]
             assert min(abs(y-self.ymmin)) >= 0.,\
                    "Particles in species %d have y below the grid when depositing the source"%js
             assert max(y) < self.ymmax,\
                    "Particles in species %d have y above the grid when depositing the source"%js
           if self.nz > 0:
-            z = top.pgroup.zp[i1:i2]
+            z = pgroup.zp[i1:i2]
             assert min(z) >= self.zmmin+self.getzgridndts()[indts],\
                    "Particles in species %d have z below the grid when depositing the source"%js
             assert max(z) < self.zmmax+self.getzgridndts()[indts],\
                    "Particles in species %d have z above the grid when depositing the source"%js
 
-        self.setsourcep(js,top.pgroup,self.getzgridndts()[indts])
+        self.setsourcep(js,pgroup,self.getzgridndts()[indts])
 
     # --- Only finalize the source if lzero is true, which means the this
     # --- call to loadsource should be a complete operation.
@@ -1066,7 +1069,7 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- Loop over the subcyling groups and do any field solves that
     # --- are necessary.
     # --- Do loop in reverse order so that source and potential end up with the arrays
-    # --- for the speices with the smallest timestep.
+    # --- for the species with the smallest timestep.
     tmpnsndts = getnsndtsforsubcycling()
     for indts in range(tmpnsndts-1,-1,-1):
       if (not top.ldts[indts] and
@@ -1076,6 +1079,21 @@ class SubcycledPoissonSolver(FieldSolver):
 
     # --- Is this still needed? It seems to slow things down alot.
     #gc.collect()
+
+  def getallpotentialpforparticles(self,iwhich=0):
+    if not self.ldosolve: return
+    self.allocatedataarrays()
+    # --- Loop over the subcyling groups and get any potentialp that
+    # --- are necessary.
+    # --- Do loop in reverse order so that source and potential end up with the arrays
+    # --- for the species with the smallest timestep.
+    tmpnsndts = getnsndtsforsubcycling()
+    for indts in range(tmpnsndts-1,-1,-1):
+      if (not top.ldts[indts] and
+          (top.ndtsaveraging == 0 and not sum(top.ldts))): continue
+      for iselfb in range(top.nsselfb-1,-1,-1):
+        self.setarraysforfieldsolve(top.nrhopndtscopies-1,indts,iselfb)
+        self.getpotentialpforparticles(top.nrhopndtscopies-1,indts,iselfb)
 
   def getpdims(self):
     raise """getpdims must be supplied - it should return a list of the dimensions
