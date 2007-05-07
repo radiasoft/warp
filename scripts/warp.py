@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.136 2007/05/02 21:45:13 dave Exp $"
+warp_version = "$Id: warp.py,v 1.137 2007/05/07 20:41:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -84,6 +84,15 @@ package('top')
 
 # --- Add stuff to the path
 import sys
+
+# --- Override the value of the true and false variables setup in Forthon.
+# --- This ensures that the correct values of true and false are obtained
+# --- directly from fortran (since different compilers use different values).
+tval = zeros(1,'l')
+fval = zeros(1,'l')
+getfortantruefalse(tval,fval)
+true = tval[0]
+false = fval[0]
 
 # --- Set default runid to first filename in the command line, stripping off
 # --- the .py suffix.
