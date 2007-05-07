@@ -24,14 +24,12 @@ class Maps:
      self.l_verbose=l_verbose
      self.l_mode=l_mode
      self.nparpgrp = nparpgrp
-     self.ex = zeros(self.nparpgrp,'d')
-     self.ey = zeros(self.nparpgrp,'d')
-     self.ez = zeros(self.nparpgrp,'d')
 
   def apply_transfer_map(self,sp):
     js=sp.jslist[0]
     pg=top.pgroup
     ng = 1+pg.nps[js]/self.nparpgrp
+    if pg.nps[js]==0:return
     for ig in range(ng):
       il = pg.ins[js]-1+self.nparpgrp*ig
       iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
@@ -44,26 +42,37 @@ class Maps:
       pg.yp [il:iu] = self.Mty[0,0]*yp     + self.Mty[0,1]*pg.uyp[il:iu]*scf
       pg.uyp[il:iu] = self.Mty[1,0]*yp/scf + self.Mty[1,1]*pg.uyp[il:iu]
 
+
   def apply_space_charge_kick(self,sp):
     js=sp.jslist[0]
     pg=top.pgroup
     ng = 1+pg.nps[js]/self.nparpgrp
+    if pg.nps[js]==0:return
     for ig in range(ng):
       il = pg.ins[js]-1+self.nparpgrp*ig
       iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
       np = iu-il
       if self.l_verbose:print 'fetche3d'
-      fetche3dfrompositions(js+1,pg.ndts,np,
-                            pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
-                            self.ex[:np],self.ey[:np],self.ez[:np])
+      fselfb=top.fselfb.copy()
+      top.fselfb[...]=0.
+      top.pgroup.fselfb[...]=0.
+      fsolver=getregisteredsolver()
+      if fsolver is not None:
+        efetchsave = top.efetch[js]+0
+        top.efetch[js] = 1
+      fetche3d(top.pgroup,il+1,np,js+1)
+      if fsolver is not None:
+        top.efetch[js] = efetchsave
+      top.fselfb[...]=fselfb
+      top.pgroup.fselfb[...]=fselfb
       if self.l_mode==2:
-        lzeros = where(pg.zp[il:iu]<0.5*w3d.zmmin or pg.zp[il:iu]>0.5*w3d.zmmax,1,0)
-        self.ex[:np] = where(lzeros,0.,self.ex[:np])
-        self.ey[:np] = where(lzeros,0.,self.ey[:np])
-        self.ez[:np] = where(lzeros,0.,self.ez[:np])
+        lzeros = where((pg.zp[il:iu]<0.5*w3d.zmmin) | (pg.zp[il:iu]>0.5*w3d.zmmax),1,0)
+        pg.ex[il:iu] = where(lzeros,0.,pg.ex[il:iu])
+        pg.ey[il:iu] = where(lzeros,0.,pg.ey[il:iu])
+        pg.ez[il:iu] = where(lzeros,0.,pg.ez[il:iu])
       if self.l_verbose:print 'epush beam'
       epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-              self.ex[:np],self.ey[:np],self.ez[:np],pg.sq[js],pg.sm[js],top.dt)
+              pg.ex[il:iu],pg.ey[il:iu],pg.ez[il:iu],pg.sq[js],pg.sm[js],top.dt)
       gammaadv(np,pg.gaminv[il:iu],pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
                top.gamadv,top.lrelativ)
 
@@ -71,6 +80,7 @@ class Maps:
     js=sp.jslist[0]
     pg=top.pgroup
     ng = 1+pg.nps[js]/self.nparpgrp
+    if pg.nps[js]==0:return
     for ig in range(ng):
       il = pg.ins[js]-1+self.nparpgrp*ig
       iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
