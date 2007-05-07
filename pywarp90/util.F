@@ -1,6 +1,6 @@
 #include "top.h"
 c************************************************************************** 
-c@(#) File UTIL.M, version $Revision: 1.5 $ $Date: 2007/04/24 21:37:37 $
+c@(#) File UTIL.M, version $Revision: 1.6 $ $Date: 2007/05/07 20:38:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c Contains various utility routines that are part of the TOP package.
@@ -8,6 +8,7 @@ c This file should rarely be changed, if ever, except to add to it.
 c sdot was replaced by ddotlocal to avoid naming problems.
 c
 c Currently contains:
+c        getfortantruefalse                       subroutine
 c     From LINPACK:
 c        dsifa(a,lda,n,kpvt,info)                 subroutine
 c        dsidi(a,lda,n,kpvt,det,inert,work,job)   subroutine
@@ -40,6 +41,17 @@ c        ilaenv
 c        lsame
 c
 c
+c***************************************************************************
+
+      subroutine getfortantruefalse(tval,fval)
+      logical(ISZ):: tval,fval
+
+      tval = .true.
+      fval = .false.
+
+      return
+      end
+
 c***************************************************************************
 
 c** from netlib, Fri Jul 27 13:53:38 EDT 1990 ***
