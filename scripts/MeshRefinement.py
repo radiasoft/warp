@@ -734,7 +734,7 @@ not be fetched from there (it is set negative).
       if not block.isactive: continue
       self.__class__.__bases__[1].averagewithprevioussource(block,param)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid,lrootonly=0):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid,lrootonly=0):
     """
 Given the list of particles, a charge and a weight, deposits the charge
 density of the mesh structure.
@@ -749,8 +749,7 @@ relative to the parent.
 
       ichild = zeros(len(x))
       self.getichild(x,y,z,ichild,zgrid)
-
-      x,y,z,ux,uy,uz,gaminv,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wght)
+      x,y,z,ux,uy,uz,gaminv,wfact,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght)
 
     else:
       nperchild = [len(x)]
@@ -762,7 +761,7 @@ relative to the parent.
       self.__class__.__bases__[1].setsourcepatposition(block,x[i:i+n],y[i:i+n],
                                                        z[i:i+n],
                                                        ux[i:i+n],uy[i:i+n],
-                                                       uz[i:i+n],gaminv[i:i+n],
+                                                       uz[i:i+n],gaminv[i:i+n],wfact[i:i+n],
                                                        wght[i:i+n],q,w,zgrid)
       i = i + n
 
@@ -858,13 +857,18 @@ been taken care of. This should only ever be called by the root block.
         add(ssourcep,osourcep,ssourcep)
         osourcep[...] = 0.
 
-  def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wght):
+  def sortbyichild(self,ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght):
     if len(ux) == 0:
       xout,yout,zout,uzout = zeros((4,len(x)),'d')
+      wfactout = zeros(len(wfact),'d')
       nperchild = zeros(self.root.totalnumberofblocks)
-      sortparticlesbyindex1(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
-                            xout,yout,zout,uzout,nperchild)
-      return xout,yout,zout,ux,uy,uzout,gaminv,wght,nperchild
+      if top.wpid==0:
+        sortparticlesbyindex1(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
+                               xout,yout,zout,uzout,nperchild)
+      else:
+        sortparticlesbyindex1w(len(x),ichild,x,y,z,uz,wfact,self.root.totalnumberofblocks,
+                               xout,yout,zout,uzout,wfactout,nperchild)
+      return xout,yout,zout,ux,uy,uzout,gaminv,wfactout,wght,nperchild
     else:
       xout,yout,zout,uxout,uyout,uzout,gaminvout = zeros((7,len(x)),'d')
       if len(wght) > 0:
@@ -874,11 +878,17 @@ been taken care of. This should only ever be called by the root block.
         wghtout = zeros(0,'d')
         nw = 0
       nperchild = zeros(self.root.totalnumberofblocks)
-      sortparticlesbyindex2(len(x),ichild,x,y,z,ux,uy,uz,gaminv,nw,wght,
-                            self.root.totalnumberofblocks,
-                            xout,yout,zout,
-                            uxout,uyout,uzout,gaminvout,wghtout,nperchild)
-      return xout,yout,zout,uxout,uyout,uzout,gaminvout,wghtout,nperchild
+      if top.wpid==0:
+        sortparticlesbyindex2(len(x),ichild,x,y,z,ux,uy,uz,gaminv,nw,wght,
+                              self.root.totalnumberofblocks,
+                              xout,yout,zout,
+                              uxout,uyout,uzout,gaminvout,wghtout,nperchild)
+      else:
+        sortparticlesbyindex2w(len(x),ichild,x,y,z,ux,uy,uz,gaminv,wfact,nw,wght,
+                              self.root.totalnumberofblocks,
+                              xout,yout,zout,
+                              uxout,uyout,uzout,gaminvout,wfactout,wghtout,nperchild)
+      return xout,yout,zout,uxout,uyout,uzout,gaminvout,wfactout,wghtout,nperchild
 
   def getichild(self,x,y,z,ichild,zgrid):
     """
@@ -992,7 +1002,7 @@ higher numbered blocks. This should only ever be called by the root block.
     # --- solve on potential, first getting potential from the parents - both the
     # --- boundary conditions and the interior values as the initial
     # --- value.
-    self.setpotentialfromparents()
+    if self.l_internal_dosolve:self.setpotentialfromparents()
     self.__class__.__bases__[1].dosolve(self,iwhich,*args)
 
     # --- solve for children, using the routine which does the correct
