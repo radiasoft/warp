@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.200 $, $Date: 2007/05/02 21:31:44 $
+#@(#) File TOP.V, version $Revision: 3.201 $, $Date: 2007/05/07 20:40:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.200 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.201 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2458,6 +2458,8 @@ tolabfrm(zcent:real,nn,x(nn):real,z(nn):real) subroutine
 
 *********** TopUtil:
 # "Utility" subroutines at top level
+getfortantruefalse(tval:logical,fval:logical) subroutine
+                        # Returns the fortran values of true and false
 nextpid() integer function
                         # Returns the next value of npid. Note that this
                         # function should be used rather that directly
