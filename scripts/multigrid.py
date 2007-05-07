@@ -154,8 +154,8 @@ class MultiGrid(SubcycledPoissonSolver):
   def getfield(self):
     return self.field
 
-  def loadrho(self,lzero=None,**kw):
-    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
+  def loadrho(self,lzero=None,pgroups=None,**kw):
+    SubcycledPoissonSolver.loadsource(self,lzero,pgroups,**kw)
 
   def fetche(self,*args,**kw):
     SubcycledPoissonSolver.fetchfield(self,*args,**kw)
@@ -177,16 +177,26 @@ class MultiGrid(SubcycledPoissonSolver):
     q  = pgroup.sq[js]
     w  = pgroup.sw[js]*top.pgroup.dtscale[js]
     wght = zeros((0,), 'd')
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
+    if top.wpid==0:
+      wfact = zeros((0,), 'd')
+    else:
+      wfact = pgroup.pid[i:i+n,top.wpid-1]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid)
 
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid):
     n  = len(x)
     if n == 0: return
     if isinstance(self.sourcep,FloatType): return
-    setrho3d(self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
-             self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
-             self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
-             self.solvergeom==w3d.RZgeom)
+    if top.wpid==0:
+      setrho3d(self.sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+               self.solvergeom==w3d.RZgeom)
+    else:
+      setrho3dw(self.sourcep,n,x,y,z,zgrid,uz,wfact,q,w,top.depos,
+                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+                self.solvergeom==w3d.RZgeom)
     if self.lzerorhointerior:
       conductorobject = self.getconductorobject()
       cond_zerorhointerior(conductorobject.interior,self.nxp,self.nyp,self.nzp,
@@ -381,6 +391,7 @@ class MultiGrid(SubcycledPoissonSolver):
                  solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve:return
     # --- set for longitudinal relativistic contraction 
     iselfb = args[2]
     beta = top.pgroup.fselfb[iselfb]/clight
