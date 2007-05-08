@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.201 $, $Date: 2007/05/07 20:40:05 $
+#@(#) File TOP.V, version $Revision: 3.202 $, $Date: 2007/05/08 16:44:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.201 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.202 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1989,6 +1989,18 @@ wpid   integer    /0/  # position of particle weights in array pid
 tpid   integer    /0/  # position of particle creation time in array pid
                        # (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid
+                       # (FORTRAN indexed: based 1)
+xbirthpid integer /0/  # position of particle birth x in array pid
+                       # (FORTRAN indexed: based 1)
+ybirthpid integer /0/  # position of particle birth y in array pid
+                       # (FORTRAN indexed: based 1)
+zbirthpid integer /0/  # position of particle birth z in array pid
+                       # (FORTRAN indexed: based 1)
+uxbirthpid integer /0/ # position of particle birth ux in array pid
+                       # (FORTRAN indexed: based 1)
+uybirthpid integer /0/ # position of particle birth uy in array pid
+                       # (FORTRAN indexed: based 1)
+uzbirthpid integer /0/ # position of particle birth uz in array pid
                        # (FORTRAN indexed: based 1)
 xoldpid   integer /0/  # position of particles previous position in x in array pid
                        # (FORTRAN indexed: based 1)                  
