@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.209 $, $Date: 2007/05/02 21:31:44 $
+c@(#) File TOP.F, version $Revision: 3.210 $, $Date: 2007/05/08 16:45:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3093,7 +3093,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
-      use Particles,Only: spid,ssn
+      use Particles,Only: spid,xbirthpid,ybirthpid,zbirthpid,uxbirthpid,uybirthpid,uzbirthpid,ssn
       use Beam_acc
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,nn,nnpid
@@ -3186,6 +3186,13 @@ c       --- Only set the ssn if it is not already set.
           endif
         enddo
       end if
+c     --- Save birth position or velocity at birth.
+      if (xbirthpid > 0) pgroup%pid(i1:i2,xbirthpid) = x(1:n1)
+      if (ybirthpid > 0) pgroup%pid(i1:i2,ybirthpid) = y(1:n1)
+      if (zbirthpid > 0) pgroup%pid(i1:i2,zbirthpid) = z(1:n1)
+      if (uxbirthpid > 0) pgroup%pid(i1:i2,uxbirthpid) = vx(1:n1)
+      if (uybirthpid > 0) pgroup%pid(i1:i2,uybirthpid) = vy(1:n1)
+      if (uzbirthpid > 0) pgroup%pid(i1:i2,uzbirthpid) = vz(1:n1)
       pgroup%nps(is) = pgroup%nps(is) + n1
 
 !$OMP MASTER
