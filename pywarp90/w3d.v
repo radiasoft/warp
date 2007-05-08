@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.260 $, $Date: 2007/05/02 17:57:36 $
+#@(#) File W3D.V, version $Revision: 3.261 $, $Date: 2007/05/08 03:30:23 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.260 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.261 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -803,7 +803,8 @@ othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
          zbeam:real,zimax:real,zimin:real,
          straight:real,ifeears,eears:real,eearsofz(0:nzzarr):real,
          dzzi:real,nzzarr,
-         zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
+         zzmin:real,dedr:real,dexdx:real,deydy:real,
+         dbdr:real,dbxdy:real,dbydx:real,
          ex(np):real,ey(np):real,ez(np):real,
          bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field
@@ -979,6 +980,20 @@ sortparticlesbyindex2(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
                      nblocks:integer,
                      xout(n):real,yout(n):real,zout(n):real,
                      uxout(n):real,uyout(n):real,uzout(n):real,gaminvout(n):real,
+                     wghtout:real,
+                     pcounts(0:nblocks-1):integer)
+      subroutine
+sortparticlesbyindex1w(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
+                     uz(n):real,wfact(n):real,nblocks:integer,
+                     xout(n):real,yout(n):real,zout(n):real,uzout(n):real,wfactout(n):real,
+                     pcounts(0:nblocks-1):integer)
+      subroutine
+sortparticlesbyindex2w(n:integer,indx(n):integer,x(n):real,y(n):real,z(n):real,
+                     ux(n):real,uy(n):real,uz(n):real,gaminv(n):real,wfact(n):real,
+                     nw:integer,wght:real,
+                     nblocks:integer,
+                     xout(n):real,yout(n):real,zout(n):real,
+                     uxout(n):real,uyout(n):real,uzout(n):real,gaminvout(n):real,wfactout(n):real,
                      wghtout:real,
                      pcounts(0:nblocks-1):integer)
       subroutine
