@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.155 2007/04/26 23:26:40 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.156 2007/05/09 18:18:43 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -113,7 +113,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zbeam=None,
                         nx=None,ny=None,nz=None,nzfull=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                        zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
+                        zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
                         conductors=None,gridrz=None,
                         my_index=None,nslaves=None,izfsslave=None,nzfsslave=None):
@@ -130,6 +130,8 @@ Installs the given conductors.
   - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
   - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
                                          from w3d
+  - zscale=1.: scale factor on dz. This is used when the relativistic scaling
+              is done for the longitudinal dimension
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   """
@@ -150,7 +152,7 @@ Installs the given conductors.
   if conductors is None: conductors = f3d.conductors
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,installrz,gridrz,
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,installrz,gridrz,
            my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
@@ -1617,6 +1619,9 @@ Constructor arguments:
   - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
   - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
                                          from w3d
+  - zscale=1.: scale factor on dz. This is used when the relativistic scaling
+              is done for the longitudinal dimension. This is only applied
+              when getting the coarsening levels.
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   - gridrz: RZ grid block to consider
@@ -1630,7 +1635,8 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     zmin=None,zmax=None,zbeam=None,
                     nx=None,ny=None,nz=None,nzfull=None,
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                    zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
+                    zmmin=None,zmmax=None,zscale=1.,
+                    l2symtry=None,l4symtry=None,
                     installrz=1,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None,
                     solver=None):
@@ -1699,14 +1705,11 @@ Creates a grid object which can generate conductor data.
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
     if self.ny > 0 or not installrz:
       conductors = ConductorType()
-      if self.ny > 0:
-        getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                    conductors,
-                    self.my_index,self.nslaves,self.izslave,self.nzslave)
-      else:
-        getmglevels(self.nx,self.nx,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                    conductors,
-                    self.my_index,self.nslaves,self.izslave,self.nzslave)
+      if self.ny > 0: ny = self.ny
+      else:           ny = self.nx
+      getmglevels(self.nx,ny,self.nz,self.nzfull,self.dx,self.dy,self.dz*zscale,
+                  conductors,
+                  self.my_index,self.nslaves,self.izslave,self.nzslave)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()

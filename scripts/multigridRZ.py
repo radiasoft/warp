@@ -335,7 +335,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,gridrz=self.grid)
 
   def hasconductors(self):
@@ -643,7 +643,7 @@ class MultiGrid2D(SubcycledPoissonSolver):
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
+                      self.zmminglobal,self.zmmaxglobal,1.,self.l2symtry,self.l4symtry,
                       installrz=0,
                       solvergeom=self.solvergeom,conductors=self.conductors,
                       my_index=self.my_index,nslaves=self.nslaves,
@@ -1005,7 +1005,7 @@ Initially, conductors are not implemented.
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,conductors=self.conductors,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)

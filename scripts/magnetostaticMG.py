@@ -244,7 +244,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,self.l2symtry,self.l4symtry,
+                      self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,
                       conductors=self.conductors)
 
