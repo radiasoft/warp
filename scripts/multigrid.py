@@ -43,10 +43,27 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
-    # --- Create a conductor object, which by default is empty.
-    self.conductors = ConductorType()
-    self.conductorlist = []
-    self.newconductorlist = []
+    # --- Create the attributes for holding information about conductors
+    # --- and conductor objects.
+    # --- Note that a conductor object will be created for each value of
+    # --- fselfb. This is needed since fselfb effects how the coarsening
+    # --- is done, and different conductor data sets are needed for
+    # --- different coarsenings.
+
+    # --- This stores the ConductorType objects. Note that the objects are
+    # --- not actually created until getconductorobject is called.
+    self.conductorobjects = {}
+
+    # --- This stores the conductors that have been installed in each
+    # --- of the conductor objects.
+    self.installedconductorlists = {}
+
+    # --- This is a list of conductors that have been added.
+    # --- New conductors are not actually installed until the data is needed,
+    # --- when getconductorobject is called.
+    # --- Each element of this list contains all of the input to the
+    # --- installconductor method.
+    self.conductordatalist = []
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
@@ -62,43 +79,77 @@ class MultiGrid(SubcycledPoissonSolver):
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
     if self.lreducedpickle:
-      # --- Delete the conductorobject since it can be big
-      del dict['conductors']
-      # --- Put all of the conductors in the newconductorlist so that they
-      # --- will be reinstalled after the restore.
-      dict['newconductorlist'] += self.conductorlist
-      dict['conductorlist'] = []
+
+      # --- Write out an empy conductorobjects since it can be big. Also,
+      # --- write out an empty list of conductors so they will all be
+      # --- reinstalled upon restoration.
+      dict['conductorobjects'] = {}
+      dict['installedconductorlists'] = {}
+
       if 'rho' in dict: del dict['rho']
       if 'phi' in dict: del dict['phi']
+
     return dict
 
   def __setstate__(self,dict):
     SubcycledPoissonSolver.__setstate__(self,dict)
-    if 'newconductorlist' not in self.__dict__:
-      # --- For backwards compatibility
-      self.newconductorlist = self.conductorlist
-      self.conductorlist = []
-    if self.lreducedpickle and not self.lnorestoreonpickle:
-      # --- Create a new (and now empty) conductor object.
-      # --- Any conductors will be installed when it is referenced.
-      self.conductors = ConductorType()
 
-  def getconductorobject(self):
-    "Checks for and installs any new conductors before returning the object"
-    # --- This method is needed since during a restore from a pickle, this
+    # --- Check if an old file is being restored
+    if 'conductorobjects' not in self.__dict__:
+
+      # --- Create the appropriate attributes that are now needed.
+      # --- This is not the best thing, since is replicates code in
+      # --- the __init__
+      self.conductorobjects = {}
+      self.installedconductorlists = {}
+      self.conductordatalist = []
+
+      # --- Get the list of conductors from old formats
+      if 'newconductorlist' in self.__dict__:
+        conductorlist = self.newconductorlist
+        del self.newconductorlist
+      elif 'conductorlist' in self.__dict__:
+        conductorlist = self.conductorlist
+        del self.conductorlist
+      else:
+        conductorlist = []
+
+      for conductor in conductorlist:
+        self.installconductor(conductor)
+
+  def getconductorobject(self,fselfb=0.):
+    "Checks for and installs any conductors not yet installed before returning the object"
+    # --- This is the routine that does the creation of the ConductorType
+    # --- objects if needed and ensures that all conductors are installed
+    # --- into it.
+
+    # --- This method is needed during a restore from a pickle, since this
     # --- object may be restored before the conductors. This delays the
-    # --- installation of the conductors until they are really needed,
-    # --- which will only happen after the restoration is complete.
-    for conductor in self.newconductorlist:
-      self.installconductor(conductor)
-    self.newconductorlist = []
-    return self.conductors
+    # --- installation of the conductors until they are really needed.
+
+    conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
+    installedconductorlist = self.installedconductorlists.setdefault(fselfb,[])
+
+    # --- Now, make sure that the conductors are installed into the object.
+    # --- This may be somewhat inefficient, since it loops over all of the
+    # --- conductors everytime. This makes the code more robust, though, since
+    # --- it ensures that all conductors will be properly installed into
+    # --- the conductor object.
+    for conductordata in self.conductordatalist:
+      self.__installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
+
+    # --- Return the desired conductor object
+    return conductorobject
 
   def setconductorvoltage(self,voltage,condid=0,discrete=false,
                           setvinject=false):
     'calls setconductorvoltage'
-    setconductorvoltage(voltage,condid,discrete,setvinject,
-                        conductors=self.getconductorobject())
+    # --- Loop over all of the selfb groups to that all conductor objects
+    # --- are handled.
+    for iselfb in range(top.nsselfb):
+      conductorobject = self.getconductorobject(top.fselfb[iselfb])
+      setconductorvoltage(voltage,condid,discrete,setvinject,
+                          conductors=conductorobject)
 
   def getpdims(self):
     # --- Returns the dimensions of the arrays used by the particles
@@ -175,7 +226,7 @@ class MultiGrid(SubcycledPoissonSolver):
     uz = pgroup.uzp[i:i+n]
     gaminv = zeros((0,), 'd')
     q  = pgroup.sq[js]
-    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    w  = pgroup.sw[js]*pgroup.dtscale[js]
     wght = zeros((0,), 'd')
     if top.wpid==0:
       wfact = zeros((0,), 'd')
@@ -197,12 +248,9 @@ class MultiGrid(SubcycledPoissonSolver):
                 self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
                 self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
                 self.solvergeom==w3d.RZgeom)
-    if self.lzerorhointerior:
-      conductorobject = self.getconductorobject()
-      cond_zerorhointerior(conductorobject.interior,self.nxp,self.nyp,self.nzp,
-                           self.sourcep)
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
+    # --- This is called by fetchfield from fieldsolver.py
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
@@ -355,34 +403,50 @@ class MultiGrid(SubcycledPoissonSolver):
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
                             dfill=top.largepos):
-    if conductor in self.conductorlist: return
-    self.conductorlist.append(conductor)
+    # --- This only adds the conductor to the list. The data is only actually
+    # --- installed when it is needed, during a call to getconductorobject.
+    self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
 
-    # --- Note that this uses the conductorobject directly since it is called
-    # --- by getconductorobject.
+  def __installconductor(self,conductorobject,installedlist,conductordata,fselfb):
+    # --- This does that actual installation of the conductor into the
+    # --- conductor object
+
+    # --- Extract the data from conductordata (the arguments to installconductor)
+    conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
+
+    if conductor in installedlist: return
+    installedlist.append(conductor)
+
+    # --- Get relativistic longitudinal scaling factor
+    # --- This is quite ready yet.
+   #beta = fselfb/clight
+   #zfact = 1./sqrt((1.-beta)*(1.+beta))
+    zfact = 1.
+
+    if zmin is not None: zmin *= zfact
+    if zmax is not None: zmax *= zfact
+
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmminglobal,self.zmmaxglobal,self.l2symtry,self.l4symtry,
-                      solvergeom=self.solvergeom,conductors=self.conductors,
+                      self.zmminglobal*zfact,self.zmmaxglobal*zfact,self.l2symtry,self.l4symtry,
+                      solvergeom=self.solvergeom,conductors=conductorobject,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
   def hasconductors(self):
-    conductorobject = self.getconductorobject()
-    return (conductorobject.interior.n > 0 or
-            conductorobject.evensubgrid.n > 0 or
-            conductorobject.oddsubgrid.n > 0)
+    return len(self.conductordatalist) > 0
 
   def clearconductors(self):
-    "Should the conductorlist and newconductorlist be cleared also?"
-    # --- This uses the conductor object directly since there is not point in
-    # --- installing any new conductors (which would be done by
-    # --- getconductorobject).
-    self.conductors.interior.n = 0
-    self.conductors.evensubgrid.n = 0
-    self.conductors.oddsubgrid.n = 0
+    "Clear out the conductor data"
+    for fselfb in top.fselfb:
+      if fselfb in self.conductorobjects:
+        conductorobject = self.conductorobjects[fselfb]
+        conductorobject.interior.n = 0
+        conductorobject.evensubgrid.n = 0
+        conductorobject.oddsubgrid.n = 0
+        self.installedconductorlists[fselfb] = []
 
   def find_mgparam(self,lsavephi=false,resetpasses=1):
     # --- This is a temporary kludge, the same as is done in genericpf
@@ -420,7 +484,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
     mgiters = zeros(1)
     mgerror = zeros(1,'d')
-    conductorobject = self.getconductorobject()
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     if self.electrontemperature == 0:
       multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
@@ -452,7 +516,9 @@ class MultiGrid(SubcycledPoissonSolver):
   ##########################################################################
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
-    kw['conductors'] = self.getconductorobject()
+    fselfb = kw.get('fselfb',top.fselfb[0])
+    if 'fselfb' in kw: del kw['fselfb']
+    kw['conductors'] = self.getconductorobject(fselfb)
     kw['solver'] = self
     pffunc(**kw)
   def pfxy(self,**kw): self.genericpf(kw,pfxy)
