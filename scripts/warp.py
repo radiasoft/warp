@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.137 2007/05/07 20:41:24 dave Exp $"
+warp_version = "$Id: warp.py,v 1.138 2007/05/09 16:56:59 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -534,7 +534,7 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
 ##############################################################################
 ##############################################################################
 ##############################################################################
-def fixrestoresfrombeforeelementoverlaps(filename):
+def fixrestoresfrombeforeelementoverlaps(ff):
   """This checks if the lattice overlap data is inconsistent with the
 lattice input. This should only ever happen if an old dump file is
 read in, one created before the element overlaps where implemented.
@@ -556,12 +556,10 @@ If this is the case, the lattice is reset and the overlap data generated."""
     resetlat()
     setlatt()
   
-def fixrestoreswithmomentswithoutspecies(filename):
+def fixrestoreswithmomentswithoutspecies(ff):
   """This is called automatically by restart to fix the arrays which have
   changed shape. It needs to be called by hand after restore.
   """
-  # --- Open the file
-  ff = PR.PR(filename,verbose=0)
   # --- First, check if the file has the old moments in it.
   ek = ff.read('ek@top')
   if type(ek) == ArrayType:
@@ -639,9 +637,7 @@ def fixrestoreswithmomentswithoutspecies(filename):
       a = getattr(top,v)
       a[...,-1] = d
 
-def fixrestoreswithoriginalparticlearrays(filename):
-  # --- Open the file
-  ff = PR.PR(filename,verbose=0)
+def fixrestoreswithoriginalparticlearrays(ff):
   # --- Check if it is an old file
   # --- An old file would have top.npmaxb save in it
   if 'xp@pgroup@top' in ff.inquire_names():
@@ -681,9 +677,7 @@ def fixrestoreswithoriginalparticlearrays(filename):
 
   ff.close()
 
-def fixrestoreswitholdparticlearrays(filename):
-  # --- Open the file
-  ff = PR.PR(filename,verbose=0)
+def fixrestoreswitholdparticlearrays(ff):
   # --- Check if it is an old file
   if 'xp@top' not in ff.inquire_names():
     ff.close()
@@ -733,17 +727,15 @@ def fixrestoreswitholdparticlearrays(filename):
                    zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
                    resetrho=false,dofieldsol=false,resetmoments=false)
 
-def fixrestorewithscalarefetch(filename):
+def fixrestorewithscalarefetch(ff):
   "If the dump file has efetch as a scalar, broadcast it to the efetch array"
-  ff = PR.PR(filename,verbose=0)
   efetch = ff.read('efetch@top')
   if isinstance(efetch,IntType):
     gchange("InPart")
     top.efetch = efetch
   ff.close()
 
-def fixrestorewithbasegridwithoutl_parallel(filename):
-  ff = PR.PR(filename,verbose=0)
+def fixrestorewithbasegridwithoutl_parallel(ff):
   # --- First check is frz.basegrid is defined
   if frz.getpyobject('basegrid') is None: return
 
@@ -760,13 +752,13 @@ def fixrestorewithbasegridwithoutl_parallel(filename):
         except: g = g.down
       g.l_parallel = lparallel
 
-def restoreolddump(filename):
-  #fixrestoresfrombeforeelementoverlaps(filename)
-  #fixrestoreswithmomentswithoutspecies(filename)
-  #fixrestoreswithoriginalparticlearrays(filename)
-  #fixrestoreswitholdparticlearrays(filename)
-  fixrestorewithscalarefetch(filename)
-  fixrestorewithbasegridwithoutl_parallel(filename)
+def restoreolddump(ff):
+  #fixrestoresfrombeforeelementoverlaps(ff)
+  #fixrestoreswithmomentswithoutspecies(ff)
+  #fixrestoreswithoriginalparticlearrays(ff)
+  #fixrestoreswitholdparticlearrays(ff)
+  fixrestorewithscalarefetch(ff)
+  fixrestorewithbasegridwithoutl_parallel(ff)
   pass
 
 ##############################################################################
@@ -854,38 +846,59 @@ Reads in data from file, redeposits charge density and does field solve
   # --- appropriate suffix, assuming only prefix was passed in
   if lparallel and not onefile:
     filename = filename + '_%05d_%05d.dump'%(me,npes)
-  # --- Call different restore routine depending on context
+
+  # --- Call different restore routine depending on context.
+  # --- Having the restore function return the open file object is very
+  # --- kludgy. But it is necessary to avoid opening in
+  # --- the file multiple times. Doing that causes problems since some
+  # --- things would be initialized and installed multiple times.
+  # --- This is because the PW pickles everything that it can't write
+  # --- out directly and unpickles them when PR is called. Many things
+  # --- reinstall themselves when unpickled.
   if onefile and lparallel:
-    parallelrestore(filename,verbose=verbose)
+    ff = parallelrestore(filename,verbose=verbose,lreturnff=1)
   else:
-    pyrestore(filename,verbose=verbose)
+    ff = pyrestore(filename,verbose=verbose,lreturnff=1)
+
   # --- Fix old dump files.
-  restoreolddump(filename)
+  # --- This is the only place where the open dump file is needed.
+  restoreolddump(ff)
+
+  # --- Now close the restart file
+  ff.close()
+
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.
   package(__main__.__dict__["currpkg"])
+
   # --- Allocate all arrays appropriately
   gchange("*")
+
   # --- Recreate the large field arrays for the built in field solvers.
   setupFields3dParticles()
   if w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]:
     setrhopandphiprz()
+
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
   if top.inject > 0: fill_inj()
+
   # --- Do some setup for the RZ solver
   if (getcurrpkg() == 'w3d' and top.fstype == 10 and
       w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom]):
     mk_grids_ptr()
+
   # --- Load the charge density (since it was not saved)
   if not (w3d.solvergeom in [w3d.RZgeom] or top.fstype == 12):
     loadrho()
     # --- Recalculate the fields (since it was not saved)
     if dofieldsol: fieldsol(0)
+
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
+
   # --- Call any functions that had been registered to be called after
   # --- the restart.
   controllers.callafterrestartfuncs()
@@ -1065,6 +1078,14 @@ initial_global_dict_keys = globals().keys()
 # --- The name 'controllerfunctioncontainer' must be the same as what appears
 # --- in the controllers module.
 initial_global_dict_keys.remove('controllerfunctioncontainer')
+
+# --- The registered solver contained needs to be written out since the
+# --- list of registered solvers may be modified by the user. The
+# --- container properly re-registers the field solvers without the
+# --- solvers themselves having to deal with it.
+# --- The name 'registeredsolverscontainer' must be the same as what appears
+# --- in the fieldsolver module.
+initial_global_dict_keys.remove('registeredsolverscontainer')
 
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
