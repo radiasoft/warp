@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.71 2006/12/19 22:45:04 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.72 2007/05/09 16:54:46 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -458,7 +458,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
 #    needed in the second step
 #  2 Read the rest of the data in
 #
-def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
+def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0):
   # --- All PE's open the file for reading.
   ff = PR.PR(fname)
 
@@ -644,6 +644,9 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
                          top.izpslave[me]+top.nzpslave[me],1])
         setattr(pkg,vname,ff.read_part(v,itriple))
 
-  ff.close()
+  if not lreturnff:
+    ff.close()
+  else:
+    return ff
 
 ##############################################################################
