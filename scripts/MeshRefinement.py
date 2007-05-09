@@ -415,17 +415,25 @@ Add a mesh refined block to this block.
   # --- The next several methods handle conductors
   #--------------------------------------------------------------------------
 
-  def installconductor(self,conductor,dfill=top.largepos):
+  def installconductor(self,conductor,
+                            xmin=None,xmax=None,
+                            ymin=None,ymax=None,
+                            zmin=None,zmax=None,
+                            dfill=top.largepos):
+
     # --- This check is needed since sometimes during a restore from a pickle,
     # --- this routine may be called by a parent, when it is being restored,
     # --- before this instance is restored, in which case no attributes,
     # --- including 'parents', has been set yet.
     if 'parents' not in self.__dict__: return
+
     # --- Call the installconductor from the inherited field solver class
-    self.__class__.__bases__[1].installconductor(self,conductor,dfill=dfill)
+    self.__class__.__bases__[1].installconductor(self,conductor,
+                                                      xmin,xmax,ymin,ymax,zmin,zmax,dfill)
+
     # --- Call installconductor for all of the children.
     for child in self.children:
-      child.installconductor(conductor,dfill=dfill)
+      child.installconductor(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill)
 
   def clearconductors(self):
     if not self.isfirstcall(): return
@@ -445,11 +453,9 @@ Add a mesh refined block to this block.
                           setvinject=false):
     'Recursively calls setconductorvoltage for base and all children'
     if not self.isfirstcall(): return
-    conductorobject = self.getconductorobject()
-    setconductorvoltage(voltage,condid,discrete,setvinject,
-                        conductors=self.getconductorobject())
+    self.__class__.__bases__[1].setconductorvoltage(voltage,condid,discrete,setvinject)
     for child in self.children:
-      child.setconductorvoltage(voltage,condid,discrete)
+      child.setconductorvoltage(voltage,condid,discrete,setvinject=false)
 
   #--------------------------------------------------------------------------
   # --- The next several methods handle initialization that is done after
