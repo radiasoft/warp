@@ -419,18 +419,14 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- Get relativistic longitudinal scaling factor
     # --- This is quite ready yet.
-   #beta = fselfb/clight
-   #zfact = 1./sqrt((1.-beta)*(1.+beta))
-    zfact = 1.
-
-    if zmin is not None: zmin *= zfact
-    if zmax is not None: zmax *= zfact
+    beta = fselfb/clight
+    zscale = 1./sqrt((1.-beta)*(1.+beta))
 
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmminglobal*zfact,self.zmmaxglobal*zfact,self.l2symtry,self.l4symtry,
+                      self.zmminglobal,self.zmmaxglobal,zscale,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,conductors=conductorobject,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
