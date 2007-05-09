@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.137 $, $Date: 2007/04/26 18:11:16 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.138 $, $Date: 2007/05/09 18:39:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -538,6 +538,15 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
       real(kind=8):: sss(2)
+
+c     --- Check that the same coarsening was done for the conductors as is
+c     --- being done now. Note that only nz is saved for the conductors so
+c     --- only it can be checked.
+      if (nz .ne. conductors%levelnz(mglevel)) then
+        call kaboom("vcycle: error: the coarsening level of the conductor is
+     &inconsistent with that used by the solver")
+        return
+      endif
 
       dxsqi = 1./dx**2
       dysqi = 1./dy**2
