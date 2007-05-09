@@ -121,8 +121,32 @@ The default is to zero out rho.
     print "loadj not support in wxy yet"
 
 #=============================================================================
-# --- Setup routines which give access to fortran any field solver
-_fieldsolvers = []
+# --- These routines are used to handle registered field solvers.
+_registeredfieldsolvers = []
+class RegisteredSolversContainer(object):
+  """This class is needed so that the list of registered field solvers
+can be properly restored after a restart. An instance of this object will
+be saved in a restart dump. Upon restoration, it re-registers the solvers.
+This is needed since _registeredfieldsolvers will not be included in __main__
+and therefore would not be otherwise saved. Also, in warp.py, the instance of this
+class is explicitly removed from the list of python variables that are not saved
+in dump files.
+  """
+  def __init__(self,slist):
+    self.slist = slist
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    # --- Clear out any solvers that are already registered
+    for i in range(len(_registeredfieldsolvers)):
+      del _registeredfieldsolvers[0]
+    # --- Re-register the solvers.
+    for solver in self.slist:
+      registersolver(solver)
+    # --- Get the original slist from this module, overwriting the one that
+    # --- was saved in the dump file.
+    self.slist = _registeredfieldsolvers
+registeredsolverscontainer = RegisteredSolversContainer(_registeredfieldsolvers)
+
 def registersolver(solver):
   """
 Registers solvers to be used in the particle simulation.
@@ -131,65 +155,72 @@ Registers solvers to be used in the particle simulation.
            cases.
 
   """
-  _fieldsolvers.append(solver)
+  _registeredfieldsolvers.append(solver)
   top.fstype = 12
 def getregisteredsolver(i=0):
-  if len(_fieldsolvers) == 0: return None
-  return _fieldsolvers[i]
-def unregistersolver(solver):
-  assert solver in _fieldsolvers,"Specified solver was not registered"
-  _fieldsolvers.remove(solver)
+  if len(_registeredfieldsolvers) == 0: return None
+  return _registeredfieldsolvers[i]
+def getregisteredsolvers():
+  "Return the list of all registered field solver"
+  # --- A copy is returned to prevent the list from being mucked up.
+  return copy.copy(_registeredfieldsolvers)
+def unregistersolver(solver=None,i=None):
+  if i is not None:
+    del _registeredfieldsolvers[i]
+  else:
+    if solver is None: solver = _registeredfieldsolvers[0]
+    _registeredfieldsolvers.remove(solver)
 def loadrhoregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.loadrho()
 def loadjregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.loadj()
 def fieldsolregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.solve()
 def fetcheregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.fetche()
 def fetchbregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.fetchb()
 def fetchphiregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.fetchphi()
 def fetcharegistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.fetcha()
 def rhodiaregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.rhodia()
 def gtlchgregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.gtlchg()
 def srhoaxregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.srhoax()
 def geteseregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.getese()
 def sphiaxregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.sphiax()
 def sezaxregistered():
-  assert len(_fieldsolvers) > 0,"No solver has been registered"
-  for f in _fieldsolvers:
+  assert len(_registeredfieldsolvers) > 0,"No solver has been registered"
+  for f in _registeredfieldsolvers:
     f.sezax()
 
 def initfieldsolver():
@@ -275,7 +306,7 @@ the diagnostic is of interest and is meaningfull.
   __topinputs__ = ['pbound0','pboundnz','pboundxy',
                    'my_index','nslaves','lfsautodecomp','zslave','lautodecomp',
                    'debug']
-  __flaginputs__ = {'forcesymmetries':1,'lzerorhointerior':0,
+  __flaginputs__ = {'forcesymmetries':1,
                     'lreducedpickle':1,'lnorestoreonpickle':0,
                     'ldosolve':1,'l_internal_dosolve':1,
                     'gridvz':None,
@@ -465,20 +496,33 @@ the diagnostic is of interest and is meaningfull.
 
   def __getstate__(self):
     dict = self.__dict__.copy()
-    # --- Flag whether this is the registered solver so it knows whether
-    # --- to reregister itself upon the restore. The instance
-    # --- is not registered if it is not going to be restored.
-    if self is getregisteredsolver() and not self.lnorestoreonpickle:
-      dict['iamtheregisteredsolver'] = 1
-    else:
-      dict['iamtheregisteredsolver'] = 0
+
+# --- This is no longer needed since the list of registered solvers is
+# --- now directly saved in a restart dump.
+#   # --- Flag whether this is the registered solver so it knows whether
+#   # --- to reregister itself upon the restore. The instance
+#   # --- is not registered if it is not going to be restored.
+#   if self in getregisteredsolvers() and not self.lnorestoreonpickle:
+#     dict['iamtheregisteredsolver'] = 1
+#   else:
+#     dict['iamtheregisteredsolver'] = 0
+
     return dict
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
-    if self.iamtheregisteredsolver and not self.lnorestoreonpickle:
-      del self.iamtheregisteredsolver
-      registersolver(self)
+
+    # --- Make sure that the new attribute l_internal_dosolve is defined.
+    if 'l_internal_dosolve' not in self.__dict__:
+      self.l_internal_dosolve = 1
+
+    # --- This is only needed when an old dump file is being restored.
+    # --- Now, the list of registered solvers is saved directly in the
+    # --- dump file.
+    if 'iamtheregisteredsolver' in self.__dict__:
+      if self.iamtheregisteredsolver and not self.lnorestoreonpickle:
+        del self.iamtheregisteredsolver
+        registersolver(self)
 
   # ---------------------------------------------------------------------
   def advancezgrid(self):
@@ -866,7 +910,6 @@ class SubcycledPoissonSolver(FieldSolver):
     'Charge deposition, uses particles from top directly'
     # --- Note that the grid location is advanced even if no field solve
     # --- is being done.
-    if pgroups is None: pgroups = [top.pgroup]
     self.advancezgrid()
     # --- If ldosolve is false, then skip the gather of rho, unless
     # --- lzero is also false, in which case the solver is assumed to
@@ -876,37 +919,38 @@ class SubcycledPoissonSolver(FieldSolver):
     self.allocatedataarrays()
     if lzero: self.zerosourcep()
 
+    if pgroups is None: pgroups = [top.pgroup]
     for pgroup in pgroups:
-     for js,n in zip(arange(pgroup.ns),pgroup.nps):
-      if n == 0: continue
-      if pgroup.ldts[js]:
-        indts = top.ndtstorho[pgroup.ndts[js]-1]
-        iselfb = pgroup.iselfb[js]
-        self.setsourcepforparticles(0,indts,iselfb)
+      for js,n in zip(arange(pgroup.ns),pgroup.nps):
+        if n == 0: continue
+        if pgroup.ldts[js]:
+          indts = top.ndtstorho[pgroup.ndts[js]-1]
+          iselfb = pgroup.iselfb[js]
+          self.setsourcepforparticles(0,indts,iselfb)
 
-        if self.debug:
-          i1 = pgroup.ins[js]-1
-          i2 = pgroup.ins[js]+pgroup.nps[js]-1
-          if self.nx > 0:
-            x = pgroup.xp[i1:i2]
-            assert min(abs(x-self.xmmin)) >= 0.,\
-                   "Particles in species %d have x below the grid when depositing the source"%js
-            assert max(x) < self.xmmax,\
-                   "Particles in species %d have x above the grid when depositing the source"%js
-          if self.ny > 0:
-            y = pgroup.yp[i1:i2]
-            assert min(abs(y-self.ymmin)) >= 0.,\
-                   "Particles in species %d have y below the grid when depositing the source"%js
-            assert max(y) < self.ymmax,\
-                   "Particles in species %d have y above the grid when depositing the source"%js
-          if self.nz > 0:
-            z = pgroup.zp[i1:i2]
-            assert min(z) >= self.zmmin+self.getzgridndts()[indts],\
-                   "Particles in species %d have z below the grid when depositing the source"%js
-            assert max(z) < self.zmmax+self.getzgridndts()[indts],\
-                   "Particles in species %d have z above the grid when depositing the source"%js
+          if self.debug:
+            i1 = pgroup.ins[js]-1
+            i2 = pgroup.ins[js]+pgroup.nps[js]-1
+            if self.nx > 0:
+              x = pgroup.xp[i1:i2]
+              assert min(abs(x-self.xmmin)) >= 0.,\
+                     "Particles in species %d have x below the grid when depositing the source"%js
+              assert max(x) < self.xmmax,\
+                     "Particles in species %d have x above the grid when depositing the source"%js
+            if self.ny > 0:
+              y = pgroup.yp[i1:i2]
+              assert min(abs(y-self.ymmin)) >= 0.,\
+                     "Particles in species %d have y below the grid when depositing the source"%js
+              assert max(y) < self.ymmax,\
+                     "Particles in species %d have y above the grid when depositing the source"%js
+            if self.nz > 0:
+              z = pgroup.zp[i1:i2]
+              assert min(z) >= self.zmmin+self.getzgridndts()[indts],\
+                     "Particles in species %d have z below the grid when depositing the source"%js
+              assert max(z) < self.zmmax+self.getzgridndts()[indts],\
+                     "Particles in species %d have z above the grid when depositing the source"%js
 
-        self.setsourcep(js,pgroup,self.getzgridndts()[indts])
+          self.setsourcep(js,pgroup,self.getzgridndts()[indts])
 
     # --- Only finalize the source if lzero is true, which means the this
     # --- call to loadsource should be a complete operation.
@@ -1081,6 +1125,7 @@ class SubcycledPoissonSolver(FieldSolver):
     #gc.collect()
 
   def getallpotentialpforparticles(self,iwhich=0):
+    "This transfers data from the potential array to the potentialp array"
     if not self.ldosolve: return
     self.allocatedataarrays()
     # --- Loop over the subcyling groups and get any potentialp that
