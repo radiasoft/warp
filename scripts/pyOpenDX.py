@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.31 2007/05/10 17:38:22 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.32 2007/05/10 18:27:30 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -1259,7 +1259,7 @@ Writes an image of the object to a file.
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
   else:
-    l_delete_camera=1
+    l_delete_camera=0
 
   if format=="dx" or format=="vrml":
     minput = {'object':dxobject,'name':filename,'format':format}
