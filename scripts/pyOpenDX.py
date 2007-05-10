@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.30 2007/02/05 17:55:15 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.31 2007/05/10 17:38:22 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -243,7 +243,8 @@ def viewgreyscalevolume(data,display=1,origins=None,deltas=None,name='WARP viz',
   
 ###########################################################################
 def viewparticles(x,y,z,v,labels=None,name=None,
-                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None,auto=0,
+#                  display=1,size=1.,ratio=1.,stride=1,type='standard',scale=None,auto=0,shape=None,
+                  display=1,size=1.,ratio=None,stride=1,type='standard',scale=None,auto=0,shape=None,min=None,max=None,
                   color=None,intensity=1.,opacity=0.5,colorbar=1,colormap=None,cmin=None,cmax=None,
                   include_mins=None,include_maxs=None,exclude_mins=None,exclude_maxs=None):
   if stride==1:
@@ -345,7 +346,7 @@ def viewparticles(x,y,z,v,labels=None,name=None,
 #  minput = {'data':dxf,'type':type,'ratio':ratio,'scale':size}
 #  moutput = ['glyphs']
 #  (glyphs,) = DXCallModule('Glyph',minput,moutput)
-  glyphs = DXGlyph(data=dxf,type=type,scale=size,ratio=ratio,auto=auto)
+  glyphs = DXGlyph(data=dxf,type=type,scale=size,ratio=ratio,auto=auto,min=min,max=max,shape=shape)
 
   if color is not None:
     if color=='auto' or colormap is not None:
@@ -353,10 +354,12 @@ def viewparticles(x,y,z,v,labels=None,name=None,
         glyphs,colormap = DXAutoColor(glyphs,opacity=opacity,intensity=intensity,min=cmin,max=cmax)
       else:
         glyphs = DXColor(glyphs,color=colormap,opacity=opacity)        
+        colorbar=0
     elif color=='greyscale':
       glyphs = DXAutoGrayScale(glyphs,opacity=opacity,saturation=intensity)
     else:
       glyphs = DXColor(glyphs,color=color,opacity=opacity)
+      colorbar=0
 
   if color is not None and colorbar and display:
     dxcolorbar = DXColorBar(colormap)
@@ -837,6 +840,20 @@ def DXGlyph(data,type=None,shape=None,scale=None,ratio=None,min=None,max=None,au
 def DXAutoGlyph(data,type=None,shape=None,scale=None,ratio=None,min=None,max=None,auto=0):
     return DXGlyph(data,type,shape,scale,ratio,min,max,auto=1)
 
+def DXLight(where=[0.,0.,1.],color=[1.,1.,1.],camera=0):
+    if not camera:
+      where=DXVector(where)
+    minput = {'where':where,'color':DXVector(color),'camera':camera}
+    moutput = ['light']
+    (dxobject_out,) = DXCallModule('Light',minput,moutput)
+    return dxobject_out
+
+def DXAmbientLight(color):
+    minput = {'color':DXVector(color)}
+    moutput = ['light']
+    (dxobject_out,) = DXCallModule('AmbientLight',minput,moutput)
+    return dxobject_out
+
 def DXMark(dxobject,name):
     minput = {'input':dxobject,'name':name}
     moutput = ['output']
@@ -1260,3 +1277,6 @@ Writes an image of the object to a file.
 
   if l_delete_camera:
     DXDelete(camera)
+
+def DXPrintCamera():
+  DXPrint(__main__.dxwindow.dcamera)
