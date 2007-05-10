@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.109 2007/04/13 23:59:02 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.110 2007/05/10 18:03:07 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1597,7 +1597,8 @@ Plots Z-X grid in the lab frame (including bends)
   if plotcond: pfzxlab(zbeam)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,solver=w3d):
+def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,
+            solver=w3d,mglevel=0):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
   - condcolor='fg' color of conductor points inside conductors
@@ -1631,7 +1632,7 @@ def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,solver=w3d)
     # --- convert to lab frame
     tolabfrm(zz,len(xl),xl,zl)   
     # --- make plot
-    plg(xl,zl,marker='\2',color=condcolor)
+    plp(xl,zl,color=condcolor)
   # --- restore original conductor data at zbeam
   if (zz != top.zbeam):
     top.zbeam = z
