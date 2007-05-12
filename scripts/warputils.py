@@ -23,7 +23,7 @@ from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.16 2007/03/31 01:08:43 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.17 2007/05/12 00:45:14 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -52,7 +52,7 @@ def remark(s):
 numericsign = sign
 def sign(x,y=None):
   if y is None: return numericsign(x)
-  if type(x) == ArrayType:
+  if isinstance(x,ArrayType):
     result = where(greater(y,0.),abs(x),-abs(x))
     result = where(equal(y,0.),0.,result)
     return result
@@ -96,9 +96,9 @@ Returns 3 3-d arrays holding the coordinates of the mesh points
 # --- It is not very efficient since it creates a whole new array each time.
 def arrayappend(x,a):
   xshape = list(shape(x))
-  if type(a) == ArrayType:
+  if isinstance(a,ArrayType):
     pass
-  elif type(a) == ListType:
+  elif isinstance(a,ListType):
     a = array(a)
   else:
     a = array([a])
@@ -161,7 +161,7 @@ dimension.
   if istep is None: istep = max(1,n2/nlines)
   hl = qty[:,::istep] + 0.
   hl[navg,:] = sum(qty[navg-navg:navg+navg+1,::istep])
-  nn = 2*navg+1 + zeros(shape(hl))
+  nn = 2*navg+1 + zeros(shape(hl),'l')
   if not includezeros:
     nn[navg,:] = sum(where(qty[navg-navg:navg+navg+1,::istep]==0.,0,1),0)
   for j in range(navg+1,n1-navg-1):
@@ -204,7 +204,7 @@ def makefortranordered(x):
   """Given an array, returns the same data but with fortran ordering. 
 If the array already has the correct ordering, the array is just
 returned as is. Otherwise, a new array is created and the data copied."""
-  assert type(x) is ArrayType,"Input value must be an array."
+  assert isinstance(x,ArrayType),"Input value must be an array."
   # --- Pick any package, since all have the getstrides method
   pkg = packageobject(getcurrpkg())
   # --- An array is fortran ordered if the strides are increasing,
