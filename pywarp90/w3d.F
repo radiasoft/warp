@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.353 $, $Date: 2007/05/02 21:31:43 $
+c@(#) File W3D.F, version $Revision: 3.354 $, $Date: 2007/05/15 18:13:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -719,8 +719,9 @@ c  a step of zero size, to compute fields, and gather diagnostics at start
 c  of run.
 
       real(kind=8):: getbeamcom
-      logical(ISZ):: thisstep,thiszbeam,dolabwn
+      logical(ISZ):: thisstep,thiszbeam,thistime,dolabwn
       real(kind=8):: zbeaml,zbeamr
+      real(kind=8):: time1,time2
       integer(ISZ):: k,ipc,is
       integer(ISZ):: ioldsetup,ihasinterp
       real(kind=8):: substarttime,wtime
@@ -827,25 +828,32 @@ c  on the time step which ends closest to the value given in the controlling
 c  arrays.
 c  The absolute values are taken so that if dt < 0 or vbeamfrm < 0, then
 c  it will still be true that zbeaml < zbeamr.
-         zbeaml   = zbeam - abs(0.5*vbeamfrm*dt)
-         zbeamr   = zbeam + abs(0.5*vbeamfrm*dt)
+         zbeaml = zbeam - abs(0.5*vbeamfrm*dt)
+         zbeamr = zbeam + abs(0.5*vbeamfrm*dt)
+         time1  = time - abs(0.5*dt)
+         time2  = time + abs(0.5*dt)
 
 c  Set logical flags to determine if "always" or "seldom" phase space 
 c  plots, restart dumps, final timesteps, and moment accumulations should 
 c  be done at the end of this step.
 
          lfinishd = (it >= nt) .or. (time >= tstop*(1.-MACHEPS)) .or.
-     &                             (zbeam >= zstop)
+     &                              (zbeam >= zstop)
          lalways  = thisstep (it           ,itplalways,NCONTROL) .or.
-     &           thiszbeam(zbeaml,zbeamr,zzplalways,NCONTROL) .or.
-     &           thisstep (it           ,itplfreq,  NCONTROL) .or.
-     &           thiszbeam(zbeaml,zbeamr,zzplfreq,  NCONTROL)
+     &              thiszbeam(zbeaml,zbeamr,zzplalways,NCONTROL) .or.
+     &              thistime (time1 ,time2 ,ttplalways,NCONTROL) .or.
+     &              thisstep (it           ,itplfreq,  NCONTROL) .or.
+     &              thiszbeam(zbeaml,zbeamr,zzplfreq,  NCONTROL) .or.
+     &              thistime (time1 ,time2 ,ttplfreq,  NCONTROL)
          lseldom  = thisstep (it           ,itplseldom,NCONTROL) .or.
-     &           thiszbeam(zbeaml,zbeamr,zzplseldom,NCONTROL) .or.
-     &           thisstep (it           ,itplps,    NCONTROL) .or.
-     &           thiszbeam(zbeaml,zbeamr,zzplps,    NCONTROL)
-         lmoments = thisstep (it           ,itmomnts,NCONTROL) .or.
-     &           thiszbeam(zbeaml,zbeamr,zzmomnts,NCONTROL)
+     &              thiszbeam(zbeaml,zbeamr,zzplseldom,NCONTROL) .or.
+     &              thistime (time1 ,time2 ,ttplseldom,NCONTROL) .or.
+     &              thisstep (it           ,itplps,    NCONTROL) .or.
+     &              thiszbeam(zbeaml,zbeamr,zzplps,    NCONTROL) .or.
+     &              thistime (time1 ,time2 ,ttplps,    NCONTROL)
+         lmoments = thisstep (it           ,itmomnts,  NCONTROL) .or.
+     &              thiszbeam(zbeaml,zbeamr,zzmomnts,  NCONTROL) .or.
+     &              thistime (time1 ,time2 ,ttmomnts,  NCONTROL)
          if (nhist /= 0) then
             lhist  = mod(it,nhist) == 0
          else
@@ -1353,14 +1361,14 @@ c=============================================================================
 
       real(kind=8),pointer:: zpo(:)
 
+c     Store old positions if not interpolating; if we are interpolating this 
+c     is done in xpush3dinterp in a more complicated way to allow for
+c     predictor-corrector.
       if (interpdk == 0) then
          if (xoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,xoldpid) = pgroup%xp(ipmin:ipmin+np-1)
          if (yoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,yoldpid) = pgroup%yp(ipmin:ipmin+np-1)
          if (zoldpid > 0) pgroup%pid(ipmin:ipmin+np-1,zoldpid) = pgroup%zp(ipmin:ipmin+np-1)
       endif
-c     Store old positions if not interpolating; if we are interpolating this 
-c     is done in xpush3dinterp in a more complicated way to allow for
-c     predictor-corrector.
 
       if (zoldpid > 0) then
         zpo => pgroup%pid(ipmin:ipmin+np-1,zoldpid)
@@ -1409,7 +1417,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,spid
+      use Particles,Only: nplive,wpid,chdtspid,spid,uxoldpid,uyoldpid,uzoldpid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -1636,6 +1644,14 @@ c         --- Compute lag average for experimental damping algorithm
      &                 pid(ipmin,eyeomlagpid),
      &                 pid(ipmin,ezeomlagpid))
           end if
+
+c         --- Save old velocity, but only is not doing the interpolated mover
+          if (interpdk(isid) == 0) then
+            if (uxoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uxoldpid) = pgroup%uxp(ipmin:ipmin+ip-1)
+            if (uyoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uyoldpid) = pgroup%uyp(ipmin:ipmin+ip-1)
+            if (uzoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uzoldpid) = pgroup%uzp(ipmin:ipmin+ip-1)
+          endif
+
 c         --- FULLV
 c         Note if this is a species with interpolation between
 c         drift kinetics and full PIC, and allspecl
