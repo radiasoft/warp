@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.210 $, $Date: 2007/05/08 16:45:06 $
+c@(#) File TOP.F, version $Revision: 3.211 $, $Date: 2007/05/15 18:15:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3453,6 +3453,12 @@ c         --- lost on a previous step but wasn't cleared out of the array.
             uxplost(i1) = pgroup%uxp(ip)
             uyplost(i1) = pgroup%uyp(ip)
             uzplost(i1) = pgroup%uzp(ip)
+            exlost(i1) = pgroup%ex(ip)
+            eylost(i1) = pgroup%ey(ip)
+            ezlost(i1) = pgroup%ez(ip)
+            bxlost(i1) = pgroup%bx(ip)
+            bylost(i1) = pgroup%by(ip)
+            bzlost(i1) = pgroup%bz(ip)
             if (lrelativ) then
               usq = pgroup%uxp(ip)**2 + pgroup%uyp(ip)**2 + pgroup%uzp(ip)**2
               gaminvlost(i1) = 1./sqrt(1. + usq/clight**2)
