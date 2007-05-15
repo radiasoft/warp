@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.148 $, $Date: 2007/04/24 21:37:35 $
+c@(#) File DTOP.F, version $Revision: 3.149 $, $Date: 2007/05/15 18:16:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.148 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.149 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -734,7 +734,7 @@ c=============================================================================
       thisstep = .false.
 
       if (iinc .ne. 0) then
-         if ((it.ge.istart).and.(it.le.iend)) then
+         if ((it >= istart).and.(it <= iend)) then
             if (mod(it-istart,iinc) == 0) then
                thisstep = .true.
                return
@@ -773,10 +773,10 @@ c up to zero and so is equal to ir.
       thiszbeam = .false.
 
       if (zinc .ne. 0.) then
-        if ((zstart .le. zbeamr) .and. (zbeaml .le. zend)) then
+        if ((zstart <= zbeamr) .and. (zbeaml <= zend)) then
           il = int((zbeaml - zstart + zinc)/dvnz(zinc))
           ir = int((zbeamr - zstart + zinc)/dvnz(zinc))
-          if (ir .gt. il) then
+          if (ir > il) then
             thiszbeam = .true.
             return
           endif
@@ -784,8 +784,50 @@ c up to zero and so is equal to ir.
       endif
 
       do i = 4,ncontrol
-        if (zbeaml .le. control(i) .and. control(i) .lt. zbeamr)
+        if (zbeaml <= control(i) .and. control(i) < zbeamr)
      &    thiszbeam = .true.
+      enddo
+
+      return
+      end
+c=============================================================================
+      logical function thistime(time1,time2,control,ncontrol)
+      real(kind=8):: time1,time2
+      integer(ISZ):: ncontrol
+      real(kind=8):: control(ncontrol)
+
+c Given a time range and a control array, this subroutine checks if a value
+c of time given by the loop specified by the first three elements of the control
+c array or a subsequent value in the control array are within that time range.
+c This is used for the diagnostics which are done at specified times.
+c
+c The extra 'inc' added to the expressions to calculate il and ir is there
+c so that for the case when time1<start<time2, a value of true is returned.
+c Otherwise, the expression for il returns a negative number which is rounded
+c up to zero and so is equal to ir.
+
+      real(kind=8):: tstart,tend,tinc
+      integer(ISZ):: i,il,ir
+
+      tstart = control(1)
+      tend   = control(2)
+      tinc   = control(3)
+      thistime = .false.
+
+      if (tinc .ne. 0.) then
+        if ((tstart <= time2) .and. (time1 <= tend)) then
+          il = int((time1 - tstart + tinc)/dvnz(tinc))
+          ir = int((time2 - tstart + tinc)/dvnz(tinc))
+          if (ir > il) then
+            thistime = .true.
+            return
+          endif
+        endif
+      endif
+
+      do i = 4,ncontrol
+        if (time1 <= control(i) .and. control(i) < time2)
+     &    thistime = .true.
       enddo
 
       return
