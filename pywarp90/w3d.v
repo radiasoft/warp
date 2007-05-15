@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.261 $, $Date: 2007/05/08 03:30:23 $
+#@(#) File W3D.V, version $Revision: 3.262 $, $Date: 2007/05/15 18:12:01 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.261 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.262 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -870,6 +870,9 @@ bendez3d(np,xp(np):real,zp(np):real,ez(np):real,
 epush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,
         ex(np):real,ey(np):real,ez(np):real,q:real,m:real,dt:real)
              subroutine # Particle velocity advance from E field
+epusht3d(np,uxp(np):real,uyp(np):real,uzp(np):real,
+        ex(np):real,ey(np):real,ez(np):real,q:real,m:real,dt:real,fdt:real)
+             subroutine # Particle velocity advance from E field with varying dt
 bpush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
         bx(np):real,by(np):real,bz(np):real,
         q:real,m:real,dt:real,ibpush:integer)
@@ -881,6 +884,9 @@ bpusht3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
 xpush3d(np,xp(np):real,yp(np):real,zp(np):real,
         uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,dt:real)
              subroutine # Particle position advance
+xpusht3d(np,xp(np):real,yp(np):real,zp(np):real,
+        uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,fdt:real)
+             subroutine # Particle position advance with varying dt
 ebcancel3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
            exp(np):real,eyp(np):real,ezp(np):real,bxp(np):real,byp(np):real,bzp(np):real)
              subroutine # E+vxB cancellation routine
