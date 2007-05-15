@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.72 2007/05/09 16:54:46 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.73 2007/05/15 18:35:27 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -162,7 +162,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   # --- Same for npslost
   npslost_p = gatherarray(top.npslost,bcast=1)
   npslost_p.shape = (top.nslaves,top.ns)
-  npslost_p0 = zeros((top.nslaves+1,top.ns+1))
+  npslost_p0 = zeros((top.nslaves+1,top.ns+1),'l')
   npslost_p0[1:,1:] = npslost_p
 
   # --- Need boundnz from the right most processor.
@@ -216,7 +216,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           # --- other processors, so space must still be made in the dump file.
           vartype = pkg.getvartype(vname)
           if   vartype == 'double':  v = zeros(1,'d')
-          elif vartype == 'integer': v = zeros(1)
+          elif vartype == 'integer': v = zeros(1,'l')
 
         # --- Skip complex since they can't currently be written out to
         # --- the file.
@@ -501,7 +501,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0)
 
   if 'npslost_p' in vlistparallel:
     npslost_p = ff.read('npslost_p@parallel')
-    npslost_p0 = zeros((top.nslaves+1,top.ns+1))
+    npslost_p0 = zeros((top.nslaves+1,top.ns+1),'l')
     npslost_p0[1:,1:] = npslost_p
   itriple = array([me,me,1,0,top.ns-1,1])
   if 'inslost@top' in vlistparallel:
