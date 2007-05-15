@@ -8,13 +8,16 @@ try:
 except ImportError:
   pass
 import controllers
-import RandomArray
+if lwithnumpy:
+  import numpy.oldnumeric.random_array as RandomArray
+else:
+  import RandomArray
 import re
 import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.193 2007/05/02 21:38:26 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.194 2007/05/15 18:34:51 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -547,7 +550,7 @@ Simple interface to contour plotting, same arguments as plc
   elif len(shape(yy))==1:
     yy = yy*ones(s[0],'d')[:,NewAxis]
   if ireg is None:
-    ireg = ones(s)
+    ireg = ones(s,'i')
   else:
     assert shape(ireg) == shape(zz),"Shape of ireg must be the same as zz"
   if levs is not None: contours = levs
@@ -1202,7 +1205,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       getgrid2d(len(x),x,yms,dd,nx,ny,densitygrid,xmin,xmax,ymin,ymax)
       maxdensity = maxnd(densitygrid)
       dd = dd/maxdensity
-      ipick = ones(shape(x))
+      ipick = ones(shape(x),'l')
       if chopped:
         ipick[:] = ipick*less(RandomArray.random(shape(x)),chopped/dd)
       if denmin:
