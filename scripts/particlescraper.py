@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.47 2007/02/13 00:27:44 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.48 2007/05/15 18:22:55 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -28,6 +28,12 @@ Class for creating particle scraper for conductors
                    pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
+ - lrefineintercept: when true, with lsaveintercept, the particles are advanced
+                     from the old positions using a time step small compared to
+                     the cyclotron gyroperiod to calculated a better value for
+                     the intercept.
+ - nstepsperorbit=8: number of refined time steps to take when using
+                     lrefineintercept.
  - lcollectlpdata: When true, the lost particles statistics will be collected for 
                    each conductor in the list lostparticles_data (Assembly class).
  - mglevel=0: Coarsening level for index grid which is used to determine
@@ -50,7 +56,7 @@ After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
-  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,lcollectlpdata=0,
+  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,lrefineintercept=0,nstepsperorbit=8,lcollectlpdata=0,
                     mglevel=0,aura=0.,install=1,grid=None): 
     self.mglevel = mglevel
     self.aura = aura
@@ -65,20 +71,29 @@ conductors are an argument.
     gchange("LostParticles")
     # --- If the conductor id where particles are lost is being saved,
     # --- need to turn on saving of lost particles.
-    self.lsaveintercept = lsaveintercept
-    self.lsavecondid = lsavecondid or lsaveintercept or lcollectlpdata
+    self.lsaveintercept = lsaveintercept or lrefineintercept
+    self.lrefineintercept = lrefineintercept
+    self.nstepsperorbit = nstepsperorbit
+    self.lsavecondid = lsavecondid or lsaveintercept or lrefineintercept or lcollectlpdata
     self.lcollectlpdata = lcollectlpdata
     if self.lsavecondid:
       top.lsavelostpart = true
     if self.lsaveintercept:
       if not top.lsaveoldpos:top.lsaveoldpos=true
       # --- Note that nextpid returns numbers based on 1 based indexing
-      if top.xoldpid==0:top.xoldpid=nextpid()
-      if top.yoldpid==0:top.yoldpid=nextpid()
-      if top.zoldpid==0:top.zoldpid=nextpid()
-      self.xoldpid=top.xoldpid - 1
-      self.yoldpid=top.yoldpid - 1
-      self.zoldpid=top.zoldpid - 1
+      if top.xoldpid==0: top.xoldpid=nextpid()
+      if top.yoldpid==0: top.yoldpid=nextpid()
+      if top.zoldpid==0: top.zoldpid=nextpid()
+      self.xoldpid = top.xoldpid - 1
+      self.yoldpid = top.yoldpid - 1
+      self.zoldpid = top.zoldpid - 1
+      if self.lrefineintercept:
+        if top.uxoldpid==0: top.uxoldpid=nextpid()
+        if top.uyoldpid==0: top.uyoldpid=nextpid()
+        if top.uzoldpid==0: top.uzoldpid=nextpid()
+        self.uxoldpid = top.uxoldpid - 1
+        self.uyoldpid = top.uyoldpid - 1
+        self.uzoldpid = top.uzoldpid - 1
       setuppgroup(top.pgroup)
     self.l_print_timing=0
     # --- If the user specified the grid, then add the conductors
@@ -447,7 +462,6 @@ after load balancing."""
     else:
       raise "The particle scraping only works for XYZ, XZ, XY and RZ geometry"
 
-
     if w3d.solvergeom == w3d.RZgeom:
       xx = top.xplost[i1:i2]
       yy = top.yplost[i1:i2]
@@ -492,20 +506,56 @@ after load balancing."""
         xo = take(top.pidlost[i1:i2,self.xoldpid],ic-i1)
         yo = take(top.pidlost[i1:i2,self.yoldpid],ic-i1)
         zo = take(top.pidlost[i1:i2,self.zoldpid],ic-i1)
-        vx = (xc-xo)/top.dt
-        vy = (yc-yo)/top.dt
-        vz = (zc-zo)/top.dt
+
+        if self.lrefineintercept:
+          uxo = take(top.pidlost[i1:i2,self.uxoldpid],ic-i1)
+          uyo = take(top.pidlost[i1:i2,self.uyoldpid],ic-i1)
+          uzo = take(top.pidlost[i1:i2,self.uzoldpid],ic-i1)
+          ex = take(top.exlost[i1:i2],ic-i1)
+          ey = take(top.eylost[i1:i2],ic-i1)
+          ez = take(top.ezlost[i1:i2],ic-i1)
+          bx = take(top.bxlost[i1:i2],ic-i1)
+          by = take(top.bylost[i1:i2],ic-i1)
+          bz = take(top.bzlost[i1:i2],ic-i1)
+          itime = zeros(len(ic),'d')
+          dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]*ones(len(ic))
+          q = top.pgroup.sq[js]
+          m = top.pgroup.sm[js]
+          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m)
+        else:
+          itime = 0.
+          dt = top.dt
+
+        vx = (xc-xo)/dt
+        vy = (yc-yo)/dt
+        vz = (zc-zo)/dt
+
         intercept = c.intercept(xc,yc,zc,vx,vy,vz)
+        dtintercept = (sqrt((xc - intercept.xi)**2 +
+                            (yc - intercept.yi)**2 +
+                            (zc - intercept.zi)**2)/
+              dvnz(sqrt(vx**2 + vy**2 + vz**2))) + itime
+
         put(top.xplost,ic,intercept.xi)
         put(top.yplost,ic,intercept.yi)
         put(top.zplost,ic,intercept.zi)
+
+        if self.lrefineintercept:
+          # --- Also, reset the velocities
+          if top.lrelativ:
+            beta = sqrt(vx**2 + vy**2 + vz**2)/clight
+            gamma = 1./sqrt((1.-beta)*(1.+beta))
+          else:
+            gamma = 1.
+          put(top.uxplost,ic,vx*gamma)
+          put(top.uyplost,ic,vy*gamma)
+          put(top.uzplost,ic,vz*gamma)
+
+        # --- Set the angle of incidence and time of interception
         put(top.pidlost[:,-3],ic,intercept.itheta)
         put(top.pidlost[:,-2],ic,intercept.iphi)
-        dt = (sqrt((xc - intercept.xi)**2 +
-                   (yc - intercept.yi)**2 +
-                   (zc - intercept.zi)**2)/
-              dvnz(sqrt(vx**2 + vy**2 + vz**2)))
-        put(top.pidlost[:,-4],ic,top.time - dt)
+        put(top.pidlost[:,-4],ic,top.time - dtintercept)
+
       if self.lcollectlpdata:
         pidlostcondid = take(top.pidlost[:,-1],iscrape1)
         pidtoconsider = compress(pidlostcondid==c.condid,iscrape1)
@@ -519,4 +569,131 @@ after load balancing."""
                                   w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                   top.dt,
                                   jsid]]
+
+
+
+  def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m):
+    """Refine the location of the intercept
+c: the conductor
+xc,yc,zc: output holding the point just inside the conductor
+xo,yo,zo: input holding the old particle position
+          output holding the point just outside the conductor
+uxo,uyo,uzo: input holding old velocity, time synchronized with xo,yo,zo
+             output holding velocity near time when particle entered the
+             conductor
+ex,ey,ez,bx,by,bz: fixed E and B fields
+itime: output holding time that the particle reached xo,yo,zo
+dt: output holding particle time step sizes
+q,m: charge and mass of the particles
+    """
+    # --- Note that this routine is written in a non-pythonic way, where the
+    # --- changes are made directly in the input arrays.
+
+    # --- Get the number of particles
+    nn = len(xo)
+
+    # --- The cyclotron frequency for each particle
+    magB = sqrt(bx**2 + by**2 + bz**2)
+    omegac = q/m*magB
+
+    # --- Get the number of steps for each particle. 
+    # --- This is set by self.nstepsperorbit which is the number of steps
+    # --- per cyclotron orbit.
+    isteps = nint(dt*omegac/(2.*pi)*self.nstepsperorbit)
+
+    # --- So that the orbit is always refined, at least a little, set the
+    # --- minimum number of steps to be self.nstepsperorbit. This is helpful
+    # --- for example if the B field is zero.
+    isteps = maximum(isteps,self.nstepsperorbit)
+
+    # --- Get the maximum number of steps needed
+    nsteps  = max(isteps)
+
+    # --- Calculate the overcycled step size for each particle
+    # --- Note that dtover will be modified in the loop below,
+    # --- and dt is used to return the time step size.
+    dtover = dt/isteps
+    dt[:] = dtover
+
+    # --- Recalculate gaminv. The code could also save the old gaminv, but
+    # --- this should be equivalent.
+    if top.lrelativ:
+      usq = (uxo**2 + uyo**2 + uzo**2)
+      gamma = sqrt(1. + usq/clight**2)
+      gaminv = 1./gamma
+    else:
+      gaminv = ones(nn,'d')
+
+    # --- Save the positions. This is needed so that the data can be
+    # --- restored if no intercept is found below.
+    xcsave = xc.copy()
+    ycsave = yc.copy()
+    zcsave = zc.copy()
+    xosave = xo.copy()
+    yosave = yo.copy()
+    zosave = zo.copy()
+
+    # --- Get the starting positions of the advance. These should all be
+    # --- outside of the conductor. The loop below advances the particles
+    # --- using these 'c' arrays.
+    xc[:] = xo
+    yc[:] = yo
+    zc[:] = zo
+    itime[:] = 0.
+
+    # --- Do the over cycling loop. Note that all particles are advanced by
+    # --- the maximum number of steps, though once a particle goes inside
+    # --- the conductor, its time step is set to zero so the coordinates
+    # --- don't change anymore.
+    # --- One possible optimization is to have the fortran advancing
+    # --- routines skip particles that have a zero time step size.
+    for it in range(nsteps):
+
+      # --- Do a full split leap-frog advance (with constant E and B fields)
+      # --- Note that this does the advance in place, directly changing the
+      # --- input arrays.
+      bpusht3d(nn,uxo,uyo,uzo,gaminv,bx,by,bz,q,m,dtover,0.5,top.ibpush)
+      epusht3d(nn,uxo,uyo,uzo,ex,ey,ez,q,m,dtover,0.5)
+      gammaadv(nn,gaminv,uxo,uyo,uzo,top.gamadv,top.lrelativ)
+      xpusht3d(nn,xc,yc,zc,uxo,uyo,uzo,gaminv,dtover)
+      epusht3d(nn,uxo,uyo,uzo,ex,ey,ez,q,m,dtover,0.5)
+      gammaadv(nn,gaminv,uxo,uyo,uzo,top.gamadv,top.lrelativ)
+      bpusht3d(nn,uxo,uyo,uzo,gaminv,bx,by,bz,q,m,dtover,0.5,top.ibpush)
+
+      # --- This provides a nice diagnostic for testing
+      #plp(yc[0],xc[0],marker=circle,color=green)
+
+      # --- Check whether the new positions are inside of the conductor.
+      isinside = c.isinside(xc,yc,zc).isinside
+
+      # --- For the particles that are still outside, set the old positions
+      # --- to be the updated positions
+      xo[:] = where(isinside,xo,xc)
+      yo[:] = where(isinside,yo,yc)
+      zo[:] = where(isinside,zo,zc)
+
+      # --- If a particle is inside the conductor, then stop advancing it,
+      # --- setting its time step size to zero.
+      dtover = where(isinside,0.,dtover)
+
+      # --- Now, advance itime. Note that for particles that are now inside,
+      # --- itime is not advanced since it is the time just before the particle
+      # --- enters the conductor.
+      itime[:] = itime + dtover
+
+      # --- Quit the loop if all intercepts have been found.
+      if alltrue(dtover==0.): break
+
+    # --- Check for cases where no interception was found. In those cases,
+    # --- restore the original data since that will at least not cause
+    # --- a code problem. This checks if dtover hasn't been zeroed out
+    # --- which means that the particle was never flagged as being inside
+    # --- in the loop above.
+    if sometrue(dtover > 0.):
+      xc[:] = where(dtover > 0.,xcsave,xc)
+      yc[:] = where(dtover > 0.,ycsave,yc)
+      zc[:] = where(dtover > 0.,zcsave,zc)
+      xo[:] = where(dtover > 0.,xosave,xo)
+      yo[:] = where(dtover > 0.,yosave,yo)
+      zo[:] = where(dtover > 0.,zosave,zo)
 
