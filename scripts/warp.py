@@ -1,14 +1,20 @@
-warp_version = "$Id: warp.py,v 1.138 2007/05/09 16:56:59 dave Exp $"
+warp_version = "$Id: warp.py,v 1.139 2007/05/15 18:31:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
-from Numeric import *
-import MA
+lwithnumpy = 0
+if lwithnumpy:
+  from numpy import *
+  ArrayType = ndarray
+else:
+  from Numeric import *
+  import MA
 import sys
 import os.path
 import time
 
-# --- Set this to a more reasonable value
-MA.set_print_limit(10000)
+if not lwithnumpy:
+  # --- Set this to a more reasonable value
+  MA.set_print_limit(10000)
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
@@ -17,7 +23,10 @@ try:
 except ImportError:
   pass
 try:
-  import RNG
+  if lwithnumpy:
+    import numpy.oldnumeric.rng as RNG
+  else:
+    import RNG
 except ImportError:
   pass
 
@@ -45,7 +54,10 @@ from warpC import *
 
 from Forthon import *
 from warputils import *
-import RandomArray
+if lwithnumpy:
+  import numpy.oldnumeric.random_array as RandomArray
+else:
+  import RandomArray
 
 # --- The WARP modules must be imported in the order below because of
 # --- linking dependencies.
@@ -1038,6 +1050,7 @@ from MeshRefinement import MRBlock
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
 from species import *
+from particlescraper import ParticleScraper
 
 # --- Import some online documentation modules.
 from warphelp import *
