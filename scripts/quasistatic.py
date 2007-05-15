@@ -61,6 +61,7 @@ class Quasistatic:
           self.conductors=ConductorType()
           installconductors(cond,conductors=self.conductors,gridrz=g,nz=0)
       w3d.solvergeom=solvergeomcp
+    self.MRroot = MRroot
     self.dt = w3d.dz/top.vbeam # time step for pushing electrons
     self.nparpgrp = nparpgrp
     self.l_verbose = l_verbose
@@ -216,9 +217,9 @@ class Quasistatic:
         else:
           raise('this part needs to be programmed: Quasistatic+Boris-l_MR')
           
-#     if l_plotelec and iz<w3d.nzfull/max(1,npes):
+      if l_plotelec and iz<w3d.nzfull/max(1,npes):
 #        ppgeneric(getvx(js=1),getx(js=1))
-#        window(0);self.slist[0].ppxy();        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
+        window(0);self.slist[0].ppxy();        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
 #        ppxex(js=1)
 #        pfxy(iz=iz);
 #        fma()
@@ -237,6 +238,9 @@ class Quasistatic:
             if np==0:continue
             # --- gather self-forces
             if self.l_verbose:print 'me = ',me,';fieldweight' # MR OK
+            pg.ex[il:iu]=0.
+            pg.ey[il:iu]=0.
+            pg.ez[il:iu]=0.
             if self.l_rz:
               fieldweightr(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np)
             else:
@@ -272,6 +276,9 @@ class Quasistatic:
             np = iu-il
             if np==0:continue
             if self.l_verbose:print 'me = ',me,';fieldweight' # MR OK
+            pg.ex[il:iu]=0.
+            pg.ey[il:iu]=0.
+            pg.ez[il:iu]=0.
             if self.l_rz:
               fieldweightr(pg.xp[il:iu],pg.yp[il:iu],pg.ex[il:iu],pg.ey[il:iu],np)
             else:
