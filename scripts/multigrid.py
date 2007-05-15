@@ -314,10 +314,11 @@ class MultiGrid(SubcycledPoissonSolver):
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
       self.getselfe(recalculate=1,lzero=lzero)
-      # --- If top.fslefb(iselfb) > 0, then calculate and include the
-      # --- approximate correction terms A and dA/dt.
-      self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
-      self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
+      if top.fselfb[iselfb] > 0:
+        # --- If the self-B correction is nonzero, then calculate and include
+        # --- the approximate correction terms A and dA/dt.
+        self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
+        self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
