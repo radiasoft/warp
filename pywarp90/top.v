@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.202 $, $Date: 2007/05/08 16:44:13 $
+#@(#) File TOP.V, version $Revision: 3.203 $, $Date: 2007/05/15 18:15:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.202 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.203 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -846,6 +846,17 @@ zzplseldom(NCONTROL)          real    /NCONTROL*0/
    # z locations to do "seldom" plots; first 3 are a do loop
 zzplalways(NCONTROL)        real    /NCONTROL*0/
    # z locations to do "always" plots; first 3 are a do loop
+ttmomnts(NCONTROL)        real    /NCONTROL*0/
+   # times to do calculation of z moments and print one-liner of info;
+   # first 3 are a do loop
+ttplps(NCONTROL)          real    /NCONTROL*0/
+   # times to do full set of phase space plots; first 3 are a do loop
+ttplfreq(NCONTROL)        real    /NCONTROL*0/
+   # times to do "frequent" phase space plots; first 3 are a do loop
+ttplseldom(NCONTROL)          real    /NCONTROL*0/
+   # times to do "seldom" plots; first 3 are a do loop
+ttplalways(NCONTROL)        real    /NCONTROL*0/
+   # times to do "always" plots; first 3 are a do loop
 nhist                     integer /5/
    # Interval between timesteps at which history data is saved
 npplot(NSUBSETS)          integer /50000,20000,5000/
@@ -2086,12 +2097,12 @@ zp(npmax)       _real [m]       # Z-positions of particles
 uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
 uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
 uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
-ex(npmax)       _real [m]       # Ex of particles
-ey(npmax)       _real [m]       # Ey of particles
-ez(npmax)       _real [m]       # Ez of particles
-bx(npmax)       _real [m]       # Bx of particles
-by(npmax)       _real [m]       # By of particles
-bz(npmax)       _real [m]       # Bz of particles
+ex(npmax)       _real [v/m]     # Ex of particles
+ey(npmax)       _real [v/m]     # Ey of particles
+ez(npmax)       _real [v/m]     # Ez of particles
+bx(npmax)       _real [T]       # Bx of particles
+by(npmax)       _real [T]       # By of particles
+bz(npmax)       _real [T]       # Bz of particles
 pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
 
 *********** Subcycling dump:
@@ -2173,13 +2184,19 @@ lostpartchunksize   integer /1000/
 inslost(ns)        _integer /0/ # Index of first lost particles of species
 npslost(ns)        _integer /0/ # Number of lost particles in species
 npmaxlost_s(0:ns)  _integer /0/ # Max index of lost particles for species
+gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
 xplost(npmaxlost)  _real [m]    # X-positions of lost particles
 yplost(npmaxlost)  _real [m]    # Y-positions of lost particles
 zplost(npmaxlost)  _real [m]    # Z-positions of lost particles
 uxplost(npmaxlost) _real [m/s]  # gamma * X-velocities of lost particles
 uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
-gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
+exlost(npmaxlost)  _real [V/m]  # Ex of lost particles
+eylost(npmaxlost)  _real [V/m]  # Ey of lost particles
+ezlost(npmaxlost)  _real [V/m]  # Ez of lost particles
+bxlost(npmaxlost)  _real [T]    # Bx of lost particles
+bylost(npmaxlost)  _real [T]    # By of lost particles
+bzlost(npmaxlost)  _real [T]    # Bz of lost particles
 tplost(npmaxlost)  _real [s]    # time particles were lost
 pidlost(npmaxlost,npidlost) _real [1] # Particle ID of lost particles
 
@@ -2456,6 +2473,9 @@ stepid(it,time:real,zbeam:real)
 thisstep(it,itcount,n) logical function
                          #
 thiszbeam(zl:real,zr:real,control(ncontrol):real,ncontrol:integer)
+              logical function
+                         #
+thistime(tl:real,tr:real,control(ncontrol):real,ncontrol:integer)
               logical function
                          #
 savehist(time:real)
