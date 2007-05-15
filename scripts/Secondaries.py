@@ -2,6 +2,7 @@
 Secondaries: class for generating secondaries
 """
 from warp import *
+from appendablearray import *
 from pos import *
 from species import *
 try:
@@ -19,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.17 2007/03/26 17:53:43 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.18 2007/05/15 23:31:27 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -47,6 +48,7 @@ Class for generating secondaries
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
                     xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0):
+    top.lresetlostpart=true
     self.inter={}
     self.outparts=[]
 #    self.isinc = isinc
@@ -59,7 +61,8 @@ Class for generating secondaries
 #    self.condids={}
 #    self.emitted={}
     self.set_params_user=set_params_user
-    self.call_set_params_user(pos.maxsec,pos.mat_number)
+    self.mat_number=1
+    self.call_set_params_user(pos.maxsec,self.mat_number)
     self.min_age=min_age
     if self.min_age is not None:
       w3d.l_inj_rec_inittime=true
@@ -103,6 +106,11 @@ Class for generating secondaries
     self.vy={}
     self.vz={}
     self.pid={}
+    # set history list
+    self.htime=AppendableArray(typecode='d')
+    self.ek0av=AppendableArray(typecode='d')	    # average collision kinetic energy [eV] 
+    self.ek0max=AppendableArray(typecode='d')    # maximum collision kinetic energy [eV]
+    self.costhav=AppendableArray(typecode='d')   # average collision angle
     if pos.nsteps==0:
       self.piditype=0
     else:
@@ -313,6 +321,11 @@ Class for generating secondaries
     zmin=w3d.zmminglobal
     zmax=w3d.zmmaxglobal
 
+    # initializes history quantities
+    weighttot=0.
+    ek0av=0.
+    costhav=0.
+    ek0max=0.
     if self.l_record_timing:t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
     # compute number of secondaries and create them
@@ -403,11 +416,15 @@ Class for generating secondaries
 #        return
 #        coseta=0.5*ones(shape(e0)[0])
 #        e0=30.*ones(shape(e0)[0])
-        if self.piditype>0:
-          pos.ek0av   += sum(weight*e0)	#cummulative collision kinetic energy [eV] this step
-          pos.ek0max   = max(max(e0),pos.ek0max)	#maximum collision kinetic energy [eV]
-          pos.costhav += sum(weight*abs(coseta))
-          pos.rcoll   += sum(weight)
+        if top.wpid==0:
+          ek0av+=sum(e0)
+          costhav+=sum(abs(coseta))
+          weighttot+=n
+        else:
+          ek0av+=sum(weight*e0)
+          costhav+=sum(weight*abs(coseta))
+          weighttot+=sum(weight)
+        ek0max=max(max(e0),ek0max)
 #        coseta = 0.*cosphi
         if 1:#cond.lcollectlpdata:
           if not cond.lostparticles_angles.has_key(js):
@@ -676,7 +693,7 @@ Class for generating secondaries
       self.flushpart(js)
     # --- check for particle out of bounds and exchange particles among processors if needed
     zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
-      
+
     if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
     # --- append total emitted charge in conductors emitparticles_data arrays
@@ -689,6 +706,17 @@ Class for generating secondaries
                                       totemit,
                                       top.dt,
                                       self.inter[js]['emitted_species'][ics][ie].jslist[0]]]
+
+    # append history arrays
+    weighttot = parallelsum(weighttot)
+    ek0av = parallelsum(ek0av)
+    costhav = parallelsum(costhav)
+    if me==0:
+     if weighttot<>0.:
+      self.htime.append(top.time)
+      self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
+      self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
+      self.costhav.append(costhav/weighttot)
 
 #    w3d.lcallscraper=0
 #    particleboundaries3d()
@@ -1055,9 +1083,9 @@ components of the secondaries (dimensionless).
     pos.gchange("bincoeff")
     init_pascal_triangle(pos.nbc,pos.maxsec)
  
-   if  itype<>pos.mat_number:
-    pos.mat_number=itype
-    self.call_set_params_user(maxsec,pos.mat_number)
+   if  itype<>self.mat_number:
+    self.mat_number=itype
+    self.call_set_params_user(maxsec,self.mat_number)
 
    ndelerm=0
    ndeltspm=0
@@ -1166,3 +1194,239 @@ components of the secondaries (dimensionless).
       s2[i]=getP1rediff(E0=energy[i],costheta=1.,material=2,maxsec=10)
       s3[i]=getP1elast(E0=energy[i],costheta=1.,material=2,maxsec=10)
     return s1+s2+s3
+
+  def getek0av(self):
+    return self.htime[...],self.ek0av[...]
+
+  def getek0max(self):
+    return self.htime[...],self.ek0max[...]
+  
+  def getcosthav(self):
+    return self.htime[...],self.costhav[...]
+
+  def plek0av(self,color=black,width=1,type='solid'):
+    if me<>0:return
+    htime,ek0av=self.getek0av()
+    plg(ek0av,htime,color=color,width=width,type=type)
+    ptitles('','time (s)','ek0av (eV)')
+
+  def plek0max(self,color=black,width=1,type='solid'):
+    if me<>0:return
+    htime,ek0max=self.getek0max()
+    plg(ek0max,htime,color=color,width=width,type=type)
+    ptitles('','time (s)','ek0max (eV)')
+
+  def plcosthav(self,color=black,width=1,type='solid'):
+    if me<>0:return
+    htime,costhav=self.getcosthav()
+    plg(costhav,htime,color=color,width=width,type=type)
+    ptitles('','time (s)','costhav')
+
+class PhotoElectrons:
+  """
+Class for generating photo-electrons
+ - posinst_file: name of Posinst input file 
+ - xfloor      : photo-electrons generated by Posinst that have x<xfloor will be forced to x=xfloor
+ - xceiling    : photo-electrons generated by Posinst that have x>xceiling will be forced to x=xceiling
+ - yfloor      : photo-electrons generated by Posinst that have y<yfloor will be forced to y=yfloor
+ - yceiling    : photo-electrons generated by Posinst that have y>xceiling will be forced to y=yceiling
+ - nz          : number of longitudinal slices (default=100)
+ - l_xmirror   : turns mirroring of emitted photo-electrons with regard to x-axis on/off
+ - l_verbose   : sets verbosity (default=0). 
+  """
+  def __init__(self,posinst_file=None,xfloor=None,xceiling=None,yfloor=None,yceiling=None,
+               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0):
+     self.xfloor=xfloor
+     self.xceiling=xceiling
+     self.yfloor=yfloor
+     self.yceiling=yceiling
+     self.nz=nz
+     self.l_xmirror=l_xmirror
+     self.l_switchyz=l_switchyz
+     self.l_verbose=l_verbose
+     self.inter={}
+     self.npmax=4096
+     self.nps={}
+     self.x={}
+     self.y={}
+     self.z={}
+     self.vx={}
+     self.vy={}
+     self.vz={}
+     self.pid={}
+     self.Lambda=0.
+     if posinst_file is not None:init_posinst_for_warp(posinst_file)
+     self.install()
+     
+  def add(self,incident_species=None,emitted_species=None):
+    isinc=incident_species
+    issec=[]
+    if not self.inter.has_key(isinc):
+        self.inter[isinc]={}
+        for key in ['incident_species','emitted_species']:
+          self.inter[isinc][key]=[]
+        self.inter[isinc]['incident_species']=incident_species
+    self.inter[isinc]['emitted_species'] = emitted_species
+    js=emitted_species.jslist[0]
+    if not self.x.has_key(js):
+      self.nps[js]=0
+      self.x[js]=fzeros(self.npmax,'d')
+      self.y[js]=fzeros(self.npmax,'d')
+      self.z[js]=fzeros(self.npmax,'d')
+      self.vx[js]=fzeros(self.npmax,'d')
+      self.vy[js]=fzeros(self.npmax,'d')
+      self.vz[js]=fzeros(self.npmax,'d')
+      if top.wpid>0:
+        self.pid[js]=fzeros([self.npmax,top.npid],'d')
+
+  def install(self):
+    if not isinstalledbeforeloadrho(self.generate):
+      installbeforeloadrho(self.generate)
+
+  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None):
+    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    il=self.nps[js]
+    iu=il+nn
+    self.x[js][il:iu]=x
+    self.y[js][il:iu]=y
+    self.z[js][il:iu]=z
+    self.vx[js][il:iu]=vx
+    self.vy[js][il:iu]=vy
+    self.vz[js][il:iu]=vz
+    if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
+    self.nps[js]+=nn
+      
+  def flushpart(self,js):
+    if self.nps[js]>0:
+       nn=self.nps[js]
+       if top.wpid==0:
+         addparticles(x=self.x[js][:nn],
+                      y=self.y[js][:nn],
+                      z=self.z[js][:nn],
+                      vx=self.vx[js][:nn],
+                      vy=self.vy[js][:nn],
+                      vz=self.vz[js][:nn],
+                      js=js,
+                      lmomentum=true)
+       else: 
+         addparticles(x=self.x[js][:nn],
+                      y=self.y[js][:nn],
+                      z=self.z[js][:nn],
+                      vx=self.vx[js][:nn],
+                      vy=self.vy[js][:nn],
+                      vz=self.vz[js][:nn],
+                      pid=self.pid[js][:nn,:],
+                      js=js,
+                      lmomentum=true)
+       self.nps[js]=0
+         
+  def generate(self):
+    for ints in self.inter.keys():
+     incident_species=self.inter[ints]['incident_species']
+     emitted_species=self.inter[incident_species]['emitted_species']
+     if incident_species is None:
+       self.nz=1
+       if self.l_switchyz:
+         ymin=w3d.ymmin
+         ymax=w3d.ymmax
+         dy=(w3d.ymmax-w3d.ymmin)
+       else:
+         zmin=w3d.zmmin
+         zmax=w3d.zmmax
+         dz=(w3d.zmmax-w3d.zmmin)
+     else:
+       if self.l_switchyz:
+         ymin=min(incident_species.gety())
+         ymax=max(incident_species.gety())
+         dy=(ymax-ymin)/self.nz
+         self.Lambda = sum(sum(incident_species.get_density(nx=2, 
+                                                            nz=2, 
+                                                            ny=self.nz,
+                                                            ymin=ymin,
+                                                            ymax=ymax,
+                                                            l_minmax_grid=false,
+                                                            l_dividebyvolume=false,
+                                                            charge=1),2),0)
+       else:
+         zmin=min(incident_species.getz())
+         zmax=max(incident_species.getz())
+         dz=(zmax-zmin)/self.nz
+         self.Lambda = sum(sum(incident_species.get_density(nx=2, 
+                                                            ny=2, 
+                                                            nz=self.nz,
+                                                            zmin=zmin,
+                                                            zmax=zmax,
+                                                            l_minmax_grid=false,
+                                                            l_dividebyvolume=false,
+                                                            charge=1),0),0)
+     weightemit=top.pgroup.sw[emitted_species.jslist[0]]*abs(top.pgroup.sq[emitted_species.jslist[0]])
+     rheltot=0.
+     for i in range(self.nz):
+       if incident_species is None:
+         rhel = self.Lambda*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
+       else:
+         rhel = self.Lambda[i]*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
+#       rhel*=pos.slength
+       rheltot+=rhel
+       # rhel is the number of photoelectrons created at each timestep
+       # queffp  is the  quantum efficiency (photoelectrons produced per
+               # photon)  Miguel says queffp is between 0.1 and 1.0.  Real
+               # value not known.
+
+       n=int(rhel)
+       if ranf()<rhel-n:n+=1  # randomly add one electrons based on rhel fractional part
+       if self.l_verbose:print ' *** i,rhel,nemit= ',i,rhel,n
+       if n==0:continue
+       pos.nphel[0]=n   # tells Posinst to emit n photoelectrons
+       gen_photoelectrons(1) # number of beam slice in POSINST =1. Use only 1.
+       if self.l_verbose:print 'nlast',pos.nlast,"nphel=",pos.nphel[0]
+
+       if self.l_xmirror:
+         # put photons on both sides of the vacuum chamber
+         xran = ranf(pos.x[:pos.nlast])
+         xran = where(xran>0.5,1.,-1.)
+         pos.x[:pos.nlast] = pos.x[:pos.nlast]*xran
+         pos.vgx[:pos.nlast] = pos.vgx[:pos.nlast]*xran
+
+       if self.l_verbose:print "min and max of photoelectrons=",min((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz),\
+                                                                max((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz)
+       ns = pos.nlast
+       js_new=emitted_species.jslist[0]
+       usq = (pos.vgx[:pos.nlast]**2 + pos.vgy[:pos.nlast]**2 + pos.vgz[:pos.nlast]**2)/clight**2
+       gaminv = 1./sqrt(1. + usq)
+       dt=ranf(usq)*top.dt
+       if self.xfloor is not None:
+         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]>self.xfloor,pos.x[:pos.nlast],self.xfloor)
+       if self.xceiling is not None:
+         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]<self.xceiling,pos.x[:pos.nlast],self.xceiling)
+       if self.yfloor is not None:
+         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]>self.yfloor,pos.y[:pos.nlast],self.yfloor)
+       if self.yceiling is not None:
+         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]<self.yceiling,pos.y[:pos.nlast],self.yceiling)
+       if top.wpid==0:
+         weights = None
+       else:
+         weights = ones(pos.nlast,'d')
+       if self.l_switchyz:
+           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
+                         pos.z[:pos.nlast]*0.,
+                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
+                         pos.vgx[:pos.nlast],
+                         pos.vgz[:pos.nlast],
+                         pos.vgy[:pos.nlast],
+                         js_new,
+                         weights)
+       else:
+           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
+                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
+                         (pos.z[:pos.nlast]/pos.slength)*dz+i*dz+zmin,
+                         pos.vgx[:pos.nlast],
+                         pos.vgy[:pos.nlast],
+                         pos.vgz[:pos.nlast],
+                         js_new,
+                         weights)
+       pos.nlast=0
+
+    # --- make sure that all particles are added
+    for js in self.x.keys():
+      self.flushpart(js)
