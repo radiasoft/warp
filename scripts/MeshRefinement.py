@@ -87,7 +87,7 @@ Implements adaptive mesh refinement in 3d
       self.dims = dims
       self.mins = mins
       self.maxs = maxs
-      self.totalrefinement = ones(3)
+      self.totalrefinement = ones(3,'l')
       self.forcesymmetries = 1
       self.nguard = nguard
       self.deltas = None
@@ -172,8 +172,8 @@ Implements adaptive mesh refinement in 3d
 
       # --- In parallel, an extra grid cell in z can be added since the
       # --- information in the z guard planes of potential is correct.
-      self.extradimslower = zeros(3)
-      self.extradimsupper = zeros(3)
+      self.extradimslower = zeros(3,'l')
+      self.extradimsupper = zeros(3,'l')
       if npes > 1 and me > 0:      self.extradimslower[-1] = 1
       if npes > 1 and me < npes-1: self.extradimsupper[-1] = 1
 
@@ -453,7 +453,7 @@ Add a mesh refined block to this block.
                           setvinject=false):
     'Recursively calls setconductorvoltage for base and all children'
     if not self.isfirstcall(): return
-    self.__class__.__bases__[1].setconductorvoltage(voltage,condid,discrete,setvinject)
+    self.__class__.__bases__[1].setconductorvoltage(self,voltage,condid,discrete,setvinject)
     for child in self.children:
       child.setconductorvoltage(voltage,condid,discrete,setvinject=false)
 
@@ -677,7 +677,7 @@ not be fetched from there (it is set negative).
       ii[...] = where((nbc<max(level*r)) & (ii == child.blocknumber),-ii,ii)
 
       # --- Stretch out the array so it has the refined cell size of the child
-      nbcstretched = zeros(1+(cu-cl)*r)
+      nbcstretched = zeros(1+(cu-cl)*r,'l')
       for k in range(r[2]):
         if k == 0: ksl = slice(None)
         else:      ksl = slice(-1)
@@ -753,7 +753,7 @@ relative to the parent.
     """
     if len(self.children) > 0 and not lrootonly:
 
-      ichild = zeros(len(x))
+      ichild = zeros(len(x),'l')
       self.getichild(x,y,z,ichild,zgrid)
       x,y,z,ux,uy,uz,gaminv,wfact,wght,nperchild = self.sortbyichild(ichild,x,y,z,ux,uy,uz,gaminv,wfact,wght)
 
@@ -867,7 +867,7 @@ been taken care of. This should only ever be called by the root block.
     if len(ux) == 0:
       xout,yout,zout,uzout = zeros((4,len(x)),'d')
       wfactout = zeros(len(wfact),'d')
-      nperchild = zeros(self.root.totalnumberofblocks)
+      nperchild = zeros(self.root.totalnumberofblocks,'l')
       if top.wpid==0:
         sortparticlesbyindex1(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
                                xout,yout,zout,uzout,nperchild)
@@ -883,7 +883,7 @@ been taken care of. This should only ever be called by the root block.
       else:
         wghtout = zeros(0,'d')
         nw = 0
-      nperchild = zeros(self.root.totalnumberofblocks)
+      nperchild = zeros(self.root.totalnumberofblocks,'l')
       if top.wpid==0:
         sortparticlesbyindex2(len(x),ichild,x,y,z,ux,uy,uz,gaminv,nw,wght,
                               self.root.totalnumberofblocks,
@@ -1097,14 +1097,14 @@ Also, this ends up with the input data remaining sorted.
     """
     if len(self.children) > 0:
 
-      ichild = zeros(len(x))
+      ichild = zeros(len(x),'l')
       # --- This assumes that the root block has blocknumber zero.
       self.getichild_positiveonly(x,y,z,ichild)
 
       # --- This sorts the particle data in place, including
       # --- the velocities, gaminv, and pid.
       nn = self.root.totalnumberofblocks
-      nperchild = zeros(nn)
+      nperchild = zeros(nn,'l')
       particlesortbyindex(pgroup,ichild,0,w3d.ipminfsapi,w3d.npfsapi,
                           nn,nperchild)
 
@@ -1141,7 +1141,7 @@ access to the particle group and does not sort the input data.
 
     if len(self.children) > 0:
 
-      ichild = zeros(len(x))
+      ichild = zeros(len(x),'l')
       # --- This assumes that the root block has blocknumber zero.
       self.getichild_positiveonly(x,y,z,ichild)
 
@@ -1195,7 +1195,7 @@ Fetches the potential, given a list of positions
       # --- the children's. It is assumed at first to be from the local
       # --- domain, and is only set to one of the childs domains where
       # --- childdomains is positive (which does not include any guard cells).
-      ichild = zeros(len(x))
+      ichild = zeros(len(x),'l')
       add(ichild,self.blocknumber,ichild)
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
                             self.nx,self.ny,self.nz,self.childdomains,
@@ -1230,8 +1230,8 @@ Fetches the potential, given a list of positions
 
   def sortbyichildgetisort(self,ichild,x,y,z):
     xout,yout,zout = zeros((3,len(x)),'d')
-    isort = zeros(len(x))
-    nperchild = zeros(self.root.totalnumberofblocks)
+    isort = zeros(len(x),'l')
+    nperchild = zeros(self.root.totalnumberofblocks,'l')
     sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
                                  self.root.totalnumberofblocks,
                                  xout,yout,zout,isort,nperchild)
@@ -1450,7 +1450,7 @@ to zero."""
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
       #self.childdomains = fzeros(1+self.dims)  + self.blocknumber
-      self.childdomains = fzeros(1+self.dims)
+      self.childdomains = fzeros(1+self.dims,'l')
       add(self.childdomains,self.blocknumber,self.childdomains)
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
@@ -1468,7 +1468,7 @@ Sets the convergence tolerance for all blocks. If mgtol is not given, it uses
 f3d.mgtol.
     """
     if mgtol is None: mgtol = f3d.mgtol
-    self.mgtol = mgtol*ones(self.ncomponents)
+    self.mgtol = mgtol*ones(self.ncomponents,'l')
     for child in self.children:
       child.setmgtol(mgtol)
 
@@ -1603,7 +1603,7 @@ be plotted.
           # --- of the children.
           ss = list(shape(self.childdomains))
           del ss[idim]
-          ireg = zeros(ss)
+          ireg = zeros(ss,'l')
           ii = [slice(-1),slice(-1),slice(-1)]
           ii[idim] = ip - self.fulllower[idim]
           ix,iy,iz = ii
