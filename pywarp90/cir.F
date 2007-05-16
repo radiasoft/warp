@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.11 $, $Date: 2007/04/24 21:37:35 $
+c@(#) File CIR.M, version $Revision: 3.12 $, $Date: 2007/05/16 23:35:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -1186,7 +1186,7 @@ c     --- Laslett formulation is used here
           if ((y(1,ii) <= 0.0).or.(y(3,ii) <= 0.0)) then
             if (.not. (lzeroenv .or. lendzero)) then
               print*," fatal error: beam radius less than zero at slice ",ii
-              call kaboom(-1)
+              call kaboom(" fatal error: beam radius less than zero")
               lzeroenv = .true.
             endif
             logcon = 0.
@@ -1320,7 +1320,7 @@ c exit if a or b is less than zero
         if(abmin < 0.0)then
           if (.not. lzeroenv) then
             print*," fatal error: beam radius is less than zero"
-            call kaboom(-1)
+            call kaboom(" fatal error: beam radius is less than zero")
             lzeroenv = .true.
           endif
         endif
@@ -2798,24 +2798,35 @@ c calculate local s-derivatives of the beam variables var
 
 c calculate required beam integrals and constant s
 
-      sum0 = 0.0
-      sum1 = 0.0
-      sum2 = 0.0
-      sum3 = 0.0
-      qtot = 0.0
+c     --- Writing it this way avoids a internal compiler error in g95
+c     --- avg(t)
+      sum0 = sum(y(14,1:nit-1)*(y(9,1:nit-1) + y(9,2:nit)))
+c     --- avg(t**2)
+      sum1 = sum(y(14,1:nit-1)*(y(9,1:nit-1)**2 + y(9,2:nit)**2))
+c     --- avg(t')
+      sum2 = sum(y(14,1:nit-1)*(dy1(9,1:nit-1) + dy1(9,2:nit)))
+c     --- total charge
+      sum3 = sum(y(14,1:nit-1)*(y(9,1:nit-1)*dy1(9,1:nit-1) + y(9,2:nit)*dy1(9,2:nit)))
+      qtot = sum(y(14,1:nit-1))
 
-      do ii=1,nit-1
+c     sum0 = 0.0
+c     sum1 = 0.0
+c     sum2 = 0.0
+c     sum3 = 0.0
+c     qtot = 0.0
+
+c     do ii=1,nit-1
 c       --- avg(t)
-        sum0 = sum0 + y(14,ii)*(y(9,ii) + y(9,ii+1))
+c       sum0 = sum0 + y(14,ii)*(y(9,ii) + y(9,ii+1))
 c       --- avg(t**2)
-        sum1 = sum1 + y(14,ii)*(y(9,ii)**2 + y(9,ii+1)**2)
+c       sum1 = sum1 + y(14,ii)*(y(9,ii)**2 + y(9,ii+1)**2)
 c       --- avg(t')
-        sum2 = sum2 + y(14,ii)*(dy1(9,ii) + dy1(9,ii+1))
+c       sum2 = sum2 + y(14,ii)*(dy1(9,ii) + dy1(9,ii+1))
 c       --- avg(tt')
-        sum3 = sum3 + y(14,ii)*(y(9,ii)*dy1(9,ii) + y(9,ii+1)*dy1(9,ii+1))
+c       sum3 = sum3 + y(14,ii)*(y(9,ii)*dy1(9,ii) + y(9,ii+1)*dy1(9,ii+1))
 c       --- total charge
-        qtot = qtot + y(14,ii)
-      enddo
+c       qtot = qtot + y(14,ii)
+c     enddo
 
       sum0 = 0.5*sum0/qtot
       sum1 = 0.5*sum1/qtot
