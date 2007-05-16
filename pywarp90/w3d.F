@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.356 $, $Date: 2007/05/16 20:36:34 $
+c@(#) File W3D.F, version $Revision: 3.357 $, $Date: 2007/05/16 20:49:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7897,6 +7897,7 @@ c=============================================================================
       use InMesh3d
       use Picglb
       use Picglb3d
+      use LostParticles,Only: lresetlostpart,npslost
       type(ParticleGroup):: pgroup
 
 c Does everything needed to apply particle boundary conditions.
