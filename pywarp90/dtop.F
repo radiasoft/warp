@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.149 $, $Date: 2007/05/15 18:16:12 $
+c@(#) File DTOP.F, version $Revision: 3.150 $, $Date: 2007/05/16 17:05:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -127,7 +127,7 @@ c then space must be allocated for the history.  Also sets the multiplier
 c to 1 if the flag has been set to collect the history.
       checkzhistarray = .false.
       if (lhzarray) then
-        if (ihzarray == 0) checkzhistarray = .true.
+        if (ihzarray < 0) checkzhistarray = .true.
         ihzarray = 1
       endif
       return
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.149 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.150 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
