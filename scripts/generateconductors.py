@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.156 2007/05/09 18:18:43 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.157 2007/05/16 17:29:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -426,7 +426,10 @@ Should never be directly created by the user.
         g = w3d
         interior = f3d.conductors.interior
       else:
-        interior = g.conductors.interior
+        try:
+          interior = g.getconductorobject().interior
+        except AttributeError:
+          interior = g.conductors.interior
       phi = g.phi
       rho = g.rho
       nx = g.nx
@@ -1109,10 +1112,10 @@ distances to outside the surface are positive, inside negative.
    
   def setcondids(self,condid):
     "Routine to setcondid condids."
-    self.ns = int(condid) + zeros((6,self.ndata))
+    self.ns = int(condid) + zeros((6,self.ndata),'l')
    
   def setlevels(self,level):
-    self.mglevel = level + zeros(self.ndata)
+    self.mglevel = level + zeros(self.ndata,'l')
 
   def normalize(self,dx,dy,dz):
     """
@@ -1160,7 +1163,7 @@ grid cell sizes.
     """
     # --- Using the inplace add is slightly faster since it doesn't have to
     # --- allocate a new array.
-    self.parity = zeros(self.ndata)
+    self.parity = zeros(self.ndata,'l')
     add(self.parity,999,self.parity)
     self.fuzzsign = fuzzsign
     if self.neumann: fuzz0 = 0.
@@ -1772,7 +1775,7 @@ Creates a grid object which can generate conductor data.
     z = zeros(len(xmesh)*len(ymesh),'d')
     ix = nint((x - self.xmmin)/dx)
     iy = nint((y - self.ymmin)/dy)
-    iz = zeros(len(xmesh)*len(ymesh))
+    iz = zeros(len(xmesh)*len(ymesh),'l')
     return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam
 
   def checkoverlap(self,mglevel,extent):
