@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.206 $, $Date: 2007/05/16 17:03:08 $
+#@(#) File TOP.V, version $Revision: 3.207 $, $Date: 2007/05/16 20:31:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.206 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.207 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -112,6 +112,10 @@ dexdx         real /0./             [E/m] # Uniform focusing X-Electric field
 deydy         real /0./             [E/m] # Unifrom focusing Y-Electric field 
                                           #   gradient (dE_y/dy) 
 dbdr          real /0./             [T/m] # Uniform focusing B-field gradient
+dbxdy         real /0./             [T/m] # Uniform focusing X-Magnetic field 
+                                          #   gradient (-dB_x/dy) 
+dbydx         real /0./             [T/m] # Unifrom focusing Y-Magnetic field 
+                                          #   gradient (dB_y/dx) 
 ekin          real /0./              [eV] # Input beam kinetic energy
 emit          real /0./           [m-rad] # Perp Emittance of beam (rms-edge)
 emitx         real /0./           [m-rad] #    X-Emittance of beam (rms-edge)
@@ -961,8 +965,10 @@ laccumulate_rho           logical /.false./
    # zeroed each time step before the deposition.)
 gamadv                    character*8 /"stndrd"/
    # Specifies type of gamma advance, "stndrd", "fast 1", or "fast 2"
-lvdadz                    logical /.false./
-   # sets on/off calculation of e=dA/dt=vdA/dz
+idadt                     integer /0/
+   # sets calculation of e=-dA/dt; 1=>dA/dt=(A-Aold)/dt; 2=> dA/dt=vframe*dA/dz
+zgridaprv                 real    /0./
+   # z of grid at time of previous calculation of A
 periinz                   logical /.true./
    # Specifies whether or not there is periodicity in z
 stickyz                   logical /.false./
@@ -2090,6 +2096,7 @@ limplicit(0:ns-1) _logical /0/ # Flags implicit particle species
 iimplicit(0:ns-1) _integer /-1/ # Group number for implicit particles
 zshift(ns) _real /0./
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
+lpushinrestframe logical   /.false./ # turns on/off push of particles in rest frame
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
 xp(npmax)       _real [m]       # X-positions of particles
 yp(npmax)       _real [m]       # Y-positions of particles
@@ -2177,7 +2184,8 @@ scr_uyp(scr_npmax) _real    [m/s] # gamma * Y-velocities of particles
 scr_uzp(scr_npmax) _real    [m/s] # gamma * Z-velocities of particles
 
 *********** LostParticles dump parallel:
-lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
+lsavelostpart  logical /.false./ # Flag setting whether lost particles are saved
+lresetlostpart logical /.false./ # Flag setting whether lost particles are erased at each time step
 npmaxlost           integer /0/ # Size of lost particle arrays
 npidlost            integer /1/ # Number of columns in pidlist
 lostpartchunksize   integer /1000/
@@ -2237,6 +2245,9 @@ lspecial                  logical
    # Flag set when this is a "special" timestep
 lresetparticlee           logical /.true./
    # When true, the particle's E field is reset to zero at the beginning
+   # of each step.
+lresetparticleb           logical /.true./
+   # When true, the particle's B field is reset to zero at the beginning
    # of each step.
 
 *********** ExtPart dump:
