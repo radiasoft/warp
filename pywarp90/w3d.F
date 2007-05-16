@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.357 $, $Date: 2007/05/16 20:49:56 $
+c@(#) File W3D.F, version $Revision: 3.358 $, $Date: 2007/05/16 21:09:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7539,6 +7539,7 @@ c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       end
 c=============================================================================
       subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+      use InMesh3d,Only: nx,ny,nz
       use Fields3d
       use Fields3dParticles
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
@@ -7549,6 +7550,13 @@ c=============================================================================
 c      --- Point rho to the block for the currently active ndts group.
        rho => rhopin
        phi => phipin
+
+#else
+
+c     --- The rho and phi arrays need to be allocated if they havn't already
+c     --- been.
+      if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
+      if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
 
 #endif
 
@@ -7570,11 +7578,6 @@ c=============================================================================
       real(kind=8),target:: phipin(0:nxp,0:nyp,-1:nzp+1)
 
 #ifdef MPIPARALLEL
-
-c     --- The rho and phi arrays need to be allocated if they havn't already
-c     --- been.
-      if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
-      if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
@@ -9125,8 +9128,6 @@ c       --- appropriate arrays for the current ndts group.
 c       --- For parallel version, each processor sends rho to neighboring
 c       --- processors whose field solve region overlap its particle region.
         call assignrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
-     &                                    phipndts(:,:,:,isndts))
-        call setrhoandphiforfieldsolve(rhopndts(:,:,:,nrhopndtscopies-1,indts),
      &                                    phipndts(:,:,:,isndts))
 
         if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 13) then
