@@ -260,24 +260,17 @@ Creates a new species of particles. All arguments are optional.
       density = dens
       densityc = fzeros([nx+1,ny+1,nz+1],'d')
 
-    np=0
     for js in self.jslist:
-      np+=getn(js=js)
-    if np==0:
-      if dens is None:
-        return density
-      else:
-        return
-    for js in self.jslist:
-      print js
+      #print js
       x=getx(js=js,lost=lost,gather=0)
       y=gety(js=js,lost=lost,gather=0)
       z=getz(js=js,lost=lost,gather=0)
-      np=shape(x)[0]
-      w=top.pgroup.sw[js]*ones(np,'d')
-      if charge:w*=top.pgroup.sq[js]    
-      deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
-    density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+      np=len(x)
+      if np > 0:
+        w=top.pgroup.sw[js]*ones(np,'d')
+        if charge:w*=top.pgroup.sq[js]    
+        deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+    density[...] *= nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
     density[...] = parallelsum(density)
     if dens is None:return density
   
@@ -330,7 +323,8 @@ Creates a new species of particles. All arguments are optional.
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                           lmomentum=0,spacing='random',nr=None,nz=None,**kw):
+                           lmomentum=0,spacing='random',nr=None,nz=None,thetamin=0.,thetamax=2.*pi,
+                           **kw):
     """Creates particles, uniformly filling a cylinder.
 If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
 weights are set appropriately (weight=r/rmax). Otherwise, the particles are spaced uniformly
@@ -348,6 +342,7 @@ in radius squared.
  - spacing='random': either 'random' or 'uniform' particle spacing. For uniform,
                      r and z are uniform, theta is still random
  - nr,nz: for 'uniform' spacing, number of particles along r and z axis
+ - thetamin=0.,thetamax=2.*pi: range of theta
     """
 
     if spacing == 'random':
@@ -361,7 +356,7 @@ in radius squared.
                       0.5/nz,1./nz,nz-1)
       r.shape = (np,)
       z.shape = (np,)
-    theta=RandomArray.random(np)
+    theta=(thetamax-thetamin)*RandomArray.random(np) + thetamin
 
     if top.wpid == 0:
       r = sqrt(r)
