@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.358 $, $Date: 2007/05/16 21:09:16 $
+c@(#) File W3D.F, version $Revision: 3.359 $, $Date: 2007/05/18 18:57:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -909,7 +909,7 @@ c           --- in which cases all species use the same field.
             endif
             call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
-     &                  boundxy,boundxy,boundxy,boundxy,.true.)
+     &                  boundxy,boundxy,boundxy,boundxy,.true.,0,0,1)
             if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
          endif
 
@@ -3680,12 +3680,14 @@ c           --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz,boundx0,boundxn,boundy0,boundyn,lzero)
+     &                      dx,dy,dz,boundx0,boundxn,boundy0,boundyn,lzero,
+     &                      delx,dely,delz)
       use GlobalVars
       use Subtimers3d
-      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx,ny,nz,delx,dely,delz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      real(kind=8):: selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
       integer(ISZ):: boundx0,boundxn,boundy0,boundyn
       logical(ISZ):: lzero
@@ -3727,10 +3729,14 @@ c     --- It is done always anyway since it is little work and also forces the
 c     --- value at the boundaries.
 c     --- Note that the z boundaries at taken care of above, taking advantage
 c     --- of the guard cells.
-      selfe(1,1:nx-1, 0,:) = selfe(1,1:nx-1, 0,:) + tdxi*(phi(0:nx-2, 0,:) - phi(2:nx, 0,:))
-      selfe(1,1:nx-1,ny,:) = selfe(1,1:nx-1,ny,:) + tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
-      selfe(2, 0,1:ny-1,:) = selfe(2, 0,1:ny-1,:) + tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
-      selfe(2,nx,1:ny-1,:) = selfe(2,nx,1:ny-1,:) + tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
+      if (nx > 0)
+     &  selfe(1,1:nx-1, 0,:) = selfe(1,1:nx-1, 0,:) + tdxi*(phi(0:nx-2, 0,:) - phi(2:nx, 0,:))
+      if (nx > 0 .and. ny > 0)
+     &  selfe(1,1:nx-1,ny,:) = selfe(1,1:nx-1,ny,:) + tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
+      if (ny > 0)
+     &  selfe(2, 0,1:ny-1,:) = selfe(2, 0,1:ny-1,:) + tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
+      if (nx > 0 .and. ny > 0)
+     &  selfe(2,nx,1:ny-1,:) = selfe(2,nx,1:ny-1,:) + tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
 
       if (boundx0 == dirichlet .or. boundx0 == neumann) then
         selfe(1, 0, :,:) = 0.
@@ -3758,10 +3764,13 @@ c     --- of the guard cells.
 
 c     --- Axial self field does not depend on the transverse boundary condition
       selfe(3, 0,:,0:nz) = selfe(3, 0,:,0:nz) + tdzi*(phi( 0,:,-1:nz-1) - phi( 0,:,1:nz+1))
-      selfe(3,nx,:,0:nz) = selfe(3,nx,:,0:nz) + tdzi*(phi(nx,:,-1:nz-1) - phi(nx,:,1:nz+1))
-      selfe(3,1:nx-1, 0,0:nz) = selfe(3,1:nx-1, 0,0:nz) +
+      if (nx > 0)
+     &  selfe(3,nx,:,0:nz) = selfe(3,nx,:,0:nz) + tdzi*(phi(nx,:,-1:nz-1) - phi(nx,:,1:nz+1))
+      if (nx > 0)
+     &  selfe(3,1:nx-1, 0,0:nz) = selfe(3,1:nx-1, 0,0:nz) +
      &                              tdzi*(phi(1:nx-1, 0,-1:nz-1) - phi(1:nx-1, 0,1:nz+1))
-      selfe(3,1:nx-1,ny,0:nz) = selfe(3,1:nx-1,ny,0:nz) +
+      if (nx > 0 .and. ny > 0)
+     &  selfe(3,1:nx-1,ny,0:nz) = selfe(3,1:nx-1,ny,0:nz) +
      &                              tdzi*(phi(1:nx-1,ny,-1:nz-1) - phi(1:nx-1,ny,1:nz+1))
 
 !$OMP MASTER
@@ -7527,13 +7536,11 @@ c=============================================================================
 c     --- The assignments must be done in a subroutine like this so that
 c     --- the lower and upper bounds of rho and phi are correct.
 
-      if (solvergeom==XYZgeom) then
-c        --- Point rho to the block for the currently active ndts group.
-c        --- Note that nrhopndtscopies is used in case ndts is only 1
-c        --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
-         rhop => rhopindts
-         phip => phipindts
-      endif
+c     --- Point rho to the block for the currently active ndts group.
+c     --- Note that nrhopndtscopies is used in case ndts is only 1
+c     --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
+      rhop => rhopindts
+      phip => phipindts
 
       return
       end
@@ -7660,8 +7667,10 @@ c Ensures that the phip and rhop arrays are setup properly.
 
 c     --- rhop and phip have the special values for the species which are
 c     --- incremented every time step.
-      call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies-1,0),
-     &                       phipndts(:,:,:,0))
+      if (associated(rhopndts) .and. associated(phipndts)) then
+        call assignrhopandphip(rhopndts(:,:,:,nrhopndtscopies-1,0),
+     &                         phipndts(:,:,:,0))
+      endif
 
 c     --- Note that special coding is needed to clean up the rhopndts array
 c     --- for cases when there are no longer certain values of ndts. This

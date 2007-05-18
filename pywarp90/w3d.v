@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.262 $, $Date: 2007/05/15 18:12:01 $
+#@(#) File W3D.V, version $Revision: 3.263 $, $Date: 2007/05/18 18:57:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.262 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.263 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -896,12 +896,12 @@ sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        efetch:integer,ex(np):real,ey(np):real,ez(np):real,
        l2symtry:logical,l4symtry:logical,lcylindrical:logical)
              subroutine # Sets internal E field
-getselfe3d(phi(0:nx,0:ny,-1:nz+1):real,nx:integer,ny:integer,nz:integer,
+getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,nx:integer,ny:integer,nz:integer,
            selfe(3,0:nx,0:ny,0:nz):real,
            nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,
            boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer,
-           lzero:logical)
+           lzero:logical,delx:integer,dely:integer,delz:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d(rho(0:nx,0:ny,0:nz):real,
          np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,uzp(np):real,
