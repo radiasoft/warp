@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.48 2007/05/15 18:22:55 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.49 2007/05/21 23:35:22 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -28,10 +28,13 @@ Class for creating particle scraper for conductors
                    pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
- - lrefineintercept: when true, with lsaveintercept, the particles are advanced
+ - lrefineintercept: when true, with lsaveintercept, lost particles are advanced
                      from the old positions using a time step small compared to
                      the cyclotron gyroperiod to calculated a better value for
                      the intercept.
+ - lrefineallintercept: same as lrefineintercept, but the trajectory of all
+                        particles near the conductors are refined rather then 
+                        only particles which have already been lost
  - nstepsperorbit=8: number of refined time steps to take when using
                      lrefineintercept.
  - lcollectlpdata: When true, the lost particles statistics will be collected for 
@@ -56,8 +59,9 @@ After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
-  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,lrefineintercept=0,nstepsperorbit=8,lcollectlpdata=0,
-                    mglevel=0,aura=0.,install=1,grid=None): 
+  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,
+                    lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
+                    lcollectlpdata=0,mglevel=0,aura=0.,install=1,grid=None): 
     self.mglevel = mglevel
     self.aura = aura
     # --- Remember if the user specified the grid.
@@ -71,10 +75,13 @@ conductors are an argument.
     gchange("LostParticles")
     # --- If the conductor id where particles are lost is being saved,
     # --- need to turn on saving of lost particles.
-    self.lsaveintercept = lsaveintercept or lrefineintercept
+    self.lsaveintercept = lsaveintercept or lrefineintercept or lrefineallintercept
     self.lrefineintercept = lrefineintercept
+    self.lrefineallintercept = lrefineallintercept
     self.nstepsperorbit = nstepsperorbit
-    self.lsavecondid = lsavecondid or lsaveintercept or lrefineintercept or lcollectlpdata
+    self.lsavecondid = (lsavecondid or lsaveintercept or
+                        lrefineintercept or lrefineallintercept or
+                        lcollectlpdata)
     self.lcollectlpdata = lcollectlpdata
     if self.lsavecondid:
       top.lsavelostpart = true
@@ -87,7 +94,7 @@ conductors are an argument.
       self.xoldpid = top.xoldpid - 1
       self.yoldpid = top.yoldpid - 1
       self.zoldpid = top.zoldpid - 1
-      if self.lrefineintercept:
+      if self.lrefineintercept or self.lrefineallintercept:
         if top.uxoldpid==0: top.uxoldpid=nextpid()
         if top.uyoldpid==0: top.uyoldpid=nextpid()
         if top.uzoldpid==0: top.uzoldpid=nextpid()
@@ -191,11 +198,10 @@ after load balancing."""
         if self.l_print_timing:print js,'savecondid',t.milli()
 
   def scrape(self,js):
-    self.scrape2(js)
-
-  def scrape2(self,js):
-    t.start()
+    # --- If there are no particles in this species, that nothing needs to be done
     if top.pgroup.nps[js] == 0: return
+
+    # --- Get mesh information into local variables
     dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
@@ -205,22 +211,27 @@ after load balancing."""
     zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
     isinside = self.grid.isinside
 
-    # --- First, find any particles near a conductor
+    # --- Get handy references to the particles in the species
     i1 = top.pgroup.ins[js] - 1
     i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
     xx = top.pgroup.xp[i1:i2]
     yy = top.pgroup.yp[i1:i2]
-#    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
     zz = top.pgroup.zp[i1:i2]
     pp = zeros(top.pgroup.nps[js],'d')
+    #if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
+
+    # --- Find which particles are close to a conductor. This
+    # --- interpolates from the isinside grid. The results are
+    # --- put into the array pp.
     if w3d.solvergeom in [w3d.XYZgeom]:
       getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom:
-      xx = sqrt(xx**2 + yy**2)
-      yy = zeros(len(xx),'d')
-      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
+      # --- Note that for RZ, the radius is calculated for this, but
+      # --- the original particle position is used below.
+      rr = sqrt(xx**2 + yy**2)
+      getgrid2d(top.pgroup.nps[js],rr,zz,pp,nx,nz,isinside[:,0,:],
                 xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XZgeom:
       getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
@@ -231,43 +242,60 @@ after load balancing."""
     else:
       raise "The particle scraping only works for XYZ, XY and RZ geometry"
 
-    iscrape = compress(pp>0.,arange(i1,i2))
-    if len(iscrape) == 0: return
+    # --- Get indices for all of the particles which are close to a
+    # --- conductor. If there are none, then immediately return.
+    # --- Note, of course, that close may mean inside.
+    iclose = compress(pp>0.,arange(i1,i2))
+    if len(iclose) == 0: return
  
+    # --- Get the positions of particles which are close to a conductor.
+    xx = take(xx,iclose-i1)
+    yy = take(yy,iclose-i1)
+    zz = take(zz,iclose-i1)
+
+    # --- The 'g' lists give the locations of the corners of the grid cell
+    # --- relative to the grid location of the particles close to a
+    # --- conductor. Also, get those grid locations.
     if w3d.solvergeom in [w3d.XYZgeom]:
-      nd=3
+      nd = 3
       gdx = [0.,dx,0.,dx,0.,dx,0.,dx]
       gdy = [0.,0.,dy,dy,0.,0.,dy,dy]
       gdz = [0.,0.,0.,0.,dz,dz,dz,dz]
-      xx = take(xx,iscrape-i1)
-      yy = take(yy,iscrape-i1)
-      zz = take(zz,iscrape-i1)
       xg = xmin+int(abs(xx-xmin)/dx)*dx 
       yg = ymin+int(abs(yy-ymin)/dy)*dy 
       zg = zmin+int(abs(zz-zmin)/dz)*dz 
-    elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-      nd=2
+    elif w3d.solvergeom in [w3d.RZgeom]:
+      nd = 2
       gdx = [0.,dx,0.,dx]
       gdz = [0.,0.,dz,dz]
-      xx = take(xx,iscrape-i1)
-      zz = take(zz,iscrape-i1)
+      # --- Like above, the radius is calculated in the temporary, but the
+      # --- original particle position is used below.
+      # --- These two lines calculating rr give the same result, but the second
+      # --- is probably faster
+      #rr = sqrt(xx**2 + yy**2)
+      rr = take(rr(iclose-i1))
+      xg = xmin+int(abs(rr-xmin)/dx)*dx 
+      zg = zmin+int(abs(zz-zmin)/dz)*dz 
+    elif w3d.solvergeom in [w3d.XZgeom]:
+      nd = 2
+      gdx = [0.,dx,0.,dx]
+      gdz = [0.,0.,dz,dz]
       xg = xmin+int(abs(xx-xmin)/dx)*dx 
       zg = zmin+int(abs(zz-zmin)/dz)*dz 
     elif w3d.solvergeom == w3d.XYgeom:
-      nd=2
+      nd = 2
       gdx = [0.,dx,0.,dx]
       gdy = [0.,0.,dy,dy]
-      xx = take(xx,iscrape-i1)
-      yy = take(yy,iscrape-i1)
       xg = xmin+int(abs(xx-xmin)/dx)*dx 
       yg = ymin+int(abs(yy-ymin)/dy)*dy 
     
-    nn = len(iscrape)
+    nn = len(iclose)
     pp = zeros(nn,'d')
 
+    # --- Loop over the corners of the grid cell
     for i in range(2**nd):
 
-      # --- Get conductor id that particles are near
+      # --- Get id of the conductor that the particles are near
       if w3d.solvergeom in [w3d.XYZgeom]:
         getgridngp3d(nn,xg+gdx[i],yg+gdy[i],zg+gdz[i],pp,
                      nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
@@ -279,114 +307,127 @@ after load balancing."""
         getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,isinside[:,:,0],
                      xmin,xmax,ymin,ymax)
 
-      # --- Loop over the conductors, removing particles inside of each.
+      # --- Loop over the conductors, removing particles that are found inside
+      # --- of each.
       for c in self.conductors:
-        ixyz=arange(nn)
-        # get indices of particles that scraped in conductor c
-        ii = compress(pp == c.condid,ixyz) 
-        # if no particle scraped in conductor c, then check next conductor
-        if len(ii) == 0: continue          
-        # get positions of scraped particles
+
+        # --- Get indices relative to the temporary arrays.
+        # --- Note that iclose is relative to the full particle arrays.
+        itempclose=arange(nn)
+
+        # --- Get indices of particles that are close to the conductor
+        ii = compress(pp == c.condid,itempclose) 
+
+        # --- If there are no particles close, then skip to the next conductor
+        if len(ii) == 0: continue
+
+        # --- Get positions of the particles that are close
         xc = take(xx,ii)
         yc = take(yy,ii)
         zc = take(zz,ii)
-        # down-select indices of particles that are inside conductor c
-        iic = compress(c.isinside(xc,yc,zc).isinside,ii)
-        # if no particle are inside conductor c, then check next conductor
+
+        # --- Find the particles that are currently inside and down-select
+        # --- the indices. The nint is needed since the quantities is used in
+        # --- logical expressions below which require ints.
+        currentisinside = nint(c.isinside(xc,yc,zc).isinside)
+        iic = compress(currentisinside,ii)
+        ic = take(iclose,iic)
+
+        if self.lrefineallintercept:
+          # --- Refine whether or not particles are lost by taking small time
+          # --- steps, starting from the old position. Note that it is possible
+          # --- that particles that were lost could be not lost upon refinement,
+          # --- and similarly, particles that were not lost, could be lost upon
+          # --- refinement.
+          # --- Get the old coordinates of particles that are close.
+          iclose1 = take(iclose,ii)
+          xo = take(top.pgroup.pid[:,self.xoldpid],iclose1)
+          yo = take(top.pgroup.pid[:,self.yoldpid],iclose1)
+          zo = take(top.pgroup.pid[:,self.zoldpid],iclose1)
+          uxo = take(top.pgroup.pid[:,self.uxoldpid],iclose1)
+          uyo = take(top.pgroup.pid[:,self.uyoldpid],iclose1)
+          uzo = take(top.pgroup.pid[:,self.uzoldpid],iclose1)
+
+          # --- Get the current fields
+          ex = take(top.pgroup.ex,iclose1)
+          ey = take(top.pgroup.ey,iclose1)
+          ez = take(top.pgroup.ez,iclose1)
+          bx = take(top.pgroup.bx,iclose1)
+          by = take(top.pgroup.by,iclose1)
+          bz = take(top.pgroup.bz,iclose1)
+
+          # --- Create some temporaries
+          itime = None
+          dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]*ones(len(ii))
+          q = top.pgroup.sq[js]
+          m = top.pgroup.sm[js]
+
+          # --- Do the refinement calculation. The currentisinside argument controls
+          # --- when the current position is replaced by the refined position.
+          # --- If the particle is currently lost but in the refined
+          # --- calculation is not lost, then the replace the current position
+          # --- with that refined position that is not lost. Similarly, if the
+          # --- particle is currently not lost, but in the refined calculation
+          # --- is lost, then replace the current position with the refined
+          # --- position.
+          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
+
+          # --- Do the replacements as described above. Note that for lost
+          # --- particles, xc,yc,zc hold the positions of the particles one
+          # --- small time step into the conductor.
+          put(top.pgroup.xp,iclose1,xc)
+          put(top.pgroup.yp,iclose1,yc)
+          put(top.pgroup.zp,iclose1,zc)
+          put(top.pgroup.uxp,iclose1,uxo)
+          put(top.pgroup.uyp,iclose1,uyo)
+          put(top.pgroup.uzp,iclose1,uzo)
+
+          # --- Determine whether the refined positions are lost.
+          refinedisinside = nint(c.isinside(xc,yc,zc).isinside)
+
+          # --- iic lists the particles that are either currently lost or
+          # --- lost in the refined calculation. Both types of particles have
+          # --- had their positions modified so are included in the list of
+          # --- particles that don't need to be further handled.
+          iic = compress(currentisinside | refinedisinside,ii)
+
+          # --- ic lists the particles that are lost in the refined
+          # --- calculation. These will be scraped.
+          ic = take(iclose,compress(refinedisinside,ii))
+
+          # --- Note that the old values of the positions are changed
+          # --- only for particles for which the refined calculation
+          # --- shows they are lost. This is needed for the interception
+          # --- calculation done in savecondid.
+          iclose2 = compress(refinedisinside,iclose1)
+          if len(iclose2) > 0:
+            put(top.pgroup.pid[:,self.xoldpid],iclose2,compress(refinedisinside,xo))
+            put(top.pgroup.pid[:,self.yoldpid],iclose2,compress(refinedisinside,yo))
+            put(top.pgroup.pid[:,self.zoldpid],iclose2,compress(refinedisinside,zo))
+
+        # --- If no particle are inside the conductor, then skip to the next one
         if len(iic) == 0: continue
-        # get indices (in lost particles arrays) of particles inside c
-        ic = take(iscrape,iic)
+
         # --- For particles which are inside, set gaminv to 0, the lost
         # --- particle flag
         put(top.pgroup.gaminv,ic,0.)
-        # remove scraped particles from list of lost particles
-        put(iscrape,iic,-1)
-        iscrape = compress(iscrape>=0,iscrape)        
-        nn = len(iscrape)
+
+        # --- Remove the already handled particles, returning if there are no more.
+        put(iclose,iic,-1)
+        iclose = compress(iclose>=0,iclose)        
+        nn = len(iclose)
         if nn == 0: return
-        put(ixyz,iic,-1)
-        ixyz = compress(ixyz>=0,ixyz)        
-        xx = take(xx,ixyz)
-        xg = take(xg,ixyz)
-        pp = take(pp,ixyz)
+        put(itempclose,iic,-1)
+        itempclose = compress(itempclose>=0,itempclose)        
+        xx = take(xx,itempclose)
+        yy = take(yy,itempclose)
+        zz = take(zz,itempclose)
+        xg = take(xg,itempclose)
+        pp = take(pp,itempclose)
         if w3d.solvergeom in [w3d.XYZgeom,w3d.XYgeom]:
-          yy = take(yy,ixyz)
-          yg = take(yg,ixyz)
+          yg = take(yg,itempclose)
         if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom,w3d.RZgeom]:
-          zz = take(zz,ixyz)
-          zg = take(zg,ixyz)
-
-  def scrape1(self,js):
-    t.start()
-    if top.pgroup.nps[js] == 0: return
-    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
-    xmin = self.grid.xmin
-    xmax = self.grid.xmax
-    ymin = self.grid.ymin
-    ymax = self.grid.ymax
-    zmin = self.grid.zmmin + iz*dz + top.zbeam
-    zmax = self.grid.zmmin + (iz+nz)*dz + top.zbeam
-    isinside = self.grid.isinside
-
-    # --- First, find any particles near a conductor
-    i1 = top.pgroup.ins[js] - 1
-    i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
-    xx = top.pgroup.xp[i1:i2]
-    yy = top.pgroup.yp[i1:i2]
-#    if js==1:print js,i1,i2,top.pgroup.zp[i1:i2],top.zbeam
-    zz = top.pgroup.zp[i1:i2]
-    pp = zeros(top.pgroup.nps[js],'d')
-    if w3d.solvergeom in [w3d.XYZgeom]:
-      getgrid3d(top.pgroup.nps[js],xx,yy,zz,pp,
-                nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
-                w3d.l2symtry,w3d.l4symtry)
-    elif w3d.solvergeom == w3d.RZgeom:
-      xx = sqrt(xx**2 + yy**2)
-      yy = zeros(len(xx),'d')
-      getgrid2d(top.pgroup.nps[js],xx,zz,pp,nx,nz,isinside[:,0,:],
-                xmin,xmax,zmin,zmax)
-    elif w3d.solvergeom == w3d.XYgeom:
-      getgrid2d(top.pgroup.nps[js],xx,yy,pp,nx,ny,isinside[:,:,0],
-                xmin,xmax,ymin,ymax)
-    else:
-      raise "The particle scraping only works for XYZ and RZ geometry"
-
-    iscrape = compress(pp>0.,arange(i1,i2))
-    if len(iscrape) == 0: return
- 
-    # --- Duplicate the particle list eight times, once for each corner.
-    iscrape = repeat(iscrape,8)
-    nn = len(iscrape)
-    xx = take(xx,iscrape-i1)
-    yy = take(yy,iscrape-i1)
-    zz = take(zz,iscrape-i1)
-    xg = xmin+int(abs(xx-xmin)/dx)*dx + array(nn/8*[0.,dx,0.,dx,0.,dx,0.,dx])
-    yg = ymin+int(abs(yy-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
-    zg = zmin+int(abs(zz-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
-    pp = zeros(nn,'d')
-
-    # --- Get conductor id that particles are near
-    if w3d.solvergeom in [w3d.XYZgeom]:
-      getgridngp3d(nn,xg,yg,zg,pp,
-                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
-                   w3d.l2symtry,w3d.l4symtry)
-    elif w3d.solvergeom == w3d.RZgeom:
-      getgridngp2d(nn,xg,zg,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
-    elif w3d.solvergeom == w3d.XYgeom:
-      getgridngp2d(nn,xg,yg,pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
-
-    # --- Loop over the conductors, removing particles inside of each.
-    for c in self.conductors:
-      ii = compress(pp == c.condid,arange(nn))
-      if len(ii) == 0: continue
-      xc = take(xx,ii)
-      yc = take(yy,ii)
-      zc = take(zz,ii)
-      ic = take(iscrape,ii)
-      ic = compress(c.isinside(xc,yc,zc).isinside,ic)
-      # --- For particles which are inside, set gaminv to 0, the lost particle
-      # --- flag
-      put(top.pgroup.gaminv,ic,0.)
+          zg = take(zg,itempclose)
 
   def savecondid(self,js):
     jsid = top.pgroup.sid[js]
@@ -473,7 +514,7 @@ after load balancing."""
       ii = compress(pp == c.condid,arange(nn))
       if len(ii) == 0: 
         if self.lcollectlpdata:
-          # --- This parallelsum coordinates with the ones above and below.
+          # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
             c.lostparticles_data += [[top.time, 
@@ -486,6 +527,7 @@ after load balancing."""
       zc = take(z8,ii)
       ic = take(iscrape,ii)
       ic = compress(c.isinside(xc,yc,zc).isinside,ic)
+      if len(ic) == 0: continue
       # --- For particles which are inside, set pid to the id of the conductor
       # --- where the particle is lost.
       put(top.pidlost[:,-1],ic,c.condid)
@@ -495,40 +537,45 @@ after load balancing."""
         xc = take(xx,ic-i1)
         yc = take(yy,ic-i1)
         zc = take(zz,ic-i1)
-#        if top.lrelativ:
-#          vx = take(top.uxplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-#          vy = take(top.uyplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-#          vz = take(top.uzplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
-#        else:
-#          vx = take(top.uxplost[i1:i2],ic-i1)
-#          vy = take(top.uyplost[i1:i2],ic-i1)
-#          vz = take(top.uzplost[i1:i2],ic-i1)
-        xo = take(top.pidlost[i1:i2,self.xoldpid],ic-i1)
-        yo = take(top.pidlost[i1:i2,self.yoldpid],ic-i1)
-        zo = take(top.pidlost[i1:i2,self.zoldpid],ic-i1)
+        xo = take(top.pidlost[:,self.xoldpid],ic)
+        yo = take(top.pidlost[:,self.yoldpid],ic)
+        zo = take(top.pidlost[:,self.zoldpid],ic)
 
         if self.lrefineintercept:
-          uxo = take(top.pidlost[i1:i2,self.uxoldpid],ic-i1)
-          uyo = take(top.pidlost[i1:i2,self.uyoldpid],ic-i1)
-          uzo = take(top.pidlost[i1:i2,self.uzoldpid],ic-i1)
-          ex = take(top.exlost[i1:i2],ic-i1)
-          ey = take(top.eylost[i1:i2],ic-i1)
-          ez = take(top.ezlost[i1:i2],ic-i1)
-          bx = take(top.bxlost[i1:i2],ic-i1)
-          by = take(top.bylost[i1:i2],ic-i1)
-          bz = take(top.bzlost[i1:i2],ic-i1)
+          uxo = take(top.pidlost[:,self.uxoldpid],ic)
+          uyo = take(top.pidlost[:,self.uyoldpid],ic)
+          uzo = take(top.pidlost[:,self.uzoldpid],ic)
+          ex = take(top.exlost,ic)
+          ey = take(top.eylost,ic)
+          ez = take(top.ezlost,ic)
+          bx = take(top.bxlost,ic)
+          by = take(top.bylost,ic)
+          bz = take(top.bzlost,ic)
           itime = zeros(len(ic),'d')
           dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]*ones(len(ic))
           q = top.pgroup.sq[js]
           m = top.pgroup.sm[js]
-          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m)
+          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,0)
         else:
           itime = 0.
           dt = top.dt
 
-        vx = (xc-xo)/dt
-        vy = (yc-yo)/dt
-        vz = (zc-zo)/dt
+        if self.lrefineallintercept:
+          # --- For this case, the velocities have already been correctly
+          # --- calculated and so can be used directly.
+          if top.lrelativ:
+            vx = take(top.uxplost,ic)*take(top.gaminvlost,ic)
+            vy = take(top.uyplost,ic)*take(top.gaminvlost,ic)
+            vz = take(top.uzplost,ic)*take(top.gaminvlost,ic)
+          else:
+            vx = take(top.uxplost,ic)
+            vy = take(top.uyplost,ic)
+            vz = take(top.uzplost,ic)
+        else:
+          # --- Otherwise, use an approximate calculation.
+          vx = (xc-xo)/dt
+          vy = (yc-yo)/dt
+          vz = (zc-zo)/dt
 
         intercept = c.intercept(xc,yc,zc,vx,vy,vz)
         dtintercept = (sqrt((xc - intercept.xi)**2 +
@@ -572,10 +619,11 @@ after load balancing."""
 
 
 
-  def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m):
+  def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,luserefinedifnotlost):
     """Refine the location of the intercept
 c: the conductor
-xc,yc,zc: output holding the point just inside the conductor
+xc,yc,zc: input holding the current particle position
+          output holding the point just inside the conductor
 xo,yo,zo: input holding the old particle position
           output holding the point just outside the conductor
 uxo,uyo,uzo: input holding old velocity, time synchronized with xo,yo,zo
@@ -583,8 +631,12 @@ uxo,uyo,uzo: input holding old velocity, time synchronized with xo,yo,zo
              conductor
 ex,ey,ez,bx,by,bz: fixed E and B fields
 itime: output holding time that the particle reached xo,yo,zo
+       If input value is None, then the time is not saved
 dt: output holding particle time step sizes
 q,m: charge and mass of the particles
+luserefinedifnotlost: when true, if the refined particle orbit is not lost,
+                      then replace replace the current position with the
+                      refined position
     """
     # --- Note that this routine is written in a non-pythonic way, where the
     # --- changes are made directly in the input arrays.
@@ -632,6 +684,9 @@ q,m: charge and mass of the particles
     xosave = xo.copy()
     yosave = yo.copy()
     zosave = zo.copy()
+    uxosave = uxo.copy()
+    uyosave = uyo.copy()
+    uzosave = uzo.copy()
 
     # --- Get the starting positions of the advance. These should all be
     # --- outside of the conductor. The loop below advances the particles
@@ -639,7 +694,8 @@ q,m: charge and mass of the particles
     xc[:] = xo
     yc[:] = yo
     zc[:] = zo
-    itime[:] = 0.
+    if itime is not None:
+      itime[:] = 0.
 
     # --- Do the over cycling loop. Note that all particles are advanced by
     # --- the maximum number of steps, though once a particle goes inside
@@ -661,7 +717,7 @@ q,m: charge and mass of the particles
       bpusht3d(nn,uxo,uyo,uzo,gaminv,bx,by,bz,q,m,dtover,0.5,top.ibpush)
 
       # --- This provides a nice diagnostic for testing
-      #plp(yc[0],xc[0],marker=circle,color=green)
+      #plp(yc,xc,marker=circle,color=green)
 
       # --- Check whether the new positions are inside of the conductor.
       isinside = c.isinside(xc,yc,zc).isinside
@@ -679,7 +735,8 @@ q,m: charge and mass of the particles
       # --- Now, advance itime. Note that for particles that are now inside,
       # --- itime is not advanced since it is the time just before the particle
       # --- enters the conductor.
-      itime[:] = itime + dtover
+      if itime is not None:
+        itime[:] = itime + dtover
 
       # --- Quit the loop if all intercepts have been found.
       if alltrue(dtover==0.): break
@@ -690,10 +747,16 @@ q,m: charge and mass of the particles
     # --- which means that the particle was never flagged as being inside
     # --- in the loop above.
     if sometrue(dtover > 0.):
-      xc[:] = where(dtover > 0.,xcsave,xc)
-      yc[:] = where(dtover > 0.,ycsave,yc)
-      zc[:] = where(dtover > 0.,zcsave,zc)
-      xo[:] = where(dtover > 0.,xosave,xo)
-      yo[:] = where(dtover > 0.,yosave,yo)
-      zo[:] = where(dtover > 0.,zosave,zo)
+      userefined = ((dtover == 0.) | luserefinedifnotlost)
+      xc[:] = where(userefined,xc,xcsave)
+      yc[:] = where(userefined,yc,ycsave)
+      zc[:] = where(userefined,zc,zcsave)
+      xo[:] = where(userefined,xo,xosave)
+      yo[:] = where(userefined,yo,yosave)
+      zo[:] = where(userefined,zo,zosave)
+      uxo[:] = where(userefined,uxo,uxosave)
+      uyo[:] = where(userefined,uyo,uyosave)
+      uzo[:] = where(userefined,uzo,uzosave)
+      if itime is not None:
+        itime[:] = where(userefined,itime,0.)
 
