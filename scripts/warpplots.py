@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.194 2007/05/15 18:34:51 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.195 2007/05/21 23:37:20 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3509,11 +3509,12 @@ be from none to all three.
     if solver.solvergeom==w3d.Zgeom: solver.nx_selfe = 0
     if solver is w3d:
       gchange("Efields3d")
+      nx,ny,nz = array(solver.phip.shape) - 1
       getselfe3d(solver.phip,solver.nxp,solver.nyp,solver.nzp,solver.selfe,
                  solver.nx_selfe,solver.ny_selfe,solver.nz_selfe,
                  solver.dx,solver.dy,solver.dz,
                  solver.boundxy,solver.boundxy,solver.boundxy,solver.boundxy,
-                 true)
+                 true,(nx-solver.nxp)/2,(ny-solver.nyp)/2,(nz-solver.nzp)/2,)
     else:
       solver.getselfe()
   if type(comp) == IntType: ic = comp
