@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.208 $, $Date: 2007/05/16 20:34:06 $
+#@(#) File TOP.V, version $Revision: 3.209 $, $Date: 2007/05/22 20:44:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.208 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.209 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2416,6 +2416,8 @@ gridtogrid3d(nxin:integer,nyin:integer,nzin:integer,
         # Linearly interpolates from one grid to another. This will also work
         # for 2d and 1d arrays if the n's are set to zero.
 sum_neighbors3d(fin(nx+1,ny+1,nz+1):integer,fout(nx+1,ny+1,nz+1):integer,nx:integer,ny:integer,nz:integer) subroutine # sum neighbouring cells
+reduceisinsidegrid(isinside(0:nx,0:ny,0:nz):real,reducedisinside(0:nx,0:ny,0:nz):real,nx,ny,nz)
+              subroutine # Reduces the isinside array, removing redundant data
 take2dint(a(0:n1-1,0:n2-1):integer,n1:integer,n2:integer,
           i(n):integer,j(n):integer,n:integer,b(n):integer) subroutine
 getpsgrd(np,xp(np):real,uxp(np):real,nw,nh,psgrd(0:nw,0:nh):real,

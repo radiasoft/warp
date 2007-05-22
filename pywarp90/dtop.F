@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.150 $, $Date: 2007/05/16 17:05:18 $
+c@(#) File DTOP.F, version $Revision: 3.151 $, $Date: 2007/05/22 20:44:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.150 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.151 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3198,6 +3198,66 @@ c=============================================================================
 
       end subroutine sum_neighbors3d
 c=============================================================================
+c=============================================================================
+      subroutine reduceisinsidegrid(isinside,reducedisinside,nx,ny,nz)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: isinside(0:nx,0:ny,0:nz)
+      real(kind=8):: reducedisinside(0:nx,0:ny,0:nz)
 
+c reducedisinside is a copy of isinside but will be modified to remove
+c redundant information. This provides an optimization of the routines
+c which find intersections with conductors. Normally, a particle is
+c compared against the conductors that the grid point surrounding it
+c are in. If more than one of those grid points are in the same
+c conductor, the particle will be checked against that conductor
+c multiple times. This is a waste of CPU time. The reducing routine
+c checks if a grid point is between two grid points that are in the
+c same conductor as itself. If so, then the fact that the grid point
+c is inside that conductor can be ignored, since particles nearby
+c will get a reference to the conductor from the neighboring grid
+c points. Note that the routine never ignores grid points that have
+c nx,ny,nz all even.
+
+      integer(ISZ):: ix,iy,iz
+
+      do iz=0,nz
+        do iy=0,ny
+          do ix=0,nx
+c           --- Don't ignore the data when nx,ny,nz are all even.
+c           --- These grid points are needed to preserve the minimal
+c           --- information.
+            if (mod(ix,2) == 0 .and. mod(iy,2) == 0 .and. mod(iz,2) == 0) cycle
+
+c           --- Check along each dimension if the two neighbors are inside
+c           --- of the same conductor. If so, the the fact that the center
+c           --- point is inside if a conductor can be ignored.
+            if (ix-1 >= 0 .and. ix+1 <= nx) then
+              if (isinside(ix-1,iy,iz) == isinside(ix,iy,iz) .and.
+     &            isinside(ix+1,iy,iz) == isinside(ix,iy,iz)) then
+                reducedisinside(ix,iy,iz) = 0.
+              endif
+            endif
+
+            if (iy-1 >= 0 .and. iy+1 <= ny) then
+              if (isinside(ix,iy-1,iz) == isinside(ix,iy,iz) .and.
+     &            isinside(ix,iy+1,iz) == isinside(ix,iy,iz)) then
+                reducedisinside(ix,iy,iz) = 0.
+              endif
+            endif
+
+            if (iz-1 >= 0 .and. iz+1 <= nz) then
+              if (isinside(ix,iy,iz-1) == isinside(ix,iy,iz) .and.
+     &            isinside(ix,iy,iz+1) == isinside(ix,iy,iz)) then
+                reducedisinside(ix,iy,iz) = 0.
+              endif
+            endif
+
+          enddo
+        enddo
+      enddo
+
+      return
+      end subroutine reduceisinsidegrid
+c=============================================================================
 
 
