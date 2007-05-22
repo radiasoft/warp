@@ -1,15 +1,9 @@
 """Array type which can be appended to in an efficient way.
 """
 from warp import *
-# This is needed to get the shape function which conficts with the deprecated
-# shape argument
-import Numeric
-# This is needed to get the type function which conficts with the deprecated
-# type argument
-_pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.13 2006/02/28 22:30:10 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.14 2007/05/22 00:53:12 dave Exp $"
 
 class AppendableArray:
   """
@@ -55,27 +49,19 @@ will give the first four number appended
 Other methods include len, data, setautobump, cleardata, reshape
   """
   def __init__(self,initlen=1,unitshape=None,typecode=None,autobump=100,
-               initunit=None,shape=None,type=None,aggressivebumping=0):
-    # --- The shape and type arguments are deprecated since they comfict with
-    # --- other names.
-    if shape is not None:
-      print "Warning: the shape keyword argument is obsolete, please use unitshape instead"
-      unitshape = shape
-    if type is not None:
-      print "Warning: the type keyword argument is obsolete, please use typecode instead"
-      typecode = type
-    if typecode is None: typecode = zeros(1).typecode()
+               initunit=None,aggressivebumping=0):
+    if typecode is None: typecode = gettypecode(zeros(1))
     self._maxlen = initlen
     if initunit is None:
       self._typecode = typecode
       self._unitshape = unitshape
     else:
       # --- Get typecode and unitshape from initunit
-      if _pythontype(initunit) == ArrayType:
-        self._typecode = initunit.typecode()
-        self._unitshape = Numeric.shape(initunit)
+      if type(initunit) == ArrayType:
+        self._typecode = gettypecode(initunit)
+        self._unitshape = shape(initunit)
       else:
-        if _pythontype(initunit) == IntType: self._typecode = 'i'
+        if type(initunit) == IntType: self._typecode = 'i'
         else:                         self._typecode = 'd'
         self._unitshape = None
     self._datalen = 0
@@ -98,15 +84,15 @@ Other methods include len, data, setautobump, cleardata, reshape
       self._array[:len(self),...] = a
   def _allocatearray(self):
     if self._unitshape is None:
-      self._array = Numeric.zeros(self._maxlen,self._typecode)
+      self._array = zeros(self._maxlen,self._typecode)
     else:
-      self._array = Numeric.zeros([self._maxlen]+list(self._unitshape),self._typecode)
+      self._array = zeros([self._maxlen]+list(self._unitshape),self._typecode)
   def append(self,data):
     if self._unitshape is None:
       # --- If data is just a scalar, then set length to one. Otherwise
       # --- get length of data to add.
       try:
-        lendata = Numeric.shape(data)[0]
+        lendata = shape(data)[0]
       except (TypeError,IndexError):
         lendata = 1
     else:
@@ -115,8 +101,8 @@ Other methods include len, data, setautobump, cleardata, reshape
       # --- then only one unit is added. Otherwise, get the number
       # --- of units to add. The length is always added to the first
       # --- dimension.
-      if len(Numeric.shape(data)) == len(self._unitshape): lendata = 1
-      else:                                    lendata = Numeric.shape(data)[0]
+      if len(data.shape) == len(self._unitshape): lendata = 1
+      else:                                       lendata = data.shape[0]
     self._extend(lendata)
     newlen = self._datalen + lendata
     self._array[self._datalen:newlen,...] = data
@@ -172,7 +158,7 @@ specified on creation.
     self._unitshape = newunitshape
     self._allocatearray()
     # --- Copy data from old to new
-    ii = [None] + list(Numeric.minimum(oldunitshape,newunitshape))
+    ii = [None] + list(minimum(oldunitshape,newunitshape))
     ss = map(slice,ii)
     self._array[ss] = oldarray[ss]
 
