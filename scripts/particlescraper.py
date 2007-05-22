@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.50 2007/05/22 17:00:13 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.51 2007/05/22 20:46:52 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -176,6 +176,23 @@ after load balancing."""
     for c in self.conductors:
       self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
 
+    # --- reducedisinside is a copy of isinside but will be modified to remove
+    # --- redundant information. This provides an optimization of the routines
+    # --- which find intersections with conductors. Normally, a particle is
+    # --- compared against the conductors that the grid point surrounding it
+    # --- are in. If more than one of those grid points are in the same
+    # --- conductor, the particle will be checked against that conductor
+    # --- multiple times. This is a waste of CPU time. The reducing routine
+    # --- checks if a grid point is between two grid points that are in the
+    # --- same conductor as itself. If so, then the fact that the grid point
+    # --- is inside that conductor can be ignored, since particles nearby
+    # --- will get a reference to the conductor from the neighboring grid
+    # --- points. Note that the routine never ignores grid points that have
+    # --- nx,ny,nz all even.
+    self.reducedisinside = self.grid.isinside.copy()
+    reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
+                       self.grid.nx,self.grid.ny,self.grid.nz)
+
   def scrapeall(self,clear=0):
     if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
@@ -296,15 +313,16 @@ after load balancing."""
     for i in range(2**nd):
 
       # --- Get id of the conductor that the particles are near
+      # --- See comments in updateconductors regarding reducedisinside
       if w3d.solvergeom in [w3d.XYZgeom]:
         getgridngp3d(nn,xg+gdx[i],yg+gdy[i],zg+gdz[i],pp,
-                     nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
+                     nx,ny,nz,self.reducedisinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                      w3d.l2symtry,w3d.l4symtry)
       elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,isinside[:,0,:],
+        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,self.reducedisinside[:,0,:],
                      xmin,xmax,zmin,zmax)
       elif w3d.solvergeom == w3d.XYgeom:
-        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,isinside[:,:,0],
+        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,self.reducedisinside[:,:,0],
                      xmin,xmax,ymin,ymax)
 
       # --- Loop over the conductors, removing particles that are found inside
@@ -492,14 +510,15 @@ after load balancing."""
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
+    # --- See comments in updateconductors regarding reducedisinside
     if w3d.solvergeom in [w3d.XYZgeom]:
       getgridngp3d(nn,xg,yg,zg,pp,
-                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
+                   nx,ny,nz,self.reducedisinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
     elif w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
-      getgridngp2d(nn,xg,zg,pp,nx,nz,isinside[:,0,:],xmin,xmax,zmin,zmax)
+      getgridngp2d(nn,xg,zg,pp,nx,nz,self.reducedisinside[:,0,:],xmin,xmax,zmin,zmax)
     elif w3d.solvergeom == w3d.XYgeom:
-      getgridngp2d(nn,xg,yg,pp,nx,ny,isinside[:,:,0],xmin,xmax,ymin,ymax)
+      getgridngp2d(nn,xg,yg,pp,nx,ny,self.reducedisinside[:,:,0],xmin,xmax,ymin,ymax)
     else:
       raise "The particle scraping only works for XYZ, XZ, XY and RZ geometry"
 
@@ -561,21 +580,21 @@ after load balancing."""
           dt = top.dt
 
         if self.lrefineallintercept:
-          # --- For this case, the velocities have already been correctly
-          # --- calculated and so can be used directly.
-          if top.lrelativ:
-            vx = take(top.uxplost,ic)*take(top.gaminvlost,ic)
-            vy = take(top.uyplost,ic)*take(top.gaminvlost,ic)
-            vz = take(top.uzplost,ic)*take(top.gaminvlost,ic)
-          else:
-            vx = take(top.uxplost,ic)
-            vy = take(top.uyplost,ic)
-            vz = take(top.uzplost,ic)
-        else:
-          # --- Otherwise, use an approximate calculation.
-          vx = (xc-xo)/dt
-          vy = (yc-yo)/dt
-          vz = (zc-zo)/dt
+          # --- In this case, the old and new positions are the points
+          # --- just outside and inside of the conductor, differing by the
+          # --- refined time step size. That refined step size is needed
+          # --- to get the correct approximation to the velocity.
+          bx = take(top.bxlost,ic)
+          by = take(top.bylost,ic)
+          bz = take(top.bzlost,ic)
+          q = top.pgroup.sq[js]
+          m = top.pgroup.sm[js]
+          dt = dt/self.getrefinedtimestepnumber(dt,bx,by,bz,q,m)
+
+        # --- use an approximate calculation.
+        vx = (xc-xo)/dt
+        vy = (yc-yo)/dt
+        vz = (zc-zo)/dt
 
         intercept = c.intercept(xc,yc,zc,vx,vy,vz)
         dtintercept = (sqrt((xc - intercept.xi)**2 +
@@ -618,6 +637,23 @@ after load balancing."""
                                   jsid]]
 
 
+  def getrefinedtimestepnumber(self,dt,bx,by,bz,q,m):
+    # --- The cyclotron frequency for each particle
+    magB = sqrt(bx**2 + by**2 + bz**2)
+    omegac = q/m*magB
+
+    # --- Get the number of steps for each particle. 
+    # --- This is set by self.nstepsperorbit which is the number of steps
+    # --- per cyclotron orbit.
+    isteps = nint(dt*omegac/(2.*pi)*self.nstepsperorbit)
+
+    # --- So that the orbit is always refined, at least a little, set the
+    # --- minimum number of steps to be self.nstepsperorbit. This is helpful
+    # --- for example if the B field is zero.
+    isteps = maximum(isteps,self.nstepsperorbit)
+
+    # --- Now, return the refined step number
+    return isteps
 
   def refineintercept(self,c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,luserefinedifnotlost):
     """Refine the location of the intercept
@@ -644,19 +680,8 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
     # --- Get the number of particles
     nn = len(xo)
 
-    # --- The cyclotron frequency for each particle
-    magB = sqrt(bx**2 + by**2 + bz**2)
-    omegac = q/m*magB
-
-    # --- Get the number of steps for each particle. 
-    # --- This is set by self.nstepsperorbit which is the number of steps
-    # --- per cyclotron orbit.
-    isteps = nint(dt*omegac/(2.*pi)*self.nstepsperorbit)
-
-    # --- So that the orbit is always refined, at least a little, set the
-    # --- minimum number of steps to be self.nstepsperorbit. This is helpful
-    # --- for example if the B field is zero.
-    isteps = maximum(isteps,self.nstepsperorbit)
+    # --- Get the number of refined time steps for each particle
+    isteps = self.getrefinedtimestepnumber(dt,bx,by,bz,q,m)
 
     # --- Get the maximum number of steps needed
     nsteps  = max(isteps)
@@ -718,6 +743,7 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
 
       # --- This provides a nice diagnostic for testing
       #plp(yc,xc,marker=circle,color=green)
+      #pldj(xo,yo,xc,yc,color=green)
 
       # --- Check whether the new positions are inside of the conductor.
       isinside = c.isinside(xc,yc,zc).isinside
