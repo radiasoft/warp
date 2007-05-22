@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.138 $, $Date: 2007/05/09 18:39:11 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.139 $, $Date: 2007/05/22 00:12:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -651,36 +651,10 @@ c       --- Get the residual on the current grid.
           if (my_index == 0) print*,"V3 res",mglevel,sss
         endif
 
-c       --- Calculate the size of the next coarsest grid. If the current
-c       --- size is twice and odd integer, the next coarsest size will be
-c       --- n/2+1, gauranteeing that it is even.
-c       --- Note that nzcoarse is only used if full-coarsening is done.
-        nxcoarse = nx/2
-        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
-        nycoarse = ny/2
-        if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
-        nzcoarse = nz/2
-        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
-        nzfullcoarse = nzfull/2
-        if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+        call getnextcoarselevel3d(nx,ny,nz,nzfull,dx,dy,dz,
+     &                            nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                            dxcoarse,dycoarse,dzcoarse)
 
-        mingridsize = min(dx,dy)
-        mingridsize = min(mingridsize,dz)
-
-        if (dx > 4./3.*mingridsize) then
-          nxcoarse = nx
-        endif
-        if (dy > 4./3.*mingridsize) then
-          nycoarse = ny
-        endif
-        if (dz > 4./3.*mingridsize) then
-          nzcoarse = nz
-          nzfullcoarse = nzfull
-        endif
-
-        dxcoarse = dx*nx/nxcoarse
-        dycoarse = dy*ny/nycoarse
-        dzcoarse = dz*nzfull/nzfullcoarse
         dxcoarsesqi = 1./dxcoarse**2
         dycoarsesqi = 1./dycoarse**2
         dzcoarsesqi = 1./dzcoarse**2
@@ -2714,6 +2688,50 @@ c     --- Longitudinal boundaries
       end
 c=============================================================================
 c=============================================================================
+      subroutine getnextcoarselevel3d(nx,ny,nz,nzfull,dx,dy,dz,
+     &                                nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                                dxcoarse,dycoarse,dzcoarse)
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
+      real(kind=8):: dxcoarse,dycoarse,dzcoarse
+
+c     --- Calculate the size of the next coarsest grid. If the current
+c     --- size is twice and odd integer, the next coarsest size will be
+c     --- n/2+1, gauranteeing that it is even.
+c     --- Note that nzcoarse is only used if full-coarsening is done.
+
+      real(kind=8):: mingridsize
+
+      nxcoarse = nx/2
+      if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
+      nycoarse = ny/2
+      if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
+      nzcoarse = nz/2
+      if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+      nzfullcoarse = nzfull/2
+      if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+
+      mingridsize = min(dx,dy)
+      mingridsize = min(mingridsize,dz)
+
+      if (dx > 4./3.*mingridsize) then
+        nxcoarse = nx
+      endif
+      if (dy > 4./3.*mingridsize) then
+        nycoarse = ny
+      endif
+      if (dz > 4./3.*mingridsize) then
+        nzcoarse = nz
+        nzfullcoarse = nzfull
+      endif
+
+      dxcoarse = dx*nx/nxcoarse
+      dycoarse = dy*ny/nycoarse
+      dzcoarse = dz*nzfull/nzfullcoarse
+
+      return
+      end
 c=============================================================================
       subroutine getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors,
      &                       my_index,nslaves,izfsslave,nzfsslave)
@@ -2733,7 +2751,6 @@ c=============================================================================
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
-      real(kind=8):: mingridsize
 
 c     --- Only do this calculation if it is needed. This
 c     --- is for parallel version. There, this is a global operation and
@@ -2776,36 +2793,10 @@ c     --- skip it.
         if (nxfine < 4 .or. nyfine < 4 .or. nzfullfine < 4 .or. mglevel == 100)
      &    exit
 
-c       --- Calculate the size of the next coarsest grid. If the current
-c       --- size is twice and odd integer, the next coarsest size will be
-c       --- n/2+1, gauranteeing that it is even.
-c       --- Note that nzcoarse is only used if full-coarsening is done.
-        nxcoarse = nxfine/2
-        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
-        nycoarse = nyfine/2
-        if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
-        nzcoarse = nzfine/2
-        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
-        nzfullcoarse = nzfullfine/2
-        if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+        call getnextcoarselevel3d(nxfine,nyfine,nzfine,nzfullfine,dxfine,dyfine,dzfine,
+     &                            nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                            dxcoarse,dycoarse,dzcoarse)
 
-        mingridsize = min(dxfine,dyfine)
-        mingridsize = min(mingridsize,dzfine)
-
-        if (dxfine > 4./3.*mingridsize) then
-          nxcoarse = nxfine
-        endif
-        if (dyfine > 4./3.*mingridsize) then
-          nycoarse = nyfine
-        endif
-        if (dzfine > 4./3.*mingridsize) then
-          nzcoarse = nzfine
-          nzfullcoarse = nzfullfine
-        endif
-
-        dxcoarse = dxfine*nxfine/nxcoarse
-        dycoarse = dyfine*nyfine/nycoarse
-        dzcoarse = dzfine*nzfullfine/nzfullcoarse
         cxf = dxcoarse/dxfine
         cyf = dycoarse/dyfine
         czf = dzcoarse/dzfine
@@ -3561,11 +3552,12 @@ c=============================================================================
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
       integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2,ic
-      real(kind=8):: cdr,onethird,rr,crr
+      real(kind=8):: dr,cdr,onethird,rr,crr
       real(kind=8):: wsource
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
+      dr = radius(1) - radius(0)
       cdr = cradius(1) - cradius(0)
       onethird = 1./3.
 
@@ -3593,10 +3585,9 @@ c=============================================================================
 
             if (lcylindrical) then
               if (radius(ix0) == 0.) then
-c               rr = 0.75/(0.5*0.5*r(0)*cdr*r(0))
-                rr = 3./(r(0)*cdr*r(0))
+                rr = 3./(dr)
               else
-                rr = 1./(2.*radius(ix0)*r(0))
+                rr = 1./(2.*radius(ix0))
               endif
             endif
 
@@ -3608,23 +3599,21 @@ c             --- This case is separated out for optimization
                     wsource=weights(iwx,iwy,iwz)*childsource(0,icx+iwx,icy+iwy,icz+iwz)
                     if (lcylindrical) then
 c                     --- Calculate volumes. Note that the factors of pi and dz
-c                     --- cancel out and so are left out, but the refinement
-c                     --- factor in z is still included. Also not that one
+c                     --- cancel out and so are left out. Also one
 c                     --- factor of dr has beed factored out. Finally, note
 c                     --- that crr is calculated as the volume to avoid a
 c                     --- division.
                       if (cradius(icx+iwx) == 0.) then
-c                       crr = (0.5*0.5*cdr)/0.75
                         crr = cdr*onethird
                       else
                         crr = 2.*cradius(icx+iwx)
                       endif
-                      wsource = wsource*r(2)*rr*crr
+                      wsource = wsource*rr*crr
                     endif
 
 c                   --- Adjust for symmetries
                     if (dopbounds == 1) then
-                      if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+                      if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0 .and. .not. lcylindrical)
      &                  wsource = 2*wsource
                       if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
      &                  wsource = 2*wsource
@@ -3652,13 +3641,11 @@ c                   --- Adjust for symmetries
                       wsource=weights(iwx,iwy,iwz)*childsource(ic,icx+iwx,icy+iwy,icz+iwz)
                       if (lcylindrical) then
 c                       --- Calculate volumes. Note that the factors of pi and dz
-c                       --- cancel out and so are left out, but the refinement
-c                       --- factor in z is still included. Also not that one
+c                       --- cancel out and so are left out. Also one
 c                       --- factor of dr has beed factored out. Finally, note
 c                       --- that crr is calculated as the volume to avoid a
 c                       --- division.
                         if (cradius(icx+iwx) == 0.) then
-c                         crr = (0.5*0.5*cdr)/0.75
                           crr = cdr*onethird
                         else
                           crr = 2.*cradius(icx+iwx)
@@ -3668,7 +3655,7 @@ c                         crr = (0.5*0.5*cdr)/0.75
 
 c                     --- Adjust for symmetries
                       if (dopbounds == 1) then
-                        if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+                        if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0 .and. .not. lcylindrical)
      &                    wsource = 2*wsource
                         if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
      &                    wsource = 2*wsource
