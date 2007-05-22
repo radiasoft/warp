@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.53 2007/05/02 21:42:21 dave Exp $"
+particles_version = "$Id: particles.py,v 1.54 2007/05/22 00:49:43 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -99,7 +99,7 @@ def populationsample(population,k,self=random.Random(0)):
     random = self.random
     _int = int
     # --- Result is an array rather than a list ---
-    typecode = array([population[0]]).typecode()
+    typecode = gettypecode(array([population[0]]))
     result = zeros(k,typecode=typecode)
     if n < 6 * k:     # if n len list takes less space than a k len dict
         pool = list(population)

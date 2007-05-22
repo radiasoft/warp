@@ -319,7 +319,7 @@ it knows whether to re-register itself.
   def _makefortranordered(self,vname):
     a = getattr(self,vname)
     if type(a) is ArrayType:
-      setattr(self,vname,fzeros(shape(a),a.typecode()))
+      setattr(self,vname,fzeros(shape(a),gettypecode(a)))
       getattr(self,vname)[...] = a
 
 

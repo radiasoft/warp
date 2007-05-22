@@ -1,9 +1,14 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.27 2006/01/21 01:00:10 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.28 2007/05/22 00:49:43 dave Exp $"
 
-from Numeric import *
+from warp import lwithnumpy,gettypecode
+if lwithnumpy:
+  from numpy import *
+  ArrayType = ndarray
+else:
+  from Numeric import *
 from types import *
 # --- Try import mpi - if not found, then run in serial mode
 try:
@@ -170,7 +175,7 @@ def gatherarray(a,root=0,othersempty=0,bcast=0):
   # --- All processors but root simply return either the input argument
   # --- or an empty array unless the result is to be broadcast
   if me != root and not bcast:
-    if othersempty: return zeros(len(shape(a))*[0],a.typecode())
+    if othersempty: return zeros(len(shape(a))*[0],gettypecode(a))
     else: return a
   # --- Root processor reshapes the data, removing the first dimension
   # --- Do it bit by bit since the data passed by the other processors may
@@ -181,7 +186,7 @@ def gatherarray(a,root=0,othersempty=0,bcast=0):
       newlen = newlen + shape(result[i])[0]
     newshape = list(shape(result[0]))
     newshape[0] = newlen
-    newresult = zeros(newshape,a.typecode())
+    newresult = zeros(newshape,gettypecode(a))
     i1 = 0
     for i in range(npes):
       i2 = i1 + shape(result[i])[0]
