@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.110 2007/05/10 18:03:07 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.111 2007/05/22 00:16:04 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -277,7 +277,7 @@ by the conductor number.
     olevels = array([])
 
   def arrayjoin(a,b):
-    r = zeros(len(a)+len(b),a.typecode())
+    r = zeros(len(a)+len(b),gettypecode(a))
     r[:len(a)] = a
     r[len(a):] = b
     return r
@@ -342,7 +342,7 @@ by the conductor number.
     maxiys = max(iys)
   nx = max(maxixc,maxixs) + 1
   ny = max(maxiyc,maxiys) + 1
-  iii = zeros((5,1+nx,1+ny)) - 1
+  iii = zeros((5,1+nx,1+ny),'l') - 1
   mx,px,my,py = 1,2,3,4
   # --- Flag grid points where the conductors are.
   for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i
@@ -457,7 +457,7 @@ by the conductor number.
       levc = f3dcond.icondlevel[:nc]
       levelc = equal(mglevel,levc)
     except AttributeError:
-      levelc = ones(nc)
+      levelc = ones(nc,'l')
   else:
     ixc = array([])
     iyc = array([])
@@ -480,7 +480,7 @@ by the conductor number.
       elevs = f3dcond.iecndlevel[:ne]
       elevels = equal(mglevel,elevs)
     except AttributeError:
-      elevels = ones(ne)
+      elevels = ones(ne,'l')
   else:
     iexs = array([])
     ieys = array([])
@@ -510,7 +510,7 @@ by the conductor number.
       olevs = f3dcond.iocndlevel[:no]
       olevels = equal(mglevel,olevs)
     except AttributeError:
-      olevels = ones(no)
+      olevels = ones(no,'l')
   else:
     ioxs = array([])
     ioys = array([])
@@ -585,7 +585,7 @@ by the conductor number.
     maxiys = max(iys)
   nx = max(maxixc,maxixs) + 1
   ny = max(maxiyc,maxiys) + 1
-  iii = zeros((5,1+nx,1+ny))
+  iii = zeros((5,1+nx,1+ny),'l')
   mx,px,my,py = 1,2,3,4
   # --- Flag grid points where the conductors are.
   for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i+1
@@ -595,14 +595,14 @@ by the conductor number.
     if abs(delmy[i]) < abs(dy): iii[my,ixs[i],iys[i]] = i+1
     if abs(delpy[i]) < abs(dy): iii[py,ixs[i],iys[i]] = i+1
   # --- Zero out data for all points internal to a conductor
-  iiisum = zeros((3+nx,3+ny))
+  iiisum = zeros((3+nx,3+ny),'l')
   iiisum[1:-1,1:-1] = sum(iii,axis=0)
-  iiisums = zeros((3+nx,3+ny))
+  iiisums = zeros((3+nx,3+ny),'l')
   iiisums[1:-1,1:-1] = sum(iii[1:,:,:],axis=0)
   iiisurf = where(((iiisum[:-2,1:-1]>0)&(iiisum[1:-1,:-2]>0)&
                    (iiisum[2:,1:-1]>0)&(iiisum[1:-1,2:]>0)),
                   iiisums[1:-1,1:-1],iiisum[1:-1,1:-1])
-  iiis = zeros((5,1+nx,1+ny))
+  iiis = zeros((5,1+nx,1+ny),'l')
   for i in range(5):
     iiis[i,:,:] = where(iiisurf>0,iii[i,:,:],0)
 
@@ -2260,8 +2260,8 @@ grid that data is to be used for.
     iycondnew = iycondnew + list(take(iycond/llxy[j],ii))
     izcondnew = izcondnew + list(take(izcond/llz[j],ii))
     condvoltnew = condvoltnew + list(take(condvolt,ii))
-    icondlxynew = icondlxynew + list(llxy[j]*ones(len(ii)))
-    icondlznew = icondlznew + list(llz[j]*ones(len(ii)))
+    icondlxynew = icondlxynew + list(llxy[j]*ones(len(ii),'l'))
+    icondlznew = icondlznew + list(llz[j]*ones(len(ii),'l'))
   
     ii = compress(logical_and(iecndlxy >= llxy[j],iecndlz >= llz[j]), \
                   arange(necndbdy))
@@ -2281,8 +2281,8 @@ grid that data is to be used for.
     cvoltpynew = cvoltpynew + list(take(ecvoltpy,ii))
     cvoltmznew = cvoltmznew + list(take(ecvoltmz,ii))
     cvoltpznew = cvoltpznew + list(take(ecvoltpz,ii))
-    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii)))
-    icndlznew = icndlznew + list(llz[j]*ones(len(ii)))
+    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii),'l'))
+    icndlznew = icndlznew + list(llz[j]*ones(len(ii),'l'))
   
     ii = compress(logical_and(iocndlxy >= llxy[j],iocndlz >= llz[j]), \
                   arange(nocndbdy))
@@ -2302,8 +2302,8 @@ grid that data is to be used for.
     cvoltpynew = cvoltpynew + list(take(ocvoltpy,ii))
     cvoltmznew = cvoltmznew + list(take(ocvoltmz,ii))
     cvoltpznew = cvoltpznew + list(take(ocvoltpz,ii))
-    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii)))
-    icndlznew = icndlznew + list(llz[j]*ones(len(ii)))
+    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii),'l'))
+    icndlznew = icndlznew + list(llz[j]*ones(len(ii),'l'))
 
   # --- Find odd and even points
   icndxnew = array(icndxnew,typecode='i')
