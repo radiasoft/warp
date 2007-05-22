@@ -78,7 +78,8 @@ package. Only w3d and wxy have field solves defined.
       getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
                  w3d.dx,w3d.dy,w3d.dz,
-                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy,true)
+                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy,true,
+                 0,0,1)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
 
@@ -387,6 +388,13 @@ the diagnostic is of interest and is meaningfull.
           self.pbounds[2] = reflect
           if self.pboundxy == periodic: self.pbounds[1] = reflect
           if self.pboundxy == periodic: self.pbounds[3] = reflect
+        if self.solvergeom == w3d.RZgeom:
+          self.pbounds[0] = reflect
+          self.pbounds[2] = reflect
+          self.pbounds[3] = reflect
+        elif self.solvergeom == w3d.XZgeom:
+          self.pbounds[2] = reflect
+          self.pbounds[3] = reflect
 
     # --- Check for zero length dimensions
     if self.nx == 0:
