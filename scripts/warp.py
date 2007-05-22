@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.139 2007/05/15 18:31:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.140 2007/05/22 00:14:29 dave Exp $"
 # import all of the neccesary packages
 import __main__
 lwithnumpy = 0
@@ -186,9 +186,6 @@ Computes current density from Child-Langmuir formula
   if m is None: m = top.sm[0]
   return 4./9.*eps0*sqrt(2.*q/m)*v**1.5/d**2
 
-# --- Create 
-
-
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
   if type(x) in [IntType,FloatType]:
@@ -197,6 +194,15 @@ def dvnz(x):
   else:
     return where(x==0.,top.smallpos,x)
   #return sign(abs(x)+top.smallpos,x)
+
+# --- This returns the typecode of an array, doing what's needed depending
+# --- on wheterh numpy or Numeric is being used.
+if lwithnumpy:
+  def gettypecode(x):
+    return x.dtype.char
+else:
+  def gettypecode(x):
+    return x.typecode()
 
 #=============================================================================
 # --- Setup and make initial printout of the versions of the packages.
@@ -1047,6 +1053,7 @@ from multigridRZ import MultiGridRZ
 from multigridRZ import MultiGrid2D
 from multigridRZ import MultiGridImplicit2D
 from MeshRefinement import MRBlock
+from MeshRefinement import MRBlock2D
 from magnetostaticMG import MagnetostaticMG
 from MeshRefinementB import MRBlockB
 from species import *
