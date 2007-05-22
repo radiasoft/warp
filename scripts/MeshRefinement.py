@@ -51,23 +51,22 @@ Implements adaptive mesh refinement in 3d
 
     # --- Check the dimensionality. If less than 3D, set the appropriate
     # --- dimension to zero. (The code only works with XYZ and RZ now.)
-    if self.solvergeom == w3d.RZgeom:
+    if self.solvergeom == w3d.RZgeom and 0:
       if refinement is not None:
         if operator.isSequenceType(refinement):
-          refinement = [refinement[0],1,refinement[1]]
+          refinement = [refinement[0],1,refinement[-1]]
         else:
           refinement = [refinement,1,refinement]
       if lower is not None:
-        lower = [lower[0],0,lower[1]]
+        lower = [lower[0],0,lower[-1]]
       if upper is not None:
-        upper = [upper[0],0,upper[1]]
+        upper = [upper[0],0,upper[-1]]
       if dims is not None:
-        dims = [dims[0],0,dims[1]]
+        dims = [dims[0],0,dims[-1]]
       if mins is not None:
-        mins = [mins[0],0.,mins[1]]
+        mins = [mins[0],0.,mins[-1]]
       if maxs is not None:
-        maxs = [maxs[0],0.,maxs[1]]
-
+        maxs = [maxs[0],0.,maxs[-1]]
 
     if parent is None:
 
@@ -129,7 +128,7 @@ Implements adaptive mesh refinement in 3d
 
         # --- Make sure that the input makes sense.
         # --- Make sure that the block has a finite extent in all dimensions
-        assert alltrue(self.maxs>self.mins),\
+        assert alltrue(self.maxs>=self.mins),\
              "The child must have a finite extent in all dimensions"
 
         # --- Save the input values. the actual values used will be modified
@@ -160,7 +159,7 @@ Implements adaptive mesh refinement in 3d
 
         # --- Make sure that the input makes sense.
         # --- Make sure that the block has a finite extent in all dimensions
-        assert alltrue(self.upper>self.lower),\
+        assert alltrue(self.upper>=self.lower),\
              "The child must have a finite extent in all dimensions"
 
         # --- Save the input values. the actual values used will be modified
@@ -228,7 +227,7 @@ Implements adaptive mesh refinement in 3d
       # --- necessarily intersect to domain of some processors.
       # --- This flag can also provide a way for a user to turn off blocks
       # --- for testing purposes or otherwise.
-      self.isactive = alltrue(self.upper>self.lower)
+      self.isactive = alltrue(self.upper>=self.lower)
 
       # --- First, just use same boundary conditions as root.
       self.bounds = self.root.bounds.copy()
@@ -331,7 +330,7 @@ Implements adaptive mesh refinement in 3d
     try:
       self.lcylindrical
     except AttributeError:
-      self.lcylindrical = 0
+      self.lcylindrical = (self.solvergeom == w3d.RZgeom)
 
     # --- Now add any specified children
     self.children = []
@@ -625,7 +624,10 @@ only once, rather than twice for each parent as in the original.
           if not neighborblock.isactive: continue
           sl = maximum(neighborblock.fulllower,block.fulllower)
           su = minimum(neighborblock.fullupper,block.fullupper)
-          if sl[0] >= su[0] or sl[1] >= su[1] or sl[2] >= su[2]: continue
+          # --- It probably doesn't hurt anything in 3D but will be a small
+          # --- waste of time include blocks that only overlap on an edge,
+          # --- but those overlaps must be included in 1D and 2D.
+          if sl[0] > su[0] or sl[1] > su[1] or sl[2] > su[2]: continue
           if pe < me:
             block.overlapsparallelleft[neighborblock.blocknumber] = [sl,su,pe]
           else:
@@ -905,6 +907,10 @@ Gathers the ichild for the setsourcep.
     if not self.islastcall(): return
     if len(x) == 0: return
     if len(self.children) > 0:
+      # --- Convert particles to axisymmetry if needed
+      if self is self.root and self.solvergeom == w3d.RZgeom:
+        x = sqrt(x**2 + y**2)
+        y = 0.*y
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichild(self.blocknumber,len(x),x,y,z,ichild,
@@ -1191,6 +1197,11 @@ Fetches the potential, given a list of positions
     if len(x) == 0: return
     if len(self.children) > 0:
 
+      # --- Convert particles to axisymmetry if needed
+      if self is self.root and self.solvergeom == w3d.RZgeom:
+        x = sqrt(x**2 + y**2)
+        y = 0.*y
+
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's. It is assumed at first to be from the local
       # --- domain, and is only set to one of the childs domains where
@@ -1200,7 +1211,7 @@ Fetches the potential, given a list of positions
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmmin,self.zmmax,
+                            self.zmmin,self.zmmax,self.root.getzgridprv(),
                             self.root.getzgridprv(),self.l2symtry,self.l4symtry)
 
       for block in [self]+self.children:
@@ -1246,6 +1257,11 @@ Gathers the ichild for the fetchfield_allsort.
     if not self.islastcall(): return
     if len(x) == 0: return
     if len(self.children) > 0:
+
+      # --- Convert particles to axisymmetry if needed
+      if self is self.root and self.solvergeom == w3d.RZgeom:
+        x = sqrt(x**2 + y**2)
+        y = 0.*y
 
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
@@ -1372,8 +1388,11 @@ to zero."""
     # --- Is linear falloff in the weights correct for r > 2?
     wi = [0,0,0]
     for i in range(3):
-      wi[i] = r[i] - abs(1.*iota(-r[i]+1,+r[i]-1))
-      wi[i] = wi[i]/sum(wi[i])
+      if self.dims[i] > 0:
+        wi[i] = r[i] - abs(1.*iota(-r[i]+1,+r[i]-1))
+        wi[i] = wi[i]/sum(wi[i])
+      else:
+        wi[i] = ones(2*r[i]-1,'d')
     # --- Expand into 3 dimensions
     w = outerproduct(wi[0],outerproduct(wi[1],wi[2]))
     w.shape = (2*r[0]-1,2*r[1]-1,2*r[2]-1)
@@ -2341,7 +2360,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if ix > self.fullupper[0]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.potential[ix-self.fulllower[0]+1,1:-1],self.zmesh,
+      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -2356,7 +2375,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.potential[1:-1,iz-self.fulllower[2]+1],self.xmesh,
+      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -2371,7 +2390,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if ix > self.fullupper[0]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.source[ix-self.fulllower[0],:],self.zmesh,
+      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -2386,7 +2405,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if iz > self.fullupper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.source[:,iz-self.fulllower[2]],self.xmesh,
+      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
           color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -2408,7 +2427,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if ix > upper[0]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.field[comp,ix-self.fulllower[0],iz],
+      plg(self.field[comp,ix-self.fulllower[0],0,iz],
           self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
@@ -2431,7 +2450,7 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     if iz > upper[2]: return
     if self is self.root: accumulateplotlists()
     try:
-      plg(self.field[comp,ix,iz-self.fulllower[2]],
+      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
                      self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
       if not selfonly:
         for child in self.children:
