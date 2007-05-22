@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.49 2007/05/21 23:35:22 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.50 2007/05/22 17:00:13 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -273,7 +273,7 @@ after load balancing."""
       # --- These two lines calculating rr give the same result, but the second
       # --- is probably faster
       #rr = sqrt(xx**2 + yy**2)
-      rr = take(rr(iclose-i1))
+      rr = take(rr,iclose-i1)
       xg = xmin+int(abs(rr-xmin)/dx)*dx 
       zg = zmin+int(abs(zz-zmin)/dz)*dz 
     elif w3d.solvergeom in [w3d.XZgeom]:
