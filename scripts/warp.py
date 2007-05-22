@@ -1,13 +1,17 @@
-warp_version = "$Id: warp.py,v 1.140 2007/05/22 00:14:29 dave Exp $"
+warp_version = "$Id: warp.py,v 1.141 2007/05/22 00:44:51 dave Exp $"
 # import all of the neccesary packages
 import __main__
 lwithnumpy = 0
 if lwithnumpy:
   from numpy import *
   ArrayType = ndarray
+  def gettypecode(x):
+    return x.dtype.char
 else:
   from Numeric import *
   import MA
+  def gettypecode(x):
+    return x.typecode()
 import sys
 import os.path
 import time
@@ -194,15 +198,6 @@ def dvnz(x):
   else:
     return where(x==0.,top.smallpos,x)
   #return sign(abs(x)+top.smallpos,x)
-
-# --- This returns the typecode of an array, doing what's needed depending
-# --- on wheterh numpy or Numeric is being used.
-if lwithnumpy:
-  def gettypecode(x):
-    return x.dtype.char
-else:
-  def gettypecode(x):
-    return x.typecode()
 
 #=============================================================================
 # --- Setup and make initial printout of the versions of the packages.
