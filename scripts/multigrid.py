@@ -43,6 +43,20 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
+    self.initializeconductors()
+
+    # --- Give these variables dummy initial values.
+    self.mgiters = 0
+    self.mgerror = 0.
+
+    # --- At the start, assume that there are no bends. This is corrected
+    # --- in the solve method when there are bends.
+    self.linbend = false
+
+    # --- Turn of build quads option
+    self.lbuildquads = false
+
+  def initializeconductors(self):
     # --- Create the attributes for holding information about conductors
     # --- and conductor objects.
     # --- Note that a conductor object will be created for each value of
@@ -64,17 +78,6 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- Each element of this list contains all of the input to the
     # --- installconductor method.
     self.conductordatalist = []
-
-    # --- Give these variables dummy initial values.
-    self.mgiters = 0
-    self.mgerror = 0.
-
-    # --- At the start, assume that there are no bends. This is corrected
-    # --- in the solve method when there are bends.
-    self.linbend = false
-
-    # --- Turn of build quads option
-    self.lbuildquads = false
 
   def __getstate__(self):
     dict = SubcycledPoissonSolver.__getstate__(self)
@@ -170,15 +173,15 @@ class MultiGrid(SubcycledPoissonSolver):
     if sometrue(top.efetch == 3):
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
               (3,1+self.nxp,1+self.nyp,1+self.nzp,nfields),
-              (1+self.nxp,1+self.nyp,3+self.nzp))
+              (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
     else:
       return ((1+self.nxp,1+self.nyp,1+self.nzp),
-              (1+self.nxp,1+self.nyp,3+self.nzp))
+              (1+self.nxp+2*self.nxguard,1+self.nyp+2*self.nyguard,1+self.nzp+2*self.nzguard))
 
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
     return ((1+self.nx,1+self.ny,1+self.nz),
-            (1+self.nx,1+self.ny,3+self.nz))
+            (1+self.nx+2*self.nxguard,1+self.ny+2*self.nyguard,1+self.nz+2*self.nzguard))
 
   def getrho(self):
     return self.source
@@ -235,7 +238,7 @@ class MultiGrid(SubcycledPoissonSolver):
     self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid)
 
   def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wfact,wght,q,w,zgrid):
-    n  = len(x)
+    n = len(x)
     if n == 0: return
     if isinstance(self.sourcep,FloatType): return
     if top.wpid==0:
@@ -327,12 +330,14 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.pbounds[2] == 2 or self.pbounds[3] == 2:
       self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
       self.source[:,-1,:] = self.source[:,0,:]
-    if self.pbounds[0] == 1 and not self.l4symtry:
-       self.source[0,:,:] = 2.*self.source[0,:,:]
-    if self.pbounds[1] == 1: self.source[-1,:,:] = 2.*self.source[-1,:,:]
-    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry):
-       self.source[:,0,:] = 2.*self.source[:,0,:]
-    if self.pbounds[3] == 1: self.source[:,-1,:] = 2.*self.source[:,-1,:]
+    if self.pbounds[0] == 1 and not self.l4symtry and self.nx > 0:
+      self.source[0,:,:] = 2.*self.source[0,:,:]
+    if self.pbounds[1] == 1 and self.nx > 0:
+      self.source[-1,:,:] = 2.*self.source[-1,:,:]
+    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry) and self.ny > 0:
+      self.source[:,0,:] = 2.*self.source[:,0,:]
+    if self.pbounds[3] == 1 and self.ny > 0:
+      self.source[:,-1,:] = 2.*self.source[:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.lparallel:
         self.makesourceperiodic_parallel()
@@ -366,13 +371,27 @@ class MultiGrid(SubcycledPoissonSolver):
                  self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
                  self.dx,self.dy,self.dz,
                  self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3],
-                 lzero)
+                 lzero,self.nxguard,self.nyguard,self.nzguard)
     return self.fieldp
 
+  def getslicewithguard(self,i1,i2,guard):
+    if i1 is not None: i1 = i1 + guard
+    if i2 is not None:
+      if i2 < 0: i2 = i2 - guard
+      else:      i2 = i2 + guard
+    if i1 is None and guard > 0: i1 = +guard
+    if i2 is None and guard > 0: i2 = -guard
+    return slice(i1,i2)
+
   def getselfb(self,fieldp,fselfb,potentialp):
-    Az = (fselfb/clight**2)*potentialp[:,:,1:-1]
-    fieldp[0,:,1:-1,:,1] += (Az[:,2:,:] - Az[:,:-2,:])/(2.*self.dy)
-    fieldp[1,1:-1,:,:,1] -= (Az[2:,:,:] - Az[:-2,:,:])/(2.*self.dx)
+    ix = self.getslicewithguard(None,None,self.nxguard)
+    iy = self.getslicewithguard(None,None,self.nyguard)
+    iz = self.getslicewithguard(None,None,self.nzguard)
+    Az = (fselfb/clight**2)*potentialp[ix,iy,iz]
+    if self.ny > 0:
+      fieldp[0,:,1:-1,:,1] += (Az[:,2:,:] - Az[:,:-2,:])/(2.*self.dy)
+    if self.nx > 0:
+      fieldp[1,1:-1,:,:,1] -= (Az[2:,:,:] - Az[:-2,:,:])/(2.*self.dx)
     if self.bounds[2] == 1 or self.l2symtry or self.l4symtry:
       pass
     elif self.bounds[2] == 0:
@@ -396,7 +415,10 @@ class MultiGrid(SubcycledPoissonSolver):
     
   def adddadttoe(self,fieldp,fselfb,potentialp):
     """Ez = -dA/dt = -beta**2 dphi/dz"""
-    Ez = (fselfb/clight)**2*(potentialp[:,:,2:]-potentialp[:,:,:-2])/(2.*self.dz)
+    ix = self.getslicewithguard(None,None,self.nxguard)
+    iy = self.getslicewithguard(None,None,self.nyguard)
+    # --- This assumes that nzguard is always 1
+    Ez = (fselfb/clight)**2*(potentialp[ix,iy,2:]-potentialp[ix,iy,:-2])/(2.*self.dz)
     fieldp[2,:,:,:,0] += Ez
 
   def installconductor(self,conductor,
@@ -428,6 +450,7 @@ class MultiGrid(SubcycledPoissonSolver):
                       self.nx,self.ny,self.nz,self.nzfull,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmminglobal,self.zmmaxglobal,zscale,self.l2symtry,self.l4symtry,
+                      installrz=0,
                       solvergeom=self.solvergeom,conductors=conductorobject,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
@@ -452,7 +475,7 @@ class MultiGrid(SubcycledPoissonSolver):
                  solver=self,pkg3d=self)
 
   def dosolve(self,iwhich=0,*args):
-    if not self.l_internal_dosolve:return
+    if not self.l_internal_dosolve: return
     # --- set for longitudinal relativistic contraction 
     iselfb = args[2]
     beta = top.pgroup.fselfb[iselfb]/clight
