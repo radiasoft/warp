@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.73 2007/05/15 18:35:27 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.74 2007/05/22 00:15:00 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -220,7 +220,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
 
         # --- Skip complex since they can't currently be written out to
         # --- the file.
-        if type(v) == ArrayType and v.typecode() == Complex: continue
+        if type(v) == ArrayType and gettypecode(v) == Complex: continue
 
         # --- Set name of variable in pdb file
         if varsuffix is None:

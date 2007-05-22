@@ -23,7 +23,7 @@ from warp import *
 from __future__ import generators # needed for yield statement for P2.2
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.17 2007/05/12 00:45:14 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.18 2007/05/22 00:15:00 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -105,12 +105,12 @@ def arrayappend(x,a):
   ashape = list(shape(a))
   if len(xshape)==1 and len(ashape)==1:
     xshape[0] = xshape[0] + ashape[0]
-    y = fzeros(xshape,x.typecode())
+    y = fzeros(xshape,gettypecode(x))
     y[0:xshape[0]-ashape[0]] = x
     y[xshape[0]-ashape[0]:] = a
   elif len(xshape) == len(ashape)+1 and xshape[:-1] == ashape:
     xshape[-1] = xshape[-1] + 1
-    y = fzeros(xshape,x.typecode())
+    y = fzeros(xshape,gettypecode(x))
     y[...,0:-1] = x
     y[...,-1] = a
   return y
@@ -212,7 +212,7 @@ returned as is. Otherwise, a new array is created and the data copied."""
   # --- index varies the fastest in memory.
   strides = pkg.getstrides(x)
   fordered = 1
-  ss = struct.calcsize(x.typecode())
+  ss = struct.calcsize(gettypecode(x))
   for id in range(len(x.shape)):
     if strides[id] != ss: fordered = 0
     ss = ss*x.shape[id]
@@ -221,7 +221,7 @@ returned as is. Otherwise, a new array is created and the data copied."""
     # --- No change needed.
     return x
   else:
-    xf = fzeros(x.shape,x.typecode())
+    xf = fzeros(x.shape,gettypecode(x))
     xf[...] = x
     return xf
 
