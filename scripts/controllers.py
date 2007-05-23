@@ -13,6 +13,7 @@ aftergenerate: immediately after the generate is complete
 beforefs: before the field solve
 afterfs: after the field solve
 beforelr: before the rho is deposited
+othereuser: during execution of electric fields gathering
 beforestep: before the time step
 afterstep: after the time step
 particlescraper: at the time that the particle boundary conditions are applied
@@ -52,7 +53,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.17 2007/03/21 02:25:25 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.18 2007/05/23 23:02:31 jlvay Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -235,6 +236,7 @@ aftergenerate = ControllerFunction('aftergenerate')
 beforefs = ControllerFunction('beforefs')
 afterfs = ControllerFunction('afterfs')
 beforelr = ControllerFunction('beforelr')
+othereuser = ControllerFunction('othereuser')
 callscraper = ControllerFunction('callscraper')
 calladdconductor = ControllerFunction('calladdconductor')
 callbeforestepfuncs = ControllerFunction('callbeforestepfuncs')
@@ -298,7 +300,8 @@ Anything that may have already been installed will therefore be unaffected.
 # --- This is primarily needed by warp.py so that these objects can be removed
 # --- from the list of python objects which are not written out.
 controllerfunctioncontainer = ControllerFunctionContainer(
-                               [aftergenerate,beforefs,afterfs,beforelr,
+                               [aftergenerate,beforefs,afterfs,
+                                beforelr,othereuser,
                                 callscraper,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
@@ -358,6 +361,18 @@ def isinstalledbeforeloadrho(f):
 installbeforelr = installbeforeloadrho
 uninstallbeforelr = uninstallbeforeloadrho
 isinstalledbeforelr = isinstalledbeforeloadrho
+
+# ----------------------------------------------------------------------------
+def installothereuser(f):
+  "Adds a function to the list of functions called during the electric fields gathering"
+  othereuser.installfuncinlist(f)
+  warp.w3d.lothereuser = warp.true
+def uninstallothereuser(f):
+  "Removes the function from the list of functions called during the electric fields gathering"
+  othereuser.uninstallfuncinlist(f)
+  if not othereuser.hasfuncsinstalled(): warp.w3d.lothereuser = warp.false
+def isinstalledothereuser(f):
+  return othereuser.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def installparticlescraper(f):
