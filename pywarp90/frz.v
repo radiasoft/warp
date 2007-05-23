@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.59 $, $Date: 2007/05/02 21:34:02 $
+#@(#) File FRZ.V, version $Revision: 3.60 $, $Date: 2007/05/23 22:27:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.59 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.60 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -84,6 +84,7 @@ nz_rmc                    integer            # size array rmc
 rmc(nz_rmc+1)             _integer           # minimum radius for field gathering  
 l_get_field_from_base     logical  /.false./ # if true, gather field from base grid only
 l_get_injphi_from_base    logical  /.false./ # if true, gather injphi from base grid only
+l_get_fields_on_grid      logical  /.true./  # if true, get fields on grid before scatter to particles
 l_dep_rho_on_base         logical  /.false./ # if true, deposit rho on base grid only
 l_distribute              logical  /.true./  # if true, distribute rho between high level to low level patches
 nguardx                   integer /1/        # number of guard cell in x/r
@@ -416,6 +417,8 @@ rho(1:nr+1,1:nz+1) _real
 phi(1-nguardx:nr+nguardx+1,1-nguardz:nz+nguardz+1) _real        # potential
 rhop(1:nrpar+1,1:nzpar+1) _real
 phip(1-nguardx:nrpar+nguardx+1,1-nguardz:nzpar+nguardz+1) _real #
+erp(1:nr+1,1:nzp+1) _real
+ezp(1:nr+1,1:nzp+1) _real
 rhominr integer
 rhomaxr integer
 rhominz integer
