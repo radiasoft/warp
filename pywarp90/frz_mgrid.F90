@@ -138,6 +138,8 @@ TYPE(BNDtype), POINTER :: b
   bg%npmin = mgridrz_levels_min
   bg%phi=0.
   bg%rho=0.
+  bg%erp=0.
+  bg%ezp=0.
   if(bg%l_parallel) then
     bg%phip=0.
     bg%rhop=0.
@@ -361,6 +363,8 @@ REAL(8) :: dr,dz,rmin,zmin
   mgridrz_ngrids = ngrids
   g%phi=0.
   g%rho=0.
+  g%erp=0.
+  g%ezp=0.
   if(g%l_parallel) then
     g%phip=0.
     g%rhop=0.
@@ -5288,6 +5292,98 @@ REAL(8) :: nexttime, prvtime
 
   return
 END function findnrecursmin
+
+subroutine getfieldsfromphip(phi,bnd,nr,nz,dr,dz,er,ez)
+! Get electric field (er,ez) from potential phi.
+implicit none
+INTEGER(ISZ), INTENT(IN) :: nr, nz
+REAL(8), INTENT(IN) :: phi(0:nr+2,0:nz+2)
+TYPE(BNDtype) :: bnd
+REAL(8), INTENT(IN) :: dr, dz
+REAL(8), INTENT(OUT) :: er(nr+1,nz+1),ez(nr+1,nz+1)
+
+INTEGER(ISZ) :: i, j, l, ii, ic
+REAL(8) :: cfr, cfz, phixm, phixp, phizm, phizp, dxm, dxp, dzm, dzp
+TYPE(CONDtype), pointer :: c
+
+IF(l_mgridrz_debug) then
+  write(o_line,*) 'enter getfieldsfromphip'
+  call remark(trim(o_line))
+END if
+
+cfr = 0.5_8 / dr
+cfz = 0.5_8 / dz
+er=0.
+ez=0.
+IF(vlocs) then
+  do ii = 1, bnd%nvlocs
+    j = bnd%vlocs_j(ii)
+    l = bnd%vlocs_k(ii)
+    er(j,l) = cfr*(phi(j-1,l)-phi(j+1,l))
+    ez(j,l) = cfz*(phi(j-1,l)-phi(j+1,l))
+  enddo
+else
+ do l = 1, nz+1
+  do j = 1, nr+1
+    IF(bnd%v(j,l)==v_vacuum) then
+      er(j,l) = cfr*(phi(j-1,l)-phi(j+1,l))
+      ez(j,l) = cfz*(phi(j,l-1)-phi(j,l+1))
+    end if
+  end do
+ end do
+END if
+
+do ic = 1, bnd%nb_conductors
+  IF(ic==1) then
+    c => bnd%cndfirst
+  else
+    c => c%next
+  END if
+  do ii = 1, c%nbbnd
+    j = c%jj(ii)
+    l = c%kk(ii)
+    IF(bnd%v(j,l)==v_bnd.and.c%docalc(ii)) then
+      IF(c%dxm(ii)>=dr) then
+        phixm=phi(j-1,l)
+        dxm=dr
+      else
+        phixm=c%volt0xm(ii)
+        dxm=c%dxm(ii)
+      END if
+      IF(c%dxp(ii)>=dr) then
+        phixp=phi(j+1,l)
+        dxp=dr
+      else
+        phixp=c%volt0xp(ii)
+        dxp=c%dxp(ii)
+      END if
+      IF(c%dzm(ii)>=dz) then
+        phizm=phi(j,l-1)
+        dzm=dz
+      else
+        phizm=c%volt0zm(ii)
+        dzm=c%dzm(ii)
+      END if
+      IF(c%dzp(ii)>=dz) then
+        phizp=phi(j,l+1)
+        dzp=dz
+      else
+        phizp=c%volt0zp(ii)
+        dzp=c%dzp(ii)
+      END if
+      er(j,l) = (phixm-phixp)/(dxm+dxp)
+      ez(j,l) = (phizm-phizp)/(dzm+dzp)
+    endif
+  ENDDO
+END do
+
+IF(l_mgridrz_debug) then
+  write(o_line,*) 'exit getfieldsfromphip'
+  call remark(trim(o_line))
+END if
+return
+end subroutine getfieldsfromphip
+
 END module multigridrz
 
 subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0)
@@ -5586,6 +5682,7 @@ INTEGER(ISZ) :: i, ic
       call solve_multigridz(grid=grid)
     ELSE IF(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom) then
       call solve_multigridrz(grid=grid, accuracy=accuracy, l_for_timing=.false.)
+      if (l_get_fields_on_grid) call getfieldsfromphip(grid%phip,grid%bndfirst,grid%nr,grid%nz,grid%dr,grid%dz,grid%erp,grid%ezp)
     END IF
 
     IF(associated(grid%next)) call solve_mgridrz(grid%next,accuracy,.false.)
@@ -8258,6 +8355,152 @@ REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8) :: zgrid
 INTEGER(ISZ), INTENT(IN) :: efetch
 
+REAL(8) :: r, rpos, zpos, ddr, ddz, oddr, oddz, ext, ezt, tot
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+
+REAL(8):: substarttime
+
+if (.not. l_get_fields_on_grid) then 
+  call fieldweightrzfromphi(xp,yp,zp,ex,ey,ez,np,zgrid,efetch)
+  return
+end if
+
+IF(ngrids>1 .and. .not.l_get_field_from_base) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    igrid = 1
+    g => basegrid
+    ingrid=.false.
+    r = SQRT(xp(i)*xp(i)+yp(i)*yp(i))
+    rpos = (r-g%rmin)*g%invdr
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part_fd(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = g%loc_part_fd(jn,ln)
+        g=>grids_ptr(igrid)%grid
+        rpos = (r-g%rmin)*g%invdr
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
+        jn = 1+INT(rpos)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    ext=0.
+    ezt=0.
+    tot=0.
+    if (g%bndfirst%v(jn,ln)/=v_cond) then
+      ext=ext+oddr*oddz*g%erp(jn,ln)
+      ezt=ezt+oddr*oddz*g%ezp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (g%bndfirst%v(jn+1,ln)/=v_cond) then
+      ext=ext+ddr*oddz*g%erp(jn+1,ln)
+      ezt=ezt+ddr*oddz*g%ezp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (g%bndfirst%v(jn,ln+1)/=v_cond) then
+      ext=ext+oddr*ddz*g%erp(jn,ln+1)
+      ezt=ezt+oddr*ddz*g%ezp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (g%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      ext=ext+ddr*ddz*g%erp(jn+1,ln+1)
+      ezt=ezt+ddr*ddz*g%ezp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      ext=ext/tot
+      ezt=ezt/tot
+    endif  
+    IF(r*g%invdr>1.e-10) then
+      ex(i) = ex(i) + ext*xp(i)/r
+      ey(i) = ey(i) + ext*yp(i)/r
+    else
+      ex(i) = ex(i) + ext
+      ey(i) = ey(i) + 0._8
+    END if
+    ez(i) = ez(i) + ezt
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    ingrid=.false.
+    r = SQRT(xp(i)*xp(i)+yp(i)*yp(i))
+    rpos = (r-basegrid%rmin)*basegrid%invdr
+    zpos = (zp(i)-basegrid%zminp-zgrid)*basegrid%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    ext=0.
+    ezt=0.
+    tot=0.
+    if (basegrid%bndfirst%v(jn,ln)/=v_cond) then
+      ext=ext+oddr*oddz*basegrid%erp(jn,ln)
+      ezt=ezt+oddr*oddz*basegrid%ezp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln)/=v_cond) then
+      ext=ext+ddr*oddz*basegrid%erp(jn+1,ln)
+      ezt=ezt+ddr*oddz*basegrid%ezp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn,ln+1)/=v_cond) then
+      ext=ext+oddr*ddz*basegrid%erp(jn,ln+1)
+      ezt=ezt+oddr*ddz*basegrid%ezp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      ext=ext+ddr*ddz*basegrid%erp(jn+1,ln+1)
+      ezt=ezt+ddr*ddz*basegrid%ezp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      ext=ext/tot
+      ezt=ezt/tot
+    endif  
+    IF(l4symtry) then
+      IF(xp(i)<0.) ext = -ext
+    END if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      IF(zp(i)<0.) ezt = -ezt
+    END if
+    IF(r*basegrid%invdr>1.e-10) then
+      ex(i) = ex(i) + ext*xp(i)/r
+      ey(i) = ey(i) + ext*yp(i)/r
+    else
+      ex(i) = ex(i) + ext
+      ey(i) = ey(i) + 0._8
+    END if
+    ez(i) = ez(i) + ezt
+  END do
+END if
+
+  return
+end subroutine fieldweightrz
+
+subroutine fieldweightrzfromgrid(xp,yp,zp,ex,ey,ez,np,zgrid,efetch)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
+REAL(8) :: zgrid
+INTEGER(ISZ), INTENT(IN) :: efetch
+
 REAL(8) :: r, rpos, zpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
@@ -8304,20 +8547,20 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
               + ddr  * ddz  * (g%phip(jn  ,ln+1)-g%phip(jn+2,ln+1)))*g%invdr
     endif
     IF(r*g%invdr>1.e-10) then
-      ex(i) = er*xp(i)/r
-      ey(i) = er*yp(i)/r
+      ex(i) = ex(i) + er*xp(i)/r
+      ey(i) = ey(i) + er*yp(i)/r
     else
-      ex(i) = er
-      ey(i) = 0._8
+      ex(i) = ex(i) + er
+      ey(i) = ey(i) + 0._8
     END if
     IF (efetch == 4) then
-      ez(i) =     (oddr * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+1))  &
-                 + ddr  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+1)))*g%invdz
+      ez(i) = ez(i) + (oddr * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+1))  &
+                    + ddr  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+1)))*g%invdz
     else
-      ez(i) = 0.5*(oddr * oddz * (g%phip(jn  ,ln-1)-g%phip(jn  ,ln+1))  &
-                 + ddr  * oddz * (g%phip(jn+1,ln-1)-g%phip(jn+1,ln+1))  &
-                 + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
-                 + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
+      ez(i) = ez(i) + 0.5*(oddr * oddz * (g%phip(jn  ,ln-1)-g%phip(jn  ,ln+1))  &
+                    + ddr  * oddz * (g%phip(jn+1,ln-1)-g%phip(jn+1,ln+1))  &
+                    + oddr * ddz  * (g%phip(jn  ,ln  )-g%phip(jn  ,ln+2))  &
+                    + ddr  * ddz  * (g%phip(jn+1,ln  )-g%phip(jn+1,ln+2)))*g%invdz
     endif
   END do
 else
@@ -8343,26 +8586,26 @@ else
               + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
     endif
     IF(r*basegrid%invdr>1.e-10) then
-      ex(i) = er*xp(i)/r
-      ey(i) = er*yp(i)/r
+      ex(i) = ex(i) + er*xp(i)/r
+      ey(i) = ey(i) + er*yp(i)/r
     else
-      ex(i) = er
-      ey(i) = 0._8
+      ex(i) = ex(i) + er
+      ey(i) = ey(i) + 0._8
     END if
     IF (efetch == 4) then
-      ez(i) =     (oddr * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+1))  &
-                 + ddr  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+1)))*basegrid%invdz
+      ez(i) = ez(i) + (oddr * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+1))  &
+                    + ddr  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+1)))*basegrid%invdz
     else
-      ez(i) = 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
-                 + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
-                 + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
-                 + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
+      ez(i) = ez(i) + 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
+                    + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
+                    + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
+                    + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
     endif
   END do
 END if
 
   return
-end subroutine fieldweightrz
+end subroutine fieldweightrzfromgrid
 
 subroutine fieldweightxz(xp,zp,ex,ez,np,zgrid,efetch)
 USE multigridrz
@@ -8374,7 +8617,171 @@ REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ez
 REAL(8), INTENT(IN) :: zgrid
 INTEGER(ISZ), INTENT(IN) :: efetch
 
-REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, zmin0
+REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, zmin0, ext, ezt, tot
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+real(8),pointer :: tphi(:,:)
+
+if (.not. l_get_fields_on_grid) then 
+  call fieldweightxzfromphi(xp,zp,ex,ez,np,zgrid,efetch)
+  return
+end if
+
+IF( solvergeom==XYgeom) then
+  zmin0 = 0.
+else ! solvergeom=XZgeom
+  zmin0 = zgrid
+END if
+
+IF(ngrids>1 .and. .not.l_get_field_from_base) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    igrid = 1
+    g => basegrid
+    ingrid=.false.
+    if(l4symtry) then
+      rpos = (ABS(xp(i))-g%xmin)*g%invdr
+    else
+      rpos = (xp(i)-g%xmin)*g%invdr
+    end if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-g%zminp-zmin0)*g%invdz
+    else
+      zpos = (zp(i)-g%zminp-zmin0)*g%invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part_fd(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = g%loc_part_fd(jn,ln)
+        g=>grids_ptr(igrid)%grid
+        if(l4symtry) then
+          rpos = (ABS(xp(i))-g%xmin)*g%invdr
+        else
+          rpos = (xp(i)-g%xmin)*g%invdr
+        end if
+        IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+          zpos = (ABS(zp(i))-g%zminp-zmin0)*g%invdz
+        else
+          zpos = (zp(i)-g%zminp-zmin0)*g%invdz
+        END if
+        jn = 1+INT(rpos)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    ext=0.
+    ezt=0.
+    tot=0.
+    if (g%bndfirst%v(jn,ln)/=v_cond) then
+      ext=ext+oddr*oddz*g%erp(jn,ln)
+      ezt=ezt+oddr*oddz*g%ezp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (g%bndfirst%v(jn+1,ln)/=v_cond) then
+      ext=ext+ddr*oddz*g%erp(jn+1,ln)
+      ezt=ezt+ddr*oddz*g%ezp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (g%bndfirst%v(jn,ln+1)/=v_cond) then
+      ext=ext+oddr*ddz*g%erp(jn,ln+1)
+      ezt=ezt+oddr*ddz*g%ezp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (g%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      ext=ext+ddr*ddz*g%erp(jn+1,ln+1)
+      ezt=ezt+ddr*ddz*g%ezp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      ext=ext/tot
+      ezt=ezt/tot
+    endif  
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      IF(zp(i)<0.) ezt = -ezt
+    END if
+    ex(i) = ex(i) + ext
+    ez(i) = ez(i) + ezt
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    ingrid=.false.
+    if(l4symtry) then
+      rpos = (ABS(xp(i))-basegrid%xmin)*basegrid%invdr
+    else
+      rpos = (xp(i)-basegrid%xmin)*basegrid%invdr
+    end if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-basegrid%zminp-zmin0)*basegrid%invdz
+    else
+      zpos = (zp(i)-basegrid%zminp-zmin0)*basegrid%invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    ext=0.
+    ezt=0.
+    tot=0.
+    if (basegrid%bndfirst%v(jn,ln)/=v_cond) then
+      ext=ext+oddr*oddz*basegrid%erp(jn,ln)
+      ezt=ezt+oddr*oddz*basegrid%ezp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln)/=v_cond) then
+      ext=ext+ddr*oddz*basegrid%erp(jn+1,ln)
+      ezt=ezt+ddr*oddz*basegrid%ezp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn,ln+1)/=v_cond) then
+      ext=ext+oddr*ddz*basegrid%erp(jn,ln+1)
+      ezt=ezt+oddr*ddz*basegrid%ezp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      ext=ext+ddr*ddz*basegrid%erp(jn+1,ln+1)
+      ezt=ezt+ddr*ddz*basegrid%ezp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      ext=ext/tot
+      ezt=ezt/tot
+    endif  
+    IF(l4symtry) then
+      IF(xp(i)<0.) ext = -ext
+    END if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      IF(zp(i)<0.) ezt = -ezt
+    END if
+    ex(i) = ex(i) + ext
+    ez(i) = ez(i) + ezt
+  END do
+END if
+
+return
+end subroutine fieldweightxz
+
+subroutine fieldweightxzfromphi(xp,zp,ex,ez,np,zgrid,efetch)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ez
+REAL(8), INTENT(IN) :: zgrid
+INTEGER(ISZ), INTENT(IN) :: efetch
+
+REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, zmin0, ext, ezt
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
@@ -8432,29 +8839,31 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     tphi => g%phip
     IF (efetch == 4) then
     ! --- 2D counterpart of fetche3d's energy-conserving option
-      ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
+      ext = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
              + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*g%invdr
     else
-      ex(i) = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
+      ext = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
                  + ddr  * oddz * (tphi(jn  ,ln  )-tphi(jn+2,ln  ))  &
                  + oddr * ddz  * (tphi(jn-1,ln+1)-tphi(jn+1,ln+1))  &
                  + ddr  * ddz  * (tphi(jn  ,ln+1)-tphi(jn+2,ln+1)))*g%invdr
     endif
     IF(l4symtry) then
-      IF(xp(i)<0.) ex(i) = -ex(i)
+      IF(xp(i)<0.) ext = -ext
     END if
     if (efetch == 4) then
-      ez(i) = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
+      ezt = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
              + ddr  * (tphi(jn+1,ln  )-tphi(jn+1,ln+1)))*g%invdz
     else
-      ez(i) = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
+      ezt = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
                  + ddr  * oddz * (tphi(jn+1,ln-1)-tphi(jn+1,ln+1))  &
                  + oddr * ddz  * (tphi(jn  ,ln  )-tphi(jn  ,ln+2))  &
                  + ddr  * ddz  * (tphi(jn+1,ln  )-tphi(jn+1,ln+2)))*g%invdz
     endif
     IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
-      IF(zp(i)<0.) ez(i) = -ez(i)
+      IF(zp(i)<0.) ezt = -ezt
     END if
+    ex(i) = ex(i) + ext
+    ez(i) = ez(i) + ezt
   END do
 else
   ! make charge deposition using CIC weighting
@@ -8478,34 +8887,36 @@ else
     oddz = 1._8-ddz
     tphi => basegrid%phip
     if (efetch == 4) then
-      ex(i) = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
+      ext = (oddz * (tphi(jn  ,ln  )-tphi(jn+1,ln  ))  &
              + ddz  * (tphi(jn  ,ln+1)-tphi(jn+1,ln+1)))*basegrid%invdr
     else
-      ex(i) = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
+      ext = 0.5*(oddr * oddz * (tphi(jn-1,ln  )-tphi(jn+1,ln  ))  &
                  + ddr  * oddz * (tphi(jn  ,ln  )-tphi(jn+2,ln  ))  &
                  + oddr * ddz  * (tphi(jn-1,ln+1)-tphi(jn+1,ln+1))  &
                  + ddr  * ddz  * (tphi(jn  ,ln+1)-tphi(jn+2,ln+1)))*basegrid%invdr
     endif
     IF(l4symtry) then
-      IF(xp(i)<0.) ex(i) = -ex(i)
+      IF(xp(i)<0.) ext = -ext
     END if
     if (efetch == 4) then
-      ez(i) = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
+      ezt = (oddr * (tphi(jn  ,ln  )-tphi(jn  ,ln+1))  &
              + ddr  * (tphi(jn+1,ln  )-tphi(jn+1,ln+1)))*basegrid%invdz
     else
-      ez(i) = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
+      ezt = 0.5*(oddr * oddz * (tphi(jn  ,ln-1)-tphi(jn  ,ln+1))  &
                  + ddr  * oddz * (tphi(jn+1,ln-1)-tphi(jn+1,ln+1))  &
                  + oddr * ddz  * (tphi(jn  ,ln  )-tphi(jn  ,ln+2))  &
                  + ddr  * ddz  * (tphi(jn+1,ln  )-tphi(jn+1,ln+2)))*basegrid%invdz
     endif
     IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
-      IF(zp(i)<0.) ez(i) = -ez(i)
+      IF(zp(i)<0.) ezt = -ezt
     END if
+    ex(i) = ex(i) + ext
+    ez(i) = ez(i) + ezt
   END do
 END if
 
 return
-end subroutine fieldweightxz
+end subroutine fieldweightxzfromphi
 
 subroutine fieldweightr(xp,yp,ex,ey,np)
 USE multigridrz
@@ -8547,11 +8958,11 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     er = 0.5*(oddr * (g%phip(jn-1,1 )-g%phip(jn+1,1 ))  &
             + ddr  * (g%phip(jn  ,1 )-g%phip(jn+2,1 ))  )*g%invdr
     IF(r*g%invdr>1.e-10) then
-      ex(i) = er*xp(i)/r
-      ey(i) = er*yp(i)/r
+      ex(i) = ex(i) + er*xp(i)/r
+      ey(i) = ey(i) + er*yp(i)/r
     else
-      ex(i) = er
-      ey(i) = 0._8
+      ex(i) = ex(i) + er
+      ey(i) = ey(i) + 0._8
     END if
   END do
 else
@@ -8565,11 +8976,11 @@ else
     er = 0.5*(oddr * (basegrid%phip(jn-1,1  )-basegrid%phip(jn+1,1  ))  &
             + ddr  * (basegrid%phip(jn  ,1  )-basegrid%phip(jn+2,1  ))  )*basegrid%invdr
     IF(r*basegrid%invdr>1.e-10) then
-      ex(i) = er*xp(i)/r
-      ey(i) = er*yp(i)/r
+      ex(i) = ex(i) + er*xp(i)/r
+      ey(i) = ey(i) + er*yp(i)/r
     else
-      ex(i) = er
-      ey(i) = 0._8
+      ex(i) = ex(i) + er
+      ey(i) = ey(i) + 0._8
     END if
   END do
 END if
@@ -8613,7 +9024,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     end do
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
-    ez(i) = 0.5*(oddz * (g%phip(1,ln-1)-g%phip(1,ln+1))  &
+    ez(i) = ez(i) + 0.5*(oddz * (g%phip(1,ln-1)-g%phip(1,ln+1))  &
                + ddz  * (g%phip(1,ln  )-g%phip(1,ln+2)))*g%invdz
   END do
 else
@@ -8624,7 +9035,7 @@ else
     ln = 1+INT(zpos)
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
-    ez(i) = 0.5*(oddz * (basegrid%phip(1,ln-1)-basegrid%phip(1,ln+1))  &
+    ez(i) = ez(i) + 0.5*(oddz * (basegrid%phip(1,ln-1)-basegrid%phip(1,ln+1))  &
                + ddz  * (basegrid%phip(1,ln  )-basegrid%phip(1,ln+2)))*basegrid%invdz
   END do
 END if
