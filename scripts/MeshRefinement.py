@@ -80,6 +80,7 @@ Implements adaptive mesh refinement in 3d
       self.listofblocks = []
       self.finalized = 0
       self.my_index = me
+      self.my_indexbase = me
 
       # --- For the root, the dimensions and extent of the grid should
       # --- be specified. If not, they will be taken from w3d.
@@ -105,6 +106,7 @@ Implements adaptive mesh refinement in 3d
       self.parents = [parent.blocknumber]
       self.root = parent.root
       self.my_index = 0
+      self.my_indexbase = me
       self.nslaves = 1
 
       # --- Make sure that refinement is an array of length three. If a scalar
@@ -345,8 +347,8 @@ it knows whether to re-register itself.
     """
     # --- Make sure the the lreducedpickle option gets propagated to all
     # --- of the blocks.
-    for child in self.children:
-      child.lreducedpickle = self.lreducedpickle
+    self.lreducedpickle = self.root.lreducedpickle
+    self.lnorestoreonpickle = self.root.lnorestoreonpickle
     dict = self.__class__.__bases__[1].__getstate__(self)
     dict['_unpicklingcount'] = len(self.root.listofblocks)
     if self.lreducedpickle:
@@ -496,10 +498,10 @@ Add a mesh refined block to this block.
       blocklistsright = [[] for i in range(100)]
     else:
       # --- First, set so amount data sent to neighbors will be small
-      lreducedpicklesave = self.lreducedpickle
-      for block in self.listofblocks:
-        self.lreducedpickle = 1
-        self.lnorestoreonpickle = 1
+      lreducedpicklesave = self.root.lreducedpickle
+      lnorestoreonpicklesave = self.root.lnorestoreonpickle
+      self.root.lreducedpickle = 1
+      self.root.lnorestoreonpickle = 1
       if (me > 0     ): mpi.send(blocklists,me-1)
       if (me < npes-1): blocklistsright = mpi.recv(me+1)[0]
       else:             blocklistsright = [[] for i in range(100)]
@@ -507,9 +509,8 @@ Add a mesh refined block to this block.
       if (me > 0     ): blocklistsleft = mpi.recv(me-1)[0]
       else:             blocklistsleft = [[] for i in range(100)]
       # --- Restore the flags
-      for block in self.listofblocks:
-        self.lreducedpickle = lreducedpicklesave
-        self.lnorestoreonpickle = 0
+      self.root.lreducedpickle = lreducedpicklesave
+      self.root.lnorestoreonpickle = lnorestoreonpicklesave
     return blocklistsleft,blocklistsright
       
   def clearparentsandchildren(self):
@@ -710,7 +711,8 @@ not be fetched from there (it is set negative).
   def allocatedataarrays(self):
     # --- If not root, than only allocate the arrays of this block
     if self != self.root:
-      self.__class__.__bases__[1].allocatedataarrays(self)
+      if self.isactive:
+        self.__class__.__bases__[1].allocatedataarrays(self)
       return
     # --- Otherwise, do all blocks.
     # --- Make sure that the final setup was done. This is put here
