@@ -1214,7 +1214,7 @@ Fetches the potential, given a list of positions
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                             self.zmmin,self.zmmax,self.root.getzgridprv(),
-                            self.root.getzgridprv(),self.l2symtry,self.l4symtry)
+                            self.l2symtry,self.l4symtry)
 
       for block in [self]+self.children:
         # --- Get list of particles within the ith domain
