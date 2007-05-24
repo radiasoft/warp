@@ -128,7 +128,8 @@ Class for generating photo-electrons
                                      lsaveintercept=1,
                                      lsavecondid=1,
                                      lcollectlpdata=1,
-                                     grid=self.scrapegrid)
+                                     grid=self.scrapegrid,
+                                     lrefineallintercept=0)
 #            self.scraper.l_print_timing=1
       self.conductors = [self.pipe]
     if l_secondaries:
@@ -188,16 +189,16 @@ Class for generating photo-electrons
 
   def beam_kick(self):
     if  self.ikick>=self.nkicks:return
-#    print 'beam_kick',top.jmin,top.jmax
+#    print 'beam_kick',w3d.jmin,w3d.jmax
     fact=1.#/(1.*pi)
     # set linear charge density
     Lambda = self.Lambda[self.ikick]*self.bucket_train[self.ibk]
     pg = top.pgroup
-    exim = zeros(top.jmax-top.jmin,'d')
-    eyim = zeros(top.jmax-top.jmin,'d')
+    exim = zeros(w3d.jmax-w3d.jmin,'d')
+    eyim = zeros(w3d.jmax-w3d.jmin,'d')
     x0=y0=0.
-    il = top.jmin
-    iu = top.jmax
+    il = w3d.jmin
+    iu = w3d.jmax
     np = iu-il
     x = pg.xp[il:iu]
     ex = pg.ex[il:iu]
@@ -345,11 +346,11 @@ Class for generating photo-electrons
   def pos_electronkick(self):
 #    print 'pos_electronkick'
     pg=top.pgroup
-    il = top.jmin
-    iu = top.jmax
+    il = w3d.jmin
+    iu = w3d.jmax
     np = iu-il
     if np==0:return
-    exeypt = fzeros([2,top.jmax-top.jmin],'d')
+    exeypt = fzeros([2,w3d.jmax-w3d.jmin],'d')
 #	relec=ech**2/(fourpieps0*emass)	!class el. radius [m]
 #	scale=4*pi/(cellszx*cellszy)
     x = pg.xp[il:iu]
