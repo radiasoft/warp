@@ -234,8 +234,8 @@ c      xp and xold.  For predictor at step 1,just copy xp to xpold.
 c      Only do predictor swap if it>1 so there is something to swap.
 c      call swapxarrays(isid)
 c     temporary option
-      if (npcmax .ge. 0) call swapxarrays(pgroup,is)
-      if (npcmax < 0) call swapxarr2(pgroup,is)
+      if (npcmax .ge. 0) call swapxarrays(pgroup,npd,is,ipmin)
+      if (npcmax < 0) call swapxarr2(pgroup,npd,is,ipmin)
         
 c      print*,"xpush2",dt,alpha(1)
 c      print*,npd,pgroup%xp(1),pgroup%yp(1),pgroup%zp(1),uxeff(1),uyeff(1),uzeff(1),pgroup%gaminv(1)
@@ -874,7 +874,7 @@ c      call gchange("Particles",0)
 c=============================================================================
 c ARRAY UTILITIES
 c==========================================================================
-      subroutine swapxarrays(pgroup,is)
+      subroutine swapxarrays(pgroup,npd,is,ipmin)
 c     swapxarrays, swaps old, new particle arrays for predictor-corrector
 c     Specifically, on predictor step,
 c     this routine interchanges the contents of xp and
@@ -891,7 +891,7 @@ c     At t=0, it just copies xp into xold.
       real(kind=8):: xsave,ysave,zsave
       integer(ISZ):: npd,ipmin,is,i
       if (ipredcor == 0 .and. it > 1) then
-       do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+       do i = ipmin,ipmin+npd-1
          xsave=pgroup%xp(i)
          ysave=pgroup%yp(i)
          zsave=pgroup%zp(i)
@@ -905,7 +905,7 @@ c     At t=0, it just copies xp into xold.
        return
       endif
       if (ipredcor > 0) then
-         do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+         do i = ipmin,ipmin+npd-1
             pgroup%xp(i) =pgroup%pid(i,xoldpid)
             pgroup%yp(i)=pgroup%pid(i,yoldpid)
             pgroup%zp(i)=pgroup%pid(i,zoldpid)
@@ -913,7 +913,7 @@ c     At t=0, it just copies xp into xold.
          return
        endif
        if (it == 1) then
-         do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+         do i = ipmin,ipmin+npd-1
             pgroup%pid(i,xoldpid) =pgroup%xp(i)
             pgroup%pid(i,yoldpid)=pgroup%yp(i)
             pgroup%pid(i,zoldpid)=pgroup%zp(i)
@@ -936,7 +936,7 @@ c     stores old uxp array in uxold
       return
       end
 c==========================================================================
-      subroutine swapxarr2(pgroup,is)
+      subroutine swapxarr2(pgroup,npd,is,ipmin)
 c     saves current x as xold
       use Particles,Only: xoldpid,yoldpid,zoldpid
       use ParticleGroupmodule
@@ -946,13 +946,13 @@ c     saves current x as xold
       real(kind=8):: xsave,ysave,zsave
       integer(ISZ):: npd,ipmin,is,i
       if (ipredcor == 0) then
-        do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+        do i = ipmin,ipmin+npd-1
           pgroup%pid(i,xoldpid)=pgroup%xp(i)
           pgroup%pid(i,yoldpid)=pgroup%yp(i)
           pgroup%pid(i,zoldpid)=pgroup%zp(i)
         enddo
       else
-        do i = pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
+        do i = ipmin,ipmin+npd-1
           pgroup%xp(i)=pgroup%pid(i,xoldpid)
           pgroup%yp(i)=pgroup%pid(i,yoldpid)
           pgroup%zp(i)=pgroup%pid(i,zoldpid)
