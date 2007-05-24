@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.359 $, $Date: 2007/05/18 18:57:20 $
+c@(#) File W3D.F, version $Revision: 3.360 $, $Date: 2007/05/24 19:37:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1095,6 +1095,7 @@ c=============================================================================
       subroutine othere3d(np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                    ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
      &                    dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
+      use InGen3d, only:lothereuser
       use Subtimers3d
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
@@ -1111,6 +1112,8 @@ c=============================================================================
 
 c  Set the electric fields from external sources,
 c  inculding axial confining fields, and uniform focusing fields.
+
+      if (lothereuser) call execuser("othereuser")
 
 c  Apply axial confining ears for finite beam.
 
