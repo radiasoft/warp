@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.52 2007/05/24 19:59:46 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.53 2007/05/24 20:51:19 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -124,6 +124,10 @@ conductors are an argument.
 
     if 'reducedisinside' not in self.__dict__:
       self.reducedisinside = self.grid.isinside.copy()
+    if 'lrefineintercept' not in self.__dict__:
+      self.lrefineintercept = 0
+    if 'lrefineallintercept' not in self.__dict__:
+      self.lrefineallintercept = 0
 
   def registerconductors(self,newconductors):
 #    self.updategrid()
