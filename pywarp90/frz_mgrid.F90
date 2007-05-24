@@ -8491,7 +8491,7 @@ END if
   return
 end subroutine fieldweightrz
 
-subroutine fieldweightrzfromgrid(xp,yp,zp,ex,ey,ez,np,zgrid,efetch)
+subroutine fieldweightrzfromphi(xp,yp,zp,ex,ey,ez,np,zgrid,efetch)
 USE multigridrz
 implicit none
 
@@ -8605,7 +8605,7 @@ else
 END if
 
   return
-end subroutine fieldweightrzfromgrid
+end subroutine fieldweightrzfromphi
 
 subroutine fieldweightxz(xp,zp,ex,ez,np,zgrid,efetch)
 USE multigridrz
