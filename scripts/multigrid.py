@@ -330,7 +330,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if self.pbounds[2] == 2 or self.pbounds[3] == 2:
       self.source[:,0,:] = self.source[:,0,:] + self.source[:,-1,:]
       self.source[:,-1,:] = self.source[:,0,:]
-    if self.pbounds[0] == 1 and not self.l4symtry and self.nx > 0:
+    if self.pbounds[0] == 1 and not self.l4symtry and self.nx > 0 and self.solvergeom != w3d.RZgeom:
       self.source[0,:,:] = 2.*self.source[0,:,:]
     if self.pbounds[1] == 1 and self.nx > 0:
       self.source[-1,:,:] = 2.*self.source[-1,:,:]
