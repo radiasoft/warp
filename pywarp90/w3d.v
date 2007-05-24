@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.264 $, $Date: 2007/05/24 20:14:42 $
+#@(#) File W3D.V, version $Revision: 3.265 $, $Date: 2007/05/24 20:22:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.264 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.265 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -371,6 +371,10 @@ selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
  # calculated from phi via finite difference. Only used when top.efetch = 3
 
 *********** FieldSolveAPI:
+jmin   integer    /0/  # index start of current particle chunk in top.pgroup 
+                       # (PYTHON indexed: based 0)
+jmax   integer    /0/  # index end of current particle chunk in top.pgroup
+                       # (PYTHON indexed: based 0)
 jsfsapi     integer
 ndtsfsapi   integer
 npfsapi     integer
