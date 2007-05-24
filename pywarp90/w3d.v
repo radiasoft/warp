@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.263 $, $Date: 2007/05/18 18:57:21 $
+#@(#) File W3D.V, version $Revision: 3.264 $, $Date: 2007/05/24 20:14:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.263 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.264 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -48,6 +48,7 @@ l4symtry             logical    /.false./  # Turns on 4-fold symmetry
 lbeforefs  logical    /.false./  # Turns on call to python function "beforefs"
 lafterfs   logical    /.false./  # Turns on call to python function "afterfs"
 lbeforelr logical /.false./ # Turns on call to python function "beforelr"
+lothereuser logical /.false./ # Turns on call to python function "othereuser"
 lcallscraper   logical /.false./ # Turns on call to python function "callscraper"
 izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
 izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
