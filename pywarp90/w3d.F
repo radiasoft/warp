@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.360 $, $Date: 2007/05/24 19:37:49 $
+c@(#) File W3D.F, version $Revision: 3.361 $, $Date: 2007/05/24 20:23:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1593,6 +1593,8 @@ c  Loop over particle blocks; move each block separately
 !$OMP DO
         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+          jmin = ipmin-1
+          jmax = jmin+ip
 
 c         --- Zero out B field arrays, but only if B is going
 c         --- to be recomputed; B doesn't get recomputed if 
