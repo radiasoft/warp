@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.51 2007/05/22 20:46:52 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.52 2007/05/24 19:59:46 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -122,6 +122,9 @@ conductors are an argument.
     self.__dict__.update(dict)
     self.installscraper()
 
+    if 'reducedisinside' not in self.__dict__:
+      self.reducedisinside = self.grid.isinside.copy()
+
   def registerconductors(self,newconductors):
 #    self.updategrid()
     if type(newconductors) is not ListType: newconductors = [newconductors]
@@ -190,8 +193,9 @@ after load balancing."""
     # --- points. Note that the routine never ignores grid points that have
     # --- nx,ny,nz all even.
     self.reducedisinside = self.grid.isinside.copy()
-    reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
-                       self.grid.nx,self.grid.ny,self.grid.nz)
+    # --- There is a problem with this so don't use for now
+    #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
+    #                   self.grid.nx,self.grid.ny,self.grid.nz)
 
   def scrapeall(self,clear=0):
     if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
