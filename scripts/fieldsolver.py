@@ -474,6 +474,12 @@ the diagnostic is of interest and is meaningfull.
       if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
       else:           self.dy = self.dx
     if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+
+    # --- Check the mesh consistency
+    self.checkmeshconsistency(self.xmmin,self.xmmax,self.nx,self.dx,'x')
+    self.checkmeshconsistency(self.ymmin,self.ymmax,self.ny,self.dy,'y')
+    self.checkmeshconsistency(self.zmmin,self.zmmax,self.nz,self.dz,'z')
+
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
@@ -501,6 +507,12 @@ the diagnostic is of interest and is meaningfull.
         #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
         self.__dict__[name] = kw.get(name,defvalue)
       if kw.has_key(name): del kw[name]
+
+  def checkmeshconsistency(self,min,max,nn,dd,axis):
+    'Checks if the mesh quantities are consistent'
+    # --- Note that the factor of 1.e-5 is somewhat arbitrary
+    assert abs((max-min) - nn*dd) < dd*1.e-5,\
+      'The grid quantities along the '+axis+' axis are inconsistent'
 
   def __getstate__(self):
     dict = self.__dict__.copy()
