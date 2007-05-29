@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.18 2007/05/15 23:31:27 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.19 2007/05/29 22:35:26 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -243,6 +243,10 @@ Class for generating secondaries
                       js=js,
                       lmomentum=true)
        else: 
+         if top.wpid==0:
+           weights=1.
+         else:
+           weights=self.pid[js][:nn,top.wpid-1]
          addparticles(x=self.x[js][:nn],
                       y=self.y[js][:nn],
                       z=self.z[js][:nn],
@@ -250,6 +254,7 @@ Class for generating secondaries
                       vy=self.vy[js][:nn],
                       vz=self.vz[js][:nn],
                       pid=self.pid[js][:nn,:],
+                      w=weights,
                       js=js,
                       lmomentum=true)
        self.nps[js]=0
@@ -1360,14 +1365,12 @@ Class for generating photo-electrons
                                                             l_dividebyvolume=false,
                                                             charge=1),0),0)
      weightemit=top.pgroup.sw[emitted_species.jslist[0]]*abs(top.pgroup.sq[emitted_species.jslist[0]])
-     rheltot=0.
      for i in range(self.nz):
        if incident_species is None:
          rhel = self.Lambda*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
        else:
          rhel = self.Lambda[i]*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
 #       rhel*=pos.slength
-       rheltot+=rhel
        # rhel is the number of photoelectrons created at each timestep
        # queffp  is the  quantum efficiency (photoelectrons produced per
                # photon)  Miguel says queffp is between 0.1 and 1.0.  Real
