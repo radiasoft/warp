@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.265 $, $Date: 2007/05/24 20:22:53 $
+#@(#) File W3D.V, version $Revision: 3.266 $, $Date: 2007/05/29 16:19:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.265 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.266 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -899,7 +899,8 @@ seteears()  subroutine # Sets eearsofz, the axial confining field
 sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
        efetch:integer,ex(np):real,ey(np):real,ez(np):real,
-       l2symtry:logical,l4symtry:logical,lcylindrical:logical)
+       l2symtry:logical,l4symtry:logical,lcylindrical:logical,
+       delx:integer,dely:integer,delz:integer)
              subroutine # Sets internal E field
 getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,nx:integer,ny:integer,nz:integer,
            selfe(3,0:nx,0:ny,0:nz):real,

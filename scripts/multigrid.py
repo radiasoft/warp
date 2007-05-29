@@ -262,7 +262,8 @@ class MultiGrid(SubcycledPoissonSolver):
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+           self.nxguard,self.nyguard,self.nzguard)
     if max(top.fselfb) > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
       # --- For now, just skip the gather of the self B field if this was

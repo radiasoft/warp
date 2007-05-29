@@ -176,7 +176,8 @@ class FieldSolver3dBase(object):
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+           0,0,1)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)

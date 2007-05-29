@@ -279,14 +279,16 @@ class MultiGridRZ(SubcycledPoissonSolver):
     #       self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
     #       self.dx,self.dy,self.dz,
     #       self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
-    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+    #       self.nxguard,self.nyguard,self.nzguard)
     # --- sete3d should be fixed so the above works since the below requires
     # --- a copy of self.potentialp to be made.
     sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx,self.ny,self.nz,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+           self.nxguard,self.nyguard,self.nzguard)
     #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
@@ -448,7 +450,8 @@ class MultiGrid2D(MultiGrid):
     sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+           self.nxguard,self.nyguard,self.nzguard)
     if max(top.fselfb) > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
       # --- For now, just skip the gather of the self B field if this was
@@ -698,14 +701,16 @@ Initially, conductors are not implemented.
     #       self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
     #       self.dx,self.dy,self.dz,
     #       self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
-    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+    #       self.nxguard,self.nyguard,self.nzguard)
     # --- sete3d should be fixed so the above works since the below requires
     # --- a copy of self.potentialp to be made.
     sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx,self.ny,self.nz,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
+           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+           self.nxguard,self.nyguard,self.nzguard)
     #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.361 $, $Date: 2007/05/24 20:23:19 $
+c@(#) File W3D.F, version $Revision: 3.362 $, $Date: 2007/05/29 16:19:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2804,7 +2804,7 @@ c  at smaller radii, zones are closer together, so field is larger.
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
-     &                  lcylindrical)
+     &                  lcylindrical,delx,dely,delz)
       use Subtimers3d
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
@@ -2812,6 +2812,7 @@ c===========================================================================
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry,lcylindrical
+      integer(ISZ):: delx,dely,delz
 
 c Gets self electric field for particles
 c Note that the phi1d passed in is assumed to start at phi(0,0,-1).
@@ -2848,8 +2849,8 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      nnx  = nx + 1
-      nnxy = (nx + 1)*(ny + 1)
+      nnx  = nx + 1 + 2*delx
+      nnxy = (nx + 1 + 2*delx)*(ny + 1 + 2*dely)
 
 c  Evaluation of offsets occurs on the first call only provided
 c  local arrays are SAVE'd. nnxy is added to all offsets to account for
@@ -2857,38 +2858,41 @@ c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
 c  of phi(0,0,0) is equivalent to phi1d(nnxy).
 
 c     if (noff(1) /= -nnxy) then
-         noff(1)  = nnxy - nnxy
-         noff(2)  = nnxy - nnxy   + 1
-         noff(3)  = nnxy - nnxy   + nnx
-         noff(4)  = nnxy - nnxy   + nnx   + 1
-         noff(5)  = nnxy          - nnx
-         noff(6)  = nnxy          - nnx   + 1
-         noff(7)  = nnxy                  - 1
-         noff(8)  = nnxy                  + 0
-         noff(9)  = nnxy                  + 1
-         noff(10) = nnxy                  + 2
-         noff(11) = nnxy          + nnx   - 1
-         noff(12) = nnxy          + nnx
-         noff(13) = nnxy          + nnx   + 1
-         noff(14) = nnxy          + nnx   + 2
-         noff(15) = nnxy          + 2*nnx
-         noff(16) = nnxy          + 2*nnx + 1
-         noff(17) = nnxy + nnxy   - nnx
-         noff(18) = nnxy + nnxy   - nnx   + 1
-         noff(19) = nnxy + nnxy           - 1
-         noff(20) = nnxy + nnxy
-         noff(21) = nnxy + nnxy           + 1
-         noff(22) = nnxy + nnxy           + 2
-         noff(23) = nnxy + nnxy   + nnx   - 1
-         noff(24) = nnxy + nnxy   + nnx
-         noff(25) = nnxy + nnxy   + nnx   + 1
-         noff(26) = nnxy + nnxy   + nnx   + 2
-         noff(27) = nnxy + nnxy   + 2*nnx
-         noff(28) = nnxy + nnxy   + 2*nnx + 1
-         noff(29) = nnxy + 2*nnxy
-         noff(30) = nnxy + 2*nnxy         + 1
-         noff(31) = nnxy + 2*nnxy + nnx
-         noff(32) = nnxy + 2*nnxy + nnx   + 1
+         noff(1)  = - nnxy
+         noff(2)  = - nnxy   + 1
+         noff(3)  = - nnxy   + nnx
+         noff(4)  = - nnxy   + nnx   + 1
+         noff(5)  =          - nnx
+         noff(6)  =          - nnx   + 1
+         noff(7)  =                  - 1
+         noff(8)  =                  + 0
+         noff(9)  =                  + 1
+         noff(10) =                  + 2
+         noff(11) =          + nnx   - 1
+         noff(12) =          + nnx
+         noff(13) =          + nnx   + 1
+         noff(14) =          + nnx   + 2
+         noff(15) =          + 2*nnx
+         noff(16) =          + 2*nnx + 1
+         noff(17) = + nnxy   - nnx
+         noff(18) = + nnxy   - nnx   + 1
+         noff(19) = + nnxy           - 1
+         noff(20) = + nnxy
+         noff(21) = + nnxy           + 1
+         noff(22) = + nnxy           + 2
+         noff(23) = + nnxy   + nnx   - 1
+         noff(24) = + nnxy   + nnx
+         noff(25) = + nnxy   + nnx   + 1
+         noff(26) = + nnxy   + nnx   + 2
+         noff(27) = + nnxy   + 2*nnx
+         noff(28) = + nnxy   + 2*nnx + 1
+         noff(29) = + 2*nnxy
+         noff(30) = + 2*nnxy         + 1
+         noff(31) = + 2*nnxy + nnx
+         noff(32) = + 2*nnxy + nnx   + 1
+
+         noff = noff + delx + nnx*dely + nnxy*delz
+
 c     endif
 
 c  Evaluation of E, vectorized over particles
@@ -7744,7 +7748,7 @@ c     --- Zero out the particle's E field if requested (the default)
         call sete3d(phipndts(:,:,:,indts),selfe,ip,
      &              pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,efetch(is),
-     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
+     &              ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom,0,0,1)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez,pgroup)
       elseif(solvergeom==XZgeom) then
@@ -7857,10 +7861,10 @@ c       --- and the data needs to be copied around.
           print*,"Error: fetche3dfrompositions: An improper value on indts has been passed in"
           return
         endif
-        call sete3d(phipndts(:,:,:,indts),selfe,n,
-     &              x,y,z,
+        call sete3d(phipndts(:,:,:,indts),selfe,n,x,y,z,
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &              efetch(is),ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom)
+     &              efetch(is),ex,ey,ez,l2symtry,l4symtry,solvergeom==RZgeom,
+     &              0,0,1)
       elseif(solvergeom==RZgeom) then
         call fieldweightrz(x,y,z,ex,ey,ez,n,zgridprv,efetch(is))
       elseif(solvergeom==XZgeom) then
