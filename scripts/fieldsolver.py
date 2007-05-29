@@ -479,6 +479,10 @@ the diagnostic is of interest and is meaningfull.
     self.checkmeshconsistency(self.xmmin,self.xmmax,self.nx,self.dx,'x')
     self.checkmeshconsistency(self.ymmin,self.ymmax,self.ny,self.dy,'y')
     self.checkmeshconsistency(self.zmmin,self.zmmax,self.nz,self.dz,'z')
+    self.checkmeshconsistency(self.zmminglobal,self.zmmaxglobal,self.nzfull,self.dz,'z')
+    self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
+    self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
+    self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
 
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
