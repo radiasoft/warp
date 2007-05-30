@@ -283,7 +283,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     #       self.nxguard,self.nyguard,self.nzguard)
     # --- sete3d should be fixed so the above works since the below requires
     # --- a copy of self.potentialp to be made.
-    sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx,self.ny,self.nz,top.efetch[js],
@@ -447,7 +447,7 @@ class MultiGrid2D(MultiGrid):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
@@ -705,7 +705,7 @@ Initially, conductors are not implemented.
     #       self.nxguard,self.nyguard,self.nzguard)
     # --- sete3d should be fixed so the above works since the below requires
     # --- a copy of self.potentialp to be made.
-    sete3d(self.potentialp[1:-1,:,:],self.fieldp,n,x,y,z,self.getzgridprv(),
+    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
            self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,
            self.nx,self.ny,self.nz,top.efetch[js],
