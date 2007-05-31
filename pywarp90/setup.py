@@ -88,6 +88,7 @@ setup (name = "warpC",
                                 include_dirs=[builddir],
                                 library_dirs=library_dirs,
                                 libraries=libraries,
+                                define_macros=[('WITH_NUMERIC','1')],
                                 extra_objects=warpobjects,
                                 extra_link_args=['-g']+
                                              fcompiler.extra_link_args,
@@ -95,3 +96,7 @@ setup (name = "warpC",
                                )]
 
        )
+                                #'superlu_dgssv.c'],
+                                #include_dirs=[builddir,'SuperLU'],
+                                #library_dirs=library_dirs+['SuperLU'],
+                                #libraries=libraries+['superlu_3.0','blas'],
