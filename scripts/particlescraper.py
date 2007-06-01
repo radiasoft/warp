@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.53 2007/05/24 20:51:19 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.54 2007/06/01 19:19:06 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -196,7 +196,8 @@ after load balancing."""
     # --- will get a reference to the conductor from the neighboring grid
     # --- points. Note that the routine never ignores grid points that have
     # --- nx,ny,nz all even.
-    self.reducedisinside = self.grid.isinside.copy()
+    self.reducedisinside = fzeros(self.grid.isinside.shape,'d')
+    self.reducedisinside[...] = self.grid.isinside
     # --- There is a problem with this so don't use for now
     #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
     #                   self.grid.nx,self.grid.ny,self.grid.nz)
