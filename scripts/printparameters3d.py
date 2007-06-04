@@ -16,13 +16,13 @@ def printparameters3d():
     f40%('Particle distribution = ',arraytostr(w3d.distrbtn),'') +
     f30%('Number of grid points in x = ',w3d.nx,'') +
     f30%('Number of grid points in y = ',w3d.ny,'') +
-    f30%('Number of grid points in z = ',w3d.nzfull,'') +
+    f30%('Number of grid points in z = ',w3d.nz,'') +
     f20%('Grid spacing in x = ',w3d.dx,' m') +
     f20%('Grid spacing in y = ',w3d.dy,' m') +
     f20%('Grid spacing in z = ',w3d.dz,' m') +
     f50%('Grid extends in x from ',w3d.xmmin,' to ',w3d.xmmax,' m') +
     f50%('Grid extends in y from ',w3d.ymmin,' to ',w3d.ymmax,' m') +
-    f50%('Grid extends in z from ',w3d.zmminglobal,' to ',w3d.zmmaxglobal,' m')
+    f50%('Grid extends in z from ',w3d.zmmin,' to ',w3d.zmmax,' m')
     )
 
   if w3d.l2symtry: textblock += ' Two fold symmetry\n'

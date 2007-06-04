@@ -69,8 +69,8 @@ Class for generating photo-electrons
     w3d.xmmin=xmin
     w3d.xmmax=xmax
     if l_switchyz:
-      w3d.zmmin=ymin
-      w3d.zmmax=ymax
+      w3d.zmminlocal=ymin
+      w3d.zmmaxlocal=ymax
       w3d.nz=ny+0
     else:
       w3d.ymmin=ymin
@@ -93,8 +93,8 @@ Class for generating photo-electrons
         w3d.ymmax=-w3d.ymmin
         w3d.solvergeom=w3d.XZgeom
       else:
-        w3d.zmmin=-0.5#*pos.slength
-        w3d.zmmax=-w3d.zmmin
+        w3d.zmminlocal=-0.5#*pos.slength
+        w3d.zmmaxlocal=-w3d.zmminlocal
         w3d.solvergeom=w3d.XYgeom
       if self.l_posmgsolver:
         frz.mgridrz_ncmax=0
@@ -112,14 +112,14 @@ Class for generating photo-electrons
                                                    ycent       = 0.5*(w3d.ymmin+w3d.ymmax),
                                                    condid      = 1)
         self.pipescraper = -Sphere(radius=pos.ach,condid=1)
-        self.scrapegrid=Grid(nx=nx,ny=w3d.nz,nz=ny,nzfull=ny)
+        self.scrapegrid=Grid(nx=nx,ny=w3d.nz,nzlocal=ny,nz=ny)
       else:
         self.pipe = ZCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
                                                    radius      = pos.ach,
-                                                   length      = w3d.zmmaxglobal-w3d.zmminglobal,
+                                                   length      = w3d.zmmax-w3d.zmmin,
                                                    zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
                                                    condid      = 1)
-        self.scrapegrid=Grid(nx=nx,ny=ny,nz=w3d.nz,nzfull=w3d.nz)
+        self.scrapegrid=Grid(nx=nx,ny=ny,nzlocal=w3d.nzlocal,nz=w3d.nz)
         self.pipescraper = self.pipe
         import __main__
         __main__.sc=self.scrapegrid

@@ -18,7 +18,7 @@ class Quasistatic:
       frz.basegrid=gridcp
       w3d.solvergeom=w3d.RZgeom
       frz.nguardz=nguardz
-      frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
+      frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmminlocal,false)
       self.l_MR=0
     else:
       self.l_rz=0
@@ -91,9 +91,9 @@ class Quasistatic:
     if me==max(0,npes-1) and (top.it==0  or not l_plotelec):
      pg.nps[1]=0
      if self.l_mode==2:
-      zmax = w3d.zmmaxglobal/2+top.zgrid
+      zmax = w3d.zmmax/2+top.zgrid
      else:
-      zmax = w3d.zmmaxglobal-1.e-10*w3d.dz+top.zgrid
+      zmax = w3d.zmmax-1.e-10*w3d.dz+top.zgrid
      if top.prwall<sqrt(w3d.xmmax**2+w3d.ymmax**2) or self.l_rz:
       self.slist[0].add_uniform_cylinder(self.Ninit,min(top.prwall,w3d.xmmax),zmax,zmax,1.e-10,1.e-10,1.e-10,lallindomain=true)
      else:
@@ -130,7 +130,7 @@ class Quasistatic:
       nzmax = 2*izmin
     else:
       izmin = 0
-#      nzmax = nint((getz(js=self.slist[0])[0]-w3d.zmmin)/w3d.dz)#w3d.nz
+#      nzmax = nint((getz(js=self.slist[0])[0]-w3d.zmminlocal)/w3d.dz)#w3d.nz
       nzmax = w3d.nzp
     for izs in range(nzmax,-1,-1):
       iz = izmin+izs
@@ -217,7 +217,7 @@ class Quasistatic:
         else:
           raise('this part needs to be programmed: Quasistatic+Boris-l_MR')
           
-      if l_plotelec and iz<w3d.nzfull/max(1,npes):
+      if l_plotelec and iz<w3d.nz/max(1,npes):
 #        ppgeneric(getvx(js=1),getx(js=1))
         window(0);self.slist[0].ppxy();        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
 #        ppxex(js=1)
@@ -261,7 +261,7 @@ class Quasistatic:
             if self.l_verbose:print 'me = ',me,';stckxy3d'
             stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
                      pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                     pg.zp[il:iu],w3d.zmmin,w3d.dz,
+                     pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
                      pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                      top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,self.pboundxy,true)
           if self.scraper is not None:
@@ -294,7 +294,7 @@ class Quasistatic:
         dist.append([sp.getx(),sp.gety(),sp.getvx(),sp.getvy()])
 #      if pg.nps[1]>0:
 #        zel=ave(getz(js=1,gather=0,bcast=0))
-#        print 'me,iz,zel',me,iz,zel,nint((zel-w3d.zmminglobal)/w3d.dz)
+#        print 'me,iz,zel',me,iz,zel,nint((zel-w3d.zmmin)/w3d.dz)
     # --- switch back to 3-D solver
     w3d.solvergeom = solvergeomcp
     top.fstype = fstypecp
@@ -318,7 +318,7 @@ class Quasistatic:
         il=top.pgroup.ins[js]-1
         iu=il+top.pgroup.nps[js]
         top.pgroup.zp[il:iu]=w3d.zmmin-1.e-10*w3d.dz
-      zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+      zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
     if l_return_dist: 
       return dist
     if l_return_rho:
@@ -483,7 +483,7 @@ class Quasistatic2:
             if self.l_verbose:print 'stckxy3d'
             stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
                      pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                     pg.zp[il:iu],w3d.zmmin,w3d.dz,
+                     pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
                      pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                      top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
           processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+self.dt*top.pgroup.ndts[js],top.zbeam)

@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.69 2007/02/13 00:26:50 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.70 2007/06/04 23:02:54 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -796,8 +796,8 @@ Constructor arguments:
       return self.roundpipexy(id,zs,ze,ap,ax,ay,ox,oy,cm)
   #----------------------------------------------------------------------------
   def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
-    if (ze < w3d.zmminglobal+top.zbeam or
-        zs > w3d.zmmaxglobal+top.zbeam): return 0
+    if (ze < w3d.zmmin+top.zbeam or
+        zs > w3d.zmmax+top.zbeam): return 0
     ax = ax[id]
     ay = ay[id]
     ap = ap[id]
@@ -844,8 +844,8 @@ Constructor arguments:
     zc = 0.5*(zs+ze)
     zl = zc-0.5*(rl+gl)-pw
     zr = zc+0.5*(rl+gl)+pw
-    if (zr < w3d.zmminglobal+top.zbeam or
-        zl > w3d.zmmaxglobal+top.zbeam): return 0
+    if (zr < w3d.zmmin+top.zbeam or
+        zl > w3d.zmmax+top.zbeam): return 0
     quad = Quadrupole(zcent=zc,condid=100+elemid,elem=elem,elemid=elemid,
                       splitrodids=1)
     ap = getattr(top,elem+'ap')[elemid]
@@ -988,10 +988,10 @@ in the celemid array. It returns each element only once.
       if solver.__class__ is AMR.AMRTree: solver = solver.blocks
     except AttributeError:
       pass
-    solverparams = [solver.nx,solver.ny,solver.nz,
+    solverparams = [solver.nx,solver.ny,solver.nzlocal,
                     solver.dx,solver.dy,solver.dz,
-                    solver.xmmin,solver.ymmin,solver.zmmin,
-                    solver.xmmax,solver.ymmax,solver.zmmax]
+                    solver.xmmin,solver.ymmin,solver.zmminlocal,
+                    solver.xmmax,solver.ymmax,solver.zmmaxlocal]
     if (not lforce and
         self.lastzbeam == top.zbeam and
         self.lastsolverid == id(solver) and

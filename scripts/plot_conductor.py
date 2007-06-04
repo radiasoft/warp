@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.111 2007/05/22 00:16:04 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.112 2007/06/04 23:02:53 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -814,13 +814,13 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- This routine by default operates in parallel
   local = kwdict.setdefault('local',0)
 
-  # --- This logic is needed since in the parallel version, zmmin is local.
+  # --- This logic is needed since in the parallel version, zmminlocal is local.
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
   if izf is not None: iz = izf
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmminlocal/solver.dz) + top.izfsslave[me]
   if w3d.solvergeom<>w3d.XYgeom:
-    if iz < 0 or solver.nzfull < iz: return
+    if iz < 0 or solver.nz < iz: return
   if scale:
     dx = solver.dx
     dy = solver.dy
@@ -964,7 +964,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dx = solver.dx
     dz = solver.dz
     xmmin = solver.xmmin
-    zmmin = solver.zmminglobal + zbeam
+    zmmin = solver.zmmin + zbeam
   else:
     dx = 1.
     dz = 1.
@@ -973,7 +973,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
-      kwdict['xmax'] = solver.nzfull
+      kwdict['xmax'] = solver.nz
       kwdict['ymin'] = 0.
       kwdict['ymax'] = solver.nx
     if plotphi:
@@ -1085,7 +1085,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dy = solver.dy
     dz = solver.dz
     ymmin = solver.ymmin
-    zmmin = solver.zmminglobal + zbeam
+    zmmin = solver.zmmin + zbeam
   else:
     dy = 1.
     dz = 1.
@@ -1094,7 +1094,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
-      kwdict['xmax'] = solver.nzfull
+      kwdict['xmax'] = solver.nz
       kwdict['ymin'] = 0
       kwdict['ymax'] = solver.ny
     if plotphi:
@@ -1238,8 +1238,8 @@ in X-Y plane
   local = kwdict.setdefault('local',0)
 
   if izf is not None: iz = izf
-  if not iz: iz = nint(-solver.zmmin/solver.dz)
-  if iz < 0 or solver.nzfull < iz: return
+  if not iz: iz = nint(-solver.zmminlocal/solver.dz)
+  if iz < 0 or solver.nz < iz: return
   if scale:
     dy = solver.dy*signy
     dx = solver.dx*signx
@@ -1818,8 +1818,8 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
   - axis: selects axis to plot, either 'x' or 'y'
   """
   if zu is None and zl is None:
-    zl = w3d.zmminglobal + top.zbeam
-    zu = w3d.zmmaxglobal + top.zbeam
+    zl = w3d.zmmin + top.zbeam
+    zu = w3d.zmmax + top.zbeam
   if zu is not None and zoffset is None and top.zlatperi > 0.:
     # --- This allows multiple periodic repeats of the lattice to be
     # --- plotted.
@@ -1873,7 +1873,7 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
       if gridframe:
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
-        zz = (zz - w3d.zmminglobal)/w3d.dz
+        zz = (zz - w3d.zmmin)/w3d.dz
       if outline:
         plg(rr1,zz,color=color)
         plg(rr2,zz,color=color)
@@ -1906,8 +1906,8 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
         rrl2 = rrl2/w3d.dx
         rrr1 = rrr1/w3d.dx
         rrr2 = rrr2/w3d.dx
-        zzl = (zzl - w3d.zmminglobal)/w3d.dz
-        zzr = (zzr - w3d.zmminglobal)/w3d.dz
+        zzl = (zzl - w3d.zmmin)/w3d.dz
+        zzr = (zzr - w3d.zmmin)/w3d.dz
       if outline:
         plg(rrl1,zzl,color=color)
         plg(rrl2,zzl,color=color)
@@ -2381,7 +2381,7 @@ grid that data is to be used for.
 def srfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
              rmax=top.largepos,lfill=false,
              xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-             zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+             zmminlocal=None,zmmaxlocal=None,zmmin=None,zbeam=None,
              dx=None,dy=None,dz=None,
              nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
              xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
@@ -2399,8 +2399,8 @@ srfrvout(rofz,...)
 Input:
   rofzfunc=" ": routine which calculates the radius as function of z.
   volt=0.: voltage on the conductor.
-  zmin=w3d.zmmin: minimum z of the conductor.
-  zmax=w3d.zmmax: maximum z of the conductor.
+  zmin=w3d.zmminlocal: minimum z of the conductor.
+  zmax=w3d.zmmaxlocal: maximum z of the conductor.
   xcent=0.: x center of the conductor.
   ycent=0.: y center of the conductor.
   rmax=LargePos: maximum radius of the conductor.
@@ -2409,7 +2409,7 @@ Input:
   lshell=true: logical requesting that the shell be subgrid resolved
   xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
                        default to w3d.xmmin,xmmax,ymmin,ymmax
-  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
   xmesh,ymesh,l2symtry,l4symtry:
            are all variables describing the grid. Default to variables in w3d
            and top with the same name.
@@ -2418,15 +2418,15 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
-  if zmin is None: zmin = w3d.zmmin
-  if zmax is None: zmax = w3d.zmmax
+  if zmin is None: zmin = w3d.zmminlocal
+  if zmax is None: zmax = w3d.zmmaxlocal
   if xmin is None: xmin = w3d.xmmin
   if xmax is None: xmax = w3d.xmmax
   if ymin is None: ymin = w3d.ymmin
   if ymax is None: ymax = w3d.ymmax
+  if zmminlocal is None: zmminlocal = w3d.zmminlocal
+  if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
-  if zmmax is None: zmmax = w3d.zmmax
-  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2463,7 +2463,7 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            xmin,xmax,ymin,ymax,lshell,zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,
             nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
@@ -2473,7 +2473,7 @@ Output is put directly into the conductor arrays of Conductor3d.
 def srfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
             rmin=0.,lfill=false,
             xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-            zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+            zmminlocal=None,zmmaxlocal=None,zmmin=None,zbeam=None,
             dx=None,dy=None,dz=None,
             nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
             xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
@@ -2491,8 +2491,8 @@ srfrvout(rofz,...)
 Input:
   rofzfunc=" ": routine which calculates the radius as function of z.
   volt=0.: voltage on the conductor.
-  zmin=w3d.zmmin: minimum z of the conductor.
-  zmax=w3d.zmmax: maximum z of the conductor.
+  zmin=w3d.zmminlocal: minimum z of the conductor.
+  zmax=w3d.zmmaxlocal: maximum z of the conductor.
   xcent=0.: x center of the conductor.
   ycent=0.: y center of the conductor.
   rmin=0.: minimum radius of the conductor.
@@ -2501,7 +2501,7 @@ Input:
   lshell=true: logical requesting that the shell be subgrid resolved
   xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
                        default to w3d.xmmin,xmmax,ymmin,ymmax
-  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
   xmesh,ymesh,l2symtry,l4symtry:
            are all variables describing the grid. Default to variables in w3d
            and top with the same name.
@@ -2510,15 +2510,15 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
-  if zmin is None: zmin = w3d.zmmin
-  if zmax is None: zmax = w3d.zmmax
+  if zmin is None: zmin = w3d.zmminlocal
+  if zmax is None: zmax = w3d.zmmaxlocal
   if xmin is None: xmin = w3d.xmmin
   if xmax is None: xmax = w3d.xmmax
   if ymin is None: ymin = w3d.ymmin
   if ymax is None: ymax = w3d.ymmax
+  if zmminlocal is None: zmminlocal = w3d.zmminlocal
+  if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
-  if zmmax is None: zmmax = w3d.zmmax
-  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2555,7 +2555,7 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
-            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            xmin,xmax,ymin,ymax,lshell,zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,
             nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
@@ -2565,7 +2565,7 @@ Output is put directly into the conductor arrays of Conductor3d.
 def srfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
                xcent=0.,ycent=0.,lzend=true,
                xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
-               zmmin=None,zmmax=None,zmminglobal=None,zbeam=None,
+               zmminlocal=None,zmmaxlocal=None,zmmin=None,zbeam=None,
                dx=None,dy=None,dz=None,
                nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
                xmesh=None,ymesh=None,l2symtry=None,l4symtry=None,
@@ -2582,8 +2582,8 @@ Input:
   rminofz=" ": routine which calculates the inner radius as function of z.
   rmaxofz=" ": routine which calculates the outer radius as function of z.
   volt=0.: voltage on the conductor.
-  zmin=w3d.zmmin: minimum z of the conductor.
-  zmax=w3d.zmmax: maximum z of the conductor.
+  zmin=w3d.zmminlocal: minimum z of the conductor.
+  zmax=w3d.zmmaxlocal: maximum z of the conductor.
   xcent=0.: x center of the conductor.
   ycent=0.: y center of the conductor.
   rmin=0.: minimum radius of the conductor.
@@ -2591,7 +2591,7 @@ Input:
   lshell=true: logical requesting that the shell be subgrid resolved
   xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
                        default to w3d.xmmin,xmmax,ymmin,ymmax
-  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
   xmesh,ymesh,l2symtry,l4symtry:
            are all variables describing the grid. Default to variables in w3d
            and top with the same name.
@@ -2600,15 +2600,15 @@ Input:
   condid=0: Id number to identify this conductor
 Output is put directly into the conductor arrays of Conductor3d.
   """
-  if zmin is None: zmin = w3d.zmmin
-  if zmax is None: zmax = w3d.zmmax
+  if zmin is None: zmin = w3d.zmminlocal
+  if zmax is None: zmax = w3d.zmmaxlocal
   if xmin is None: xmin = w3d.xmmin
   if xmax is None: xmax = w3d.xmmax
   if ymin is None: ymin = w3d.ymmin
   if ymax is None: ymax = w3d.ymmax
+  if zmminlocal is None: zmminlocal = w3d.zmminlocal
+  if zmmaxlocal is None: zmmaxlocal = w3d.zmmaxlocal
   if zmmin is None: zmmin = w3d.zmmin
-  if zmmax is None: zmmax = w3d.zmmax
-  if zmminglobal is None: zmmin = w3d.zmminglobal
   if zbeam is None: zbeam = top.zbeam
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
@@ -2648,7 +2648,7 @@ Output is put directly into the conductor arrays of Conductor3d.
 
   # --- Now call the fortran version
   srfrvfunc(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
-            xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,
+            xmin,xmax,ymin,ymax,lshell,zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,
             nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   # --- Reset srfrv_pernz if needed
@@ -2702,13 +2702,13 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
   f3d.lsrlinr = true
   f3d.npnts_sr = 2
   gchange("Surface_of_Rev")
-  f3d.z_sr[0] = w3d.zmmin + iz*w3d.dz - 1.e-11*w3d.dz
-  f3d.z_sr[1] = w3d.zmmin + iz*w3d.dz + 1.e-11*w3d.dz
+  f3d.z_sr[0] = w3d.zmminlocal + iz*w3d.dz - 1.e-11*w3d.dz
+  f3d.z_sr[1] = w3d.zmminlocal + iz*w3d.dz + 1.e-11*w3d.dz
   f3d.r_sr[:] = aper
   srfrvout(" ",vvv,f3d.z_sr[0],f3d.z_sr[1],xoff,yoff,rmax,true,
            w3d.xmmin+ixmin*w3d.dx,w3d.xmmin+ixmax*w3d.dx,
            w3d.ymmin+iymin*w3d.dy,w3d.ymmin+iymax*w3d.dy,true,
-           w3d.zmmin,w3d.zmmax,top.zbeam,dx,dy,w3d.dz,
+           w3d.zmminlocal,w3d.zmmaxlocal,top.zbeam,dx,dy,w3d.dz,
            w3d.nx,w3d.ny,w3d.nz,ix_axis,iy_axis,condid=condid)
 
   f3d.lsrlinr = false
@@ -2766,7 +2766,7 @@ Sets the voltage on a conductor, given an id.
     if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
-      setconductorvoltagerz(voltage,w3d.nzfull,w3d.zmminglobal,w3d.dz,discrete,
+      setconductorvoltagerz(voltage,w3d.nz,w3d.zmmin,w3d.dz,discrete,
                             condid)
     else:
       setconductorvoltagerz_id(condid,voltage)
@@ -2848,7 +2848,7 @@ Sets the voltage on a conductor, given an id.
     # --- coordinates x, y, z, in meters relative to the beam frame.
 
     if interior.n > 0:
-      zmmin = w3d.zmminglobal
+      zmmin = w3d.zmmin
       icx = interior.indx[0,:]*take(nint(conductors.levellx),interior.ilevel)
       icy = interior.indx[1,:]*take(nint(conductors.levelly),interior.ilevel)
       icz = interior.indx[2,:]*take(nint(conductors.levellz),interior.ilevel)+\
@@ -2964,14 +2964,14 @@ Returns the scene use to draw the image
     return
 
   # --- Make sure that the conductor data is properly installed.
-  checkconductors(w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,w3d.dx,w3d.dy,w3d.dz,
+  checkconductors(w3d.nx,w3d.ny,w3d.nzlocal,w3d.nz,w3d.dx,w3d.dy,w3d.dz,
                   conductors,
                   top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
   # --- Save grid size
   nx = w3d.nx
   ny = w3d.ny
-  nz = w3d.nz
+  nz = w3d.nzlocal
 
   # --- Get conductors
   ie = conductors.evensubgrid.istart[mglevel  ] - 1

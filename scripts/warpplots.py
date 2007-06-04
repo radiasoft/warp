@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.195 2007/05/21 23:37:20 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.196 2007/06/04 23:02:54 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -723,8 +723,8 @@ def pptitleright(iw=0,kwdict={},**kw):
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
     result = "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
   elif iz is not None:
-    zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
-    zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
+    zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz + top.zbeam
+    zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz + top.zbeam
     result = "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
   elif zc is not None:
     zl = zc - wz*w3d.dz
@@ -3884,8 +3884,12 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmminglobal + zbeam)
-  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
@@ -3893,11 +3897,11 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.ymmin,solver.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix,solver=solver,local=local)
-  if me > 0 and not local: rrr = zeros((solver.ny+1,solver.nzfull+1),'d')
+  if me > 0 and not local: rrr = zeros((solver.ny+1,solver.nz+1),'d')
   rrr = transpose(rrr)
   ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
@@ -3914,8 +3918,12 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmminglobal + zbeam)
-  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
@@ -3923,11 +3931,11 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy,solver=solver,local=local)
-  if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nzfull+1),'d')
+  if me > 0 and not local: rrr = zeros((solver.nx+1,solver.nz+1),'d')
   rrr = transpose(rrr)
   ppgeneric(grid=rrr,kwdict=kw,local=1)
   if fullplane and solver.l4symtry:
@@ -3940,7 +3948,7 @@ def pcrhoxy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -3973,8 +3981,12 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmminglobal + zbeam)
-  kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.get('cellarray',1):
@@ -3982,11 +3994,11 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.ymmin,solver.ymmax)
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix,solver=solver,local=local)
-  if me > 0 and not local: ppp = zeros((solver.ny+1,solver.nzfull+1),'d')
+  if me > 0 and not local: ppp = zeros((solver.ny+1,solver.nz+1),'d')
   ppp = transpose(ppp)
   ppgeneric(grid=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l2symtry or solver.l4symtry):
@@ -4004,11 +4016,11 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
   if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
     kw.setdefault('xmin',solver.zmmin + zbeam)
     kw.setdefault('xmax',solver.zmmax + zbeam)
-  else:
-    kw.setdefault('xmin',solver.zmminglobal + zbeam)
-    kw.setdefault('xmax',solver.zmmaxglobal + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.get('cellarray',1):
@@ -4016,11 +4028,11 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy,solver=solver,local=local)
-  if me > 0 and not local: ppp = zeros((solver.nx+1,solver.nzfull+1),'d')
+  if me > 0 and not local: ppp = zeros((solver.nx+1,solver.nz+1),'d')
   ppp = transpose(ppp)
   ppgeneric(grid=ppp,kwdict=kw,local=1)
   if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
@@ -4033,7 +4045,7 @@ def pcphixy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4070,14 +4082,18 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
   settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
   if not vec:
@@ -4109,14 +4125,18 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
   if not vec:
@@ -4144,7 +4164,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4190,14 +4210,18 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
   settitles("Current Density J%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
   if not vec:
@@ -4229,14 +4253,18 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Current Density J%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
   if not vec:
@@ -4264,7 +4292,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4310,14 +4338,18 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
   settitles("Magnetic Field B%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
   if not vec:
@@ -4349,14 +4381,18 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Magnetic Field B%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
   if not vec:
@@ -4384,7 +4420,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4430,14 +4466,18 @@ def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.ymmin)
   kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits']=(kw['xmin'],kw['xmax'],
                     solver.ymmin,solver.ymmax)
   settitles("Magnetic Vector Potential A%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
   if not vec:
@@ -4469,14 +4509,18 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',solver.zmmin + zbeam)
-  kw.setdefault('xmax',solver.zmmax + zbeam)
+  if local:
+    kw.setdefault('xmin',solver.zmminlocal + zbeam)
+    kw.setdefault('xmax',solver.zmmaxlocal + zbeam)
+  else:
+    kw.setdefault('xmin',solver.zmmin + zbeam)
+    kw.setdefault('xmax',solver.zmmax + zbeam)
   kw.setdefault('ymin',solver.xmmin)
   kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+    kw['pplimits'] = (kw['xmin'],kw['xmax'],
                       solver.xmmin,solver.xmmax)
   settitles("Magnetic Vector Potential A%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
   if not vec:
@@ -4504,7 +4548,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izfsslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
   kw.setdefault('ymin',solver.ymmin)
@@ -4556,8 +4600,8 @@ field domain.
   mm = 1. - gap
   for i in xrange(top.maxslaves):
     z = z + [1.]
-    zmin = top.izfsslave[i]*dz + w3d.zmminglobal
-    zmax = (top.izfsslave[i] + top.nzfsslave[i])*dz + w3d.zmminglobal
+    zmin = top.izfsslave[i]*dz + w3d.zmmin
+    zmax = (top.izfsslave[i] + top.nzfsslave[i])*dz + w3d.zmmin
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
   for i in xrange(top.maxslaves):

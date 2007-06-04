@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.52 2006/04/28 21:20:04 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.53 2007/06/04 23:02:51 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -248,7 +248,7 @@ routines (such as ppxxp).
     if not self.lautodump or self.name is None: return
     if not self.laccumulate and not self.dumptofile: return
     if self.iz >= 0: return
-    if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
+    if self.zz+self.wz > w3d.zmmin+top.zbeam: return
     # --- Check if there is any data. If there is none, then don't make
     # --- a dump.
     ntot = 0
@@ -314,8 +314,8 @@ routines (such as ppxxp).
     if top.ns > self.getns(): self.addspecies()
     # --- If this windows is outside of the grid, then just return.
     if (self.iz == -1 and 
-        (self.zz+self.wz < w3d.zmminglobal+top.zbeam or
-         self.zz-self.wz > w3d.zmmaxglobal+top.zbeam)):
+        (self.zz+self.wz < w3d.zmmin+top.zbeam or
+         self.zz-self.wz > w3d.zmmax+top.zbeam)):
       self.autodump()
       return
 # --- This check is no longer needed since getzmmnt ensures that the ExtPart
@@ -579,7 +579,7 @@ functions.
       if wt is None: wt = self.dt
       ttext = '  time = %e ^+_-%e'%(tc,wt)
     if self.iz >= 0:
-      ztext =  'iz = %d (z = %f m)'%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
+      ztext =  'iz = %d (z = %f m)'%(self.iz,w3d.zmmin+self.iz*w3d.dz)
     else:
       ztext =  'z = %f m'%self.zz
     if z is not None:

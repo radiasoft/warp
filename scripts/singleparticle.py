@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.32 2006/12/19 22:45:04 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.33 2007/06/04 23:02:54 dave Exp $"
 
 class TraceParticle:
   """
@@ -157,7 +157,7 @@ Available methods...
     stckxy3d(self.nn,
              self.x,w3d.xmmax,w3d.xmmin,w3d.dx,
              self.y,w3d.ymmax,w3d.ymmin,w3d.dy,
-             self.z,w3d.zmmin,w3d.dz,self.ux,self.uy,self.uz,
+             self.z,w3d.zmminlocal,w3d.dz,self.ux,self.uy,self.uz,
              self.gi,top.zgrid,top.zbeam,
              w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     # --- load the data
@@ -685,10 +685,10 @@ initial data.
     top.pgroup.uzp[ip1:ip2] = self.vz
     top.pgroup.gaminv[ip1:ip2] = self.gi
     # --- Enforce the particle boundary conditions
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
     stckxy3d(self.nn,top.pgroup.xp[ip1:ip2],w3d.xmmax,w3d.xmmin,w3d.dx,
              top.pgroup.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
-             w3d.dy,top.pgroup.zp[ip1:ip2],w3d.zmmin,w3d.dz,
+             w3d.dy,top.pgroup.zp[ip1:ip2],w3d.zmminlocal,w3d.dz,
              top.pgroup.uxp[ip1:ip2],top.pgroup.uyp[ip1:ip2],top.pgroup.uzp[ip1:ip2],
              top.pgroup.gaminv[ip1:ip2],top.zgrid,top.zbeam,
              w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)

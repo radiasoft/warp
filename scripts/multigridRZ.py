@@ -275,16 +275,8 @@ class MultiGridRZ(SubcycledPoissonSolver):
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    #sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-    #       self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
-    #       self.dx,self.dy,self.dz,
-    #       self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
-    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-    #       self.nxguard,self.nyguard,self.nzguard)
-    # --- sete3d should be fixed so the above works since the below requires
-    # --- a copy of self.potentialp to be made.
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-           self.xmmin,self.ymmin,self.zmmin,
+           self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,
            self.nx,self.ny,self.nz,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
@@ -300,10 +292,10 @@ class MultiGridRZ(SubcycledPoissonSolver):
     nz = self.nz + 2*self.nguardz
     xmmin = self.xmmin - self.nguardx*self.dx
     xmmax = self.xmmax + self.nguardx*self.dx
-    zmmin = self.zmmin - self.nguardz*self.dz
-    zmmax = self.zmmax + self.nguardz*self.dz
+    zmminlocal = self.zmminlocal - self.nguardz*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nguardz*self.dz
     getgrid2d(n,r,z,potential,nx,nz,self.potential,
-              xmmin,xmmax,zmmin,zmmax)
+              xmmin,xmmax,zmminlocal,zmmaxlocal)
 
   def setarraysforfieldsolve(self,*args):
     SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
@@ -341,7 +333,7 @@ class MultiGridRZ(SubcycledPoissonSolver):
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.nx,self.ny,self.nz,self.nz,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,gridrz=self.grid)
@@ -438,44 +430,19 @@ class MultiGrid2D(MultiGrid):
     iz = slice(iz1,iz2)
     return self.potential[ix,0,iz]
 
-  # --- sete3d should be fixed so that this extra copy of fetchfieldfrompositions
-  # --- is not needed.
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
-    # --- This is called by fetchfield from fieldsolver.py
-    # --- Only sets the E field from the potential
-    n = len(x)
-    if n == 0: return
-    if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
-    if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-           self.xmminp,self.ymminp,self.zmminp,
-           self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-           self.nxguard,self.nyguard,self.nzguard)
-    if max(top.fselfb) > 0.:
-      #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
-      # --- For now, just skip the gather of the self B field if this was
-      # --- called directly from fetche3dfrompositions (in which case
-      # --- len(bx)==0).
-      if len(bx) != n: return
-      setb3d(self.fieldp[:,:,:,:,1],n,x,y,z,self.getzgridprv(),bx,by,bz,
-             self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
-             self.xmminp,self.ymminp,self.zmminp,
-             self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom)
-
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
     nx = self.nx + 2*self.nxguard
-    nz = self.nz + 2*self.nzguard
+    nzlocal = self.nzlocal + 2*self.nzguard
     xmmin = self.xmmin - self.nxguard*self.dx
     xmmax = self.xmmax + self.nxguard*self.dx
-    zmmin = self.zmmin - self.nzguard*self.dz
-    zmmax = self.zmmax + self.nzguard*self.dz
-    getgrid2d(n,r,z,potential,nx,nz,self.potential[:,0,:],
-              xmmin,xmmax,zmmin,zmmax)
+    zmminlocal = self.zmminlocal - self.nzguard*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
+    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
+              xmmin,xmmax,zmminlocal,zmmaxlocal)
 
   def dosolve(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
@@ -495,9 +462,9 @@ class MultiGrid2D(MultiGrid):
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
-    multigrid2dsolve(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz*zfact,
+    multigrid2dsolve(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz*zfact,
                      self.phi[:,0,:],self.rho[:,0,:],self.bounds,
-                     self.xmmin,self.zmmin*zfact,self.zmminglobal*zfact,
+                     self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
                      self.getzgrid()*zfact,self.getzgrid()*zfact,
                      self.mgparam,mgiters,self.mgmaxiters,
                      self.mgmaxlevels,mgerror,self.mgtol,
@@ -622,11 +589,11 @@ Initially, conductors are not implemented.
     # --- This is needed to set the top.nsimplicit variable.
     setupImplicit(top.pgroup)
     # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nx,1+self.nz,1+top.nsimplicit),
-            (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
+    return ((1+self.nx,1+self.nzlocal,1+top.nsimplicit),
+            (1+self.nx+2*self.nguardx,1+self.nzlocal+2*self.nguardz))
 
   def getrho(self):
-    return self.source
+    return self.source[...,0]
 
   def getphi(self):
     'Returns the phi array without the guard cells'
@@ -697,21 +664,13 @@ Initially, conductors are not implemented.
     # --- Only sets the E field from the potential
     n = len(x)
     if n == 0: return
-    #sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-    #       self.xmmin-self.dx*self.nguardx,self.ymmin,self.zmmin,
-    #       self.dx,self.dy,self.dz,
-    #       self.nx+2*self.nguardx,self.ny,self.nz,top.efetch[js],
-    #       ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-    #       self.nxguard,self.nyguard,self.nzguard)
-    # --- sete3d should be fixed so the above works since the below requires
-    # --- a copy of self.potentialp to be made.
     sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-           self.xmmin,self.ymmin,self.zmmin,
+           self.xmminp,self.ymminp,self.zmminp,
            self.dx,self.dy,self.dz,
-           self.nx,self.ny,self.nz,top.efetch[js],
+           self.nx,self.ny,self.nzlocal,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
            self.nxguard,self.nyguard,self.nzguard)
-    #ey[...] = 0.
+    ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
@@ -719,13 +678,13 @@ Initially, conductors are not implemented.
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
     nx = self.nx + 2*self.nguardx
-    nz = self.nz + 2*self.nguardz
+    nzlocal = self.nzlocal + 2*self.nguardz
     xmmin = self.xmmin - self.nguardx*self.dx
     xmmax = self.xmmax + self.nguardx*self.dx
-    zmmin = self.zmmin - self.nguardz*self.dz
-    zmmax = self.zmmax + self.nguardz*self.dz
-    getgrid2d(n,r,z,potential,nx,nz,self.potential,
-              xmmin,xmmax,zmmin,zmmax)
+    zmminlocal = self.zmminlocal - self.nguardz*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nguardz*self.dz
+    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential,
+              xmmin,xmmax,zmminlocal,zmmaxlocal)
 
   def setsourceforfieldsolve(self,*args):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
@@ -737,7 +696,7 @@ Initially, conductors are not implemented.
       for i in range(self.source.shape[2]):
         source  = self.convert2dto3d(self.source[...,i])
         sourcep = self.convert2dto3d(self.sourcep[...,i])
-        setrhoforfieldsolve3d(self.nx,self.ny,self.nz,source,
+        setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,source,
                               self.nxp,self.nyp,self.nzp,sourcep,self.nzpguard,
                               self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                               self.izfsslave,self.nzfsslave)
@@ -751,7 +710,7 @@ Initially, conductors are not implemented.
       if isinstance(self.potentialp,FloatType): return
       potential  = self.convert2dto3d(self.potential)
       potentialp = self.convert2dto3d(self.potentialp)
-      getphipforparticles3d(1,self.nx,self.ny,self.nz,potential,
+      getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,potential,
                             self.nxp,self.nyp,self.nzp,potentialp,self.nguardx,0,1)
     if sometrue(top.efetch == 3):
       # --- This probably doesn't work without fixes XXX
@@ -794,8 +753,8 @@ Initially, conductors are not implemented.
   def makesourceperiodic_parallel(self):
     tag = 70
     if self.my_index == self.nslaves-1:
-      request = mpi.isend(self.source[:,self.nz,:],0,tag)
-      self.source[:,self.nz,:],status = mpi.recv(0,tag)
+      request = mpi.isend(self.source[:,self.nzlocal,:],0,tag)
+      self.source[:,self.nzlocal,:],status = mpi.recv(0,tag)
     elif self.my_index == 0:
       sourcetemp,status = mpi.recv(self.nslaves-1,tag)
       self.source[:,0,:] = self.source[:,0,:] + sourcetemp
@@ -812,7 +771,7 @@ Initially, conductors are not implemented.
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.nx,self.ny,self.nzlocal,self.nz,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,conductors=self.conductors,
@@ -849,6 +808,7 @@ Initially, conductors are not implemented.
     # --- Kludge alart!!!
     if self.chikludge:
       for js in range(self.source.shape[-1]-1):
+        if maxnd(abs(chi0[...,js])) == 0.: continue
         avechi = sumnd(chi0[...,js])/sumnd(where(chi0[...,js] == 0.,0.,1.))
         chi0[...,js] = where(chi0[...,js]==0.,avechi,chi0[...,js])
     """
@@ -856,7 +816,7 @@ Initially, conductors are not implemented.
     c1 = 10.
     c2 = 2.
     alpha = 10.
-    for iz in range(self.nz+1):
+    for iz in range(self.nzlocal+1):
       chi0[...,iz] = (c1 + c2*self.zmesh[iz])
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
@@ -871,10 +831,10 @@ Initially, conductors are not implemented.
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject()
 
-    mgsolveimplicites2d(iwhich,self.nx,self.nz,self.nzfull,self.dx,self.dz,
+    mgsolveimplicites2d(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz,
                         self.potential,self.source,
                         top.nsimplicit,qomdt,chi0,
-                        self.bounds,self.xmmin,self.zmmin,self.zmminglobal,
+                        self.bounds,self.xmmin,self.zmminlocal,self.zmmin,
                         self.getzgrid(),self.getzgrid(),
                         self.mgparam,mgiters,self.mgmaxiters,
                         self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
@@ -898,7 +858,7 @@ Initially, conductors are not implemented.
 
     # --- Use direct matrix solver
     t0 = wtime()
-    n = self.nx*self.nz
+    n = self.nx*self.nzlocal
     nrhs = 1
     b = -self.source[:-1,:-1]/eps0
     phi = self.potential[1:-1,1:-1]
@@ -914,10 +874,10 @@ Initially, conductors are not implemented.
     drsqi = 1./dr**2
     dzsqi = 1./dz**2
     nr = self.nx
-    nz = self.nz
+    nzlocal = self.nzlocal
     coeffikm1 = dzsqi
     coeffikp1 = dzsqi
-    for iz in range(0,nz):
+    for iz in range(0,nzlocal):
       for ix in range(0,nr):
         icol = iz*nr + ix
         r = rmmin + ix*dr
@@ -937,7 +897,7 @@ Initially, conductors are not implemented.
         rtemp = [-nr+icol,-1+icol,0+icol,+1+icol,+nr+icol]
         if rtemp[0] < 0:
           # --- Periodic Z boundary condition
-          rtemp = rtemp[1:] + [rtemp[0] + nz*nr]
+          rtemp = rtemp[1:] + [rtemp[0] + nzlocal*nr]
           vtemp = vtemp[1:] + [vtemp[0]]
         if rtemp[0] < 0:
           # --- Throw away point "below" r=0 axis at iz=0.
@@ -945,10 +905,10 @@ Initially, conductors are not implemented.
           del vtemp[0]
         if rtemp[-1] >= n:
           # --- Periodic Z boundary condition
-          rtemp = [rtemp[-1] - nz*nr] + rtemp[:-1]
+          rtemp = [rtemp[-1] - nzlocal*nr] + rtemp[:-1]
           vtemp = [vtemp[-1]]         + vtemp[:-1]
         if rtemp[-1] >= n:
-          # --- Throw away point beyond r=nr, iz=nz
+          # --- Throw away point beyond r=nr, iz=nzlocal
           del rtemp[-1]
           del vtemp[-1]
   
@@ -959,7 +919,7 @@ Initially, conductors are not implemented.
           rowcnt[rtemp[i]] += 1
 
     # --- There are two values of rowind that are unset, the (i-1) term
-    # --- for (ix,iz)=(0,0) and the (i+1) term for (ix,iz)=(nx,nz).
+    # --- for (ix,iz)=(0,0) and the (i+1) term for (ix,iz)=(nx,nzlocal).
     # --- Give the first one a fake value (since the coefficient is zero
     # --- anway.
     rowind[-1,0] = rowind[-2,0] + 1

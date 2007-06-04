@@ -429,12 +429,12 @@ Creates helix with constant Ez in the pulse.
     getgrid3d(1+self.nzwave,self.xwave,self.ywave,self.zwave,
               self.phiawave,w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
               w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-              w3d.zmmin+top.zgrid,w3d.zmmax+top.zgrid,
+              w3d.zmminlocal+top.zgrid,w3d.zmmaxlocal+top.zgrid,
               w3d.l2symtry,w3d.l4symtry)
     getgrid3d(1+self.nzterm,self.xterm,self.yterm,self.zterm,
               self.phiaterm,w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
               w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-              w3d.zmmin+top.zgrid,w3d.zmmax+top.zgrid,
+              w3d.zmminlocal+top.zgrid,w3d.zmmaxlocal+top.zgrid,
               w3d.l2symtry,w3d.l4symtry)
 
     self.lambdawave = 2.*pi*self.ap*self.phiawave/(self.ap - self.xwave)*eps0

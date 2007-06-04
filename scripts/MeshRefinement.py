@@ -288,13 +288,13 @@ Implements adaptive mesh refinement in 3d
     if parent is None:
       # --- This is only needed by the root grid in cases when the grid
       # --- parameters are obtained from w3d instead of the argument list.
-      self.dims = array([self.nx,self.ny,self.nz])
-      self.dimsglobal = array([self.nx,self.ny,self.nzfull])
+      self.dims = array([self.nx,self.ny,self.nzlocal])
+      self.dimsglobal = array([self.nx,self.ny,self.nz])
       self.deltas = array([self.dx,self.dy,self.dz])
-      self.mins = array([self.xmmin,self.ymmin,self.zmmin])
-      self.maxs = array([self.xmmax,self.ymmax,self.zmmax])
-      self.minsglobal = array([self.xmmin,self.ymmin,self.zmminglobal])
-      self.maxsglobal = array([self.xmmax,self.ymmax,self.zmmaxglobal])
+      self.mins = array([self.xmmin,self.ymmin,self.zmminlocal])
+      self.maxs = array([self.xmmax,self.ymmax,self.zmmaxlocal])
+      self.minsglobal = array([self.xmmin,self.ymmin,self.zmmin])
+      self.maxsglobal = array([self.xmmax,self.ymmax,self.zmmax])
       self.lower = nint(((self.mins - self.minsglobal)/self.deltas))
       self.upper = nint(((self.maxs - self.minsglobal)/self.deltas))
       self.fulllower = self.lower.copy()
@@ -916,9 +916,9 @@ Gathers the ichild for the setsourcep.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichild(self.blocknumber,len(x),x,y,z,ichild,
-                self.nx,self.ny,self.nz,self.childdomains,
+                self.nx,self.ny,self.nzlocal,self.childdomains,
                 self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                self.zmmin,self.zmmax,zgrid,
+                self.zmminlocal,self.zmmaxlocal,zgrid,
                 self.l2symtry,self.l4symtry)
       for child in self.children:
         child.getichild(x,y,z,ichild,zgrid)
@@ -1211,9 +1211,9 @@ Fetches the potential, given a list of positions
       ichild = zeros(len(x),'l')
       add(ichild,self.blocknumber,ichild)
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
-                            self.nx,self.ny,self.nz,self.childdomains,
+                            self.nx,self.ny,self.nzlocal,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmmin,self.zmmax,self.root.getzgridprv(),
+                            self.zmminlocal,self.zmmaxlocal,self.root.getzgridprv(),
                             self.l2symtry,self.l4symtry)
 
       for block in [self]+self.children:
@@ -1268,9 +1268,9 @@ Gathers the ichild for the fetchfield_allsort.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
-                            self.nx,self.ny,self.nz,self.childdomains,
+                            self.nx,self.ny,self.nzlocal,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                            self.zmmin,self.zmmax,self.root.getzgridprv(),
+                            self.zmminlocal,self.zmmaxlocal,self.root.getzgridprv(),
                             self.l2symtry,self.l4symtry)
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
@@ -1311,6 +1311,8 @@ to zero."""
       nzadvect *= self.refinement[-1]
       self.zmmin += zzadvect
       self.zmmax += zzadvect
+      self.zmminlocal += zzadvect
+      self.zmmaxlocal += zzadvect
       self.zmminp += zzadvect
       self.zmmaxp += zzadvect
       self.mins[-1] += zzadvect
@@ -1576,7 +1578,8 @@ be plotted.
       if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     else:
       ip = ip*self.refinement[idim]
-      kw[('ix','iy','iz')[idim]] = ip - self.fulllower[idim]
+
+    kw[('ix','iy','iz')[idim]] = ip - self.fulllower[idim]
 
     # --- Set the values of cmin and cmax for all levels. This must be
     # --- done by the root level.
@@ -1724,7 +1727,7 @@ Create DX object drawing the object.
     withguards = kw.get('withguards',1)
     xmin,xmax = self.xmmin,self.xmmax
     ymin,ymax = self.ymmin,self.ymmax
-    zmin,zmax = self.zmmin,self.zmmax
+    zmin,zmax = self.zmminlocal,self.zmmaxlocal
     if not withguards:
       ng = self.nguard*self.refinement
       xmin,xmax = xmin+ng[0]*self.dx, xmax-ng[0]*self.dx
@@ -2018,9 +2021,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     self.phisave[:,:,:] = self.phi
     conductorobject = self.getconductorobject()
     cond_potmg(conductorobject.interior,
-               self.nx,self.ny,self.nz,self.phisave,0,false,
+               self.nx,self.ny,self.nzlocal,self.phisave,0,false,
                2,true)
-    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self.phisave,self.rhosave,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
@@ -2065,7 +2068,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                self.boundxy,self.bound0,self.boundnz,0,0)
 
     #   for i in range(self.uppasses):
-    #     self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+    #     self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
     #                    self.phi,self.rho,self.rstar,
     #                    dxsqi,dysqi,dzsqi,self.linbend,
     #                    self.l2symtry,self.l4symtry,self.bendx,
@@ -2110,7 +2113,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
     conductorobject = self.getconductorobject()
-    checkconductors(self.nx,self.ny,self.nz,self.nzfull,
+    checkconductors(self.nx,self.ny,self.nzlocal,self.nz,
                     self.dx,self.dy,self.dz,conductorobject,
                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
@@ -2154,7 +2157,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
       self.solve2down()
 
       # --- Do one vcycle.
-      self.vcycle(0,self.nx,self.ny,self.nz,self.nzfull,
+      self.vcycle(0,self.nx,self.ny,self.nzlocal,self.nz,
                   self.dx,self.dy,self.dz,self.phi,self.rho,
                   self.rstar,self.linbend,self.l2symtry,self.l4symtry,
                   self.bendx,
@@ -2166,11 +2169,11 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
       self.mgerror = self.solve2up()
 
       #else
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
+      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localb0,localbnz,0,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,-1,
+      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localb0,localbnz,-1,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
@@ -2204,9 +2207,9 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     self.phisave[:,:,:] = self.phi
     conductorobject = self.getconductorobject()
     cond_potmg(conductorobject.interior,
-               self.nx,self.ny,self.nz,self.phisave,0,false,
+               self.nx,self.ny,self.nzlocal,self.phisave,0,false,
                2,true)
-    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self.phisave,self.rhosave,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
@@ -2215,14 +2218,14 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     self.phi[:,:,:] = 0.
 
     for i in range(self.downpasses):
-      self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+      self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
                      self.phi,self.rho,self.rstar,
                      dxsqi,dysqi,dzsqi,self.linbend,
                      self.l2symtry,self.l4symtry,self.bendx,
                      self.bound0,self.boundnz,self.boundxy,self.mgparam,2,
                      self.lcndbndy,self.icndbndy,conductorobject)
 
-    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self.phi,self.rho,self.res,
              0,self.bound0,self.boundnz,self.boundxy,
              self.l2symtry,self.l4symtry,
@@ -2266,7 +2269,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
                self.boundxy,self.bound0,self.boundnz,0,0)
 
     for i in range(self.uppasses):
-      self.sorpass3d(0,self.nx,self.ny,self.nz,self.nzfull,
+      self.sorpass3d(0,self.nx,self.ny,self.nzlocal,self.nz,
                      self.phi,self.rho,self.rstar,
                      dxsqi,dysqi,dzsqi,self.linbend,
                      self.l2symtry,self.l4symtry,self.bendx,

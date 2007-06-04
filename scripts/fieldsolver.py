@@ -299,9 +299,9 @@ conductors are used. The diagnostic routines only need to be defined if
 the diagnostic is of interest and is meaningfull.
   """
 
-  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nzfull','nzpguard',
-                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
-                   'zmminglobal','zmmaxglobal',
+  __w3dinputs__ = ['nx','ny','nz','dx','dy','dz','nzlocal','nzpguard',
+                   'xmmin','xmmax','ymmin','ymmax','zmminlocal','zmmaxlocal',
+                   'zmmin','zmmax',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __topinputs__ = ['pbound0','pboundnz','pboundxy',
@@ -417,9 +417,9 @@ the diagnostic is of interest and is meaningfull.
     self.lparallel = (self.nslaves > 1)
     if not self.lparallel:
       self.my_index = 0
-      self.nzfull = self.nz
-      self.zmminglobal = self.zmmin
-      self.zmmaxglobal = self.zmmax
+      self.nzlocal = self.nz
+      self.zmminlocal = self.zmmin
+      self.zmmaxlocal = self.zmmax
       self.izfsslave = zeros(1)
       self.nzfsslave = zeros(1) + self.nz
       self.nxp = self.nx
@@ -429,33 +429,29 @@ the diagnostic is of interest and is meaningfull.
       self.xmmaxp = self.xmmax
       self.ymminp = self.ymmin
       self.ymmaxp = self.ymmax
-      self.zmminp = self.zmmin
-      self.zmmaxp = self.zmmax
+      self.zmminp = self.zmminlocal
+      self.zmmaxp = self.zmmaxlocal
     else:
       self.my_index = me
-      if self.zmminglobal == self.zmmaxglobal:
-        self.nzfull = self.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
       self.izfsslave = zeros(self.nslaves)
       self.nzfsslave = zeros(self.nslaves)
       self.grid_overlap = array([2])
       top.grid_overlap = 2
-      domaindecomposefields(self.nzfull,self.nslaves,self.lfsautodecomp,
+      domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
                             self.izfsslave,self.nzfsslave,self.grid_overlap)
 
-      self.nz = self.nzfsslave[self.my_index]
-      if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
-      self.zmmin = self.zmminglobal + self.izfsslave[self.my_index]*self.dz
-      self.zmmax = self.zmminglobal + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
+      self.nzlocal = self.nzfsslave[self.my_index]
+      if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
+      self.zmminlocal = self.zmmin + self.izfsslave[self.my_index]*self.dz
+      self.zmmaxlocal = self.zmmin + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
 
       self.izpslave = zeros(self.nslaves)
       self.nzpslave = zeros(self.nslaves)
       self.zpslmin = zeros(self.nslaves,'d')
       self.zpslmax = zeros(self.nslaves,'d')
-      domaindecomposeparticles(self.nzfull,self.nslaves,self.izfsslave,self.nzfsslave,
+      domaindecomposeparticles(self.nz,self.nslaves,self.izfsslave,self.nzfsslave,
                                self.grid_overlap,self.nzpguard,
-                               self.zmminglobal,self.zmmaxglobal,self.dz,self.zslave[:self.nslaves],
+                               self.zmmin,self.zmmax,self.dz,self.zslave[:self.nslaves],
                                self.lautodecomp,self.izpslave,self.nzpslave,
                                self.zpslmin,self.zpslmax)
 
@@ -466,20 +462,20 @@ the diagnostic is of interest and is meaningfull.
       self.xmmaxp = self.xmmax
       self.ymminp = self.ymmin
       self.ymmaxp = self.ymmax
-      self.zmminp = self.zmminglobal + self.izpslave[self.my_index]*self.dz
-      self.zmmaxp = self.zmminglobal + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
+      self.zmminp = self.zmmin + self.izpslave[self.my_index]*self.dz
+      self.zmmaxp = self.zmmin + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
 
     if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
     if self.dy == 0.:
       if self.ny > 0: self.dy = (self.ymmax - self.ymmin)/self.ny
       else:           self.dy = self.dx
-    if self.dz == 0.: self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+    if self.dz == 0.: self.dz = (self.zmmax - self.zmmin)/self.nz
 
     # --- Check the mesh consistency
     self.checkmeshconsistency(self.xmmin,self.xmmax,self.nx,self.dx,'x')
     self.checkmeshconsistency(self.ymmin,self.ymmax,self.ny,self.dy,'y')
     self.checkmeshconsistency(self.zmmin,self.zmmax,self.nz,self.dz,'z')
-    self.checkmeshconsistency(self.zmminglobal,self.zmmaxglobal,self.nzfull,self.dz,'z')
+    self.checkmeshconsistency(self.zmminlocal,self.zmmaxlocal,self.nzlocal,self.dz,'z')
     self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
     self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
     self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
@@ -489,11 +485,11 @@ the diagnostic is of interest and is meaningfull.
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-    self.zmeshglobal = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
+    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     self.ix_axis = nint(-self.xmmin/self.dx)
     self.iy_axis = nint(-self.ymmin/self.dy)
-    self.iz_axis = nint(-self.zmminglobal/self.dz)
+    self.iz_axis = nint(-self.zmmin/self.dz)
 
     # --- Some flags
     self.sourcepfinalized = 1
@@ -535,6 +531,18 @@ the diagnostic is of interest and is meaningfull.
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
+
+    # --- Set now z quantities is reading in an old dump file
+    if 'nzlocal' not in self.__dict__:
+      self.nzlocal = self.nz
+      self.zmminlocal = self.zmmin
+      self.zmmaxlocal = self.zmmax
+      self.nz = self.nzfull
+      self.zmmin = self.zmminglobal
+      self.zmmax = self.zmmaxglobal
+      del self.nzfull
+      del self.zmminglobal
+      del self.zmmaxglobal
 
     # --- Make sure that the new attribute l_internal_dosolve is defined.
     if 'l_internal_dosolve' not in self.__dict__:
@@ -967,11 +975,11 @@ class SubcycledPoissonSolver(FieldSolver):
                      "Particles in species %d have y below the grid when depositing the source"%js
               assert max(y) < self.ymmax,\
                      "Particles in species %d have y above the grid when depositing the source"%js
-            if self.nz > 0:
+            if self.nzlocal > 0:
               z = pgroup.zp[i1:i2]
-              assert min(z) >= self.zmmin+self.getzgridndts()[indts],\
+              assert min(z) >= self.zmminlocal+self.getzgridndts()[indts],\
                      "Particles in species %d have z below the grid when depositing the source"%js
-              assert max(z) < self.zmmax+self.getzgridndts()[indts],\
+              assert max(z) < self.zmmaxlocal+self.getzgridndts()[indts],\
                      "Particles in species %d have z above the grid when depositing the source"%js
 
           self.setsourcep(js,pgroup,self.getzgridndts()[indts])
@@ -1066,10 +1074,10 @@ class SubcycledPoissonSolver(FieldSolver):
                "Particles in species %d have y below the grid when fetching the field"%jsid
         assert max(y) < self.ymmax,\
                "Particles in species %d have y above the grid when fetching the field"%jsid
-      if self.nz > 0:
-        assert min(z) >= self.zmmin+self.getzgridprv(),\
+      if self.nzlocal > 0:
+        assert min(z) >= self.zmminlocal+self.getzgridprv(),\
                "Particles in species %d have z below the grid when fetching the field"%jsid
-        assert max(z) < self.zmmax+self.getzgridprv(),\
+        assert max(z) < self.zmmaxlocal+self.getzgridprv(),\
                "Particles in species %d have z above the grid when fetching the field"%jsid
 
     args = [x,y,z,ex,ey,ez,bx,by,bz,jsid,pgroup]
@@ -1105,10 +1113,10 @@ class SubcycledPoissonSolver(FieldSolver):
                "Particles have y below the grid when fetching the potential"
         assert max(y) < self.ymmax,\
                "Particles have y below the grid when fetching the potential"
-      if self.nz > 0:
-        assert min(z) >= self.zmmin,\
+      if self.nzlocal > 0:
+        assert min(z) >= self.zmminlocal,\
                "Particles have z below the grid when fetching the potential"
-        assert max(z) < self.zmmax,\
+        assert max(z) < self.zmmaxlocal,\
                "Particles have z below the grid when fetching the potential"
 
     jsid = w3d.jsfsapi

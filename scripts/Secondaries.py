@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.19 2007/05/29 22:35:26 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.20 2007/06/04 23:02:51 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -323,8 +323,8 @@ Class for generating secondaries
     else:
       ymin=w3d.ymmin
     ymax=w3d.ymmax
-    zmin=w3d.zmminglobal
-    zmax=w3d.zmmaxglobal
+    zmin=w3d.zmmin
+    zmax=w3d.zmmax
 
     # initializes history quantities
     weighttot=0.
@@ -697,7 +697,7 @@ Class for generating secondaries
     for js in self.x.keys():
       self.flushpart(js)
     # --- check for particle out of bounds and exchange particles among processors if needed
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
 
     if self.l_record_timing:t3 = time.clock()
 #    print "tinit,tgen,tadd:",tinit*1.e-6,tgen*1.e-6,tprepadd*1.e-6,tadd*1.e-6
@@ -1336,9 +1336,9 @@ Class for generating photo-electrons
          ymax=w3d.ymmax
          dy=(w3d.ymmax-w3d.ymmin)
        else:
-         zmin=w3d.zmmin
-         zmax=w3d.zmmax
-         dz=(w3d.zmmax-w3d.zmmin)
+         zmin=w3d.zmminlocal
+         zmax=w3d.zmmaxlocal
+         dz=(w3d.zmmaxlocal-w3d.zmminlocal)
      else:
        if self.l_switchyz:
          ymin=min(incident_species.gety())

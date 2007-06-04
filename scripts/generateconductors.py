@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.157 2007/05/16 17:29:15 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.158 2007/06/04 23:02:52 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -111,7 +111,7 @@ def generateconductors_doc():
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmin=None,zmax=None,dfill=top.largepos,
                         zbeam=None,
-                        nx=None,ny=None,nz=None,nzfull=None,
+                        nx=None,ny=None,nzlocal=None,nz=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
@@ -151,7 +151,7 @@ Installs the given conductors.
   # --- if no special solver is being used, use f3d.conductors.
   if conductors is None: conductors = f3d.conductors
   # First, create a grid object
-  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
+  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nzlocal,nz,
            xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,installrz,gridrz,
            my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
@@ -434,7 +434,7 @@ Should never be directly created by the user.
       rho = g.rho
       nx = g.nx
       ny = g.ny
-      nz = g.nz
+      nz = g.nzlocal
       dx = g.dx
       dy = g.dy
       dz = g.dz
@@ -1636,13 +1636,13 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
 
   def __init__(self,xmin=None,xmax=None,ymin=None,ymax=None,
                     zmin=None,zmax=None,zbeam=None,
-                    nx=None,ny=None,nz=None,nzfull=None,
+                    nx=None,ny=None,nzlocal=None,nz=None,
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,zscale=1.,
                     l2symtry=None,l4symtry=None,
                     installrz=1,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None,
-                    solver=None):
+                    solver=None,nzfull=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1650,6 +1650,7 @@ Creates a grid object which can generate conductor data.
     self.zbeam = zbeam
     if self.zbeam is None: zbeam = top.zbeam
     else:                  zbeam = self.zbeam
+    if nzfull is not None: nz = nzfull
 
     if solver is None:
       solver = w3d
@@ -1660,14 +1661,14 @@ Creates a grid object which can generate conductor data.
     self.nx = _default(nx,solver.nx)
     self.ny = _default(ny,solver.ny)
     self.nz = _default(nz,solver.nz)
-    self.nzfull = _default(nzfull,solver.nzfull)
-    if self.nzfull == 0: self.nzfull = self.nz
+    self.nzlocal = _default(nzlocal,solver.nzlocal)
+    if self.nzlocal == 0: self.nzlocal = self.nz
     self.xmmin = _default(xmmin,solver.xmmin)
     self.ymmin = _default(ymmin,solver.ymmin)
-    self.zmmin = _default(zmmin,solver.zmminglobal)
+    self.zmmin = _default(zmmin,solver.zmmin)
     self.xmmax = _default(xmmax,solver.xmmax)
     self.ymmax = _default(ymmax,solver.ymmax)
-    self.zmmax = _default(zmmax,solver.zmmaxglobal)
+    self.zmmax = _default(zmmax,solver.zmmax)
     self.l2symtry = _default(l2symtry,solver.l2symtry)
     self.l4symtry = _default(l4symtry,solver.l4symtry)
     self.my_index = _default(my_index,solvertop.my_index)
@@ -1703,14 +1704,14 @@ Creates a grid object which can generate conductor data.
     else:           self.dy = self.dx
     # --- z is different since it is not affected by transverse symmetries
     # --- but is affected by parallel decomposition.
-    if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
+    if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nz
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
     if self.ny > 0 or not installrz:
       conductors = ConductorType()
       if self.ny > 0: ny = self.ny
       else:           ny = self.nx
-      getmglevels(self.nx,ny,self.nz,self.nzfull,self.dx,self.dy,self.dz*zscale,
+      getmglevels(self.nx,ny,self.nzlocal,self.nz,self.dx,self.dy,self.dz*zscale,
                   conductors,
                   self.my_index,self.nslaves,self.izslave,self.nzslave)
       self.mglevels = conductors.levels
@@ -4679,7 +4680,7 @@ containing a list of primitives.
         for part in self.parts:
             installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
                         zmin=part.zmin,zmax=part.zmax,
-                         nx=grid.nr,nz=grid.nz,nzfull=grid.nz,
+                         nx=grid.nr,nzlocal=grid.nzlocal,nz=grid.nz,
                          xmmin=grid.xmin,xmmax=grid.xmax,
                          zmmin=grid.zmin,zmmax=grid.zmax,
                         gridrz=grid)

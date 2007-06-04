@@ -123,9 +123,9 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
   def getdims(self):
     # --- Returns the dimensions of the j, b, and a arrays
-    return ((3,1+self.nx,1+self.ny,1+self.nz),
-            (3,1+self.nx,1+self.ny,1+self.nz),
-            (3,3+self.nx,3+self.ny,3+self.nz))
+    return ((3,1+self.nx,1+self.ny,1+self.nzlocal),
+            (3,1+self.nx,1+self.ny,1+self.nzlocal),
+            (3,3+self.nx,3+self.ny,3+self.nzlocal))
 
   def loadj(self,lzero=None,**kw):
     SubcycledPoissonSolver.loadsource(self,lzero,**kw)
@@ -184,7 +184,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
     if self.lparallel:
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
-      setjforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
+      setjforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source,
                           self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                           self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                           self.izfsslave,self.nzfsslave)
@@ -196,7 +196,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       SubcycledPoissonSolver.getfieldpforparticles(self,*args)
     else:
       self.setfieldpforparticles(*args)
-      getphipforparticles3d(3,self.nx,self.ny,self.nz,self.field,
+      getphipforparticles3d(3,self.nx,self.ny,self.nzlocal,self.field,
                             self.nxp,self.nyp,self.nzp,self.fieldp,0,0,0)
 
   def makesourceperiodic(self):
@@ -224,8 +224,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
   def makesourceperiodic_parallel(self):
     tag = 70
     if me == self.nslaves-1:
-      request = mpi.isend(self.source[:,:,:,self.nz],0,tag)
-      self.source[:,:,:,self.nz],status = mpi.recv(0,tag)
+      request = mpi.isend(self.source[:,:,:,self.nzlocal],0,tag)
+      self.source[:,:,:,self.nzlocal],status = mpi.recv(0,tag)
     elif me == 0:
       sourcetemp,status = mpi.recv(self.nslaves-1,tag)
       self.source[:,:,:,0] = self.source[:,:,:,0] + sourcetemp
@@ -242,7 +242,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.nx,self.ny,self.nzlocal,self.nz,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                       self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
                       solvergeom=self.solvergeom,
@@ -265,17 +265,17 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
   def dosolve(self,iwhich=0,*args):
     # --- Setup data for bends.
-    rstar = fzeros(3+self.nz,'d')
+    rstar = fzeros(3+self.nzlocal,'d')
     if top.bends:
-      setrstar(rstar,self.nz,self.dz,self.zmmin,self.getzgrid())
+      setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
     self.source[...] = self.source*mu0*eps0
     conductorobject = self.getconductorobject()
 
     if self.lcylindrical:
-      init_bworkgrid(self.nx,self.nz,self.dx,self.dz,
-                     self.xmmin,self.zmmin,self.bounds,
+      init_bworkgrid(self.nx,self.nzlocal,self.dx,self.dz,
+                     self.xmmin,self.zmminlocal,self.bounds,
                      self.potential[0,:,0,:],self.source[0,:,0,:])
 
     # --- Note that the arrays being passed in are not contiguous, which means
@@ -293,15 +293,15 @@ class MagnetostaticMG(SubcycledPoissonSolver):
       if self.lcylindrical:
         multigridrzb(iwhich,id,self.potential[id,:,1,:],
                      self.source[id,:,0,:],
-                     self.nx,self.nz,self.mgtol[id])
+                     self.nx,self.nzlocal,self.mgtol[id])
       else:
-        multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
+        multigrid3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz,
                          self.potential[id,1:-1,1:-1,:],
                          self.source[id,:,:,:],
                          rstar,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmmin,
-                         self.zmminglobal,
+                         self.xmmin,self.ymmin,self.zmminlocal,
+                         self.zmmin,
                          self.getzgrid(),self.getzgrid(),
                          self.mgparam[id],self.mgform[id],
                          self.mgiters[id],self.mgmaxiters[id],
@@ -315,18 +315,18 @@ class MagnetostaticMG(SubcycledPoissonSolver):
 
     # --- This is slightly inefficient in some cases, since for example, the
     # --- MG solver already takes care of the longitudinal BC's.
-    setaboundaries3d(self.potential,self.nx,self.ny,self.nz,
-                     self.zmmin,self.zmmax,self.zmminglobal,self.zmmaxglobal,
+    setaboundaries3d(self.potential,self.nx,self.ny,self.nzlocal,
+                     self.zmminlocal,self.zmmaxlocal,self.zmmin,self.zmmax,
                      self.bounds,self.lcylindrical,false)
 
     # --- Now take the curl of A to get B.
-    getbfroma3d(self.potential,self.field,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,self.xmmin,
+    getbfroma3d(self.potential,self.field,self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,self.xmmin,
                 self.lcylindrical,self.lusevectorpotential)
 
     # --- If using the analytic form of Btheta, calculate it here.
     if self.lanalyticbtheta:
       getanalyticbtheta(self.field,self.source,
-                        self.nx,self.ny,self.nz,self.dx,self.xmmin)
+                        self.nx,self.ny,self.nzlocal,self.dx,self.xmmin)
 
     # --- Unscale the current density
     self.source[...] = self.source/(mu0*eps0)

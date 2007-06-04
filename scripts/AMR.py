@@ -134,7 +134,7 @@ class AMRTree(object,Visualizable):
               cond = conductor.cond
             except AttributeError:
               cond = conductor
-            installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
+            installconductors(cond,nx=g.nr,ny=0,nzlocal=g.nz,nz=g.nz,
                                 xmmin=g.xmin,xmmax=g.xmax,
                                 zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                                 gridrz=g)
@@ -941,7 +941,7 @@ class AMRTree(object,Visualizable):
             g=block['grid']
             if g is not frz.basegrid:
              if cond not in block['installed_conductors']:
-              installconductors(cond,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
+              installconductors(cond,nx=g.nr,ny=0,nzlocal=g.nz,nz=g.nz,
                                 xmmin=g.xmin,xmmax=g.xmax,
                                 zmmin=g.zmin,zmmax=g.zmax,dfill=dfill,
                                 gridrz=g)

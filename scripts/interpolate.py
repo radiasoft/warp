@@ -1,5 +1,5 @@
 from warp import *
-interepolate_version = "$Id: interpolate.py,v 1.4 2006/11/14 18:25:00 dave Exp $"
+interepolate_version = "$Id: interpolate.py,v 1.5 2007/06/04 23:02:52 dave Exp $"
 
 def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
                 serial=1,pgroup=None):
@@ -15,8 +15,8 @@ def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
   if zl and zu:
     zcent = 0.5*(zl + zu)
   elif iz:
-    if npes > 0: zcent = w3d.zmminglobal + iz*w3d.dz
-    else: zcent = w3d.zmmin + iz*w3d.dz
+    if npes > 0: zcent = w3d.zmmin + iz*w3d.dz
+    else: zcent = w3d.zmminlocal + iz*w3d.dz
   else:
     zcent = top.zbeam + 0.5*(top.zwindows[0,iw] + top.zwindows[1,iw])
   delt = (zcent - zz)/vz
@@ -30,10 +30,10 @@ def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
 def interpolate3d(x,y,z):
   ix = int((x - w3d.xmmin)/w3d.dx)
   iy = int((y - w3d.ymmin)/w3d.dy)
-  iz = int((z - w3d.zmmin)/w3d.dz)
+  iz = int((z - w3d.zmminlocal)/w3d.dz)
   wx = (x - w3d.xmmin)/w3d.dx - ix
   wy = (y - w3d.ymmin)/w3d.dy - iy
-  wz = (z - w3d.zmmin)/w3d.dz - iz
+  wz = (z - w3d.zmminlocal)/w3d.dz - iz
   return w3d.phi[ix  ,iy  ,iz+1  ]*(1.-wx)*(1.-wy)*(1.-wz) + \
          w3d.phi[ix+1,iy  ,iz+1  ]*    wx *(1.-wy)*(1.-wz) + \
          w3d.phi[ix  ,iy+1,iz+1  ]*(1.-wx)*    wy *(1.-wz) + \

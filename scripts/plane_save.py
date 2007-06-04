@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.15 2006/05/08 16:05:52 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.16 2007/06/04 23:02:53 dave Exp $"
 
 class PlaneSave:
   """
@@ -38,7 +38,7 @@ Input:
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
     # --- save only if between grid bounds, otherwise raise and exception
-    if(self.zplane<w3d.zmminglobal or self.zplane>=w3d.zmmaxglobal):
+    if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax):
       raise "The zplane specified is outside the simulation domain"
 
     if allways_save:
@@ -139,7 +139,7 @@ Input:
     # --- but only after saving has started.
     if(self.save_this_step):
       # --- get the two planes of phi to be saved
-      iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
+      iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
       #self.phi_save[:,...,0] = getphi(iz=iz-self.izz)
       #self.phi_save[:,...,1] = getphi(iz=iz)
       self.phi_save = transpose(array([transpose(getphi(iz=iz-self.izz)),

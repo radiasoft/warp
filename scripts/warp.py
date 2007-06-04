@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.141 2007/05/22 00:44:51 dave Exp $"
+warp_version = "$Id: warp.py,v 1.142 2007/06/04 23:02:54 dave Exp $"
 # import all of the neccesary packages
 import __main__
 lwithnumpy = 0
@@ -730,14 +730,14 @@ def fixrestoreswitholdparticlearrays(ff):
                    vx=uxp[i1:i2],vy=uyp[i1:i2],vz=uzp[i1:i2],
                    gi=gaminv[i1:i2],pid=0.,js=js,
                    lallindomain=false,
-                   zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
+                   zmmin=w3d.zmminlocal,zmmax=w3d.zmmaxlocal,lmomentum=true,
                    resetrho=false,dofieldsol=false,resetmoments=false)
     else:
       addparticles(x=xp[i1:i2],y=yp[i1:i2],z=zp[i1:i2],
                    vx=uxp[i1:i2],vy=uyp[i1:i2],vz=uzp[i1:i2],
                    gi=gaminv[i1:i2],pid=pid[:,i1:i2],js=js,
                    lallindomain=false,
-                   zmmin=w3d.zmmin,zmmax=w3d.zmmax,lmomentum=true,
+                   zmmin=w3d.zmminlocal,zmmax=w3d.zmmaxlocal,lmomentum=true,
                    resetrho=false,dofieldsol=false,resetmoments=false)
 
 def fixrestorewithscalarefetch(ff):
@@ -746,7 +746,6 @@ def fixrestorewithscalarefetch(ff):
   if isinstance(efetch,IntType):
     gchange("InPart")
     top.efetch = efetch
-  ff.close()
 
 def fixrestorewithbasegridwithoutl_parallel(ff):
   # --- First check is frz.basegrid is defined
@@ -765,6 +764,30 @@ def fixrestorewithbasegridwithoutl_parallel(ff):
         except: g = g.down
       g.l_parallel = lparallel
 
+def fixrestorewithoutzmminlocalnzlocal(ff):
+  if 'nzlocal@w3d' not in ff.inquire_names():
+    w3d.nzlocal = w3d.nz
+    w3d.nz = ff.read('nzfull@w3d')
+    w3d.zmminlocal = w3d.zmmin
+    w3d.zmmaxlocal = w3d.zmmax
+    w3d.zmmin = w3d.zmminglobal
+    w3d.zmmax = w3d.zmmaxglobal
+
+    f3d.bfield.nzlocal = f3d.bfield.nz
+    f3d.bfield.nz = ff.read('nzfull@bfield@f3d')
+    f3d.bfield.zmminlocal = f3d.bfield.zmmin
+    f3d.bfield.zmmaxlocal = f3d.bfield.zmmax
+    f3d.bfieldp.zmmin = ff.read('zmminglobal@bfield@f3d')
+    f3d.bfieldp.zmmax = ff.read('zmmaxglobal@bfield@f3d')
+
+    f3d.bfieldp.nzlocal = f3d.bfieldp.nz
+    f3d.bfieldp.nz = ff.read('nzfull@bfieldp@f3d')
+    f3d.bfieldp.zmminlocal = f3d.bfieldp.zmmin
+    f3d.bfieldp.zmmaxlocal = f3d.bfieldp.zmmax
+    f3d.bfieldp.zmmin = ff.read('zmminglobal@bfieldp@f3d')
+    f3d.bfieldp.zmmax = ff.read('zmmaxglobal@bfieldp@f3d')
+
+
 def restoreolddump(ff):
   #fixrestoresfrombeforeelementoverlaps(ff)
   #fixrestoreswithmomentswithoutspecies(ff)
@@ -772,6 +795,7 @@ def restoreolddump(ff):
   #fixrestoreswitholdparticlearrays(ff)
   fixrestorewithscalarefetch(ff)
   fixrestorewithbasegridwithoutl_parallel(ff)
+  fixrestorewithoutzmminlocalnzlocal(ff)
   pass
 
 ##############################################################################

@@ -100,7 +100,9 @@ class EM2D(object):
       self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
       self.dz = (self.zmmax - self.zmmin)/self.nz
       self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
-      self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
+      self.zmminlocal = self.zmmin
+      self.zmmaxlocal = self.zmmax
+      self.zmeshlocal = self.zmminlocal + arange(0,self.nz+1)*self.dz
       self.nx = self.nz
       self.dx = self.dz
       self.xmesh = self.zmeshlocal

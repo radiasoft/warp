@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.74 2007/05/22 00:15:00 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.75 2007/06/04 23:02:54 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -13,13 +13,6 @@ def warpparalleldoc():
 
 top.my_index = me
 top.nslaves = npes
-
-#-------------------------------------------------------------------------
-# --- This reorganizes the particles for the parallel version after the mesh
-# --- has been changed. The compiled routine reorg_particles should probably
-# --- be called instead (but it is not callable from python yet).
-#def reorgparticles(top.pgroup):
-#  zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
 
 # ---------------------------------------------------------------------------
 def gatherallzarray(a,zaxis=0):
@@ -34,7 +27,7 @@ with any array from the groups Z_arrays and Z_Moments.
   # --- Get start and end of particle decomposition region
   iz1 = 0
   if me < npes-1: iz2 = top.izpslave[me+1] - 1 - top.izpslave[me]
-  else:           iz2 = w3d.nzfull - top.izpslave[me]
+  else:           iz2 = w3d.nz - top.izpslave[me]
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Gather and broadcast it
@@ -73,7 +66,7 @@ the field-solve decomposition region it owns.
   # --- Get start and end of field-solve decomposition region
   iz1 = 0
   if me < npes-1: iz2 = top.izfsslave[me+1] - 1 - top.izfsslave[me]
-  else:           iz2 = w3d.nzfull - top.izfsslave[me]
+  else:           iz2 = w3d.nz - top.izfsslave[me]
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Gather and broadcast it
@@ -103,7 +96,7 @@ field-solve decomposition region it owns.
 def convertiztope(iz):
   """Given an iz value, returns the processor number whose particle region
 contains that value."""
-  if 0 <= iz <= w3d.nzfull:
+  if 0 <= iz <= w3d.nz:
     # --- This finds all of the processors for which have iz within their
     # --- domain. The last one is selected since in the regions which
     # --- overlap, the standard is that the processor to the right has
@@ -119,7 +112,7 @@ convertizptope = convertiztope
 def convertizfstope(iz):
   """Given an iz value, returns the processor number whose field solve region
 contains that value."""
-  if 0 <= iz <= w3d.nzfull:
+  if 0 <= iz <= w3d.nz:
     # --- This finds all of the processors for which have iz within their
     # --- domain. The last one is selected since in the regions which
     # --- overlap, the standard is that the processor to the right has
@@ -234,7 +227,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- First, deal with scalars. The values written for the scalars
         # --- are the global values. For many of these, the value on PE0
         # --- is the correct value, for example, zmmin. Exceptions are
-        # --- those that differ, for example zmmax and nz. Also, space
+        # --- those that differ, for example zmmaxlocal and nz. Also, space
         # --- is created in the pdb file so that all of the processors
         # --- can write there own values of each of the parallel scalars.
         # --- That is done with the 'defent' call below.
@@ -243,12 +236,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         #if type(v) != type(array([])):
         if type(v) in [IntType, FloatType]:
           # --- First, deal with exceptions
-          if p == 'w3d' and vname in ['zmmax','zmmaxp']:
-            ff.write(pdbname,w3d.zmmaxglobal)
+          if p == 'w3d' and vname in ['zmmaxlocal','zmmaxp']:
+            ff.write(pdbname,w3d.zmmax)
           elif p == 'w3d' and vname in ['zmminp']:
-            ff.write(pdbname,w3d.zmminglobal)
-          elif p == 'w3d' and vname in ['nz','izfsmax','nz_selfe','nzp']:
-            ff.write(pdbname,w3d.nzfull)
+            ff.write(pdbname,w3d.zmmin)
+          elif p == 'w3d' and vname in ['nzlocal','izfsmax','nz_selfe','nzp']:
+            ff.write(pdbname,w3d.nz)
           elif ((p=='top' and vname in ['np','nplive','npmax']) or
                 (p=='wxy' and vname in ['npmaxxy'])):
             ff.write(pdbname,sum(nps_p)[0])
@@ -305,14 +298,14 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           elif p == 'w3d' and vname in ['rho']:
             # --- Be prepared to dump out rho in case it is needed.
             # --- For example the egun script wants rho saved.
-            ff.defent(pdbname,v,(w3d.nx+1,w3d.ny+1,w3d.nzfull+1))
+            ff.defent(pdbname,v,(w3d.nx+1,w3d.ny+1,w3d.nz+1))
           elif p == 'w3d' and vname in ['phi']:
             # --- Be prepared to dump out phi in case it is needed.
             ff.defent(pdbname,v,
-                             (w3d.nx+1,w3d.ny+1,w3d.nzfull+2+w3d.izextra))
+                             (w3d.nx+1,w3d.ny+1,w3d.nz+2+w3d.izextra))
           else:
             # --- The rest are domain decomposed Z arrays
-            ff.defent(pdbname,v,(w3d.nzfull+1,))
+            ff.defent(pdbname,v,(w3d.nz+1,))
 
     # --- PE0 closes the file at this point
     ff.close()

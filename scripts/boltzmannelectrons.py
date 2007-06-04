@@ -1,3 +1,4 @@
+raise 'This module is obsolete, incomplete, and should not be used'
 from warp import *
 from multigrid import MultiGrid
 
@@ -209,7 +210,7 @@ have direct control over the sor iterations.
                    w3d.dx,w3d.dy,w3d.dz,w3d.phi,w3d.rho,
                    w3d.rstar,top.linbend,w3d.bound0,w3d.boundnz,w3d.boundxy,
                    w3d.l2symtry,w3d.l4symtry,
-                   w3d.xmmin,w3d.ymmin,w3d.zmmin,top.zbeam,top.zgrid,
+                   w3d.xmmin,w3d.ymmin,w3d.zmminlocal,top.zbeam,top.zgrid,
                    self.rhoion,self.te,self.phi0)
 
 

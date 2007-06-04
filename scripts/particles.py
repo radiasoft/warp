@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.54 2007/05/22 00:49:43 dave Exp $"
+particles_version = "$Id: particles.py,v 1.55 2007/06/04 23:02:53 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -334,10 +334,10 @@ Multiple selection criteria are now supported.
     ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
   if iz is not None:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
-    zmminglobal = getattrwithsuffix(w3dobject,'zmminglobal',suffix,pkg='w3d')
+    zmmin = getattrwithsuffix(w3dobject,'zmmin',suffix,pkg='w3d')
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
-    zl = zmminglobal + iz*dz - wz*dz + zbeam
-    zu = zmminglobal + iz*dz + wz*dz + zbeam
+    zl = zmmin + iz*dz - wz*dz + zbeam
+    zu = zmmin + iz*dz + wz*dz + zbeam
     z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     if ii is not None:
       z = take(z,ii)

@@ -8,9 +8,9 @@ import MA
 ##############################################################################
 class FieldSolver3dBase(object):
   
-  __w3dinputs__ = ['nx','ny','nz','nzfull',
-                   'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
-                   'zmminglobal','zmmaxglobal',
+  __w3dinputs__ = ['nx','ny','nz','nzlocal',
+                   'xmmin','xmmax','ymmin','ymmax','zmminlocal','zmmaxlocal',
+                   'zmmin','zmmax',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __f3dinputs__ = []
@@ -93,48 +93,44 @@ class FieldSolver3dBase(object):
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
-    # --- Set set parallel related paramters and calculate mesh sizes
+    # --- Set set parallel related parameters and calculate mesh sizes
     if self.nslaves <= 1:
-      self.nzfull = self.nz
-      self.zmminglobal = self.zmmin
-      self.zmmaxglobal = self.zmmax
+      self.nzlocal = self.nz
+      self.zmminlocal = self.zmmin
+      self.zmmaxlocal = self.zmmax
     else:
-      if self.nzfull == 0:
-        self.nzfull = self.nz
-        self.zmminglobal = self.zmmin
-        self.zmmaxglobal = self.zmmax
-        self.nz = self.nzfull/self.nslaves
-        self.zmmin = self.zmminglobal + me*self.nz*w3d.dz
-        self.zmmax = self.zmminglobal + (me+1)*self.nz*w3d.dz
-        if me == self.nslaves-1: self.zmmax = self.zmmaxglobal
+      if self.nzlocal == 0:
+        self.nzlocal = self.nz/self.nslaves
+        self.zmminlocal = self.zmmin + me*self.nzlocal*w3d.dz
+        self.zmmaxlocal = self.zmmin + (me+1)*self.nzlocal*w3d.dz
 
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
-    self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
+    self.dz = (self.zmmax - self.zmmin)/self.nz
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
 
     self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
-    self.zmesh = self.zmminglobal + arange(0,self.nzfull+1)*self.dz
-    self.zmeshlocal = self.zmmin + arange(0,self.nz+1)*self.dz
+    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+    self.zmeshlocal = self.zmminlocal + arange(0,self.nzlocal+1)*self.dz
 
     # --- Create extra variables which are used in various places
     self.nxp = self.nx
     self.nyp = self.ny
-    self.nzp = self.nz
+    self.nzp = self.nzlocal
 
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
-    self.rho = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
-    self.phi = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
-    self.rstar = fzeros(3+self.nz,'d')
+    self.rho = fzeros((1+self.nx,1+self.ny,1+self.nzlocal),'d')
+    self.phi = fzeros((1+self.nx,1+self.ny,3+self.nzlocal),'d')
+    self.rstar = fzeros(3+self.nzlocal,'d')
     if sometrue(top.efetch == 3):
-      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nzlocal),'d')
       self.nx_selfe = self.nx
       self.ny_selfe = self.ny
-      self.nz_selfe = self.nz
+      self.nz_selfe = self.nzlocal
     else:
       self.selfe = 0.
       self.nx_selfe = 0
@@ -143,9 +139,9 @@ class FieldSolver3dBase(object):
     self.rhop = self.rho
     self.phip = self.phi
     if self.useselfb:
-      self.bx = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
-      self.by = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
-      self.bz = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
+      self.bx = fzeros((1+self.nx,1+self.ny,3+self.nzlocal),'d')
+      self.by = fzeros((1+self.nx,1+self.ny,3+self.nzlocal),'d')
+      self.bz = fzeros((1+self.nx,1+self.ny,3+self.nzlocal),'d')
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = None
@@ -159,46 +155,46 @@ class FieldSolver3dBase(object):
     n = len(x)
     if n == 0: return
     setrho3d(self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
-             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry,
+             self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry,
              self.solvergeom==w3d.RZgeom)
 
   def setrhoselect(self,x,y,z,uz,q,w):
     n = len(x)
     if n == 0: return
     setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
-             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+             self.nx,self.ny,self.nzlocal,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmminlocal,self.l2symtry,self.l4symtry)
 
   def fetchefrompositions(self,js,x,y,z,ex,ey,ez):
     n = len(x)
     if n == 0: return
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
-           self.xmmin,self.ymmin,self.zmmin,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,top.efetch[js],
+           self.xmmin,self.ymmin,self.zmminlocal,
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nzlocal,top.efetch[js],
            ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
            0,0,1)
 
   def fetchbfrompositions(self,x,y,z,bx,by,bz):
     n = len(x)
     if n == 0: return
-    getgrid3d(n,x,y,z,bx,self.nx,self.ny,self.nz,self.bx[:,:,1:-1],
+    getgrid3d(n,x,y,z,bx,self.nx,self.ny,self.nzlocal,self.bx[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.zmminlocal+top.zgridprv,self.zmmaxlocal+top.zgridprv,
               self.l2symtry,self.l4symtry)
-    getgrid3d(n,x,y,z,by,self.nx,self.ny,self.nz,self.by[:,:,1:-1],
+    getgrid3d(n,x,y,z,by,self.nx,self.ny,self.nzlocal,self.by[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.zmminlocal+top.zgridprv,self.zmmaxlocal+top.zgridprv,
               self.l2symtry,self.l4symtry)
-    getgrid3d(n,x,y,z,bz,self.nx,self.ny,self.nz,self.bz[:,:,1:-1],
+    getgrid3d(n,x,y,z,bz,self.nx,self.ny,self.nzlocal,self.bz[:,:,1:-1],
               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-              self.zmmin+top.zgridprv,self.zmmax+top.zgridprv,
+              self.zmminlocal+top.zgridprv,self.zmmaxlocal+top.zgridprv,
               self.l2symtry,self.l4symtry)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
-    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
-            self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
+    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nzlocal,self.phi[:,:,1:-1],
+            self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmminlocal,self.zmmaxlocal,
             self.l2symtry,self.l4symtry)
 
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
@@ -230,23 +226,23 @@ class FieldSolver3dBase(object):
       else:
         trho[0,:,:] = trho[0,:,:] + trho[-1,:,:]
         trho[-1,:,:] = trho[0,:,:]
-    if self.pbounds[4] == 1 and self.zmmin == self.zmminglobal:
+    if self.pbounds[4] == 1 and self.zmminlocal == self.zmmin:
       trho[0,:,:] = 2.*trho[0,:,:]
-    if self.pbounds[5] == 1 and self.zmmax == self.zmmaxglobal:
+    if self.pbounds[5] == 1 and self.zmmaxlocal == self.zmmax:
       trho[-1,:,:] = 2.*trho[-1,:,:]
 
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
-      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
-                        self.nx,self.ny,self.nz,self.rhop,
+      getrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.rho,
+                        self.nx,self.ny,self.nzlocal,self.rhop,
                         me,self.nslaves,
                         top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
 
   def makerhoperiodic_parallel(self):
     tag = 70
     if me == self.nslaves-1:
-      request = mpi.isend(self.rho[:,:,nz],0,tag)
-      self.rho[:,:,nz],status = mpi.recv(0,tag)
+      request = mpi.isend(self.rho[:,:,nzlocal],0,tag)
+      self.rho[:,:,nzlocal],status = mpi.recv(0,tag)
     elif me == 0:
       rhotemp,status = mpi.recv(self.nslaves-1,tag)
       self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
@@ -308,12 +304,12 @@ it knows whether to re-register itself.
     if self.iamtheregisteredsolver:
       del self.iamtheregisteredsolver
       registersolver(self)
-      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+      if self.nx == w3d.nx and self.ny == w3d.ny and self.nzlocal == w3d.nzlocal:
         w3d.rho = self.rho
         w3d.phi = self.phi
         w3d.nxp = self.nx
         w3d.nyp = self.ny
-        w3d.nzp = self.nz
+        w3d.nzp = self.nzlocal
         w3d.rhop = self.rho
         w3d.phip = self.phi
 
@@ -334,13 +330,13 @@ class FFTSolver2d(FieldSolver3dBase):
     # --- Allocate the ksq and att arrays
     self.kxsq = zeros(self.nx,'d')
     self.kysq = zeros(self.ny,'d')
-    self.kzsq = zeros(self.nzfull+1,'d')
+    self.kzsq = zeros(self.nz+1,'d')
     self.attx = zeros(self.nx,'d')
     self.atty = zeros(self.ny,'d')
-    self.attz = zeros(self.nzfull+1,'d')
+    self.attz = zeros(self.nz+1,'d')
 
     # --- Allocate work arrays
-    nmxyz = max(self.nx,self.ny,self.nz)
+    nmxyz = max(self.nx,self.ny,self.nzlocal)
     nmxy = max(self.nx,self.ny)
     self.scratch = fzeros((nmxyz,nmxy),'d')
     self.xywork = fzeros((1+self.nx,1+self.ny),'d')
@@ -360,7 +356,7 @@ class FFTSolver2d(FieldSolver3dBase):
     vpois3d(iwhich,self.phi[:,:,1:-1],self.phi[:,:,1:-1],
             self.kxsq,self.kysq,self.kzsq,
             self.attx,self.atty,self.attz,self.filt,lx,ly,lz,
-            self.nx,self.ny,self.nz,self.nz,
+            self.nx,self.ny,self.nzlocal,self.nzlocal,
             self.scratch,self.xywork,self.zwork,0,self.l2symtry,self.l4symtry,
             self.bound0,self.boundnz,self.boundxy)
 
@@ -387,9 +383,9 @@ class FFTSolver2d(FieldSolver3dBase):
     s0 = self.bound0
     self.bound0 = dirichlet
     self.vp3d(12)
-    attenuate(self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+    attenuate(self.nx,self.ny,self.nzlocal,self.phi[:,:,1:-1],
               self.attx,self.atty,self.attz,ikxmin,ikymin,1,1,0)
-    rhotophi(self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+    rhotophi(self.nx,self.ny,self.nzlocal,self.phi[:,:,1:-1],
              self.kxsq,self.kysq,self.kzsq,ikxmin,ikymin,1,1,0)
     self.vp3d(13)
     self.bound0 = s0
@@ -435,10 +431,10 @@ Transverse 2-D field solver, ignores self Ez and Bz.
       w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
 
       # --- Create bsqgrad element the same size as the field grid.
-      self.bsqgradid = addnewbsqgrad(zs=w3d.zmmin,ze=w3d.zmmax,
+      self.bsqgradid = addnewbsqgrad(zs=w3d.zmminlocal,ze=w3d.zmmaxlocal,
                                      xs=w3d.xmmin,ys=w3d.ymmin,
                                      dx=w3d.dx,dy=w3d.dy,
-                                     nx=w3d.nx,ny=w3d.ny,nz=w3d.nz)
+                                     nx=w3d.nx,ny=w3d.ny,nz=w3d.nzlocal)
       # --- Turn on the use of bsqgrad
       w3d.igradb = 1
 
@@ -449,12 +445,12 @@ Transverse 2-D field solver, ignores self Ez and Bz.
     # --- That was an arbitrary choice.
     if (self.beamsolver.nx == w3d.nx and
         self.beamsolver.ny == w3d.ny and
-        self.beamsolver.nz == w3d.nz):
+        self.beamsolver.nzlocal == w3d.nzlocal):
       w3d.rho = self.beamsolver.rho
       w3d.phi = self.beamsolver.phi
       w3d.nxp = self.beamsolver.nx
       w3d.nyp = self.beamsolver.ny
-      w3d.nzp = self.beamsolver.nz
+      w3d.nzp = self.beamsolver.nzlocal
       w3d.rhop = self.beamsolver.rho
       w3d.phip = self.beamsolver.phi
 
@@ -643,12 +639,12 @@ it knows whether to re-register itself.
       registersolver(self)
       if (self.beamsolver.nx == w3d.nx and
           self.beamsolver.ny == w3d.ny and
-          self.beamsolver.nz == w3d.nz):
+          self.beamsolver.nzlocal == w3d.nzlocal):
         w3d.rho = self.beamsolver.rho
         w3d.phi = self.beamsolver.phi
         w3d.nxp = self.beamsolver.nx
         w3d.nyp = self.beamsolver.ny
-        w3d.nzp = self.beamsolver.nz
+        w3d.nzp = self.beamsolver.nzlocal
         w3d.rhop = self.beamsolver.rho
         w3d.phip = self.beamsolver.phi
 

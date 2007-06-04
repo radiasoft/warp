@@ -245,12 +245,12 @@ Creates a new species of particles. All arguments are optional.
     if xmax is None:xmax=w3d.xmmax
     if ymin is None:ymin=w3d.ymmin
     if ymax is None:ymax=w3d.ymmax
-    if zmin is None:zmin=w3d.zmminglobal
-    if zmax is None:zmax=w3d.zmmaxglobal
+    if zmin is None:zmin=w3d.zmmin
+    if zmax is None:zmax=w3d.zmmax
     if dens is None:
       if nx is None:nx=w3d.nx
       if ny is None:ny=w3d.ny
-      if nz is None:nz=w3d.nzfull
+      if nz is None:nz=w3d.nz
       density = fzeros([nx+1,ny+1,nz+1],'d')
       densityc = fzeros([nx+1,ny+1,nz+1],'d')
     else:
@@ -324,6 +324,7 @@ Creates a new species of particles. All arguments are optional.
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
                            xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,js=None,
                            lmomentum=0,spacing='random',nr=None,nz=None,thetamin=0.,thetamax=2.*pi,
+                           lvariableweights=None,
                            **kw):
     """Creates particles, uniformly filling a cylinder.
 If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
@@ -343,6 +344,10 @@ in radius squared.
                      r and z are uniform, theta is still random
  - nr,nz: for 'uniform' spacing, number of particles along r and z axis
  - thetamin=0.,thetamax=2.*pi: range of theta
+ - lvariableweights: By default, if wpid is set, then the particles will be
+                     weighted according to their radius, otherwise all will
+                     have the same weight. Use this option to override the
+                     default.
     """
 
     if spacing == 'random':
@@ -358,8 +363,13 @@ in radius squared.
       z.shape = (np,)
     theta=(thetamax-thetamin)*RandomArray.random(np) + thetamin
 
-    if top.wpid == 0:
+    if lvariableweights is None:
+      lvariableweights = (top.wpid != 0)
+    if lvariableweights and top.wpid == 0:
+      top.wpid = nextpid()
+    if not lvariableweights:
       r = sqrt(r)
+      if top.wpid != 0: kw['w'] = 1.
     else:
       kw['w'] = 2*r
     x=xmean+rmax*r*cos(2.*pi*theta)

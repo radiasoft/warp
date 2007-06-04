@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.59 2007/04/27 23:06:18 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.60 2007/06/04 23:02:51 dave Exp $"
 
 
 ##############################################################################
@@ -236,12 +236,12 @@ set when a current is specified"""
   if not maxtime:
     # --- Estimate the time that will be required for the particles
     # --- to propagate through the system. It is based off of the Child-Langmuir
-    # --- solution for a diode. The diode length is assumed to be (nzfull*dz),
+    # --- solution for a diode. The diode length is assumed to be (nz*dz),
     # --- the diode voltage is assumed to be abs(phi(,,0)-phi(,,nz)).
     delphi = abs(getphi(w3d.ix_axis,w3d.iy_axis,0,bcast=1) -
                  getphi(w3d.ix_axis,w3d.iy_axis,w3d.nz,bcast=1))
     if delphi == 0.: delphi = smallpos
-    transittime = (3.*(w3d.nzfull*w3d.dz)*
+    transittime = (3.*(w3d.nz*w3d.dz)*
                    sqrt(0.5*top.pgroup.sm[0]/abs(top.pgroup.sq[0])/delphi))
     # --- Set the default maxtime to 3*transittime. The factor of 3 is a random
     # --- guess at a safety factor. The maxtime is used since in some cases it
@@ -989,7 +989,7 @@ Prints a running line showing current status of the step.
     sys.stdout.write("nplive = %5d "%nplive)
     try: zz = top.pgroup.zp[top.pgroup.ins[0]-1]
     except: zz = 0.
-    if zz < w3d.zmminglobal: zz = w3d.zmmaxglobal
+    if zz < w3d.zmmin: zz = w3d.zmmax
     sys.stdout.write("zz = %6.4f"%(zz))
     sys.stdout.write(CR)
 

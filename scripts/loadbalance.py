@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.53 2007/02/13 00:28:27 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.54 2007/06/04 23:02:52 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -90,8 +90,8 @@ recalculated on a finer mesh to give better balancing.
       # --- and ypinject are nonzero.
       rinj = sqrt(top.ainject**2 + top.binject**2)
       rpinj = sqrt(top.xpinject**2 + top.ypinject**2)
-      zinjectmin = max(w3d.zmminglobal,min(top.zinject - rinj*rpinj))
-      zinjectmax = min(w3d.zmmaxglobal,max(top.zinject + rinj*rpinj))
+      zinjectmin = max(w3d.zmmin,min(top.zinject - rinj*rpinj))
+      zinjectmax = min(w3d.zmmax,max(top.zinject + rinj*rpinj))
       # --- Add in term accounting for the curvature of the source
       rmax = maximum(top.ainject,top.binject)
       injdepth = max(rmax**2/(top.rinject+sqrt(top.rinject**2-rmax**2)))
@@ -105,24 +105,24 @@ recalculated on a finer mesh to give better balancing.
       zmaxp = maximum(zinjectmax,zmaxp)
 
     # --- Shift zminp and zmaxp into the grid frame
-    zminp = zminp - top.zbeam - w3d.zmminglobal
-    zmaxp = zmaxp - top.zbeam - w3d.zmminglobal
+    zminp = zminp - top.zbeam - w3d.zmmin
+    zmaxp = zmaxp - top.zbeam - w3d.zmmin
 
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
-    if top.zpslmax[-1] < w3d.zmmaxglobal-0.5*w3d.dz:
+    if top.zpslmax[-1] < w3d.zmmax-0.5*w3d.dz:
       if zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
         lforce = true
         if self.verbose:
-          print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,zmaxp,top.zpslmax[-1]-2*w3d.dz
+          print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmax,zmaxp,top.zpslmax[-1]-2*w3d.dz
 
     # --- Check if leftmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
-    if top.zpslmin[0] > w3d.zmminglobal+0.5*w3d.dz:
+    if top.zpslmin[0] > w3d.zmmin+0.5*w3d.dz:
       if zminp < top.zpslmin[0]+2*w3d.dz + top.zbeam:
         lforce = true
         if self.verbose:
-          print "Load balancing since particles near left end of mesh ",top.zpslmin[0],w3d.zmminglobal,zminp,top.zpslmin[0]+2*w3d.dz
+          print "Load balancing since particles near left end of mesh ",top.zpslmin[0],w3d.zmmin,zminp,top.zpslmin[0]+2*w3d.dz
 
     # --- Find frequency of load balancing
     ii = max(self.when.values())
@@ -151,12 +151,12 @@ recalculated on a finer mesh to give better balancing.
       # --- calculated on the most recent step.
       pnumz = zeros(1001,'d')
       zmin = max(0.,                             zminp-w3d.dz)
-      zmax = min(w3d.zmmaxglobal-w3d.zmminglobal,zmaxp+w3d.dz)
+      zmax = min(w3d.zmmax-w3d.zmmin,zmaxp+w3d.dz)
       if zz is None:
         # --- If zz was not fetched above, then get it here.
         zz = getz(jslist=-1,gather=0)
       setgrid1d(len(zz),zz,1000,pnumz,
-                zmin+top.zbeam+w3d.zmminglobal,zmax+top.zbeam+w3d.zmminglobal)
+                zmin+top.zbeam+w3d.zmmin,zmax+top.zbeam+w3d.zmmin)
       pnumz = parallelsum(pnumz)
       dz = (zmax - zmin)/1000.
     else:
@@ -234,24 +234,24 @@ that has already been done.
 
   # --- Set domain of each processor.
   for i in range(npes):
-    top.zpslmin[i] = w3d.zmminglobal + zslave[i]*w3d.dz
-    top.zpslmax[i] = w3d.zmminglobal + zslave[i+1]*w3d.dz
+    top.zpslmin[i] = w3d.zmmin + zslave[i]*w3d.dz
+    top.zpslmax[i] = w3d.zmmin + zslave[i+1]*w3d.dz
 
-  top.zpslmin[0] = max(w3d.zmminglobal,top.zpslmin[0] - padleft)
-  top.zpslmax[-1] = min(w3d.zmmaxglobal,top.zpslmax[-1] + padright)
+  top.zpslmin[0] = max(w3d.zmmin,top.zpslmin[0] - padleft)
+  top.zpslmax[-1] = min(w3d.zmmax,top.zpslmax[-1] + padright)
 
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
-  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz) - nzguard
-  top.nzpslave[:] = (int((top.zpslmax - w3d.zmminglobal)/w3d.dz) -
+  top.izpslave[:] = int((top.zpslmin - w3d.zmmin)/w3d.dz) - nzguard
+  top.nzpslave[:] = (int((top.zpslmax - w3d.zmmin)/w3d.dz) -
                      top.izpslave + 1 + 2*nzguard)
 
   # --- Make sure that the processors don't have grid cells
   # --- sticking out the end.
   top.nzpslave[:] = where(top.izpslave<0,top.nzpslave+top.izpslave,top.nzpslave)
   top.izpslave[:] = where(top.izpslave<0,0,top.izpslave)
-  top.nzpslave[:] = where(top.izpslave+top.nzpslave > w3d.nzfull,
-                          w3d.nzfull - top.izpslave,
+  top.nzpslave[:] = where(top.izpslave+top.nzpslave > w3d.nz,
+                          w3d.nz - top.izpslave,
                           top.nzpslave)
 
   # --- Adjust the Z data
@@ -261,12 +261,12 @@ that has already been done.
   if reorg:
     reorgparticles(top.pgroup)
   else:
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
 
   # --- Update sizes of arrays for particles
   if(w3d.solvergeom == w3d.XYZgeom):
     w3d.nzp = top.nzpslave[me]
-    w3d.zmminp = w3d.zmminglobal + top.izpslave[me]*w3d.dz
+    w3d.zmminp = w3d.zmmin + top.izpslave[me]*w3d.dz
     w3d.zmmaxp = w3d.zmminp + w3d.nzp*w3d.dz
     gchange("Fields3dParticles")
   else:
@@ -387,19 +387,19 @@ needed since some processors may have more conductor points than others.
   for i in range(1,npes):
     top.izfsslave[i] = top.izfsslave[i-1] + top.nzfsslave[i-1] - 1
     top.nzfsslave[i] = max(nint(zslave[i+1]-zslave[i]) + 1,2)
-  top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+  top.nzfsslave[-1] = w3d.nz - top.izfsslave[-1]
   while (zslave[-1]-top.nzfsslave[-1]) > max(zslave[:-1]-top.nzfsslave[:-1]) \
          or top.nzfsslave[-1] < 2:
     i = argmax(where(greater(top.nzfsslave[:-1],2),
                      top.nzfsslave[:-1]-zslave[:-1],-10000.))
     top.nzfsslave[i] = top.nzfsslave[i] - 1
     top.izfsslave[i+1:] = top.izfsslave[i+1:] - 1
-    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+    top.nzfsslave[-1] = w3d.nz - top.izfsslave[-1]
   while (top.nzfsslave[-1]-zslave[-1]) > max(top.nzfsslave[:-1]-zslave[:-1]):
     i = argmax(zslave[:-1]-top.nzfsslave[:-1])
     top.nzfsslave[i] = top.nzfsslave[i] + 1
     top.izfsslave[i+1:] = top.izfsslave[i+1:] + 1
-    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+    top.nzfsslave[-1] = w3d.nz - top.izfsslave[-1]
 
   # --- Adjust the Z data
   _adjustz()
@@ -499,20 +499,20 @@ def _adjustz():
 
   #---------------------------------------------------------------------------
   # --- Reset local values
-  w3d.nz     = top.nzfsslave[me]
-  zpmin = w3d.zmminglobal + top.izpslave[me]*w3d.dz
-  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + w3d.zmminglobal
+  w3d.nzlocal = top.nzfsslave[me]
+  zpmin = w3d.zmmin + top.izpslave[me]*w3d.dz
+  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + w3d.zmmin
   w3d.izfsmin = 0.
   w3d.izfsmax = top.nzfsslave[me]
-  w3d.zmmin = top.izfsslave[me]*w3d.dz + w3d.zmminglobal
-  w3d.zmmax = (top.izfsslave[me]+top.nzfsslave[me])*w3d.dz+w3d.zmminglobal
+  w3d.zmminlocal = top.izfsslave[me]*w3d.dz + w3d.zmmin
+  w3d.zmmaxlocal = (top.izfsslave[me]+top.nzfsslave[me])*w3d.dz+w3d.zmmin
 
   # --- Change the alocation of everything effected are reset the meshes.
   gchange("Fields3d")
   gchange("Z_Moments")
   gchange("Hist")
-  w3d.zmesh[:] = w3d.zmminglobal + iota(0,w3d.nzfull)*w3d.dz
-  w3d.zmeshlocal[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmminlocal + iota(0,w3d.nzlocal)*w3d.dz
   
   # --- Reset the lattice
   setlatt()
@@ -645,7 +645,7 @@ def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
   results = len(arrays)*[[]]
 
   # --- Loop over global extent of grid, gathering data that is needed
-  for iz in range(0,w3d.nzfull+1):
+  for iz in range(0,w3d.nz+1):
 
     # --- If me has the data then get the indices of it.
     if (oldizfs[me] <= iz <= oldizfs[me]+oldnzfs[me]):

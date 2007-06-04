@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.26 2007/05/02 21:38:27 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.27 2007/06/04 23:02:51 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -45,10 +45,10 @@ Warning - this does not yet work in parallel
   w3d.nx = nx
   w3d.ny = ny
   w3d.nz = nz
-  w3d.nzfull = w3d.nz
+  w3d.nzlocal = w3d.nz
   w3d.izfsmax = w3d.nz
   w3d.nmxy  = max(w3d.nx,w3d.ny)
-  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nzfull)
+  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nz)
   w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
   if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
     w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
@@ -62,14 +62,14 @@ Warning - this does not yet work in parallel
   setupFields3dParticles()
   if w3d.solvergeom is w3d.RZgeom:
     frz.del_base()
-    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin)
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmminlocal)
 
   # --- Calculate the mesh points
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
   if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
     w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
-  w3d.zmesh[:] = w3d.zmminglobal + arange(w3d.nzfull+1)*w3d.dz
-  w3d.zmeshlocal[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
+  w3d.zmesh[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmminlocal + arange(w3d.nzlocal+1)*w3d.dz
 
   # --- Find the grid axis
   w3d.ix_axis = nint(-w3d.xmmin/w3d.dx)
@@ -177,7 +177,7 @@ Resizes the transverse size of the mesh
     w3d.ymmin = 0.
 
   w3d.nmxy  = max(w3d.nx,w3d.ny)
-  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nzfull)
+  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nz)
   w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
   if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
     w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
@@ -187,7 +187,7 @@ Resizes the transverse size of the mesh
   setupFields3dParticles()
   if w3d.solvergeom is w3d.RZgeom:
     frz.del_base()
-    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin)
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmminlocal)
 
   # --- Calculate the mesh points
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
@@ -236,44 +236,44 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   """
   # --- Save old grid cell and mesh length
   olddz = w3d.dz
-  oldcenter = 0.5*(w3d.zmminglobal + w3d.zmmaxglobal)
+  oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
   # --- Set new mesh length by first scaling the min and max
-  w3d.dz = newlen/w3d.nzfull
+  w3d.dz = newlen/w3d.nz
+  w3d.zmminlocal = w3d.zmminlocal*w3d.dz/olddz
+  w3d.zmmaxlocal = w3d.zmmaxlocal*w3d.dz/olddz
   w3d.zmmin = w3d.zmmin*w3d.dz/olddz
   w3d.zmmax = w3d.zmmax*w3d.dz/olddz
-  w3d.zmminglobal = w3d.zmminglobal*w3d.dz/olddz
-  w3d.zmmaxglobal = w3d.zmmaxglobal*w3d.dz/olddz
   if lparallel:
     top.zpslmin[:] = top.zpslmin*w3d.dz/olddz
     top.zpslmax[:] = top.zpslmax*w3d.dz/olddz
   # --- If requested, recenter the mesh about its old center.
   if keepcentered:
-    newcenter = 0.5*(w3d.zmminglobal + w3d.zmmaxglobal)
+    newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+    w3d.zmminlocal = w3d.zmminlocal + (oldcenter - newcenter)
+    w3d.zmmaxlocal = w3d.zmmaxlocal + (oldcenter - newcenter)
     w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
     w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
-    w3d.zmminglobal = w3d.zmminglobal + (oldcenter - newcenter)
-    w3d.zmmaxglobal = w3d.zmmaxglobal + (oldcenter - newcenter)
     if lparallel:
       top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
       top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
   # --- Recalculate zmesh
-  w3d.zmesh[:] = w3d.zmminglobal + iota(0,w3d.nzfull)*w3d.dz
-  w3d.zmeshlocal[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  w3d.zmeshlocal[:] = w3d.zmminlocal + iota(0,w3d.nzlocal)*w3d.dz
   # --- Adjust all of the axial meshes
-  if top.nzl == w3d.nzfull:
+  if top.nzl == w3d.nz:
     top.dzl = w3d.dz
     top.dzli = 1./w3d.dz
-    top.zlmin = w3d.zmminglobal
-    top.zlmax = w3d.zmmaxglobal
+    top.zlmin = w3d.zmmin
+    top.zlmax = w3d.zmmax
     top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
     setlatt()
-  if top.nzzarr == w3d.nzfull:
+  if top.nzzarr == w3d.nz:
     top.dzz = w3d.dz
     top.dzzi = 1./w3d.dz
-    top.zzmin = w3d.zmminglobal
-    top.zzmax = w3d.zmmaxglobal
+    top.zzmin = w3d.zmmin
+    top.zzmax = w3d.zmmax
     top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
-  if top.nzmmnt == w3d.nzfull:
+  if top.nzmmnt == w3d.nz:
     top.dzm = w3d.dz
     top.dzmi = 1./w3d.dz
     top.zmmntmin = w3d.zmmin
@@ -283,7 +283,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   if npes > 0:
     reorgparticles(top.pgroup)
   else:
-    zpartbnd(top.pgroup,w3d.zmmax,w3d.zmmin,w3d.dz)
+    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
     for js in xrange(top.ns):
       processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
   # --- Reset field solve parameters (kzsq)

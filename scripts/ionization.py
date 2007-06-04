@@ -10,7 +10,7 @@ try:
 except:
   l_txphysics=0
 
-ionization_version = "$Id: ionization.py,v 1.8 2006/06/29 17:59:37 jlvay Exp $"
+ionization_version = "$Id: ionization.py,v 1.9 2007/06/04 23:02:52 dave Exp $"
 def ionizationdoc():
   import Ionization
   print Ionization.__doc__
@@ -26,13 +26,13 @@ Class for generating particles from impact ionization.
   def __init__(self,l_verbose=0,stride=100,nx=None,ny=None,nz=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None,l_timing=false):
     self.nx = int(where(nx is None,w3d.nx,nx))
     self.ny = int(where(ny is None,w3d.ny,ny))
-    self.nz = int(where(nz is None,w3d.nz,nz))
+    self.nz = int(where(nz is None,w3d.nzlocal,nz))
     self.xmin = float(where(xmin is None,w3d.xmmin,xmin))
     self.xmax = float(where(xmax is None,w3d.xmmax,xmax))
     self.ymin = float(where(ymin is None,w3d.ymmin,ymin))
     self.ymax = float(where(ymax is None,w3d.ymmax,ymax))
-    self.zmin = float(where(zmin is None,w3d.zmmin,zmin))
-    self.zmax = float(where(zmax is None,w3d.zmmax,zmax))   
+    self.zmin = float(where(zmin is None,w3d.zmminlocal,zmin))
+    self.zmax = float(where(zmax is None,w3d.zmmaxlocal,zmax))   
     self.dx=(self.xmax-self.xmin)/self.nx
     self.dy=(self.ymax-self.ymin)/self.ny
     self.dz=(self.zmax-self.zmin)/self.nz
@@ -150,7 +150,7 @@ Class for generating particles from impact ionization.
          nn=self.nps[js]
 #         condition = (self.x[js][:nn]>w3d.xmmin) & (self.x[js][:nn]<w3d.xmmax) & \
 #                     (self.y[js][:nn]>w3d.ymmin) & (self.y[js][:nn]<w3d.ymmax) & \
-#                     (self.z[js][:nn]>w3d.zmmin) & (self.z[js][:nn]<w3d.zmmax)
+#                     (self.z[js][:nn]>w3d.zmminlocal) & (self.z[js][:nn]<w3d.zmmaxlocal)
 #         if sum(condition)<nn:
 #           ic = compress(condition==0,arange(nn))
 #           print 'ioniz: out of bound: ',js,self.x[js][ic],self.y[js][ic],self.z[js][ic]

@@ -180,8 +180,8 @@ class MultiGrid(SubcycledPoissonSolver):
 
   def getdims(self):
     # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nx,1+self.ny,1+self.nz),
-            (1+self.nx+2*self.nxguard,1+self.ny+2*self.nyguard,1+self.nz+2*self.nzguard))
+    return ((1+self.nx,1+self.ny,1+self.nzlocal),
+            (1+self.nx+2*self.nxguard,1+self.ny+2*self.nyguard,1+self.nzlocal+2*self.nzguard))
 
   def getrho(self):
     return self.source
@@ -289,7 +289,7 @@ class MultiGrid(SubcycledPoissonSolver):
       SubcycledPoissonSolver.setsourcepforparticles(self,*args)
       if isinstance(self.source,FloatType): return
       if isinstance(self.sourcep,FloatType): return
-      setrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.source,
+      setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source,
                             self.nxp,self.nyp,self.nzp,self.sourcep,self.nzpguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
@@ -301,7 +301,7 @@ class MultiGrid(SubcycledPoissonSolver):
       self.setpotentialpforparticles(*args)
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
-      getphipforparticles3d(1,self.nx,self.ny,self.nz,self.potential,
+      getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,self.potential,
                             self.nxp,self.nyp,self.nzp,self.potentialp,0,0,1)
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
@@ -351,8 +351,8 @@ class MultiGrid(SubcycledPoissonSolver):
   def makesourceperiodic_parallel(self):
     tag = 70
     if self.my_index == self.nslaves-1:
-      request = mpi.isend(self.source[:,:,self.nz],0,tag)
-      self.source[:,:,self.nz],status = mpi.recv(0,tag)
+      request = mpi.isend(self.source[:,:,self.nzlocal],0,tag)
+      self.source[:,:,self.nzlocal],status = mpi.recv(0,tag)
     elif self.my_index == 0:
       sourcetemp,status = mpi.recv(self.nslaves-1,tag)
       self.source[:,:,0] = self.source[:,:,0] + sourcetemp
@@ -448,9 +448,9 @@ class MultiGrid(SubcycledPoissonSolver):
 
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nz,self.nzfull,
+                      self.nx,self.ny,self.nzlocal,self.nz,
                       self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmminglobal,self.zmmaxglobal,zscale,self.l2symtry,self.l4symtry,
+                      self.zmmin,self.zmmax,zscale,self.l2symtry,self.l4symtry,
                       installrz=0,
                       solvergeom=self.solvergeom,conductors=conductorobject,
                       my_index=self.my_index,nslaves=self.nslaves,
@@ -488,7 +488,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if isinstance(self.potential,FloatType): return
 
     # --- Setup data for bends.
-    rstar = fzeros(3+self.nz,'d')
+    rstar = fzeros(3+self.nzlocal,'d')
     if top.bends:
 
       # --- This commented out code does the same thing as the line below
@@ -498,7 +498,7 @@ class MultiGrid(SubcycledPoissonSolver):
       #                     self.zmmin+zgrid <= top.cbendze)
       #self.linbend = sometrue(ii)
 
-      setrstar(rstar,self.nz,self.dz,self.zmmin,self.getzgrid())
+      setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
       self.linbend = min(rstar) < largepos
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -507,11 +507,11 @@ class MultiGrid(SubcycledPoissonSolver):
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     if self.electrontemperature == 0:
-      multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
+      multigrid3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                        self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                        rstar,self.linbend,self.bounds,
-                       self.xmmin,self.ymmin,self.zmmin*zfact,
-                       self.zmminglobal*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
+                       self.xmmin,self.ymmin,self.zmminlocal*zfact,
+                       self.zmmin*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
                        self.mgparam,self.mgform,mgiters,self.mgmaxiters,
                        self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                        self.downpasses,self.uppasses,
@@ -519,11 +519,11 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.lbuildquads,self.gridmode,conductorobject,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
-      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
+      multigridbe3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                          rstar,self.linbend,self.bounds,
-                         self.xmmin,self.ymmin,self.zmmin*zfact,
-                         self.zmminglobal*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
+                         self.xmmin,self.ymmin,self.zmminlocal*zfact,
+                         self.zmmin*zfact,self.getzgrid()*zfact,self.getzgrid()*zfact,
                          self.mgparam,mgiters,self.mgmaxiters,
                          self.mgmaxlevels,mgerror,self.mgtol,self.mgverbose,
                          self.downpasses,self.uppasses,
@@ -567,7 +567,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- Initialize temporaries
     nxy    = (self.nx+1)*(self.ny+1)
-    nxyz   = (self.nx+1)*(self.ny+1)*(self.nz+1)
+    nxyz   = (self.nx+1)*(self.ny+1)*(self.nzlocal+1)
     dxsqi  = 1./self.dx**2
     dysqi  = 1./self.dy**2
     dzsqi  = 1./self.dz**2
@@ -575,7 +575,7 @@ class MultiGrid(SubcycledPoissonSolver):
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
     conductorobject = self.getconductorobject()
-    checkconductors(self.nx,self.ny,self.nz,self.nzfull,
+    checkconductors(self.nx,self.ny,self.nzlocal,self.nz,
                     self.dx,self.dy,self.dz,conductorobject,
                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
@@ -598,12 +598,12 @@ class MultiGrid(SubcycledPoissonSolver):
     #  lparity = 0
     #  rparity = 0
     #  mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-    #                   bounds,nzfull,
+    #                   bounds,nz,
     #                   lparity,rparity,
     #                   whosendingleft,izsendingleft,
     #                   whosendingright,izsendingright)
     #  if (izfsslave(my_index) > 0) localbounds[4] = -1
-    #  if (izfsslave(my_index)+nz < nzfull) localbounds[5] = -1
+    #  if (izfsslave(my_index)+nzlocal < nz) localbounds[5] = -1
     #endif
 
     #   --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -624,17 +624,17 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- correction form since it is operating on the error.
       if self.mgform == 2:
         cond_potmg(conductorobject.interior,
-                   self.nx,self.ny,self.nz,phisave,0,self.mgform,true)
-        residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+                   self.nx,self.ny,self.nzlocal,phisave,0,self.mgform,true)
+        residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
                  phisave,rhosave,res,0,localbounds,
                  self.mgparam,self.mgform,true,
                  self.lcndbndy,self.icndbndy,conductorobject)
     #ifdef MPIPARALLEL
-    #  mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
+    #  mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-1,
     #                 my_index,nslaves,izfsslave,nzfsslave,
     #                 whosendingleft,izsendingleft,
     #                 whosendingright,izsendingright)
-    #  mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
+    #  mgexchange_phiperiodic(nx,ny,nzlocal,nz,res,localbounds,0,
     #                         my_index,nslaves,izfsslave,
     #                         whosendingleft,whosendingright)
     #endif
@@ -642,7 +642,7 @@ class MultiGrid(SubcycledPoissonSolver):
         self.phi[:,:,:] = 0.
 
       # --- Do one vcycle.
-      self.vcycle(0,self.nx,self.ny,self.nz,self.nzfull,
+      self.vcycle(0,self.nx,self.ny,self.nzlocal,self.nz,
                   self.dx,self.dy,self.dz,self.phi,self.rho,
                   self.rstar,self.linbend,bendx,self.bounds,
                   self.mgparam,self.mgform,self.mgmaxlevels,
@@ -662,11 +662,11 @@ class MultiGrid(SubcycledPoissonSolver):
         if localbounds[4] == 2: self.phi[:,:,0] = self.phi[:,:,-3]
         if localbounds[5] == 2: self.phi[:,:,-1] = self.phi[:,:,2]
       #else
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,
+      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localbounds,0,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
-      # mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,
+      # mgexchange_phi(nx,ny,nzlocal,nz,phi,localbounds,-1,
       #                my_index,nslaves,izfsslave,nzfsslave,
       #                whosendingleft,izsendingleft,
       #                whosendingright,izsendingright)
@@ -701,7 +701,7 @@ class MultiGrid(SubcycledPoissonSolver):
       multiply(self.rho,1./reps0c,self.rho)
 
   #===========================================================================
-  def vcycle(self,mglevel,nx,ny,nz,nzfull,dx,dy,dz,
+  def vcycle(self,mglevel,nx,ny,nzlocal,nz,dx,dy,dz,
                   phi,rho,rstar,linbend,bendx,bounds,mgparam,mgform,
                   mgmaxlevels,downpasses,uppasses,lcndbndy,icndbndy,conductors):
    
@@ -717,16 +717,16 @@ class MultiGrid(SubcycledPoissonSolver):
     #lparityall = 0
     #rparityall = 0
     #mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-    #                 bounds,nzfull,
+    #                 bounds,nz,
     #                 lparityall,rparityall,
     #                 whosendingleft,izsendingleft,
     #                 whosendingright,izsendingright)
     #if (izfsslave(my_index) > 0) localbounds[4] = -1
-    #if (izfsslave(my_index)+nz < nzfull) localbounds[5] = -1
+    #if (izfsslave(my_index)+nzlocal < nz) localbounds[5] = -1
     #endif
 
     for i in range(downpasses):
-      self.sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+      self.sorpass3d(mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
                      dxsqi,dysqi,dzsqi,linbend,bendx,
                      localbounds,mgparam,mgform,lcndbndy,icndbndy,conductors)
 
@@ -734,19 +734,19 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- coarsening. This is the same check that is done in getmglevels.
     # --- If grid is not at its coarsest level in any of the axis or and
     # --- all dimensions are even, continue the coarsening.
-    if ((nx%4) == 0 and (ny%4) == 0 and (nzfull%4) == 0 and
+    if ((nx%4) == 0 and (ny%4) == 0 and (nz%4) == 0 and
         mglevel < mgmaxlevels):
 
       # --- Get the residual on the current grid.
-      residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
+      residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,rho,res,
                mglevel,localbounds,mgparam,mgform,false,
                lcndbndy,icndbndy,conductors)
       #ifdef MPIPARALLEL
-      #mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
+      #mgexchange_phi(nx,ny,nzlocal,nz,res,localbounds,-1,
       #                  my_index,nslaves,izfsslave,nzfsslave,
       #                  whosendingleft,izsendingleft,
       #                  whosendingright,izsendingright)
-      #mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
+      #mgexchange_phiperiodic(nx,ny,nzlocal,nz,res,localbounds,0,
       #                       my_index,nslaves,izfsslave,
       #                       whosendingleft,whosendingright)
       #endif
@@ -763,22 +763,22 @@ class MultiGrid(SubcycledPoissonSolver):
       if partialcoarsening:
 
         # --- Allocate new work space
-        phi2 = fzeros((1+nx/2,1+ny/2,2+nz+1),'d')
-        rho2 = fzeros((1+nx/2,1+ny/2,1+nz),'d')
+        phi2 = fzeros((1+nx/2,1+ny/2,2+nzlocal+1),'d')
+        rho2 = fzeros((1+nx/2,1+ny/2,1+nzlocal),'d')
 
         # --- Ratio of old to new constant needed to scale the residual for
         # --- the restriction.
         ff = (dxsqi+dysqi+dzsqi)/(dxsqi*0.25 + dysqi*0.25 + dzsqi)
-        restrict2d(nx,ny,nz,nzfull,res,rho2,ff,localbounds)
+        restrict2d(nx,ny,nzlocal,nz,res,rho2,ff,localbounds)
 
         # --- Continue at the next coarsest level.
-        self.vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
+        self.vcycle(mglevel+1,nx/2,ny/2,nzlocal,nz,
                     dx*2,dy*2,dz,phi2,rho2,rstar,linbend,bendx,bounds,
                     mgparam,mgform,mgmaxlevels,downpasses,uppasses,
                     lcndbndy,icndbndy,conductors)
 
         # --- Add in resulting error.
-        expand2d(nx/2,ny/2,nz,nzfull,phi2,phi,localbounds)
+        expand2d(nx/2,ny/2,nzlocal,nz,phi2,phi,localbounds)
 
       else:
 
@@ -787,9 +787,9 @@ class MultiGrid(SubcycledPoissonSolver):
         #ifdef MPIPARALLEL
         # --- Find domains in coarser grid
         # call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
-        #                 nzfull)
-        # --- Set new value of nz
-        # nznew = nzfsslave2(my_index)
+        #                 nz)
+        # --- Set new value of nzlocal
+        # nzlocalnew = nzfsslave2(my_index)
         # --- Difference between starts and ends of coarse and fine grids.
         # --- Should only be in the range 0-2.
         # lparityall = izfsslave - 2*izfsslave2
@@ -802,29 +802,29 @@ class MultiGrid(SubcycledPoissonSolver):
         # rparity = rparityall(my_index)
         # --- Get processor with which to exchange data on coarse grid
         # call mggetexchangepes(nslaves,izfsslave2,nzfsslave2,my_index,
-        #                       globalb0,globalbnz,nzfull/2,
+        #                       globalb0,globalbnz,nz/2,
         #                       lparityall,rparityall,
         #                       whosendingleft2,izsendingleft2,
         #                       whosendingright2,izsendingright2)
         # if (izfsslave2(my_index) > 0) localbounds2[4] = -1
-        # if (izfsslave2(my_index) + nznew < nzfull/2) localbounds2[5] = -1
+        # if (izfsslave2(my_index) + nzlocalnew < nz/2) localbounds2[5] = -1
         #else
-        nznew = nz/2
+        nzlocalnew = nzlocal/2
         lparity = 0
         rparity = 0
         #endif
 
         # --- Alloate new work space
-        phi2 = fzeros((1+nx/2,1+ny/2,2+nznew+1),'d')
-        rho2 = fzeros((1+nx/2,1+ny/2,1+nznew),'d')
+        phi2 = fzeros((1+nx/2,1+ny/2,2+nzlocalnew+1),'d')
+        rho2 = fzeros((1+nx/2,1+ny/2,1+nzlocalnew),'d')
 
         # --- Restriction - note that scaling factor for residual is always
         # --- 4 for full-coarsening and is compiled into the restriction
         # --- routine.
-        restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,localbounds2,localbounds,
+        restrict3d(nx,ny,nzlocal,nzlocalnew,nz,res,rho2,localbounds2,localbounds,
                    lparity,rparity)
         #ifdef MPIPARALLEL
-        # mgexchange_phi(nx/2,ny/2,nznew,nzfull/2,rho2plusmorespace,
+        # mgexchange_phi(nx/2,ny/2,nzlocalnew,nz/2,rho2plusmorespace,
         #                localbounds2,0,
         #                my_index,nslaves,izfsslave2,nzfsslave2,
         #                whosendingleft2,izsendingleft2,
@@ -832,16 +832,16 @@ class MultiGrid(SubcycledPoissonSolver):
         #endif
 
         # --- Continue at the next coarsest level.
-        self.vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
+        self.vcycle(mglevel+1,nx/2,ny/2,nzlocalnew,nz/2,
                     dx*2,dy*2,dz*2,phi2,rho2,rstar,linbend,bendx,bounds,
                     mgparam,mgform,mgmaxlevels,downpasses,uppasses,
                     lcndbndy,icndbndy,conductors)
 
         # --- Add in resulting error.
-        expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,localbounds,
+        expand3d(nx/2,ny/2,nzlocalnew,nzlocal,nz/2,phi2,phi,localbounds,
                  lparity,rparity)
         #ifdef MPIPARALLEL
-        # mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,
+        # mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,
         #                        localbounds,1,
         #                        my_index,nslaves,izfsslave,
         #                        whosendingleft,whosendingright)
@@ -849,17 +849,17 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- Do final SOR passes.
     for i in range(uppasses):
-      self.sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+      self.sorpass3d(mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
                      dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
                      mgparam,mgform,lcndbndy,icndbndy,conductors)
 
   #===========================================================================
-  def sorpass3d(self,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+  def sorpass3d(self,mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
                      rdx2,rdy2,rdz2,linbend,bendx,bounds,mgparam,mgform,
                      lcndbndy,icndbndy,conductors):
 
     # --- Put desired potential onto conductors in phi array.
-    cond_potmg(conductors.interior,nx,ny,nz,phi,mglevel,mgform,false)
+    cond_potmg(conductors.interior,nx,ny,nzlocal,phi,mglevel,mgform,false)
 
     # --- Set starting and ending parity.
     #ifdef MPIPARALLEL
@@ -873,7 +873,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- do loop to cover even and odd points
     for parity in [s_parity,e_parity]:
 
-      sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
+      sorhalfpass3d(parity,mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
                     rdx2,rdy2,rdz2,linbend,bendx,bounds,mgparam,mgform,
                     lcndbndy,icndbndy,conductors)
 
@@ -881,18 +881,18 @@ class MultiGrid(SubcycledPoissonSolver):
       if (bounds[4] == 2): phi[:,:,0] = phi[:,:,-3]
       if (bounds[5] == 2): phi[:,:,-2:] = phi[:,:,1:3]
     #else
-    # mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,
+    # mgexchange_phi(nx,ny,nzlocal,nz,phi,bounds,0,
     #                my_index,nslaves,izfsslave,nzfsslave,
     #                whosendingleft,izsendingleft,
     #                whosendingright,izsendingright)
-    # mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,
+    # mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,bounds,1,
     #                        my_index,nslaves,izfsslave,
     #                        whosendingleft,whosendingright)
     #endif
 
     #ifdef MPIPARALLEL
     # --- Exchange phi in the z guard planes
-    #mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,
+    #mgexchange_phi(nx,ny,nzlocal,nz,phi,bounds,-1,
     #               my_index,nslaves,izfsslave,nzfsslave,
     #               whosendingleft,izsendingleft,
     #               whosendingright,izsendingright)
@@ -905,7 +905,7 @@ class MultiGrid(SubcycledPoissonSolver):
     dzsqi  = 1./self.dz**2
     reps0c = self.mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
     rho = self.rho*reps0c
-    residual(self.nx,self.ny,self.nz,self.nzfull,dxsqi,dysqi,dzsqi,
+    residual(self.nx,self.ny,self.nzlocal,self.nz,dxsqi,dysqi,dzsqi,
              self.phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
              self.lcndbndy,self.icndbndy,self.conductors)
     return res

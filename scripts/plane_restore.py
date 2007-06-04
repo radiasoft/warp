@@ -16,14 +16,14 @@ The two simulations are linked together.
 # Note:                                                                   #
 # The string plane_file must be set to the name of the file holding the   #
 # plane data.                                                             #
-# The variable new_zplane may be redefined.  It defaults to zmminglobal.  #
+# The variable new_zplane may be redefined.  It defaults to zmmin.  #
 ###########################################################################
 # Assumptions:
 #   new_zplane lies exactly on a grid cell.
 ###########################################################################
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.9 2006/05/01 23:44:24 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.10 2007/06/04 23:02:53 dave Exp $"
 
 class PlaneRestore:
   """
@@ -43,14 +43,14 @@ Input:
 
     # set self.zplane
     if zplane is None:
-      self.zplane = w3d.zmminglobal
+      self.zplane = w3d.zmmin
     else:
       # --- Use input value of zplane, but forcing it to the nearest
       # --- grid location.
       self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
     # restore only if between grid bounds
-    if(self.zplane < w3d.zmminglobal or self.zplane >= w3d.zmmaxglobal):
+    if(self.zplane < w3d.zmmin or self.zplane >= w3d.zmmax):
       raise "The specified zplane is outside of the simulation domain"
     
     # --- Make sure that vbeamfrm is set to zero so that the grid doesn't move
@@ -159,7 +159,7 @@ Input:
       self.restoreplane(js,it)
 
     # calculate grid location of new_plane
-    iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
+    iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
     # load saved phi into the phi array
     try:
@@ -191,7 +191,7 @@ Input:
   # if this is needed
   def restoreplane_afs(self):
     # calculate grid location of new_plane
-    iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
+    iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
     # reset phi at plane iz=-1 if zplane is at iz=0
     if (iz == 0):
@@ -223,7 +223,7 @@ Input:
   # making use of different numbers of grid cells and differing symmetries.
   # Both saved and restored phi are 3-D.
   def restore_phi_3d_to_3d(self,iz,it,savedphi,phi):
-    if iz < 0 or iz > w3d.nz: return
+    if iz < 0 or iz > w3d.nzlocal: return
     for i in range(2):
       grid2grid(phi[self.nx0_r:self.nxm_r+1,self.ny0_r:self.nym_r+1,iz+i],
                 w3d.nx,w3d.ny,
@@ -267,7 +267,7 @@ Input:
   # making use of different numbers of grid cells and differing symmetries.
   # Saved phi is rz and restored phi is 3-D.
   def restore_phi_rz_to_3d(self,iz,it,savedphi,phi):
-    if iz < 0 or iz > w3d.nz: return
+    if iz < 0 or iz > w3d.nzlocal: return
     try:
       self._rz_to_3d_inited
     except:
