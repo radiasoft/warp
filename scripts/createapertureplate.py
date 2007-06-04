@@ -5,7 +5,7 @@ ParticleScraper: class for creating particle scraping
 """
 from warp import *
 
-createapertureplate_version = "$Id: createapertureplate.py,v 1.2 2002/06/20 21:00:19 dave Exp $"
+createapertureplate_version = "$Id: createapertureplate.py,v 1.3 2007/06/04 23:03:44 dave Exp $"
 def createapertureplatedoc():
   import createapertureplate
   print createapertureplate.__doc__
@@ -145,7 +145,7 @@ def addzsubgridpoints(ix,iy,iz,volt,mz,pz):
 ########################################################
 ########################################################
 # --- Create the particle scraper using griddedparticlescraper.
-class ParticleScraper:
+class ParticleScraperOld:
   """
 Class for creating particle scraper for a plate with multiple apertures
   - xcent: list of x centers of apertures
