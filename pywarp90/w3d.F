@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.363 $, $Date: 2007/06/04 22:53:07 $
+c@(#) File W3D.F, version $Revision: 3.364 $, $Date: 2007/06/04 22:55:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -492,8 +492,8 @@ c     if (npsplt == 0) npsplt = nparpgrp-1
       if (xplmax == 0.) xplmax = xmmax
       if (yplmin == 0.) yplmin = -ymmax
       if (yplmax == 0.) yplmax = ymmax
-      if (zplmin == 0.) zplmin = zmminlocal
-      if (zplmax == 0.) zplmax = zmmaxlocal
+      if (zplmin == 0.) zplmin = zmmin
+      if (zplmax == 0.) zplmax = zmmax
 
 c  Setup history mechanism
 
