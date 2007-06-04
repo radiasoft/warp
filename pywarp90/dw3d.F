@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.157 $, $Date: 2007/04/24 21:37:35 $
+c@(#) File DW3D.F, version $Revision: 3.158 $, $Date: 2007/06/04 22:47:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -59,7 +59,7 @@ c  Write to plot frame
       call remark(trim(textline))
       write (textline,30) "Number of grid points in y = ",ny," "
       call remark(trim(textline))
-      write (textline,30) "Number of grid points in z = ",nzfull," "
+      write (textline,30) "Number of grid points in z = ",nz," "
       call remark(trim(textline))
       write (textline,20) "Grid spacing in x = ",dx," m"
       call remark(trim(textline))
@@ -182,12 +182,12 @@ c  Calculates the line charge density from rho.
       dzi = 1./dz
 
 c     conversion factor to go from grid frame to beam frame
-      zz = zgrid + zmmin - zzmin - zbeam
+      zz = zgrid + zmminlocal - zzmin - zbeam
 
 c First, sum up the charge density in each axial plane.
 
 !$OMP PARALLEL DO
-      do iz=0,nz
+      do iz=0,nzlocal
 
         if (l2symtry) then
 c         --- 2-fold: account for only one side of rho being stored
@@ -212,15 +212,15 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
       do iz=0,nzzarr
 
         zg = (iz*dzz - zz)*dzi
-        izg = int(zg + nz) - nz
+        izg = int(zg + nzlocal) - nzlocal
         wzg = zg - izg
 
-        if (0 <= izg .and. izg <= nz) then
+        if (0 <= izg .and. izg <= nzlocal) then
           linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
         else
           linechg(iz) = 0.
         endif
-        if (0 <= izg+1 .and. izg+1 <= nz) then
+        if (0 <= izg+1 .and. izg+1 <= nzlocal) then
           linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
         endif
 
@@ -257,10 +257,10 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
 !$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
       do iwin = 0,NWINDOWS
         zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
-        iz = (zwin + zbeam - zgrid - zmmin)/dz
+        iz = (zwin + zbeam - zgrid - zmminlocal)/dz
         if (zwindows(1,iwin).ne.zwindows(2,iwin) .and.
-     &      0 <= iz .and. iz < nz) then
-          z1 = (zwin + zbeam - zgrid - zmmin)/dz - iz
+     &      0 <= iz .and. iz < nzlocal) then
+          z1 = (zwin + zbeam - zgrid - zmminlocal)/dz - iz
           z0 = 1. - z1
           rhomid(iwin) = z0*rho(ix_axis,iy_axis,iz) +
      &                   z1*rho(ix_axis,iy_axis,iz+1)
@@ -280,9 +280,9 @@ c  Sets rho grid diagnostics (they need data from the 3d mesh)
 
 c       --- rho on axis
         do iz = 0,nzmmnt
-           ii = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz
-           ww = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz - ii
-           if (ii >= 0 .and. ii < nz)
+           ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
+           ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
+           if (ii >= 0 .and. ii < nzlocal)
      &       rhomidz(iz) = rho(ix_axis,iy_axis,ii)*(1. - ww) +
      &                     rho(ix_axis,iy_axis,ii+1)*ww
         enddo
@@ -293,19 +293,19 @@ c       --- max rho at each z (vectorized)
         enddo
 !$OMP PARALLEL DO PRIVATE(ii,ww)
         do iz = 0,nzmmnt
-          ii = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz
-          ww = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz - ii
-          if (ii >= 0 .and. ii < nz) then
+          ii = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz
+          ww = (zmntmesh(iz) + zbeam - zgrid - zmminlocal)/dz - ii
+          if (ii >= 0 .and. ii < nzlocal) then
             do iy = 0,ny
               do ix = 0,nx
                 rhomaxz(iz) = max(rhomaxz(iz),rho(ix,iy,ii)*(1. - ww) +
      &                                        rho(ix,iy,ii+1)*ww)
               enddo
             enddo
-          elseif (ii == nz) then
+          elseif (ii == nzlocal) then
             do iy = 0,ny
               do ix = 0,nx
-                rhomaxz(iz) = max(rhomaxz(iz),rho(ix,iy,nz))
+                rhomaxz(iz) = max(rhomaxz(iz),rho(ix,iy,nzlocal))
               enddo
             enddo
           endif
@@ -347,19 +347,19 @@ c  Sets 1d array for the charge density on the axis
       iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmminglobal
+      zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nz
+      if (nzlocal == nzzarr .and. abs(zz) <= dz*1.e-5) then
+        do iz=0,nzlocal
           rhoax(iz+iz0) = rho(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg < nz) then
+          if (0 <= izg .and. izg < nzlocal) then
             wzg = (iz*dzz + zz)*dzi - iz0 - izg
             rhoax(iz) = rho(ix,iy,izg)*(1. - wzg) + rho(ix,iy,izg+1)*wzg
-          else if (izg == nz) then
+          else if (izg == nzlocal) then
             rhoax(iz) = rho(ix,iy,izg)
           endif
         enddo
@@ -407,7 +407,7 @@ c This does it in a partially vectorized manner.
       zm = (zimax - zimin)*(1. - straight)*0.5
 
 c     conversion factor to go from grid frame to beam frame
-      zz = zmmin + zgrid - zbeam
+      zz = zmminlocal + zgrid - zbeam
 
       do iy=0,ny
         do ix=0,nx
@@ -516,16 +516,16 @@ c  Sets 1d array for the potential on the axis
       iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmminglobal
+      zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nzfull == nzzarr .and. abs(zz) <= dz*1.e-5) then
-        do iz=0,nz
+      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
+        do iz=0,nzlocal
           phiax(iz+iz0) = phi(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nz) then
+          if (0 <= izg .and. izg <= nzlocal) then
             wzg = (iz*dzz + zz)*dzi - iz0  - izg
             phiax(iz) = phi(ix,iy,izg)*(1. - wzg) + phi(ix,iy,izg+1)*wzg
           endif
@@ -574,24 +574,24 @@ c  Sets 1d array for the space charge E field on the axis
       iz0 = 0
 #endif
 
-      zz = zzmin + zbeam - zgrid - zmminglobal
+      zz = zzmin + zbeam - zgrid - zmmin
 
       if ((xmmax == -xmmin .and.  ymmax == -ymmin) .or.
      &    (wx == 0. .and. wy == 0.)) then
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nz-1) then
+          if (0 <= izg .and. izg <= nzlocal-1) then
             wzg = (iz*dzz + zz)*dzi - iz0 - izg
             ezax(iz) = ((phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*(1.-wzg) +
      &                  (phi(ix,iy,izg  ) - phi(ix,iy,izg+2))*    wzg )*0.5*dzi
-          else if (izg == nz) then
+          else if (izg == nzlocal) then
             ezax(iz) = (phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*0.5*dzi
           endif
         enddo
       else
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi) - iz0
-          if (0 <= izg .and. izg <= nz) then
+          if (0 <= izg .and. izg <= nzlocal) then
             wzg = (iz*dzz + zz)*dzi - iz0 - izg
         ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1*(1.-wzg)+
      &            (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1*(1.-wzg)+
@@ -602,7 +602,7 @@ c  Sets 1d array for the space charge E field on the axis
      &            (phi(ix  ,iy+1,izg  )-phi(ix  ,iy+1,izg+2))*wx1*wy *    wzg +
      &            (phi(ix+1,iy+1,izg  )-phi(ix+1,iy+1,izg+2))*wx *wy *    wzg )
      &            *0.5*dzi
-          else if (izg == nz) then
+          else if (izg == nzlocal) then
             ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1 +
      &                (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1 +
      &                (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy  +
@@ -774,8 +774,8 @@ c
 c    nmom                  number of terms in multipole expansion 
 c    lazi(1:nmom)          vector of azimuthal mode numbers of moments 
 c    irpow(1:nmom)         vector of radial powers of moments 
-c    rmomcex(1:nmom,0:nz)  multipoles, cos(theta) expansion terms on axial grid
-c    rmomsex(1:nmom,0:nz)  multipoles, sin(theta) expansion terms on axial grid
+c    rmomcex(1:nmom,0:nzlocal)  multipoles, cos(theta) expansion terms on axial grid
+c    rmomsex(1:nmom,0:nzlocal)  multipoles, sin(theta) expansion terms on axial grid
 c 
 c
 c The multipole expansion is of the following schematic form 
@@ -800,7 +800,7 @@ c
       integer(ISZ):: l, k
 
 c     --- Set number of z grid points.
-      nzmom = nz
+      nzmom = nzlocal
 
 c     --- find the total number of moments nmom to be calculated and 
 c     --- resize dynamic arrays in the common block Multipole 
@@ -925,7 +925,7 @@ c       --- use in the linear least squares fit, first copy basis to usvd
         call dvdcmp(usvd,npts,nfit,nptsmx,nfitmx,wsvd,vsvd,tmp)
 c       --- loop over axial grid index iz, and calculate multipoles 
 c       --- with azimuthal mode number l at each index 
-        do iz = 0,nz
+        do iz = 0,nzlocal
 c         --- azimuthal integrals of the potential at each radial data point 
           do np = 1,npts
 c           --- angular increments in integral 

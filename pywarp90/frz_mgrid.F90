@@ -892,7 +892,7 @@ end subroutine assign_grids_ptr
 subroutine init_bnd(g,nr,nz,dr,dz,zmin,zmax)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 USE InGen3d, ONLY:l2symtry, l4symtry
-USE InMesh3d, ONLY:zmmin,zmmax
+USE InMesh3d, ONLY:zmminlocal,zmmaxlocal
 implicit none
 TYPE(GRIDtype), pointer :: g
 INTEGER(ISZ), INTENT(IN) :: nr, nz
@@ -1014,8 +1014,8 @@ TYPE(BNDtype), pointer :: b
 !    b%zmin = zmin
 !    b%zmax = zmax
 !#endif
-    b%zmin = zmmin
-    b%zmax = zmmax
+    b%zmin = zmminlocal
+    b%zmax = zmmaxlocal
 
 #ifdef MPIPARALLEL
     if(g%l_parallel) then
@@ -5851,12 +5851,12 @@ conductors%oddsubgrid%n = 0
 return
 end subroutine srfrvinoutrz
 
-subroutine setcndtrrz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz, &
+subroutine setcndtrrz(xmmin,zmminlocal,zmmin,zbeam,zgrid,nx,nz,dx,dz, &
                       bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 USE multigridrz
 use Conductor3d
 integer(ISZ):: nx,nz
-real(kind=8):: xmmin,zmmin,zmminglobal,zbeam,zgrid,dx,dz
+real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid,dx,dz
 integer(ISZ):: bound0_in,boundnz_in,boundxy_in
 logical(ISZ):: l2symtry_in,l4symtry_in
 
@@ -5890,7 +5890,7 @@ do igrid=1,ngrids
   conductors%evensubgrid%n = 0
   conductors%oddsubgrid%n = 0
 
-  call setcndtr_rz(rmin_in,zmin_in,zmminglobal,zbeam,zgrid,nrc,nzc,drc,dzc, &
+  call setcndtr_rz(rmin_in,zmin_in,zmmin,zbeam,zgrid,nrc,nzc,drc,dzc, &
                    bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
@@ -6480,7 +6480,7 @@ if (.not. lgtlchg3d) return
 dzi = 1./dz
 
 !conversion factor to go from grid frame to beam frame
-zz = zgrid + zmmin - zzmin - zbeam
+zz = zgrid + zmminlocal - zzmin - zbeam
 
 do iz=0,nzzarr
 
@@ -10083,25 +10083,25 @@ TYPE(BNDtype), pointer :: b
     mglevelslx(mglevel) = b%dr/grid%bndfirst%dr
     if (solvergeom==XYgeom) then
       mglevelsny(mglevel) = b%nz
-      mglevelsnzfull(mglevel) = 0
       mglevelsnz(mglevel) = 0
+      mglevelsnzlocal(mglevel) = 0
       mglevelsly(mglevel) = b%dz/grid%bndfirst%dz
       mglevelslz(mglevel) = 1.
     else
       mglevelsny(mglevel) = 0
 #ifdef MPIPARALLEL
       if(grid%l_parallel) then
-        mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
+        mglevelsnz(mglevel) = b%nz*nslaves/b%nworkpproc
         mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz!-1
       else
-        mglevelsnzfull(mglevel) = b%nz
+        mglevelsnz(mglevel) = b%nz
         mglevelsiz(mglevel) = 0
       endif
 #else
-      mglevelsnzfull(mglevel) = b%nz
+      mglevelsnz(mglevel) = b%nz
       mglevelsiz(mglevel) = 0
 #endif
-      mglevelsnz(mglevel) = b%nz
+      mglevelsnzlocal(mglevel) = b%nz
       mglevelsly(mglevel) = 1.
       mglevelslz(mglevel) = b%dz/grid%bndfirst%dz
     end if

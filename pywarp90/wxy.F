@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.82 $, $Date: 2007/05/02 21:31:43 $
+c@(#) File WXY.M, version $Revision: 3.83 $, $Date: 2007/06/04 22:53:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -100,14 +100,16 @@ c  Calculate step size if not set by the user.
 c  Set default values for the axial grid if using thin slice model.
 c  Zmmin and zmmax are chosen so that dz = 1.
       if (.not. lthick) then
-        if (zmmin == 0.0 .and. zmmax == 0.0) then
-          zmmin = -0.5
-          zmmax = -zmmin
+        if (zmminlocal == 0.0 .and. zmmaxlocal == 0.0) then
+          zmminlocal = -0.5
+          zmmaxlocal = -zmminlocal
         endif
         if (zimin == 0.0 .and. zimax == 0.0) then
           zimin = -0.5
           zimax = -zimin
         endif
+        zmmin = zmminlocal
+        zmmax = zmmaxlocal
         zmminglobal = zmmin
         zmmaxglobal = zmmax
         if (nz == 2) nz = 1
@@ -117,18 +119,20 @@ c  Zmmin and zmmax are chosen so that dz = 1.
 c     --- Use routine from w3d to initialize the MPI and divide up
 c     --- the problem. nz is set to nslaves so that the grid is divided
 c     --- up properly among the processors. Note that then init_w3d_parallel
-c     --- then divides nz by nslaves again for the decomposition. nz is only
-c     --- set when nzfull == 0, i.e. only the first time the generate
-c     --- is called.
+c     --- then divides nz by nslaves again for the decomposition.
       if (.not. lthick) then
-        if (nzfull == 0) nz = nslaves
+        nz = nslaves
       endif
+      nzfull = nz
       call init_w3d_parallel()
+#else
+      nzlocal = nz
+      nzfull = nz
 #endif
 
 c  Call the species routine again so that the values of zimin_s and
 c  zimax_s are set appropriately.  This resolves a circle where zimin is set
-c  equal to zmmin which depends on vbeam which is calculated in derivqty
+c  equal to zmminlocal which depends on vbeam which is calculated in derivqty
 c  which requires things from species which sets zimin_s equal to zimin
 c  which at that point will not be set (if the user didn't set it).
 
@@ -200,15 +204,14 @@ c  Setup arrays for potential and charge density for the particles.
       nyp = ny
 #ifndef MPIPARALLEL
       nzp = nz
-      zmminp = zmmin
-      zmmaxp = zmmax
+      zmminp = zmminlocal
+      zmmaxp = zmmaxlocal
 #endif
 
 c  Create the dynamic arrays for fields
 
-      if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
-      nmxyz = max(nx,ny,nzfull)
+      nmxyz = max(nx,ny,nz)
       call gallot("Fields3d", 0)
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
@@ -248,23 +251,23 @@ c  Calculate mesh dimensioning quantities
       do j = 0, ny
          ymesh(j) = j * dy + ymmin
       enddo
-      do k = 0, nzfull
-         zmesh(k) = k * dz + zmminglobal
-      enddo
       do k = 0, nz
-         zmeshlocal(k) = k * dz + zmmin
+         zmesh(k) = k * dz + zmmin
+      enddo
+      do k = 0, nzlocal
+         zmeshlocal(k) = k * dz + zmminlocal
       enddo
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
       iy_axis = nint(-ymmin/dy)
-      iz_axis = nint(-zmmin/dz)
+      iz_axis = nint(-zmminlocal/dz)
 
 c Initialize grid when solvergeom=XYgeom
       if(AMRlevels>0) solvergeom=XYgeom
       if(solvergeom==XYgeom) then
-        nz = 0
-        nzfull = nz
+        nzlocal = 0
+        nz = nzlocal
         fstype = 10
         call init_base(nx,ny,dx,dy,xmmin,ymmin)
       end if
@@ -311,8 +314,8 @@ c  damped mover.  They are always allocated, but with length 1 if not used.
 c  Create the dynamic arrays for "window" moments
 
       call remark(" ---  Allocating Win_Moments")
-      zwindows(1,0) = zmmin
-      zwindows(2,0) = zmmax
+      zwindows(1,0) = zmminlocal
+      zwindows(2,0) = zmmaxlocal
       nzwind = 0
       do iwin = 1, NWINDOWS
          if (zwindows(1,iwin) .ne. zwindows(2,iwin)) nzwind = nzwind + 1
@@ -329,8 +332,8 @@ c  thick slice model, though, should still calculate the zmoments.
       if (.not. lthick .and. ifzmmnt > 0) ifzmmnt = 1
       if (nzmmnt == 0) nzmmnt = nz
       call gallot("Z_Moments", 0)
-      if (zmmntmax == 0.) zmmntmax = zmmax
-      if (zmmntmin == 0.) zmmntmin = zmmin
+      if (zmmntmax == 0.) zmmntmax = zmmaxlocal
+      if (zmmntmin == 0.) zmmntmin = zmminlocal
       dzm = (zmmntmax - zmmntmin)/nzmmnt
       dzmi = 1./dzm
       do k = 0, nzmmnt
@@ -352,8 +355,8 @@ c     if (npsplt == 0) npsplt = nparpgrp-1
       if (xplmax == 0.) xplmax =  xmmax
       if (yplmin == 0.) yplmin = -ymmax
       if (yplmax == 0.) yplmax =  ymmax
-      if (zplmin == 0.) zplmin =  zmmin
-      if (zplmax == 0.) zplmax =  zmmax
+      if (zplmin == 0.) zplmin =  zmminlocal
+      if (zplmax == 0.) zplmax =  zmmaxlocal
 
 c  Setup history mechanism
 
@@ -728,7 +731,7 @@ c  Field-solve for potential
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (ANY(efetch == 3))
-     &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
+     &  call getselfe3d(phi(0,0,-1),nx,ny,nzlocal,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy,.true.)
 
 c  Initialize the moments arrays which are calculated during the synchv and
@@ -939,23 +942,23 @@ c=============================================================================
       if(solvergeom/=XYgeom) then
 c       --- Obtain the self-field from the electrostatic potential
         if (lwithez) then
-c         --- Note that zp, zgrid, and zmmin are all passed in as zero
+c         --- Note that zp, zgrid, and zmminlocal are all passed in as zero
 c         --- to avoid any possible funny business with rounding.
 c         --- ds is passed in for dz since that is the distance between
 c         --- the locations where phi is known.
           zpo = 0.
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),zpo,
-     &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
-     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.)
+     &                0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nzlocal,
+     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,0,0,1)
 c         --- The zp is preserved so that the small correction done
 c         --- in setdtp is still used.
           pgroup%zp(ipmin:ipmin+ip-1) = zpo
         else
           call sete3d(phi,selfe,ip,
      &                pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.)
+     &                zgridprv,xmmin,ymmin,zmminlocal,dx,dy,dz,nx,ny,nzlocal,
+     &                efetch(is),ex,ey,ez,l2symtry,l4symtry,.false.,0,0,1)
         endif
       elseif(solvergeom==XYgeom) then
         call fieldweightxz(pgroup%xp(ipmin),pgroup%yp(ipmin),ex,ey,ip,zgridprv,
@@ -1437,16 +1440,16 @@ c         --- Apply particle boundary conditions
 
           if (lthick) then
             if (periinz)
-     &         call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
+     &         call periz(nps(is),zp(ins(is)),zgrid,zmmaxlocal,zmminlocal)
             if (stickyz)
-     &         call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
+     &         call stckyz(nps(is),zp(ins(is)),zmmaxlocal,zmminlocal,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),zgrid)
           endif
 
           if (stickyxy)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,
      &                     yp(ins(is)),ymmax,ymmin,dy,
-     &                     zp(ins(is)),zmmin,dz,uxp(ins(is)),
+     &                     zp(ins(is)),zmminlocal,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         enddo
@@ -1505,10 +1508,10 @@ c       --- Fix the current
       return
       end
 c=============================================================================
-      subroutine fixrhoxy(rho,nx,ny,nz,periinz,lthick)
+      subroutine fixrhoxy(rho,nx,ny,nzlocal,periinz,lthick)
       use Subtimersxy
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       logical(ISZ):: periinz,lthick
 
 c  Sums the first and last slices of rho for periodicity
@@ -1520,15 +1523,15 @@ c  For thin slice model, average out rho along the axis.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
-      if(nz==0) return
+      if(nzlocal==0) return
 
       if (periinz) then
 
 !$OMP DO
         do ix=0,nx
           do iy=0,ny
-            rho(ix,iy,0)  = rho(ix,iy,0) + rho(ix,iy,nz)
-            rho(ix,iy,nz) = rho(ix,iy,0)
+            rho(ix,iy,0)  = rho(ix,iy,0) + rho(ix,iy,nzlocal)
+            rho(ix,iy,nzlocal) = rho(ix,iy,0)
           enddo
         enddo
 !$OMP END DO
@@ -1545,8 +1548,8 @@ c     --- Sum up rho over the processors.
       if (.not. lthick) then
 c       --- In the setrhoxy routine, all of the charge was put at iz=0.
 
-        if (nz > 1) then
-          nzi = 1./real(nz)
+        if (nzlocal > 1) then
+          nzi = 1./real(nzlocal)
 !$OMP DO
           do iy=0,ny
             do ix=0,nx
@@ -1558,7 +1561,7 @@ c       --- In the setrhoxy routine, all of the charge was put at iz=0.
 
 c       --- Distribute rho to all z planes.
 !$OMP DO
-        do iz=1,nz
+        do iz=1,nzlocal
           do iy=0,ny
             do ix=0,nx
               rho(ix,iy,iz) = rho(ix,iy,0)
@@ -2027,7 +2030,7 @@ c  the fixrhoxy routine is then used to distribute the charge density
 c  throughout the rho array after all of the particles have been deposited.
 
 
-c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nz) outside,
+c  Algorithm notes: rho array is dimensioned (0:nx,0:ny,0:nzlocal) outside,
 c  but is made one dimensional in this routine
 c  so cell index into 1d rho array for vectorized deposition is:
 c     i + j*(nx+1)
@@ -2389,7 +2392,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       if (lwxytimesubs) substarttime = wtime()
 
 c     --- zero rho if requested
-c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
+c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nzlocal+1))
       if(lzero) then
         if(solvergeom==XYgeom) then
           call reset_rzmgrid_rho()
@@ -2446,7 +2449,7 @@ c        --- loop over particle blocks
       enddo
 
 c     --- enforce axial periodicity if rho was zeroed
-      if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
+      if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nzlocal,periinz,lthick)
 
       if(solvergeom==XYgeom) then
 c  Distribute rho for AMR solver
@@ -2655,7 +2658,7 @@ c       --- Get information about the closest bend.
         if (bendres < 0.5 .or. iwhich > 0) then
 c         --- if not in a bend, then make direct call to vpxy
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
-            call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+            call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nzlocal+1))
           endif
           call vpxy(iwhich)
 
@@ -2676,7 +2679,7 @@ c         --- This is skipped on the first step since there is no old phi.
 
 c         --- Fill rest of phi array with copy of new phi
           call copyarry(phi(0,0,0),phi(0,0,-1),(nx+1)*(ny+1))
-          do iz=1,nz+1
+          do iz=1,nzlocal+1
             call copyarry(phi(0,0,0),phi(0,0,iz),(nx+1)*(ny+1))
           enddo
 

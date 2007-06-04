@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.126 $, $Date: 2007/04/24 21:37:35 $
+c@(#) File F3D.M, version $Revision: 3.127 $, $Date: 2007/06/04 22:50:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -253,7 +253,7 @@ c=======================================================================
 c=============================================================================
 c=============================================================================
       subroutine vpois3d(iwhich,a,ak,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                   lx,ly,lzfull,nx,ny,nz,nzfull,w,xywork,zwork,
+     &                   lx,ly,lzfull,nx,ny,nzlocal,nz,w,xywork,zwork,
      &                   ibc,l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Constant
       use Timers
@@ -261,13 +261,13 @@ c=============================================================================
 #ifdef MPIPARALLEL
       use Parallel
 #endif
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull,ibc
-      real(kind=8)::  a(0:nx, 0:ny, 0:nz)
-      real(kind=8):: ak(0:nx, 0:ny, -nz/2:nz/2)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull), filt(5,3)
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz,ibc
+      real(kind=8)::  a(0:nx, 0:ny, 0:nzlocal)
+      real(kind=8):: ak(0:nx, 0:ny, -nzlocal/2:nzlocal/2)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz), filt(5,3)
       real(kind=8):: lx, ly, lzfull
-      real(kind=8):: w(*), xywork(0:nx,0:ny), zwork(2,0:nx,0:nzfull)
+      real(kind=8):: w(*), xywork(0:nx,0:ny), zwork(2,0:nx,0:nz)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: bound0,boundnz,boundxy
       
@@ -322,7 +322,7 @@ c         NX, NY, NZ ... Number of mesh points (mesh runs from 0 to NX, etc.)
 c                        At present these must be powers of two.
 c                  W ... Workspace, length at least  NX + NY - 4
 c             XYWORK ... Transverse work array, dimensined (0:nx,0:ny)
-c              ZWORK ... Longitudinal work array, dimensioned (2,0:nx,0:nzfull)
+c              ZWORK ... Longitudinal work array, dimensioned (2,0:nx,0:nz)
 c                IBC ... Unused
 c           L2SYMTRY ... Switch for transverse 2-fold symmetry
 c           L4SYMTRY ... Switch for transverse 4-fold symmetry
@@ -383,7 +383,7 @@ c  This allows a non-power-of-2 for the tridiag in z field solver.
 
       if (  ( nx .ne. 2**int( .5 + log(1.*nx) / log(2.) ) )
      & .or. ( ny .ne. 2**int( .5 + log(1.*ny) / log(2.) ) )
-     & .or.(( nzfull .ne. 2**int( .5 + log(1.*nzfull) / log(2.) ) ) .and.
+     & .or.(( nz .ne. 2**int( .5 + log(1.*nz) / log(2.) ) ) .and.
      &      ( iwhich .ne. 1 .and. iwhich .ne. 12 .and. iwhich .ne. 13 .and.
      &        iwhich .ne. 14 ) ) ) then
          call kaboom("NX and NY must be powers of 2, NZ also unless using tridiag solver")
@@ -403,10 +403,10 @@ c     inext = icoy  + ny     is first word beyond workspace
 
 c  Set useful constants
 
-      nz2 = nzfull / 2
+      nz2 = nz / 2
       dx = lx / nx
       dy = ly / ny
-      dz = lzfull / nzfull
+      dz = lzfull / nz
       pib2 = .5 * pi
 
 c     --- Setup convenient logicals
@@ -426,9 +426,9 @@ c       --- Sine the tridiag solve is done in k-space, the transforms must
 c       --- be done over the full array.
 c       --- This is only used in the sections 12 and 13 when doing the
 c       --- transverse FFT's.
-        izmax = nz
+        izmax = nzlocal
       else
-        izmax = nz - 1
+        izmax = nzlocal - 1
       endif
 
 c  Minimum index of kxsq and kysq that is used
@@ -475,7 +475,7 @@ c        --- compute y direction coefficients ---
          endif
 c        --- compute z direction coefficients (note differences from x,y) ---
          do ikz = 0, nz2
-            kzsq(nz2+ikz) = (2./dz*sin(pi*ikz/nzfull))**2 * eps0
+            kzsq(nz2+ikz) = (2./dz*sin(pi*ikz/nz))**2 * eps0
             kzsq(nz2-ikz) = kzsq(nz2+ikz)
          enddo
 
@@ -523,20 +523,20 @@ c           --- compute second form of spatial filtering
 
 c        --- spatial filtering in z; binomial filter, or unity
          do ikz = 0, nz2
-           kdz = 2. * pi * ikz / nzfull
+           kdz = 2. * pi * ikz / nz
            attz(nz2+ikz) = (1.+2.*filt(5,3)*cos(kdz)) / (1.+2.*filt(5,3))
          enddo
          if (filt(1,3) .ne. 0. .or. filt(2,3) .ne. 0.) then
 c          --- compute first form of spatial filtering
            do ikz = 0, nz2
-              kdzb2 = pi * ikz / nzfull
+              kdzb2 = pi * ikz / nz
               attz(nz2+ikz) = attz(nz2+ikz) * (exp( filt(1,3)*(sin(kdzb2))**2
      &         - filt(2,3)*(tan(kdzb2))**4 ))**2
            enddo
          endif
          if (filt(3,3) .ne. 0.) then
 c          --- compute second form of spatial filtering
-           klast = filt(3,3) * nzfull / (2. * pi)
+           klast = filt(3,3) * nz / (2. * pi)
            do ikz = 0, nz2
               attz(nz2+ikz) = attz(nz2+ikz) * exp(-(ikz/klast)**filt(4,3))
            enddo
@@ -658,28 +658,28 @@ c         --- Normalization factor include above in the transver transform
 #ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
-        call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptranspose(nx,ny,nzlocal,a,nx_tran,ny_tran)
         transposed = .true.
 
         if (ny_tran == 1) then
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vpftz(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
+          call vpftz(0,nx_tran,nz,a,norm,0,1,nx_tran+1,zwork)
         else
 c         --- pass normal arguments
-          call vpftz(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
+          call vpftz(nx_tran,ny_tran-1,nz,a,norm,1,0,(nx_tran+1)*ny_tran,
      &               zwork)
         endif
 
         if (iwhich == 2 .or. iwhich == 10) then
 c         --- Transpose back if not doing the full field solve
-          call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
+          call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
           transposed = .false.
         endif
 #else
 c  Make call for serial code.
-        call vpftz(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftz(nx,ny,nzlocal,a,norm,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
       endif
@@ -722,15 +722,15 @@ c           --- precalculate min's.
               ikym = 0
             endif
 c           --- attenuate transposed array
-            call attenuate(nx_tran,ny_tran-1,nzfull,a,attx(ix),atty(iy),attz,
+            call attenuate(nx_tran,ny_tran-1,nz,a,attx(ix),atty(iy),attz,
      &                     ikxm,ikym,1,0,1)
           else
-            iz = my_index*nz
-            call attenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
+            iz = my_index*nzlocal
+            call attenuate(nx,ny,nzlocal,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
           endif
 #else
 c  Normal call for serial version.
-          call attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
+          call attenuate(nx,ny,nzlocal,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
 #endif
 
         endif
@@ -762,15 +762,15 @@ c         --- min's.
             ikym = 0
           endif
 c         --- make conversion with transposed array
-          call rhotophi(nx_tran,ny_tran-1,nzfull,a,kxsq(ix),kysq(iy),kzsq,
+          call rhotophi(nx_tran,ny_tran-1,nz,a,kxsq(ix),kysq(iy),kzsq,
      &                  ikxm,ikym,1,0,1)
         else
-          iz = my_index*nz
-          call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
+          iz = my_index*nzlocal
+          call rhotophi(nx,ny,nzlocal,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
         endif
 #else
 c  Call for Serial version
-        call rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
+        call rhotophi(nx,ny,nzlocal,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
 #endif
 
       endif
@@ -794,27 +794,27 @@ c         --- Normalization factor is include below in the transverse transform
 c  For parallel code, inverse transpose is used to redistribute phi into its
 c  original format.
         if (.not. transposed) then
-          call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
+          call warptranspose(nx,ny,nzlocal,a,nx_tran,ny_tran)
           transposed = .true.
         endif
         if (ny_tran == 1) then
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vpftzi(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
+          call vpftzi(0,nx_tran,nz,a,norm,0,1,nx_tran+1,zwork)
         else
 c         --- pass normal arguments
-          call vpftzi(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
+          call vpftzi(nx_tran,ny_tran-1,nz,a,norm,1,0,(nx_tran+1)*ny_tran,
      &                zwork)
         endif
 
 c       --- Rearrange phi again back to original arrangement.
-        call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
         transposed = .false.
 
 #else
 c  Call for serial version
-        call vpftzi(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftzi(nx,ny,nzlocal,a,norm,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
       endif
@@ -831,7 +831,7 @@ c ----------------------------------------------------------------------------
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
 c       --- Rearrange phi array so each axial line is on a single processor.
-        call warptranspose(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptranspose(nx,ny,nzlocal,a,nx_tran,ny_tran)
 
 c       --- Find location of transverse data relative to original dimensions.
         ix = mod(my_index*nx_tran,nx)
@@ -848,14 +848,14 @@ c       --- min's.
         else
           ikym = 0
         endif
-        call tridiag(nx_tran,ny_tran-1,nzfull,a,norm,
+        call tridiag(nx_tran,ny_tran-1,nz,a,norm,
      &               kxsq(ix),kysq(iy),kzsq,ikxm,ikym,0,zwork)
 
 c       --- Rearrange phi again back to original arrangement.
-        call warptransposei(nx,ny,nz,a,nx_tran,ny_tran)
+        call warptransposei(nx,ny,nzlocal,a,nx_tran,ny_tran)
 #else
 c  Serial version
-        call tridiag(nx,ny,nz,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,1,zwork)
+        call tridiag(nx,ny,nzlocal,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,1,zwork)
 #endif
 
       endif
@@ -937,11 +937,11 @@ c ----------------------------------------------------------------------------
 
 #ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
-        iz = my_index*nz
-        call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
+        iz = my_index*nzlocal
+        call unattenuate(nx,ny,nzlocal,a,attx,atty,attz(iz),ikxmin,ikymin,1,1,1)
 #else
 c  Call for Serial version
-        call unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
+        call unattenuate(nx,ny,nzlocal,a,attx,atty,attz,ikxmin,ikymin,1,1,1)
 #endif
 
       endif
@@ -955,12 +955,12 @@ c ----------------------------------------------------------------------------
 
 #ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
-        iz = my_index*nz
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
+        iz = my_index*nzlocal
+        call phitorho(nx,ny,nzlocal,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1,1)
 #else
 c  Call for Serial version
 #endif
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
+        call phitorho(nx,ny,nzlocal,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1,1)
 
       endif
 
@@ -2959,15 +2959,15 @@ c                                                                          =
 c===========================================================================
 c=======================================================================
       subroutine cmset3d(phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                   xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                   xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                   dx,dy,dz,xmmin,ymmin,zmmin,
      &                   scrtch,xywork,zwork,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
       use CapMat3d
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nzfull)
+      integer(ISZ):: nx,ny,nzlocal,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -2990,7 +2990,7 @@ c     --- find inverse capacity matrix
       do i=1,nc3d
 
 c       --- start with zero phi
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
         phi = 0.
 
 c       --- set phi with 1 Coulomb at conductor points (charge is scaled by
@@ -3026,7 +3026,7 @@ c       --- Solve for fields, with the filtering turned off
         endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                  zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                  zerofilt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                  scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
         deallocate(zerofilt)
@@ -3098,15 +3098,15 @@ c     --- Fill in lower half (which is the same as the upper half)
       end
 c============================================================================== 
       subroutine capmat3df(iwhich,phi,rho,kxsq,kysq,kzsq,attx,atty,attz,
-     &                    filt,xlen,ylen,zlen,nx,ny,nz,nzfull,dx,dy,dz,
+     &                    filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,dx,dy,dz,
      &                    xmmin,ymmin,zmmin,scrtch,xywork,zwork,
      &                    l2symtry,l4symtry,bound0,boundnz,boundxy)
       use CapMat3d
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nzfull)
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -3127,23 +3127,23 @@ c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
 
         call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
 
         call cmset3d(phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &               xlen,ylen,zlen,nx,ny,nz,nzfull,dx,dy,dz,xmmin,ymmin,zmmin,
+     &               xlen,ylen,zlen,nx,ny,nzlocal,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &               scrtch,xywork,zwork,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
         if (iwhich == 1) then
-          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
         endif
 
       elseif (iwhich > 1) then
 
 c       --- Make call to do the specialized action requested.
         call vpois3d(iwhich,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
 
@@ -3155,7 +3155,7 @@ c     --- If a full field solve was not desired, return.
 c     --- Do the first field solve (note that rho must have been copied into
 c     --- phi for this to work)
       call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &             scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &             bound0,boundnz,boundxy)
 
@@ -3186,7 +3186,7 @@ c     --- Multiply pcond by capacity matrix to get induced charge
       enddo
 
 c     --- Recopy rho into phi.
-      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
 
 c     --- Deposit induced charge onto grid
       do i=1,nc3d
@@ -3217,7 +3217,7 @@ c     --- Deposit induced charge onto grid
 c     --- Redo the field solve, now including both the beam space-charge and
 c     --- the induced charge in the conductor.
       call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
@@ -3234,15 +3234,15 @@ c                                                                          =
 c===========================================================================
 c=======================================================================
       subroutine cmkzset3d(phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                     xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                     xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                     dx,dy,dz,xmmin,ymmin,zmmin,
      &                     scrtch,xywork,zwork,l2symtry,l4symtry,
      &                     bound0,boundnz,boundxy)
       use CapMat3d
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nzfull)
+      integer(ISZ):: nx,ny,nzlocal,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -3261,11 +3261,11 @@ c     real(kind=8):: tt1,tt2
 c find capacity matrix
 
 c     --- Make sure capacity matrix is fully allocated.
-      nc3dz = nz
+      nc3dz = nzlocal
 #ifdef MPIPARALLEL
-      nc3dz2 = nz - 1
+      nc3dz2 = nzlocal - 1
 #else
-      nc3dz2 = nz/2
+      nc3dz2 = nzlocal/2
 #endif
       call gchange("CapMat3d",0)
 
@@ -3273,7 +3273,7 @@ c     --- find inverse capacity matrix
       do i=1,nc3d
 
 c       --- start with zero phi
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
         phi = 0.
 
 c       --- set phi with 1 Coulomb at conductor points (charge is scaled by
@@ -3297,13 +3297,13 @@ c       --- 2 or 4 at a symmetric boundary)
 c       --- Solve for fields, transforming only in x and y and skipping
 c       --- filtering.
         call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
         call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
         call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c       --- fill matrix with phi
@@ -3376,15 +3376,15 @@ c     --- End of loop over nc3dz
       end
 c============================================================================== 
       subroutine capmatkz3d(iwhich,phi,rho,kxsq,kysq,kzsq,attx,atty,attz,
-     &                      filt,xlen,ylen,zlen,nx,ny,nz,nzfull,dx,dy,dz,
+     &                      filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,dx,dy,dz,
      &                      xmmin,ymmin,zmmin,scrtch,xywork,zwork,
      &                      l2symtry,l4symtry,bound0,boundnz,boundxy)
       use CapMat3d
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nzfull)
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
       logical(ISZ):: l2symtry,l4symtry
@@ -3396,7 +3396,7 @@ c Assumes that beam's rho has been set, and copied into phi.
 c When filtering is being done, field solve is inexact since filtering is
 c applied to the induced charge.
 c For the serial version, advantage is taken by realizing the the capacity
-c matrix for the kz plane iz is the same as that for kz plane nz-iz. The
+c matrix for the kz plane iz is the same as that for kz plane nzlocal-iz. The
 c amount of storage then for the matrix then is halved.
 c For the parallel version though, the matrices for all planes is calculated
 c for simplicity. This avoids having to pass the matrices around, and does not
@@ -3412,23 +3412,23 @@ c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
 
         call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &              filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &              filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &              l2symtry,l4symtry,bound0,boundnz,boundxy)
 
         call cmkzset3d(phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                 xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                 xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                 dx,dy,dz,xmmin,ymmin,zmmin,
      &                 scrtch,xywork,zwork,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
         if (iwhich == 1) then
-          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
         endif
 
       elseif (iwhich > 1) then
 
 c       --- Make call to do the specialized action requested.
         call vpois3d(iwhich,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
 
@@ -3440,16 +3440,16 @@ c     --- If a full field solve was not desired, return.
 c     --- Do the first field solve (note that rho must have been copied into
 c     --- phi for this to work). The inverse transform in z is skipped.
       call vpois3d( 2,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 3,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c     --- Extract phi error from FFT solution and zero qcond3d
@@ -3469,7 +3469,7 @@ c     --- Extract phi error from FFT solution and zero qcond3d
 
 c     --- Multiply pcond3d by capacity matrix to get induced charge.
 c     --- Note the clever setting of iiz. For the serial code, this does
-c     --- the correct thing, since the capacity matrix for plane nz-iz is the
+c     --- the correct thing, since the capacity matrix for plane nzlocal-iz is the
 c     --- same as the matrix for plane iz.  For the parallel code, it also
 c     --- does the correct thing, i.e. nothing, since iiz is always < nc3dz2.
       do iz=0,nc3dz-1
@@ -3483,11 +3483,11 @@ c     --- does the correct thing, i.e. nothing, since iiz is always < nc3dz2.
       enddo
 
 c     --- Recopy rho into phi.
-      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nz))
+      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
 
 c     --- Transform in z
       call vpois3d(10,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c     --- Deposit induced charge onto grid
@@ -3514,13 +3514,13 @@ c     --- Deposit induced charge onto grid
 c     --- Finish the field solve, now including both the beam space-charge and
 c     --- the induced charge in the conductor.
       call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 5,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
@@ -3537,15 +3537,15 @@ c applied in kz space                                                      =
 c                                                                          =
 c===========================================================================
       subroutine pipe3df(iwhich,pipeshpe,rho,phi,kxsq,kysq,kzsq,attx,atty,attz, 
-     &                  filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,
+     &                  filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,
      &                  l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Pipe3d
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
       character(*):: pipeshpe
-      real(kind=8):: rho(0:nx,0:ny,0:nz), phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull)
-      real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nzfull)
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal), phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
+      real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: bound0,boundnz,boundxy
@@ -3556,11 +3556,11 @@ c  If iwhich is '0' or '1', also allocates local variables
 
 
 c  Allocate local variables
-      pipenz = nz
+      pipenz = nzlocal
 #ifdef MPIPARALLEL
-      pipenz2 = nz - 1
+      pipenz2 = nzlocal - 1
 #else
-      pipenz2 = nz/2
+      pipenz2 = nzlocal/2
 #endif
       if (iwhich == 0 .or. iwhich == 1) then
         if (pipen == 0) pipen = 2*nx
@@ -3570,7 +3570,7 @@ c  Allocate local variables
 
 c  Call field solver
       call vpipe3d(iwhich,pipeshpe,rho,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,
      &             piperadi,pipen,pipenz,pipenz2,pipe8th,pipex,pipey,
      &             pipephi,pipeq,cap3d,kpvt,l2symtry,l4symtry,
      &             bound0,boundnz,boundxy)
@@ -3579,18 +3579,18 @@ c  Call field solver
       end
 c=======================================================================
       subroutine pipest3d(pipeshpe,cap,phi,kxsq,kysq,kzsq,attx,atty,attz, 
-     &                    filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                    filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                    scrtch,xywork,zwork,
      &                    piperadi,pipen,pipenz2,pipe8th,pipex,pipey,cap3d,kpvt,
      &                    l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Constant
-      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nx,ny,nzlocal,nz
       character(*):: pipeshpe
       real(kind=8):: cap(2*(nx+ny),*)
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull)
-      real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nzfull)
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
+      real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen, piperadi
       integer(ISZ):: pipen,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1), pipey(pipen+1), cap3d(pipen,pipe8th,0:pipenz2)
@@ -3650,7 +3650,7 @@ c     --- find inverse capacity matrix for all kz
 c     --- calculate stuff for first eighth (using phi for convenience)
 c     --- storing it in cap3d temporarily
       do i=1,pipe8th
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(nz+1))
+c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
         phi = 0.
 c       --- set phi with z transform of sinusoidal line charge for all kz
         ix = pipex(i)
@@ -3665,15 +3665,15 @@ c       --- set phi with z transform of sinusoidal line charge for all kz
         enddo
 c       --- do transform in x and y
         call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- divide by k squared
         call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- inverse transform in x and y to find phi(kz)
         call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- fill matrix with phi(kz)
         do j=1,pipen
@@ -3761,17 +3761,17 @@ c       --- store matrix in 3-D array (cap only contains upper half)
       end
 c============================================================================== 
       subroutine vpipe3d(iwhich,pipeshpe,rho,phi,kxsq,kysq,kzsq,attx,atty,attz, 
-     &                   filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,
+     &                   filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,
      &                   piperadi,pipen,pipenz,pipenz2,pipe8th,pipex,pipey,
      &                   pipephi,pipeq,cap3d,kpvt,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
       character(*):: pipeshpe
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nzfull)
-      real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(2,0:nx,0:nzfull)
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
+      real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(2,0:nx,0:nz)
       real(kind=8):: xlen,ylen,zlen,piperadi
       integer(ISZ):: pipen,pipenz,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1),pipey(pipen+1),cap3d(pipen,pipe8th,0:pipenz2)
@@ -3790,17 +3790,17 @@ c assumes that rho has been set, and copied into phi.
 c initialize capacity matrix and arrays for poisson solve
       if (iwhich == 1 .or. iwhich == 0) then
         call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               filt,xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
         call pipest3d(pipeshpe,phi,phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                scrtch,xywork,zwork,
      &                piperadi,pipen,pipenz2,pipe8th,pipex,pipey,cap3d,kpvt,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
         if (iwhich == 0) then
 c         --- Copy rho back into phi since phi was scrambled during the
 c         --- calculation of the matrix.
-          call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nz+1))
+          call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
         endif
       endif
 
@@ -3808,16 +3808,16 @@ c         --- calculation of the matrix.
 
 c do first partial field solve (without z transform at end)
       call vpois3d( 2,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 3,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c apply cap matrix for each kz to get induced rho(kz)
@@ -3902,11 +3902,11 @@ c     --- mpy pipephit by cap matrix (using reduced storage)
       enddo
 
 c     --- set up for field solve
-      call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nz+1))
+      call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
 
 c     --- transform in z
       call vpois3d(10,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &             xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c     --- deposit induced rho(kz) onto grid
@@ -3925,13 +3925,13 @@ c     --- deposit induced rho(kz) onto grid
 
 c     --- complete the field solve
       call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       call vpois3d( 5,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,nx,ny,nz,nzfull,scrtch,xywork,zwork,0,
+     &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
@@ -3944,19 +3944,19 @@ c
 c Capacity matrix solver for 3-d structures
 c
 c============================================================================== 
-      subroutine setcap3d(ncndpts,quadx,quady,quadz,quadcap,kpvt,nx,ny,nz,
-     &                    nzfull,
+      subroutine setcap3d(ncndpts,quadx,quady,quadz,quadcap,kpvt,nx,ny,nzlocal,
+     &                    nz,
      &                    phi,work,xywork,zwork,kxsq,kysq,kzsq,attx,atty,attz,
      &                    xlen,ylen,zlen,filt,l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
-      integer(ISZ):: ncndpts,nx,ny,nz,nzfull
+      integer(ISZ):: ncndpts,nx,ny,nzlocal,nz
       real(kind=8):: quadx(ncndpts,4), quady(ncndpts,4), quadz(ncndpts)
       real(kind=8):: quadcap(4*ncndpts,4*ncndpts)
       integer(ISZ):: kpvt(4*ncndpts)
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: work(nx+ny-4),xywork(*),zwork(2,0:nx,0:nzfull)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull)
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: work(nx+ny-4),xywork(*),zwork(2,0:nx,0:nz)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3)
       real(kind=8):: xlen, ylen, zlen
       logical(ISZ):: l2symtry,l4symtry
@@ -3985,21 +3985,21 @@ c  rest of variables are input and have the standard meanings.
 
       dx = xlen/nx
       dy = ylen/ny
-      dz = zlen/nzfull
+      dz = zlen/nz
 
 c  calculate inverse cap matrix
 
 c  first calculate capacities for one conductor
       do i=1,ncndpts
-c       call zeroarry(phi,(nx+1)*(ny+1)*(nz+1))
+c       call zeroarry(phi,(nx+1)*(ny+1)*(nzlocal+1))
         phi = 0.
 c  deposit unit charge on grid
         ix = quadx(i,1)/dx + nx/2
         xx = quadx(i,1)/dx + nx/2 - ix
         iy = quady(i,1)/dy + ny/2
         yy = quady(i,1)/dy + ny/2 - iy
-        iz = quadz(i)/dz + nz/2 - 4
-        zz = quadz(i)/dz + nz/2 - 4 - iz
+        iz = quadz(i)/dz + nzlocal/2 - 4
+        zz = quadz(i)/dz + nzlocal/2 - 4 - iz
         phi(ix  ,iy  ,iz  ) = (1. - xx)*(1. - yy)*(1. - zz)
         phi(ix+1,iy  ,iz  ) = (     xx)*(1. - yy)*(1. - zz)
         phi(ix  ,iy+1,iz  ) = (1. - xx)*(     yy)*(1. - zz)
@@ -4019,7 +4019,7 @@ c  do 3-d field solve, turning filtering off
         endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &               zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,work,
+     &               zerofilt,xlen,ylen,zlen,nx,ny,nzlocal,nz,work,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
         deallocate(zerofilt)
 c  fill i'th column of inverse cap matrix
@@ -4029,8 +4029,8 @@ c  fill i'th column of inverse cap matrix
             xx = quadx(j,ic)/dx + nx/2 - ix
             iy = quady(j,ic)/dy + ny/2
             yy = quady(j,ic)/dy + ny/2 - iy
-            iz = quadz(j)/dz + nz/2 - 4
-            zz = quadz(j)/dz + nz/2 - 4 - iz
+            iz = quadz(j)/dz + nzlocal/2 - 4
+            zz = quadz(j)/dz + nzlocal/2 - 4 - iz
             quadcap(i,j+(ic-1)*ncndpts) =
      &                     phi(ix  ,iy  ,iz  )*(1. - xx)*(1. - yy)*(1. - zz) +
      &                     phi(ix+1,iy  ,iz  )*(     xx)*(1. - yy)*(1. - zz) +
@@ -4068,17 +4068,17 @@ c  now reduce to allow inversion
       return
       end
 c==========================================================================
-      subroutine capfs(iwhich,nx,ny,nz,nzfull,phi,rho,
+      subroutine capfs(iwhich,nx,ny,nzlocal,nz,phi,rho,
      &                 xlen,ylen,zlen,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 work,workz,xywork,zwork,xmmax,pipeshpe,
      &                 l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Capvars
       use GlobalVars
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
-      real(kind=8):: phi(0:nx,0:ny,0:nz), rho(0:nx,0:ny,0:nz)
-      real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nzfull)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull)
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal), rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nz)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: xlen, ylen, zlen, filt(5,3), xmmax
       character(*):: pipeshpe
       logical(ISZ):: l2symtry,l4symtry
@@ -4094,7 +4094,7 @@ c  rest of variables have the standard meanings
 
       dx = xlen/nx
       dy = ylen/ny
-      dz = zlen/nzfull
+      dz = zlen/nz
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -4104,7 +4104,7 @@ c  initialization
 c    intialize vpois3d vars
         call vpois3d (1, phi(0,0,0), phi(0,0,0), kxsq, kysq, kzsq,
      &                attx, atty, attz, filt, xlen, ylen, zlen,
-     &                nx, ny, nz,nzfull, work, xywork, zwork, 0,
+     &                nx, ny, nzlocal,nz, work, xywork, zwork, 0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 c    set up conductor point arrays and gchange array sizes
         call cndctr3d(nx,ny,xmmax,dx,dy,quadradi,quadcent,
@@ -4112,14 +4112,14 @@ c    set up conductor point arrays and gchange array sizes
      &                nzquad, qdslclen, pipeshpe, loadquad)
         call gchange("Capvars",0)
 c    set up capacity matrix
-        call setcap3d(ncndpts,quadx,quady,quadz,quadcap,kkkk,nx,ny,nz,nzfull,
+        call setcap3d(ncndpts,quadx,quady,quadz,quadcap,kkkk,nx,ny,nzlocal,nz,
      &                phi,work,xywork,zwork,kxsq,kysq,kzsq,
      &                attx,atty,attz,xlen,ylen,
      &                zlen,filt,l2symtry,l4symtry,bound0,boundnz,boundxy)
         if (iwhich == 0) then
 c         --- Copy rho back into phi since phi was scrambled during the
 c         --- calculation of the matrix.
-          call copyarry(rho,phi,(nx+1)*(ny+1)*(nz+1))
+          call copyarry(rho,phi,(nx+1)*(ny+1)*(nzlocal+1))
         endif
       endif
 
@@ -4128,7 +4128,7 @@ c  return if only being initialized
 
 c  do 3-d field solve
       call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,work,xywork,zwork,
+     &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,work,xywork,zwork,
      &             0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c  zero induced charge array
@@ -4142,7 +4142,7 @@ c    find z's of conducting points relative to grid
         do iquad=1,ncndpts
           workz(iquad) = (quadz(iquad) + quadend(iend))*dzi
           if (workz(iquad) < 0) workz(iquad) = 0.
-          if (workz(iquad) >= nz) workz(iquad) = nz - 1.
+          if (workz(iquad) >= nzlocal) workz(iquad) = nzlocal - 1.
         enddo
 
 c    apply 3-d cap matrix to the four conductors
@@ -4174,14 +4174,14 @@ c     solve for induced charge by solving phi = matrix*rho
       enddo
 
 c  reload rho back into phi
-      call copyarry(rho,phi,(nx+1)*(ny+1)*(nz+1))
+      call copyarry(rho,phi,(nx+1)*(ny+1)*(nzlocal+1))
 
-c  if periodic in z, zero out iz=nz plane so that plane will only have
+c  if periodic in z, zero out iz=nzlocal plane so that plane will only have
 c  image charges (plane 0 will have both image charges and beam charge)
 c     if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
-            phi(ix,iy,nz) = 0.
+            phi(ix,iy,nzlocal) = 0.
           enddo
         enddo
 c     endif
@@ -4199,8 +4199,8 @@ c    find z's relative to grid and zero quadrho that are off the grid
             quadrho(iquad,3,iend) = 0.
             quadrho(iquad,4,iend) = 0.
           endif
-          if (workz(iquad) >= nz) then
-            workz(iquad) = nz - 1.
+          if (workz(iquad) >= nzlocal) then
+            workz(iquad) = nzlocal - 1.
             quadrho(iquad,1,iend) = 0.
             quadrho(iquad,2,iend) = 0.
             quadrho(iquad,3,iend) = 0.
@@ -4237,14 +4237,14 @@ c    load charge onto each of the four conductors in this lens
         enddo
       enddo
 
-c Make phi periodic by adding planes iz=0 and nz and placing result back into
+c Make phi periodic by adding planes iz=0 and nzlocal and placing result back into
 c both planes.  (Note that plane 0 has beam charge and additional image charge 
-c while plane nz has only image charge.)
+c while plane nzlocal has only image charge.)
 c     if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
-            phi(ix,iy,0) = phi(ix,iy,0) + phi(ix,iy,nz)
-            phi(ix,iy,nz) = phi(ix,iy,0)
+            phi(ix,iy,0) = phi(ix,iy,0) + phi(ix,iy,nzlocal)
+            phi(ix,iy,nzlocal) = phi(ix,iy,0)
           enddo
         enddo
 c     endif
@@ -4253,7 +4253,7 @@ c  finished with conductors, so...
 c  now do full 3-d field solve, with induced charges
       call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,
      &              attx,atty,attz,filt,xlen,ylen,zlen,
-     &              nx,ny,nz,nzfull,work,xywork,zwork,
+     &              nx,ny,nzlocal,nz,work,xywork,zwork,
      &              0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
@@ -4414,10 +4414,10 @@ c  final value of ncndpts
       end
 c=============================================================================
       subroutine findqdnd(nquad,quadzs,quadze,quadde,quadvx,quadvy,
-     &                    zmmin,zgrid,nz,dz,
+     &                    zmmin,zgrid,nzlocal,dz,
      &                    numends,nendmax,quadend,quadvlt,
      &                    vshift,quadcent,quadradi)
-      integer(ISZ):: nquad,nz,numends,nendmax
+      integer(ISZ):: nquad,nzlocal,numends,nendmax
       real(kind=8):: quadzs(0:nquad), quadze(0:nquad), quadde(0:nquad)
       real(kind=8):: quadvx(0:nquad), quadvy(0:nquad)
       real(kind=8):: quadvlt(nendmax), quadend(nendmax), vshift(nendmax)
@@ -4438,7 +4438,7 @@ c     --- If there are no quads, then just return
 c  get rest of quads within mesh
       iq = 0
       iqprev = -1
-      do iz=1,nz-1
+      do iz=1,nzlocal-1
         call getquadid(zmmin+iz*dz+zgrid,offset,iq,1)
         if (iq .ne. iqprev .and. numends < nendmax) then
           numends = numends + 1
@@ -4454,17 +4454,17 @@ c  get rest of quads within mesh
       end
 c=============================================================================
       subroutine vcap3d(iwhich,rho,phi,kxsq,kysq,kzsq, 
-     &                  attx,atty,attz,filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                  attx,atty,attz,filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                  scrtch,xywork,zwork,xmmax,zmmin,zgrid,pipeshpe,
      &                  l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Capvars
       use Lattice
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
-      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull)
-      real(kind=8):: filt(5,3), scrtch(*), xywork(*), zwork(2,0:nx,0:nzfull)
+      integer(ISZ):: iwhich,nx,ny,nzlocal,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
+      real(kind=8):: filt(5,3), scrtch(*), xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen
       real(kind=8):: xmmax,zmmin,zgrid
       character(*):: pipeshpe
@@ -4479,11 +4479,11 @@ c  If iwhich is '0' or '1', also allocates local variables
       real(kind=8):: dz,offset
       integer(ISZ):: iq
 
-      dz = zlen/nzfull
+      dz = zlen/nz
 
 c  find quad starts
       call findqdnd(nquad,quadzs,quadze,quadde,quadvx,quadvy,
-     &              zmmin,zgrid,nz,dz,
+     &              zmmin,zgrid,nzlocal,dz,
      &              numends,nendmax,quadend,quadvlt,vshift,quadcent,quadradi)
 
 c  Allocate local variables
@@ -4502,7 +4502,7 @@ c  Allocate local variables
       endif
 
 c  Call field solver, which may also do initialization
-      call capfs(iwhich,nx,ny,nz,nzfull,phi,rho,xlen,ylen,zlen,kxsq,kysq,kzsq,
+      call capfs(iwhich,nx,ny,nzlocal,nz,phi,rho,xlen,ylen,zlen,kxsq,kysq,kzsq,
      &           attx,atty,attz,filt,scrtch,scrtch,xywork,zwork,
      &           xmmax,pipeshpe,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -4517,7 +4517,7 @@ c PSOR3D field solver
 c
 c===========================================================================
       subroutine psor3df(iwhich,nx,ny,nz,phi,rho,phi1d,rho1d,rstar,dx,dy,dz,
-     &                  xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,linbends,
+     &                  xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,linbends,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
      &                  scrtch,izfsmin,izfsmax)
       use PSOR3d
@@ -4529,7 +4529,7 @@ c===========================================================================
       integer(ISZ):: iwhich,nx,ny,nz,izfsmin,izfsmax
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: phi1d(*),rho1d(*),scrtch(*)
-      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid
+      real(kind=8):: dx,dy,dz,xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid
       logical(ISZ):: linbends
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry,lzerophiedge
@@ -4607,7 +4607,7 @@ c       --- Zero the number of conductor points
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
 c       --- Generate new conductors.
-        call setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+        call setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,
      &                dx,dy,dz,bound0,boundnz,boundxy,l2symtry,l4symtry)
       endif
 
@@ -5596,14 +5596,14 @@ c Fix longitudinal boundary conditions for the parallel version.
       end
 c===========================================================================
 c===========================================================================
-      subroutine setcndtr(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+      subroutine setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,
      &                    dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom,XZgeom
       use Conductor3d
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5615,25 +5615,25 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
 c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call setcndtrrz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz,
+        call setcndtrrz(xmmin,zmminlocal,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
-        call setcndtr3dmg(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,
+        call setcndtr3dmg(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,
      &                    dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    conductors)
 c     else if(fstype==11) then
-c       call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+c       call setcndtr3d(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
 c    &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else
-        call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+        call setcndtr3d(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       end if
 
       return
       end
 c===========================================================================
-      subroutine setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+      subroutine setcndtr3d(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,
      &                      nx,ny,nz,dx,dy,dz,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry)
       use Constant
@@ -5643,7 +5643,7 @@ c===========================================================================
       use Lattice
       use InjectVars
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5696,7 +5696,7 @@ c     ---   5: plate right of quad
         islctype(iz) = 0
 
 c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
+        zz = zgrid + zmminlocal + iz*dz
 
 c       --- Get id of quadrupole element
         call getquadid(zz,offset,iq,1)
@@ -5843,7 +5843,7 @@ c     --- loop over z planes
       iq = 0
       do iz=0,nz
 c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
+        zz = zgrid + zmminlocal + iz*dz
 
 c       --- Get id of quadrupole element
         call getquadid(zz,offset,iq,1)
@@ -5946,7 +5946,7 @@ c         --- hyperbola intercept
 
           call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
      &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
+     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmminlocal,dz,iz,
      &               slicvx(iz)+qdelvxp(iq))
 
 c         +++ do rod on negative x axis
@@ -6014,7 +6014,7 @@ c           --- distance of rod center from centerline
 
             call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
      &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
+     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmminlocal,dz,iz,
      &               slicvx(iz)+qdelvxm(iq))
 
           endif
@@ -6099,7 +6099,7 @@ c         --- distance of rod center from centerline
 
           call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
      &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
+     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmminlocal,dz,iz,
      &               slicvy(iz)+qdelvyp(iq))
 
 c         +++ do rod on negative y axis
@@ -6166,7 +6166,7 @@ c           --- distance of rod center from centerline
 
             call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
      &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
+     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmminlocal,dz,iz,
      &               slicvy(iz)+qdelvym(iq))
 
           endif
@@ -6210,7 +6210,7 @@ c     --- must also be checked.
       iq = 0
       do iz=-1,nz+1
 c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
+        zz = zgrid + zmminlocal + iz*dz
 
 c       --- Get id of quadrupole element
         call getquadid(zz,offset,iq,1)
@@ -6250,7 +6250,7 @@ c       --- out of bounds.
           ycent = qoffy(iq) + iy_axis*dy + ymmin
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
-     &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
+     &                    zmminlocal,zmminlocal+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,0.,0.,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
@@ -6282,7 +6282,7 @@ c       --- out of bounds.
           rmax = quadpr(iq) + qdelprr(iq)
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
-     &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
+     &                    zmminlocal,zmminlocal+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,0.,0.,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
@@ -6331,11 +6331,11 @@ c       --- value to ensure that first dipole is included.
 c       --- loop over z in the lattice array looking for dipoles
         id = 0
         do iz=0,nz
-          zz = zgrid + zmmin + iz*dz
+          zz = zgrid + zmminlocal + iz*dz
           call getdipoid(zz,offset,id,1)
 
 c         --- calculate center of dipole
-          dipocent = .5*(dipozs(id) + dipoze(id)) - zmmin - zgrid
+          dipocent = .5*(dipozs(id) + dipoze(id)) - zmminlocal - zgrid
 
 c         --- If the center is greater than center of previous dipole,
 c         --- then at a new dipole, so load in points.
@@ -6399,7 +6399,7 @@ c     --- end of dipoles
 
 c +++++++++++++++++++++++++++
 c Include injection source
-      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
+      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmminlocal)
 
       return
       end
@@ -7241,7 +7241,7 @@ c===========================================================================
 c===========================================================================
       subroutine srfrvoutf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                     xmin,xmax,ymin,ymax,lshell,
-     &                     zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                     condid)
       use Surface_of_Rev
@@ -7252,7 +7252,7 @@ c===========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
+      real(kind=8):: zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -7282,7 +7282,7 @@ c             with points.
 c   lshell    is the logical requesting that the shell be subgrid resolved
 c   xmin,xmax,ymin,ymax
 c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
@@ -7308,18 +7308,18 @@ c     --- Call the appropriate version of the routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
      &                    xmin,xmax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                    zmminlocal,zmmaxlocal,zbeam,dx,dz,nx,nz,
      &                    ix_axis,xmesh,l2symtry,l4symtry,condid)
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid,
      &                    conductors)
       else
         call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                  xmin,xmax,ymin,ymax,lshell,
-     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,
      &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       end if
 
@@ -7847,7 +7847,7 @@ c========================================================================
 c========================================================================
       subroutine srfrvinf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,
      &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
@@ -7858,7 +7858,7 @@ c========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
-      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
+      real(kind=8):: zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -7888,7 +7888,7 @@ c             with points.
 c   lshell    is the logical requesting that the shell be subgrid resolved
 c   xmin,xmax,ymin,ymax
 c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
@@ -7912,14 +7912,14 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
-     &                 zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                 zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
      &                 xmesh,ymesh,l2symtry,l4symtry,condid,conductors)
       else
 c     --- Call the appropriate routine
         call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
-     &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                 zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
      &                 xmesh,ymesh,l2symtry,l4symtry,condid)
       endif
@@ -7942,7 +7942,7 @@ c========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
-      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -8457,7 +8457,7 @@ c                 --- odd
 c===========================================================================
       subroutine srfrvinoutf(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                       lzend,xmin,xmax,ymin,ymax,lshell,
-     &                       zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                       condid)
       use Surface_of_Rev
@@ -8468,7 +8468,7 @@ c===========================================================================
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz
+      real(kind=8):: zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
@@ -8498,7 +8498,7 @@ c             included
 c   lshell    is the logical requesting that the shell be subgrid resolved
 c   xmin,xmax,ymin,ymax
 c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
@@ -8533,18 +8533,18 @@ c     --- Call the appropriate routine
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
          call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
      &                     lzend,xmin,xmax,lshell,
-     &                     zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                     zmminlocal,zmmaxlocal,zbeam,dx,dz,nx,nz,
      &                     ix_axis,xmesh,l2symtry,l4symtry,condid)
       else if (solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
-     &                     zmmin,zmmax,zmminglobal,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     zmminlocal,zmmaxlocal,zmmin,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid,
      &                     conductors)
       else
         call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                    lzend,xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    zmminlocal,zmmaxlocal,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       end if
 
@@ -9346,15 +9346,15 @@ c       --- Get r(z) from the Python function.
       return
       end
 c===========================================================================
-      subroutine setcndtr_rz(xmmin,zmmin,zmminglobal,zbeam,zgrid,nx,nz,dx,dz,
+      subroutine setcndtr_rz(xmmin,zmminlocal,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,nz
-      real(kind=8):: xmmin,zmmin,zmminglobal,zbeam,zgrid,dx,dz
+      real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid,dx,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
-      call setcndtr3d(xmmin,0.,zmmin,zmminglobal,zbeam,zgrid,nx,0,nz,dx,dx,dz,
+      call setcndtr3d(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nz,dx,dx,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return
@@ -9406,16 +9406,16 @@ c===========================================================================
       return
       end
 c===========================================================================
-      subroutine setcndtr_3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+      subroutine setcndtr_3d(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,
      &                       nx,ny,nz,dx,dy,dz,
      &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,dx,dy,dz
+      real(kind=8):: xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
-      call setcndtr3d(xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,
+      call setcndtr3d(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,
      &                nx,ny,nz,dx,dy,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.90 $, $Date: 2007/05/02 17:57:36 $
+c@(#) File w3d_injection.F, version $Revision: 1.91 $, $Date: 2007/06/04 22:53:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -668,7 +668,7 @@ c             --- When using the RZ solver, inj_rho is forced to be
 c             --- four-fold symmetric.
               call inj_setrho3d(pgroup,inj_dz,.false.,.true.)
             elseif(solvergeom==Zgeom) then
-              call inj_setrho3d_z(pgroup,inj_dz,nz)
+              call inj_setrho3d_z(pgroup,inj_dz,nzlocal)
             endif
           endif
 
@@ -1124,7 +1124,7 @@ c         --- removal of particles outside the grid.
             if (npinje_s(jsid+1) > 0) then
               call stckxy3d(npinje_s(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
      &                      pgroup%yp(ii),ymmax,
-     &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
+     &                      ymmin,dy,pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
      &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
               call processlostpart(pgroup,is,clearlostpart,time,zbeam)
@@ -1516,7 +1516,7 @@ c                   --- Find coordinates of the point.
 c                   --- This only works with basic 3d and RZ solvers
                     p1x = abs(xtinject(ij) + p1x - xmmin)/dx
                     p1y = abs(ytinject(ij) + p1y - ymmin)/dy
-                    p1z = (zm - zmmin)/dz
+                    p1z = (zm - zmminlocal)/dz
                     i1x = p1x
                     i1y = p1y
                     i1z = p1z
@@ -1625,7 +1625,7 @@ c         --- removal of particles outside the grid.
             if (ntinject(jsid+1) > 0) then
               call stckxy3d(ntinject(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
      &                      pgroup%yp(ii),ymmax,
-     &                      ymmin,dy,pgroup%zp(ii),zmmin,dz,pgroup%uxp(ii),
+     &                      ymmin,dy,pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
      &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
      &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
               call processlostpart(pgroup,is,clearlostpart,time,zbeam)
@@ -2299,9 +2299,9 @@ c regions have changed.
       inj_zmmin = zpslmin(my_index)
       inj_zmmax = zpslmax(my_index)
 #else
-      use InMesh3d,Only: zmmin,zmmax
-      inj_zmmin = zmmin
-      inj_zmmax = zmmax
+      use InMesh3d,Only: zmminlocal,zmmaxlocal
+      inj_zmmin = zmminlocal
+      inj_zmmax = zmmaxlocal
 #endif
 
       return
@@ -3532,7 +3532,7 @@ c       --- rho only on the right side of the emitting surface.
       return
       end
 c=============================================================================
-      subroutine inj_setrho3d_z(pgroup,dz,nz)
+      subroutine inj_setrho3d_z(pgroup,dz,nzlocal)
       use ParticleGroupmodule
       use Subtimers3d
       use InPart
@@ -3540,7 +3540,7 @@ c=============================================================================
       use InjectVars3d
       use Constant
       type(ParticleGroup):: pgroup
-      integer(ISZ):: nz
+      integer(ISZ):: nzlocal
       real(kind=8):: dz
 
 c Calculate the charge density on the emitting surface.  The particles are

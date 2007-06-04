@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.34 $, $Date: 2007/04/14 00:09:00 $
+c F3DSLAVE.M, version $Revision: 1.35 $, $Date: 2007/06/04 22:50:31 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -98,7 +98,7 @@ c
 c NOTICE: In cases where (nx+ny) < nslaves, the size of the transposed
 c phi is LARGER than the size of phi. Extra padding must be added to the
 c end of phi of size
-c izextra = (nzfull - nzfull/nslaves*(nx+ny)/(nx*ny))
+c izextra = (nz - nz/nslaves*(nx+ny)/(nx*ny))
 c and with phi dimensions as
 c phi(0:nx,0:ny,0:nz+izextra)
 c
@@ -391,8 +391,8 @@ c     --- Allocate space if needed or requested
       if (iwhich == 0 .or. iwhich == 1 .or. .not. lalloted) then
         nxlan = nx
         nylan = ny
-        nzlan = nz
-        nzfulllan = 2*nslaves
+        nzlan = 2*nslaves
+        nzlocallan = nz
         if (ny .ge. nslaves) then
           nxtranlan = nx
           nytranlan = ny/nslaves
@@ -778,9 +778,9 @@ c=============================================================================
 c==== Parallel routines for the multigrid fieldsolver
 c=============================================================================
       subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                      nzfull,nzfullcoarse)
+     &                      nz,nzcoarse)
       use Subtimersf3d
-      integer(ISZ):: nslaves,nzfull,nzfullcoarse
+      integer(ISZ):: nslaves,nz,nzcoarse
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
 
@@ -797,9 +797,9 @@ c also, subtract 1 from izfsslave.
 
 c       --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
 c       --- is rounded up.
-        izfsslavec(is) = int(floor(1.*izfsslave(is)*nzfullcoarse/nzfull))
+        izfsslavec(is) = int(floor(1.*izfsslave(is)*nzcoarse/nz))
         nzfsslavec(is) = int(ceiling(1.*(izfsslave(is)+nzfsslave(is))*
-     &                                nzfullcoarse/nzfull - izfsslavec(is)))
+     &                                nzcoarse/nz - izfsslavec(is)))
 
 c       --- Then check that no nz are less than nzmin.
 c       --- Note that if nzfsslave is already < nzmin, leave it as is.
@@ -811,9 +811,9 @@ c       --- That is a rare occurance so it is simpler to avoid the problem
 c       --- then to write the code to exchange the data for that case.
         if (nzfsslavec(is) < nzmin .and. nzfsslavec(is) < nzfsslave(is)) then
           nzfsslavec(is) = nzfsslavec(is) + 1
-          if (izfsslavec(is)+nzfsslavec(is) > nzfullcoarse) then
+          if (izfsslavec(is)+nzfsslavec(is) > nzcoarse) then
             izfsslavec(is) = izfsslavec(is) - 1
-            nzfsslavec(is) = nzfullcoarse - izfsslavec(is)
+            nzfsslavec(is) = nzcoarse - izfsslavec(is)
           endif
         endif
 
@@ -827,13 +827,13 @@ c       --- then to write the code to exchange the data for that case.
       end
 c=============================================================================
       subroutine mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                            bounds,nzfull,lzoffset,rzoffset,
+     &                            bounds,nz,lzoffset,rzoffset,
      &                            whosendingleft,izsendingleft,
      &                            whosendingright,izsendingright)
       use Subtimersf3d
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: bounds(0:5),nzfull
+      integer(ISZ):: bounds(0:5),nz
       integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1)
@@ -867,7 +867,7 @@ c     --- Loop over all slaves since this must be a global process.
 
 c       --- If this process covers the full extent of the mesh on this and the
 c       --- next finer mesh, then it doesn't need any data sent to it.
-        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
+        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nz
      &      .and. rzoffset(idx) == 0.)
      &    cycle
 
@@ -953,7 +953,7 @@ c     --- Loop over all slaves since this most be a global process.
 
 c       --- If this process covers the full extent on this and the
 c       --- next finer mesh, then it doesn't need any data sent to it.
-        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
+        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nz
      &      .and. lzoffset(idx) == 0)
      &    cycle
 
@@ -985,7 +985,7 @@ c         --- Find all processors who data extent overlaps the left
 c         --- end of this processor, wrapping around to the left edge.
           ie = nslaves-1
           js = ie
-          do while (js >= 0 .and. izfsslave(js)+nzfsslave(js) == nzfull .and.
+          do while (js >= 0 .and. izfsslave(js)+nzfsslave(js) == nz .and.
      &              rzoffset(js) == 0.)
             js = js - 1
           enddo
@@ -1036,13 +1036,13 @@ c       --- Increment the number of sends that processor makes.
       return
       end
 c=============================================================================
-      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,zsend,delx,dely,delz,
+      subroutine mgexchange_phi(nx,ny,nzlocal,nz,phi,bounds,zsend,delx,dely,delz,
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nz,nzfull,zsend,delx,dely,delz
-      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      integer(ISZ):: nx,ny,nzlocal,nz,zsend,delx,dely,delz
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -1061,18 +1061,18 @@ c This routine sends out and receives boundary data for the MG field solver.
       integer(MPIISZ):: messid
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-      messid = nzfull
+      messid = nz
 
 c     --- Location where incoming phi plane is to be loaded.  Normally, it
-c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
+c     --- is put at the edge of the grid, either at iz=0 or iz=nzlocal.  For
 c     --- periodic boundaries, it is put just outside the grid, at iz=-1
-c     --- or iz=nz+1.  For the above, zsend=0.  At the end of the field solve,
+c     --- or iz=nzlocal+1.  For the above, zsend=0.  At the end of the field solve,
 c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
-c     --- iz=nz+1 so zsend needs to be -1.
+c     --- iz=nzlocal+1 so zsend needs to be -1.
       lr = zsend
-      rr = nz - zsend
+      rr = nzlocal - zsend
       if (bounds(4) == 2) lr = -1
-      if (bounds(5) == 2) rr = nz + 1
+      if (bounds(5) == 2) rr = nzlocal + 1
 
 c     --- The actual value of zsend used depends on the boundary conditions.
 c     --- For periodic boundary conditions, processors which are on the ends
@@ -1080,7 +1080,7 @@ c     --- of the mess, always send the same data, independent of what zsend is.
       leftdelta = zsend
       rightdelta = zsend
       if (izfsslave(my_index) == 0 .and. bounds(4) == 2) leftdelta = 0
-      if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and. bounds(5) == 2)
+      if (izfsslave(my_index)+nzfsslave(my_index) == nz .and. bounds(5) == 2)
      &  rightdelta = 0
 
 c     --- Set count to zero
@@ -1132,12 +1132,12 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,zsend,
+      subroutine mgexchange_phiperiodic(nx,ny,nzlocal,nz,phi,bounds,zsend,
      &                                  delx,dely,delz,my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nz,nzfull,zsend,delx,dely,delz
-      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      integer(ISZ):: nx,ny,nzlocal,nz,zsend,delx,dely,delz
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1)
@@ -1180,24 +1180,24 @@ c       --- on the waitall since that message would never be received.
           endif
         enddo
       endif
-      if (izfsslave(my_index)+nz == nzfull .and. zsend /= 0) then
+      if (izfsslave(my_index)+nzlocal == nz .and. zsend /= 0) then
 c       --- See comments on loop above.
         do ip=0,my_index-1
           if (my_index == whosendingright(ip)) then
             w = w + 1
             nn = (nx+1+2*delx)*(ny+1+2*dely)
-            call MPI_ISEND(phi(-delx,-dely,nz-zsend),nn,
+            call MPI_ISEND(phi(-delx,-dely,nzlocal-zsend),nn,
      &                     MPI_DOUBLE_PRECISION,ip,messid,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         enddo
       endif
 
-      if (izfsslave(my_index)+nz == nzfull) then
+      if (izfsslave(my_index)+nzlocal == nz) then
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
           nn = (nx+1+2*delx)*(ny+1+2*dely)
-          call MPI_IRECV(phi(-delx,-dely,nz+zsend),nn,
+          call MPI_IRECV(phi(-delx,-dely,nzlocal+zsend),nn,
      &                   MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                   messid,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
@@ -1224,14 +1224,14 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_rho(nx,ny,nz,nzfull,rho,
+      subroutine mgexchange_rho(nx,ny,nzlocal,nz,rho,
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          lzoffset,rzoffset,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nzlocal,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
@@ -1249,7 +1249,7 @@ c This routine sends out and receives boundary data for the MG field solver.
       integer(MPIISZ):: messid
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-      messid = nzfull
+      messid = nz
 
 c     --- Set count to zero
       w = 0
@@ -1263,7 +1263,7 @@ c     --- on the right end sent to it.
 
 c       --- Also skip processors that extend to the right edge of this and the
 c       --- next finer level.
-        if (izfsslave(ip)+nzfsslave(ip)==nzfull .and. rzoffset(ip)==0.) cycle
+        if (izfsslave(ip)+nzfsslave(ip)==nz .and. rzoffset(ip)==0.) cycle
 
         if (my_index == whosendingleft(ip)) then
           w = w + 1
@@ -1307,7 +1307,7 @@ c       --- next finer level.
 c         --- When my_index > ip, it means that the data being sent is periodic.
 c         --- In this case, the izsendingright(ip) is set to send the guard cell,
 c         --- so override it.
-          if (my_index > ip) rs = nz
+          if (my_index > ip) rs = nzlocal
 
           call MPI_ISEND(rho(0,0,rs),int((nx+1)*(ny+1),MPIISZ),
      &                   MPI_DOUBLE_PRECISION,ip,messid,
@@ -1319,10 +1319,10 @@ c         --- so override it.
 c     --- Any processor that extends to the right edge of this and the next
 c     --- finer level don't need a rho sent to it.
       if (whosendingleft(my_index) /= -1 .and.
-     &    .not. (izfsslave(my_index)+nzfsslave(my_index)==nzfull .and.
+     &    .not. (izfsslave(my_index)+nzfsslave(my_index)==nz .and.
      &           rzoffset(my_index)==0.)) then
         w = w + 1
-        call MPI_IRECV(rho(0,0,nz),int((nx+1)*(ny+1),MPIISZ),
+        call MPI_IRECV(rho(0,0,nzlocal),int((nx+1)*(ny+1),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)

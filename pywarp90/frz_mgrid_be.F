@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.28 $, $Date: 2007/04/27 22:30:14 $
+c version $Revision: 1.29 $, $Date: 2007/06/04 22:51:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -83,7 +83,7 @@ c       --- grid%rmin etc are not needed when iondensitygrid2d is used.
 c       --- Now dx and dz can be set.
         iondensitygrid2d%dx = grid%dr
         iondensitygrid2d%dy = grid%dz
-c       --- This will calculate nx and nz and make sure the input is OK.
+c       --- This will calculate nx and nzlocal and make sure the input is OK.
         call setupgrid2dtype(iondensitygrid2d,check)
         if (.not. check) then
            call kaboom("ERROR: luseparticledensity is being used but the input data is inconsistent")
@@ -155,7 +155,7 @@ c     is the ratio of the epsilon for z derivs to that for x derivs.
       return
       end
 c=============================================================================
-      subroutine multigridberzsolve(nx,nz,nzfull,dx,dz,phi,rho,
+      subroutine multigridberzsolve(nx,nzlocal,nz,dx,dz,phi,rho,
      &                              bounds,
      &                              xmmin,zmmin,
      &                              mgparam,mgiters,mgmaxiters,
@@ -170,9 +170,9 @@ c=============================================================================
       use Constant
       use BoltzmannElectrons
       use DKInterp, only: iusing2deps,epsilon2d
-      integer(ISZ):: nx,nz,nzfull
-      real(kind=8):: phi(-1:nx+1,-1:nz+1)
-      real(kind=8):: rho(0:nx,0:nz)
+      integer(ISZ):: nx,nzlocal,nz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
+      real(kind=8):: rho(0:nx,0:nzlocal)
       integer(ISZ),allocatable:: regionid(:,:)
       real(kind=8):: dx,dz
       integer(ISZ):: bounds(0:5)
@@ -223,17 +223,17 @@ c     --- Note that it needs to be a real number in case xmmin is not an
 c     --- integer multiple of dx.
       xminodx = xmmin/dx
 
-      allocate(phisave(0:nx,0:nz),stat=allocerror)
+      allocate(phisave(0:nx,0:nzlocal),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigridrzsolve: allocation error ",allocerror,
-     &         ": could not allocate phisave to shape ",nx,nz
+     &         ": could not allocate phisave to shape ",nx,nzlocal
         call kaboom("multigridrzsolve: allocation error")
         return
       endif
 
 c     --- Create and setup array which holds the BE region ids
-      allocate(regionid(0:nx,0:nz))
-      call setupregionidsbe2d(regionid,nx,nz,dx,dz,xmmin,zmmin)
+      allocate(regionid(0:nx,0:nzlocal))
+      call setupregionidsbe2d(regionid,nx,nzlocal,dx,dz,xmmin,zmmin)
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
@@ -243,10 +243,10 @@ c     --- very few iterations are done.
         mgiters = mgiters + 1
 
 c       --- Save current value of phi
-        phisave = phi(0:nx,0:nz)
+        phisave = phi(0:nx,0:nzlocal)
 
 c       --- Do one vcycle.
-        call vcycleberz(0,nx,nz,nzfull,dx,dz,xminodx,phi,rho,regionid,
+        call vcycleberz(0,nx,nzlocal,nz,dx,dz,xminodx,phi,rho,regionid,
      &                  xmmin,zmmin,bounds,mgparam,mgmaxlevels,
      &                  downpasses,uppasses,lrz,lcndbndy,icndbndy,bnd,
      &                  my_index,nslaves,izfsslave,nzfsslave)
@@ -260,7 +260,7 @@ c       mgerror = maxval(abs(phisave - phi))
 
         mgerror = 0.
 !$OMP DO REDUCTION(MAX:mgerror)
-        do iz=0,nz
+        do iz=0,nzlocal
           do ix=0,nx
             mgerror = max(mgerror,abs(phisave(ix,iz) - phi(ix,iz)))
           enddo
@@ -282,7 +282,7 @@ c     --- the solve are so are already set.
       if (bounds(0) == 0) phi(-1,:) = 2.*phi(0,:) - phi(1,:)
       if (bounds(1) == 0) phi(nx+1,:) = 2.*phi(nx,:) - phi(nx-1,:)
       if (bounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
-      if (bounds(5) == 0) phi(:,nz+1) = 2.*phi(:,nz) - phi(:,nz-1)
+      if (bounds(5) == 0) phi(:,nzlocal+1) = 2.*phi(:,nzlocal) - phi(:,nzlocal-1)
 
 c     --- Make a print out.
       if (mgerror > mgtol) then
@@ -311,7 +311,7 @@ c     --- Undo the change of rho
       return
       end
 c=============================================================================
-      RECURSIVE subroutine vcycleberz(mglevel,nx,nz,nzfull,dx,dz,xminodx,
+      RECURSIVE subroutine vcycleberz(mglevel,nx,nzlocal,nz,dx,dz,xminodx,
      &                                phi,rho,regionid,xmmin,zmmin,bounds,
      &                                mgparam,
      &                                mgmaxlevels,downpasses,uppasses,
@@ -322,10 +322,10 @@ c=============================================================================
       use BoltzmannElectrons
       use Multigrid3d_diagnostic
       integer(ISZ):: mglevel
-      integer(ISZ):: nx,nz,nzfull
+      integer(ISZ):: nx,nzlocal,nz
       real(kind=8):: dx,dz,xminodx
-      real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
-      integer(ISZ):: regionid(0:nx,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       real(kind=8):: xmmin,zmmin
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
@@ -344,7 +344,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8),allocatable:: phicoarsesave(:,:)
       integer(ISZ),allocatable:: regionidcoarse(:,:)
       integer(ISZ):: i,iszone=1
-      integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
+      integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
       real(kind=8):: dxcoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dzcoarsesqi
       real(kind=8):: xminodxcoarse
@@ -363,7 +363,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial relaxation iterations
       do i=1,downpasses
-        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
+        call relaxberz(mglevel,nx,nzlocal,nz,phi,rho,regionid,
      &                 dxsqi,dzsqi,dx,dz,xminodx,
      &                 bounds,mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
@@ -377,8 +377,8 @@ c     --- already calculated.
       if (associated(bnd%next) .and. mglevel < mgmaxlevels) then
 
         nxcoarse = bnd%next%nr
-        nzcoarse = bnd%next%nz
-        nzfullcoarse = nzcoarse
+        nzlocalcoarse = bnd%next%nz
+        nzcoarse = nzlocalcoarse
         dxcoarse = bnd%next%dr
         dzcoarse = bnd%next%dz
 
@@ -390,97 +390,97 @@ c     --- already calculated.
         rzoffset = 0
 
 c       --- Alloate new work space
-        allocate(phicoarse(-1:nxcoarse+1,-1:nzcoarse+1),stat=allocerror)
+        allocate(phicoarse(-1:nxcoarse+1,-1:nzlocalcoarse+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate phicoarse to shape ",
-     &           nxcoarse,nzcoarse
+     &           nxcoarse,nzlocalcoarse
           call kaboom("vcycleberz: allocation error")
           return
         endif
-        allocate(rhocoarse(0:nxcoarse,0:nzcoarse),stat=allocerror)
+        allocate(rhocoarse(0:nxcoarse,0:nzlocalcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate rhocoarse to shape ",
-     &           nxcoarse,nzcoarse
+     &           nxcoarse,nzlocalcoarse
           call kaboom("vcycleberz: allocation error")
           return
         endif
 
-        allocate(Lphi(-1:nx+1,-1:nz+1),stat=allocerror)
+        allocate(Lphi(-1:nx+1,-1:nzlocal+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
-     &           ": could not allocate Lphi to shape ",nx,nz
+     &           ": could not allocate Lphi to shape ",nx,nzlocal
           call kaboom("vcycleberz: allocation error")
           return
         endif
-        allocate(Lphicoarse(-1:nxcoarse+1,-1:nzcoarse+1),stat=allocerror)
+        allocate(Lphicoarse(-1:nxcoarse+1,-1:nzlocalcoarse+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate Lphicoarse to shape ",
-     &           nxcoarse,nzcoarse
+     &           nxcoarse,nzlocalcoarse
           call kaboom("vcycleberz: allocation error")
           return
         endif
  
 c     --- Create and setup array which holds the BE region ids
-        allocate(regionidcoarse(0:nxcoarse,0:nzcoarse),stat=allocerror)
+        allocate(regionidcoarse(0:nxcoarse,0:nzlocalcoarse),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate regionidcoarse to shape ",
-     &           nxcoarse,nzcoarse
+     &           nxcoarse,nzlocalcoarse
           call kaboom("vcycleberz: allocation error")
           return
         endif
-        call setupregionidsbe2d(regionidcoarse,nxcoarse,nzcoarse,
+        call setupregionidsbe2d(regionidcoarse,nxcoarse,nzlocalcoarse,
      &                          dxcoarse,dzcoarse,xmmin,zmmin)
 
 c       --- Calculate the coarsened phi
         phicoarse = 0.
-        call restrictberz(nx,nz,nzfull,phi,1,1,
-     &                    nxcoarse,nzcoarse,nzfullcoarse,phicoarse,1,1,
+        call restrictberz(nx,nzlocal,nz,phi,1,1,
+     &                    nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,1,1,
      &                    bounds,bounds,lzoffset,.false.)
-        call cond_potmgberz(bnd%next,nxcoarse,nzcoarse,phicoarse,mglevel+1)
-        call applytransversebcberz(nxcoarse,nzcoarse,phicoarse,bounds)
-        call applylongitudinalbcberz(nxcoarse,nzcoarse,nzfullcoarse,
+        call cond_potmgberz(bnd%next,nxcoarse,nzlocalcoarse,phicoarse,mglevel+1)
+        call applytransversebcberz(nxcoarse,nzlocalcoarse,phicoarse,bounds)
+        call applylongitudinalbcberz(nxcoarse,nzlocalcoarse,nzcoarse,
      &                               phicoarse,bounds)
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,phi,Lphi,regionid,
+        call Lphiberz(nx,nzlocal,nz,dxsqi,dzsqi,dx,dz,xminodx,phi,Lphi,regionid,
      &                mglevel,bounds,lrz,lcndbndy,icndbndy,bnd)
-        Lphi(0:nx,0:nz) = rho - Lphi(0:nx,0:nz)
-        call applytransversebcberz(nx,nz,Lphi,bounds)
-        call applylongitudinalbcberz(nx,nz,nzfull,Lphi,bounds)
-        call restrictberz(nx,nz,nzfull,Lphi,1,1,
-     &                    nxcoarse,nzcoarse,nzfullcoarse,rhocoarse,0,0,
+        Lphi(0:nx,0:nzlocal) = rho - Lphi(0:nx,0:nzlocal)
+        call applytransversebcberz(nx,nzlocal,Lphi,bounds)
+        call applylongitudinalbcberz(nx,nzlocal,nz,Lphi,bounds)
+        call restrictberz(nx,nzlocal,nz,Lphi,1,1,
+     &                    nxcoarse,nzlocalcoarse,nzcoarse,rhocoarse,0,0,
      &                    bounds,bounds,lzoffset,.false.)
 
         deallocate(Lphi)
 
 c       --- Calculate L(R phi), adding it into rhocoarse
-        call Lphiberz(nxcoarse,nzcoarse,nzfullcoarse,
+        call Lphiberz(nxcoarse,nzlocalcoarse,nzcoarse,
      &                dxcoarsesqi,dzcoarsesqi,dxcoarse,dzcoarse,xminodxcoarse,
      &                phicoarse,Lphicoarse,regionidcoarse,
      &                mglevel+1,bounds,
      &                lrz,lcndbndy,icndbndy,bnd%next)
-        rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nzcoarse)
-        call cond_potmgbezerorz(bnd%next,nxcoarse,nzcoarse,rhocoarse,
+        rhocoarse = rhocoarse + Lphicoarse(0:nxcoarse,0:nzlocalcoarse)
+        call cond_potmgbezerorz(bnd%next,nxcoarse,nzlocalcoarse,rhocoarse,
      &                          mglevel+1,0,0)
 
 c       --- Save the current coarsened phi since it is needed to apply
 c       --- the corrections after relaxations.
-        allocate(phicoarsesave(-1:nxcoarse+1,-1:nzcoarse+1),stat=allocerror)
+        allocate(phicoarsesave(-1:nxcoarse+1,-1:nzlocalcoarse+1),stat=allocerror)
         if (allocerror /= 0) then
           print*,"vcycleberz: allocation error ",allocerror,
      &           ": could not allocate phicoarsesave to shape ",
-     &           nxcoarse,nzcoarse
+     &           nxcoarse,nzlocalcoarse
           call kaboom("vcycleberz: allocation error")
           return
         endif
         phicoarsesave = phicoarse
 
 c       --- Continue at the next coarsest level.
-        call vcycleberz(mglevel+iszone,nxcoarse,nzcoarse,nzfullcoarse,
+        call vcycleberz(mglevel+iszone,nxcoarse,nzlocalcoarse,nzcoarse,
      &                  dxcoarse,dzcoarse,xminodxcoarse,phicoarse,rhocoarse,
      &                  regionidcoarse,xmmin,zmmin,
      &                  bounds,mgparam,mgmaxlevels,downpasses,uppasses,
@@ -492,10 +492,10 @@ c       --- Add in the correction term.
         if (lprintmgphimaxchange) then
           print*,"Max change in phi = ",maxval(abs(phicoarse))," at MG level ",mglevel
         endif
-        call expandberz(nx,nz,nzfull,phi,
-     &                  nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
+        call expandberz(nx,nzlocal,nz,phi,
+     &                  nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
      &                  bounds,lzoffset)
-        call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
+        call clampphitophimaxberz(nx,nzlocal,dx,dz,phi,rho,regionid)
 
         deallocate(Lphicoarse)
         deallocate(phicoarsesave)
@@ -507,26 +507,26 @@ c       --- Add in the correction term.
 
 c     --- Do final relaxation passes.
       do i=1,uppasses
-        call relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
+        call relaxberz(mglevel,nx,nzlocal,nz,phi,rho,regionid,
      &                 dxsqi,dzsqi,dx,dz,xminodx,
      &                 bounds,mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
-        call clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
+        call clampphitophimaxberz(nx,nzlocal,dx,dz,phi,rho,regionid)
       enddo
 
       return
       end
 c=============================================================================
-      subroutine restrictberz(nx,nz,nzfull,u,delx,delz,
-     &                        nxcoarse,nzcoarse,nzfullcoarse,ucoarse,
+      subroutine restrictberz(nx,nzlocal,nz,u,delx,delz,
+     &                        nxcoarse,nzlocalcoarse,nzcoarse,ucoarse,
      &                        delcx,delcz,
      &                        bounds,boundscoarse,lzoffset,withoutzeros)
-      integer(ISZ):: nx,nz,nzfull,delx,delz,delcx,delcz
-      integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: u(-delx:nx+delx,-delz:nz+delz)
-      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcz:nzcoarse+delcz)
+      integer(ISZ):: nx,nzlocal,nz,delx,delz,delcx,delcz
+      integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
+      real(kind=8):: u(-delx:nx+delx,-delz:nzlocal+delz)
+      real(kind=8):: ucoarse(-delcx:nxcoarse+delcx,-delcz:nzlocalcoarse+delcz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lzoffset
@@ -543,29 +543,29 @@ c domain.
       real(kind=8):: r,w,dx,dz,dxi,dzi,wx(0:3),wz(0:3)
 
       dx = 1.*nx/nxcoarse
-      dz = 1.*nzfull/nzfullcoarse
+      dz = 1.*nz/nzcoarse
       dxi = 1.*nxcoarse/nx
-      dzi = 1.*nzfullcoarse/nzfull
+      dzi = 1.*nzcoarse/nz
 
 c     --- Do the loops.
 !$OMP DO
-      do izcoarse=0,nzcoarse
-        izmin = ((izcoarse-1)*nzfull - lzoffset + 4*nzfullcoarse)/nzfullcoarse-3
-        izmax = ((izcoarse+1)*nzfull - lzoffset - 1)/nzfullcoarse
+      do izcoarse=0,nzlocalcoarse
+        izmin = ((izcoarse-1)*nz - lzoffset + 4*nzcoarse)/nzcoarse-3
+        izmax = ((izcoarse+1)*nz - lzoffset - 1)/nzcoarse
         if (izmin < -delz) izmin = -delz
-        if (izmax > nz+delz) izmax = nz+delz
+        if (izmax > nzlocal+delz) izmax = nzlocal+delz
 
         do iz=izmin,izmax
-          wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzfullcoarse)*dzi)
+          wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzcoarse)*dzi)
         enddo
 
         if (izcoarse == 0 .and. bounds(4) == 0) then
           izmin = 0
           izmax = 0
           wz(0) = 2.
-        else if (izcoarse == nzcoarse .and. bounds(5) == 0) then
-          izmin = nz
-          izmax = nz
+        else if (izcoarse == nzlocalcoarse .and. bounds(5) == 0) then
+          izmin = nzlocal
+          izmax = nzlocal
           wz(0) = 2.
         endif
 
@@ -611,13 +611,13 @@ c     --- Do the loops.
       return
       end
 c=============================================================================
-      subroutine expandberz(nx,nz,nzfull,phi,
-     &                      nxcoarse,nzcoarse,nzfullcoarse,phicoarse,
+      subroutine expandberz(nx,nzlocal,nz,phi,
+     &                      nxcoarse,nzlocalcoarse,nzcoarse,phicoarse,
      &                      bounds,lzoffset)
-      integer(ISZ):: nx,nz,nzfull
-      integer(ISZ):: nxcoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: phi(-1:nx+1,-1:nz+1)
-      real(kind=8):: phicoarse(-1:nxcoarse+1,-1:nzcoarse+1)
+      integer(ISZ):: nx,nzlocal,nz
+      integer(ISZ):: nxcoarse,nzlocalcoarse,nzcoarse
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
+      real(kind=8):: phicoarse(-1:nxcoarse+1,-1:nzlocalcoarse+1)
       integer(ISZ):: lzoffset
       integer(ISZ):: bounds(0:5)
 
@@ -634,19 +634,19 @@ c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
       ixmax = nx
       izmin = 0
-      izmax = nz
+      izmax = nzlocal
       if (bounds(0) == 0) ixmin = 1
       if (bounds(1) == 0) ixmax = nx - 1
       if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nz - 1
+      if (bounds(5) == 0) izmax = nzlocal - 1
 
       dx = 1.*nxcoarse/nx
-      dz = 1.*nzfullcoarse/nzfull
+      dz = 1.*nzcoarse/nz
 
 !$OMP DO
       do iz=izmin,izmax
-        jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
-        wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
+        jz = int((iz*nzcoarse + lzoffset)/nz)
+        wz =  1.*(iz*nzcoarse + lzoffset)/nz - jz
         do ix=ixmin,ixmax
           jx = int(ix*dx)
           wx =     ix*dx - jx
@@ -659,13 +659,13 @@ c     --- Set the loop limits, including edges when appropriate.
         enddo
       enddo
 
-      call applytransversebcberz(nx,nz,phi,bounds)
-      call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
+      call applytransversebcberz(nx,nzlocal,phi,bounds)
+      call applylongitudinalbcberz(nx,nzlocal,nz,phi,bounds)
 
       return
       end
 c=============================================================================
-      subroutine relaxberz(mglevel,nx,nz,nzfull,phi,rho,regionid,
+      subroutine relaxberz(mglevel,nx,nzlocal,nz,phi,rho,regionid,
      &                     dxsqi,dzsqi,dx,dz,xminodx,bounds,
      &                     mgparam,lrz,lcndbndy,icndbndy,bnd,
      &                     my_index,nslaves,izfsslave,nzfsslave,
@@ -674,9 +674,9 @@ c=============================================================================
       use BNDtypemodule
       use CONDtypemodule
       use BoltzmannElectrons
-      integer(ISZ):: mglevel,nx,nz,nzfull
-      real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
-      integer(ISZ):: regionid(0:nx,0:nz)
+      integer(ISZ):: mglevel,nx,nzlocal,nz
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
@@ -708,16 +708,16 @@ c boundaries are periodic.
       integer(ISZ):: ix1
       integer(ISZ):: ic,ii,id
       real(kind=8):: rr,epsilontmp,normfac,phiav
-      real(kind=8):: rhoe(0:nx,0:nz),rhoeote(0:nx,0:nz),denom,Lphi,expo
-      real(kind=8)::  boltzfac(0:nx,0:nz)
+      real(kind=8):: rhoe(0:nx,0:nzlocal),rhoeote(0:nx,0:nzlocal),denom,Lphi,expo
+      real(kind=8)::  boltzfac(0:nx,0:nzlocal)
       real(kind=8):: iondensitytmp,electemptmp,boltzfac1,epszfactmp
       type(CONDtype):: cnd
       integer,save:: printed=0
       real(kind=8):: phiold
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmgberz(bnd,nx,nz,phi,mglevel)
-      call condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
+      call cond_potmgberz(bnd,nx,nzlocal,phi,mglevel)
+      call condbndymgintberz(bnd,nx,nzlocal,dx,dz,phi,bounds,mglevel)
 c     print*, "IN RELAXBE, iondensity =", iondensity(0,0), iondensity(4,4)
 
 c     --- Set starting and ending parity.
@@ -733,11 +733,11 @@ c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
       ixmax = nx
       izmin = 0
-      izmax = nz
+      izmax = nzlocal
       if (bounds(0) == 0) ixmin = 1
       if (bounds(1) == 0) ixmax = nx-1
       if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nz-1
+      if (bounds(5) == 0) izmax = nzlocal-1
 
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
@@ -788,10 +788,10 @@ c                   endif
            enddo
 c          Normalize to z-averaged Boltzmann factor if requestted
            if (lnormtoavboltzfac) then
-              normfac=nz/sum(boltzfac(ix,1:nz))
+              normfac=nzlocal/sum(boltzfac(ix,1:nzlocal))
               boltzfac(ix,izmin:izmax) = boltzfac(ix,izmin:izmax)*normfac
               rhoe(ix,izmin:izmax)=rhoe(ix,izmin:izmax)*normfac*
-     &         (1.-boltzfac(ix,izmin:izmax)/nz)
+     &         (1.-boltzfac(ix,izmin:izmax)/nzlocal)
               rhoeote(ix,izmin:izmax)=rhoeote(ix,izmin:izmax)*normfac
 c           Note this doesn't quite do the conventional thing for linearized
 c           Boltzmann, but it saves doing interpolation of Te a second time
@@ -853,20 +853,20 @@ c          print*, "summed phi =", sum(phi)
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
-         call condbndymgberz(bnd,parity,nx,nz,phi,rho,regionid,
+         call condbndymgberz(bnd,parity,nx,nzlocal,phi,rho,regionid,
      &                       dxsqi,dzsqi,dx,dz,xminodx,mgparam,bounds,
      &                       mglevel,lrz,icndbndy)
         endif
 
 c       --- Put desired potential onto conductors in phi array.
-        call cond_potmgberz(bnd,nx,nz,phi,mglevel)
-        call condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
+        call cond_potmgberz(bnd,nx,nzlocal,phi,mglevel)
+        call condbndymgintberz(bnd,nx,nzlocal,dx,dz,phi,bounds,mglevel)
 
 c       --- set phi in the guard planes
 c       --- This must be done inside the loop over parities so that the
 c       --- guard planes are updated with the most recent values.
-        call applytransversebcberz(nx,nz,phi,bounds)
-        call applylongitudinalbcberz(nx,nz,nzfull,phi,bounds)
+        call applytransversebcberz(nx,nzlocal,phi,bounds)
+        call applylongitudinalbcberz(nx,nzlocal,nz,phi,bounds)
 
 c     --- end of loop over even and odd points
       enddo
@@ -876,19 +876,19 @@ c     we need to fix the absolute value of phi.  For now do this by
 c     making the average of phi = 0.  THIS ONLY MAKES SENSE FOR 
 c     DOUBLY PERIODIC SYSTEM.
       if (lnormtoavboltzfac) then
-         phiav = sum(phi(1:nx,1:nz))/(nx*nz)
+         phiav = sum(phi(1:nx,1:nzlocal))/(nx*nzlocal)
          phi = phi - phiav
       endif
 c      print*, "end of relaxberez, phi = ", phi(ixmax,izmax),phi(ixmax,izmax-1)
       return
       end
 c=============================================================================
-      subroutine cond_potmgberz(bnd,nx,nz,phi,mglevel)
+      subroutine cond_potmgberz(bnd,nx,nzlocal,phi,mglevel)
       use BNDtypemodule
       use CONDtypemodule
       type(BNDtype):: bnd
-      integer(ISZ):: nx,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:nz+1)
+      integer(ISZ):: nx,nzlocal,mglevel
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
 
 c Set conductor points to the desired potential. The potential is used since
 c at all levels, phi is being operated on directly.
@@ -911,12 +911,12 @@ c at all levels, phi is being operated on directly.
       return
       end
 c=============================================================================
-      subroutine cond_potmgbezerorz(bnd,nx,nz,u,mglevel,delt,delz)
+      subroutine cond_potmgbezerorz(bnd,nx,nzlocal,u,mglevel,delt,delz)
       use BNDtypemodule
       use CONDtypemodule
       type(BNDtype):: bnd
-      integer(ISZ):: nx,nz,mglevel,delt,delz
-      real(kind=8):: u(-delt:nx+delt,-delz:nz+delz)
+      integer(ISZ):: nx,nzlocal,mglevel,delt,delz
+      real(kind=8):: u(-delt:nx+delt,-delz:nzlocal+delz)
 
 c Set data at conductor points to zero.
 
@@ -938,7 +938,7 @@ c Set data at conductor points to zero.
       return
       end
 c=============================================================================
-      subroutine condbndymgberz(bnd,parity,nx,nz,phi,rho,regionid,
+      subroutine condbndymgberz(bnd,parity,nx,nzlocal,phi,rho,regionid,
      &                          dxsqi,dzsqi,dx,dz,xminodx,
      &                          mgparam,bounds,mglevel,lrz,icndbndy)
       use BNDtypemodule
@@ -946,9 +946,9 @@ c=============================================================================
       use BoltzmannElectrons
       type(BNDtype):: bnd
       integer(ISZ):: parity
-      integer(ISZ):: nx,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:nz+1), rho(0:nx,0:nz)
-      integer(ISZ):: regionid(0:nx,0:nz)
+      integer(ISZ):: nx,nzlocal,mglevel
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1), rho(0:nx,0:nzlocal)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
       logical(ISZ):: lrz
@@ -1151,13 +1151,13 @@ c         --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine condbndymgintberz(bnd,nx,nz,dx,dz,phi,bounds,mglevel)
+      subroutine condbndymgintberz(bnd,nx,nzlocal,dx,dz,phi,bounds,mglevel)
       use BNDtypemodule
       use CONDtypemodule
       type(BNDtype):: bnd
-      integer(ISZ):: nx,nz,mglevel
+      integer(ISZ):: nx,nzlocal,mglevel
       real(kind=8):: dx,dz
-      real(kind=8):: phi(-1:nx+1,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
       integer(ISZ):: bounds(0:5)
 
 c Set the potential at points just beyond an internal Neumann boundary.
@@ -1203,19 +1203,19 @@ c     --- loop over points near surface of conductors
       return
       end
 c=============================================================================
-      subroutine Lphiberz(nx,nz,nzfull,dxsqi,dzsqi,dx,dz,xminodx,
+      subroutine Lphiberz(nx,nzlocal,nz,dxsqi,dzsqi,dx,dz,xminodx,
      &                    phi,Lphi,regionid,
      &                    mglevel,bounds,
      &                    lrz,lcndbndy,icndbndy,bnd)
       use BNDtypemodule
       use BoltzmannElectrons
-      integer(ISZ):: nx,nz,nzfull
+      integer(ISZ):: nx,nzlocal,nz
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
-      real(kind=8):: phi(-1:nx+1,-1:nz+1)
-      real(kind=8):: Lphi(-1:nx+1,-1:nz+1)
-      real(kind=8):: boltzfac(0:nx,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1)
+      real(kind=8):: Lphi(-1:nx+1,-1:nzlocal+1)
+      real(kind=8):: boltzfac(0:nx,0:nzlocal)
       real(kind=8):: iondenstmp,normfac,epszfactmp
-      integer(ISZ):: regionid(0:nx,0:nz)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       integer(ISZ):: mglevel,bounds(0:5)
       logical(ISZ):: lrz,lcndbndy
       integer(ISZ):: icndbndy
@@ -1225,7 +1225,7 @@ c Calculate the Lphi on the grid including the BE term.
 c Note that this is note quite the residual since it does not have the
 c source term included, and so will no go to zero at convergence.
 
-      real(kind=8):: rhoe(-1:nx+1,-1:nz+1),expo,epsilontmp
+      real(kind=8):: rhoe(-1:nx+1,-1:nzlocal+1),expo,epsilontmp
       real(kind=8):: rr
       integer(ISZ):: ix,iz,ic,id
       integer(ISZ):: ixmin,ixmax,izmin,izmax
@@ -1235,11 +1235,11 @@ c     --- Set the loop limits, including edges when appropriate.
       ixmin = 0
       ixmax = nx
       izmin = 0
-      izmax = nz
+      izmax = nzlocal
       if (bounds(0) == 0) ixmin = 1
       if (bounds(1) == 0) ixmax = nx-1
       if (bounds(4) == 0) izmin = 1
-      if (bounds(5) == 0) izmax = nz-1
+      if (bounds(5) == 0) izmax = nzlocal-1
 
 c     --- These are set here to avoid complaints from valgrind about
 c     --- uninitialized variables.
@@ -1269,10 +1269,10 @@ c     precompute Boltzmann factor and some other arrays
          enddo
 c          Normalize to z-averaged Boltzmann factor if requestted
          if (lnormtoavboltzfac) then
-            normfac=nz/sum(boltzfac(ix,1:nz))
+            normfac=nzlocal/sum(boltzfac(ix,1:nzlocal))
             boltzfac(ix,izmin:izmax) = boltzfac(ix,izmin:izmax)*normfac
             rhoe(ix,izmin:izmax)=rhoe(ix,izmin:izmax)*normfac*
-     &         (1.-boltzfac(ix,izmin:izmax)/nz)
+     &         (1.-boltzfac(ix,izmin:izmax)/nzlocal)
 c           Note this doesn't quite do the conventional thing for linearized
 c           Boltzmann, but it saves doing interpolation of Te a second time
 c           and should be approximately right whenver linearization is
@@ -1323,11 +1323,11 @@ c       --- XZ
       endif
 
 c     --- Zero the Lphi inside conductors.
-      call cond_potmgbezerorz(bnd,nx,nz,Lphi,mglevel,1,1)
+      call cond_potmgbezerorz(bnd,nx,nzlocal,Lphi,mglevel,1,1)
 
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
-        call condbndyLphiberz(bnd,nx,nz,phi,Lphi,regionid,dxsqi,dzsqi,
+        call condbndyLphiberz(bnd,nx,nzlocal,phi,Lphi,regionid,dxsqi,dzsqi,
      &                        dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       endif
 
@@ -1341,24 +1341,24 @@ c     --- Transverse boundaries
 
 c     --- Longitudinal boundaries
       if (bounds(4) == 0) Lphi(:,-1:0) = 0.
-      if (bounds(5) == 0) Lphi(:,nz:nz+1) = 0.
+      if (bounds(5) == 0) Lphi(:,nzlocal:nzlocal+1) = 0.
       if (bounds(4) == 1) Lphi(:,-1) = Lphi(:,1)
-      if (bounds(5) == 1) Lphi(:,nz+1) = Lphi(:,nz-1)
-      if (bounds(4) == 2 .and. nz == nzfull) Lphi(:,-1) = Lphi(:,nz-1)
-      if (bounds(5) == 2 .and. nz == nzfull) Lphi(:,nz+1) = Lphi(:,1)
+      if (bounds(5) == 1) Lphi(:,nzlocal+1) = Lphi(:,nzlocal-1)
+      if (bounds(4) == 2 .and. nzlocal == nz) Lphi(:,-1) = Lphi(:,nzlocal-1)
+      if (bounds(5) == 2 .and. nzlocal == nz) Lphi(:,nzlocal+1) = Lphi(:,1)
 
       return
       end
 c=============================================================================
-      subroutine condbndyLphiberz(bnd,nx,nz,phi,Lphi,regionid,dxsqi,dzsqi,
+      subroutine condbndyLphiberz(bnd,nx,nzlocal,phi,Lphi,regionid,dxsqi,dzsqi,
      &                            dx,dz,xminodx,bounds,mglevel,lrz,icndbndy)
       use BNDtypemodule
       use CONDtypemodule
       use BoltzmannElectrons
       type(BNDtype):: bnd
-      integer(ISZ):: nx,nz,mglevel
-      real(kind=8):: phi(-1:nx+1,-1:nz+1), Lphi(-1:nx+1,-1:nz+1)
-      integer(ISZ):: regionid(0:nx,0:nz)
+      integer(ISZ):: nx,nzlocal,mglevel
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1), Lphi(-1:nx+1,-1:nzlocal+1)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       real(kind=8):: dxsqi,dzsqi,dx,dz,xminodx
       integer(ISZ):: bounds(0:5),icndbndy
       logical(ISZ):: lrz
@@ -1537,10 +1537,10 @@ c         --- calculate the new phi based on the boundary conditions
       return
       end
 c=============================================================================
-      subroutine applytransversebcberz(nx,nz,u,bounds)
-      integer(ISZ):: nx,nz
+      subroutine applytransversebcberz(nx,nzlocal,u,bounds)
+      integer(ISZ):: nx,nzlocal
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-1:nx+1,-1:nz+1)
+      real(kind=8):: u(-1:nx+1,-1:nzlocal+1)
       if (bounds(0) == 0) u(-1,:)   = 2.*u(0,:) - u(1,:)
       if (bounds(1) == 0) u(nx+1,:) = 2.*u(nx,:) - u(nx-1,:)
       if (bounds(0) == 1) u(-1,:)   = u(1,:)
@@ -1550,27 +1550,27 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine applylongitudinalbcberz(nx,nz,nzfull,u,bounds)
-      integer(ISZ):: nx,nz,nzfull
+      subroutine applylongitudinalbcberz(nx,nzlocal,nz,u,bounds)
+      integer(ISZ):: nx,nzlocal,nz
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: u(-1:nx+1,-1:nz+1)
+      real(kind=8):: u(-1:nx+1,-1:nzlocal+1)
       if (bounds(4) == 0) u(:,-1)   = 2.*u(:,0) - u(:,1)
-      if (bounds(5) == 0) u(:,nz+1) = 2.*u(:,nz) - u(:,nz-1)
+      if (bounds(5) == 0) u(:,nzlocal+1) = 2.*u(:,nzlocal) - u(:,nzlocal-1)
       if (bounds(4) == 1) u(:,-1)   = u(:,1)
-      if (bounds(5) == 1) u(:,nz+1) = u(:,nz-1)
-      if (nz == nzfull) then
-        if (bounds(4) == 2) u(:,-1)   = u(:,nz-1)
-        if (bounds(5) == 2) u(:,nz+1) = u(:,1)
+      if (bounds(5) == 1) u(:,nzlocal+1) = u(:,nzlocal-1)
+      if (nzlocal == nz) then
+        if (bounds(4) == 2) u(:,-1)   = u(:,nzlocal-1)
+        if (bounds(5) == 2) u(:,nzlocal+1) = u(:,1)
       endif
       return
       end
 c=============================================================================
-      subroutine clampphitophimaxberz(nx,nz,dx,dz,phi,rho,regionid)
+      subroutine clampphitophimaxberz(nx,nzlocal,dx,dz,phi,rho,regionid)
       use BoltzmannElectrons
-      integer(ISZ):: nx,nz
+      integer(ISZ):: nx,nzlocal
       real(kind=8):: dx,dz
-      real(kind=8):: phi(-1:nx+1,-1:nz+1),rho(0:nx,0:nz)
-      integer(ISZ):: regionid(0:nx,0:nz)
+      real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
 
       integer(ISZ):: ix,iz,id
       real(kind=8):: expo,phimax,rhomax
@@ -1579,7 +1579,7 @@ c=============================================================================
 c     --- Clamp phi to phimax. The phimax is calculated assuming that
 c     --- the max electron density will be the max of the iondensity and 
 c     --- and the ion particle density (rho).
-      do iz=0,nz
+      do iz=0,nzlocal
         do ix=0,nx
           if (regionid(ix,iz) > 0) then
             id = regionid(ix,iz)
@@ -1596,10 +1596,10 @@ c     --- and the ion particle density (rho).
       return
       end
 c=============================================================================
-      subroutine setupregionidsbe2d(regionid,nx,nz,dx,dz,xmmin,zmmin)
+      subroutine setupregionidsbe2d(regionid,nx,nzlocal,dx,dz,xmmin,zmmin)
       use BoltzmannElectrons
-      integer(ISZ):: nx,nz
-      integer(ISZ):: regionid(0:nx,0:nz)
+      integer(ISZ):: nx,nzlocal
+      integer(ISZ):: regionid(0:nx,0:nzlocal)
       real(kind=8):: dx,dy,dz,xmmin,zmmin
 
 c Sets id of regions where the Boltzmann-electron distribution is used.
@@ -1611,7 +1611,7 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
         ixmin = (max(0.,xbemin(id) - xmmin))/dx
         ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx
         izmin = (max(0.,zbemin(id) - zmmin))/dz
-        izmax = (min(nz*dz,zbemax(id) - zmmin))/dz
+        izmax = (min(nzlocal*dz,zbemax(id) - zmmin))/dz
         regionid(ixmin:ixmax,izmin:izmax) = id
       enddo
 

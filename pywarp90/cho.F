@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.16 $, $Date: 2007/04/24 21:37:34 $
+c@(#) File CHO.F, version $Revision: 1.17 $, $Date: 2007/06/04 22:45:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -49,17 +49,17 @@ c     --- Warning: the following call will not work in parallel!
       end
 #endif
 c=============================================================================
-      subroutine cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
-     &                       l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
+      subroutine cho_solve3d(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,
+     &                       l2symtry,l4symtry,xmmin,ymmin,zmminlocal,zmmin)
       use CHOHandle
       use CHOInput
       use Conductor3d
       use Parallel
       integer(ISZ):: iwhich
-      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: xmmin,ymmin,zmmin,zmminglobal
+      real(kind=8):: xmmin,ymmin,zmminlocal,zmmin
 
 c Interface to the Chombo/AMR fieldsolver.
 
@@ -100,11 +100,11 @@ c       --- Create a handle refering to an instance of the Chombo solver
 c       --- Initialize data describing the mesh and pass it to Chombo.
         x0(1) = xmmin
         x0(2) = ymmin
-        x0(3) = zmminglobal
+        x0(3) = zmmin
         domain(:,1) = 0
         domain(1,2) = nx
         domain(2,2) = ny
-        domain(3,2) = nzfull
+        domain(3,2) = nz
         subdomains(1,1,:) = 0
         subdomains(1,2,:) = nx
         subdomains(2,1,:) = 0
@@ -114,7 +114,7 @@ c       --- Initialize data describing the mesh and pass it to Chombo.
         subdomains(3,2,:) = izpslave + nzpslave
 #else
         subdomains(3,1,:) = 0
-        subdomains(3,2,:) = nz
+        subdomains(3,2,:) = nzlocal
 #endif
         refratios = cho_refratio
         call chp_setgridparams(cho_handle,x0,dx,domain,subdomains,

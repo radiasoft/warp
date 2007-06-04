@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.14 $, $Date: 2003/05/22 00:13:15 $
+#@(#) File CHO.V, version $Revision: 1.15 $, $Date: 2007/06/04 22:45:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.14 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.15 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer /0/ # Handle to the ChomboPIC package
@@ -31,7 +31,7 @@ cho_debug integer /1/ # Sets amount of debugging output and checking
 lcho_allnodesreachable logical /.true./ # When true, all nodes are considered reachable
 
 *********** CHOsubs:
-cho_setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
+cho_setamrgrids(nx:integer, ny:integer, nzlocal:integer, dx:real, xmmin:real,
            ymmin:real, zmmin:real,numLevels:integer, refratio:integer,
            i:integer, j:integer, k:integer, level:integer, numtags:integer,
            bcxlo:integer, bcxhi:integer, bcylo:integer, bcyhi:integer,
@@ -39,7 +39,7 @@ cho_setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
 returnphi(phiout:real) subroutine
 returnphic(phiout:real) subroutine
 returnrho(rhoout:real) subroutine
-cho_solve3d(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
+cho_solve3d(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
             dx:real,dy:real,dz:real,l2symtry,l4symtry,
             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real) subroutine
 cho_setrho3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,sq:real,sw:real,

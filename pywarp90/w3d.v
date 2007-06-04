@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.266 $, $Date: 2007/05/29 16:19:57 $
+#@(#) File W3D.V, version $Revision: 3.267 $, $Date: 2007/06/04 22:53:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.266 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.267 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -249,17 +249,21 @@ emityofz(0:nemitofz)       _real
 
 *********** InMesh3d dump:
 # Mesh specifications (input qtys)
-xmmin  real  [m]  /0./            # Lower limit of mesh
-xmmax  real  [m]  /0./            # Upper limit of mesh
-ymmin  real  [m]  /0./            # Lower limit of mesh
-ymmax  real  [m]  /0./            # Upper limit of mesh
-zmmin  real  [m]  /0./ +parallel  # Lower limit of mesh
-zmmax  real  [m]  /0./ +parallel  # Upper limit of mesh
-nx     integer    /2/             # Mesh points are 0,...,nx
-ny     integer    /2/             # Mesh points are 0,...,ny
-nz     integer    /2/  +parallel  # Mesh points are 0,...,nz
-zmminglobal real [m]              # Global value of zmmin
-zmmaxglobal real [m]              # Global value of zmmax
+xmmin   real  [m]  /0./            # Lower limit of mesh
+xmmax   real  [m]  /0./            # Upper limit of mesh
+ymmin   real  [m]  /0./            # Lower limit of mesh
+ymmax   real  [m]  /0./            # Upper limit of mesh
+zmmin   real  [m]  /0./ +parallel  # Lower limit of mesh
+zmmax   real  [m]  /0./ +parallel  # Upper limit of mesh
+nx      integer    /2/             # Mesh points are 0,...,nx
+ny      integer    /2/             # Mesh points are 0,...,ny
+nz      integer    /2/  +parallel  # Full size of nz
+nzlocal integer    /2/  +parallel  # Mesh points are 0,...,nzlocal
+nzfull  integer    /2/             # Obsolete global value of nz
+zmminlocal  real [m]               # Local value of zmmin
+zmmaxlocal  real [m]               # Local value of zmmax
+zmminglobal real [m]               # Global value of zmmin
+zmmaxglobal real [m]               # Global value of zmmax
 
 ******* GridBoundary3d dump:
 bound0    integer /0/  # Type of boundary condition at plane z=0
@@ -288,30 +292,29 @@ ezeomlagpid integer        # Electric field pid index, lag-averaged for damping
 
 *********** Fields3d:
 # Large arrays: potential and charge density, plot scratch, etc.
-bndferr                real    [1]     # Error after bent-self-field solve
-bndfit                 integer [1]     # Iters used, bent-self-field solve
-xmesh(0:nx)            _real [m] +dump # X coordinates of mesh points
-ymesh(0:ny)            _real [m] +dump # Y coordinates of mesh points
-zmeshlocal(0:nz)       _real [m] +dump +parallel # Z coordinates of local mesh points
-zmesh(0:nzfull)        _real [m] +dump # Z coordinates of global mesh points
-nmxy                   integer /0/ +dump # larger of nx, ny
-nmxyz                  integer /0/ +dump +parallel # largest of nx, ny, nz
-nzfull                 integer /0/ +dump # Full size of nz
-izextra                integer /1/ +dump # Amount of extra space at end of phi
-scrtch(0:nmxyz,0:nmxy) _real           # Scratch for fieldsolve, plots
-phi(:,:,:) _real [V] +parallel # Electrostatic potential
-rho(:,:,:)    _real [C/m**3] +parallel # Charge density
-attx(0:nx-1)           _real           # Attenuation factor as fcn. of kx
-atty(0:ny-1)           _real           # Attenuation factor as fcn. of ky
-attz(0:nzfull)         _real           # Attenuation factor as fcn. of kz
-kxsq(0:nx-1)           _real [1/m**2]  # Discrete analog to kx^2/4Pi
-kysq(0:ny-1)           _real [1/m**2]  # Discrete analog to ky^2/4Pi
-kzsq(0:nzfull)         _real [1/m**2]  # Discrete analog to kz^2/4Pi
-rstar(-1:nz+1)         _real [m]       # Radius of curv of refrnce orbit
-phiprv(0:nx,0:nz)      _real [V]       # Prev phi at y_mid, for error test
-phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch) 
-xywork(2,0:nx,0:ny)    _real           # Work space for transverse FFTs
-zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
+bndferr                 real    [1]     # Error after bent-self-field solve
+bndfit                  integer [1]     # Iters used, bent-self-field solve
+xmesh(0:nx)             _real [m] +dump # X coordinates of mesh points
+ymesh(0:ny)             _real [m] +dump # Y coordinates of mesh points
+zmesh(0:nz)             _real [m] +dump # Z coordinates of global mesh points
+zmeshlocal(0:nzlocal)   _real [m] +dump +parallel # Z coordinates of local mesh points
+nmxy                    integer /0/ +dump # larger of nx, ny
+nmxyz                   integer /0/ +dump +parallel # largest of nx, ny, nz
+izextra                 integer /1/ +dump # Amount of extra space at end of phi
+scrtch(0:nmxyz,0:nmxy)  _real           # Scratch for fieldsolve, plots
+phi(:,:,:)              _real [V] +parallel # Electrostatic potential
+rho(:,:,:)              _real [C/m**3] +parallel # Charge density
+attx(0:nx-1)            _real           # Attenuation factor as fcn. of kx
+atty(0:ny-1)            _real           # Attenuation factor as fcn. of ky
+attz(0:nz)              _real           # Attenuation factor as fcn. of kz
+kxsq(0:nx-1)            _real [1/m**2]  # Discrete analog to kx^2/4Pi
+kysq(0:ny-1)            _real [1/m**2]  # Discrete analog to ky^2/4Pi
+kzsq(0:nz)              _real [1/m**2]  # Discrete analog to kz^2/4Pi
+rstar(-1:nzlocal+1)     _real [m]       # Radius of curv of refrnce orbit
+phiprv(0:nx,0:nzlocal)  _real [V]       # Prev phi at y_mid, for error test
+phisav(0:nx,-1:nzlocal) _real [V]       # Phi at current y slice (scratch) 
+xywork(2,0:nx,0:ny)     _real           # Work space for transverse FFTs
+zwork(2,0:nx,0:nz)      _real           # Work space used to optimize vsftz
 
 *********** Fields3dParticles parallel:
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop

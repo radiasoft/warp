@@ -192,11 +192,11 @@ c       scratch arrays.  Also this won't do the right
 c       thing for absorbing b.c.'s.
         gaminvscratch = 1.
         call stckxy3d(npd,xbar,xmmax,xmmin,dx,ybar,ymmax,
-     &                   ymmin,dy,zbar,zmmin,dz,uxscratch,
+     &                   ymmin,dy,zbar,zmminlocal,dz,uxscratch,
      &                   uyscratch,uzscratch,gaminvscratch,
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         call zpartbndwithdata(npd,zbar,uzscratch,gaminvscratch,
-     &                        zmmax,zmmin,dz,zgrid)
+     &                        zmmaxlocal,zmminlocal,dz,zgrid)
 
         do i=1,npd      
           if (gaminvscratch(i)==0.) then

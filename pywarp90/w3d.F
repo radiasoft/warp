@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.362 $, $Date: 2007/05/29 16:19:57 $
+c@(#) File W3D.F, version $Revision: 3.363 $, $Date: 2007/06/04 22:53:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -206,16 +206,19 @@ c --- using new variables
         pboundnz = periodic
       end if
 
-c  Set global values of zmmin and zmmax before the decomposition is done
-c  for the parallel code.
+c  The zmminglobal and zmmaxglobal are no longer used but set for backwards
+c  compatibility.
       zmminglobal = zmmin
       zmmaxglobal = zmmax
+      nzfull = nz
 
-c------- Parallel only -----------------------------------------------------
 #ifdef MPIPARALLEL
       call init_w3d_parallel()
+#else
+      zmminlocal = zmmin
+      zmmaxlocal = zmmax
+      nzlocal = nz
 #endif
-c---------------------------------------------------------------------------
 
 c  Estimate wall radius, needed for g-factor calc
 c  (rwallfac = 1 is probably NOT a good guess)
@@ -244,9 +247,8 @@ c  Create the dynamic arrays for fields, contour plot workspace
 c  Also set vbeamfrm, adjust x and ymmin for symmetries and set
 c  so that by default izfsmax = nz (for full field solve).
 
-      if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
-      nmxyz = max(nx,ny,nzfull)
+      nmxyz = max(nx,ny,nz)
       call gchange("Fields3d", 0)
       call setupSubcycling(pgroup)
       call setupSelfB(pgroup)
@@ -268,13 +270,13 @@ c        ymmin = 0.
         xmmin = 0.
         ymmin = 0.
       endif
-      if (izfsmax == 0) izfsmax = nz
+      if (izfsmax == 0) izfsmax = nzlocal
 
 c  Calculate mesh dimensioning quantities
 
       if (nx .ne. 0) dx = (xmmax - xmmin) / nx
       if (ny .ne. 0) dy = (ymmax - ymmin) / ny
-      if (nzfull .ne. 0) dz = (zmmaxglobal - zmminglobal) / nzfull
+      if (nz .ne. 0) dz = (zmmax - zmmin) / nz
       if(solvergeom==RZgeom) then
         dy = dx
       elseif(solvergeom==XZgeom) then
@@ -294,11 +296,11 @@ c  Calculate mesh dimensioning quantities
       do j = 0, ny
          ymesh(j) = j*dy + ymmin
       enddo
-      do k = 0, nzfull
-         zmesh(k) = k*dz + zmminglobal
-      enddo
       do k = 0, nz
-         zmeshlocal(k) = k*dz + zmmin
+         zmesh(k) = k*dz + zmmin
+      enddo
+      do k = 0, nzlocal
+         zmeshlocal(k) = k*dz + zmminlocal
       enddo
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
@@ -308,16 +310,16 @@ c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       else ! RZgeom, XZgeom, Zgeom, Rgeom
         iy_axis = 0
       endif
-      iz_axis = nint(-zmmin/dz)
+      iz_axis = nint(-zmminlocal/dz)
 
 c  Setup arrays for potential and charge density for the particles.
 
       nxp = nx
       nyp = ny
 #ifndef MPIPARALLEL
-      nzp = nz
-      zmminp = zmmin
-      zmmaxp = zmmax
+      nzp = nzlocal
+      zmminp = zmminlocal
+      zmmaxp = zmmaxlocal
 #endif
 
 c  Initialize base grid for RZ solver
@@ -326,7 +328,7 @@ c  Initialize base grid for RZ solver
      &     solvergeom==XZgeom .or.
      &     solvergeom==Rgeom  .or.
      &     solvergeom==Zgeom) then
-          call init_base(nx,nz,dx,dz,xmmin,zmmin)
+          call init_base(nx,nzlocal,dx,dz,xmmin,zmminlocal)
         elseif(solvergeom==XYgeom) then
           call init_base(nx,ny,dx,dy,xmmin,ymmin)
         end if
@@ -341,10 +343,10 @@ c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
 
 c  Create the dynamic arrays in Z_arrays; set the z mesh
 
-      if (nzzarr == 0) nzzarr = nzfull
+      if (nzzarr == 0) nzzarr = nz
       call gchange("Z_arrays", 0)
-      if (zzmin == 0.) zzmin = zmminglobal
-      if (zzmax == 0.) zzmax = zmmaxglobal
+      if (zzmin == 0.) zzmin = zmmin
+      if (zzmax == 0.) zzmax = zmmax
       dzz = (zzmax - zzmin)/nzzarr
       dzzi = 1./dzz
       do k = 0, nzzarr
@@ -365,11 +367,11 @@ c  Also allocate the dynamic internal lattice arrays.
 
       call remark(" ---  Resetting lattice array sizes")
       call resetlat
-      if (nzlmax == 0) nzlmax = nzfull
+      if (nzlmax == 0) nzlmax = nz
       if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
       call gchange("LatticeInternal", 0)
-      if (zlmin == 0.) zlmin = zmminglobal
-      if (zlmax == 0.) zlmax = zmmaxglobal
+      if (zlmin == 0.) zlmin = zmmin
+      if (zlmax == 0.) zlmax = zmmax
       dzl = (zlmax - zlmin)/nzl
       dzli = 1./dzl
       do k = 0, nzl
@@ -450,8 +452,8 @@ c  damped mover.  They are always allocated, but with length 1 if not used.
 c  Create the dynamic arrays for "window" moments
 
       call remark(" ---  Allocating Win_Moments")
-      zwindows(1,0) = zmminglobal
-      zwindows(2,0) = zmmaxglobal
+      zwindows(1,0) = zmmin
+      zwindows(2,0) = zmmax
       nzwind = 0
       do iwin = 1, NWINDOWS
          if (zwindows(1,iwin) /= zwindows(2,iwin)) nzwind = nzwind + 1
@@ -461,10 +463,10 @@ c  Create the dynamic arrays for "window" moments
 c  Create the dynamic arrays for z moments
 
       call remark(" ---  Allocating Z_Moments")
-      if (nzmmnt == 0) nzmmnt = nzfull
+      if (nzmmnt == 0) nzmmnt = nz
       call gchange("Z_Moments", 0)
-      if (zmmntmax == 0.) zmmntmax = zmmaxglobal
-      if (zmmntmin == 0.) zmmntmin = zmminglobal
+      if (zmmntmin == 0.) zmmntmin = zmmin
+      if (zmmntmax == 0.) zmmntmax = zmmax
       dzm = (zmmntmax - zmmntmin)/nzmmnt
       dzmi = 1./dzm
       do k = 0, nzmmnt
@@ -475,7 +477,7 @@ c  Create the dynamic arrays for lab frame moments
 
       call remark(" ---  Allocating Lab_Moments")
       if (vbeam*dt /= 0.) then
-        nl = (zmmax-zmmin)/(vbeam*dt) +.5
+        nl = (zmmaxlocal-zmminlocal)/(vbeam*dt) +.5
       else
         nl = 1
       endif
@@ -490,8 +492,8 @@ c     if (npsplt == 0) npsplt = nparpgrp-1
       if (xplmax == 0.) xplmax = xmmax
       if (yplmin == 0.) yplmin = -ymmax
       if (yplmax == 0.) yplmax = ymmax
-      if (zplmin == 0.) zplmin = zmmin
-      if (zplmax == 0.) zplmax = zmmax
+      if (zplmin == 0.) zplmin = zmminlocal
+      if (zplmax == 0.) zplmax = zmmaxlocal
 
 c  Setup history mechanism
 
@@ -1629,7 +1631,7 @@ c         --- Get E field for particles near the  injection surface.
 c         --- Get transverse E field for particles near any defined
 c         --- apertures.
           call sete3d_aperture(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
+     &                         zgridprv,xmmin,ymmin,zmminlocal,zmmaxlocal,dx,dy,dz,
      &                         nxp,nyp,nzp,ex(ipmin),ey(ipmin),l2symtry,l4symtry)
 
 c         --- Scale the self E-field to get the lowest order relativistic
@@ -2065,8 +2067,8 @@ c=============================================================================
       use Fields3d
 
 c  Sets the slices on the exterior of phi for periodicity
-c  sets slice at -1 equal to the slice at nz-1
-c  sets slice at nz+1 equal to the slice at 1
+c  sets slice at -1 equal to the slice at nzlocal-1
+c  sets slice at nzlocal+1 equal to the slice at 1
 
       integer(ISZ):: ix,iy
       real(kind=8):: substarttime,wtime
@@ -2078,13 +2080,13 @@ c  sets slice at nz+1 equal to the slice at 1
       end if
 
 #ifdef MPIPARALLEL
-      call perpot3d_slave(phi,1,nx,ny,nz,0,0)
+      call perpot3d_slave(phi,1,nx,ny,nzlocal,0,0)
 #else
       do iy=0,ny
         do ix=0,nx
-          phi(ix,iy,-1)   = phi(ix,iy,nz-1)
-          phi(ix,iy,nz)   = phi(ix,iy,0)
-          phi(ix,iy,nz+1) = phi(ix,iy,1)
+          phi(ix,iy,-1)   = phi(ix,iy,nzlocal-1)
+          phi(ix,iy,nzlocal)   = phi(ix,iy,0)
+          phi(ix,iy,nzlocal+1) = phi(ix,iy,1)
         enddo
       enddo
 #endif
@@ -2145,21 +2147,21 @@ c  Enforce longitudinal periodicity.
 
 c  Copy charge density from frz.basegrid to w3d.rho
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call get_rho_rz(rho(0,0,0),nx,nz,1,0)
+        call get_rho_rz(rho(0,0,0),nx,nzlocal,1,0)
       else if(solvergeom==XYgeom) then
         call get_rho_rz(rho(0,0,0),nx,ny,1,0)
       else if(solvergeom==Zgeom) then
-        call get_rho_z(rho(0,0,0),nz,1,0)
+        call get_rho_z(rho(0,0,0),nzlocal,1,0)
       else if(solvergeom==Rgeom) then
         call get_rho_r(rho(0,0,0),nx,1,0)
       end if
 
       if (solvergeom==XYZgeom .and. bound0==periodic) then
 #ifdef MPIPARALLEL
-        call persource3d_slave(rho,1,nx,ny,nz)
+        call persource3d_slave(rho,1,nx,ny,nzlocal)
 #else
-        rho(:,:,0)  = rho(:,:,0) + rho(:,:,nz)
-        rho(:,:,nz) = rho(:,:,0)
+        rho(:,:,0)  = rho(:,:,0) + rho(:,:,nzlocal)
+        rho(:,:,nzlocal) = rho(:,:,0)
 #endif
       endif
 
@@ -2568,7 +2570,7 @@ c     --- Do nothing if both flags are false
       if (nxc>0) then
         allocate(pisnearbycond(np))
         call getgridngp3di(np,pgroup%xp(ipmin:ipmin+np-1),pgroup%yp(ipmin:ipmin+np-1),pgroup%zp(ipmin:ipmin+np-1),
-     &                     pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zgrid,
+     &                     pisnearbycond,nxc,nyc,nzc,isnearbycond,xmmin,xmmax,ymmin,ymmax,zmminlocal,zmmaxlocal,zgrid,
      &                     l2symtry,l4symtry)
       else
         l_pisnearbycond=.false.
@@ -4716,14 +4718,14 @@ c      call sw_globalsum(pgroup%ns,pgroup%sw)
 c#endif
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmax,zmmin,dz)
+      call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
       do js=0,pgroup%ns-1
         if (pgroup%nps(js+1) > 0) then
            ip = pgroup%ins(js+1)
            call stckxy3d(pgroup%nps(js+1),
      &                   pgroup%xp(ip),xmmax,xmmin,dx,
      &                   pgroup%yp(ip),ymmax,ymmin,dy,
-     &                   pgroup%zp(ip),zmmin,dz,pgroup%uxp(ip),
+     &                   pgroup%zp(ip),zmminlocal,dz,pgroup%uxp(ip),
      &                   pgroup%uyp(ip),pgroup%uzp(ip),pgroup%gaminv(ip),
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         endif
@@ -7347,11 +7349,11 @@ c            --- loop over particle blocks
                if(wpid==0) then
                  call rhoweightrz(pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                            pgroup%zp(ipmin),ip,
-     &                            pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
+     &                            pgroup%sq(is)*swtmp,nx,nzlocal,dx,dz,xmmin,zgrid)
                else
                  call rhoweightrz_weights(pgroup%xp(ipmin),pgroup%yp(ipmin),
      &                            pgroup%zp(ipmin),pgroup%pid(ipmin,wpid),ip,
-     &                            pgroup%sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
+     &                            pgroup%sq(is)*swtmp,nx,nzlocal,dx,dz,xmmin,zgrid)
                end if
              enddo
            elseif(solvergeom==XYgeom) then
@@ -7373,7 +7375,7 @@ c            --- loop over particle blocks
              do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
                 ip = min(nparpgrp, ins_u+nps_u-ipmin)
                 call rhoweightz(pgroup%zp(ipmin),ip,pgroup%sq(is)*swtmp,
-     &                          nz,dz,zgrid)
+     &                          nzlocal,dz,zgrid)
              enddo
            elseif(solvergeom==Rgeom) then
 c            --- loop over particle blocks
@@ -7555,7 +7557,7 @@ c     --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       end
 c=============================================================================
       subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
-      use InMesh3d,Only: nx,ny,nz
+      use InMesh3d,Only: nx,ny,nzlocal
       use Fields3d
       use Fields3dParticles
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
@@ -7571,8 +7573,8 @@ c      --- Point rho to the block for the currently active ndts group.
 
 c     --- The rho and phi arrays need to be allocated if they havn't already
 c     --- been.
-      if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nz))
-      if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nz+izextra))
+      if (.not. associated(rho)) allocate(rho(0:nx,0:ny,0:nzlocal))
+      if (.not. associated(phi)) allocate(phi(0:nx,0:ny,-1:nzlocal+izextra))
 
 #endif
 
@@ -7598,13 +7600,13 @@ c=============================================================================
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call getrhoforfieldsolverz(nx,nz,rho)
+        call getrhoforfieldsolverz(nx,nzlocal,rho)
       else if(solvergeom==XYgeom) then
         call kaboom("XYgeom not tested in parallel")
       else if(solvergeom==Zgeom) then
-        call getrhoforfieldsolvez(nz,rho)
+        call getrhoforfieldsolvez(nzlocal,rho)
       elseif (solvergeom==XYZgeom) then
-        call setrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhopin,nzpguard,
+        call setrhoforfieldsolve3d(nx,ny,nzlocal,rho,nxp,nyp,nzp,rhopin,nzpguard,
      &                             my_index,nslaves,
      &                             izpslave,nzpslave,izfsslave,nzfsslave)
       end if
@@ -7614,11 +7616,11 @@ c  whose field solve region overlap its particle region.
       return
       end
 c=============================================================================
-      subroutine setrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,nzpguard,
+      subroutine setrhoforfieldsolve3d(nx,ny,nzlocal,rho,nxp,nyp,nzp,rhop,nzpguard,
      &                                 my_index,nslaves,izpslave,nzpslave,
      &                                 izfsslave,nzfsslave)
-      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp,nzpguard
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nzlocal,nxp,nyp,nzp,nzpguard
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
@@ -7630,7 +7632,7 @@ c=============================================================================
       call sumsourcepondomainboundaries(rhop,1,nxp,nyp,nzp,nzpguard,
      &                                  my_index,nslaves,izpslave,nzpslave)
       call parallelbarrier()
-      call setsourceforfieldsolve3d_parallel(1,nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+      call setsourceforfieldsolve3d_parallel(1,nx,ny,nzlocal,rho,nxp,nyp,nzp,rhop,
      &                                       my_index,nslaves,
      &                                       izpslave,nzpslave,izfsslave,nzfsslave)
 
@@ -7659,12 +7661,12 @@ c Ensures that the phip and rhop arrays are setup properly.
       nxp = nx
       nyp = ny
 #ifndef MPIPARALLEL
-      nzp = nz
-      zmminp = zmmin
-      zmmaxp = zmmax
+      nzp = nzlocal
+      zmminp = zmminlocal
+      zmmaxp = zmmaxlocal
 #else
       nzp = nzpslave(my_index)
-      zmminp = zmminglobal + izpslave(my_index)*dz
+      zmminp = zmmin + izpslave(my_index)*dz
       zmmaxp = zmminp + nzp*dz
 #endif
 
@@ -7931,7 +7933,7 @@ c     --- Reset lost particles counter if requested
       if (lresetlostpart) npslost=0
 
 c     --- Apply particle boundary conditions
-      call zpartbnd(pgroup,zmmax,zmmin,dz)
+      call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
 
 c     --- absorb particles passing through semitransparent disc
       call semitransparent_disc(pgroup,dz)
@@ -7942,7 +7944,7 @@ c     --- absorb particles passing through semitransparent disc
            call stckxy3d(pgroup%nps(is),
      &                   pgroup%xp(ipmin),xmmax,xmmin,dx,
      &                   pgroup%yp(ipmin),ymmax,ymmin,dy,
-     &                   pgroup%zp(ipmin),zmmin,dz,pgroup%uxp(ipmin),
+     &                   pgroup%zp(ipmin),zmminlocal,dz,pgroup%uxp(ipmin),
      &                   pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                   pgroup%gaminv(ipmin),
      &                   zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
@@ -7993,7 +7995,6 @@ c their values(z) are within the grid.
 c If lcountaslost is not true, then the uzp of the lost particles is
 c set to zero - those particles then won't be added to the count of
 c lost particles.
-
 
       integer(ISZ):: ip,iz,izz
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -8573,7 +8574,7 @@ c     --- Loop over apertures.
         ize = int((ze - zgrid - zmminp) * dzi)
 
 c       --- Only do calculation if aperture is within the grid.
-        if (0 < ize .and. izs < nz .and. izs <= ize) then
+        if (0 < ize .and. izs < nzlocal .and. izs <= ize) then
 
         midx = max(0,min(nxp,int((aper_x(ia)                - xmmin)/dx + 0.5)))
         midy = max(0,min(nyp,int((aper_y(ia)                - ymmin)/dy + 0.5)))
@@ -8954,7 +8955,7 @@ c     --- particle domain.
 c      else if(solvergeom==Zgeom) then
 c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call getphipforparticles3d(1,nx,ny,nz,phi,
+        call getphipforparticles3d(1,nx,ny,nzlocal,phi,
      &                             nxp,nyp,nzp,phipndts(:,:,:,indts),0,0,1)
       end if
 #endif
@@ -8962,14 +8963,14 @@ c        call getphipforparticlesz()
       return
       end
 c===========================================================================
-      subroutine getphipforparticles3d(nc,nx,ny,nz,phi,
+      subroutine getphipforparticles3d(nc,nx,ny,nzlocal,phi,
      &                                 nxp,nyp,nzp,phip,delx,dely,delz)
-      integer(ISZ):: nc,nx,ny,nz,nxp,nyp,nzp,delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      integer(ISZ):: nc,nx,ny,nzlocal,nxp,nyp,nzp,delx,dely,delz
+      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
 
 #ifdef MPIPARALLEL
-        call getphipforparticles3d_parallel(nc,nx,ny,nz,phi,nxp,nyp,nzp,phip,
+        call getphipforparticles3d_parallel(nc,nx,ny,nzlocal,phi,nxp,nyp,nzp,phip,
      &                                      delx,dely,delz)
 #endif
 
@@ -8982,7 +8983,7 @@ c===========================================================================
       use Fields3d
       use Fields3dParticles
 
-c This gets the phi at iz=nz and in the guard cells. It is only needed for
+c This gets the phi at iz=nzlocal and in the guard cells. It is only needed for
 c the 3d FFT and tridiagonal based solvers for the parallel version.
 
 #ifdef MPIPARALLEL
@@ -8994,20 +8995,20 @@ c       call getphiforparticlesrz()
 c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call getphiforfields3d(nx,ny,nz,phi)
+        call getphiforfields3d(nx,ny,nzlocal,phi)
       end if
 #endif
 
       return
       end
 c===========================================================================
-      subroutine setinhomogeneousboundaries(phi,nx,ny,nz,dx,dy,dz,
+      subroutine setinhomogeneousboundaries(phi,nx,ny,nzlocal,dx,dy,dz,
      &                                      bound0,boundnz,boundxy,
      &                                      l2symtry,l4symtry)
       use Constant
       use GlobalVars
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
       real(kind=8):: dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
@@ -9034,9 +9035,9 @@ c will be treated the same way as rho and be divided by eps0.
       iymin = 0
       iymax = ny
       izmin = 0
-      izmax = nz
+      izmax = nzlocal
       if (bound0 == dirichlet) izmin = 1
-      if (boundnz == dirichlet) izmax = nz - 1
+      if (boundnz == dirichlet) izmax = nzlocal - 1
 
       if (boundxy == dirichlet) then
         if (.not. l4symtry) ixmin = 1
@@ -9063,8 +9064,8 @@ c will be treated the same way as rho and be divided by eps0.
       endif
 
       if (boundnz == dirichlet) then
-        phi(ixmin:ixmax,iymin:iymax,nz-1) = phi(ixmin:ixmax,iymin:iymax,nz-1) +
-     &                         phi(ixmin:ixmax,iymin:iymax,nz)/dz**2*eps0
+        phi(ixmin:ixmax,iymin:iymax,nzlocal-1) = phi(ixmin:ixmax,iymin:iymax,nzlocal-1) +
+     &                         phi(ixmin:ixmax,iymin:iymax,nzlocal)/dz**2*eps0
       endif
 
       return
@@ -9127,7 +9128,7 @@ c       --- field solve is being called for.
 
 c     --- Calculate rstar here since it is only used by the field solver and
 c     --- to ensure that it is set when the field solver is called.
-      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
+      if (linbend) call setrstar(rstar(-1),nzlocal,dz,zmminlocal,zgrid)
 
 c     --- Loop over the subcyling groups and do any field solves that
 c     --- are necessary.
@@ -9165,7 +9166,7 @@ c         --- If not in bend, call VP3D
             iymin = 0
             iymax = ny
             izmin = 0
-            izmax = nz
+            izmax = nzlocal
             if (boundxy == dirichlet) then
               if (.not. l4symtry) ixmin = 1
               ixmax = nx-1
@@ -9173,7 +9174,7 @@ c         --- If not in bend, call VP3D
               iymax = ny-1
             endif
             if (bound0  == dirichlet .and. my_index == 0) izmin = 1
-            if (boundnz == dirichlet .and. my_index >= nslaves-1) izmax = nz-1
+            if (boundnz == dirichlet .and. my_index >= nslaves-1) izmax = nzlocal-1
 c           --- When copying rho into phi, be careful not to overwrite any
 c           --- boundary conditions in phi.
 #ifndef MPIPARALLEL
@@ -9184,7 +9185,7 @@ c           --- boundary conditions in phi.
      &        rho(ixmin:ixmax,iymin:iymax,izmin:izmax)
 #endif
 c           --- Apply inhomogeneous Dirichlet boundary conditions
-            call setinhomogeneousboundaries(phi,nx,ny,nz,dx,dy,dz,
+            call setinhomogeneousboundaries(phi,nx,ny,nzlocal,dx,dy,dz,
      &                                      bound0,boundnz,boundxy,
      &                                      l2symtry,l4symtry)
           endif
@@ -9244,7 +9245,7 @@ c Does the FFT field solve in bends.
       bndfit = bndfit + 1
 
 c     --- save phi on midplane for error measure
-      do k = 0, nz
+      do k = 0, nzlocal
          do i = 0, nx
             phiprv(i,k) = phi(i,ny/2,k)
          enddo
@@ -9256,16 +9257,16 @@ c     --- set multiplier for "jump term" (curvature change term)
 c     --- loop over slices in y, computing source with bend correction
       do j = 0, ny
 c        --- save phi this slice, for future algebra
-         do k = 0, nz
+         do k = 0, nzlocal
             do i = 0, nx
                phisav(i,k) = phi(i,j,k)
             enddo
          enddo
          do i = 0, nx
-            phisav(i,-1) = phisav(i,nz-1) 
+            phisav(i,-1) = phisav(i,nzlocal-1) 
          enddo
 c        --- loop over mesh points in z
-         do k = 0, nz-1
+         do k = 0, nzlocal-1
             rs = rstar(k)
             rskm1 = rstar(k-1)
             rskp1 = rstar(k+1)
@@ -9298,7 +9299,7 @@ c     --- call Cartesian field solver
 c     --- compute error
       bndferr = 0.
       phiref = 0.
-      do k = 0, nz
+      do k = 0, nzlocal
          do i = 0, nx
             bndferr = max( bndferr, abs(phi(i,ny/2,k)-phiprv(i,k)) )
             phiref = max( phiref, phi(i,ny/2,k) )
@@ -9379,57 +9380,57 @@ c fits and so was replaced with if statements.
 
       xlen = xmmax - xmmin
       ylen = ymmax - ymmin
-      zlen = zmmaxglobal - zmminglobal
+      zlen = zmmax - zmmin
 
       if (fstype == 0) then
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
      &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
-     &                 nx,ny,izfsmax-izfsmin,nzfull,
+     &                 nx,ny,izfsmax-izfsmin,nz,
      &                 scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,
-     &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork,
+     &                nx,ny,izfsmax-izfsmin,nz,scrtch(0,0),xywork,
      &                zwork(1,0,0),l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nzfull,
+     &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nz,
      &                scrtch(0,0),xywork,zwork,
-     &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,
+     &                xmmax,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
-c          --- Note that by default, izfsmax=nz, and izfsmin=0.
+c          --- Note that by default, izfsmax=nzlocal, and izfsmin=0.
 c          --- izfsmin and izfsmax allow field solves on a partial grid.
-           call psor3df(iwhich,nx,ny,nz,phi,rho,
+           call psor3df(iwhich,nx,ny,nzlocal,phi,rho,
      &                 phi,rho,rstar, 
-     &                 dx,dy,dz,xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid,linbend,
+     &                 dx,dy,dz,xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,linbend,
      &                 bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
      &                 scrtch(0,0),izfsmin,izfsmax)
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),
+     &                   nx,ny,izfsmax-izfsmin,nz,scrtch(0,0),
      &                   xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nzfull,
+     &                   nx,ny,izfsmax-izfsmin,nz,
      &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nzfull,
+     &                   nx,ny,izfsmax-izfsmin,nz,
      &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nzfull,
+     &                   nx,ny,izfsmax-izfsmin,nz,
      &                   scrtch(0,0),xywork,zwork,0,l2symtry,l4symtry,
      &                   bound0,boundnz,boundxy)
           endif
@@ -9438,30 +9439,30 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
 c         --- General capacity matrix solver in kz space
           call capmatkz3d(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                    filt,xlen,ylen,zlen,
-     &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
-     &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
+     &                    nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
+     &                    xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch(0,0),
      &                    xywork,zwork(1,0,0),l2symtry,l4symtry,
      &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                  filt,xlen,ylen,zlen,
-     &                  nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
-     &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
+     &                  nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
+     &                  xmmin,ymmin,zmminlocal+izfsmin*dz,scrtch(0,0),
      &                  xywork,zwork(1,0,0),l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
         if (minval(electrontemperature) == 0) then
-          call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
+          call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nz,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
      &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &            xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
+     &            xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid)
         else
-          call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+          call multigridbe3df(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
+     &                        xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid)
         endif
 
 #ifdef MPIPARALLEL
@@ -9487,14 +9488,14 @@ c         --- put forward by Lantz
       elseif (fstype == 10) then
 c       --- RZ full-multigrid solver
        if (solvergeom==RZgeom .or. solvergeom==XZgeom) then
-         call multigridrzf(iwhich,phi,rho,nx,nz)
+         call multigridrzf(iwhich,phi,rho,nx,nzlocal)
        elseif (solvergeom==XYgeom) then
          call multigridxyf2(iwhich,phi(:,:,0),rho,nx,ny)
        endif
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
-        call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
-     &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
+        call cho_solve3d(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,
+     &                   l2symtry,l4symtry,xmmin,ymmin,zmminlocal,zmmin)
       elseif (fstype == 12) then
         if (iwhich <= 0) then
           call execuser('fieldsolregistered')
@@ -9502,10 +9503,10 @@ c         --- Chombo AMR  full-multigrid solver
 
       elseif (fstype == 13) then
 
-        call multigridbe3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+        call multigridbe3df(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
      &                      rstar,linbend,
      &                      bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                      xmmin,ymmin,zmmin,zmminglobal,zbeam,zgrid)
+     &                      xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid)
 
       endif
 

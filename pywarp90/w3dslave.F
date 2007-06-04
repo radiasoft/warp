@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.43 $, $Date: 2007/04/05 22:28:58 $
+c W3DSLAVE.M, version $Revision: 1.44 $, $Date: 2007/06/04 22:54:46 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -54,24 +54,18 @@ c get number of slaves and my_pe
       endif
 
 c---------------------------------------------------------------------------
-c     --- Save global array sizes
-      nzfull = nz
-      zplmin = zmmin
-      zplmax = zmmax
-
-c---------------------------------------------------------------------------
 c     --- Calculate how the work is to be arranged among the processors.
 
-      call domaindecomposefields(nzfull,nslaves,lfsautodecomp,
+      call domaindecomposefields(nz,nslaves,lfsautodecomp,
      &                           izfsslave,nzfsslave,grid_overlap)
 
 c     --- Set the grid cell size, which is needed below. It must be set here
-c     --- after the field solve domain decomposition since nz may be
+c     --- after the field solve domain decomposition since nzlocal may be
 c     --- determined from the user supplied decomposition.
-      dz = (zmmaxglobal - zmminglobal)/nzfull
+      dz = (zmmax - zmmin)/nz
 
-      call domaindecomposeparticles(nzfull,nslaves,izfsslave,nzfsslave,
-     &                              grid_overlap,nzpguard,zmminglobal,zmmaxglobal,
+      call domaindecomposeparticles(nz,nslaves,izfsslave,nzfsslave,
+     &                              grid_overlap,nzpguard,zmmin,zmmax,
      &                              dz,zslave,lautodecomp,izpslave,nzpslave,
      &                              zpslmin,zpslmax)
 
@@ -80,14 +74,14 @@ c     --- Reset local values
       if (injctspc > 0) then
         injctspc = max(1,int(injctspc/nslaves*1.1))
       endif
-      nz = nzfsslave(my_index)
+      nzlocal = nzfsslave(my_index)
       nzp = nzpslave(my_index)
-      zmminp = zmminglobal + izpslave(my_index)*dz
-      zmmaxp = zmminglobal + (izpslave(my_index) + nzpslave(my_index))*dz
+      zmminp = zmmin + izpslave(my_index)*dz
+      zmmaxp = zmmin + (izpslave(my_index) + nzpslave(my_index))*dz
       izfsmin = 0
       izfsmax = nzfsslave(my_index)
-      zmmin = zmminglobal + izfsslave(my_index)*dz
-      zmmax = zmminglobal + (izfsslave(my_index) + nzfsslave(my_index))*dz
+      zmminlocal = zmmin + izfsslave(my_index)*dz
+      zmmaxlocal = zmmin + (izfsslave(my_index) + nzfsslave(my_index))*dz
 
 c     --- Set value of izextra, which is the amount of extra space at the
 c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
@@ -96,7 +90,7 @@ c     --- actualy be one less then the value calculated here, but I don't
 c     --- subtract one so there is some extra slop.
       if(solvergeom==XYZgeom .and. 0 <= fstype .and. fstype < 7) then
         if (nx+ny < nslaves) then
-          izextra = max(1,(nzfull-nzfull/nslaves*(nx+ny))/(nx*ny))
+          izextra = max(1,(nz-nz/nslaves*(nx+ny))/(nx*ny))
         endif
       endif
 
@@ -235,15 +229,15 @@ c     --- Wait for all sends to complete before deleting the sendbuffer.
       return
       end
 c=============================================================================
-      subroutine persource3d_slave(source,nc,nx,ny,nz)
+      subroutine persource3d_slave(source,nc,nx,ny,nzlocal)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nc,nx,ny,nz
-      real(kind=8):: source(0:nc-1,0:nx,0:ny,0:nz)
+      integer(ISZ):: nc,nx,ny,nzlocal
+      real(kind=8):: source(0:nc-1,0:nx,0:ny,0:nzlocal)
 
 c  Sets the slices on the exterior of source for periodicity
-c  sets slice at -1 equal to the slice at nz-1
-c  sets slice at nz+1 equal to the slice at 1
+c  sets slice at -1 equal to the slice at nzlocal-1
+c  sets slice at nzlocal+1 equal to the slice at 1
 c  Only first and last processors do anything.
 
       real(kind=8),allocatable:: sourcetemp(:,:,:)
@@ -259,9 +253,9 @@ c  Only first and last processors do anything.
       nn = nc*(nx+1)*(ny+1)
       if (my_index == nslaves-1) then
         pe = 0
-        call MPI_ISEND(source(:,:,:,nz),nn,MPI_DOUBLE_PRECISION,
+        call MPI_ISEND(source(:,:,:,nzlocal),nn,MPI_DOUBLE_PRECISION,
      &                 pe,messid,MPI_COMM_WORLD,mpirequest,mpierror)
-        call MPI_RECV(source(:,:,:,nz),nn,MPI_DOUBLE_PRECISION,
+        call MPI_RECV(source(:,:,:,nzlocal),nn,MPI_DOUBLE_PRECISION,
      &                pe,messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == 0) then
         pe = nslaves-1
@@ -285,12 +279,12 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine setsourceforfieldsolve3d_parallel(nc,nx,ny,nz,source,nxp,nyp,nzp,sourcep,
+      subroutine setsourceforfieldsolve3d_parallel(nc,nx,ny,nzlocal,source,nxp,nyp,nzp,sourcep,
      &                                             my_index,nslaves,izpslave,nzpslave,
      &                                             izfsslave,nzfsslave)
       use Subtimers3d
-      integer(ISZ):: nc,nx,ny,nz
-      real(kind=8):: source(0:nc-1,0:nx,0:ny,0:nz)
+      integer(ISZ):: nc,nx,ny,nzlocal
+      real(kind=8):: source(0:nc-1,0:nx,0:ny,0:nzlocal)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: sourcep(0:nc-1,0:nxp,0:nyp,0:nzp)
       integer(ISZ):: my_index,nslaves
@@ -299,7 +293,7 @@ c=============================================================================
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" source from
-c iz=0 to either iz=nz-1 or nz-2 depending on the overlap. Each is
+c iz=0 to either iz=nzlocal-1 or nzlocal-2 depending on the overlap. Each is
 c only responsible for sending out the source is owns.
 
       integer(MPIISZ):: i,right_nz,onz,nn
@@ -404,14 +398,14 @@ c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
       return
       end
 c=============================================================================
-      subroutine perpot3d_slave(pot,nc,nx,ny,nz,delx,dely)
+      subroutine perpot3d_slave(pot,nc,nx,ny,nzlocal,delx,dely)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nc,nx,ny,nz,delx,dely
-      real(kind=8):: pot(0:nc-1,-delx:nx+delx,-dely:ny+dely,-1:nz+1)
+      integer(ISZ):: nc,nx,ny,nzlocal,delx,dely
+      real(kind=8):: pot(0:nc-1,-delx:nx+delx,-dely:ny+dely,-1:nzlocal+1)
 c  Sets the slices on the exterior of a potential for periodicity
-c  sets slice at -1 equal to the slice at nz-1
-c  sets slice at nz+1 equal to the slice at 1
+c  sets slice at -1 equal to the slice at nzlocal-1
+c  sets slice at nzlocal+1 equal to the slice at 1
 c  Only first and last processors do anything.
       integer(MPIISZ):: nn1,nn2,pe0,pens
       include "mpif.h"
@@ -428,7 +422,7 @@ c  Only first and last processors do anything.
         call MPI_ISEND(pot(:,:,:,0:1),nn2,MPI_DOUBLE_PRECISION,
      &                 pens,messid,MPI_COMM_WORLD,mpirequest,mpierror)
       else if (my_index == nslaves-1) then
-        call MPI_ISEND(pot(:,:,:,nz-1),nn1,MPI_DOUBLE_PRECISION,
+        call MPI_ISEND(pot(:,:,:,nzlocal-1),nn1,MPI_DOUBLE_PRECISION,
      &                 pe0,messid,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
@@ -436,7 +430,7 @@ c  Only first and last processors do anything.
         call MPI_RECV(pot(:,:,:,-1),nn1,MPI_DOUBLE_PRECISION,
      &                pens,messid,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == nslaves-1) then
-        call MPI_RECV(pot(:,:,:,nz:nz+1),nn2,MPI_DOUBLE_PRECISION,
+        call MPI_RECV(pot(:,:,:,nzlocal:nzlocal+1),nn2,MPI_DOUBLE_PRECISION,
      &                pe0,messid,MPI_COMM_WORLD,mpistatus,mpierror)
       endif
 
@@ -451,12 +445,12 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getphipforparticles3d_parallel(nc,nx,ny,nz,phi,
+      subroutine getphipforparticles3d_parallel(nc,nx,ny,nzlocal,phi,
      &                                          nxp,nyp,nzp,phip,delx,dely,delz)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nc,nx,ny,nz,delx,dely,delz
-      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      integer(ISZ):: nc,nx,ny,nzlocal,delx,dely,delz
+      real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
 
@@ -535,11 +529,11 @@ c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
       return
       end                                                                       
 c===========================================================================
-      subroutine getphiforfields3d(nx,ny,nz,phi)
+      subroutine getphiforfields3d(nx,ny,nzlocal,phi)
       use Subtimers3d
       use Parallel
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
 
 c Get the phi for the full extent where the fields are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,

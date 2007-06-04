@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.60 $, $Date: 2007/05/23 22:27:22 $
+#@(#) File FRZ.V, version $Revision: 3.61 $, $Date: 2007/06/04 22:51:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.60 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.61 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -275,14 +275,14 @@ multigridrzb(iwhich:integer,iaxis:integer,u0(0:nr0+2,0:nz0+2):real,
              rho0(nr0+1,nz0+1):real,nr0:integer,nz0:integer,accuracy:real)
          subroutine
          # Does one part of the RZ magnetic field solve
-lphiberz(nx:integer,nz:integer,nzfull:integer,dxsqi:real,dzsqi:real,
+lphiberz(nx:integer,nzlocal:integer,nz:integer,dxsqi:real,dzsqi:real,
          phi:real,res:real,mglevel:integer,bounds:integer,mgparam:integer,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType,
          iondensity:real,electrontemperature:real,plasmapotential:real,
          electrondensitymaxscale:real,epsilon:real,epszfacdzsqi:real,
          inormtoavboltzfac:logical) subroutine
-restrictberz(nx:integer,nz:integer,nzfull:integer,u:real,delx:integer,delz:integer,
-             nxcoarse:integer,nzcoarse:integer,nzfullcoarse:integer,ucoarse:real,
+restrictberz(nx:integer,nzlocal:integer,nz:integer,u:real,delx:integer,delz:integer,
+             nxcoarse:integer,nzlocalcoarse:integer,nzcoarse:integer,ucoarse:real,
              delcx:integer,delcz:integer,
              bounds:integer,boundscoarse:integer,lzoffset:integer,
              withoutzeros:logical) subroutine
@@ -459,9 +459,9 @@ $             subroutine
 ******** ImplicitMG2D:
 coeffs1(:,:,:,:) _real
 chi01(:,:,:) _real
-mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
+mgsolveimplicites2d(iwhich:integer,nx:integer,nzlocal:integer,nz:integer,
                     dx:real,dz:real,phi:real,rho:real,ns:integer,qomdt:real,chi0:real,bounds:integer,
-                    xmmin:real,zmmin:real,zmminglobal:real,zbeam:real,zgrid:real,
+                    xmmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
                     mgparam:real,mgiters:integer,mgmaxiters:integer,
                     mgmaxlevels:integer,mgerror:real,mgtol:real,mgverbose:integer,
                     downpasses:integer,uppasses:integer,
@@ -469,7 +469,7 @@ mgsolveimplicites2d(iwhich:integer,nx:integer,nz:integer,nzfull:integer,
                     gridmode:integer,conductors:ConductorType,lrz:logical,
                     my_index:integer,nslaves:integer,izfsslave:integer,nzfsslave:integer)
             subroutine
-residuales2d(nx:integer,nz:integer,nzfull:integer,phi:real,rho:real,coeffs:real,res:real,
+residuales2d(nx:integer,nzlocal:integer,nz:integer,phi:real,rho:real,coeffs:real,res:real,
              mglevel:integer,bounds(0:5):integer,mgparam:real)
             subroutine
 
