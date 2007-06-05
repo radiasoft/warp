@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.267 $, $Date: 2007/06/04 22:53:08 $
+#@(#) File W3D.V, version $Revision: 3.268 $, $Date: 2007/06/05 00:53:01 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.267 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.268 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -861,7 +861,11 @@ setrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,
 getphipforparticles(indts:integer)
              subroutine # Copies data from phi to phip - mainly for parallel
 getphipforparticles3d(nc:integer,nx:integer,ny:integer,nz:integer,phi:real,
-              nxp:integer,nyp:integer,nzp:integer,phip:real,delx:integer,dely:integer,delz:integer)
+                      nxp:integer,nyp:integer,nzp:integer,phip:real,
+                      delx:integer,dely:integer,delz:integer,
+                      my_index:integer,nslaves:integer,
+                      izpslave(0:nslaves-1):integer,nzpslave(0:nslaves-1):integer,
+                      izfsslave(0:nslaves-1):integer,nzfsslave(0:nslaves-1):integer)
              subroutine # Calls the parallel routine for copying phi into phip
 padvnc3d(center:string,pgroup:ParticleGroup)
              subroutine # Advances particles and rho
