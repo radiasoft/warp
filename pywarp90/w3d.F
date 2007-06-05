@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.364 $, $Date: 2007/06/04 22:55:20 $
+c@(#) File W3D.F, version $Revision: 3.365 $, $Date: 2007/06/05 00:55:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8938,13 +8938,13 @@ c     --- End of loop over apertures
       end
 c===========================================================================
       subroutine getphipforparticles(indts)
+#ifdef MPIPARALLEL
       use InGen3d
       use InMesh3d
       use Fields3d
       use Fields3dParticles
+      use Parallel
       integer(ISZ):: indts
-
-#ifdef MPIPARALLEL
 
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
@@ -8956,22 +8956,31 @@ c      else if(solvergeom==Zgeom) then
 c        call getphipforparticlesz()
       elseif (solvergeom==XYZgeom) then
         call getphipforparticles3d(1,nx,ny,nzlocal,phi,
-     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),0,0,1)
+     &                             nxp,nyp,nzp,phipndts(:,:,:,indts),0,0,1,
+     &                             my_index,nslaves,
+     &                             izpslave,nzpslave,izfsslave,nzfsslave)
       end if
-#endif
 
+#endif
       return
       end
 c===========================================================================
       subroutine getphipforparticles3d(nc,nx,ny,nzlocal,phi,
-     &                                 nxp,nyp,nzp,phip,delx,dely,delz)
+     &                                 nxp,nyp,nzp,phip,delx,dely,delz,
+     &                                 my_index,nslaves,
+     &                                 izpslave,nzpslave,izfsslave,nzfsslave)
       integer(ISZ):: nc,nx,ny,nzlocal,nxp,nyp,nzp,delx,dely,delz
       real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 #ifdef MPIPARALLEL
         call getphipforparticles3d_parallel(nc,nx,ny,nzlocal,phi,nxp,nyp,nzp,phip,
-     &                                      delx,dely,delz)
+     &                                      delx,dely,delz,
+     &                                      my_index,nslaves,
+     &                                      izpslave,nzpslave,izfsslave,nzfsslave)
 #endif
 
       return

@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.44 $, $Date: 2007/06/04 22:54:46 $
+c W3DSLAVE.M, version $Revision: 1.45 $, $Date: 2007/06/05 00:55:22 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -446,13 +446,17 @@ c  Only first and last processors do anything.
       end
 c=============================================================================
       subroutine getphipforparticles3d_parallel(nc,nx,ny,nzlocal,phi,
-     &                                          nxp,nyp,nzp,phip,delx,dely,delz)
+     &                                          nxp,nyp,nzp,phip,delx,dely,delz,
+     &                                          my_index,nslaves,izpslave,nzpslave,
+     &                                          izfsslave,nzfsslave)
       use Subtimers3d
-      use Parallel
       integer(ISZ):: nc,nx,ny,nzlocal,delx,dely,delz
       real(kind=8):: phi(0:nc-1,-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: phip(0:nc-1,-delx:nxp+delx,-dely:nyp+dely,-delz:nzp+delz)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Get the phi for the extent where the particles are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
