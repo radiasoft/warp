@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.365 $, $Date: 2007/06/05 00:55:21 $
+c@(#) File W3D.F, version $Revision: 3.366 $, $Date: 2007/06/05 16:42:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8944,8 +8944,10 @@ c===========================================================================
       use Fields3d
       use Fields3dParticles
       use Parallel
+#endif
       integer(ISZ):: indts
 
+#ifdef MPIPARALLEL
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
@@ -8960,8 +8962,8 @@ c        call getphipforparticlesz()
      &                             my_index,nslaves,
      &                             izpslave,nzpslave,izfsslave,nzfsslave)
       end if
-
 #endif
+
       return
       end
 c===========================================================================
