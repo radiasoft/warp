@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.151 $, $Date: 2007/05/22 20:44:54 $
+c@(#) File DTOP.F, version $Revision: 3.152 $, $Date: 2007/06/05 16:37:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -222,9 +222,9 @@ c       --- option, or when rewriting the code thusly.
         enddo
 
 c       --- Collect only those z histories specified by the user.
-        do iz=0,nzzarr
-          if (lhcurrz)    hcurrz(iz,jhist,js) = curr(iz,js)
-        enddo
+c       --- Making the hcurrz loop implicit gets around a problem
+c       --- with the intel compiler.
+        if (lhcurrz) hcurrz(:,jhist,js) = curr(:,js)
         do iz=0,nzmmnt
           if (lhpnumz)    hpnumz(iz,jhist,js)    = pnumz(iz,js)
           if (lhepsxz)    hepsxz(iz,jhist,js)    = epsxz(iz,js)
@@ -630,7 +630,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.151 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.152 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
