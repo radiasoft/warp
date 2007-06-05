@@ -302,7 +302,9 @@ class MultiGrid(SubcycledPoissonSolver):
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,self.potential,
-                            self.nxp,self.nyp,self.nzp,self.potentialp,0,0,1)
+                            self.nxp,self.nyp,self.nzp,self.potentialp,0,0,1,
+                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                            self.izfsslave,self.nzfsslave)
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)

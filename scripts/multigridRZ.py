@@ -711,7 +711,9 @@ Initially, conductors are not implemented.
       potential  = self.convert2dto3d(self.potential)
       potentialp = self.convert2dto3d(self.potentialp)
       getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,potential,
-                            self.nxp,self.nyp,self.nzp,potentialp,self.nguardx,0,1)
+                            self.nxp,self.nyp,self.nzp,potentialp,self.nguardx,0,1,
+                            self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                            self.izfsslave,self.nzfsslave)
     if sometrue(top.efetch == 3):
       # --- This probably doesn't work without fixes XXX
       self.setpotentialpforparticles(*args)
