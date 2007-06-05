@@ -302,7 +302,8 @@ class MultiGrid(SubcycledPoissonSolver):
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,self.potential,
-                            self.nxp,self.nyp,self.nzp,self.potentialp,0,0,1,
+                            self.nxp,self.nyp,self.nzp,self.potentialp,
+                            self.nxguard,self.nyguard,self.nzguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
     if sometrue(top.efetch == 3):
@@ -347,8 +348,10 @@ class MultiGrid(SubcycledPoissonSolver):
       else:
         self.source[:,:,0] = self.source[:,:,0] + self.source[:,:,-1]
         self.source[:,:,-1] = self.source[:,:,0]
-    if self.pbounds[4] == 1: self.source[:,:,0] = 2.*self.source[:,:,0]
-    if self.pbounds[5] == 1: self.source[:,:,-1] = 2.*self.source[:,:,-1]
+    if self.pbounds[4] == 1 and self.izfsslave[me] == 0:
+      self.source[:,:,0] = 2.*self.source[:,:,0]
+    if self.pbounds[5] == 1 and self.izfsslave[me]+self.nzlocal == self.nz:
+      self.source[:,:,-1] = 2.*self.source[:,:,-1]
 
   def makesourceperiodic_parallel(self):
     tag = 70
