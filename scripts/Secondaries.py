@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.20 2007/06/04 23:02:51 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.21 2007/06/06 17:39:24 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -108,9 +108,12 @@ Class for generating secondaries
     self.pid={}
     # set history list
     self.htime=AppendableArray(typecode='d')
-    self.ek0av=AppendableArray(typecode='d')	    # average collision kinetic energy [eV] 
+    self.ek0av=AppendableArray(typecode='d')	 # average collision kinetic energy [eV] 
     self.ek0max=AppendableArray(typecode='d')    # maximum collision kinetic energy [eV]
     self.costhav=AppendableArray(typecode='d')   # average collision angle
+    self.power_dep=AppendableArray(typecode='d') # instantaneous power deposition [W] 
+    self.power_emit=AppendableArray(typecode='d') # instantaneous power emission [W] 
+    self.power_diff=AppendableArray(typecode='d') # instantaneous power deposition [W] 
     if pos.nsteps==0:
       self.piditype=0
     else:
@@ -331,6 +334,7 @@ Class for generating secondaries
     ek0av=0.
     costhav=0.
     ek0max=0.
+    ek0emitav=0.
     if self.l_record_timing:t2 = time.clock()
     tinit=tgen=tprepadd=tadd=0.
     # compute number of secondaries and create them
@@ -422,13 +426,13 @@ Class for generating secondaries
 #        coseta=0.5*ones(shape(e0)[0])
 #        e0=30.*ones(shape(e0)[0])
         if top.wpid==0:
-          ek0av+=sum(e0)
-          costhav+=sum(abs(coseta))
-          weighttot+=n
+          ek0av+=sum(e0)*top.pgroup.sw[js]
+          costhav+=sum(abs(coseta))*top.pgroup.sw[js]
+          weighttot+=n*top.pgroup.sw[js]
         else:
-          ek0av+=sum(weight*e0)
-          costhav+=sum(weight*abs(coseta))
-          weighttot+=sum(weight)
+          ek0av+=sum(weight*e0)*top.pgroup.sw[js]
+          costhav+=sum(weight*abs(coseta))*top.pgroup.sw[js]
+          weighttot+=sum(weight)*top.pgroup.sw[js]
         ek0max=max(max(e0),ek0max)
 #        coseta = 0.*cosphi
         if 1:#cond.lcollectlpdata:
@@ -640,9 +644,12 @@ Class for generating secondaries
               n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
              else:
                if top.wpid==0:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
                 self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,itype=itype)
                else:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight[i]*(uxsec*uxsec+uysec*uysec+uzsec*uzsec)
                 self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,ones(ns)*weight[i],itype)
+               ek0emitav += sum(e0emit)
               
            # emit neutrals
            if emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
@@ -685,9 +692,12 @@ Class for generating secondaries
               xplostold[i],yplostold[i],zplostold[i],n_unit0[0][i],n_unit0[1][i],n_unit0[2][i],icond]]
             else:
               if top.wpid==0:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*(vxnew*vxnew+vynew*vynew+vznew*vznew)
                 self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,itype=None)
               else:
+                e0emit = 0.5*top.pgroup.sm[js_new]*top.pgroup.sw[js_new]*weight*(vxnew*vxnew+vynew*vynew+vznew*vznew)
                 self.addpart(ns,xnew,ynew,znew,vxnew,vynew,vznew,js_new,ones(ns)*weight[i],None)
+              ek0emitav += sum(e0emit)
             
           if self.l_record_timing:
             t.finish()
@@ -722,7 +732,9 @@ Class for generating secondaries
       self.ek0av.append(ek0av/weighttot)	#cummulative collision kinetic energy [eV] this step
       self.ek0max.append(ek0max)	#maximum collision kinetic energy [eV]
       self.costhav.append(costhav/weighttot)
-
+      self.power_dep.append(ek0av*echarge/top.dt)
+      self.power_emit.append(ek0emitav/top.dt)
+      self.power_diff.append((ek0av*echarge-ek0emitav)/top.dt)
 #    w3d.lcallscraper=0
 #    particleboundaries3d()
 #    w3d.lcallscraper=1
