@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.38 $, $Date: 2007/06/06 23:10:26 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.39 $, $Date: 2007/06/06 23:54:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1794,9 +1794,9 @@ c       --- and the data needs to be copied around.
         xfsapi = x
         yfsapi = y
         zfsapi = z
-        bxfsapi = 0.
-        byfsapi = 0.
-        bzfsapi = 0.
+        bxfsapi = bx
+        byfsapi = by
+        bzfsapi = bz
 #else
         xfsapi => x
         yfsapi => y
