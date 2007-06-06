@@ -11,7 +11,8 @@ Class for generating photo-electrons
   def __init__(self,posinst_file=None,l_verbose=0,l_3d=0,nx=64,ny=None,
                xmin=None,xmax=None,ymin=None,ymax=None,weight=None,
                conductors=None,l_secondaries=1,dtfact=1,l_switchyz=0, 
-               electronnmax=None,l_posmgsolver=0,l_posscatter=0):
+               electronnmax=None,l_posmgsolver=0,l_posscatter=0,
+               lrefineallintercept=0,aura=0.):
     top.lrelativ = true
     if posinst_file is not None:
       init_posinst_for_warp(posinst_file)
@@ -46,31 +47,37 @@ Class for generating photo-electrons
       self.qph=AppendableArray(typecode='d')
       self.qsec=AppendableArray(typecode='d')
       installbeforelr(self.randomcull)
-    if weight is None:weight=pos.chmphelnom#/pos.slength#*self.sigz
     self.addkick=0
-    self.phelectrons=Species(type=Electron,weight=weight)
+    if pos.chmphelnom>0.:
+      if weight is None:weight=pos.chmphelnom#/pos.slength#*self.sigz
+      self.phelectrons=Species(type=Electron,weight=weight)
+      self.PHEL=PhotoElectrons(l_verbose=0,l_switchyz=l_switchyz)
+      self.PHEL.add(emitted_species=self.phelectrons)
+    if pos.chmionelnom>0.:
+      if weight is None:weight=pos.chmionelnom#/pos.slength#*self.sigz
+      self.ioelectrons=Species(type=Electron,weight=weight)
+      self.IOEL=IonizElectrons(l_verbose=0,l_switchyz=l_switchyz)
+      self.IOEL.add(emitted_species=self.ioelectrons)
     if l_secondaries:
       self.secelectrons=Species(type=Electron,weight=weight)
-    self.PHEL=PhotoElectrons(l_verbose=0,l_switchyz=l_switchyz)
-    self.PHEL.add(emitted_species=self.phelectrons)
 #    top.lresetparticlee = false
 #    top.lresetparticleb = false
     self.nparpgrp = 4096
     self.l_3d=l_3d
     self.dtfact=dtfact
     self.l_switchyz=l_switchyz
-    if xmin is None:xmin=-pos.ach#*1.05
-    if xmax is None:xmax= pos.ach#*1.05
-    if ymin is None:ymin=-pos.bch#*1.05
-    if ymax is None:ymax= pos.bch#*1.05
+    if xmin is None:xmin=-pos.ach*1.05
+    if xmax is None:xmax= pos.ach*1.05
+    if ymin is None:ymin=-pos.bch*1.05
+    if ymax is None:ymax= pos.bch*1.05
     w3d.nx=nx
     if ny is None:
       ny=nint(pos.bch*nx/pos.ach)
     w3d.xmmin=xmin
     w3d.xmmax=xmax
     if l_switchyz:
-      w3d.zmminlocal=ymin
-      w3d.zmmaxlocal=ymax
+      w3d.zmmin=ymin
+      w3d.zmmax=ymax
       w3d.nz=ny+0
     else:
       w3d.ymmin=ymin
@@ -106,19 +113,56 @@ Class for generating photo-electrons
     self.ibk=0
     if conductors is None:
       if l_switchyz:
-        self.pipe = YCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
+        if pos.ichsh==1: # elliptical
+          self.pipe = YCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
                                                    radius      = pos.ach,
                                                    length      = (w3d.ymmax-w3d.ymmin)*10.,
                                                    ycent       = 0.5*(w3d.ymmin+w3d.ymmax),
                                                    condid      = 1)
-        self.pipescraper = -Sphere(radius=pos.ach,condid=1)
+          self.pipescraper = -Sphere(radius=pos.ach,condid=1)
+        if pos.ichsh==2: # rectangular
+          self.pipe = Box(xsize=2.*pos.ach,
+                          zsize=3.*pos.bch,
+                          ysize=pos.slength,
+                          xcent=2.*pos.ach) \
+                    + Box(xsize=2.*pos.ach,
+                          zsize=3.*pos.bch,
+                          ysize=pos.slength,
+                          xcent=-2.*pos.ach) \
+                    + Box(xsize=2.*pos.ach,
+                          zsize=2.*pos.bch,
+                          ysize=pos.slength,
+                          zcent=2.*pos.bch) \
+                    + Box(xsize=2.*pos.ach,
+                          zsize=2.*pos.bch,
+                          ysize=pos.slength,
+                          zcent=-2.*pos.bch)
+          self.pipescraper = self.pipe
         self.scrapegrid=Grid(nx=nx,ny=w3d.nz,nzlocal=ny,nz=ny)
       else:
-        self.pipe = ZCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
+        if pos.ichsh==1: # elliptical
+          self.pipe = ZCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
                                                    radius      = pos.ach,
                                                    length      = w3d.zmmax-w3d.zmmin,
                                                    zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
                                                    condid      = 1)
+        if pos.ichsh==2: # rectangular
+          self.pipe = Box(xsize=2.*pos.ach,
+                          ysize=3.*pos.bch,
+                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
+                          xcent=2.*pos.ach) \
+                    + Box(xsize=2.*pos.ach,
+                          ysize=3.*pos.bch,
+                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
+                          xcent=-2.*pos.ach) \
+                    + Box(xsize=2.*pos.ach,
+                          ysize=2.*pos.bch,
+                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
+                          ycent=2.*pos.bch) \
+                    + Box(xsize=2.*pos.ach,
+                          ysize=2.*pos.bch,
+                          zsize=w3d.zmmaxglobal-w3d.zmminglobal,
+                          ycent=-2.*pos.bch)
         self.scrapegrid=Grid(nx=nx,ny=ny,nzlocal=w3d.nzlocal,nz=w3d.nz)
         self.pipescraper = self.pipe
         import __main__
@@ -129,7 +173,9 @@ Class for generating photo-electrons
                                      lsavecondid=1,
                                      lcollectlpdata=1,
                                      grid=self.scrapegrid,
-                                     lrefineallintercept=0)
+                                     lrefineintercept=0,
+                                     lrefineallintercept=lrefineallintercept,
+                                     aura=aura)
 #            self.scraper.l_print_timing=1
       self.conductors = [self.pipe]
     if l_secondaries:
@@ -142,10 +188,20 @@ Class for generating photo-electrons
       self.Sec.set_params_user=self.set_params
       self.Sec.enpar=pos.enpar
       self.Sec.pnpar=pos.pnpar
-      self.Sec.add(incident_species = self.phelectrons,
-                   emitted_species  = self.secelectrons,
-                   conductor        = self.pipe,
-                   interaction_type = 0)   
+      try:
+        self.Sec.add(incident_species = self.phelectrons,
+                     emitted_species  = self.secelectrons,
+                     conductor        = self.pipe,
+                     interaction_type = 0)   
+      except:
+        pass
+      try:
+        self.Sec.add(incident_species = self.ioelectrons,
+                     emitted_species  = self.secelectrons,
+                     conductor        = self.pipe,
+                     interaction_type = 0)   
+      except:
+        pass
       self.Sec.add(incident_species = self.secelectrons,
                    emitted_species  = self.secelectrons,
                    conductor        = self.pipe,
@@ -161,11 +217,25 @@ Class for generating photo-electrons
       self.ikick=k
       if k<self.nkicks:
         self.addkick=1
-        self.PHEL.Lambda=self.Lambda[k]*self.bucket_train[self.ibk]
+        try:
+          self.PHEL.Lambda=self.Lambda[k]*self.bucket_train[self.ibk]
+        except:
+          pass
+        try:
+          self.IOEL.Lambda=self.Lambda[k]*self.bucket_train[self.ibk]
+        except:
+          pass
         top.dt=pos.dt[k]
       else:
         self.addkick=0
-        self.PHEL.Lambda=0.
+        try:
+          self.PHEL.Lambda=0.
+        except:
+          pass
+        try:
+          self.IOEL.Lambda=0.
+        except:
+          pass
         top.dt=pos.deltat_g
       top.dt/=self.dtfact
       for i in range(self.dtfact):
@@ -272,13 +342,28 @@ Class for generating photo-electrons
   def randomcull(self):
  #  Routine to cull every other particle (i.e., "random culling")
     pg = top.pgroup
-    phe = self.phelectrons
-    sece = self.secelectrons
+    sps=[]
+    ne=0
+    try:
+      sps.append(self.phelectrons)
+      ne+=sps[-1].getn()
+    except:
+      pass
+    try:
+      sps.append(self.ioelectrons)
+      ne+=sps[-1].getn()
+    except:
+      pass
+    try:
+      sps.append(self.secelectrons)
+      ne+=sps[-1].getn()
+    except:
+      pass
 #    print "Number of primaries=",phe.getn(),"Secondaries=",sece.getn()
-    if (phe.getn()+sece.getn())>self.electronnmax:
+    if ne>self.electronnmax:
      self.ncull = self.ncull+1 
      self.wherecull.append(top.it)
-     for sp in [phe,sece]:
+     for sp in sps:
       for js in sp.jslist:
        if pg.nps[js]>1:
         il=pg.ins[js]-1
@@ -295,6 +380,7 @@ Class for generating photo-electrons
  #       print "for js=",js,"init chg=",initial_charge,"final chg=",final_charge
  #       print "After cull,","Number of primaries=",phe.getn(),"Secondaries=",sece.getn()
  #       print "Culled Electrons", "ncull=",self.ncull
+    return
     q=0.
     for js in phe.jslist:
      if phe.getn()>0:    
@@ -376,3 +462,210 @@ Class for generating photo-electrons
     ex[...]+=coeffkick*exeypt[0,:]
     ey[...]+=coeffkick*exeypt[1,:]
 #    print 'pos_electronkick done'
+
+class IonizElectrons:
+  """
+Class for generating photo-electrons
+ - posinst_file: name of Posinst input file 
+ - xfloor      : photo-electrons generated by Posinst that have x<xfloor will be forced to x=xfloor
+ - xceiling    : photo-electrons generated by Posinst that have x>xceiling will be forced to x=xceiling
+ - yfloor      : photo-electrons generated by Posinst that have y<yfloor will be forced to y=yfloor
+ - yceiling    : photo-electrons generated by Posinst that have y>xceiling will be forced to y=yceiling
+ - nz          : number of longitudinal slices (default=100)
+ - l_xmirror   : turns mirroring of emitted photo-electrons with regard to x-axis on/off
+ - l_verbose   : sets verbosity (default=0). 
+  """
+  def __init__(self,posinst_file=None,xfloor=None,xceiling=None,yfloor=None,yceiling=None,
+               nz=100,l_xmirror=0,l_switchyz=0,l_verbose=0):
+     self.xfloor=xfloor
+     self.xceiling=xceiling
+     self.yfloor=yfloor
+     self.yceiling=yceiling
+     self.nz=nz
+     self.l_xmirror=l_xmirror
+     self.l_switchyz=l_switchyz
+     self.l_verbose=l_verbose
+     self.inter={}
+     self.npmax=4096
+     self.nps={}
+     self.x={}
+     self.y={}
+     self.z={}
+     self.vx={}
+     self.vy={}
+     self.vz={}
+     self.pid={}
+     self.Lambda=0.
+     if posinst_file is not None:init_posinst_for_warp(posinst_file)
+     self.install()
+     
+  def add(self,incident_species=None,emitted_species=None):
+    isinc=incident_species
+    issec=[]
+    if not self.inter.has_key(isinc):
+        self.inter[isinc]={}
+        for key in ['incident_species','emitted_species']:
+          self.inter[isinc][key]=[]
+        self.inter[isinc]['incident_species']=incident_species
+    self.inter[isinc]['emitted_species'] = emitted_species
+    js=emitted_species.jslist[0]
+    if not self.x.has_key(js):
+      self.nps[js]=0
+      self.x[js]=fzeros(self.npmax,'d')
+      self.y[js]=fzeros(self.npmax,'d')
+      self.z[js]=fzeros(self.npmax,'d')
+      self.vx[js]=fzeros(self.npmax,'d')
+      self.vy[js]=fzeros(self.npmax,'d')
+      self.vz[js]=fzeros(self.npmax,'d')
+      if top.wpid>0:
+        self.pid[js]=fzeros([self.npmax,top.npid],'d')
+
+  def install(self):
+    if not isinstalledbeforeloadrho(self.generate):
+      installbeforeloadrho(self.generate)
+
+  def addpart(self,nn,x,y,z,vx,vy,vz,js,weight=None):
+    if self.nps[js]+nn>self.npmax:self.flushpart(js)
+    il=self.nps[js]
+    iu=il+nn
+    self.x[js][il:iu]=x
+    self.y[js][il:iu]=y
+    self.z[js][il:iu]=z
+    self.vx[js][il:iu]=vx
+    self.vy[js][il:iu]=vy
+    self.vz[js][il:iu]=vz
+    if weight is not None:self.pid[js][il:iu,top.wpid-1]=weight
+    self.nps[js]+=nn
+      
+  def flushpart(self,js):
+    if self.nps[js]>0:
+       nn=self.nps[js]
+       if top.wpid==0:
+         addparticles(x=self.x[js][:nn],
+                      y=self.y[js][:nn],
+                      z=self.z[js][:nn],
+                      vx=self.vx[js][:nn],
+                      vy=self.vy[js][:nn],
+                      vz=self.vz[js][:nn],
+                      js=js,
+                      lmomentum=true)
+       else: 
+         addparticles(x=self.x[js][:nn],
+                      y=self.y[js][:nn],
+                      z=self.z[js][:nn],
+                      vx=self.vx[js][:nn],
+                      vy=self.vy[js][:nn],
+                      vz=self.vz[js][:nn],
+                      pid=self.pid[js][:nn,:],
+                      js=js,
+                      lmomentum=true)
+       self.nps[js]=0
+         
+  def generate(self):
+    for ints in self.inter.keys():
+     incident_species=self.inter[ints]['incident_species']
+     emitted_species=self.inter[incident_species]['emitted_species']
+     if incident_species is None:
+       self.nz=1
+       if self.l_switchyz:
+         ymin=w3d.ymmin
+         ymax=w3d.ymmax
+         dy=(w3d.ymmax-w3d.ymmin)
+       else:
+         zmin=w3d.zmmin
+         zmax=w3d.zmmax
+         dz=(w3d.zmmax-w3d.zmmin)
+     else:
+       if self.l_switchyz:
+         ymin=min(incident_species.gety())
+         ymax=max(incident_species.gety())
+         dy=(ymax-ymin)/self.nz
+         self.Lambda = sum(sum(incident_species.get_density(nx=2, 
+                                                            nz=2, 
+                                                            ny=self.nz,
+                                                            ymin=ymin,
+                                                            ymax=ymax,
+                                                            l_minmax_grid=false,
+                                                            l_dividebyvolume=false,
+                                                            charge=1),2),0)
+       else:
+         zmin=min(incident_species.getz())
+         zmax=max(incident_species.getz())
+         dz=(zmax-zmin)/self.nz
+         self.Lambda = sum(sum(incident_species.get_density(nx=2, 
+                                                            ny=2, 
+                                                            nz=self.nz,
+                                                            zmin=zmin,
+                                                            zmax=zmax,
+                                                            l_minmax_grid=false,
+                                                            l_dividebyvolume=false,
+                                                            charge=1),0),0)
+     weightemit=top.pgroup.sw[emitted_species.jslist[0]]*abs(top.pgroup.sq[emitted_species.jslist[0]])
+     torr_to_MKS=133.3224	#1 Torr=133.3224  N/m**2
+     #ideal gas law: rho=p/(k*T)
+     gas_prefactor=(torr_to_MKS/pos.boltzk)/294
+     gasden=(gas_prefactor)*pos.pressure*(294/pos.temperature)
+     rnipbppm=(1e-28)*pos.crossect*gasden
+     for i in range(self.nz):
+       if incident_species is None:
+         rhel = self.Lambda*rnipbppm*clight*top.dt/weightemit
+       else:
+         rhel = self.Lambda[i]*rnipbppm*clight*top.dt/weightemit
+       # rhel is the number of electrons created at each timestep
+       n=int(rhel)
+       if ranf()<rhel-n:n+=1  # randomly add one electrons based on rhel fractional part
+       if self.l_verbose:print ' *** i,rhel,nemit= ',i,rhel,n
+       if n==0:continue
+       pos.nionel[0]=n   # tells Posinst to emit n photoelectrons
+       gen_ionizelectrons(1) # number of beam slice in POSINST =1. Use only 1.
+       if self.l_verbose:print 'nlast',pos.nlast,"nphel=",pos.nionel[0]
+
+       if self.l_xmirror:
+         # put photons on both sides of the vacuum chamber
+         xran = ranf(pos.x[:pos.nlast])
+         xran = where(xran>0.5,1.,-1.)
+         pos.x[:pos.nlast] = pos.x[:pos.nlast]*xran
+         pos.vgx[:pos.nlast] = pos.vgx[:pos.nlast]*xran
+
+       if self.l_verbose:print "min and max of photoelectrons=",min((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz),\
+                                                                max((pos.z[:pos.nlast]/pos.slength-0.5)*dz+i*dz)
+       ns = pos.nlast
+       js_new=emitted_species.jslist[0]
+       usq = (pos.vgx[:pos.nlast]**2 + pos.vgy[:pos.nlast]**2 + pos.vgz[:pos.nlast]**2)/clight**2
+       gaminv = 1./sqrt(1. + usq)
+       dt=ranf(usq)*top.dt
+       if self.xfloor is not None:
+         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]>self.xfloor,pos.x[:pos.nlast],self.xfloor)
+       if self.xceiling is not None:
+         pos.x[:pos.nlast]=where(pos.x[:pos.nlast]<self.xceiling,pos.x[:pos.nlast],self.xceiling)
+       if self.yfloor is not None:
+         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]>self.yfloor,pos.y[:pos.nlast],self.yfloor)
+       if self.yceiling is not None:
+         pos.y[:pos.nlast]=where(pos.y[:pos.nlast]<self.yceiling,pos.y[:pos.nlast],self.yceiling)
+       if top.wpid==0:
+         weights = None
+       else:
+         weights = ones(pos.nlast,'d')
+       if self.l_switchyz:
+           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
+                         pos.z[:pos.nlast]*0.,
+                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
+                         pos.vgx[:pos.nlast],
+                         pos.vgz[:pos.nlast],
+                         pos.vgy[:pos.nlast],
+                         js_new,
+                         weights)
+       else:
+           self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
+                         pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
+                         (pos.z[:pos.nlast]/pos.slength)*dz+i*dz+zmin,
+                         pos.vgx[:pos.nlast],
+                         pos.vgy[:pos.nlast],
+                         pos.vgz[:pos.nlast],
+                         js_new,
+                         weights)
+       pos.nlast=0
+
+    # --- make sure that all particles are added
+    for js in self.x.keys():
+      self.flushpart(js)
