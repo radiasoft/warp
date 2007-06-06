@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.55 2007/06/04 23:02:53 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.56 2007/06/06 16:48:11 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -182,7 +182,6 @@ after load balancing."""
   def updateconductors(self):
     for c in self.conductors:
       self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
-
     # --- reducedisinside is a copy of isinside but will be modified to remove
     # --- redundant information. This provides an optimization of the routines
     # --- which find intersections with conductors. Normally, a particle is
@@ -202,8 +201,11 @@ after load balancing."""
     #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
     #                   self.grid.nx,self.grid.ny,self.grid.nz)
 
-  def scrapeall(self,clear=0):
-    if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
+  def scrapeall(self,clear=0,local=0):
+    if local:
+      if len(self.conductors)==0 or sum(top.pgroup.nps)==0: return
+    else:
+      if len(self.conductors)==0 or parallelsum(sum(top.pgroup.nps))==0: return
     self.updategrid()
     for js in xrange(top.pgroup.ns):
       if top.pgroup.ldts[js]:
@@ -219,7 +221,7 @@ after load balancing."""
         if self.l_print_timing:print js,'processlosspart',t.milli()
         if self.l_print_timing:t.start()
         if self.lsavecondid:
-          self.savecondid(js)
+          self.savecondid(js,local=local)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
 
@@ -456,12 +458,12 @@ after load balancing."""
         if w3d.solvergeom in [w3d.XYZgeom,w3d.XZgeom,w3d.RZgeom]:
           zg = take(zg,itempclose)
 
-  def savecondid(self,js):
+  def savecondid(self,js,local=0):
     jsid = top.pgroup.sid[js]
 
     # --- Just return if there are no lost particles.
     if top.npslost[jsid] == 0: 
-      if self.lcollectlpdata:
+      if self.lcollectlpdata and not local:
         # --- If data is being collected, the 0 from this processor must still
         # --- be added to the sum.
         for c in self.conductors:
@@ -541,7 +543,7 @@ after load balancing."""
     for c in self.conductors:
       ii = compress(pp == c.condid,arange(nn))
       if len(ii) == 0: 
-        if self.lcollectlpdata:
+        if self.lcollectlpdata and not local:
           # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
@@ -637,9 +639,9 @@ after load balancing."""
         if top.wpid==0:
           w = len(pidtoconsider)
         else:
-          w = sum(take(top.pidlost[:,top.wpid],pidtoconsider))
+          w = sum(take(top.pidlost[:,top.wpid-1],pidtoconsider))
         # --- This parallelsum coordinates with the ones above
-        w=parallelsum(w)
+        if not local:w=parallelsum(w)
         c.lostparticles_data += [[top.time, 
                                   w*top.pgroup.sq[js]*top.pgroup.sw[js],
                                   top.dt,
