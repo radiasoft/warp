@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.366 $, $Date: 2007/06/05 16:42:04 $
+c@(#) File W3D.F, version $Revision: 3.367 $, $Date: 2007/06/06 23:10:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7828,6 +7828,9 @@ c       --- and the data needs to be copied around.
         xfsapi = x
         yfsapi = y
         zfsapi = z
+        exfsapi = 0.
+        eyfsapi = 0.
+        ezfsapi = 0.
 #else
         xfsapi => x
         yfsapi => y
