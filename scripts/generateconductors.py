@@ -102,12 +102,13 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.158 2007/06/04 23:02:52 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.159 2007/06/06 17:23:01 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
 ##############################################################################
+installedconductors = []
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmin=None,zmax=None,dfill=top.largepos,
                         zbeam=None,
@@ -158,10 +159,12 @@ Installs the given conductors.
   g.getdata(a,dfill)
   # Then install it
   g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
+  installedconductors.append(a)
   
 ##############################################################################
 ##############################################################################
 ##############################################################################
+listofallconductors = []
 class Assembly(pyOpenDX.Visualizable):
   """
 Class to hold assemblies of conductors.  Base class of all conductors.
@@ -190,6 +193,7 @@ Should never be directly created by the user.
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
                     generatorf=None,generatord=None,generatori=None,kw={}):
+    listofallconductors.append(self)
     self.voltage = v
     self.xcent = x
     self.ycent = y
