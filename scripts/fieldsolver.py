@@ -84,6 +84,15 @@ package. Only w3d and wxy have field solves defined.
     if top.inject > 0: getinj_phi()
 
 #=============================================================================
+def fetche(pgroup=None,ipmin=None,ip=None,js=None):
+  """Fetches the E field for particles in the given pgroup"""
+  if pgroup is None: pgroup = top.pgroup
+  if js is None: js = 0
+  if ipmin is None: ipmin = pgroup.ins[js]
+  if ip is None: ip = pgroup.nps[js]
+  fetche3d(pgroup,ipmin,ip,js+1)
+
+#=============================================================================
 def loadj(pgroup=None,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """
 loadj(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
