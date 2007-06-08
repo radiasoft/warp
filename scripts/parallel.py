@@ -1,10 +1,10 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.28 2007/05/22 00:49:43 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.29 2007/06/08 18:17:33 dave Exp $"
 
-from warp import lwithnumpy,gettypecode
-if lwithnumpy:
+from warp import with_numpy,gettypecode
+if with_numpy:
   from numpy import *
   ArrayType = ndarray
 else:

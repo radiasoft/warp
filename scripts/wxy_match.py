@@ -1,10 +1,10 @@
 from warp import *
-if lwithnumpy:
+if with_numpy:
   import numpy.oldnumeric.linear_algebra as LinearAlgebra
 else:
   import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.8 2007/05/15 18:37:29 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.9 2007/06/08 18:17:32 dave Exp $"
 
 def wxy_matchdoc():
   print """

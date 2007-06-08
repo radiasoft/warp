@@ -1,8 +1,15 @@
-warp_version = "$Id: warp.py,v 1.142 2007/06/04 23:02:54 dave Exp $"
+warp_version = "$Id: warp.py,v 1.143 2007/06/08 18:17:32 dave Exp $"
 # import all of the neccesary packages
 import __main__
-lwithnumpy = 0
-if lwithnumpy:
+import sys
+
+try:
+  with_numpy = __main__.__dict__['with_numpy']
+except KeyError:
+  with_numpy = ('--with-numpy' in sys.argv)
+  __main__.__dict__['with_numpy'] = with_numpy
+
+if with_numpy:
   from numpy import *
   ArrayType = ndarray
   def gettypecode(x):
@@ -12,11 +19,10 @@ else:
   import MA
   def gettypecode(x):
     return x.typecode()
-import sys
 import os.path
 import time
 
-if not lwithnumpy:
+if not with_numpy:
   # --- Set this to a more reasonable value
   MA.set_print_limit(10000)
 
@@ -27,7 +33,7 @@ try:
 except ImportError:
   pass
 try:
-  if lwithnumpy:
+  if with_numpy:
     import numpy.oldnumeric.rng as RNG
   else:
     import RNG
@@ -54,11 +60,13 @@ except ImportError:
   pass
 
 # Import the warpC shared object which contains all of WARP
+if with_numpy:
+  import warpC_numpy as warpC
 from warpC import *
 
 from Forthon import *
 from warputils import *
-if lwithnumpy:
+if with_numpy:
   import numpy.oldnumeric.random_array as RandomArray
 else:
   import RandomArray
