@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.368 $, $Date: 2007/06/06 23:54:19 $
+c@(#) File W3D.F, version $Revision: 3.369 $, $Date: 2007/06/08 18:14:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2838,7 +2838,8 @@ c       + ...
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy,ext,eyt,ezt
-      real(kind=8):: xi,yj,zk,x,y,xnext,ynext
+      real(kind=8):: xi,yj,zk,xinext,yjnext,zknext
+      real(kind=8):: x,y,xnext,ynext
       integer(ISZ):: noff(32)
       save noff
 
@@ -3081,126 +3082,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
       elseif (efetch == 2) then
 
-c       --- Allocate the temporary arrays
-c       --- The arrays are made allocatable so that memory is only
-c       --- created for them when efetch is 2.
-        allocate(indx(33,np),p(33,np),u1p(np),v1p(np),w1p(np),stat=allocerror)
-        if (allocerror /= 0) then
-          print*,"sete3d: allocation error ",allocerror,
-     &           ": could not allocate temp arrays to shape ",np
-          call kaboom("sete3d: allocation error")
-          return
-        endif
-
-
-c  WARNING: This coding does not include symmetries!
-c  NOTE: This section can probably be deleted since it is not really neccesary.
-c  Vectorized loop over particles setting up indices of cells from which
-c  to fetch phi, and weights for evaluating E at particle positions 
-        if (l2symtry .or. l4symtry) then
-          call kaboom("sete3d: WARNING: the algorithm does not take into
-     & account symmetries. Set efetch=1 or 3 and restart.")
-        endif
-
-      do i  p = 1, np
-
-          i =  (xp(ip) - xmmin)*dxi
-          j =  (yp(ip) - ymmin)*dyi
-          k =  (zp(ip) - zgrid - zmmin)*dzi
-          ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-
-          indx( 1,ip) = ind0 + noff(1)
-          indx( 2,ip) = ind0 + noff(2)
-          indx( 3,ip) = ind0 + noff(3)
-          indx( 4,ip) = ind0 + noff(4)
-          indx( 5,ip) = ind0 + noff(5)
-          indx( 6,ip) = ind0 + noff(6)
-          indx( 7,ip) = ind0 + noff(7)
-          indx( 8,ip) = ind0 + noff(8)
-          indx( 9,ip) = ind0 + noff(9)
-          indx(10,ip) = ind0 + noff(10)
-          indx(11,ip) = ind0 + noff(11)
-          indx(12,ip) = ind0 + noff(12)
-          indx(13,ip) = ind0 + noff(13)
-          indx(14,ip) = ind0 + noff(14)
-          indx(15,ip) = ind0 + noff(15)
-          indx(16,ip) = ind0 + noff(16)
-          indx(17,ip) = ind0 + noff(17)
-          indx(18,ip) = ind0 + noff(18)
-          indx(19,ip) = ind0 + noff(19)
-          indx(20,ip) = ind0 + noff(20)
-          indx(21,ip) = ind0 + noff(21)
-          indx(22,ip) = ind0 + noff(22)
-          indx(23,ip) = ind0 + noff(23)
-          indx(24,ip) = ind0 + noff(24)
-          indx(25,ip) = ind0 + noff(25)
-          indx(26,ip) = ind0 + noff(26)
-          indx(27,ip) = ind0 + noff(27)
-          indx(28,ip) = ind0 + noff(28)
-          indx(29,ip) = ind0 + noff(29)
-          indx(30,ip) = ind0 + noff(30)
-          indx(31,ip) = ind0 + noff(31)
-          indx(32,ip) = ind0 + noff(32)
-
-          u1p(ip) = (xp(ip) - xmmin)*dxi - i
-          v1p(ip) = (yp(ip) - ymmin)*dyi - j
-          w1p(ip) = (zp(ip) - zgrid - zmmin)*dzi - k
-
-        enddo
-
-c       --- Vectorized fetch of phi over the 32 cells touched;
-        do ip = 1, np
-          do m = 1, 32
-            p(m,ip) = phi1d(indx(m,ip))
-          enddo
-        enddo
-
-c       --- Evaluation of E, vectorized over particles
-        do ip = 1, np
-
-          u1 = u1p(ip)
-          v1 = v1p(ip)
-          w1 = w1p(ip)
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-
-          ext = tdxi*(u0*v0*w0*(p( 7,ip) - p( 9,ip))
-     &                + u1*v0*w0*(p( 8,ip) - p(10,ip))
-     &                + u0*v1*w0*(p(11,ip) - p(13,ip)) 
-     &                + u1*v1*w0*(p(12,ip) - p(14,ip)) 
-     &                + u0*v0*w1*(p(19,ip) - p(21,ip))
-     &                + u1*v0*w1*(p(20,ip) - p(22,ip))
-     &                + u0*v1*w1*(p(23,ip) - p(25,ip)) 
-     &                + u1*v1*w1*(p(24,ip) - p(26,ip)))
-
-          eyt = tdyi*(u0*v0*w0*(p( 5,ip) - p(12,ip)) 
-     &                + u1*v0*w0*(p( 6,ip) - p(13,ip))
-     &                + u0*v1*w0*(p( 8,ip) - p(15,ip)) 
-     &                + u1*v1*w0*(p( 9,ip) - p(16,ip)) 
-     &                + u0*v0*w1*(p(17,ip) - p(24,ip))
-     &                + u1*v0*w1*(p(18,ip) - p(25,ip))
-     &                + u0*v1*w1*(p(20,ip) - p(27,ip)) 
-     &                + u1*v1*w1*(p(21,ip) - p(28,ip)))
-
-          ezt = tdzi*(u0*v0*w0*(p( 1,ip) - p(20,ip)) 
-     &                + u1*v0*w0*(p( 2,ip) - p(21,ip))
-     &                + u0*v1*w0*(p( 3,ip) - p(24,ip)) 
-     &                + u1*v1*w0*(p( 4,ip) - p(25,ip)) 
-     &                + u0*v0*w1*(p( 8,ip) - p(29,ip))
-     &                + u1*v0*w1*(p( 9,ip) - p(30,ip))
-     &                + u0*v1*w1*(p(12,ip) - p(31,ip)) 
-     &                + u1*v1*w1*(p(13,ip) - p(32,ip)))
-
-          ex(ip) = ex(ip) + ext
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
-
-        enddo
-
-c       --- Free the memory
-        deallocate(indx)
-        deallocate(p, u1p, v1p, w1p)
+        call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
 
       elseif (efetch == 3) then
 c       --- This uses the precalculated selfe instead of doing
@@ -3214,16 +3096,22 @@ c       --- the finite differences here..
             xnext = xp(1)
             ynext = yp(1)
           endif
-          inext = (xnext - xmmin)*dxi
-          jnext = (ynext - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
+          xinext = (xnext - xmmin)*dxi
+          yjnext = (ynext - ymmin)*dyi
+          zknext = (zp(1) - zgrid - zmmin)*dzi
+          inext = xinext
+          jnext = yjnext
+          knext = zknext
           do ip = 1, np
 
+            x = xnext
+            y = ynext
+            xi = xinext
+            yj = yjnext
+            zk = zknext
             i = inext
             j = jnext
             k = knext
-            x = xnext
-            y = ynext
             if (ip < np) then
               if (lcylindrical) then
                 xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
@@ -3232,14 +3120,21 @@ c       --- the finite differences here..
                 xnext = xp(ip+1)
                 ynext = yp(ip+1)
               endif
-              inext = (xnext    - xmmin)*dxi
-              jnext = (ynext    - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+              xinext = (xnext - xmmin)*dxi
+              yjnext = (ynext - ymmin)*dyi
+              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+              inext = xinext
+              jnext = yjnext
+              knext = zknext
             endif
 
-            u1 = (x      - xmmin)*dxi - i
-            v1 = (y      - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny .or.
+     &          zk < 0. .or. zk > nz) cycle
+
+            u1 = xi - i
+            v1 = yj - j
+            w1 = zk - k
 
             u0 = 1. - u1
             v0 = 1. - v1
@@ -3297,23 +3192,38 @@ c         --- the axis of symmetry.
           if (l4symtry) sx = -1.
 
 c         --- special loop symmetry is used
-          inext = (abs(xp(1)) - xmmin)*dxi
-          jnext = (abs(yp(1)) - ymmin)*dyi
-          knext = (zp(1) - zgrid - zmmin)*dzi
+          xinext = (abs(xp(1)) - xmmin)*dxi
+          yjnext = (abs(yp(1)) - ymmin)*dyi
+          zknext = (zp(1) - zgrid - zmmin)*dzi
+          inext = xinext
+          jnext = yjnext
+          knext = zknext
+
           do ip = 1, np
 
+            xi = xinext
+            yj = yjnext
+            zk = zknext
             i = inext
             j = jnext
             k = knext
+
             if (ip < np) then
-              inext = (abs(xp(ip+1)) - xmmin)*dxi
-              jnext = (abs(yp(ip+1)) - ymmin)*dyi
-              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+              xinext = (abs(xp(ip+1)) - xmmin)*dxi
+              yjnext = (abs(yp(ip+1)) - ymmin)*dyi
+              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+              inext = xinext
+              jnext = yjnext
+              knext = zknext
             endif
 
-            u1 = (abs(xp(ip)) - xmmin)*dxi - i
-            v1 = (abs(yp(ip)) - ymmin)*dyi - j
-            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+            if (xi < 0. .or. xi > nx .or.
+     &          yj < 0. .or. yj > ny .or.
+     &          zk < 0. .or. zk > nz) cycle
+
+            u1 = xi - i
+            v1 = yj - j
+            w1 = zk - k
 
             u0 = 1. - u1
             v0 = 1. - v1
