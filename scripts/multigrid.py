@@ -259,14 +259,15 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    if sometrue(top.efetch == 3) or not self.getconductorobject(top.fselfb[js]).lcorrectede:
+    iselfb = top.iselfb[js]
+    if sometrue(top.efetch == 3) or not self.getconductorobject(top.fselfb[iselfb]).lcorrectede:
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
              self.nxguard,self.nyguard,self.nzguard)
     else:
-      sete3dwithconductor(self.getconductorobject(top.fselfb[js]),
+      sete3dwithconductor(self.getconductorobject(top.fselfb[iselfb]),
              self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
@@ -316,11 +317,9 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.izfsslave,self.nzfsslave)
     iselfb = args[2]
     if self.getconductorobject(top.fselfb[iselfb]).lcorrectede:
-      b = time.time()
       getefieldatconductors(self.getconductorobject(top.fselfb[iselfb]),
                             self.potential,self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,
                             self.nxguard,self.nyguard,self.nzguard)
-      a = time.time()
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
