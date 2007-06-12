@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.91 $, $Date: 2007/06/04 22:53:08 $
+c@(#) File w3d_injection.F, version $Revision: 1.92 $, $Date: 2007/06/12 18:30:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2086,7 +2086,7 @@ c Also set particle parameters: charge, mass and weight
         if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
         if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu
         if (pgroup%sw(js+1) == 0.) then
-          if (npinje_s(jsid+1) > 0) then
+          if (npinje_s(jsid+1) > 0 .and. pgroup%sq(js+1) /= 0.) then
             pgroup%sw(js+1) = (ibeam_s(jsid+1)*dt*pgroup%ndts(js)/
      &                      pgroup%sq(js+1))/npinje_s(jsid+1)
           else if (js > 0 .and.
