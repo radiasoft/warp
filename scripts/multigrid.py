@@ -259,11 +259,19 @@ class MultiGrid(SubcycledPoissonSolver):
     if n == 0: return
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
-    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-           self.xmminp,self.ymminp,self.zmminp,
-           self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-           self.nxguard,self.nyguard,self.nzguard)
+    if sometrue(top.efetch == 3) or not self.getconductorobject(top.fselfb[js]).lcorrectede:
+      sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
+             self.xmminp,self.ymminp,self.zmminp,
+             self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
+             ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+             self.nxguard,self.nyguard,self.nzguard)
+    else:
+      sete3dwithconductor(self.getconductorobject(top.fselfb[js]),
+             self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
+             self.xmminp,self.ymminp,self.zmminp,
+             self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
+             ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
+             self.nxguard,self.nyguard,self.nzguard)
     if max(top.fselfb) > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
       # --- For now, just skip the gather of the self B field if this was
@@ -306,11 +314,17 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.nxguard,self.nyguard,self.nzguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
+    iselfb = args[2]
+    if self.getconductorobject(top.fselfb[iselfb]).lcorrectede:
+      b = time.time()
+      getefieldatconductors(self.getconductorobject(top.fselfb[iselfb]),
+                            self.potential,self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,
+                            self.nxguard,self.nyguard,self.nzguard)
+      a = time.time()
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
       indts = args[1]
-      iselfb = args[2]
       # --- If this is the first group, set make sure that fieldp gets
       # --- zeroed out. Otherwise, the data in fieldp is accumulated.
       # --- This coding relies on the fact that fieldsolver does the
