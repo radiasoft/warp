@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.369 $, $Date: 2007/06/08 18:14:11 $
+c@(#) File W3D.F, version $Revision: 3.370 $, $Date: 2007/06/12 16:31:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9326,13 +9326,7 @@ c fits and so was replaced with if statements.
      &                xmmax,zmminlocal+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
-c          --- Note that by default, izfsmax=nzlocal, and izfsmin=0.
-c          --- izfsmin and izfsmax allow field solves on a partial grid.
-           call psor3df(iwhich,nx,ny,nzlocal,phi,rho,
-     &                 phi,rho,rstar, 
-     &                 dx,dy,dz,xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,linbend,
-     &                 bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
-     &                 scrtch(0,0),izfsmin,izfsmax)
+          call kaboom("field solver type 3 (SOR) is no longer available, use 7 (multigrid) instead")
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
