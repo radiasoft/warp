@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.171 $, $Date: 2007/06/04 22:50:30 $
+#@(#) File F3D.V, version $Revision: 3.172 $, $Date: 2007/06/12 01:29:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.171 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.172 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -120,25 +120,27 @@ lplates  logical /.true./ # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
 %%%%%%%%%% ConductorInteriorType:
-nmax           integer /0/ # Maximum number of points in conductor
-n              integer /0/ # Number of points within conductors
-indx(0:2,nmax)  _integer # Coordinates of points in conductor
-volt(nmax)    _real    # Voltage of points in conductor
-numb(nmax)    _integer # Number of the conductor the points are in
-ilevel(nmax)  _integer /-1/ # Coarseness level at which the point is on grid
-istart(0:100)  integer /1/ # Start of the conductor points for each MG level
+nmax           integer  /0/  # Maximum number of points in conductor
+n              integer  /0/  # Number of points within conductors
+indx(0:2,nmax) _integer      # Coordinates of points in conductor
+volt(nmax)     _real         # Voltage of points in conductor
+numb(nmax)     _integer      # Number of the conductor the points are in
+ilevel(nmax)   _integer /-1/ # Coarseness level at which the point is on grid
+istart(0:100)  integer  /1/  # Start of the conductor points for each MG level
 
 %%%%%%%%%% ConductorSubGridType:
-nmax            integer /0/ # Maximum number of points for sub-grid boundaries
-n               integer /0/ # Number of points for sub-grid boundaries
-prevphi(nmax)  _real    # Saves phi for sub-grid boundaries
-indx(0:2,nmax)   _integer # Location of points for sub-grid boundaries
-dels(0:5,nmax)   _real    # Distances to the surface - stored in the order
-                          # mx, px, my, py, mz, pz
-volt(0:5,nmax) _real    # Voltage of points for sub-grid boundaries
-numb(0:5,nmax) _integer # ID of the conductor the points are in
-ilevel(nmax)   _integer /-1/ # Coarseness level at which the point is on grid
-istart(0:100)   integer /1/ # Start of the conductor data for each MG level
+nmax             integer  /0/  # Maximum number of points for sub-grid boundaries
+n                integer  /0/  # Number of points for sub-grid boundaries
+prevphi(nmax)    _real         # Saves phi for sub-grid boundaries
+indx(0:2,nmax)   _integer      # Location of points for sub-grid boundaries
+dels(0:5,nmax)   _real         # Distances to the surface - stored in the order
+                               # mx, px, my, py, mz, pz
+volt(0:5,nmax)   _real         # Voltage of points for sub-grid boundaries
+numb(0:5,nmax)   _integer      # ID of the conductor the points are in
+efield0(0:2,nmax) _real        # E-field at the point
+efieldd(0:5,nmax) _real        # E-field along each of the six axis directions
+ilevel(nmax)     _integer /-1/ # Coarseness level at which the point is on grid
+istart(0:100)    integer  /1/  # Start of the conductor data for each MG level
 
 %%%%%%%%%% ConductorType:
 interior ConductorInteriorType   # Interior of the conductors
@@ -152,6 +154,11 @@ levelly(0:100)  real /1/ # List of coarsening factors in y
 levellz(0:100)  real /1/ # List of coarsening factors in z
 fuzzsign integer /-1/    # When -1, subgrid points with distances == 1 are
                          # skipped, when +1 not skipped.
+lcorrectede logical /.false./ # When true, the E field near conductors is
+                             # calculated using a reduced finite
+                             # difference.
+icgrid(:,:,:)   _integer # Used to determine which conductor point is at
+                         # each grid point when lcorrectede is on.
 
 *********** Conductor3d dump parallel:
 conductors ConductorType # Default data structure for conductor data
@@ -318,6 +325,19 @@ subcond_sumrhointerior(rhosum:real,interior:ConductorInteriorType,
                     nx:integer,ny:integer,nzlocal:integer,rho(0:nx,0:ny,0:nzlocal):real,
                     ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
                     izmin:integer,izmax:integer) subroutine
+
+getefieldatconductors(conductors:ConductorType,phi:real,
+                      dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
+                      delx:integer,dely:integer,delz:integer)
+                    subroutine
+sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
+                    np:integer,xp:real,yp:real,zp:real,zgrid:real,
+                    xmmin:real,ymmin:real,zmmin:real,
+                    dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
+                    efetch:integer,ex:real,ey:real,ez:real,
+                    l2symtry:logical,l4symtry:logical,
+                    lcylindrical:logical,delx:integer,dely:integer,delz:integer)
+                    subroutine
 
 *********** MultigridBE3d dump:
 multigridbe3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
@@ -607,17 +627,6 @@ ctranlan(0:nxtranlan,0:nytranlan-1,0:nzlan) _real
 dtranlan(0:nxlan,0:nylan,0:2) _real
 
 *********** PSOR3d_subs:
-psor3df(iwhich,nx,ny,nzlocal,phi:real,rho:real,phi1d:real,rho1d:real,rstar:real,
-       dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,
-       zbeam:real,
-       zgrid:real,linbends:logical,bound0:integer,boundnz:integer,
-       boundxy:integer,l2symtry:logical,l4symtry:logical,lzerophiedge:logical,
-       scrtch:real,izfsmin:integer,izfsmax:integer)
-     subroutine # PSOR field solver
-psorinit(nx,ny,nzlocal,dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical)
-     subroutine # Initialize arrays that hold conductor points
-cond_pot(nx,ny,nzlocal,phi:real)
-     subroutine # Sets potential in phi to desired potential on conductors
 setcndtr(xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,
          zbeam:real,zgrid:real,nx,ny,nzlocal,
          dx:real,dy:real,dz:real,bound0:integer,boundnz:integer,boundxy:integer,
