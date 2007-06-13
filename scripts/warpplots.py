@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.197 2007/06/08 18:17:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.198 2007/06/13 18:08:52 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -4600,8 +4600,8 @@ field domain.
   mm = 1. - gap
   for i in xrange(top.maxslaves):
     z = z + [1.]
-    zmin = top.izfsslave[i]*dz + w3d.zmmin
-    zmax = (top.izfsslave[i] + top.nzfsslave[i])*dz + w3d.zmmin
+    zmin = top.izfsslave[i]*w3d.dz + w3d.zmmin
+    zmax = (top.izfsslave[i] + top.nzfsslave[i])*w3d.dz + w3d.zmmin
     x = x + [zmin,zmax,zmax,zmin,zmin]
     y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
   for i in xrange(top.maxslaves):
