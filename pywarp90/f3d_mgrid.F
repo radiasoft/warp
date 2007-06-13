@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.142 $, $Date: 2007/06/13 18:07:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.143 $, $Date: 2007/06/13 20:24:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -5501,11 +5501,11 @@ c     --- loop over points near surface of conductors
         ix = subgrid%indx(0,ic)
         iz = subgrid%indx(2,ic)
 
-c       --- Skip the data point if it is on a Dirichlet or parallel boundary
-        if (ix == 0  .and. bounds(0) < 1) cycle
-        if (ix == nx .and. bounds(1) < 1) cycle
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nzlocal .and. bounds(5) < 1) cycle
+c       --- Skip the data point if it is on a Dirichlet
+        if (ix == 0  .and. bounds(0) == 0) cycle
+        if (ix == nx .and. bounds(1) == 0) cycle
+        if (iz == 0  .and. bounds(4) == 0) cycle
+        if (iz == nzlocal .and. bounds(5) == 0) cycle
 
 c       --- First, get the potential and effective grid cell sizes
 c       --- Note that for the Neumann case, the potential is not
