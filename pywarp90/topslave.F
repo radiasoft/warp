@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.48 $, $Date: 2007/04/24 21:37:37 $
+c TOPSLAVE.M, version $Revision: 1.49 $, $Date: 2007/06/13 20:22:57 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -216,6 +216,22 @@ c         --- reset to include them.
             pgroup%ins(is) = ins_init(is)
           elseif (my_index == nslaves-1 .and. pboundnz==absorb) then
             pgroup%gaminv(pgroup%ins(is)+pgroup%nps(is):ins_init(is)+nps_init(is)-1)=0.
+            pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
+c         --- Reflecting boundary condition: particles picked out are not passed.
+c         --- Instead, they are put back in the system and ins and nps are
+c         --- reset to include them.
+          elseif (my_index == 0 .and. pbound0==reflect) then
+            do ip=ins_init(is),pgroup%ins(is)-1
+              pgroup%zp(ip) = zmmin + (zmmin - pgroup%zp(ip))
+              pgroup%uzp(ip) = -pgroup%uzp(ip)
+            enddo
+            pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
+            pgroup%ins(is) = ins_init(is)
+          elseif (my_index == nslaves-1 .and. pboundnz==reflect) then
+            do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
+              pgroup%zp(ip) = zmmax - (pgroup%zp(ip) - zmmax)
+              pgroup%uzp(ip) = -pgroup%uzp(ip)
+            enddo
             pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
           endif
 c       --- End of loop over species
