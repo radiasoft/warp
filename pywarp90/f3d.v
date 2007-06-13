@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.172 $, $Date: 2007/06/12 01:29:56 $
+#@(#) File F3D.V, version $Revision: 3.173 $, $Date: 2007/06/13 18:07:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.172 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.173 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -155,8 +155,8 @@ levellz(0:100)  real /1/ # List of coarsening factors in z
 fuzzsign integer /-1/    # When -1, subgrid points with distances == 1 are
                          # skipped, when +1 not skipped.
 lcorrectede logical /.false./ # When true, the E field near conductors is
-                             # calculated using a reduced finite
-                             # difference.
+                              # calculated using a reduced finite
+                              # difference.
 icgrid(:,:,:)   _integer # Used to determine which conductor point is at
                          # each grid point when lcorrectede is on.
 
@@ -166,6 +166,9 @@ lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
+lcorrectede logical /.false./ # When true, the E field near conductors is
+                              # calculated using a reduced finite
+                              # difference.
 laddconductor logical /.false./ # When true, the python function
                           # calladdconductor is called at the beginning of the 
                           # field solve.

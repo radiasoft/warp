@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.141 $, $Date: 2007/06/12 01:29:57 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.142 $, $Date: 2007/06/13 18:07:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3173,6 +3173,7 @@ c=============================================================================
      &                                     conductors,
      &                                     my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
+      use Conductor3d,Only:lcorrectede
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
       type(ConductorType):: conductors
@@ -3278,7 +3279,10 @@ c     --- Sort odd subgrid points
       endif
 
 c     --- Initialize the data needed for the corrected E field calculation
-      if (conductors%lcorrectede) then
+c     --- Skip this if there is not conductor data.
+      if ((lcorrectede .or. conductors%lcorrectede) .and.
+     &    conductors%evensubgrid%n > 0 .and.
+     &    conductors%oddsubgrid%n > 0) then
 c       --- First, check if the icgrid array needs to be allocated or
 c       --- reallocated.
         if (.not. ASSOCIATED(conductors%icgrid)) then
@@ -3322,6 +3326,13 @@ c       --- The E field at interior points is ignored for now
           iz = conductors%oddsubgrid%indx(2,io)
           conductors%icgrid(ix,iy,iz) = -io
         enddo
+      else
+
+c       --- Since it is not needed, make sure that the memory is freed.
+        if (ASSOCIATED(conductors%icgrid)) then
+          deallocate(conductors%icgrid)
+        endif
+
       endif
 
       return
@@ -3577,12 +3588,13 @@ c       --- than the other point. If so, reset data for the other point.
       return
       end
 c=============================================================================
-
-
+c=============================================================================
+c=============================================================================
       subroutine getefieldatconductors(conductors,phi,
      &                                 dx,dy,dz,nx,ny,nz,delx,dely,delz)
       use ConductorTypemodule
       use Subtimers3d
+      use Conductor3d,Only:lcorrectede
       type(ConductorType):: conductors
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
@@ -3593,7 +3605,9 @@ c=============================================================================
       real(kind=8),pointer:: dels(:,:),volt(:,:)
       real(kind=8),pointer:: efield0(:,:),efieldd(:,:)
 
-      if (.not. conductors%lcorrectede) return
+      if (.not. ((lcorrectede .or. conductors%lcorrectede) .and.
+     &           conductors%evensubgrid%n > 0 .and.
+     &           conductors%oddsubgrid%n > 0)) return
 
       nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
 
@@ -3724,7 +3738,16 @@ c       + ...
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c  Evaluation of E, vectorized over particles
+c     --- If the icgrid is not allocated, then the conductor data is to be
+c     --- ignored, so call the base version of sete3d.
+      if (.not. ASSOCIATED(conductors%icgrid)) then
+        call sete3d(phi,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+     &              dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
+     &              lcylindrical,delx,dely,delz)
+        return
+      endif
+
+c     --- Calculate some temporaries.
       tdxi = 1. / (2.*dx)
       tdyi = 1. / (2.*dy)
       tdzi = 1. / (2.*dz)
