@@ -373,14 +373,12 @@ class MultiGrid(SubcycledPoissonSolver):
   def makesourceperiodic_parallel(self):
     tag = 70
     if self.my_index == self.nslaves-1:
-      request = mpi.isend(self.source[:,:,self.nzlocal],0,tag)
+      mpi.send(self.source[:,:,self.nzlocal],0,tag)
       self.source[:,:,self.nzlocal],status = mpi.recv(0,tag)
     elif self.my_index == 0:
       sourcetemp,status = mpi.recv(self.nslaves-1,tag)
       self.source[:,:,0] = self.source[:,:,0] + sourcetemp
-      request = mpi.isend(self.source[:,:,0],self.nslaves-1,tag)
-    if self.my_index == 0 or self.my_index == self.nslaves-1:
-      status = request.wait()
+      mpi.send(self.source[:,:,0],self.nslaves-1,tag)
 
   def getselfe(self,recalculate=0,lzero=true):
     if type(self.fieldp) != ArrayType:
