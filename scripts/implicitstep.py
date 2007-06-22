@@ -1,5 +1,5 @@
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.3 2007/05/02 21:41:56 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.4 2007/06/22 21:21:35 dave Exp $"
 
 from warp import *
 
@@ -168,7 +168,7 @@ Handles implicit time stepping.
     top.zgridprv = top.zgrid
     top.time = top.time + top.dt
 
-  #=============================================================================
+  #============================================================================
   def generate(self):
     # --- The generate is the normal w3d generate, including resetting
     # --- the E field.
@@ -181,7 +181,7 @@ Handles implicit time stepping.
     self.fetche()
     self.saveOldE()
 
-  #=============================================================================
+  #============================================================================
   def step(self):
     """This will be called by the generic step command. It is mostly copied from w3dexe."""
     substarttime = wtime()
@@ -207,12 +207,12 @@ Handles implicit time stepping.
     # --- Accumulate the run time.
     self.timestep += wtime() - substarttime
 
-  #=============================================================================
+  #============================================================================
   def dostep(self):
     substarttime = wtime()
 
-    # --- Set the internal lattice variables. This is not generally necessary at
-    # --- this point (it is redundant most of the time, the next call to
+    # --- Set the internal lattice variables. This is not generally necessary
+    # --- at this point (it is redundant most of the time, the next call to
     # --- setlatt in this subroutine is sufficient). There are cases where
     # --- this is required for consistency. Since it is cheap (time wise),
     # --- it is better to make sure the data is consistent than to save a
@@ -220,8 +220,8 @@ Handles implicit time stepping.
     # --- packages (like WXY or ENV) may have reset it. For example, if the
     # --- ENV package is generated after the W3D package, nzl will be set to
     # --- zero. Switching back to W3D and running step, the internal lattice
-    # --- would still be setup for the ENV package and so the step would produce
-    # --- erroneaous results.
+    # --- would still be setup for the ENV package and so the step would
+    # --- produce erroneaous results.
     if top.nzl == 0:
       top.nzl = top.nzlmax
       top.zlmin = top.zmmin
@@ -237,7 +237,7 @@ Handles implicit time stepping.
 
     # --- This in effect finishes the implicit advance from the
     # --- previous step, advancing the velocity to n+1/2 and the
-    # --- position to n+1 using a(n+1) = 1/2(a(n) + a(n+2))
+    # --- position to n+1 using a(n) = 1/2(a(n-1) + a(n+1))
     # --- Note that the gathering of rho is turned off since rho(n+1)
     # --- is not used.
     self.restoreOldE()
@@ -251,12 +251,12 @@ Handles implicit time stepping.
     # --- Now the position of the grid can be advanced.
     self.advancezbeam()
 
-    # --- The next two variables are the left and right ends of the range centered
-    # --- about the end of the current time step plus/minus one half a step.
-    # --- The range is used is determining whether diagnostics are done which
-    # --- are based on the z location of the beam frame.  The diagnostics are done
-    # --- on the time step which ends closest to the value given in the controlling
-    # --- arrays.
+    # --- The next two variables are the left and right ends of the range
+    # --- centered about the end of the current time step plus/minus one half a
+    # --- step. The range is used is determining whether diagnostics are done
+    # --- which are based on the z location of the beam frame.  The diagnostics
+    # --- are done on the time step which ends closest to the value given in
+    # --- the controlling arrays.
     # --- The absolute values are taken so that if dt < 0 or vbeamfrm < 0, then
     # --- it will still be true that zbeaml < zbeamr.
     zbeaml = top.zbeam - abs(0.5*top.vbeamfrm*top.dt)
@@ -267,8 +267,8 @@ Handles implicit time stepping.
     setlatt()
 
     # --- Set logical flags to determine if "always" or "seldom" phase space 
-    # --- plots, restart dumps, final timesteps, and moment accumulations should 
-    # --- be done at the end of this step.
+    # --- plots, restart dumps, final timesteps, and moment accumulations
+    # --- should be done at the end of this step.
     MACHEPS = 1.0e-14
     NCONTROL = 50
     top.lfinishd = ((top.it >= top.nt) or
@@ -307,10 +307,13 @@ Handles implicit time stepping.
     # --- Now do a fullv advance to give the guess at the new x. This
     # --- does include a loadrho to get the rho_tilde. In fact, the only
     # --- reason to do the step here is to calculate rho_tilde.
+    # --- This does not advance any explicit species.
     # XXX Note that particle boundary conditions and injection will be tricky
     # XXX here.
     self.advancezgrid()
+    top.pgroup.ldoadvance[:] = top.pgroup.limplicit
     padvnc3d("fullv",top.pgroup)
+    top.pgroup.ldoadvance[:] = true
     self.advancezbeam()
 
     # --- Charge density contour plot diagnostics.  Note -- these diagnostics 
@@ -328,7 +331,8 @@ Handles implicit time stepping.
     if w3d.lafterfs: afterfs()
 
     # --- Fetch the newly calculated implicit field and averate it with
-    # --- the old field. The result is copied into the old field arrays.
+    # --- the old field. This calculates a(n+1) = 1/2(a(n) + a(n+2))
+    # --- The result is copied into the old field arrays.
     self.fetche()
     self.averageOldAndNewE()
 
@@ -351,8 +355,8 @@ Handles implicit time stepping.
       # --- Note that it is still called in padvnc3d.
       setuppadvncsubcyclingaveraging(top.it,"synchv",top.pgroup)
 
-      # --- Initialize the moments arrays which are calculated during the synchv and
-      # --- gen phases.
+      # --- Initialize the moments arrays which are calculated during the
+      # --- synchv and gen phases.
       # --- 0. is passed in as a dummy for all of the particles coordinates
       # --- which are not used at this time.
       getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1,
@@ -401,7 +405,7 @@ Handles implicit time stepping.
 
     self.timedostep += wtime() - substarttime
 
-  #=============================================================================
+  #============================================================================
   def finish(self):
     gfree("Fields3d")
     gfree("Fields3dParticles")
