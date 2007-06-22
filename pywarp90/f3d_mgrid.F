@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.143 $, $Date: 2007/06/13 20:24:12 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.144 $, $Date: 2007/06/22 21:50:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -4614,7 +4614,7 @@ c=============================================================================
       subroutine multigrid2dsolve(iwhich,nx,nzlocal,nz,dx,dz,phi,rho,bounds,
      &                            xmmin,zmminlocal,zmmin,zbeam,zgrid,
      &                            mgparam,mgiters,mgmaxiters,
-     &                            mgmaxlevels,mgerror,mgtol,
+     &                            mgmaxlevels,mgerror,mgtol,mgverbose,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                            gridmode,conductors,lrz,
@@ -4631,7 +4631,7 @@ c=============================================================================
       real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid
       real(kind=8):: mgparam
       integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels
-      real(kind=8):: mgerror,mgtol
+      real(kind=8):: mgerror,mgtol,mgverbose
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
       integer(ISZ):: icndbndy,gridmode
@@ -4768,13 +4768,15 @@ c     --- the solve are so are already set.
       if (localbounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
       if (localbounds(5) == 0) phi(:,nzlocal+1) = 2.*phi(:,nzlocal) - phi(:,nzlocal-1)
 
-c     --- Make a print out.
-      if (mgerror > mgtol) then
-        call remark("Multigrid2d: Maximum number of iterations reached")
+      if (mgverbose>=1) then
+c       --- Make a print out.
+        if (mgerror > mgtol) then
+          call remark("Multigrid2d: Maximum number of iterations reached")
+        endif
+        write(errline,20) mgerror,mgiters
+  20    format("Multigrid2d: Error converged to ",1pe11.3," in ",i5," v-cycles")
+        call remark(errline)
       endif
-      write(errline,20) mgerror,mgiters
-  20  format("Multigrid2d: Error converged to ",1pe11.3," in ",i5," v-cycles")
-      call remark(errline)
 
       deallocate(phisave)
 
