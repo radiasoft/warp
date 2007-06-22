@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.160 2007/06/06 17:41:35 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.161 2007/06/22 21:22:45 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1646,7 +1646,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     l2symtry=None,l4symtry=None,
                     installrz=1,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None,
-                    solver=None,nzfull=None):
+                    solver=None,mgmaxlevels=None,nzfull=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1687,6 +1687,8 @@ Creates a grid object which can generate conductor data.
     self.zmin = _default(zmin,self.zmmin+zbeam)
     self.zmax = _default(zmax,self.zmmax+zbeam)
 
+    self.mgmaxlevels = mgmaxlevels
+
     # --- Check for symmetries
     if self.l2symtry:
       if self.ymin  < 0.: self.ymin  = 0.
@@ -1711,6 +1713,7 @@ Creates a grid object which can generate conductor data.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nz
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
+
     if w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom] or not installrz:
       conductors = ConductorType()
       if self.ny > 0: ny = self.ny
@@ -1733,6 +1736,9 @@ Creates a grid object which can generate conductor data.
       self.mglevellx = f3d.mglevelslx[:f3d.mglevels].copy()
       self.mglevelly = f3d.mglevelsly[:f3d.mglevels].copy()
       self.mglevellz = f3d.mglevelslz[:f3d.mglevels].copy()
+
+    if self.mgmaxlevels is not None:
+      self.mglevels = self.mgmaxlevels
 
     # --- Create empty lists of conductors
     self.dlist = []
