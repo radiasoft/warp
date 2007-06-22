@@ -1312,15 +1312,19 @@ of the arrays used by the field solve"""
         else:
           tsourcep[:,0,1,...] = tsourcep[:,0,1,...] + tsourcep[:,in1,1,...]
 
-  def saveprevioussource(self):
+  def saveprevioussource(self,lfinalize=1):
     # --- This is needed by the EGUN method, which needs the previous rho. Note
     # --- that the subycling and selfb are ignored here since those models
     # --- don't make sense with the EGUN mode.
+    # --- Do any finalization calculation on the source if requested.
+    if lfinalize: self.finalizesourcep()
     self.sourceprevious = self.returnsource(0,0).copy()
 
-  def averagewithprevioussource(self,param):
+  def averagewithprevioussource(self,param,lfinalize=1):
     # --- This is used by the EGUN method, to average the source over multiple
     # --- iterations.
+    # --- Do any finalization calculation on the source if requested.
+    if lfinalize: self.finalizesourcep()
     source = self.returnsource(0,0)
     source[...] = (1.-param)*source + param*self.sourceprevious
 
