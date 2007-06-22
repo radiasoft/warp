@@ -359,6 +359,8 @@ in radius squared.
       np = nr*nz
       r,z = getmesh2d(0.5/nr,1./nr,nr-1,
                       0.5/nz,1./nz,nz-1)
+      r = transpose(r).copy()
+      z = transpose(z).copy()
       r.shape = (np,)
       z.shape = (np,)
     theta=(thetamax-thetamin)*RandomArray.random(np) + thetamin
