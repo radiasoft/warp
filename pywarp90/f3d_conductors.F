@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.60 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.61 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3916,53 +3916,75 @@ c This is only needed to get the correct orientation of the surface normal.
 
 c         --- Loop over the line segments and calculate the intersection of
 c         --- each with the trajectory. Pick the one where the intersect
-c         --- z value is within the segment.
+c         --- is within the segment and the intercept time is smallest.
           do il=1,npnts_sr-1
             if (rad_sr(il) == LARGEPOS) then
-              s = (r_sr(il+1) - r_sr(il))/(z_sr(il+1) - z_sr(il))
-              p = r_sr(il) - s*z_sr(il)
-              a = (s*vz(i))**2 - vx(i)**2 - vy(i)**2
-              b = 2*(-s*vz(i)*(s*(z(i)-zcent)+p) +
-     &            vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
-              c = (s*(z(i)-zcent)+p)**2 - (x(i)-xcent)**2 - (y(i)-ycent)**2
-              if ((b**2 - 4*a*c) > 0.) then
-                if (a .ne. 0.) then
-                  t1 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
-                  t2 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
-                else
-                  t1 = -c/b
-                  t2 = t1
+              if (z_sr(il+1) == z_sr(il)) then
+c               --- Special case of a z plane, where there is only one
+c               --- possible intercept. If vz is zero, then there is no
+c               --- intercept, so skip.
+                if (vz(i) == 0.) continue
+                t1 = ((z(i)-zcent) - z_sr(il))/vz(i)
+                xx = -vx(i)*t1 + x(i) - xcent
+                yy = -vy(i)*t1 + y(i) - ycent
+                rr = sqrt(xx**2 + yy**2)
+                if (rr >= min(r_sr(il),r_sr(il+1)) .and.
+     &              rr <= max(r_sr(il),r_sr(il+1))) then
+                  if ((tt(i) > t1 .and. t1 > 0. .and. tt(i) > 0.) .or.
+     &                (t1 > tt(i) .and. tt(i) < 0.)) then
+                    tt(i) = t1
+                    itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
+     &                                (r_sr(il) - r_sr(il+1))*inside)
+                    iphi(i) = atan2(yy*inside,xx*inside)
+                  endif
                 endif
-                z1 = -vz(i)*t1 + z(i) - zcent
-                z2 = -vz(i)*t2 + z(i) - zcent
               else
-                z1 = LARGEPOS
-                z2 = LARGEPOS
-              endif
-              if (z_sr(il) <= z1 .and. z1 <= z_sr(il+1)) then
-                if ((tt(i) > t1 .and. t1 > 0. .and. tt(i) > 0.) .or.
-     &              (t1 > tt(i) .and. tt(i) < 0.)) then
-                  tt(i) = t1
-                  xx = -vx(i)*t1 + x(i) - xcent
-                  yy = -vy(i)*t1 + y(i) - ycent
-                  rr = sqrt(xx**2 + yy**2)
-c                 --- These angles need to be verified.
-                  itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
-     &                              (r_sr(il) - r_sr(il+1))*inside)
-                  iphi(i) = atan2(yy*inside,xx*inside)
+                s = (r_sr(il+1) - r_sr(il))/(z_sr(il+1) - z_sr(il))
+                p = r_sr(il) - s*z_sr(il)
+                a = (s*vz(i))**2 - vx(i)**2 - vy(i)**2
+                b = 2*(-s*vz(i)*(s*(z(i)-zcent)+p) +
+     &              vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+                c = (s*(z(i)-zcent)+p)**2 - (x(i)-xcent)**2 - (y(i)-ycent)**2
+                if ((b**2 - 4*a*c) > 0.) then
+                  if (a .ne. 0.) then
+                    t1 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
+                    t2 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
+                  else
+                    t1 = -c/b
+                    t2 = t1
+                  endif
+                  z1 = -vz(i)*t1 + z(i) - zcent
+                  z2 = -vz(i)*t2 + z(i) - zcent
+                else
+c                 z1 = LARGEPOS
+c                 z2 = LARGEPOS
+                  continue
                 endif
-              endif
-              if (z_sr(il) <= z2 .and. z2 <= z_sr(il+1)) then
-                if ((tt(i) > t2 .and. t2 > 0. .and. tt(i) > 0.) .or.
-     &              (t2 > tt(i) .and. tt(i) < 0.)) then
-                  tt(i) = t2
-                  xx = -vx(i)*t2 + x(i) - xcent
-                  yy = -vy(i)*t2 + y(i) - ycent
-                  rr = sqrt(xx**2 + yy**2)
-c                 --- These angles need to be verified.
-                  itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
-     &                              (r_sr(il) - r_sr(il+1))*inside)
-                  iphi(i) = atan2(yy*inside,xx*inside)
+                if (z_sr(il) <= z1 .and. z1 <= z_sr(il+1)) then
+                  if ((tt(i) > t1 .and. t1 > 0. .and. tt(i) > 0.) .or.
+     &                (t1 > tt(i) .and. tt(i) < 0.)) then
+                    tt(i) = t1
+                    xx = -vx(i)*t1 + x(i) - xcent
+                    yy = -vy(i)*t1 + y(i) - ycent
+                    rr = sqrt(xx**2 + yy**2)
+c                   --- These angles need to be verified.
+                    itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
+     &                                (r_sr(il) - r_sr(il+1))*inside)
+                    iphi(i) = atan2(yy*inside,xx*inside)
+                  endif
+                endif
+                if (z_sr(il) <= z2 .and. z2 <= z_sr(il+1)) then
+                  if ((tt(i) > t2 .and. t2 > 0. .and. tt(i) > 0.) .or.
+     &                (t2 > tt(i) .and. tt(i) < 0.)) then
+                    tt(i) = t2
+                    xx = -vx(i)*t2 + x(i) - xcent
+                    yy = -vy(i)*t2 + y(i) - ycent
+                    rr = sqrt(xx**2 + yy**2)
+c                   --- These angles need to be verified.
+                    itheta(i) = atan2((z_sr(il+1) - z_sr(il))*inside,
+     &                                (r_sr(il) - r_sr(il+1))*inside)
+                    iphi(i) = atan2(yy*inside,xx*inside)
+                  endif
                 endif
               endif
             else
