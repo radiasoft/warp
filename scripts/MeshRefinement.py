@@ -156,8 +156,8 @@ Implements adaptive mesh refinement in 3d
       else:
         # --- The grid lower and upper bounds are input. The bounds are
         # --- relative to the root grid, but scaled by the total refinement.
-        self.lower = array(lower)
-        self.upper = array(upper)
+        self.lower = nint(array(lower))
+        self.upper = nint(array(upper))
 
         # --- Make sure that the input makes sense.
         # --- Make sure that the block has a finite extent in all dimensions
