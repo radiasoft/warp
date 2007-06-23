@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.92 $, $Date: 2007/06/12 18:30:26 $
+c@(#) File w3d_injection.F, version $Revision: 1.93 $, $Date: 2007/06/23 01:09:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1258,6 +1258,7 @@ c           --- are particles which still have noninteger pid(:,injpid).
               return
             endif
 
+            if (pgroup%nps(is) == 0) cycle
             i1 = pgroup%ins(is)
             i2 = pgroup%ins(is)+pgroup%nps(is)-1
             where (pgroup%pid(i1:i2,injpid) < ninject+1)
@@ -1759,6 +1760,7 @@ c           --- are particles which still have noninteger pid(:,injpid).
               return
             endif
 
+            if (pgroup%nps(is) == 0) cycle
             i1 = pgroup%ins(is)
             i2 = pgroup%ins(is)+pgroup%nps(is)-1
             where (pgroup%pid(i1:i2,injpid) > ninject+1)
