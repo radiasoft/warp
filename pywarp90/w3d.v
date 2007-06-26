@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.268 $, $Date: 2007/06/05 00:53:01 $
+#@(#) File W3D.V, version $Revision: 3.269 $, $Date: 2007/06/26 12:39:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.268 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.269 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -379,6 +379,8 @@ jmin   integer    /0/  # index start of current particle chunk in top.pgroup
 jmax   integer    /0/  # index end of current particle chunk in top.pgroup
                        # (PYTHON indexed: based 0)
 jsfsapi     integer
+js1fsapi    integer /-1/
+js2fsapi    integer /-1/
 ndtsfsapi   integer
 npfsapi     integer
 ipminfsapi  integer
