@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.56 2007/06/06 16:48:11 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.57 2007/06/26 12:44:51 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -168,8 +168,7 @@ after load balancing."""
     # --- The arrays in top may be changed the next time loadbalancing is
     # --- done, but the arrays in self.grid should not be changed. Instead,
     # --- a whole new grid is created.
-    self.grid = Grid(nz=nz,
-                     izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy())
+    self.grid = Grid(izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy())
     self.updateconductors()
     if top.chdtspid>0:
       if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nz:
