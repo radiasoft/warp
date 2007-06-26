@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.161 2007/06/22 21:22:45 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.162 2007/06/26 12:47:08 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -116,7 +116,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
-                        conductors=None,gridrz=None,
+                        conductors=None,gridrz=None,mgmaxlevels=None,
                         my_index=None,nslaves=None,izfsslave=None,nzfsslave=None):
   """
 Installs the given conductors.
@@ -154,6 +154,7 @@ Installs the given conductors.
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nzlocal,nz,
            xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,installrz,gridrz,
+           mgmaxlevels=mgmaxlevels,
            my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
@@ -1901,11 +1902,11 @@ Assembly on this grid.
 Installs the conductor data into the fortran database
     """
     conductors.levels = self.mglevels
-    conductors.leveliz[:self.mglevels] = self.mgleveliz
-    conductors.levelnz[:self.mglevels] = self.mglevelnz
-    conductors.levellx[:self.mglevels] = self.mglevellx
-    conductors.levelly[:self.mglevels] = self.mglevelly
-    conductors.levellz[:self.mglevels] = self.mglevellz
+    conductors.leveliz[:self.mglevels] = self.mgleveliz[:self.mglevels]
+    conductors.levelnz[:self.mglevels] = self.mglevelnz[:self.mglevels]
+    conductors.levellx[:self.mglevels] = self.mglevellx[:self.mglevels]
+    conductors.levelly[:self.mglevels] = self.mglevelly[:self.mglevels]
+    conductors.levellz[:self.mglevels] = self.mglevellz[:self.mglevels]
     for d in self.dlist:
       d.install(installrz,solvergeom,conductors,gridrz)
     self.dlistinstalled += self.dlist
