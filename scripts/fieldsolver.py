@@ -962,7 +962,14 @@ class SubcycledPoissonSolver(FieldSolver):
 
     if pgroups is None: pgroups = [top.pgroup]
     for pgroup in pgroups:
-      for js,n in zip(arange(pgroup.ns),pgroup.nps):
+
+      if w3d.js1fsapi >= 0: js1 = w3d.js1fsapi
+      else:                 js1 = 0
+      if w3d.js2fsapi >= 0: js2 = w3d.js2fsapi+1
+      else:                 js2 = pgroup.ns
+
+      for js in range(js1,js2):
+        n = pgroup.nps[js]
         if n == 0: continue
         if pgroup.ldts[js]:
           indts = top.ndtstorho[pgroup.ndts[js]-1]
