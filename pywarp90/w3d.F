@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.370 $, $Date: 2007/06/12 16:31:23 $
+c@(#) File W3D.F, version $Revision: 3.371 $, $Date: 2007/06/26 12:41:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1540,6 +1540,7 @@ c  being looped over below.
 
 c  Loop over species
       do is=1,pgroup%ns
+        if (.not. pgroup%ldoadvance(is-1)) cycle
         if (.not. pgroup%ldts(is-1) .and. .not. pgroup%lvdts(is-1)) cycle
         isid = pgroup%sid(is-1) + 1
 c
@@ -1756,7 +1757,7 @@ c           --- Obtain bend radii and residence factors
 c           --- Correct Ez_self for warped mesh effect
             call bendez3d(ip,pgroup%xp(ipmin),pgroup%zp(ipmin),ez(ipmin),
      &                    bendres,bendradi,bends,bnezflag,linbend)
-c         --- Add in Ez from axially-smoothed gaps 
+c           --- Add in Ez from axially-smoothed gaps 
             call gapfield(ip,pgroup%zp(ipmin),ez(ipmin),zbeam,zzmin,egap(0),dzz)
 c           --- Add in ears and uniform focusing E field pieces
             call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
@@ -2852,6 +2853,13 @@ c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
+      if (ny == 0) then
+        call sete2d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &              dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
+     &              lcylindrical,delx,delz)
+        return
+      endif
+
       nnx  = nx + 1 + 2*delx
       nnxy = (nx + 1 + 2*delx)*(ny + 1 + 2*dely)
 
@@ -2919,6 +2927,7 @@ c  Evaluation of E, vectorized over particles
           inext = (xnext - xmmin)*dxi
           jnext = (ynext - ymmin)*dyi
           knext = (zp(1) - zgrid - zmmin)*dzi
+
           do ip = 1, np
 
             i = inext
@@ -3102,6 +3111,7 @@ c       --- the finite differences here..
           inext = xinext
           jnext = yjnext
           knext = zknext
+
           do ip = 1, np
 
             x = xnext
@@ -3586,6 +3596,560 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
             ex(ip) = ex(ip) + ext
             ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        endif
+
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=========================================================================== 
+      subroutine sete2d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,zmmin,
+     &                  dx,dz,nx,nz,efetch,ex,ey,ez,l2symtry,l4symtry,
+     &                  lcylindrical,delx,delz)
+      use Subtimers3d
+      integer(ISZ):: np,nx,nz
+      real(kind=8):: zgrid,xmmin,zmmin,dx,dz
+      real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:nz),xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      integer(ISZ):: efetch
+      logical(ISZ):: l2symtry,l4symtry,lcylindrical
+      integer(ISZ):: delx,delz
+
+c Gets self electric field for particles
+c Note that the phi1d passed in is assumed to start at phi(0,0,-1).
+c This is a change is behavior from what is was earlier. This change
+c was made to avoid problems with bounds checking. phi needs to be accessed
+c at the plane iz=-1, so when phi was passed in starting at phi(0,0,0), with
+c bounds checking turned on, this would be caught (even though the code was
+c technically correct).
+
+c Algorithm notes: phi array is dimensioned (0:nx,0:ny,-1:nz+1) outside,
+c but is made one dimensional in this routine
+c so cell index into 1d phi array for vectorized deposition is:
+c    i + j*(nx+1) + k*(nx+1)*(ny+1)
+c The field is:
+c    Ex = u0*v0*w0*ex(i  ,j  ,k  )
+c       + u1*v0*w0*ex(i+1,j  ,k  )
+c       + u0*v1*w0*ex(i  ,j+1,k  )
+c       + ...
+
+      integer(ISZ):: nnx,ip,i,k,ind0,m,inext,knext
+      real(kind=8):: dxi,dzi,tdxi,tdzi,u0,u1,w0,w1,xsign
+      integer(ISZ):: ox,sox
+      real(kind=8):: sx,ext,eyt,ezt
+      real(kind=8):: xi,zk,xinext,zknext
+      real(kind=8):: x,xnext
+      integer(ISZ):: noff(32)
+      save noff
+
+c     --- For second version
+c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
+      integer(ISZ),allocatable:: indx(:,:)
+      real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
+      integer(ISZ):: allocerror
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      nnx  = nx + 1 + 2*delx
+
+c  Evaluation of offsets occurs on the first call only provided
+c  local arrays are SAVE'd. nnx is added to all offsets to account for
+c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
+c  of phi(0,0,0) is equivalent to phi1d(nnx).
+
+c     if (noff(1) /= -nnx) then
+         noff = 0
+         noff(1)  = - nnx
+         noff(2)  = - nnx   + 1
+         noff(7)  =                  - 1
+         noff(8)  =                  + 0
+         noff(9)  =                  + 1
+         noff(10) =                  + 2
+         noff(19) = + nnx           - 1
+         noff(20) = + nnx
+         noff(21) = + nnx           + 1
+         noff(22) = + nnx           + 2
+         noff(29) = + 2*nnx
+         noff(30) = + 2*nnx         + 1
+
+         noff = noff + delx + nnx*delz
+
+c     endif
+
+c  Evaluation of E, vectorized over particles
+      tdxi = 1. / (2.*dx)
+      tdzi = 1. / (2.*dz)
+      dxi = 1./dx
+      dzi = 1./dz
+
+      if (efetch == 1 .or. efetch == 6) then
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+          else
+            xnext = xp(1)
+          endif
+          inext = (xnext - xmmin)*dxi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+
+          eyt = 0.
+          do ip = 1, np
+
+            i = inext
+            k = knext
+            x = xnext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              else
+                xnext = xp(ip+1)
+              endif
+              inext = (xnext    - xmmin)*dxi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
+
+            ind0 = i + k*nnx
+
+            u1 = (x      - xmmin)*dxi - i
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+            ext=tdxi*(u0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &              + u1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0)))
+
+            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        else
+
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          sox = 0
+          if (l4symtry) sox = 2
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+          do ip = 1, np
+
+            i = inext
+            k = knext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
+
+            ind0 = i + k*nnx
+
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            ext=xsign*(u0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &               + u1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0)))
+
+            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+            ex(ip) = ex(ip) + ext
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        endif
+
+      elseif (efetch == 2) then
+
+        call kaboom("sete3d: ERROR: efetch=2 is no longer supported")
+
+      elseif (efetch == 3) then
+c       --- This uses the precalculated selfe instead of doing
+c       --- the finite differences here..
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+          else
+            xnext = xp(1)
+          endif
+          xinext = (xnext - xmmin)*dxi
+          zknext = (zp(1) - zgrid - zmmin)*dzi
+          inext = xinext
+          knext = zknext
+
+          eyt = 0.
+          do ip = 1, np
+
+            x = xnext
+            xi = xinext
+            zk = zknext
+            i = inext
+            k = knext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              else
+                xnext = xp(ip+1)
+              endif
+              xinext = (xnext - xmmin)*dxi
+              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+              inext = xinext
+              knext = zknext
+            endif
+
+            if (xi < 0. .or. xi > nx .or.
+     &          zk < 0. .or. zk > nz) cycle
+
+            u1 = xi - i
+            w1 = zk - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+            ext = u0*w0*selfe(1,i  ,k  )
+     &          + u1*w0*selfe(1,i+1,k  )
+     &          + u0*w1*selfe(1,i  ,k+1)
+     &          + u1*w1*selfe(1,i+1,k+1)
+
+            ezt = u0*w0*selfe(3,i  ,k  )
+     &          + u1*w0*selfe(3,i+1,k  )
+     &          + u0*w1*selfe(3,i  ,k+1)
+     &          + u1*w1*selfe(3,i+1,k+1)
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        else
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          xinext = (abs(xp(1)) - xmmin)*dxi
+          zknext = (zp(1) - zgrid - zmmin)*dzi
+          inext = xinext
+          knext = zknext
+
+          do ip = 1, np
+
+            xi = xinext
+            zk = zknext
+            i = inext
+            k = knext
+
+            if (ip < np) then
+              xinext = (abs(xp(ip+1)) - xmmin)*dxi
+              zknext = (zp(ip+1) - zgrid - zmmin)*dzi
+              inext = xinext
+              knext = zknext
+            endif
+
+            if (xi < 0. .or. xi > nx .or.
+     &          zk < 0. .or. zk > nz) cycle
+
+            u1 = xi - i
+            w1 = zk - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = +1.
+            if (xp(ip) < 0.) xsign = sx
+
+            ext = xsign*(u0*w0*selfe(1,i  ,k  )
+     &                 + u1*w0*selfe(1,i+1,k  )
+     &                 + u0*w1*selfe(1,i  ,k+1)
+     &                 + u1*w1*selfe(1,i+1,k+1))
+
+            ezt =        u0*w0*selfe(3,i  ,k  )
+     &                 + u1*w0*selfe(3,i+1,k  )
+     &                 + u0*w1*selfe(3,i  ,k+1)
+     &                 + u1*w1*selfe(3,i+1,k+1)
+
+            ex(ip) = ex(ip) + ext
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        endif
+
+      elseif (efetch == 4) then
+c       --- Energy conserving
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          if (lcylindrical) then
+            xnext = sqrt(xp(1)**2 + yp(1)**2)
+          else
+            xnext = xp(1)
+          endif
+          inext = (xnext - xmmin)*dxi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+          do ip = 1, np
+
+            i = inext
+            k = knext
+            x = xnext
+            if (ip < np) then
+              if (lcylindrical) then
+                xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+              else
+                xnext = xp(ip+1)
+              endif
+              inext = (xnext    - xmmin)*dxi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
+
+            ind0 = i + k*nnx
+
+            u1 = (x      - xmmin)*dxi - i
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+            ext=dxi*(+w0*phi1d(noff( 8)+ind0)
+     &               -w0*phi1d(noff( 9)+ind0)
+     &               +w1*phi1d(noff(20)+ind0)
+     &               -w1*phi1d(noff(21)+ind0))
+
+            ezt=dzi*(+u0*phi1d(noff( 8)+ind0)
+     &               +u1*phi1d(noff( 9)+ind0)
+     &               -u0*phi1d(noff(20)+ind0)
+     &               -u1*phi1d(noff(21)+ind0))
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        else
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          inext = (abs(xp(1)) - xmmin)*dxi
+          knext = (zp(1) - zgrid - zmmin)*dzi
+          do ip = 1, np
+
+            i = inext
+            k = knext
+            if (ip < np) then
+              inext = (abs(xp(ip+1)) - xmmin)*dxi
+              knext = (zp(ip+1) - zgrid - zmmin)*dzi
+            endif
+  
+            ind0 = i + k*nnx
+
+            u1 = (abs(xp(ip)) - xmmin)*dxi - i
+            w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = dxi
+            if (xp(ip) < 0.) xsign = sx*dxi
+
+            ext=xsign*(+w0*phi1d(noff( 8)+ind0)
+     &                 -w0*phi1d(noff( 9)+ind0)
+     &                 +w1*phi1d(noff(20)+ind0)
+     &                 -w1*phi1d(noff(21)+ind0))
+
+            ezt = dzi*(+u0*phi1d(noff( 8)+ind0)
+     &                 +u1*phi1d(noff( 9)+ind0)
+     &                 -u0*phi1d(noff(20)+ind0)
+     &                 -u1*phi1d(noff(21)+ind0))
+
+            ex(ip) = ex(ip) + ext
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        endif
+
+      else if (efetch == 5) then
+c       --- This is the same as efetch==1, but has checks to skip particles that
+c       --- are out of bounds.
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          do ip = 1, np
+
+            if (lcylindrical) then
+              x = sqrt(xp(ip)**2 + yp(ip)**2)
+            else
+              x = xp(ip)
+            endif
+
+            xi = (x      - xmmin)*dxi
+            zk = (zp(ip) - zgrid - zmmin)*dzi
+            if (xi < 0. .or. xi > nx .or.
+     &          zk < 0. .or. zk > nz) cycle
+            i = int(xi)
+            k = int(zk)
+            ind0 = i + k*nnx
+
+            u1 = xi - i
+            w1 = zk - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+            ext=tdxi*(u0*w0*(phi1d(noff( 7)+ind0) - phi1d(noff( 9)+ind0))
+     &              + u1*w0*(phi1d(noff( 8)+ind0) - phi1d(noff(10)+ind0))
+     &              + u0*w1*(phi1d(noff(19)+ind0) - phi1d(noff(21)+ind0))
+     &              + u1*w1*(phi1d(noff(20)+ind0) - phi1d(noff(22)+ind0)))
+
+            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+            if (lcylindrical) then
+              if (x > 0.) then
+                eyt = ext*yp(ip)/x
+                ext = ext*xp(ip)/x
+              else
+                ext = ext
+                eyt = 0.
+              endif
+            endif
+
+            ex(ip) = ex(ip) + ext
+            ey(ip) = ey(ip) + eyt
+            ez(ip) = ez(ip) + ezt
+
+          enddo
+
+        else
+
+c         --- Set offsets for indices on axis of symmetry.  The offsets change
+c         --- the sign of the grid cells which are on the negative side
+c         --- of the axis of symmetry.
+          sox = 0
+          if (l4symtry) sox = 2
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          do ip = 1, np
+
+            xi =  (abs(xp(ip)) - xmmin)*dxi
+            zk =  (zp(ip) - zgrid - zmmin)*dzi
+            if (xi < 0. .or. xi > nx .or.
+     &          zk < 0. .or. zk > nz) cycle
+            i = int(xi)
+            k = int(zk)
+            ind0 = i + k*nnx
+
+            u1 = xi - i
+            w1 = zk - k
+
+            u0 = 1. - u1
+            w0 = 1. - w1
+
+c           --- Set offsets for points on symmetry axis of grid.  The offset
+c           --- for points off the axis is zero.
+            ox = 0
+            if (i == 0 .and. xmmin == 0.) ox = sox
+
+c           --- Adjust sign of E field for appropriate quadrant.
+            xsign = tdxi
+            if (xp(ip) < 0.) xsign = sx*tdxi
+            ext=xsign*(u0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
+     &               + u1*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
+     &               + u0*w1*(phi1d(noff(19)+ind0+ox)-phi1d(noff(21)+ind0))
+     &               + u1*w1*(phi1d(noff(20)+ind0   )-phi1d(noff(22)+ind0)))
+
+            ezt=tdzi*(u0*w0*(phi1d(noff( 1)+ind0) - phi1d(noff(20)+ind0))
+     &              + u1*w0*(phi1d(noff( 2)+ind0) - phi1d(noff(21)+ind0))
+     &              + u0*w1*(phi1d(noff( 8)+ind0) - phi1d(noff(29)+ind0))
+     &              + u1*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0)))
+
+            ex(ip) = ex(ip) + ext
             ez(ip) = ez(ip) + ezt
 
           enddo
@@ -5445,6 +6009,8 @@ c         --- transverse boundaries.
 !$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
 !$OMP&FIRSTPRIVATE(np)
 
+      if (ny > 0) then
+
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. lcylindrical) then
         iinext = int((xp(1) - xmmin)*dxi)
@@ -5541,6 +6107,7 @@ c       --- normal loop
         u1next = (x - xmmin)*dxi - iinext
         v1next = (y - ymmin)*dyi - jjnext
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+
 !$OMP DO
         do ip = 1,np
           ii = iinext
@@ -5580,6 +6147,110 @@ c       --- normal loop
           rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1
         enddo
 !$OMP END DO
+
+      endif
+
+      else
+
+c NY == 0
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .and. .not. lcylindrical) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry .and. .not. lcylindrical) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          gxfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g*gxfact
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g*gxfact
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        if (lcylindrical) then
+          x = sqrt(xp(1)**2 + yp(1)**2)
+        else
+          x = xp(1)
+        endif
+        iinext = int((x - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (x - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            if (lcylindrical) then
+              x = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            else
+              x = xp(ip+1)
+            endif
+            iinext = int((x - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (x - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          u0 = u0*cdens(ii  )
+          u1 = u1*cdens(ii+1)
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1
+        enddo
+!$OMP END DO
+
+      endif
+
       endif
 
 !$OMP END PARALLEL
@@ -6734,6 +7405,8 @@ c         --- transverse boundaries.
 !$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
 !$OMP&FIRSTPRIVATE(np)
 
+      if (ny > 0) then
+
 c     --- vectorized loop to compute indices, weights
       if (l2symtry .and. .not. lcylindrical) then
         iinext = int((xp(1) - xmmin)*dxi)
@@ -6871,6 +7544,109 @@ c       --- normal loop
           rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1
         enddo
 !$OMP END DO
+      endif
+
+      else
+
+c NY == 0
+c     --- vectorized loop to compute indices, weights
+      if (l2symtry .and. .not. lcylindrical) then
+        iinext = int((xp(1) - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (xp(1) - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((xp(ip+1) - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (xp(ip+1) - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          g = g0*wfact(ip)
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+        enddo
+!$OMP END DO
+      elseif (l4symtry .and. .not. lcylindrical) then
+        iinext = int((abs(xp(1)) - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          gxfact = 1.
+          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+          g = g0*wfact(ip)
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g*gxfact
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g*gxfact
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
+        enddo
+!$OMP END DO
+      else
+c       --- normal loop
+        if (lcylindrical) then
+          x = sqrt(xp(1)**2 + yp(1)**2)
+        else
+          x = xp(1)
+        endif
+        iinext = int((x - xmmin)*dxi)
+        kknext = int((zp(1) - zgrid - zmmin)*dzi)
+        u1next = (x - xmmin)*dxi - iinext
+        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+        do ip = 1,np
+          ii = iinext
+          kk = kknext
+          u1 = u1next
+          w1 = w1next
+          if (ip < np) then
+            if (lcylindrical) then
+              x = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
+            else
+              x = xp(ip+1)
+            endif
+            iinext = int((x - xmmin)*dxi)
+            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+            u1next = (x - xmmin)*dxi - iinext
+            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+          endif
+          if (uzp(ip) == 0) cycle
+          u0 = 1. - u1
+          w0 = 1. - w1
+          u0 = u0*cdens(ii  )*wfact(ip)
+          u1 = u1*cdens(ii+1)*wfact(ip)
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1
+        enddo
+!$OMP END DO
+      endif
+
       endif
 
 !$OMP END PARALLEL
@@ -7137,7 +7913,7 @@ c=============================================================================
       use Subcycling
       use Fields3dParticles
       use GridBoundary3d
-      use FieldSolveAPI, Only: lzerorhofsapi
+      use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
       use Parallel,Only:my_index
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
@@ -7167,10 +7943,23 @@ c     --- made changes.
 
       if(depos == 'none') return
 
+c     --- set limits on loop over species
+      if (is_i == -1) then
+        is1 = 1
+        is2 = pgroup%ns
+      else
+        is1 = is_i
+        is2 = is_i
+      endif
+
       if (fstype == 12) then
 c       --- Use user registered solver to load rho
         lzerorhofsapi = lzero
+        js1fsapi = is1 - 1
+        js2fsapi = is2 - 1
         call execuser("loadrhoregistered")
+        js1fsapi = -1
+        js2fsapi = -1
       else
 
 c       --- This is always done with the built in solvers
@@ -7198,15 +7987,6 @@ c           --- are advanced.
 c       --- change AMR grid if necessary
         if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom .or.
      &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
-
-c       --- set limits on loop over species
-        if (is_i == -1) then
-          is1 = 1
-          is2 = pgroup%ns
-        else
-          is1 = is_i
-          is2 = is_i
-        endif
 
 c       --- set initial limits from input
 c       --- (will be changed if necessary in the loop)
@@ -8033,6 +8813,8 @@ c=============================================================================
         if(l2symtry .or. l4symtry) then
           xmin = -xmmax
         endif
+        ymin = -LARGEPOS
+        ymax =  LARGEPOS
       endif
 
       return
