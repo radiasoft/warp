@@ -620,7 +620,7 @@ Initially, conductors are not implemented.
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     MultiGrid.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
     # --- Force ey to zero (is this really needed?)
-    ey[...] = 0.
+    #ey[...] = 0.
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
