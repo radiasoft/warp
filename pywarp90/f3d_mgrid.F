@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.144 $, $Date: 2007/06/22 21:50:06 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.145 $, $Date: 2007/06/26 01:14:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3173,7 +3173,6 @@ c=============================================================================
      &                                     conductors,
      &                                     my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
-      use Conductor3d,Only:lcorrectede
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
       type(ConductorType):: conductors
@@ -3188,7 +3187,6 @@ c various mesh resolutions needed by the MG solver.
       real(kind=8):: dx1,dy1,dz1
       integer(ISZ):: nx1,ny1,nzlocal1,levels
       integer(ISZ):: allocerror
-      logical(ISZ):: doalloc
 
 c     --- Make sure the coarsening levels are setup.
       call getmglevels(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
@@ -3276,63 +3274,6 @@ c     --- Sort odd subgrid points
         call iswapconductor(na,isort,nn,6,conductors%oddsubgrid%numb)
         call iswapconductor(na,isort,nn,1,conductors%oddsubgrid%ilevel)
         deallocate(isort)
-      endif
-
-c     --- Initialize the data needed for the corrected E field calculation
-c     --- Skip this if there is not conductor data.
-      if ((lcorrectede .or. conductors%lcorrectede) .and.
-     &    conductors%evensubgrid%n > 0 .and.
-     &    conductors%oddsubgrid%n > 0) then
-c       --- First, check if the icgrid array needs to be allocated or
-c       --- reallocated.
-        if (.not. ASSOCIATED(conductors%icgrid)) then
-          doalloc = .true.
-        else
-          if (ALL((/nx+1,ny+1,nzlocal+1/) == SHAPE(conductors%icgrid))) then
-            doalloc = .false.
-          else
-            doalloc = .true.
-            deallocate(conductors%icgrid)
-          endif
-        endif
-        if (doalloc) then
-          allocate(conductors%icgrid(0:nx,0:ny,0:nzlocal),stat=allocerror)
-          if (allocerror /= 0) then
-            print*,"checkconductors: allocation error ",allocerror,
-     &             ": could not allocate icgrid to shape ",1+nx,1+ny,1+nzlocal
-            call kaboom("checkconductors: allocation error")
-            return
-          endif
-        endif
-
-        nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
-        conductors%icgrid = 0
-c       --- The E field at interior points is ignored for now
-        do ic=conductors%interior%istart(0),conductors%interior%istart(1)-1
-          ix = conductors%interior%indx(0,ic)
-          iy = conductors%interior%indx(1,ic)
-          iz = conductors%interior%indx(2,ic)
-          conductors%icgrid(ix,iy,iz) = nmax + 1
-        enddo
-        do ie=conductors%evensubgrid%istart(0),conductors%evensubgrid%istart(1)-1
-          ix = conductors%evensubgrid%indx(0,ie)
-          iy = conductors%evensubgrid%indx(1,ie)
-          iz = conductors%evensubgrid%indx(2,ie)
-          conductors%icgrid(ix,iy,iz) = ie
-        enddo
-        do io=conductors%oddsubgrid%istart(0),conductors%oddsubgrid%istart(1)-1
-          ix = conductors%oddsubgrid%indx(0,io)
-          iy = conductors%oddsubgrid%indx(1,io)
-          iz = conductors%oddsubgrid%indx(2,io)
-          conductors%icgrid(ix,iy,iz) = -io
-        enddo
-      else
-
-c       --- Since it is not needed, make sure that the memory is freed.
-        if (ASSOCIATED(conductors%icgrid)) then
-          deallocate(conductors%icgrid)
-        endif
-
       endif
 
       return
@@ -3589,6 +3530,77 @@ c       --- than the other point. If so, reset data for the other point.
       end
 c=============================================================================
 c=============================================================================
+c=============================================================================
+      subroutine setupconductorfielddata(conductors,nx,ny,nzlocal)
+      use ConductorTypemodule
+      use Conductor3d,Only:lcorrectede
+      type(ConductorType):: conductors
+      integer(ISZ):: nx,ny,nzlocal
+
+      integer(ISZ):: ix,iy,iz,nmax
+      integer(ISZ):: ic,ie,io
+      integer(ISZ):: allocerror
+      logical(ISZ):: doalloc
+
+c     --- Initialize the data needed for the corrected E field calculation
+c     --- Skip this if there is not conductor data.
+      if ((lcorrectede .or. conductors%lcorrectede) .and.
+     &    conductors%evensubgrid%n > 0 .and.
+     &    conductors%oddsubgrid%n > 0) then
+c       --- First, check if the icgrid array needs to be allocated or
+c       --- reallocated.
+        if (.not. ASSOCIATED(conductors%icgrid)) then
+          doalloc = .true.
+        else
+          if (ALL((/nx+1,ny+1,nzlocal+1/) == SHAPE(conductors%icgrid))) then
+            doalloc = .false.
+          else
+            doalloc = .true.
+            deallocate(conductors%icgrid)
+          endif
+        endif
+        if (doalloc) then
+          allocate(conductors%icgrid(0:nx,0:ny,0:nzlocal),stat=allocerror)
+          if (allocerror /= 0) then
+            print*,"checkconductors: allocation error ",allocerror,
+     &             ": could not allocate icgrid to shape ",1+nx,1+ny,1+nzlocal
+            call kaboom("checkconductors: allocation error")
+            return
+          endif
+        endif
+
+        nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
+        conductors%icgrid = 0
+c       --- The E field at interior points is ignored for now
+        do ic=conductors%interior%istart(0),conductors%interior%istart(1)-1
+          ix = conductors%interior%indx(0,ic)
+          iy = conductors%interior%indx(1,ic)
+          iz = conductors%interior%indx(2,ic)
+          conductors%icgrid(ix,iy,iz) = nmax + 1
+        enddo
+        do ie=conductors%evensubgrid%istart(0),conductors%evensubgrid%istart(1)-1
+          ix = conductors%evensubgrid%indx(0,ie)
+          iy = conductors%evensubgrid%indx(1,ie)
+          iz = conductors%evensubgrid%indx(2,ie)
+          conductors%icgrid(ix,iy,iz) = ie
+        enddo
+        do io=conductors%oddsubgrid%istart(0),conductors%oddsubgrid%istart(1)-1
+          ix = conductors%oddsubgrid%indx(0,io)
+          iy = conductors%oddsubgrid%indx(1,io)
+          iz = conductors%oddsubgrid%indx(2,io)
+          conductors%icgrid(ix,iy,iz) = -io
+        enddo
+      else
+
+c       --- Since it is not needed, make sure that the memory is freed.
+        if (ASSOCIATED(conductors%icgrid)) then
+          deallocate(conductors%icgrid)
+        endif
+
+      endif
+
+      return
+      end
 c=============================================================================
       subroutine getefieldatconductors(conductors,phi,
      &                                 dx,dy,dz,nx,ny,nz,delx,dely,delz)
