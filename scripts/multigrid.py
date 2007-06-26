@@ -130,6 +130,16 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- object may be restored before the conductors. This delays the
     # --- installation of the conductors until they are really needed.
 
+    # --- There is a special case, fselfb='p', which refers to the conductor
+    # --- object that has the data generated relative to the particle domain,
+    # --- which can be different from the field domain, especially in parallel.
+    if fselfb == 'p' and 'p' not in self.conductorobjects:
+      # --- In serial, just use a reference to the conductor object for the
+      # --- first iselfb group. In parallel, a whole new instance is created.
+      if not lparallel:
+        self.conductorobjects['p'] = self.conductorobjects[top.fselfb[0]]
+        self.installedconductorlists['p'] = self.installedconductorlists[top.fselfb[0]]
+
     conductorobject = self.conductorobjects.setdefault(fselfb,ConductorType())
     installedconductorlist = self.installedconductorlists.setdefault(fselfb,[])
 
@@ -140,6 +150,12 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- the conductor object.
     for conductordata in self.conductordatalist:
       self.__installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
+ 
+
+    if fselfb == 'p':
+      setupconductorfielddata(self.nx,self.ny,self.nzlocal,self.nz,
+                              self.dx,self.dy,self.dz,conductorobject,
+                              self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
 
     # --- Return the desired conductor object
     return conductorobject
@@ -269,7 +285,7 @@ class MultiGrid(SubcycledPoissonSolver):
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
              self.nxguard,self.nyguard,self.nzguard)
     else:
-      sete3dwithconductor(self.getconductorobject(top.fselfb[iselfb]),
+      sete3dwithconductor(self.getconductorobject('p'),
              self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
@@ -318,10 +334,14 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
     iselfb = args[2]
-    if (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
-        f3d.lcorrectede):
-      getefieldatconductors(self.getconductorobject(top.fselfb[iselfb]),
-                            self.potential,self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,
+    if (iselfb == 0 and
+        (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
+         f3d.lcorrectede)):
+      # --- This only needs to be calculated once, so is only done
+      # --- when iselfb == 0.
+      getefieldatconductors(self.getconductorobject('p'),
+                            self.potentialp,self.dx,self.dy,self.dz,
+                            self.nxp,self.nyp,self.nzp,
                             self.nxguard,self.nyguard,self.nzguard)
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
@@ -461,18 +481,32 @@ class MultiGrid(SubcycledPoissonSolver):
     if conductor in installedlist: return
     installedlist.append(conductor)
 
-    # --- Get relativistic longitudinal scaling factor
-    # --- This is quite ready yet.
-    beta = fselfb/clight
-    zscale = 1./sqrt((1.-beta)*(1.+beta))
+    if fselfb == 'p':
+      zscale = 1.
+      nx,ny,nzlocal,nz = self.nxp,self.nyp,self.nzp,self.nz
+      xmmin,xmmax = self.xmminp,self.xmmaxp
+      ymmin,ymmax = self.ymminp,self.ymmaxp
+      zmmin,zmmax = self.zmminp,self.zmmaxp
+      mgmaxlevels = 1
+    else:
+      # --- Get relativistic longitudinal scaling factor
+      # --- This is quite ready yet.
+      beta = fselfb/clight
+      zscale = 1./sqrt((1.-beta)*(1.+beta))
+      nx,ny,nzlocal,nz = self.nx,self.ny,self.nzlocal,self.nz
+      xmmin,xmmax = self.xmmin,self.xmmax
+      ymmin,ymmax = self.ymmin,self.ymmax
+      zmmin,zmmax = self.zmmin,self.zmmax
+      mgmaxlevels = None
 
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nzlocal,self.nz,
-                      self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,zscale,self.l2symtry,self.l4symtry,
+                      nx,ny,nzlocal,nz,
+                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+                      zscale,self.l2symtry,self.l4symtry,
                       installrz=0,
                       solvergeom=self.solvergeom,conductors=conductorobject,
+                      mgmaxlevels=mgmaxlevels,
                       my_index=self.my_index,nslaves=self.nslaves,
                       izfsslave=self.izfsslave,nzfsslave=self.nzfsslave)
 
