@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.13 $, $Date: 2007/06/22 21:47:26 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.14 $, $Date: 2007/06/26 12:43:27 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -1096,7 +1096,7 @@ c     --- Apply the boundary conditions, setting the values in the guard cells
             u(:,:,nzlocal+1:nzlocal+delz,:) = 0.
           else
             do iz=nzlocal+1,nzlocal+delz
-              u(:,:,iz,:) = 2.*u(:,:,iz+1,:) - u(:,:,iz+2,:)
+              u(:,:,iz,:) = 2.*u(:,:,iz-1,:) - u(:,:,iz-2,:)
             enddo
           endif
         endif
