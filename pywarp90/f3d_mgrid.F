@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.145 $, $Date: 2007/06/26 01:14:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.146 $, $Date: 2007/06/26 01:36:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3531,16 +3531,25 @@ c       --- than the other point. If so, reset data for the other point.
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine setupconductorfielddata(conductors,nx,ny,nzlocal)
+      subroutine setupconductorfielddata(nx,ny,nzlocal,nz,dx,dy,dz,
+     &                                   conductors,
+     &                                   my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       use Conductor3d,Only:lcorrectede
+      integer(ISZ):: nx,ny,nzlocal,nz
+      real(kind=8):: dx,dy,dz
       type(ConductorType):: conductors
-      integer(ISZ):: nx,ny,nzlocal
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
       integer(ISZ):: ix,iy,iz,nmax
       integer(ISZ):: ic,ie,io
       integer(ISZ):: allocerror
       logical(ISZ):: doalloc
+
+      call checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,
+     &                     conductors,
+     &                     my_index,nslaves,izfsslave,nzfsslave)
 
 c     --- Initialize the data needed for the corrected E field calculation
 c     --- Skip this if there is not conductor data.
