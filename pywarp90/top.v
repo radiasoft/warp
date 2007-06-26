@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.209 $, $Date: 2007/05/22 20:44:53 $
+#@(#) File TOP.V, version $Revision: 3.210 $, $Date: 2007/06/26 12:38:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.209 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.210 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -988,7 +988,7 @@ fstype                    integer /0/
    #  0:sine-sine-periodic FFT,
    #  1: 8-fold symmetric capacity matrix in kz space,
    #  2: capacity matrix for quadrupoles,
-   #  3: SOR (obsolete, use 7, multigrid),
+   #  3: SOR (no longer available, use 7, multigrid),
    #  4: 2d sine-sine FFT + tridiag in z,
    #  5: general capacity matrix in kz space,
    #  6: general capacity matrix,
@@ -1141,8 +1141,7 @@ ypcent_s(ns)   _real    [m]     /0./
 efetch(ns)     _integer /1/
    # Specifies type of fetch used to set internal E field
    # 1: direct calculation from phi
-   # 2: direct calculation from phi, vectorization over 8 grid cell corners
-   #    (not recommended)
+   # 2: (no longer supported)
    # 3: indirect calculation from pre-calculated E (finite differences of phi)
    # 4: energy conserving - uses nearest grid point interpolation
    # 5: same as 1, but checks for particles out of bounds
@@ -2088,6 +2087,7 @@ dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # transverse slice modes.
 limplicit(0:ns-1) _logical /0/ # Flags implicit particle species
 iimplicit(0:ns-1) _integer /-1/ # Group number for implicit particles
+ldoadvance(0:ns-1) _logical /1/ # Flags whether particles are time advanced
 zshift(ns) _real /0./
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
