@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.146 $, $Date: 2007/06/26 01:36:35 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.147 $, $Date: 2007/06/27 12:19:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3571,9 +3571,9 @@ c       --- reallocated.
         if (doalloc) then
           allocate(conductors%icgrid(0:nx,0:ny,0:nzlocal),stat=allocerror)
           if (allocerror /= 0) then
-            print*,"checkconductors: allocation error ",allocerror,
+            print*,"setupconductorfielddata: allocation error ",allocerror,
      &             ": could not allocate icgrid to shape ",1+nx,1+ny,1+nzlocal
-            call kaboom("checkconductors: allocation error")
+            call kaboom("setupconductorfielddata: allocation error")
             return
           endif
         endif
@@ -4184,99 +4184,95 @@ c       ---------------------------------------------------------------------
         integer(ISZ):: ic
         real(kind=8):: ppp
         ic = conductors%icgrid(i+ox,j+oy,k+oz)
-        if (ic < nmax) then
-          if (ic == 0) then
-            ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
-            wwsum(id) = wwsum(id) + wm
-          else
-            if (ic < 0) then
-              if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
-                vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
-                dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
-              else
-                vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
-                dd(0) = 1.
-              endif
-              if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
-                vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
-                dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
-              else
-                vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
-                dd(1) = 1.
-              endif
+        if (ic == 0) then
+          ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
+          wwsum(id) = wwsum(id) + wm
+        else if (ic < nmax+1) then
+          if (ic < 0) then
+            if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
+              vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
+              dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
             else
-              if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
-                vv(0) = conductors%evensubgrid%volt(2*id,ic)
-                dd(0) = conductors%evensubgrid%dels(2*id,ic)
-              else
-                vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
-                dd(0) = 1.
-              endif
-              if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
-                vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
-                dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
-              else
-                vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
-                dd(1) = 1.
-              endif
+              vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
+              dd(0) = 1.
             endif
-            ppp = phi(i+ox,j+oy,k+oz)
-            ee(id) = ee(id) + wm*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
-     &                            dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
-            wwsum(id) = wwsum(id) + wm
-            if (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) > nmax) then
-              ee(id) = ee(id) + wp*((ppp-vv(1))/dd(1) - (2.-dd(1))/(2.+dd(0))*(vv(0)-ppp)/dd(0))*
-     &                             ((2.+dd(0))/(dd(0)+dd(1)))*di
-              wwsum(id) = wwsum(id) + wp
+            if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
+              vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
+              dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
+            else
+              vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
+              dd(1) = 1.
+            endif
+          else
+            if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
+              vv(0) = conductors%evensubgrid%volt(2*id,ic)
+              dd(0) = conductors%evensubgrid%dels(2*id,ic)
+            else
+              vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
+              dd(0) = 1.
+            endif
+            if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
+              vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
+              dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
+            else
+              vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
+              dd(1) = 1.
             endif
           endif
+          ppp = phi(i+ox,j+oy,k+oz)
+          ee(id) = ee(id) + wm*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
+     &                          dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
+          wwsum(id) = wwsum(id) + wm
+          if (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) > nmax) then
+            ee(id) = ee(id) + wp*((ppp-vv(1))/dd(1) - (2.-dd(1))/(2.+dd(0))*(vv(0)-ppp)/dd(0))*
+     &                           ((2.+dd(0))/(dd(0)+dd(1)))*di
+            wwsum(id) = wwsum(id) + wp
+          endif
         endif
-        ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
-        if (ic < nmax) then
-          if (ic == 0) then
-            ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
-            wwsum(id) = wwsum(id) + wp
-          else
-            if (ic < 0) then
-              if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
-                vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
-                dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
-              else
-                vv(0) = phi(i+ox,j+oy,k+oz)
-                dd(0) = 1.
-              endif
-              if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
-                vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
-                dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
-              else
-                vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
-                dd(1) = 1.
-              endif
+      ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
+        if (ic == 0) then
+          ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
+          wwsum(id) = wwsum(id) + wp
+        else if (ic < nmax+1) then
+          if (ic < 0) then
+            if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
+              vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
+              dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
             else
-              if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
-                vv(0) = conductors%evensubgrid%volt(2*id,ic)
-                dd(0) = conductors%evensubgrid%dels(2*id,ic)
-              else
-                vv(0) = phi(i+ox,j+oy,k+oz)
-                dd(0) = 1.
-              endif
-              if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
-                vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
-                dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
-              else
-                vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
-                dd(1) = 1.
-              endif
+              vv(0) = phi(i+ox,j+oy,k+oz)
+              dd(0) = 1.
             endif
-            ppp = phi(i+ox+px,j+oy+py,k+oz+pz)
-            ee(id) = ee(id) + wp*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
-     &                            dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
-            wwsum(id) = wwsum(id) + wp
-            if (conductors%icgrid(i+ox,j+oy,k+oz) > nmax) then
-              ee(id) = ee(id) + wm*((vv(0)-ppp)/dd(0) - (2.-dd(0))/(2.+dd(1))*(ppp-vv(1))/dd(1))*
-     &                             ((2.+dd(1))/(dd(1)+dd(0)))*di
-              wwsum(id) = wwsum(id) + wm
+            if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
+              vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
+              dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
+            else
+              vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
+              dd(1) = 1.
             endif
+          else
+            if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
+              vv(0) = conductors%evensubgrid%volt(2*id,ic)
+              dd(0) = conductors%evensubgrid%dels(2*id,ic)
+            else
+              vv(0) = phi(i+ox,j+oy,k+oz)
+              dd(0) = 1.
+            endif
+            if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
+              vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
+              dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
+            else
+              vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
+              dd(1) = 1.
+            endif
+          endif
+          ppp = phi(i+ox+px,j+oy+py,k+oz+pz)
+          ee(id) = ee(id) + wp*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
+     &                          dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
+          wwsum(id) = wwsum(id) + wp
+          if (conductors%icgrid(i+ox,j+oy,k+oz) > nmax) then
+            ee(id) = ee(id) + wm*((vv(0)-ppp)/dd(0) - (2.-dd(0))/(2.+dd(1))*(ppp-vv(1))/dd(1))*
+     &                           ((2.+dd(1))/(dd(1)+dd(0)))*di
+            wwsum(id) = wwsum(id) + wm
           endif
         endif
 
@@ -4290,47 +4286,43 @@ c       ---------------------------------------------------------------------
         integer(ISZ):: ic
         real(kind=8):: ppp
         ic = conductors%icgrid(i+ox,j+oy,k+oz)
-        if (ic < nmax) then
-          if (ic == 0) then
-            ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
-            wwsum(id) = wwsum(id) + wm
+        if (ic == 0) then
+          ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
+          wwsum(id) = wwsum(id) + wm
+        else if (ic < nmax+1) then
+          if (ic < 0) then
+            ee(id) = ee(id) + wm*conductors%oddsubgrid%efield0(id,-ic)
           else
+            ee(id) = ee(id) + wm*conductors%evensubgrid%efield0(id,ic)
+          endif
+          wwsum(id) = wwsum(id) + wm
+          if (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) > nmax) then
             if (ic < 0) then
-              ee(id) = ee(id) + wm*conductors%oddsubgrid%efield0(id,-ic)
+              ee(id) = ee(id) + wp*conductors%oddsubgrid%efieldd(2*id+1,-ic)
             else
-              ee(id) = ee(id) + wm*conductors%evensubgrid%efield0(id,ic)
+              ee(id) = ee(id) + wp*conductors%evensubgrid%efieldd(2*id+1,ic)
             endif
-            wwsum(id) = wwsum(id) + wm
-            if (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) > nmax) then
-              if (ic < 0) then
-                ee(id) = ee(id) + wp*conductors%oddsubgrid%efieldd(2*id+1,-ic)
-              else
-                ee(id) = ee(id) + wp*conductors%evensubgrid%efieldd(2*id+1,ic)
-              endif
-              wwsum(id) = wwsum(id) + wp
-            endif
+            wwsum(id) = wwsum(id) + wp
           endif
         endif
         ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
-        if (ic < nmax) then
-          if (ic == 0) then
-            ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
-            wwsum(id) = wwsum(id) + wp
+        if (ic == 0) then
+          ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
+          wwsum(id) = wwsum(id) + wp
+        else if (ic < nmax+1) then
+          if (ic < 0) then
+            ee(id) = ee(id) + wp*conductors%oddsubgrid%efield0(id,-ic)
           else
+            ee(id) = ee(id) + wp*conductors%evensubgrid%efield0(id,ic)
+          endif
+          wwsum(id) = wwsum(id) + wp
+          if (conductors%icgrid(i+ox,j+oy,k+oz) > nmax) then
             if (ic < 0) then
-              ee(id) = ee(id) + wp*conductors%oddsubgrid%efield0(id,-ic)
+              ee(id) = ee(id) + wm*conductors%oddsubgrid%efieldd(2*id,-ic)
             else
-              ee(id) = ee(id) + wp*conductors%evensubgrid%efield0(id,ic)
+              ee(id) = ee(id) + wm*conductors%evensubgrid%efieldd(2*id,ic)
             endif
-            wwsum(id) = wwsum(id) + wp
-            if (conductors%icgrid(i+ox,j+oy,k+oz) > nmax) then
-              if (ic < 0) then
-                ee(id) = ee(id) + wm*conductors%oddsubgrid%efieldd(2*id,-ic)
-              else
-                ee(id) = ee(id) + wm*conductors%evensubgrid%efieldd(2*id,ic)
-              endif
-              wwsum(id) = wwsum(id) + wm
-            endif
+            wwsum(id) = wwsum(id) + wm
           endif
         endif
 
