@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.211 $, $Date: 2007/05/15 18:15:43 $
+c@(#) File TOP.F, version $Revision: 3.212 $, $Date: 2007/06/27 15:08:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4048,16 +4048,18 @@ c     --- Find any new implicit species with different q/m
       do js1=0,pgroup%ns-1
         if (.not. pgroup%limplicit(js1)) continue
 c       --- First check if the q/m of this species has already been registered
+        qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
         lnew = .true.
         do js2=0,nsimplicit-1
-          qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
-          if (qom == implicitfactor(js2)) lnew = .false.
+          if (qom == implicitfactor(js2)) then
+            lnew = .false.
+            pgroup%iimplicit(js1) = js2
+          endif
         enddo
 c       --- If not registered, then add it to the list.
         if (lnew) then
           nsimplicit = nsimplicit + 1
           call gchange("ImplicitModule",0)
-          qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
           implicitfactor(nsimplicit-1) = qom
           pgroup%iimplicit(js1) = nsimplicit-1
         endif
