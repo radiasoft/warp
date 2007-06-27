@@ -151,12 +151,6 @@ class MultiGrid(SubcycledPoissonSolver):
     for conductordata in self.conductordatalist:
       self.__installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
  
-
-    if fselfb == 'p':
-      setupconductorfielddata(self.nx,self.ny,self.nzlocal,self.nz,
-                              self.dx,self.dy,self.dz,conductorobject,
-                              self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
-
     # --- Return the desired conductor object
     return conductorobject
 
@@ -333,13 +327,20 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.nxguard,self.nyguard,self.nzguard,
                             self.my_index,self.nslaves,self.izpslave,self.nzpslave,
                             self.izfsslave,self.nzfsslave)
+
     iselfb = args[2]
     if (iselfb == 0 and
         (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
          f3d.lcorrectede)):
       # --- This only needs to be calculated once, so is only done
       # --- when iselfb == 0.
-      getefieldatconductors(self.getconductorobject('p'),
+      conductorobject = self.getconductorobject('p')
+      # --- This sets up the icgrid
+      setupconductorfielddata(self.nxp,self.nyp,self.nzp,self.nz,
+                              self.dx,self.dy,self.dz,conductorobject,
+                              self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+      # --- This calculates the field
+      getefieldatconductors(conductorobject,
                             self.potentialp,self.dx,self.dy,self.dz,
                             self.nxp,self.nyp,self.nzp,
                             self.nxguard,self.nyguard,self.nzguard)
