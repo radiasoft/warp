@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.14 $, $Date: 2007/06/26 12:43:27 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.15 $, $Date: 2007/06/29 13:28:16 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -87,7 +87,7 @@ c=============================================================================
       real(kind=8):: rr,rrm,rrp
 
 c     --- Right hand side is easy (without conductors)
-      rhs = rho/eps0
+c     rhs = rho/eps0
 
       allocate(chi(0:1,0:1,-1:nx+1,-1:nzlocal+1))
       chi = 0.
@@ -749,6 +749,7 @@ c     --- Do final SOR passes.
       enddo
 
       deallocate(coeffs)
+      deallocate(rhs)
 
       return
       end
