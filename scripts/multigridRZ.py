@@ -615,7 +615,8 @@ Initially, conductors are not implemented.
                 self.solvergeom==w3d.RZgeom)
     self.sourcep[...,0] += sourcep
     if iimp >= 0:
-      self.sourcep[...,iimp+1] += sourcep*q/m
+      # --- The extra terms convert rho to chi
+      self.sourcep[...,iimp+1] += 0.5*sourcep*q/m*top.dt**2/eps0
 
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     MultiGrid.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
@@ -650,7 +651,7 @@ Initially, conductors are not implemented.
 
     # --- This is only done for convenience.
     self.phi = self.potential
-    self.rho = self.source
+    self.rho = self.source[...,0]
     if isinstance(self.potential,FloatType): return
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
@@ -662,28 +663,27 @@ Initially, conductors are not implemented.
 
     # --- Setup implicit chi
     qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
-    chi0 = 0.5*self.source[...,1:]*top.dt**2/eps0
+    #--- chi0 = 0.5*rho*q/m*top.dt**2/eps0
+    self.chi0 = self.source[...,1:]
     # --- Kludge alart!!!
     if self.chikludge:
       for js in range(self.source.shape[-1]-1):
-        if maxnd(abs(chi0[...,js])) == 0.: continue
-        avechi = sumnd(chi0[...,js])/sumnd(where(chi0[...,js] == 0.,0.,1.))
-        chi0[...,js] = where(chi0[...,js]==0.,avechi,chi0[...,js])
+        if maxnd(abs(self.chi0[...,js])) == 0.: continue
+        avechi = sumnd(self.chi0[...,js])/sumnd(where(self.chi0[...,js] == 0.,0.,1.))
+        self.chi0[...,js] = where(self.chi0[...,js]==0.,avechi,self.chi0[...,js])
     """
     # --- Test a linearly varying chi and parabolic phi
     c1 = 10.
     c2 = 2.
     alpha = 10.
     for iz in range(self.nzlocal+1):
-      chi0[...,iz] = (c1 + c2*self.zmesh[iz])
+      self.chi0[...,iz] = (c1 + c2*self.zmesh[iz])
       self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
     """
 
-    self.chi0 = chi0
-
     mgsolveimplicites2d(iwhich,self.nx,self.nzlocal,self.nz,self.dx,self.dz*zfact,
                         self.potential,self.source,
-                        top.nsimplicit,qomdt,chi0,
+                        top.nsimplicit,qomdt,self.chi0,
                         self.bounds,self.xmmin,self.zmminlocal*zfact,self.zmmin*zfact,
                         self.getzgrid()*zfact,self.getzgrid()*zfact,
                         self.mgparam,mgiters,self.mgmaxiters,
