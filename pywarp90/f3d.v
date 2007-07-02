@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.177 $, $Date: 2007/07/02 10:58:07 $
+#@(#) File F3D.V, version $Revision: 3.178 $, $Date: 2007/07/02 16:32:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.177 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.178 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -163,7 +163,7 @@ icgrid(:,:,:)   _integer # Used to determine which conductor point is at
 *********** Conductor3d dump parallel:
 conductors ConductorType # Default data structure for conductor data
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
-icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
+icndbndy integer /2/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
 lcorrectede logical /.false./ # When true, the E field near conductors is
