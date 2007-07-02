@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.147 $, $Date: 2007/06/27 12:19:50 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.148 $, $Date: 2007/07/02 10:58:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3172,6 +3172,7 @@ c=============================================================================
       RECURSIVE subroutine checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,
      &                                     conductors,
      &                                     my_index,nslaves,izfsslave,nzfsslave)
+      use Subtimersf3d
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
@@ -3187,6 +3188,8 @@ c various mesh resolutions needed by the MG solver.
       real(kind=8):: dx1,dy1,dz1
       integer(ISZ):: nx1,ny1,nzlocal1,levels
       integer(ISZ):: allocerror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Make sure the coarsening levels are setup.
       call getmglevels(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
@@ -3275,6 +3278,9 @@ c     --- Sort odd subgrid points
         call iswapconductor(na,isort,nn,1,conductors%oddsubgrid%ilevel)
         deallocate(isort)
       endif
+
+      if (lf3dtimesubs) timecheckconductors = timecheckconductors +
+     &                                         wtime() - substarttime
 
       return
       end
