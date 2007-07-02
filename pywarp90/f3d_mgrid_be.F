@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.34 $, $Date: 2007/06/04 22:50:30 $
+c version $Revision: 1.35 $, $Date: 2007/07/02 15:00:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -271,7 +271,7 @@ c=============================================================================
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
-      real(kind=8):: phi(-1:nx,-1:ny,-1:nzlocal+1),rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1),rho(0:nx,0:ny,0:nzlocal)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
       real(kind=8):: xmmin,ymmin,zmmin
       real(kind=8):: rstar(-1:nzlocal+1)
@@ -1656,7 +1656,12 @@ c     --- and the ion particle density (rho).
             if (regionid(ix,iy,iz) > 0) then
               id = regionid(ix,iy,iz)
               if (iondensity(id) == 0.) cycle
-              rhomax = max(1.,-rho(ix,iy,iz)*eps0/iondensity(id))
+              if (luseparticledensity(id) > 0) then
+                rhomax = max(electrondensitymaxscale(id),
+     &                       -rho(ix,iy,iz)*eps0/iondensity(id))
+              else
+                rhomax = electrondensitymaxscale(id)
+              endif
               phimax = plasmapotential(id)+electrontemperature(id)*log(rhomax)
               if (phi(ix,iy,iz) > phimax) phi(ix,iy,iz) = phimax
             endif
