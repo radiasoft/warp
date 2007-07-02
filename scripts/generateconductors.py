@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.162 2007/06/26 12:47:08 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.163 2007/07/02 16:30:42 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1128,7 +1128,7 @@ Normalizes the data with respect to the grid cell sizes.
 dx,dy,dz: the grid cell sizes
     """
     self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
-    if neumann:
+    if self.neumann:
       # --- For points that are within fuzz of 0 or 1, force them to be 0 or 1.
       # --- For Neumann boundaries, dels=0 is a valid value and this deals
       # --- with roundoff problems since a conductor that is aligned with the
@@ -1147,6 +1147,28 @@ dx,dy,dz: the grid cell sizes
       self.fixneumannzeros(5,4,fuzz)
       self.dels[:,:] = where((1.-fuzz < self.dels[:,:])&(self.dels[:,:] < 1.),
                              1.,self.dels[:,:])
+      # --- This deals with points that straddle a surface, where some
+      # --- directions are inside and others outside. This ensures that all
+      # --- directions are inside in these cases by changing dels that are
+      # --- outside so that they are deep inside. This still doesn't seem to
+      # --- be enough to fix the problems with convergence.
+      delsmin = minimum.reduce(self.dels)
+      delsmax = maximum.reduce(self.dels)
+      ii = compress((delsmin < 0.)&(delsmax > 0.),range(self.dels.shape[1]))
+      for i in ii:
+        self.dels[:,i] = where(self.dels[:,i] > 0.,-2.,self.dels[:,i])
+      # --- This deals with special case points. It can sometimes happen that
+      # --- when a point is on a surface, one of the dels can be zero, but others
+      # --- can be between -1 and 0. This is an attempt to fix those points.
+      # --- It forces the dels which are between -1 and 0 to be deep inside the
+      # --- conductor, i.e., -2. If this is not done, then the normal Dirichlet
+      # --- subgrid algorithm would be applied, leading to serious errors.
+      # --- However, this fix doesn't seen to fix the whole problem since the
+      # --- code still has problems converging when there are points with dels=0.
+      delsmin = minimum.reduce(abs(self.dels))
+      for i in range(6):
+        ccc = where((-1+fuzz<self.dels[i,:])&(self.dels[i,:]<0.),-2.,self.dels[i,:])
+        self.dels[i,:] = where(delsmin==0.,ccc,self.dels[i,:])
 
   def fixneumannzeros(self,i0,i1,fuzz):
     # --- If a point is between -fuzz and 0, make sure it gets put on the
@@ -1285,6 +1307,7 @@ Installs the data into the WARP database
         conductors.evensubgrid.numb[:,ne:ne+nenew] = take(data.ns,ii,1)
         conductors.evensubgrid.ilevel[ne:ne+nenew] = take(data.mglevel,ii)
         ne = ne + nenew
+          
 
       nonew = sum(where(data.parity == 1,1,0))
       if nonew > 0:
