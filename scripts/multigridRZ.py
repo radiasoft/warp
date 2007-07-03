@@ -618,6 +618,21 @@ Initially, conductors are not implemented.
       # --- The extra terms convert rho to chi
       self.sourcep[...,iimp+1] += 0.5*sourcep*q/m*top.dt**2/eps0
 
+  def setsourceforfieldsolve(self,*args):
+    # --- A separate copy is needed since self.source has an extra dimension
+    # --- which must be looped over.
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    if self.lparallel:
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      if isinstance(self.source,FloatType): return
+      if isinstance(self.sourcep,FloatType): return
+      for iimp in range(top.nsimplicit):
+        setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,self.source[...,iimp],
+                              self.nxp,self.nyp,self.nzp,self.sourcep[...,iimp],
+                              self.nzpguard,
+                              self.my_index,self.nslaves,self.izpslave,self.nzpslave,
+                              self.izfsslave,self.nzfsslave)
+
   def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
     MultiGrid.fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js,pgroup)
     # --- Force ey to zero (is this really needed?)
