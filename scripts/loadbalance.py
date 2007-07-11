@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.54 2007/06/04 23:02:52 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.55 2007/07/11 18:30:44 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -362,9 +362,9 @@ needed since some processors may have more conductor points than others.
   # --- weighted.
   weight = zeros(top.nzfsslave[me]+1,'d')
   for iz in iota(w3d.izfsmin,w3d.izfsmax):
-    nec = len(nonzero(logical_not(f3d.iecndz[:f3d.necndbdy]-iz)))
-    noc = len(nonzero(logical_not(f3d.iocndz[:f3d.nocndbdy]-iz)))
-    nc  = len(nonzero(logical_not(f3d.izcond[:f3d.ncond]-iz)))
+    nec = len(oldnonzero(logical_not(f3d.iecndz[:f3d.necndbdy]-iz)))
+    noc = len(oldnonzero(logical_not(f3d.iocndz[:f3d.nocndbdy]-iz)))
+    nc  = len(oldnonzero(logical_not(f3d.izcond[:f3d.ncond]-iz)))
     weight[iz-w3d.izfsmin] = (w3d.nx+1)*(w3d.ny+1) + \
                              sgweight*(nec + noc) + \
                              condweight*nc

@@ -111,10 +111,10 @@ Implements adaptive mesh refinement in 3d
 
       # --- Make sure that refinement is an array of length three. If a scalar
       # --- is input, it is broadcast to all three axis.
-      if type(refinement) in [IntType,FloatType]:
+      if len(shape(refinement)) == 0:
         refinement = 3*[refinement]
       self.refinement = array(refinement)
-      if type(nguard) in [IntType,FloatType]:
+      if len(shape(nguard)) == 0:
         nguard = 3*[nguard]
       self.nguard = array(nguard)
 
@@ -1220,7 +1220,7 @@ Fetches the potential, given a list of positions
         # --- Get list of particles within the ith domain
         # --- Note that when block==self, the particles selected are the
         # --- ones from this instances domain.
-        ii = nonzero(ichild==block.blocknumber)
+        ii = oldnonzero(ichild==block.blocknumber)
         if len(ii) == 0: continue
         # --- Get positions of those particles.
         xc = take(x,ii)

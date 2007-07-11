@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.60 2007/06/04 23:02:51 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.61 2007/07/11 18:30:43 dave Exp $"
 
 
 ##############################################################################
@@ -171,7 +171,7 @@ Performs steady-state iterations
     assert (top.ns == 1 or top.lspeciesmoments),\
       """If there are more than one species, then top.lspeciesmoments must be
 set when a current is specified"""
-    if type(current) in [IntType,FloatType]: current = [current]
+    if len(shape(current)) == 0: current = [current]
 
   # --- Save general parameters which are modified in this routine
   _oinject = top.inject

@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.198 2007/06/13 18:08:52 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.199 2007/07/11 18:30:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -353,8 +353,8 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   """This comment is replaced with gist.plg.__doc__. The linetype argument is
   only needed for backward compatibility."""
   kw.setdefault('type',linetype)
-  if type(y) in [FloatType,IntType]: y = [y]
-  if type(x) in [FloatType,IntType]: x = [x]
+  if len(shape(y)) == 0: y = [y]
+  if len(shape(x)) == 0: x = [x]
   if type(y) is not ArrayType: y = array(y)
   if x is not None:
     if type(x) is not ArrayType: x = array(x)
@@ -502,8 +502,8 @@ point = '\1'
 def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
   """Plots particles, same as plg but with different defaults so it plots
 markers instead of lines"""
-  if type(y) in [FloatType,IntType]: y = [y]
-  if type(x) in [FloatType,IntType]: x = [x]
+  if len(shape(y)) == 0: y = [y]
+  if len(shape(x)) == 0: x = [x]
   #if len(y) == 0: return
   kw.setdefault('type',linetype)
   kw['marker'] = marker
@@ -541,11 +541,11 @@ Simple interface to contour plotting, same arguments as plc
   if len(s) != 2:
     print 'First argument must be a 2-Dimensional array'
     return
-  if not xx:
+  if xx is None:
     xx = arange(s[0])[:,NewAxis]*ones(s[1],'d')
   elif len(shape(xx))==1:
     xx = xx[:,NewAxis]*ones(s[1],'d')
-  if not yy:
+  if yy is None:
     yy = arange(s[1])*ones(s[0],'d')[:,NewAxis]
   elif len(shape(yy))==1:
     yy = yy*ones(s[0],'d')[:,NewAxis]
@@ -1395,7 +1395,7 @@ between min(z) and max(z) for axis labels. n defaults to eight.
      cmax = cmax
   n = int(((cmax - cmin)/unit + 0.5) + 1)
   levs = cmin + arange(n)*unit
-  llist = nonzero(less(abs(levs),0.1*unit))
+  llist = oldnonzero(less(abs(levs),0.1*unit))
   if len(llist) > 0:
      #array_set(levs,llist,0.0)
      for i in llist: levs[i] = 0.

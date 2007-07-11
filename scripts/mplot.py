@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.9 2005/01/13 19:20:07 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.10 2007/07/11 18:30:44 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -105,7 +105,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
     hl0 = hl[:,0]
   else:
     hl0 = zeros(shape(hl[:,0]),'d')
-  if type(ordoffset) in [IntType,FloatType]:
+  if len(shape(ordoffset)) == 0:
     ordoffset = iota(0,iend)*ordoffset
   else:
     assert len(ordoffset) == shape(qty)[1],\

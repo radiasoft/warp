@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.29 2007/06/08 18:17:33 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.30 2007/07/11 18:30:44 dave Exp $"
 
 from warp import with_numpy,gettypecode
 if with_numpy:
@@ -221,7 +221,7 @@ def parallelnonzeroarray(a):
 # ---------------------------------------------------------------------------
 # Generic global operation on a distributed array.
 def globalop(a,localop,mpiop,defaultval):
-  if type(a) in [FloatType,IntType]:
+  if len(shape(a)) == 0:
     local = a
   elif len(a) > 0:
     try:
@@ -245,7 +245,7 @@ def globalsum(a):
   return globalop(a,sum,"SUM",0.)
 def globalave(a):
   s = globalop(a,sum,"SUM",0.)
-  if type(a) in [FloatType,IntType]: a = [a]
+  if len(shape(a)) == 0: a = [a]
   n = globalsum(len(a))
   if n > 0: return s/n
   else:     return 0.

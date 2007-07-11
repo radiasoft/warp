@@ -348,7 +348,7 @@ the diagnostic is of interest and is meaningfull.
         self.bounds = kw['bounds']
         del kw['bounds']
       else:
-        self.bounds = zeros(6)
+        self.bounds = zeros(6,'l')
         self.bounds[0] = self.boundxy
         self.bounds[1] = self.boundxy
         self.bounds[2] = self.boundxy
@@ -382,7 +382,7 @@ the diagnostic is of interest and is meaningfull.
         self.pbounds = kw['pbounds']
         del kw['pbounds']
       else:
-        self.pbounds = zeros(6)
+        self.pbounds = zeros(6,'l')
         self.pbounds[0] = self.pboundxy
         self.pbounds[1] = self.pboundxy
         self.pbounds[2] = self.pboundxy
@@ -429,8 +429,8 @@ the diagnostic is of interest and is meaningfull.
       self.nzlocal = self.nz
       self.zmminlocal = self.zmmin
       self.zmmaxlocal = self.zmmax
-      self.izfsslave = zeros(1)
-      self.nzfsslave = zeros(1) + self.nz
+      self.izfsslave = zeros(1,'l')
+      self.nzfsslave = zeros(1,'l') + self.nz
       self.nxp = self.nx
       self.nyp = self.ny
       self.nzp = self.nz
@@ -442,8 +442,8 @@ the diagnostic is of interest and is meaningfull.
       self.zmmaxp = self.zmmaxlocal
     else:
       self.my_index = me
-      self.izfsslave = zeros(self.nslaves)
-      self.nzfsslave = zeros(self.nslaves)
+      self.izfsslave = zeros(self.nslaves,'l')
+      self.nzfsslave = zeros(self.nslaves,'l')
       self.grid_overlap = array([2])
       top.grid_overlap = 2
       domaindecomposefields(self.nz,self.nslaves,self.lfsautodecomp,
@@ -454,8 +454,8 @@ the diagnostic is of interest and is meaningfull.
       self.zmminlocal = self.zmmin + self.izfsslave[self.my_index]*self.dz
       self.zmmaxlocal = self.zmmin + (self.izfsslave[self.my_index] + self.nzfsslave[self.my_index])*self.dz
 
-      self.izpslave = zeros(self.nslaves)
-      self.nzpslave = zeros(self.nslaves)
+      self.izpslave = zeros(self.nslaves,'l')
+      self.nzpslave = zeros(self.nslaves,'l')
       self.zpslmin = zeros(self.nslaves,'d')
       self.zpslmax = zeros(self.nslaves,'d')
       domaindecomposeparticles(self.nz,self.nslaves,self.izfsslave,self.nzfsslave,

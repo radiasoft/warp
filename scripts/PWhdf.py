@@ -3,7 +3,7 @@ HDF self-describing file format writer class PW
 by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.4 2004/02/09 16:21:46 dave Exp $
+$Id: PWhdf.py,v 1.5 2007/07/11 18:30:43 dave Exp $
 """
 import _pyhl
 from Numeric import *
@@ -162,7 +162,7 @@ class PW:
           anode.setArrayValue(-1,shape(quantity),quantity,
                               self.type_dict[quantity.typecode()],-1)
           self.inquire_nodelist().addNode(anode)
-        elif type(quantity) in [FloatType,IntType,StringType]:
+        elif len(shape(quantity)) == 0 or type(quantity) in [StringType]:
           anode = _pyhl.node(_pyhl.ATTRIBUTE_ID,self._pwd+'/'+name)
           anode.setScalarValue(-1,quantity,
                                self.type_dict[type(quantity)],-1)

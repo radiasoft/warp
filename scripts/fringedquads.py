@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.8 2004/07/22 23:39:51 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.9 2007/07/11 18:30:43 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -126,21 +126,21 @@ not, then the derivatives will be done with a finite difference of fringe.
 
   # --- Get the number of each kind of quad, electric and magnetic and
   # --- allocate the space appropriately.
-  top.nemlt = len(nonzero(quadde)) - 1
-  top.nmmlt = len(nonzero(quaddb)) - 1
+  top.nemlt = len(oldnonzero(quadde)) - 1
+  top.nmmlt = len(oldnonzero(quaddb)) - 1
   top.neerr = top.nemlt
   top.nmerr = top.nmmlt
 
   gchange("Lattice",0)
 
   # --- Setup the multipole components space
-  if len(nonzero(quadde)) > 0:
+  if len(oldnonzero(quadde)) > 0:
     top.nemltsets = top.nemlt + 1
     top.nesmult = 1 # Number of multipole components for the electric quads
     if lpseudooct: top.nesmult = 2
     top.nzemltmax = npoints
 
-  if len(nonzero(quaddb)) > 0:
+  if len(oldnonzero(quaddb)) > 0:
     top.nmmltsets = top.nmmlt + 1
     top.nmsmult = 1 # Number of multipole components for the magnetic quad
     if lpseudooct: top.nmsmult = 2
@@ -149,14 +149,14 @@ not, then the derivatives will be done with a finite difference of fringe.
   gchange("Mult_data",0)
 
   # --- Set parameters constant for all elements
-  if len(nonzero(quadde)) > 0:
+  if len(oldnonzero(quadde)) > 0:
     top.nzemlt = npoints
     top.emlt_n[0] = 2.
     top.emlt_v[0] = 0.
     if (top.nesmult == 2):
       top.emlt_n[1] = 2.
       top.emlt_v[1] = 1.
-  if len(nonzero(quaddb)) > 0:
+  if len(oldnonzero(quaddb)) > 0:
     top.nzmmlt = npoints
     top.mmlt_n[0] = 2.
     top.mmlt_v[0] = 0.

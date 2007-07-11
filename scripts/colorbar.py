@@ -31,7 +31,7 @@ between min(z) and max(z) for axis labels. n defaults to eight.
      cmax = cmax
   n = int(((cmax - cmin)/unit + 0.5) + 1)
   levs = cmin + arange(n)*unit
-  llist = nonzero(less(abs(levs),0.1*unit))
+  llist = oldnonzero(less(abs(levs),0.1*unit))
   if len(llist) > 0:
      array_set(levs,llist,0.0)
   return levs

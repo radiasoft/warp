@@ -62,7 +62,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.53 2007/04/03 00:50:13 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.54 2007/07/11 18:30:44 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2175,10 +2175,10 @@ emlt arrays with the same suffices:
       if phpz is not None: top.esemltphp[:n0,:n1,-1] = phpz
     else:
       # --- Make sure that n and v are lists
-      if type(nn) in [IntType,FloatType]: nn = list([nn])
-      else:                               nn = list(nn)
-      if type(vv) in [IntType,FloatType]: vv = list([vv])
-      else:                               vv = list(vv)
+      if len(shape(nn)) == 0: nn = list([nn])
+      else:                   nn = list(nn)
+      if len(shape(vv)) == 0: vv = list([vv])
+      else:                   vv = list(vv)
       # --- Make es a list of arrays
       es = list(transpose(es))
       if esp is not None: esp = list(transpose(esp))
@@ -2335,10 +2335,10 @@ mmlt arrays with the same suffices:
       if phpz is not None: top.msmmltphp[:n0,:n1,-1] = phpz
     else:
       # --- Make sure that n and v are lists
-      if type(nn) in [IntType,FloatType]: nn = list([nn])
-      else:                               nn = list(nn)
-      if type(vv) in [IntType,FloatType]: vv = list([vv])
-      else:                               vv = list(vv)
+      if len(shape(nn)) == 0: nn = list([nn])
+      else:                   nn = list(nn)
+      if len(shape(vv)) == 0: vv = list([vv])
+      else:                   vv = list(vv)
       # --- Make ms a list of arrays
       ms = list(transpose(ms))
       if msp is not None: msp = list(transpose(msp))

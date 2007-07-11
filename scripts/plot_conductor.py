@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.112 2007/06/04 23:02:53 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.113 2007/07/11 18:30:44 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -182,7 +182,7 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     pp = pp + map(mapfunc,xx,yy,dl,dd*ones(len(xx)))
   # --- Convert the list to an array and plot it
   # --- If the length is zero, create an empty array that conforms
-  if len(pp) == 0: pp = transpose(array([[],[],[],[]],typecode='d'))
+  if len(pp) == 0: pp = transpose(array([[],[],[],[]]))
   pp = array(pp)
   pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color,local=local)
 

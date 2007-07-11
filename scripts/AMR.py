@@ -399,9 +399,9 @@ class AMRTree(object,Visualizable):
           f0 = f.copy()
         f1 = ravel(f0)
         if(progressive):
-          listnodes = nonzero(f1>=ib)
+          listnodes = oldnonzero(f1>=ib)
         else:
-          listnodes = nonzero(f1==ib)
+          listnodes = oldnonzero(f1==ib)
         listpatches = []
         if(nooverlap):
           if dim==2:
@@ -531,9 +531,9 @@ class AMRTree(object,Visualizable):
           f0 = f.copy()
         f1 = ravel(f0)
         if(progressive):
-          listnodes = nonzero(f1>=ib)
+          listnodes = oldnonzero(f1>=ib)
         else:
-          listnodes = nonzero(f1==ib)
+          listnodes = oldnonzero(f1==ib)
         listpatches = []
         if(nooverlap):
           if dim==2:

@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.75 2007/06/04 23:02:54 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.76 2007/07/11 18:30:44 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -234,7 +234,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- Note that parallel scalars are written out during a serial
         # --- dump.
         #if type(v) != type(array([])):
-        if type(v) in [IntType, FloatType]:
+        if len(shape(v)) == 0:
           # --- First, deal with exceptions
           if p == 'w3d' and vname in ['zmmaxlocal','zmmaxp']:
             ff.write(pdbname,w3d.zmmax)
