@@ -1,8 +1,9 @@
-warp_version = "$Id: warp.py,v 1.143 2007/06/08 18:17:32 dave Exp $"
+warp_version = "$Id: warp.py,v 1.144 2007/07/11 18:25:21 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
 
+#__main__.__dict__['with_numpy'] = 1
 try:
   with_numpy = __main__.__dict__['with_numpy']
 except KeyError:
@@ -14,11 +15,14 @@ if with_numpy:
   ArrayType = ndarray
   def gettypecode(x):
     return x.dtype.char
+  def oldnonzero(a):
+    return a.nonzero()[0]
 else:
   from Numeric import *
   import MA
   def gettypecode(x):
     return x.typecode()
+  oldnonzero = nonzero
 import os.path
 import time
 
@@ -60,8 +64,6 @@ except ImportError:
   pass
 
 # Import the warpC shared object which contains all of WARP
-if with_numpy:
-  import warpC_numpy as warpC
 from warpC import *
 
 from Forthon import *
@@ -200,7 +202,7 @@ Computes current density from Child-Langmuir formula
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
-  if type(x) in [IntType,FloatType]:
+  if len(shape(x)) == 0:
     if x == 0.: return top.smallpos
     else:       return x
   else:
@@ -336,17 +338,23 @@ returns a digit reversed random number.
 # --- Gaussian distribution
 # --- This had to be moved here in order to use rnormdig.
 # --- First, try and define a normal generator from the RNG module.
-try:
-  _normaldistribution = RNG.NormalDistribution(0.,1.)
-  _normalgenerator = RNG.CreateGenerator(-1,_normaldistribution)
-except:
-  _normalgenerator = None
+if not with_numpy:
+  # --- Using the RNG causes a seg fault with numpy when exiting python.
+  try:
+    _normaldistribution = RNG.NormalDistribution(0.,1.)
+    _normalgenerator = RNG.CreateGenerator(-1,_normaldistribution)
+  except:
+    _normalgenerator = None
 def rnormarray(x,i1=None,nbase1=None,nbase2=None):
   if not i1:
-    if _normalgenerator is not None:
-      return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
+    if not with_numpy:
+      if _normalgenerator is not None:
+        return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
     try:
-      return RandomArray.standard_normal(x)
+      if with_numpy:
+        return RandomArray.standard_normal(x.shape)
+      else:
+        return RandomArray.standard_normal(x)
     except:
       # --- Use pseudo-random number generator
       s = RandomArray.random(shape(x))
@@ -482,7 +490,7 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   if n == 0: return
 
   # --- Allow z to be a scalar (as in the slice case)
-  if type(z) in [IntType,FloatType]: z = z*ones(n,'d')
+  if len(shape(z)) == 0: z = z*ones(n,'d')
 
   # --- Save existing internal lattice variables so they can be restored
   # --- afterward.
