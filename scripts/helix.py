@@ -688,7 +688,7 @@ Creates helix with constant Ez in the pulse.
     hez = []
     ht = []
 
-    for time in arrayrange(ts,te,dt):
+    for time in arange(ts,te,dt):
       vv,ez = self.getvoltage(time,advect=0)
       hv.append(vv)
       hez.append(ez)
@@ -711,7 +711,7 @@ Creates helix with constant Ez in the pulse.
     hez = []
     ht = []
 
-    for time in arrayrange(ts,te,dt):
+    for time in arange(ts,te,dt):
       vv,ez = self.getvoltage(time,advect=0)
       hv.append(vv)
       hez.append(ez)
