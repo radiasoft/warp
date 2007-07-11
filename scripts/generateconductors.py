@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.163 2007/07/02 16:30:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.164 2007/07/11 18:34:01 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1206,7 +1206,10 @@ grid cell sizes.
 Removes the data which is far from any conductors. Assumes that setparity
 has already been called.
     """
-    ii = nonzero(self.parity < 2)
+    if with_numpy:
+      ii = nonzero(self.parity < 2)[0]
+    else:
+      ii = nonzero(self.parity < 2)
     self.ix    = take(self.ix,ii)
     self.iy    = take(self.iy,ii)
     self.iz    = take(self.iz,ii)
@@ -1287,7 +1290,10 @@ Installs the data into the WARP database
 
       ncnew = sum(where(data.parity == -1,1,0))
       if ncnew > 0:
-        ii = nonzero(data.parity == -1)
+        if with_numpy:
+          ii = nonzero(data.parity == -1)[0]
+        else:
+          ii = nonzero(data.parity == -1)
         conductors.interior.indx[0,nc:nc+ncnew] = take(data.ix,ii)
         conductors.interior.indx[1,nc:nc+ncnew] = take(data.iy,ii)
         conductors.interior.indx[2,nc:nc+ncnew] = take(data.iz,ii)
@@ -1298,7 +1304,10 @@ Installs the data into the WARP database
 
       nenew = sum(where(data.parity == 0,1,0))
       if nenew > 0:
-        ii = nonzero(data.parity == 0)
+        if with_numpy:
+          ii = nonzero(data.parity == 0)[0]
+        else:
+          ii = nonzero(data.parity == 0)
         conductors.evensubgrid.indx[0,ne:ne+nenew] = take(data.ix,ii)
         conductors.evensubgrid.indx[1,ne:ne+nenew] = take(data.iy,ii)
         conductors.evensubgrid.indx[2,ne:ne+nenew] = take(data.iz,ii)
@@ -1311,7 +1320,10 @@ Installs the data into the WARP database
 
       nonew = sum(where(data.parity == 1,1,0))
       if nonew > 0:
-        ii = nonzero(data.parity == 1)
+        if with_numpy:
+          ii = nonzero(data.parity == 1)[0]
+        else:
+          ii = nonzero(data.parity == 1)
         conductors.oddsubgrid.indx[0,no:no+nonew] = take(data.ix,ii)
         conductors.oddsubgrid.indx[1,no:no+nonew] = take(data.iy,ii)
         conductors.oddsubgrid.indx[2,no:no+nonew] = take(data.iz,ii)
