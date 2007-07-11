@@ -19,11 +19,11 @@ getdatafromtextfile(): Reads in table data from a text file, returning an array
                        that holds that data.
 
 """
-from warp import *
 from __future__ import generators # needed for yield statement for P2.2
+from warp import *
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.18 2007/05/22 00:15:00 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.19 2007/07/11 18:31:31 dave Exp $"
 
 def warputilsdoc():
   import warputils
