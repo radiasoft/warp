@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.20 $, $Date: 2007/05/08 03:30:57 $
+c@(#) File w3d_utilities.F, version $Revision: 1.21 $, $Date: 2007/07/11 18:02:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -558,15 +558,12 @@ c array.
 
       check = arecoordinatesconsist(grid%nx,grid%dx,grid%xmin,grid%xmax,
      &                              grid%dxi)
-      print*,"X ",check
       if (.not. check) return
       check = arecoordinatesconsist(grid%ny,grid%dy,grid%ymin,grid%ymax,
      &                              grid%dyi)
-      print*,"Y ",check
       if (.not. check) return
       check = arecoordinatesconsist(grid%nz,grid%dz,grid%zmin,grid%zmax,
      &                              grid%dzi)
-      print*,"Z ",check
       if (.not. check) return
 
       call Grid3dtypechange(grid)
