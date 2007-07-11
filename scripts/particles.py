@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.55 2007/06/04 23:02:53 dave Exp $"
+particles_version = "$Id: particles.py,v 1.56 2007/07/11 18:31:53 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -51,7 +51,7 @@ Adds plotting subset to the list
     fracnp = 1.
   for i in xrange(0,len(top.npplot)):
     ntopick=min(pgroup.nps[js],int(top.npplot[i]*fracnp+0.5))
-    ii = arrayrange(pgroup.nps[0])
+    ii = arange(pgroup.nps[0])
     #rr = pgroup.nps[0]*RandomArray.random(pgroup.nps[0])
     rr = pgroup.nps[0]*ranf(zeros(pgroup.nps[0]))
     ii = compress(less(rr,ntopick),ii)
@@ -289,7 +289,7 @@ Multiple selection criteria are now supported.
 
   if ir2 <= ir1: return array([])
 
-  indices = arrayrange(ir1,ir2)
+  indices = arange(ir1,ir2)
   islice = slice(ir1,ir2)
 
   if ssn is not None:
