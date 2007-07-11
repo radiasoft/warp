@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.29 $, $Date: 2007/06/04 22:51:48 $
+c version $Revision: 1.30 $, $Date: 2007/07/11 18:10:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -145,7 +145,7 @@ c     is the ratio of the epsilon for z derivs to that for x derivs.
      &                        bounds,
      &                        grid%rmin,grid%zmin,
      &                        grid%mgparam,grid%ncycles,grid%ncmax,
-     &                        nlevels,mgerror,accuracy,
+     &                        nlevels,mgerror,accuracy,mgverbose,
      &                        grid%npre,grid%npost,
      &                        lrz,lcndbndy,laddconductor,icndbndy,
      &                        gridmode,grid%bndfirst,
@@ -159,7 +159,7 @@ c=============================================================================
      &                              bounds,
      &                              xmmin,zmmin,
      &                              mgparam,mgiters,mgmaxiters,
-     &                              mgmaxlevels,mgerror,mgtol,
+     &                              mgmaxlevels,mgerror,mgtol,mgverbose,
      &                              downpasses,uppasses,
      &                              lrz,lcndbndy,laddconductor,icndbndy,
      &                              gridmode,bnd,
@@ -178,7 +178,7 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmmin,zmmin
       real(kind=8):: mgparam
-      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels
+      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lrz,lcndbndy,laddconductor
@@ -285,12 +285,14 @@ c     --- the solve are so are already set.
       if (bounds(5) == 0) phi(:,nzlocal+1) = 2.*phi(:,nzlocal) - phi(:,nzlocal-1)
 
 c     --- Make a print out.
-      if (mgerror > mgtol) then
-        call remark("MultigridBE-RZ: Maximum number of iterations reached")
+      if (mgverbose >= 1 .or. mgerror > mgtol) then
+        if (mgerror > mgtol) then
+          call remark("MultigridBE-RZ: Maximum number of iterations reached")
+        endif
+        write(errline,20) mgerror,mgiters
+  20    format("MultigridBE-RZ: Error converged to ",1pe11.3," in ",i5," v-cycles")
+        call remark(errline)
       endif
-      write(errline,20) mgerror,mgiters
-  20  format("MultigridBE-RZ: Error converged to ",1pe11.3," in ",i5," v-cycles")
-      call remark(errline)
 
       deallocate(phisave)
       deallocate(regionid)
@@ -1586,7 +1588,11 @@ c     --- and the ion particle density (rho).
             call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
             call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
             if (iondensitytmp == 0.) cycle
-            rhomax = max(electrondensitymaxscale(id),-rho(ix,iz)/iondensitytmp)
+            if (luseparticledensity(id) > 0) then
+              rhomax = max(electrondensitymaxscale(id),-rho(ix,iz)/iondensitytmp)
+            else
+              rhomax = electrondensitymaxscale(id)
+            endif
             phimax = plasmapotential(id)+electemptmp*log(rhomax)
             if (phi(ix,iz) > phimax) phi(ix,iz) = phimax
           endif
