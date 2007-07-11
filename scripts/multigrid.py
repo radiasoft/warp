@@ -558,7 +558,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
-    mgiters = zeros(1)
+    mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     if self.electrontemperature == 0:
@@ -574,6 +574,11 @@ class MultiGrid(SubcycledPoissonSolver):
                        self.lbuildquads,self.gridmode,conductorobject,
                        self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
     else:
+      iondensitygrid3d = Grid3dtype()
+      setupiondensitygrid3d(self.xmmin,self.ymmin,self.zmmin,
+                            self.dx,self.dy,self.dz,
+                            self.nx,self.ny,self.nzlocal,
+                            self.rho,iondensitygrid3d)
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                          rstar,self.linbend,self.bounds,
@@ -584,6 +589,7 @@ class MultiGrid(SubcycledPoissonSolver):
                          self.downpasses,self.uppasses,
                          self.lcndbndy,self.laddconductor,self.icndbndy,
                          self.lbuildquads,self.gridmode,conductorobject,
+                         iondensitygrid3d,
                          self.my_index,self.nslaves,self.izfsslave,
                          self.nzfsslave)
     self.mgiters = mgiters[0]
