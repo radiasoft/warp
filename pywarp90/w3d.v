@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.269 $, $Date: 2007/06/26 12:39:12 $
+#@(#) File W3D.V, version $Revision: 3.270 $, $Date: 2007/07/11 18:01:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.269 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.270 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -476,7 +476,7 @@ luselinboltz    logical    /.false./   # If 1, use linearized Boltzmann response
                                        # to get Boltzmann electron response whose z-av
                                        # value = z-av value of ion density (quasineutral)
 liondensitygrid3d(nberegions)       _logical /0/
-iondensitygrid3d        Grid3dtype # Allows a spatially varying iondensity,
+useriondensitygrid3d    Grid3dtype # Allows a spatially varying iondensity,
                                    # or is used when luseparticleldensity is
                                    # true
 lelectrontemperaturegrid3d(nberegions) _logical /0/

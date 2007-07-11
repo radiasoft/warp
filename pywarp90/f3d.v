@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.178 $, $Date: 2007/07/02 16:32:59 $
+#@(#) File F3D.V, version $Revision: 3.179 $, $Date: 2007/07/11 18:01:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.178 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.179 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -370,11 +370,17 @@ multigridbe3dsolve(iwhich:integer,
              downpasses:integer,uppasses:integer,
              lcndbndy:logical,laddconductor:logical,icndbndy:integer,
              lbuildquads:logical,gridmode:integer,conductors:ConductorType,
+             iondensitygrid3d:Grid3dtype,
              my_index:integer,nslaves:integer,
              izfsslave:integer,nzfsslave:integer)
    subroutine
    # Solves Poisson's equation using the multigrid method, including the
    # Boltzmann electron term. All input is through the argument list.
+setupiondensitygrid3d(xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,
+                      nx:integer,ny:integer,nzlocal:integer,
+                      rho:real,iondensitygrid3d:Grid3dtype)
+   subroutine # Sets up the iondensity grid for the 3d Boltzman electron
+              # field solver.
 lphibe(nx:integer,ny:integer,nzlocal:integer,nz:integer,dxsqi:real,dysqi:real,dzsqi:real,phi:real,res:real,
        mglevel:integer,bounds:integer,mgparam:real,
        lcndbndy:logical,icndbndy:integer,conductors:ConductorType,

@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.35 $, $Date: 2007/07/02 15:00:01 $
+c version $Revision: 1.36 $, $Date: 2007/07/11 18:01:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -18,7 +18,7 @@ c=============================================================================
       use PSOR3d
       use Conductor3d
       use Multigrid3d
-      use BoltzmannElectrons
+      use BoltzmannElectrons,Only: useriondensitygrid3d
       use Parallel
 c     use ifcore
 c     integer:: fsf
@@ -52,6 +52,9 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
         if (boundxy == 2) bounds(3) = neumann
       endif
 
+      call setupiondensitygrid3d(xmmin,ymmin,zmminlocal,dx,dy,dz,nx,ny,nzlocal,
+     &                           rho,useriondensitygrid3d)
+
       call multigridbe3dsolve(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,
      &                        rstar,linbend,bounds,
      &                        xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,
@@ -59,8 +62,90 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                        mgmaxlevels,mgerror,mgtol,mgverbose,
      &                        downpasses,uppasses,
      &                        lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                        gridmode,conductors,
+     &                        gridmode,conductors,useriondensitygrid3d,
      &                        my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      subroutine setupiondensitygrid3d(xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nzlocal,
+     &                                 rho,iondensitygrid3d)
+      use BoltzmannElectrons
+      use Constant,Only: eps0
+      use Grid3dtypemodule
+      real(kind=8):: xmmin,ymmin,zmmin
+      integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      type(Grid3dtype):: iondensitygrid3d
+
+      integer(ISZ):: ixbemin,ixbemax,iybemin,iybemax,izbemin,izbemax
+      integer(ISZ):: id,ix,iy,iz
+      logical(ISZ):: lanyuseparticledensity,check
+
+c     --- Check for luseparticledensity
+      lanyuseparticledensity = .false.
+      do id=1,nberegions
+        if (luseparticledensity(id) > 0) then
+          lanyuseparticledensity = .true.
+          liondensitygrid3d(id) = .true.
+c         --- Find the extrema of all of the regions
+          iondensitygrid3d%xmin = min(xbemin(id),iondensitygrid3d%xmin)
+          iondensitygrid3d%xmax = max(xbemax(id),iondensitygrid3d%xmax)
+          iondensitygrid3d%ymin = min(ybemin(id),iondensitygrid3d%ymin)
+          iondensitygrid3d%ymax = max(ybemax(id),iondensitygrid3d%ymax)
+          iondensitygrid3d%zmin = min(zbemin(id),iondensitygrid3d%zmin)
+          iondensitygrid3d%zmax = max(zbemax(id),iondensitygrid3d%zmax)
+c         --- Make sure that are within the grid bounds
+          iondensitygrid3d%xmin = max(xmmin      ,iondensitygrid3d%xmin)
+          iondensitygrid3d%xmax = min(xmmin+nx*dx,iondensitygrid3d%xmax)
+          iondensitygrid3d%ymin = max(ymmin      ,iondensitygrid3d%ymin)
+          iondensitygrid3d%ymax = min(ymmin+ny*dy,iondensitygrid3d%ymax)
+          iondensitygrid3d%zmin = max(zmmin      ,iondensitygrid3d%zmin)
+          iondensitygrid3d%zmax = min(zmmin+nzlocal*dz,iondensitygrid3d%zmax)
+        endif
+        logelecdenmaxscale(id) = log(electrondensitymaxscale(id))
+      enddo
+
+      if (lanyuseparticledensity) then
+c       --- Force the min's and max's to coincide with field grid values
+c       --- Note that the min's and max's are relative to the field grid,
+c       --- so for example, the location if xmin in the lab frame is
+c       --- iondensitygrid3d%xmin + grid%rmin. This is done so that
+c       --- grid%rmin etc are not needed when iondensitygrid3d is used.
+        ix = (floor((iondensitygrid3d%xmin - xmmin)/dx))
+        iondensitygrid3d%xmin = dx*ix
+        iy = (floor((iondensitygrid3d%ymin - ymmin)/dy))
+        iondensitygrid3d%ymin = dy*iy
+        iz = (floor((iondensitygrid3d%zmin - zmmin)/dz))
+        iondensitygrid3d%zmin = dz*iz
+        ix = (ceiling((iondensitygrid3d%xmax - xmmin)/dx))
+        iondensitygrid3d%xmax = dx*ix
+        iy = (ceiling((iondensitygrid3d%ymax - ymmin)/dy))
+        iondensitygrid3d%ymax = dy*iy
+        iz = (ceiling((iondensitygrid3d%zmax - zmmin)/dz))
+        iondensitygrid3d%zmax = dz*iz
+c       --- Now dx and dz can be set.
+        iondensitygrid3d%dx = dx
+        iondensitygrid3d%dy = dy
+        iondensitygrid3d%dz = dz
+c       --- This will calculate nx and nzlocal and make sure the input is OK.
+        call setupgrid3dtype(iondensitygrid3d,check)
+        if (.not. check) then
+           call kaboom("ERROR: luseparticledensity is being used but the input data is inconsistent")
+           return
+        endif
+        
+c       --- Now, copy the rho data into the iondensitygrid3d grid
+        ixbemin = iondensitygrid3d%xmin/dx
+        ixbemax = iondensitygrid3d%xmax/dx
+        iybemin = iondensitygrid3d%ymin/dy
+        iybemax = iondensitygrid3d%ymax/dy
+        izbemin = iondensitygrid3d%zmin/dz
+        izbemax = iondensitygrid3d%zmax/dz
+        iondensitygrid3d%grid = rho(ixbemin:ixbemax,iybemin:iybemax,izbemin:izbemax)
+c       iondensitygrid3d%grid = iondensitygrid3d%grid/eps0
+      endif
 
       return
       end
@@ -72,12 +157,12 @@ c=============================================================================
      &                              mgmaxlevels,mgerror,mgtol,mgverbose,
      &                              downpasses,uppasses,
      &                              lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                              gridmode,conductors,
+     &                              gridmode,conductors,iondensitygrid3d,
      &                              my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersf3d
       use ConductorTypemodule
       use Constant
-      use BoltzmannElectrons
+      use Grid3dtypemodule
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
@@ -94,6 +179,7 @@ c=============================================================================
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
+      type(Grid3dtype):: iondensitygrid3d
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
@@ -201,6 +287,7 @@ c       --- Do one vcycle.
      &                xmmin,ymmin,zmminlocal,
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
+     &                iondensitygrid3d,
      &                my_index,nslaves,izfsslave,nzfsslave)
 
 c       --- Calculate the change in phi.
@@ -264,10 +351,12 @@ c=============================================================================
      $                              globalbounds,mgparam,
      &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors,
+     &                              iondensitygrid3d,
      &                              my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
-      use BoltzmannElectrons
+c     use BoltzmannElectrons
       use Multigrid3d_diagnostic
+      use Grid3dtypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dx,dy,dz
@@ -281,6 +370,7 @@ c=============================================================================
       real(kind=8):: mgparam
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
+      type(Grid3dtype):: iondensitygrid3d
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       integer(ISZ):: my_index,nslaves
@@ -330,9 +420,9 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 c     --- Do initial relaxation iterations
       do i=1,downpasses
         call relaxbe3d(mglevel,nx,ny,nzlocal,nz,phi,rho,regionid,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbend,bendx,
+     &                 dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,
      &                 localbounds,mgparam,
-     &                 lcndbndy,icndbndy,conductors,
+     &                 lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
@@ -475,9 +565,9 @@ c    &                             whosendingright,izsendingright)
 
 
 c       --- Calculate the coarsened Lphi, putting it into rhocoarse
-        call Lphibe(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,Lphi,regionid,
+        call Lphibe(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
      &              mglevel,localbounds,
-     &              lcndbndy,icndbndy,conductors,
+     &              lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &              my_index,nslaves,izfsslave,nzfsslave,
      &              whosendingleft,izsendingleft,
      &              whosendingright,izsendingright)
@@ -499,9 +589,10 @@ c       --- Calculate the coarsened Lphi, putting it into rhocoarse
 c       --- Calculate L(R phi), adding it into rhocoarse
         call Lphibe(nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
      &              dxcoarsesqi,dycoarsesqi,dzcoarsesqi,
+     &              dxcoarse,dycoarse,dzcoarse,
      &              phicoarse,Lphicoarse,regionidcoarse,
      &              mglevel+1,localbounds,
-     &              lcndbndy,icndbndy,conductors,
+     &              lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &              my_index,nslaves,izfsslavec,nzfsslavec,
      &              whosendingleftc,izsendingleftc,
      &              whosendingrightc,izsendingrightc)
@@ -530,7 +621,7 @@ c       --- Continue at the next coarsest level.
      &                regionidcoarse,xmmin,ymmin,zmmin,
      &                rstar,linbend,bendx,globalbounds,mgparam,
      &                mgmaxlevels,downpasses,uppasses,
-     &                lcndbndy,icndbndy,conductors,
+     &                lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
 c       --- Add in the correction term.
@@ -545,7 +636,8 @@ c       --- Add in the correction term.
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
      &                  whosendingright,izsendingright)
-        call clampphitophimaxbe3d(nx,ny,nzlocal,phi,rho,regionid)
+        call clampphitophimaxbe3d(nx,ny,nzlocal,dx,dy,dz,phi,rho,regionid,
+     &                            iondensitygrid3d)
 
         deallocate(phicoarse,rhocoarse)
         deallocate(regionidcoarse)
@@ -555,13 +647,14 @@ c       --- Add in the correction term.
 c     --- Do final relaxation passes.
       do i=1,uppasses
         call relaxbe3d(mglevel,nx,ny,nzlocal,nz,phi,rho,regionid,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbend,bendx,
+     &                 dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,
      &                 localbounds,mgparam,
-     &                 lcndbndy,icndbndy,conductors,
+     &                 lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
-        call clampphitophimaxbe3d(nx,ny,nzlocal,phi,rho,regionid)
+        call clampphitophimaxbe3d(nx,ny,nzlocal,dx,dy,dz,phi,rho,regionid,
+     &                            iondensitygrid3d)
       enddo
 
       return
@@ -761,26 +854,29 @@ c     --- Set the loop limits, including edges when appropriate.
       end
 c=============================================================================
       subroutine relaxbe3d(mglevel,nx,ny,nzlocal,nz,phi,rho,regionid,rstar,
-     &                     dxsqi,dysqi,dzsqi,linbend,bendx,bounds,
+     &                     dxsqi,dysqi,dzsqi,dx,dy,dz,linbend,bendx,bounds,
      &                     mgparam,lcndbndy,icndbndy,conductors,
+     &                     iondensitygrid3d,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
       use Constant
       use ConductorTypemodule
       use BoltzmannElectrons
+      use Grid3dtypemodule
       integer(ISZ):: mglevel,nx,ny,nzlocal,nz
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1),rho(0:nx,0:ny,0:nzlocal)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
       real(kind=8):: rstar(-1:nzlocal+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
-      real(kind=8):: dxsqi,dysqi,dzsqi
+      real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz
       logical(ISZ):: linbend
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
+      type(Grid3dtype):: iondensitygrid3d
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -813,7 +909,7 @@ c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ix1
       integer(ISZ):: i1,i2,ic
-      real(kind=8):: rhoe,denom,Lphi,expo
+      real(kind=8):: iondensitytmp,rhoe,denom,Lphi,expo
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmgbe(conductors%interior,nx,ny,nzlocal,phi,mglevel)
@@ -884,11 +980,13 @@ c       --- grid refinement.
               denom = -2.*(dxsqi+dysqi+dzsqi)
               if (regionid(ix,iy,iz) > 0) then
                 id = regionid(ix,iy,iz)
-                if (iondensity(id) .ne. 0. .and.
+                call getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                              iondensitytmp)
+                if (iondensitytmp .ne. 0. .and.
      &              electrontemperature(id) .ne. 0) then
                   expo = (phi(ix,iy,iz) - plasmapotential(id))/electrontemperature(id)
                   expo = min(expo,log(electrondensitymaxscale(id)))
-                  rhoe = iondensity(id)*exp(expo)
+                  rhoe = iondensitytmp*exp(expo)
                   denom = denom - rhoe/eps0/electrontemperature(id)
                 endif
               endif
@@ -907,13 +1005,13 @@ c       --- surface of the conductor boundaries.
         if (lcndbndy) then
           if (parity == 0) then
            call condbndymgbe(conductors%evensubgrid,nx,ny,nzlocal,phi,rho,regionid,
-     &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
-     &                       mglevel,icndbndy)
+     &                       dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam,bounds,
+     &                       mglevel,icndbndy,iondensitygrid3d)
           endif
           if (parity == 1) then
            call condbndymgbe(conductors%oddsubgrid,nx,ny,nzlocal,phi,rho,regionid,
-     &                       dxsqi,dysqi,dzsqi,mgparam,bounds,
-     &                       mglevel,icndbndy)
+     &                       dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam,bounds,
+     &                       mglevel,icndbndy,iondensitygrid3d)
           endif
         endif
 
@@ -998,17 +1096,19 @@ c Set data at conductor points to zero.
       end
 c=============================================================================
       subroutine condbndymgbe(subgrid,nx,ny,nzlocal,phi,rho,regionid,
-     &                        dxsqi,dysqi,dzsqi,
-     &                        mgparam,bounds,mglevel,icndbndy)
+     &                        dxsqi,dysqi,dzsqi,dx,dy,dz,
+     &                        mgparam,bounds,mglevel,icndbndy,iondensitygrid3d)
       use Constant
       use ConductorSubGridTypemodule
       use BoltzmannElectrons
+      use Grid3dtypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nzlocal,mglevel
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1), rho(0:nx,0:ny,0:nzlocal)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: dxsqi,dysqi,dzsqi,mgparam
+      real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz,mgparam
       integer(ISZ):: bounds(0:5),icndbndy
+      type(Grid3dtype):: iondensitygrid3d
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1027,6 +1127,7 @@ c include the dels.
       real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,Lphi,expo
       real(kind=8):: delx,dely,delz,Cx,Cy,Cz,ppp
       real(kind=8):: delxsqi,delysqi,delzsqi
+      real(kind=8):: iondensitytmp
       integer(ISZ):: ic,ix,iy,iz,id
       real(kind=8),pointer:: dels(:,:),volt(:,:)
 
@@ -1162,10 +1263,12 @@ c       --- calculate the new phi based on the boundary conditions
         denom = - Cx*delxsqi - Cy*delysqi - Cz*delzsqi
         if (regionid(ix,iy,iz) > 0) then
           id = regionid(ix,iy,iz)
-          if (iondensity(id) .ne. 0. .and. electrontemperature(id) .ne. 0) then
+          call getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                        iondensitytmp)
+          if (iondensitytmp .ne. 0. .and. electrontemperature(id) .ne. 0) then
             expo = (pijk - plasmapotential(id))/electrontemperature(id)
             expo = min(expo,log(electrondensitymaxscale(id)))
-            rhoe = iondensity(id)*exp(expo)
+            rhoe = iondensitytmp*exp(expo)
             denom = denom - rhoe/eps0/electrontemperature(id)
           endif
         endif
@@ -1221,17 +1324,18 @@ c     --- loop over points near surface of conductors
       return
       end
 c=============================================================================
-      subroutine Lphibe(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,Lphi,regionid,
+      subroutine Lphibe(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,dx,dy,dz,phi,Lphi,regionid,
      &                  mglevel,bounds,
-     &                  lcndbndy,icndbndy,conductors,
+     &                  lcndbndy,icndbndy,conductors,iondensitygrid3d,
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
      &                  whosendingright,izsendingright)
       use Constant
       use ConductorTypemodule
       use BoltzmannElectrons
+      use Grid3dtypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: dxsqi,dysqi,dzsqi
+      real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       real(kind=8):: Lphi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
@@ -1239,6 +1343,7 @@ c=============================================================================
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
+      type(Grid3dtype):: iondensitygrid3d
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -1249,7 +1354,7 @@ c Note that what is calculated here is not the residual since it does not
 c include the source term. This will not go to zero when convergence
 c is reached.
 
-      real(kind=8):: rhoe,expo
+      real(kind=8):: rhoe,expo,iondensitytmp
       integer(ISZ):: ix,iy,iz,ic,id
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
 
@@ -1279,11 +1384,13 @@ c     --- Calculate the Lphi.
             rhoe = 0.
             if (regionid(ix,iy,iz) > 0) then
               id = regionid(ix,iy,iz)
-              if (iondensity(id) .ne. 0. .and.
+              call getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                            iondensitytmp)
+              if (iondensitytmp .ne. 0. .and.
      &            electrontemperature(id) .ne. 0) then
                 expo = (phi(ix,iy,iz) - plasmapotential(id))/electrontemperature(id)
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensity(id)*exp(expo)
+                rhoe = iondensitytmp*exp(expo)
               endif
             endif
             Lphi(ix,iy,iz) = (phi(ix-1,iy  ,iz  )+phi(ix+1,iy  ,iz  ))*dxsqi
@@ -1302,9 +1409,11 @@ c     --- Zero the Lphi inside conductors.
       if (lcndbndy) then
 c       --- Calculate the Lphi near the conductor.
         call condbndyLphibe(conductors%evensubgrid,nx,ny,nzlocal,phi,Lphi,regionid,
-     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
+     &                     dxsqi,dysqi,dzsqi,dx,dy,dz,bounds,mglevel,icndbndy,
+     &                     iondensitygrid3d)
         call condbndyLphibe(conductors%oddsubgrid,nx,ny,nzlocal,phi,Lphi,regionid,
-     &                     dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
+     &                     dxsqi,dysqi,dzsqi,dx,dy,dz,bounds,mglevel,icndbndy,
+     &                     iondensitygrid3d)
       endif
 
 c     --- Transverse boundaries
@@ -1355,16 +1464,19 @@ c     --- Longitudinal boundaries
       end
 c=============================================================================
       subroutine condbndyLphibe(subgrid,nx,ny,nzlocal,phi,Lphi,regionid,
-     &                          dxsqi,dysqi,dzsqi,bounds,mglevel,icndbndy)
+     &                          dxsqi,dysqi,dzsqi,dx,dy,dz,
+     &                          bounds,mglevel,icndbndy,iondensitygrid3d)
       use Constant
       use ConductorSubGridTypemodule
       use BoltzmannElectrons
+      use Grid3dtypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nzlocal,mglevel
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1), Lphi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: dxsqi,dysqi,dzsqi
+      real(kind=8):: dxsqi,dysqi,dzsqi,dx,dy,dz
       integer(ISZ):: bounds(0:5),icndbndy
+      type(Grid3dtype):: iondensitygrid3d
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1381,6 +1493,7 @@ c For icndbndy==1, these coefficients are just 1. For icndbndy==2, they
 c include the dels.
  
       real(kind=8):: pijk,pxm,pym,pzm,pxp,pyp,pzp,denom,rhoe,ppp,expo
+      real(kind=8):: iondensitytmp
       real(kind=8):: delx,dely,delz
       real(kind=8):: delxsqi,delysqi,delzsqi
       integer(ISZ):: ic,ix,iy,iz,id
@@ -1501,10 +1614,12 @@ c       --- calculate the new phi based on the boundary conditions
         rhoe = 0.
         if (regionid(ix,iy,iz) > 0) then
           id = regionid(ix,iy,iz)
-          if (iondensity(id) .ne. 0. .and. electrontemperature(id) .ne. 0) then
+          call getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                        iondensitytmp)
+          if (iondensitytmp .ne. 0. .and. electrontemperature(id) .ne. 0) then
             expo = (pijk - plasmapotential(id))/electrontemperature(id)
             expo = min(expo,log(electrondensitymaxscale(id)))
-            rhoe = iondensity(id)*exp(expo)
+            rhoe = iondensitytmp*exp(expo)
           endif
         endif
         Lphi(ix,iy,iz) = (+ (pxm+pxp)*delxsqi
@@ -1637,15 +1752,19 @@ c    &                            whosendingleft,whosendingright)
       return
       end
 c=============================================================================
-      subroutine clampphitophimaxbe3d(nx,ny,nzlocal,phi,rho,regionid)
+      subroutine clampphitophimaxbe3d(nx,ny,nzlocal,dx,dy,dz,phi,rho,regionid,
+     &                                iondensitygrid3d)
       use Constant
       use BoltzmannElectrons
+      use Grid3dtypemodule
       integer(ISZ):: nx,ny,nzlocal
+      real(kind=8):: dx,dy,dz
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1),rho(0:nx,0:ny,0:nzlocal)
       integer(ISZ):: regionid(0:nx,0:ny,0:nzlocal)
+      type(Grid3dtype):: iondensitygrid3d
 
       integer(ISZ):: ix,iy,iz,id
-      real(kind=8):: expo,phimax,rhomax
+      real(kind=8):: expo,phimax,rhomax,iondensitytmp
 
 c     --- Clamp phi to phimax. The phimax is calculated assuming that
 c     --- the max electron density will be the max of the iondensity and
@@ -1655,10 +1774,12 @@ c     --- and the ion particle density (rho).
           do ix=0,nx
             if (regionid(ix,iy,iz) > 0) then
               id = regionid(ix,iy,iz)
-              if (iondensity(id) == 0.) cycle
+              call getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                            iondensitytmp)
+              if (iondensitytmp == 0.) cycle
               if (luseparticledensity(id) > 0) then
                 rhomax = max(electrondensitymaxscale(id),
-     &                       -rho(ix,iy,iz)*eps0/iondensity(id))
+     &                       -rho(ix,iy,iz)*eps0/iondensitytmp)
               else
                 rhomax = electrondensitymaxscale(id)
               endif
@@ -1693,6 +1814,64 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
         izmax = (min(nzlocal*dz,zbemax(id) - zmmin))/dz
         regionid(ixmin:ixmax,iymin:iymax,izmin:izmax) = id
       enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getlocaldens3d(ix,iy,iz,dx,dy,dz,id,iondensitygrid3d,
+     &                          iondensitytmp)
+      use BoltzmannElectrons,Only: liondensitygrid3d,iondensity
+      use Grid3dtypemodule
+      integer(ISZ):: ix,iy,iz,id
+      real(kind=8):: dx,dy,dz
+      type(Grid3dtype):: iondensitygrid3d
+      real(kind=8):: iondensitytmp
+
+c     generate interpolated local iondensity
+
+      real(kind=8):: reixx,reiyy,reizz
+      real(kind=8):: xx,yy,zz,wxx,wyy,wzz
+      integer(ISZ):: ixx,iyy,izz
+
+      iondensitytmp = 0.
+      if (liondensitygrid3d(id)) then
+        xx = ix*dx
+        yy = iy*dy
+        zz = iz*dz
+        reixx = (xx - iondensitygrid3d%xmin)/iondensitygrid3d%dx
+        reiyy = (yy - iondensitygrid3d%ymin)/iondensitygrid3d%dy
+        reizz = (zz - iondensitygrid3d%zmin)/iondensitygrid3d%dz
+        ixx = reixx
+        iyy = reiyy
+        izz = reizz
+        wxx = reixx-ixx
+        wyy = reiyy-iyy
+        wzz = reizz-izz
+        if (ixx+1 > iondensitygrid3d%nx) then
+          ixx = iondensitygrid3d%nx-1
+          wxx = 1.
+        endif
+        if (iyy+1 > iondensitygrid3d%ny) then
+          iyy = iondensitygrid3d%ny-1
+          wyy = 1.
+        endif
+        if (izz+1 > iondensitygrid3d%nz) then
+          izz = iondensitygrid3d%nz-1
+          wzz = 1.
+        endif
+        iondensitytmp =
+     &   iondensitygrid3d%grid(ixx  ,iyy  ,izz  )*(1.-wxx)*(1.-wyy)*(1.-wzz) +
+     &   iondensitygrid3d%grid(ixx+1,iyy  ,izz  )*    wxx *(1.-wyy)*(1.-wzz) +
+     &   iondensitygrid3d%grid(ixx  ,iyy+1,izz  )*(1.-wxx)*    wyy *(1.-wzz) +
+     &   iondensitygrid3d%grid(ixx+1,iyy+1,izz  )*    wxx *    wyy *(1.-wzz) +
+     &   iondensitygrid3d%grid(ixx  ,iyy  ,izz+1)*(1.-wxx)*(1.-wyy)*    wzz  +
+     &   iondensitygrid3d%grid(ixx+1,iyy  ,izz+1)*    wxx *(1.-wyy)*    wzz  +
+     &   iondensitygrid3d%grid(ixx  ,iyy+1,izz+1)*(1.-wxx)*    wyy *    wzz  +
+     &   iondensitygrid3d%grid(ixx+1,iyy+1,izz+1)*    wxx *    wyy *    wzz
+
+      else if (iondensity(id) .ne. 0.) then
+        iondensitytmp = iondensity(id)
+      endif
 
       return
       end
