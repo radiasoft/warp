@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.148 $, $Date: 2007/07/02 10:58:07 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.149 $, $Date: 2007/07/11 18:08:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -395,7 +395,7 @@ c     --- the solve are so are already set.
       if (localbounds(5) == 0) phi(:,:,nzlocal+1) = 2.*phi(:,:,nzlocal) - phi(:,:,nzlocal-1)
 
 c     --- Make a print out.
-      if (mgverbose>=1) then
+      if (mgverbose>=1 .or. mgerror > mgtol) then
         if (mgerror > mgtol) then
           call remark("Multigrid: Maximum number of iterations reached")
         endif
@@ -4787,7 +4787,7 @@ c     --- the solve are so are already set.
       if (localbounds(4) == 0) phi(:,-1) = 2.*phi(:,0) - phi(:,1)
       if (localbounds(5) == 0) phi(:,nzlocal+1) = 2.*phi(:,nzlocal) - phi(:,nzlocal-1)
 
-      if (mgverbose>=1) then
+      if (mgverbose>=1 .or. mgerror > mgtol) then
 c       --- Make a print out.
         if (mgerror > mgtol) then
           call remark("Multigrid2d: Maximum number of iterations reached")

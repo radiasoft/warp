@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.15 $, $Date: 2007/06/29 13:28:16 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.16 $, $Date: 2007/07/11 18:09:07 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -421,7 +421,7 @@ c     --- Make a print out.
       if (mgerror > mgtol) then
         call remark("ImplicitMultigridES2d: Maximum number of iterations reached")
       endif
-      if (mgverbose >= 1) then
+      if (mgverbose >= 1 .or. mgerror > mgtol) then
         write(errline,20) mgerror,mgiters
   20    format("ImplicitMultigridES2d: Error converged to ",1pe11.3," in ",i5," v-cycles")
         call remark(errline)
