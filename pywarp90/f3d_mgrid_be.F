@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.36 $, $Date: 2007/07/11 18:01:32 $
+c version $Revision: 1.37 $, $Date: 2007/07/11 18:07:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -321,7 +321,7 @@ c     --- Copy phi back
       phi = phiwithbounds(0:nx,0:ny,:)
 
 c     --- Make a print out.
-      if (mgverbose>=1) then
+      if (mgverbose>=1 .or. mgerror > mgtol) then
         if (mgerror > mgtol) then
           call remark("MultigridBE: Maximum number of iterations reached")
         endif
