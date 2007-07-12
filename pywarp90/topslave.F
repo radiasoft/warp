@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.49 $, $Date: 2007/06/13 20:22:57 $
+c TOPSLAVE.M, version $Revision: 1.50 $, $Date: 2007/07/12 22:53:37 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -460,8 +460,8 @@ c           --- This puts ipmax_s is a nice place between the species that allow
 c           --- each to grew without shifting particles around.
 c           --- Though ipmax_s will most likely be removed since it is not really
 c           --- needed.
-            pgroup%ipmax_s(is) = (pgroup%nps(is)*(pgroup%ins(is) + pgroup%nps(is) - 1) +
-     &                            pgroup%nps(is+1)*(pgroup%ins(is+1) - 1))/
+            pgroup%ipmax_s(is) = (pgroup%nps(is+1)*(pgroup%ins(is) + pgroup%nps(is) - 1) +
+     &                            pgroup%nps(is)*(pgroup%ins(is+1) - 1))/
      &                           (pgroup%nps(is) + pgroup%nps(is+1))
           else
             pgroup%ipmax_s(is) = (pgroup%ins(is) + pgroup%nps(is) - 1 +
