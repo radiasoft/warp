@@ -10,7 +10,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.56 2007/07/13 22:58:42 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.57 2007/07/13 23:08:40 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -41,7 +41,6 @@ recalculated on a finer mesh to give better balancing.
   """
   def __init__(self,padright=None,padleft=None,when=None,doitnow=0,
                doloadrho=0,dofs=0,verbose=0,nzguard=0):
-    if not lparallel: return
     if when is None:
       self.when = {10:1,100:10,1000000:20}
     else:
@@ -53,6 +52,7 @@ recalculated on a finer mesh to give better balancing.
     self.verbose = verbose
     self.nzguard = nzguard
     self.runtime = 0.
+    if not lparallel: return
     if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
