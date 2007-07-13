@@ -456,23 +456,9 @@ the diagnostic is of interest and is meaningfull.
 
       self.izpslave = zeros(self.nslaves,'l')
       self.nzpslave = zeros(self.nslaves,'l')
-      self.zpslmin = zeros(self.nslaves,'d')
-      self.zpslmax = zeros(self.nslaves,'d')
-      domaindecomposeparticles(self.nz,self.nslaves,self.izfsslave,self.nzfsslave,
-                               self.grid_overlap,self.nzpguard,
-                               self.zmmin,self.zmmax,self.dz,self.zslave[:self.nslaves],
-                               self.lautodecomp,self.izpslave,self.nzpslave,
-                               self.zpslmin,self.zpslmax)
-
-      self.nxp = self.nx
-      self.nyp = self.ny
-      self.nzp = self.nzpslave[self.my_index]
-      self.xmminp = self.xmmin
-      self.xmmaxp = self.xmmax
-      self.ymminp = self.ymmin
-      self.ymmaxp = self.ymmax
-      self.zmminp = self.zmmin + self.izpslave[self.my_index]*self.dz
-      self.zmmaxp = self.zmmin + (self.izpslave[self.my_index] + self.nzpslave[self.my_index])*self.dz
+      # --- This should only be called after the particle decomposition
+      # --- has been done.
+      #self.setparticledomains()
 
     if self.dx == 0.: self.dx = (self.xmmax - self.xmmin)/self.nx
     if self.dy == 0.:
@@ -485,9 +471,6 @@ the diagnostic is of interest and is meaningfull.
     self.checkmeshconsistency(self.ymmin,self.ymmax,self.ny,self.dy,'y')
     self.checkmeshconsistency(self.zmmin,self.zmmax,self.nz,self.dz,'z')
     self.checkmeshconsistency(self.zmminlocal,self.zmmaxlocal,self.nzlocal,self.dz,'z')
-    self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
-    self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
-    self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
 
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
@@ -696,6 +679,38 @@ the diagnostic is of interest and is meaningfull.
   def find_mgparam(self,lsavephi=false,resetpasses=0):
     find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
                  solver=self,pkg3d=self)
+
+  def setparticledomains(self):
+    if not self.lparallel: return
+
+    # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
+    # --- zmesh[izpslave+nzpslave] > zpslmax.
+    self.izpslave[:] = int((top.zpslmin - self.zmmin)/self.dz) - self.nzpguard
+    self.nzpslave[:] = (int((top.zpslmax - self.zmmin)/self.dz) -
+                       self.izpslave + 1 + 2*self.nzpguard)
+
+    # --- Make sure that the processors don't have grid cells
+    # --- sticking out the end.
+    self.nzpslave[:] = where(self.izpslave<0,self.nzpslave+self.izpslave,
+                                             self.nzpslave)
+    self.izpslave[:] = where(self.izpslave<0,0,self.izpslave)
+    self.nzpslave[:] = where(self.izpslave+self.nzpslave > self.nz,
+                             self.nz - self.izpslave,
+                             self.nzpslave)
+
+    self.nxp = self.nx
+    self.nyp = self.ny
+    self.nzp = self.nzpslave[self.my_index]
+    self.xmminp = self.xmmin
+    self.xmmaxp = self.xmmax
+    self.ymminp = self.ymmin
+    self.ymmaxp = self.ymmax
+    self.zmminp = self.zmmin + self.izpslave[self.my_index]*self.dz
+    self.zmmaxp = self.zmminp + self.nzp*self.dz
+
+    self.checkmeshconsistency(self.xmminp,self.xmmaxp,self.nxp,self.dx,'x')
+    self.checkmeshconsistency(self.ymminp,self.ymmaxp,self.nyp,self.dy,'y')
+    self.checkmeshconsistency(self.zmminp,self.zmmaxp,self.nzp,self.dz,'z')
 
   # --- Diagnostic routines
   def rhodia(self):
@@ -957,6 +972,8 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- be gathering the source (for example during an EGUN iteration).
     if not self.ldosolve and lzero: return
     if lzero is None: lzero = w3d.lzerorhofsapi
+
+    self.setparticledomains()
     self.allocatedataarrays()
     if lzero: self.zerosourcep()
 
@@ -1153,14 +1170,15 @@ class SubcycledPoissonSolver(FieldSolver):
 
   def solve(self,iwhich=0):
     if not self.ldosolve: return
+    self.allocatedataarrays()
     # --- This is only needed in cases when the source is accumulated over
     # --- multiple steps, and can only be finalized (e.g. made periodic)
     # --- at this point.
     self.finalizesourcep()
-    self.allocatedataarrays()
     # --- Loop over the subcyling groups and do any field solves that
     # --- are necessary.
-    # --- Do loop in reverse order so that source and potential end up with the arrays
+    # --- Do loop in reverse order so that source and potential end up
+    # --- with the arrays
     # --- for the species with the smallest timestep.
     tmpnsndts = getnsndtsforsubcycling()
     for indts in range(tmpnsndts-1,-1,-1):
@@ -1172,13 +1190,14 @@ class SubcycledPoissonSolver(FieldSolver):
     # --- Is this still needed? It seems to slow things down alot.
     #gc.collect()
 
-  def getallpotentialpforparticles(self,iwhich=0):
+  def getallpotentialpforparticles(self,iwhich=0,lforce=0):
     "This transfers data from the potential array to the potentialp array"
-    if not self.ldosolve: return
+    if not self.ldosolve and not lforce: return
     self.allocatedataarrays()
     # --- Loop over the subcyling groups and get any potentialp that
     # --- are necessary.
-    # --- Do loop in reverse order so that source and potential end up with the arrays
+    # --- Do loop in reverse order so that source and potential end up
+    # --- with the arrays
     # --- for the species with the smallest timestep.
     tmpnsndts = getnsndtsforsubcycling()
     for indts in range(tmpnsndts-1,-1,-1):
@@ -1245,6 +1264,10 @@ of the arrays used by the field solve"""
         fielddims = list(dims[1]) + [top.nsndtsphi]
         if 'fieldarray' not in self.__dict__ or shape(self.fieldarray) != tuple(fielddims):
           self.fieldarray = fzeros(fielddims,'d')
+
+  def resetparticledomains(self):
+    self.setparticledomains()
+    self.getallpotentialpforparticles(lforce=1)
 
   def zerosourcep(self):
     if top.ndtsaveraging == 0:
