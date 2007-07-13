@@ -8,8 +8,9 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
                 the solver including the work specifying the conductors.
 """
 from warp import *
+import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.55 2007/07/11 18:30:44 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.56 2007/07/13 22:58:42 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -51,6 +52,7 @@ recalculated on a finer mesh to give better balancing.
     self.dofs = dofs
     self.verbose = verbose
     self.nzguard = nzguard
+    self.runtime = 0.
     if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
@@ -60,28 +62,43 @@ recalculated on a finer mesh to give better balancing.
       installafterstep(self.doloadbalance)
 
   def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
-    if not lparallel: return
-
-    # --- Check if there are any particles anywhere
-    if getn(jslist=-1) == 0: return
+    starttime = time.time()
+    if not lparallel:
+      if self.verbose:
+        print "Skipping loadbalance since running in serial"
+      endtime = time.time()
+      self.runtime += (endtime - starttime)
+      return
 
     if not top.lmoments or top.laccumulate_zmoments:
       # --- If the moments were not calculated, then top.zminp and top.zmaxp
       # --- are not reliable and so need to be calculated.
-      zz = getz(jslist=-1,gather=0)
-      if len(zz) > 0:
-        zminp = min(zz)
-        zmaxp = max(zz)
-      else:
-        zminp = +largepos
-        zmaxp = -largepos
+      zminp = +largepos
+      zmaxp = -largepos
+      for js in range(top.pgroup.ns):
+        if top.pgroup.nps[js] == 0: continue
+        i1 = top.pgroup.ins[js] - 1
+        i2 = i1 + top.pgroup.nps[js]
+        zz = top.pgroup.zp[i1:i2]
+        zminp = min(zminp,min(zz))
+        zmaxp = max(zmaxp,max(zz))
       zminp = globalmin(zminp)
       zmaxp = globalmax(zmaxp)
+      nplive = globalsum(top.pgroup.nps)
     else:
       # --- Otherwise, use the values already calculated.
       zz = None
       zminp = top.zminp[-1]
       zmaxp = top.zmaxp[-1]
+      nplive = top.pnum[0,-1]
+
+    # --- Check if there are any particles anywhere
+    if nplive == 0:
+      if self.verbose:
+        print "Skipping loadbalance since there are no particles"
+      endtime = time.time()
+      self.runtime += (endtime - starttime)
+      return
 
     # --- Special check when injection is turned on
     if top.inject:
@@ -130,7 +147,12 @@ recalculated on a finer mesh to give better balancing.
       if top.it < key: ii = min(ii,value)
 
     # --- Just return if load balancing not done now.
-    if not lforce and (top.it%ii) != 0: return
+    if not lforce and (top.it%ii) != 0:
+      if self.verbose:
+        print "Skipping loadbalance since it is not time for it"
+      endtime = time.time()
+      self.runtime += (endtime - starttime)
+      return
 
     if (top.it%ii) == 0 and self.verbose:
       print "Load balancing based on frequency"
@@ -152,11 +174,13 @@ recalculated on a finer mesh to give better balancing.
       pnumz = zeros(1001,'d')
       zmin = max(0.,                             zminp-w3d.dz)
       zmax = min(w3d.zmmax-w3d.zmmin,zmaxp+w3d.dz)
-      if zz is None:
-        # --- If zz was not fetched above, then get it here.
-        zz = getz(jslist=-1,gather=0)
-      setgrid1d(len(zz),zz,1000,pnumz,
-                zmin+top.zbeam+w3d.zmmin,zmax+top.zbeam+w3d.zmmin)
+      for js in range(top.pgroup.ns):
+        if top.pgroup.nps[js] == 0: continue
+        i1 = top.pgroup.ins[js] - 1
+        i2 = i1 + top.pgroup.nps[js]
+        zz = top.pgroup.zp[i1:i2]
+        setgrid1d(len(zz),zz,1000,pnumz,
+                  zmin+top.zbeam+w3d.zmmin,zmax+top.zbeam+w3d.zmmin)
       pnumz = parallelsum(pnumz)
       dz = (zmax - zmin)/1000.
     else:
@@ -169,9 +193,13 @@ recalculated on a finer mesh to give better balancing.
     vz = None
     if self.padright is None:
       if not top.lmoments:
-        vz = getvz(jslist=-1,gather=0)
-        if len(vz) > 0: vzmaxp = max(vz)
-        else:           vzmaxp = -largepos
+        vzmaxp = -largepos
+        for js in range(top.pgroup.ns):
+          if top.pgroup.nps[js] == 0: continue
+          i1 = top.pgroup.ins[js] - 1
+          i2 = i1 + top.pgroup.nps[js]
+          vz = top.pgroup.uzp[i1:i2]*top.pgroup.gaminv[i1:i2]
+          vzmaxp = max(vzmaxp,max(vz))
         vzmaxp = globalmax(vzmaxp)
       else:
         vzmaxp = max(top.vzmaxp)
@@ -184,9 +212,13 @@ recalculated on a finer mesh to give better balancing.
     # --- Calculate the left hand side padding.
     if self.padleft is None:
       if not top.lmoments:
-        if vz is None: vz = getvz(jslist=-1,gather=0)
-        if len(vz) > 0: vzminp = min(vz)
-        else:           vzminp = largepos
+        vzminp = +largepos
+        for js in range(top.pgroup.ns):
+          if top.pgroup.nps[js] == 0: continue
+          i1 = top.pgroup.ins[js] - 1
+          i2 = i1 + top.pgroup.nps[js]
+          vz = top.pgroup.uzp[i1:i2]*top.pgroup.gaminv[i1:i2]
+          vzminp = min(vzminp,min(vz))
         vzminp = globalmin(vzminp)
       else:
         vzminp = min(top.vzminp)
@@ -195,15 +227,18 @@ recalculated on a finer mesh to give better balancing.
     else:             padleft = self.padleft
     if self.verbose:
       print "Load balancing padleft = ",padleft
-    del vz
 
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=padleft,
                          reorg=reorg,pnumz=pnumz,zmin=zmin,dz=dz,
                          zminp=zminp,zmaxp=zmaxp,verbose=self.verbose,
                          nzguard=self.nzguard)
-    for i in range(getnsndtsforsubcycling()):
-      getphipforparticles(i)
+    if getregisteredsolver() is None:
+      for i in range(getnsndtsforsubcycling()):
+        getphipforparticles(i)
+
+    endtime = time.time()
+    self.runtime += (endtime - starttime)
 
 #########################################################################
 #########################################################################
@@ -240,6 +275,12 @@ that has already been done.
   top.zpslmin[0] = max(w3d.zmmin,top.zpslmin[0] - padleft)
   top.zpslmax[-1] = min(w3d.zmmax,top.zpslmax[-1] + padright)
 
+  # --- Reorganize the particles
+  if reorg:
+    reorgparticles(top.pgroup)
+  else:
+    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
+
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
   top.izpslave[:] = int((top.zpslmin - w3d.zmmin)/w3d.dz) - nzguard
@@ -254,23 +295,22 @@ that has already been done.
                           w3d.nz - top.izpslave,
                           top.nzpslave)
 
-  # --- Adjust the Z data
-  #_adjustz()
-
-  # --- Reorganize the particles
-  if reorg:
-    reorgparticles(top.pgroup)
-  else:
-    zpartbnd(top.pgroup,w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz)
-
   # --- Update sizes of arrays for particles
-  if(w3d.solvergeom == w3d.XYZgeom):
-    w3d.nzp = top.nzpslave[me]
-    w3d.zmminp = w3d.zmmin + top.izpslave[me]*w3d.dz
-    w3d.zmmaxp = w3d.zmminp + w3d.nzp*w3d.dz
-    gchange("Fields3dParticles")
+  solver = getregisteredsolver()
+  if solver is not None:
+    try:
+      solver.resetparticledomains()
+    except AttributeError:
+      print "Field solver does not have a setparticledomains method"
+      pass
   else:
-    gchange_rhop_phip_rz()
+    if(w3d.solvergeom == w3d.XYZgeom):
+      w3d.nzp = top.nzpslave[me]
+      w3d.zmminp = w3d.zmmin + top.izpslave[me]*w3d.dz
+      w3d.zmmaxp = w3d.zmminp + w3d.nzp*w3d.dz
+      gchange("Fields3dParticles")
+    else:
+      gchange_rhop_phip_rz()
 
   # --- Do some additional work if requested
   if doloadrho: loadrho()
