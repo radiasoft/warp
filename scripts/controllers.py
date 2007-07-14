@@ -17,6 +17,7 @@ othereuser: during execution of electric fields gathering
 beforestep: before the time step
 afterstep: after the time step
 particlescraper: at the time that the particle boundary conditions are applied
+particleloader: at the time that the standard particle loader is called
 addconductor: at the start of the multigrid solver (to install conductors)
 beforeplot: before a plot (actually after a frame advance)
 afterplot: after a plot (acutally just before a frame advance)
@@ -41,6 +42,8 @@ installafterstep, uninstallafterstep, isinstalledafterstep
 
 installparticlescraper, uninstallparticlescraper, isinstalledparticlescraper
 
+installparticleloader, uninstallparticleloader, isinstalledparticleloader
+
 installaddconductor, uninstalladdconductor, isinstalledaddconductor
 
 installbeforeplot, uninstallbeforeplot, isinstalledbeforeplot
@@ -53,7 +56,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.18 2007/05/23 23:02:31 jlvay Exp $"
+controllers_version = "$Id: controllers.py,v 1.19 2007/07/14 00:34:10 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -238,6 +241,7 @@ afterfs = ControllerFunction('afterfs')
 beforelr = ControllerFunction('beforelr')
 othereuser = ControllerFunction('othereuser')
 callscraper = ControllerFunction('callscraper')
+callparticleloader = ControllerFunction('particleloader')
 calladdconductor = ControllerFunction('calladdconductor')
 callbeforestepfuncs = ControllerFunction('callbeforestepfuncs')
 callafterstepfuncs = ControllerFunction('callafterstepfuncs')
@@ -302,7 +306,7 @@ Anything that may have already been installed will therefore be unaffected.
 controllerfunctioncontainer = ControllerFunctionContainer(
                                [aftergenerate,beforefs,afterfs,
                                 beforelr,othereuser,
-                                callscraper,calladdconductor,
+                                callscraper,callparticleloader,calladdconductor,
                                 callbeforestepfuncs,callafterstepfuncs,
                                 callbeforeplotfuncs,callafterplotfuncs,
                                 callplseldomfuncs,callplalwaysfuncs,
@@ -385,6 +389,19 @@ def uninstallparticlescraper(f):
   if not callscraper.hasfuncsinstalled(): warp.w3d.lcallscraper = warp.false
 def isinstalledparticlescraper(f):
   return callscraper.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
+def installparticleloader(f):
+  "Adds a function to the list of functions called to load particles"
+  callparticleloader.installfuncinlist(f)
+  warp.w3d.lcallparticleloader = warp.true
+def uninstallparticleloader(f):
+  "Removes the function from the list of functions called to load particles"
+  callparticleloader.uninstallfuncinlist(f)
+  if not callparticleloader.hasfuncsinstalled():
+    warp.w3d.lcallparticleloader = warp.false
+def isinstalledparticleloader(f):
+  return callparticleloader.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
 def installaddconductor(f):
