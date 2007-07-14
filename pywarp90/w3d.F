@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.371 $, $Date: 2007/06/26 12:41:20 $
+c@(#) File W3D.F, version $Revision: 3.372 $, $Date: 2007/07/14 00:33:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4322,6 +4322,9 @@ c  Picglb is included only to use zbeam
 #endif
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+c  Call the user supplied particle loading routine if requested
+      if (lcallparticleloader) call execuser("callparticleloader")
 
 c  If distrbtn is not set by the user, exit
       if (distrbtn == "none") then
