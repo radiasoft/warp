@@ -10669,6 +10669,9 @@ USE multigridrz
 INTEGER(ISZ) :: i
 TYPE(GRIDtype), pointer :: g
 
+  ! --- Don't do anything if basegrid is not associated.
+  if (.not. ASSOCIATED(basegrid)) return
+
   ! --- For nonparallel grids, assign rhop and phip to point
   ! --- to rho and phi.
   do i = 1, ngrids
