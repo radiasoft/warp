@@ -281,11 +281,31 @@ Creates a new species of particles. All arguments are optional.
       
   def add_uniform_box(self,np,xmin,xmax,ymin,ymax,zmin,zmax,vthx=0.,
                       vthy=0.,vthz=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                      lmomentum=0,spacing='random',nx=None,ny=None,nz=None,**kw):
+                      lmomentum=0,spacing='random',nx=None,ny=None,nz=None,
+                      lallindomain=0,**kw):
+    """
+ - lallindomain=0: If true, the code only loads particles within the domain. This
+                   only matters when parallel.
+    """
+
+    if lallindomain:
+      # --- Crop the zmin and zmax to be within the local domain
+      zminp = max(zmin,min(zmax,w3d.zmminp))
+      zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+    else:
+      # --- Crop the zmin and zmax to be within the global domain
+      zminp = max(zmin,w3d.zmmin)
+      zmaxp = min(zmax,w3d.zmmax)
+
     if spacing == 'random':
+      # --- Adjust the number of particles to load to based on the
+      # --- width of the cropped zmin and max and the original
+      np = nint((zmaxp - zminp)/(zmax - zmin)*np)
+      if np == 0: return
       x = RandomArray.random(np)
       y = RandomArray.random(np)
       z = RandomArray.random(np)
+      z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
 
     elif spacing == 'uniform':
       if ymax > ymin: dims = 3
@@ -295,15 +315,31 @@ Creates a new species of particles. All arguments are optional.
         if dims == 3: ny = nint(np**(1./dims))
         else:         ny = 1
       if nz is None: nz = nint(np**(1./dims))
-      np = nx*ny*nz
+
+      # --- Find the range of particle z locations within the cropped
+      # --- zmin and max.
+      dz = (zmax - zmin)/nz
+      izminp = int((zminp - zmin)/dz + 0.5)
+      izmaxp = int((zmaxp - zmin)/dz + 0.5)
+      nzp = max(0,izmaxp - izminp)
+      np = nx*ny*nzp
+      if np == 0: return
+
       if dims == 3:
         x,y,z = getmesh3d(0.5/nx,1./nx,nx-1,
                           0.5/ny,1./ny,ny-1,
-                          0.5/nz,1./nz,nz-1)
+                          (izminp + 0.5)/nz,1./nz,nzp-1)
       else:
         x,z = getmesh2d(0.5/nx,1./nx,nx-1,
-                        0.5/nz,1./nz,nz-1)
+                        (izminp + 0.5)/nz,1./nz,nzp-1)
         y = zeros((nx,nz),'d')
+
+      # --- Perform a transpose so that the data is ordered with increasing z.
+      # --- The copy is needed since transposed arrays cannot be reshaped.
+      x = transpose(x).copy()
+      y = transpose(y).copy()
+      z = transpose(z).copy()
+
       x.shape = (np,)
       y.shape = (np,)
       z.shape = (np,)
@@ -319,12 +355,16 @@ Creates a new species of particles. All arguments are optional.
       gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
     else:
       gi=1.
+
+    kw['lallindomain'] = lallindomain
     self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
-                           xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,js=None,
-                           lmomentum=0,spacing='random',nr=None,nz=None,thetamin=0.,thetamax=2.*pi,
-                           lvariableweights=None,
+                           xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,
+                           js=None,
+                           lmomentum=0,spacing='random',nr=None,nz=None,
+                           thetamin=0.,thetamax=2.*pi,
+                           lvariableweights=None,lallindomain=0,
                            **kw):
     """Creates particles, uniformly filling a cylinder.
 If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
@@ -348,21 +388,50 @@ in radius squared.
                      weighted according to their radius, otherwise all will
                      have the same weight. Use this option to override the
                      default.
+ - lallindomain=0: If true, the code only loads particles within the domain. This
+                   only matters when parallel.
     """
 
+    if lallindomain:
+      # --- Crop the zmin and zmax to be within the local domain
+      zminp = max(zmin,min(zmax,w3d.zmminp))
+      zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+    else:
+      # --- Crop the zmin and zmax to be within the global domain
+      zminp = max(zmin,w3d.zmmin)
+      zmaxp = min(zmax,w3d.zmmax)
+
     if spacing == 'random':
-      r=RandomArray.random(np)
-      z=RandomArray.random(np)
+      # --- Adjust the number of particles to load to based on the
+      # --- width of the cropped zmin and max and the original
+      np = nint((zmaxp - zminp)/(zmax - zmin)*np)
+      if np == 0: return
+      r = RandomArray.random(np)
+      z = RandomArray.random(np)
+      z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
     else:
       if nr is None: nr = nint(np**(1./2.))
       if nz is None: nz = nint(np**(1./2.))
-      np = nr*nz
+
+      # --- Find the range of particle z locations within the cropped
+      # --- zmin and max.
+      dz = (zmax - zmin)/nz
+      izminp = int((zminp - zmin)/dz + 0.5)
+      izmaxp = int((zmaxp - zmin)/dz + 0.5)
+      nzp = max(0,izmaxp - izminp)
+      np = nr*nzp
+      if np == 0: return
+
       r,z = getmesh2d(0.5/nr,1./nr,nr-1,
-                      0.5/nz,1./nz,nz-1)
+                      (izminp + 0.5)/nz,1./nz,nzp-1)
+
+      # --- Perform a transpose so that the data is ordered with increasing z.
+      # --- The copy is needed since transposed arrays cannot be reshaped.
       r = transpose(r).copy()
       z = transpose(z).copy()
       r.shape = (np,)
       z.shape = (np,)
+
     theta=(thetamax-thetamin)*RandomArray.random(np) + thetamin
 
     if lvariableweights is None:
@@ -374,6 +443,7 @@ in radius squared.
       if top.wpid != 0: kw['w'] = 1.
     else:
       kw['w'] = 2*r
+
     x=xmean+rmax*r*cos(2.*pi*theta)
     y=ymean+rmax*r*sin(2.*pi*theta)
     z=zmin+(zmax-zmin)*z
@@ -385,6 +455,8 @@ in radius squared.
       gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
     else:
       gi=1
+
+    kw['lallindomain'] = lallindomain
     self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
