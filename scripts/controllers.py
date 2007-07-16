@@ -56,7 +56,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.19 2007/07/14 00:34:10 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.20 2007/07/16 21:59:32 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -241,7 +241,7 @@ afterfs = ControllerFunction('afterfs')
 beforelr = ControllerFunction('beforelr')
 othereuser = ControllerFunction('othereuser')
 callscraper = ControllerFunction('callscraper')
-callparticleloader = ControllerFunction('particleloader')
+callparticleloader = ControllerFunction('callparticleloader')
 calladdconductor = ControllerFunction('calladdconductor')
 callbeforestepfuncs = ControllerFunction('callbeforestepfuncs')
 callafterstepfuncs = ControllerFunction('callafterstepfuncs')
