@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.199 2007/07/11 18:30:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.200 2007/07/17 17:25:46 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -126,7 +126,7 @@ if "GISTPATH" not in os.environ:
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
-          cgmfilesize=100000):
+          cgmfilesize=100000,pnumb=None):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0: allows the specification of a ps file instead of cgm
@@ -134,6 +134,8 @@ Does the work needed to start writing plots to a file automatically
   - cgmlog=1: Set to 0 to inhibit cgmlog file creation
   - runcomments='': Additional comments to print on the first plot page
   - cgmfilesize=100000: Max cgmfilesize in units of MBytes.
+  - pnumb=None: Optional file name number to be used in place of the
+                next available number. It must be a string.
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
@@ -148,14 +150,16 @@ Does the work needed to start writing plots to a file automatically
     gist.pldefault(cgmfilesize=cgmfilesize)
   except:
     pass
-  # --- Get next available plot file name.
-  if not prefix: prefix = arraytostr(top.runid)
-  if makepsfile:
-    pname = getnextfilename(prefix,'ps')
-    pnumb = pname[-6:-3]
+  # --- Setup the plot file name
+  if prefix is None: prefix = arraytostr(top.runid)
+  if makepsfile: suffix = 'ps'
+  else:          suffix = 'cgm'
+  if pnumb is None:
+    # --- Get next available plot file name.
+    pname = getnextfilename(prefix,suffix)
+    pnumb = pname[-len(suffix)-4:-len(suffix)-1]
   else:
-    pname = getnextfilename(prefix,'cgm')
-    pnumb = pname[-7:-4]
+    pname = "%s.%s.%s"%(prefix,pnumb,suffix)
   # --- Save the plotfile name and number, since it is not retreivable from gist.
   setup.pname = pname
   setup.pnumb = pnumb
