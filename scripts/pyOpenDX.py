@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.32 2007/05/10 18:27:30 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.33 2007/07/17 21:39:14 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -49,12 +49,13 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   pgroup = kw.get('pgroup',top.pgroup)
-  ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X',"X'",'Y']
-  return viewparticles(take(pgroup.xp,ii),
-                       (take(pgroup.uxp,ii)/take(pgroup.uzp,ii)),
-                       take(pgroup.yp,ii),
-                       (take(pgroup.uyp,ii)/take(pgroup.uzp,ii)),
+  ii = selectparticles(iw=iw,kwdict=kw)
+  x  = getx(ii=ii,**kw)
+  xp = getxp(ii=ii,**kw)
+  y  = gety(ii=ii,**kw)
+  yp = getyp(ii=ii,**kw)
+  return viewparticles(x,xp,y,yp,
                        labels,name='WARP viz',display=display)
 
 def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,ratio=1.,stride=1,
@@ -64,11 +65,14 @@ def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,size=1.,rati
   pgroup = kw.get('pgroup',top.pgroup)
   ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  xx = take(pgroup.xp,ii)
-  yy = take(pgroup.yp,ii)
-  zz = take(pgroup.zp,ii)
-  if cc is None: cc = pgroup.uxp
-  cc = take(cc,ii)
+  xx = getx(ii=ii,**kw)
+  yy = gety(ii=ii,**kw)
+  zz = getz(ii=ii,**kw)
+  if cc is None:
+    cc = getux(ii=ii,**kw)
+  else:
+    if isinstance(ii,slice): cc = cc[ii]
+    else:                    cc = take(cc,ii)
   if rscale is not None:
     xx = xx*rscale
     yy = yy*rscale
@@ -82,18 +86,14 @@ def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=
   """Vector Plot X-Y-Z-Vx-Vy-Vz"""
   checkparticleplotarguments(kw)
   pgroup = kw.get('pgroup',top.pgroup)
-  ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  xx = take(pgroup.xp,ii)
-  yy = take(pgroup.yp,ii)
-  zz = take(pgroup.zp,ii)
-  vx = take(pgroup.uxp,ii)
-  vy = take(pgroup.uyp,ii)
-  vz = take(pgroup.uzp,ii)
-  gg = take(pgroup.gaminv,ii)
-  vx=vx*gg
-  vy=vy*gg
-  vz=vz*gg
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xx = getx(ii=ii,**kw)
+  yy = gety(ii=ii,**kw)
+  zz = getz(ii=ii,**kw)
+  vx = getvx(ii=ii,**kw)
+  vy = getvy(ii=ii,**kw)
+  vz = getvz(ii=ii,**kw)
   if rscale is not None:
     xx = xx*rscale
     yy = yy*rscale
@@ -105,21 +105,17 @@ def ppxyzvxvyvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=
 def pprzvrvtvz(iw = 0,labels=1,display=1,rscale=None,zscale=None,size=3.,ratio=0.,stride=1,type='standard',scale=None,**kw):
   """Vector Plot X-Y-Z-Vx-Vy-Vz"""
   checkparticleplotarguments(kw)
-  ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  xx = take(top.xp,ii)
-  yy = take(top.yp,ii)
-  r = sqrt(xx*xx+yy*yy)
-  zz = take(top.zp,ii)
-  vx = take(top.uxp,ii)
-  vy = take(top.uyp,ii)
-  vz = take(top.uzp,ii)
-  gg = take(top.gaminv,ii)
-  vx=vx*gg
-  vy=vy*gg
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xx = getx(ii=ii,**kw)
+  yy = gety(ii=ii,**kw)
+  zz = getz(ii=ii,**kw)
+  r  = getr(ii=ii,**kw)
+  vx = getvx(ii=ii,**kw)
+  vy = getvy(ii=ii,**kw)
+  vz = getvz(ii=ii,**kw)
   vr =  vx*xx/r+vy*yy/r
   vt = -vx*yy/r+vy*xx/r
-  vz=vz*gg
   if rscale is not None:
     xx = xx*rscale
     yy = yy*rscale
