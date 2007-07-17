@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.56 2007/07/11 18:31:53 dave Exp $"
+particles_version = "$Id: particles.py,v 1.57 2007/07/17 21:22:02 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -190,6 +190,16 @@ def _getobjectpgroup(kw):
   return suffix,object,pgroup
 
 #-------------------------------------------------------------------------
+def _setindices(data,ii,islice,indices,ir1,ir2):
+  if ii is not None:
+    if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
+    data = take(data,ii)
+    islice = slice(len(ii))
+    indices = ii
+  if indices is None: indices = arange(ir1,ir2)
+  return data,islice,indices
+
+#-------------------------------------------------------------------------
 # This returns the indices of the particles selected.
 def selectparticles(iw=0,kwdict={},**kw):
   """
@@ -200,15 +210,21 @@ Multiple selection criteria are now supported.
   - js=0: Species to chose from
   - jslist=None: List of Species to choose from, e.g. [0,3,4]; -1 for all specs
   - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
-  - z=top.zp: Coordinate for range selection
+  - x=top.xp: Coordinate for x range selection
+  - y=top.yp: Coordinate for y range selection
+  - z=top.zp: Coordinate for z range selection
   - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
   - wx=1.: Width of window around xmesh[ix]
   - iy=-1: When 0 <= iy <= ny, picks particles within ymesh[iy]+-wy*dy
   - wy=1.: Width of window around ymesh[iy]
   - iz=-1: When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
   - wz=1.: Width of window around zmesh[iz]
-  - zl=None: When specified, lower range of selection region
-  - zu=None: When specified, upper range of selection region
+  - xl=None: When specified, lower range in x of selection region
+  - xu=None: When specified, upper range in x of selection region
+  - yl=None: When specified, lower range in y of selection region
+  - yu=None: When specified, upper range in y of selection region
+  - zl=None: When specified, lower range in z of selection region
+  - zu=None: When specified, upper range in z of selection region
   - zc=None: When specified, picks particles within zc+-wz*dz
   - xc=None: When specified, picks particles within xc+-wx*dx
   - yc=None: When specified, picks particles within yc+-wy*dy
@@ -222,14 +238,18 @@ Multiple selection criteria are now supported.
   - object=top: Object to get particle data from. Besides top, this can be an
                 open PDB file, or a dictionary.
   - pgroup=top.pgroup: Particle group to get particles from 
+  - usezerovzflag=0: When true, a check is made to skip particles with vz==0.
+                     This is also done when top.clearlostpart==0.
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
+  kwdefaults = {"js":0,"jslist":None,"win":None,
+                "x":None,"y":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,
+                "xl":None,"xu":None,"yl":None,"yu":None,"zl":None,"zu":None,
+                "zc":None,"xc":None,"yc":None,
                 "ssn":None,"ii":None,
                 "lost":false,"suffix":'',"object":top,"pgroup":top.pgroup,
-                "w3dobject":None,
+                "w3dobject":None,"usezerovzflag":0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -237,7 +257,7 @@ Multiple selection criteria are now supported.
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  for arg in kwdefaults.keys(): exec arg+" = kwvalues['"+arg+"']"
 
   # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
@@ -289,48 +309,54 @@ Multiple selection criteria are now supported.
 
   if ir2 <= ir1: return array([])
 
-  indices = arange(ir1,ir2)
+  # --- Note that indices is only calculated if needed. If no down selection
+  # --- is done, the islice will be returned.
+  indices = None
   islice = slice(ir1,ir2)
 
   if ssn is not None:
     assert top.spid > 0,"ssn's are not used"
     id = getattrwithsuffix(pgroup,'pid',suffixparticle)[:,top.spid-1]
-    if ii is not None:
-      id = take(id,ii)
-      islice = slice(len(ii))
-      indices = ii
+    id,islice,indices = _setindices(id,ii,islice,indices,ir1,ir2)
     ii = compress(nint(id[islice])==ssn,indices)
-  elif zl is not None or zu is not None:
+
+  if xl is not None or xu is not None:
+    if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
+    if xl is None: xl = -largepos
+    if xu is None: xu = +largepos
+    if xl > xu: print "Warning: xl > xu"
+    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
+    ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
+  if yl is not None or yu is not None:
+    if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
+    if yl is None: yl = -largepos
+    if yu is None: yu = +largepos
+    if yl > yu: print "Warning: yl > yu"
+    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
+    ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+  if zl is not None or zu is not None:
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
     if zl is None: zl = -largepos
     if zu is None: zu = +largepos
     if zl > zu: print "Warning: zl > zu"
-    if ii is not None:
-      z = take(z,ii)
-      islice = slice(len(ii))
-      indices = ii
+    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+
   if ix is not None:
     xmmin = getattrwithsuffix(w3dobject,'xmmin',suffix,pkg='w3d')
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xmmin + ix*dx - wx*dx
     xu = xmmin + ix*dx + wx*dx
-    x = getattrwithsuffix(pgroup,'xp',suffixparticle)
-    if ii is not None:
-      x = take(x,ii)
-      islice = slice(len(ii))
-      indices = ii
+    if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
+    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
   if iy is not None:
     ymmin = getattrwithsuffix(w3dobject,'ymmin',suffix,pkg='w3d')
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = ymmin + iy*dy - wy*dy
     yu = ymmin + iy*dy + wy*dy
-    y = getattrwithsuffix(pgroup,'yp',suffixparticle)
-    if ii is not None:
-      y = take(y,ii)
-      islice = slice(len(ii))
-      indices = ii
+    if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
+    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
   if iz is not None:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
@@ -338,42 +364,32 @@ Multiple selection criteria are now supported.
     dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
     zl = zmmin + iz*dz - wz*dz + zbeam
     zu = zmmin + iz*dz + wz*dz + zbeam
-    z = getattrwithsuffix(pgroup,'zp',suffixparticle)
-    if ii is not None:
-      z = take(z,ii)
-      islice = slice(len(ii))
-      indices = ii
+    if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
+    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
-  if zc is not None:
-    z = getattrwithsuffix(pgroup,'zp',suffixparticle)
-    dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
-    zl = zc - wz*dz
-    zu = zc + wz*dz
-    if ii is not None:
-      z = take(z,ii)
-      islice = slice(len(ii))
-      indices = ii
-    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+
   if xc is not None:
-    x = getattrwithsuffix(pgroup,'xp',suffixparticle)
+    if x is None: x = getattrwithsuffix(pgroup,'xp',suffixparticle)
     dx = getattrwithsuffix(w3dobject,'dx',suffix,pkg='w3d')
     xl = xc - wx*dx
     xu = xc + wx*dx
-    if ii is not None:
-      x = take(x,ii)
-      islice = slice(len(ii))
-      indices = ii
+    x,islice,indices = _setindices(x,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(xl,x[islice]),less(x[islice],xu)),indices)
   if yc is not None:
-    y = getattrwithsuffix(pgroup,'yp',suffixparticle)
+    if y is None: y = getattrwithsuffix(pgroup,'yp',suffixparticle)
     dy = getattrwithsuffix(w3dobject,'dy',suffix,pkg='w3d')
     yl = yc - wy*dy
     yu = yc + wy*dy
-    if ii is not None:
-      y = take(y,ii)
-      islice = slice(len(ii))
-      indices = ii
+    y,islice,indices = _setindices(y,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(yl,y[islice]),less(y[islice],yu)),indices)
+  if zc is not None:
+    if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
+    dz = getattrwithsuffix(w3dobject,'dz',suffix,pkg='w3d')
+    zl = zc - wz*dz
+    zu = zc + wz*dz
+    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
+    ii=compress(logical_and(less(zl,z[islice]),less(z[islice],zu)),indices)
+
   if iw < 0:
     # --- Add some smarts about choosing which method to use.
     # --- If the number of particles is increasing, then use the
@@ -396,26 +412,33 @@ Multiple selection criteria are now supported.
       # --- Once this method is used, always use it.
       selectparticles.npsprev = zeros(ns)
       npplot = getattrwithsuffix(object,'npplot',suffix)
+      if indices is None: indices = arange(ir1,ir2)
       if nps[js] <= npplot[-iw-1]:
         ii = indices
       else:
         ii = populationsample(indices,npplot[-iw-1])
   elif iw == 0:
-    if ii is None: ii = indices
+    if ii is None:
+      # --- If all particles are being selected, then a slice object is returned
+      # --- so that a direct refer to the particle array is returned, avoiding
+      # --- memory copying.
+      if indices is None: ii = islice
+      else:               ii = indices
   else:
     zbeam = getattrwithsuffix(object,'zbeam',suffix)
     zwindows = getattrwithsuffix(object,'zwindows',suffix)
     if win is None: win = zwindows[:,iw] + zbeam
     if len(shape(win)) == 2: win = win[:,iw]
     if z is None: z = getattrwithsuffix(pgroup,'zp',suffixparticle)
-    if ii is not None:
-      z = take(z,ii)
-      islice = slice(len(ii))
-      indices = ii
+    z,islice,indices = _setindices(z,ii,islice,indices,ir1,ir2)
     ii=compress(logical_and(less(win[0],z[islice]),less(z[islice],win[1])),
                 indices)
-  uz = getattrwithsuffix(pgroup,'uzp',suffixparticle)
-  ii = compress(not_equal(take(uz,ii),0.),ii)
+
+  if usezerovzflag or top.clearlostpart == 0:
+    if indices is None: ii = arange(ir1,ir2)
+    uz = getattrwithsuffix(pgroup,'uzp',suffixparticle)
+    ii = compress(not_equal(take(uz,ii),0.),ii)
+
   return ii
 
 #-------------------------------------------------------------------------
@@ -431,16 +454,20 @@ def getn(iw=0,gather=1,bcast=None,**kw):
   "Returns number of particles in selection."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
-  if lparallel and gather: return globalsum(len(ii))
-  else: return len(ii)
+  if isinstance(ii,slice): l = ii.stop - ii.start + 1
+  else:                    l = len(ii)
+  if lparallel and gather: return globalsum(l)
+  else:                    return l
 #-------------------------------------------------------------------------
 def getx(iw=0,gather=1,bcast=None,**kw):
   "Returns the X positions."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  if isinstance(ii,slice):
+    result = x[ii]
+  elif len(ii) > 0:
     result = take(x,ii)
   else:
     result = array([],'d')
@@ -452,8 +479,10 @@ def gety(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    y = getattrwithsuffix(pgroup,'yp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice):
+    result = y[ii]
+  elif len(ii) > 0:
     result = take(y,ii)
   else:
     result = array([],'d')
@@ -465,8 +494,10 @@ def getz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    z = getattrwithsuffix(pgroup,'zp',suffix)
+  z = getattrwithsuffix(pgroup,'zp',suffix)
+  if isinstance(ii,slice):
+    result = z[ii]
+  elif len(ii) > 0:
     result = take(z,ii)
   else:
     result = array([],'d')
@@ -478,9 +509,11 @@ def getr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice):
+    result = sqrt(x[ii]**2 + y[ii]**2)
+  elif len(ii) > 0:
     result = sqrt(take(x,ii)**2 + take(y,ii)**2)
   else:
     result = array([],'d')
@@ -492,9 +525,11 @@ def gettheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice):
+    result = arctan2(y[ii],x[ii])
+  elif len(ii) > 0:
     result = arctan2(take(y,ii),take(x,ii))
   else:
     result = array([],'d')
@@ -506,9 +541,12 @@ def getvx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    if top.lrelativ: result = ux[ii]*gaminv[ii]
+    else:            result = ux[ii]
+  elif len(ii) > 0:
     result = take(ux,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -520,9 +558,12 @@ def getvy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    if top.lrelativ: result = uy[ii]*gaminv[ii]
+    else:            result = uy[ii]
+  elif len(ii) > 0:
     result = take(uy,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -534,9 +575,12 @@ def getvz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    if top.lrelativ: result = uz[ii]*gaminv[ii]
+    else:            result = uz[ii]
+  elif len(ii) > 0:
     result = take(uz,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
@@ -548,12 +592,15 @@ def getvr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    tt = arctan2(y[ii],x[ii])
+    result = (ux[ii]*cos(tt) + uy[ii]*sin(tt))*gaminv[ii]
+  elif len(ii) > 0:
     tt = arctan2(take(y,ii),take(x,ii))
     result = (take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt))*take(gaminv,ii)
   else:
@@ -566,12 +613,15 @@ def getvtheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    tt = arctan2(y[ii],x[ii])
+    result = (-ux[ii]*sin(tt) + uy[ii]*cos(tt))*gaminv[ii]
+  elif len(ii) > 0:
     tt = arctan2(take(y,ii),take(x,ii))
     result = (-take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt))*take(gaminv,ii)
   else:
@@ -584,8 +634,10 @@ def getux(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  if isinstance(ii,slice):
+    result = ux[ii]
+  elif len(ii) > 0:
     result = take(ux,ii)
   else:
     result = array([],'d')
@@ -597,8 +649,10 @@ def getuy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  if isinstance(ii,slice):
+    result = uy[ii]
+  elif len(ii) > 0:
     result = take(uy,ii)
   else:
     result = array([],'d')
@@ -610,8 +664,10 @@ def getuz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice):
+    result = uz[ii]
+  elif len(ii) > 0:
     result = take(uz,ii)
   else:
     result = array([],'d')
@@ -623,9 +679,11 @@ def getxp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice):
+    result = ux[ii]/uz[ii]
+  elif len(ii) > 0:
     result = take(ux,ii)/take(uz,ii)
   else:
     result = array([],'d')
@@ -637,9 +695,11 @@ def getyp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice):
+    result = uy[ii]/uz[ii]
+  elif len(ii) > 0:
     result = take(uy,ii)/take(uz,ii)
   else:
     result = array([],'d')
@@ -651,12 +711,16 @@ def getrp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice):
+    tt = arctan2(y[ii],x[ii])
+    result = ((ux[ii]*cos(tt)+uy[ii]*sin(tt))/
+              uz[ii])
+  elif len(ii) > 0:
     tt = arctan2(take(y,ii),take(x,ii))
     result = ((take(ux,ii)*cos(tt)+take(uy,ii)*sin(tt))/
               take(uz,ii))
@@ -670,12 +734,16 @@ def gettp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ux = getattrwithsuffix(pgroup,'uxp',suffix)
-    uy = getattrwithsuffix(pgroup,'uyp',suffix)
-    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice):
+    tt = arctan2(y[ii],x[ii])
+    result = ((-ux[ii]*sin(tt)+uy[ii]*cos(tt))/
+              uz[ii])
+  elif len(ii) > 0:
     tt = arctan2(take(y,ii),take(x,ii))
     result = ((-take(ux,ii)*sin(tt)+take(uy,ii)*cos(tt))/
               take(uz,ii))
@@ -689,8 +757,10 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice):
+    result = gaminv[ii]
+  elif len(ii) > 0:
     result = take(gaminv,ii)
   else:
     result = array([],'d')
@@ -702,8 +772,10 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ex = getattrwithsuffix(pgroup,'ex',suffix)
+  ex = getattrwithsuffix(pgroup,'ex',suffix)
+  if isinstance(ii,slice):
+    result = ex[ii]
+  elif len(ii) > 0:
     result = take(ex,ii)
   else:
     result = array([],'d')
@@ -715,8 +787,10 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice):
+    result = ey[ii]
+  elif len(ii) > 0:
     result = take(ey,ii)
   else:
     result = array([],'d')
@@ -728,8 +802,10 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    ez = getattrwithsuffix(pgroup,'ez',suffix)
+  ez = getattrwithsuffix(pgroup,'ez',suffix)
+  if isinstance(ii,slice):
+    result = ez[ii]
+  elif len(ii) > 0:
     result = take(ez,ii)
   else:
     result = array([],'d')
@@ -741,11 +817,14 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ex = getattrwithsuffix(pgroup,'ex',suffix)
-    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ex = getattrwithsuffix(pgroup,'ex',suffix)
+  ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice):
+    theta = arctan2(y[ii],x[ii])
+    result = ex[ii]*cos(theta) + ey[ii]*sin(theta)
+  elif len(ii) > 0:
     theta = arctan2(take(y,ii),take(x,ii))
     result = take(ex,ii)*cos(theta) + take(ey,ii)*sin(theta)
   else:
@@ -758,11 +837,14 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    x = getattrwithsuffix(pgroup,'xp',suffix)
-    y = getattrwithsuffix(pgroup,'yp',suffix)
-    ex = getattrwithsuffix(pgroup,'ex',suffix)
-    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  x = getattrwithsuffix(pgroup,'xp',suffix)
+  y = getattrwithsuffix(pgroup,'yp',suffix)
+  ex = getattrwithsuffix(pgroup,'ex',suffix)
+  ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice):
+    theta = arctan2(y[ii],x[ii])
+    result = -ex[ii]*sin(theta) + ey[ii]*cos(theta)
+  elif len(ii) > 0:
     theta = arctan2(take(y,ii),take(x,ii))
     result = -take(ex,ii)*sin(theta) + take(ey,ii)*cos(theta)
   else:
@@ -775,8 +857,10 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    bx = getattrwithsuffix(pgroup,'bx',suffix)
+  bx = getattrwithsuffix(pgroup,'bx',suffix)
+  if isinstance(ii,slice):
+    result = bx[ii]
+  elif len(ii) > 0:
     result = take(bx,ii)
   else:
     result = array([],'d')
@@ -788,8 +872,10 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    by = getattrwithsuffix(pgroup,'by',suffix)
+  by = getattrwithsuffix(pgroup,'by',suffix)
+  if isinstance(ii,slice):
+    result = by[ii]
+  elif len(ii) > 0:
     result = take(by,ii)
   else:
     result = array([],'d')
@@ -801,8 +887,10 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  if len(ii) > 0:
-    bz = getattrwithsuffix(pgroup,'bz',suffix)
+  bz = getattrwithsuffix(pgroup,'bz',suffix)
+  if isinstance(ii,slice):
+    result = bz[ii]
+  elif len(ii) > 0:
     result = take(bz,ii)
   else:
     result = array([],'d')
@@ -825,8 +913,11 @@ def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
     dopid = (npid > 0)
   if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
-    if len(ii) > 0:
-      pid = getattrwithsuffix(pgroup,'pid',suffix)
+    pid = getattrwithsuffix(pgroup,'pid',suffix)
+    if isinstance(ii,slice):
+      if id >= 0: result = pid[ii,id]
+      else:       result = pid[ii,:]
+    elif len(ii) > 0:
       if id >= 0: result = take(pid[:,id],ii)
       else:       result = take(pid[:,:],ii)
     else:
@@ -849,6 +940,7 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
   lost = kw.get('lost',0)
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
+    if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
     np=len(ii)
     nptot+=np
     x  = take(getattrwithsuffix(object,'xp', suffix),ii)
@@ -901,36 +993,43 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
     return vx,vy,vz
 #-------------------------------------------------------------------------
 # Add the selectparticles documentation to each of the routines.
-if sys.version[:5] != "1.5.1":
-  if lparallel:
-    _gatherdoc = (
+if lparallel:
+  _gatherdoc = (
 """  gather=1 When 1, all data is gathered to PE0
   bcast=1: when true, result is broadcast to all processors
            Note that the setgetparticlebcastdefault can be
            used to set the default value to 0, which is
            more efficient if the bcast is not needed.
 """)
-  else:
-    _gatherdoc = ''
-  _gatherdoc = _gatherdoc + ' lost=0: when true, gets lost particles'
-  getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _gatherdoc
-  gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _gatherdoc
-  gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  gettp.__doc__ = gettp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getgaminv.__doc__ = getgaminv.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _gatherdoc
+else:
+  _gatherdoc = ''
+_gatherdoc = _gatherdoc + ' lost=0: when true, gets lost particles'
+getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
+getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _gatherdoc
+gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _gatherdoc
+getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _gatherdoc
+getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _gatherdoc
+gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _gatherdoc
+getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _gatherdoc
+getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _gatherdoc
+getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _gatherdoc
+getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _gatherdoc
+getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _gatherdoc
+getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _gatherdoc
+getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _gatherdoc
+getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _gatherdoc
+getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _gatherdoc
+gettp.__doc__ = gettp.__doc__ + selectparticles.__doc__ + _gatherdoc
+getgaminv.__doc__ = getgaminv.__doc__ + selectparticles.__doc__ + _gatherdoc
+getex.__doc__ = getex.__doc__ + selectparticles.__doc__ + _gatherdoc
+getey.__doc__ = getey.__doc__ + selectparticles.__doc__ + _gatherdoc
+getez.__doc__ = getez.__doc__ + selectparticles.__doc__ + _gatherdoc
+geter.__doc__ = geter.__doc__ + selectparticles.__doc__ + _gatherdoc
+getetheta.__doc__ = getetheta.__doc__ + selectparticles.__doc__ + _gatherdoc
+getbx.__doc__ = getbx.__doc__ + selectparticles.__doc__ + _gatherdoc
+getby.__doc__ = getby.__doc__ + selectparticles.__doc__ + _gatherdoc
+getbz.__doc__ = getbz.__doc__ + selectparticles.__doc__ + _gatherdoc
+getpid.__doc__ = getpid.__doc__ + selectparticles.__doc__ + _gatherdoc
 #-------------------------------------------------------------------------
 
 ##########################################################################
