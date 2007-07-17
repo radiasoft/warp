@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.57 2007/07/17 21:22:02 dave Exp $"
+particles_version = "$Id: particles.py,v 1.58 2007/07/17 23:59:05 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -294,6 +294,8 @@ Multiple selection criteria are now supported.
     for js in jslist:
         kwvalues['js'] = js
         newparts = selectparticles(iw, kwvalues)
+        if isinstance(newparts,slice):
+          newparts = arange(newparts.start,newparts.stop)
         partlist = array(list(partlist)+list(newparts))
     return partlist
 
