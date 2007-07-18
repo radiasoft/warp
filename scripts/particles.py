@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.58 2007/07/17 23:59:05 dave Exp $"
+particles_version = "$Id: particles.py,v 1.59 2007/07/18 01:18:20 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -456,7 +456,7 @@ def getn(iw=0,gather=1,bcast=None,**kw):
   "Returns number of particles in selection."
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
-  if isinstance(ii,slice): l = ii.stop - ii.start + 1
+  if isinstance(ii,slice): l = ii.stop - ii.start
   else:                    l = len(ii)
   if lparallel and gather: return globalsum(l)
   else:                    return l
@@ -466,8 +466,9 @@ def getx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = x[ii]
   elif len(ii) > 0:
     result = take(x,ii)
@@ -481,8 +482,9 @@ def gety(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = y[ii]
   elif len(ii) > 0:
     result = take(y,ii)
@@ -496,8 +498,9 @@ def getz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  z = getattrwithsuffix(pgroup,'zp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    z = getattrwithsuffix(pgroup,'zp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = z[ii]
   elif len(ii) > 0:
     result = take(z,ii)
@@ -511,9 +514,10 @@ def getr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = sqrt(x[ii]**2 + y[ii]**2)
   elif len(ii) > 0:
     result = sqrt(take(x,ii)**2 + take(y,ii)**2)
@@ -527,9 +531,10 @@ def gettheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = arctan2(y[ii],x[ii])
   elif len(ii) > 0:
     result = arctan2(take(y,ii),take(x,ii))
@@ -543,9 +548,10 @@ def getvx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = ux[ii]*gaminv[ii]
     else:            result = ux[ii]
   elif len(ii) > 0:
@@ -560,9 +566,10 @@ def getvy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = uy[ii]*gaminv[ii]
     else:            result = uy[ii]
   elif len(ii) > 0:
@@ -577,9 +584,10 @@ def getvz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     if top.lrelativ: result = uz[ii]*gaminv[ii]
     else:            result = uz[ii]
   elif len(ii) > 0:
@@ -594,12 +602,13 @@ def getvr(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = (ux[ii]*cos(tt) + uy[ii]*sin(tt))*gaminv[ii]
   elif len(ii) > 0:
@@ -615,12 +624,13 @@ def getvtheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = (-ux[ii]*sin(tt) + uy[ii]*cos(tt))*gaminv[ii]
   elif len(ii) > 0:
@@ -636,8 +646,9 @@ def getux(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = ux[ii]
   elif len(ii) > 0:
     result = take(ux,ii)
@@ -651,8 +662,9 @@ def getuy(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = uy[ii]
   elif len(ii) > 0:
     result = take(uy,ii)
@@ -666,8 +678,9 @@ def getuz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = uz[ii]
   elif len(ii) > 0:
     result = take(uz,ii)
@@ -681,9 +694,10 @@ def getxp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = ux[ii]/uz[ii]
   elif len(ii) > 0:
     result = take(ux,ii)/take(uz,ii)
@@ -697,9 +711,10 @@ def getyp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = uy[ii]/uz[ii]
   elif len(ii) > 0:
     result = take(uy,ii)/take(uz,ii)
@@ -713,12 +728,13 @@ def getrp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = ((ux[ii]*cos(tt)+uy[ii]*sin(tt))/
               uz[ii])
@@ -736,12 +752,13 @@ def gettp(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ux = getattrwithsuffix(pgroup,'uxp',suffix)
-  uy = getattrwithsuffix(pgroup,'uyp',suffix)
-  uz = getattrwithsuffix(pgroup,'uzp',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ux = getattrwithsuffix(pgroup,'uxp',suffix)
+    uy = getattrwithsuffix(pgroup,'uyp',suffix)
+    uz = getattrwithsuffix(pgroup,'uzp',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     tt = arctan2(y[ii],x[ii])
     result = ((-ux[ii]*sin(tt)+uy[ii]*cos(tt))/
               uz[ii])
@@ -759,8 +776,9 @@ def getgaminv(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    gaminv = getattrwithsuffix(pgroup,'gaminv',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = gaminv[ii]
   elif len(ii) > 0:
     result = take(gaminv,ii)
@@ -774,8 +792,9 @@ def getex(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ex = getattrwithsuffix(pgroup,'ex',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = ex[ii]
   elif len(ii) > 0:
     result = take(ex,ii)
@@ -789,8 +808,9 @@ def getey(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ey = getattrwithsuffix(pgroup,'ey',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = ey[ii]
   elif len(ii) > 0:
     result = take(ey,ii)
@@ -804,8 +824,9 @@ def getez(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  ez = getattrwithsuffix(pgroup,'ez',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    ez = getattrwithsuffix(pgroup,'ez',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = ez[ii]
   elif len(ii) > 0:
     result = take(ez,ii)
@@ -819,11 +840,12 @@ def geter(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ex = getattrwithsuffix(pgroup,'ex',suffix)
-  ey = getattrwithsuffix(pgroup,'ey',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     theta = arctan2(y[ii],x[ii])
     result = ex[ii]*cos(theta) + ey[ii]*sin(theta)
   elif len(ii) > 0:
@@ -839,11 +861,12 @@ def getetheta(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  x = getattrwithsuffix(pgroup,'xp',suffix)
-  y = getattrwithsuffix(pgroup,'yp',suffix)
-  ex = getattrwithsuffix(pgroup,'ex',suffix)
-  ey = getattrwithsuffix(pgroup,'ey',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    x = getattrwithsuffix(pgroup,'xp',suffix)
+    y = getattrwithsuffix(pgroup,'yp',suffix)
+    ex = getattrwithsuffix(pgroup,'ex',suffix)
+    ey = getattrwithsuffix(pgroup,'ey',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     theta = arctan2(y[ii],x[ii])
     result = -ex[ii]*sin(theta) + ey[ii]*cos(theta)
   elif len(ii) > 0:
@@ -859,8 +882,9 @@ def getbx(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  bx = getattrwithsuffix(pgroup,'bx',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    bx = getattrwithsuffix(pgroup,'bx',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = bx[ii]
   elif len(ii) > 0:
     result = take(bx,ii)
@@ -874,8 +898,9 @@ def getby(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  by = getattrwithsuffix(pgroup,'by',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    by = getattrwithsuffix(pgroup,'by',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = by[ii]
   elif len(ii) > 0:
     result = take(by,ii)
@@ -889,8 +914,9 @@ def getbz(iw=0,gather=1,bcast=None,**kw):
   if bcast is None: bcast = _particlebcastdefault[0]
   ii = selectparticles(iw=iw,kwdict=kw)
   suffix,object,pgroup = _getobjectpgroup(kw)
-  bz = getattrwithsuffix(pgroup,'bz',suffix)
-  if isinstance(ii,slice):
+  if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+    bz = getattrwithsuffix(pgroup,'bz',suffix)
+  if isinstance(ii,slice) and ii.stop > ii.start:
     result = bz[ii]
   elif len(ii) > 0:
     result = take(bz,ii)
@@ -915,8 +941,9 @@ def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
     dopid = (npid > 0)
   if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
-    pid = getattrwithsuffix(pgroup,'pid',suffix)
-    if isinstance(ii,slice):
+    if (isinstance(ii,slice) and ii.stop > ii.start) or len(ii) > 0:
+      pid = getattrwithsuffix(pgroup,'pid',suffix)
+    if isinstance(ii,slice) and ii.stop > ii.start:
       if id >= 0: result = pid[ii,id]
       else:       result = pid[ii,:]
     elif len(ii) > 0:
@@ -942,6 +969,8 @@ def getvdrifts(iw=0,js=0,jslist=None,gather=1,bcast=None,edrift=1,bdrift=1,**kw)
   lost = kw.get('lost',0)
   for js in jslist:
     ii = selectparticles(iw=iw,js=js,jslist=None,kwdict=kw)
+    if isinstance(ii,slice) and ii.stop <= ii.start: continue
+    if not isinstance(ii,slice) and len(ii) == 0: continue
     if isinstance(ii,slice): ii = arange(ii.start,ii.stop)
     np=len(ii)
     nptot+=np
