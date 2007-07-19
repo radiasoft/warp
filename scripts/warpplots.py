@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.200 2007/07/17 17:25:46 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.201 2007/07/19 16:13:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -358,7 +358,7 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
   only needed for backward compatibility."""
   kw.setdefault('type',linetype)
   if len(shape(y)) == 0: y = [y]
-  if len(shape(x)) == 0: x = [x]
+  if x is not None and len(shape(x)) == 0: x = [x]
   if type(y) is not ArrayType: y = array(y)
   if x is not None:
     if type(x) is not ArrayType: x = array(x)
