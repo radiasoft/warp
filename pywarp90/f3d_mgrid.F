@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.149 $, $Date: 2007/07/11 18:08:44 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.150 $, $Date: 2007/07/19 23:49:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2196,6 +2196,7 @@ c       --- Set temporaries with initial values.
         pzp = phi(ix   ,iy   ,izp1)
         denom = 1.
         dosubgrid = .false.
+        ppp = 1.
 
 c       --- Only use actual voltage on finest level. Set to zero for
 c       --- coarser levels since solver for the residuals.
