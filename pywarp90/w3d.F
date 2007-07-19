@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.372 $, $Date: 2007/07/14 00:33:24 $
+c@(#) File W3D.F, version $Revision: 3.373 $, $Date: 2007/07/19 17:55:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -85,7 +85,6 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
-      use Subcycling,Only:nrhopndtscopies
       use Fields3dParticles
       use Efields3d
       use GridBoundary3d
@@ -93,7 +92,7 @@ c=============================================================================
       use Io
       use Lattice
       use LatticeInternal
-      use Particles, Only: pgroup,npmax,wpid,tpid,rpid,chdtspid,
+      use Particles, Only: pgroup,npmax,chdtspid,
      &                     xoldpid,yoldpid,zoldpid,lsaveoldpos
       use Picglb
       use Picglb3d
@@ -1422,7 +1421,7 @@ c=============================================================================
       use InDiag
       use Lattice
       use LatticeInternal
-      use Particles,Only: nplive,wpid,chdtspid,spid,uxoldpid,uyoldpid,uzoldpid
+      use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid
       use Fields3d
       use Subcycling
       use Fields3dParticles
@@ -4920,8 +4919,16 @@ c            --- put position into particle arrays
              pgroup%yp(ip+i) = bt(ii)*yt(ii)*perpscal(ii) + yct(ii)
              pgroup%zp(ip+i) = zt(ii)
 c            --- put velocity into particle arrays
-             vtx = .5*vzt(ii)*epsxt(ii)/at(ii)*perpscal(ii) + vthperp_s(isid)
-             vty = .5*vzt(ii)*epsyt(ii)/bt(ii)*perpscal(ii) + vthperp_s(isid)
+             if (at(ii) == 0.) then
+               vtx = vthperp_s(isid)
+             else
+               vtx = .5*vzt(ii)*epsxt(ii)/at(ii)*perpscal(ii) + vthperp_s(isid)
+             endif
+             if (bt(ii) == 0.) then
+               vty = vthperp_s(isid)
+             else
+               vty = .5*vzt(ii)*epsyt(ii)/bt(ii)*perpscal(ii) + vthperp_s(isid)
+             endif
              pgroup%uxp(ip+i) = vzt(ii)*apt(ii)*xt(ii)*perpscal(ii) +
      &                   vtx*uxt(ii) + vzt(ii)*xpct(ii)
              pgroup%uyp(ip+i) = vzt(ii)*bpt(ii)*yt(ii)*perpscal(ii) +
@@ -4980,12 +4987,22 @@ c            --- are relative to the centroid.
              pgroup%zp(ip+i) = zt(i)
 c            --- put velocity into particle arrays
              rr = sqrt(1.-rr*rr)
-             vtx = vzt(i)*epsxt(i)/at(i)*perpscal(i) + vthperp_s(isid)
-             vty = vzt(i)*epsyt(i)/bt(i)*perpscal(i) + vthperp_s(isid)
-             pgroup%uxp(ip+i) = vzt(i)*pgroup%xp(ip+i)*apt(i)/at(i) +
-     &                   vtx*rr*cos(phi2) + vzt(i)*xpct(i)
-             pgroup%uyp(ip+i) = vzt(i)*pgroup%yp(ip+i)*bpt(i)/bt(i) +
-     &                   vty*rr*sin(phi2) + vzt(i)*ypct(i)
+             if (at(i) == 0.) then
+               vtx = vthperp_s(isid)
+               vtz = 0.
+             else
+               vtx = vzt(i)*epsxt(i)/at(i)*perpscal(i) + vthperp_s(isid)
+               vtz = vzt(i)*pgroup%xp(ip+i)*apt(i)/at(i)
+             endif
+             pgroup%uxp(ip+i) = vtz + vtx*rr*cos(phi2) + vzt(i)*xpct(i)
+             if (bt(i) == 0.) then
+               vty = vthperp_s(isid)
+               vtz = 0.
+             else
+               vty = vzt(i)*epsyt(i)/bt(i)*perpscal(i) + vthperp_s(isid)
+               vtz = vzt(i)*pgroup%yp(ip+i)*bpt(i)/bt(i)
+             endif
+             pgroup%uyp(ip+i) = vtz + vty*rr*sin(phi2) + vzt(i)*ypct(i)
              pgroup%uzp(ip+i) = vzt(i)*(1.+vtilt_s(isid)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
 c            --- The centroids are added to the transverse positions
@@ -5220,7 +5237,6 @@ c=============================================================================
      &                    lcylindrical)
       use GlobalVars
       use Subtimers3d
-      use Parallel,Only:my_index
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
@@ -7128,7 +7144,6 @@ c=============================================================================
      &                     lcylindrical)
       use GlobalVars
       use Subtimers3d
-      use Parallel,Only:my_index
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
@@ -7660,7 +7675,6 @@ c=============================================================================
       subroutine zerorhowithsampledsubcycling()
       use Subcycling
       use Fields3dParticles
-      use Parallel,Only:my_index
 
       integer(ISZ):: in1
 
@@ -7684,7 +7698,6 @@ c=============================================================================
       use Picglb,Only: it
       use Subcycling
       use Fields3dParticles
-      use Parallel,Only:my_index
 
       integer(ISZ):: in1,in2,in2tmp
 
@@ -7731,7 +7744,6 @@ c=============================================================================
       use Picglb,Only: it
       use Subcycling
       use Fields3dParticles
-      use Parallel,Only:my_index
 
       integer(ISZ):: in1,in2,in2tmp
       real(kind=8):: weight
@@ -7917,7 +7929,6 @@ c=============================================================================
       use Fields3dParticles
       use GridBoundary3d
       use FieldSolveAPI, Only: lzerorhofsapi,js1fsapi,js2fsapi
-      use Parallel,Only:my_index
       type(ParticleGroup):: pgroup
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -8250,7 +8261,9 @@ c     --- (and nrhopndtscopies is 1) since the extra rho copy is not saved.
       end
 c=============================================================================
       subroutine assignrhoandphiforfieldsolve(rhopin,phipin)
+#ifdef MPIPARALLEL
       use InMesh3d,Only: nx,ny,nzlocal
+#endif
       use Fields3d
       use Fields3dParticles
       real(kind=8),target:: rhopin(0:nxp,0:nyp,0:nzp)
@@ -8278,7 +8291,6 @@ c=============================================================================
       use InGen
       use InGen3d
       use InMesh3d
-      use Picglb3d, only: dz
       use Fields3d
       use Subcycling
       use Fields3dParticles
