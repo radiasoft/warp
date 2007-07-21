@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.150 $, $Date: 2007/07/19 23:49:19 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.151 $, $Date: 2007/07/21 00:25:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1872,12 +1872,12 @@ c Set rho to zero inside conductor points.
       return
       end
 c=============================================================================
-      subroutine handlesubgrid2(im,ip,pm,pp,dsqicos,ic,dels,volt,voltfac,
+      subroutine handlesubgrid2(im,ip,pm,pp,dsqicos,ic,nc,dels,volt,voltfac,
      &                          denom,ppp)
       integer(ISZ):: im,ip
       real(kind=8):: pm,pp,dsqicos
-      integer(ISZ):: ic
-      real(kind=8):: dels(0:5,*),volt(0:5,*),voltfac,denom
+      integer(ISZ):: ic,nc
+      real(kind=8):: dels(0:5,nc),volt(0:5,nc),voltfac,denom
       real(kind=8):: ppp
 
 c Handle the special coding needed for subgrid points, for icndbndy=2.
@@ -2206,9 +2206,9 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-        call handlesubgrid2(0,1,pxm,pxp,dxsqicos,ic,dels,volt,voltfac,denom,ppp)
-        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqicos,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(4,5,pzm,pzp,dzsqicos,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(0,1,pxm,pxp,dxsqicos,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
+        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqicos,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,dzsqicos,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the new phi based on the boundary conditions
         if (ppp < 1.) then
@@ -2534,9 +2534,9 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-        call handlesubgrid2(0,1,pxm,pxp,dxsqic,ic,dels,volt,voltfac,denom,ppp)
-        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqic,ic,dels,volt,voltfac,denom,ppp)
-        call handlesubgrid2(4,5,pzm,pzp,dzsqic,ic,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(0,1,pxm,pxp,dxsqic,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
+        if (ny > 0) call handlesubgrid2(2,3,pym,pyp,dysqic,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
+        call handlesubgrid2(4,5,pzm,pzp,dzsqic,ic,subgrid%nmax,dels,volt,voltfac,denom,ppp)
 
 c       --- calculate the residual based on the boundary conditions
         if (ppp < 1.) then
