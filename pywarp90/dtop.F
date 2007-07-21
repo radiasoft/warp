@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.153 $, $Date: 2007/06/06 23:08:02 $
+c@(#) File DTOP.F, version $Revision: 3.154 $, $Date: 2007/07/21 00:23:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -380,7 +380,7 @@ c  X- and Y- planes and in various units
       omegabx   = 2.*Pi/dvnz(taubx)
       omegaby   = 2.*Pi/dvnz(tauby)
 c  Space charge wave velocity
-      vwave = 0.5*sqrt(gfactor)*omegap*sqrt(a0*b0)
+      vwave = 0.5*sqrt(max(0.,gfactor))*omegap*sqrt(a0*b0)
 c  Ratio of space charge and emittance forces
       femtxofscx = emitx**2/dvnz(2.*genperv)*(a0 + b0)/dvnz(a0**3)
       femtyofscy = emity**2/dvnz(2.*genperv)*(a0 + b0)/dvnz(b0**3)
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.153 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.154 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
