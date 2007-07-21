@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.212 $, $Date: 2007/06/27 15:08:07 $
+c@(#) File TOP.F, version $Revision: 3.213 $, $Date: 2007/07/21 00:14:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2449,7 +2449,6 @@ c  Converts v to u, sets inverse gamma factor for all particles
 c=============================================================================
       subroutine zpartbnd(pgroup,zmmax,zmmin,dz)
       use ParticleGroupmodule
-      use Picglb, only: it
       use GlobalVars
       use InGen
       use InPart
@@ -2574,7 +2573,6 @@ c=============================================================================
 c=============================================================================
       subroutine semitransparent_disc(pgroup,dz)
       use ParticleGroupmodule
-      use Picglb, only: it
       use InGen
       use Moments
       use InPart
@@ -2729,7 +2727,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Subtimerstop
       use InPart
-      use Particles,Only: npmax,npid
+      use Particles,Only: npmax
       type(ParticleGroup):: pgroup
 
 c Allocate space for particles and set up associated arrays.
@@ -3821,7 +3819,7 @@ c=============================================================================
 c=============================================================================
       subroutine chgparticlesdts(pgroup)
       use ParticleGroupmodule
-      use Particles, Only: chdtspid,spid
+      use Particles, Only: chdtspid
       type(ParticleGroup):: pgroup
       
       integer(ISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns),is,ip,idest,ip0,idest0

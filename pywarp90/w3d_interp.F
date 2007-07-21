@@ -738,8 +738,6 @@ c========================================================================
       use DKInterp
       use DKInterptmp
       use ParticleGroupmodule
-      use Particles,Only: vdxoldpid,vdyoldpid,vdzoldpid,
-     &  uparBopid,bxoldpid,byoldpid,bzoldpid
 c      use InGen
 c      use Picglb
       type(ParticleGroup):: pgroup

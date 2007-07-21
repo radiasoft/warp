@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.93 $, $Date: 2007/06/23 01:09:22 $
+c@(#) File w3d_injection.F, version $Revision: 1.94 $, $Date: 2007/07/21 00:14:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3788,7 +3788,6 @@ c=============================================================================
       use ParticleGroupmodule
       use Subtimers3d
       use Constant,Only: pi
-      use InPart,Only: ns
       use Particles,Only: wpid
       use InGen3d
       use InjectVars,Only: ninject,inj_d,injpid,rinject
