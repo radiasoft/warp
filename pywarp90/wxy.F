@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.83 $, $Date: 2007/06/04 22:53:09 $
+c@(#) File WXY.M, version $Revision: 3.84 $, $Date: 2007/07/21 00:23:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -393,7 +393,7 @@ c=============================================================================
       use InGenxy
       use Picglb3d
       use Ctl_to_pic
-      use Particles,Only: pgroup,nplive
+      use Particles,Only: pgroup
       use Particlesxy
 
 c  Takes a time step

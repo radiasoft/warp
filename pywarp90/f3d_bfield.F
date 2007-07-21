@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.39 $, $Date: 2007/06/06 23:54:20 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.40 $, $Date: 2007/07/21 00:23:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -1603,7 +1603,9 @@ c=============================================================================
      &                               my_index,nslaves,izpslave,nzpslave,
      &                               izfsslave,nzfsslave)
 
+#ifdef MPIPARALLEL
       use BFieldGrid,Only: ljsummedonboundaries
+#endif
       integer(ISZ):: nx,ny,nzlocal,nxp,nyp,nzp,nzpguard
       real(kind=8):: j(0:2,0:nx,0:ny,0:nzlocal)
       real(kind=8):: jp(0:2,0:nxp,0:nyp,0:nzp)
@@ -2028,7 +2030,7 @@ c=============================================================================
       subroutine bvp3d(iwhich,bfstype)
       use Constant
       use BFieldGrid
-      use InGen3d, only: filt,solvergeom,RZgeom
+      use InGen3d, only: solvergeom,RZgeom
       integer(ISZ):: iwhich,bfstype
 
       integer(ISZ):: id,idmax
@@ -2135,7 +2137,7 @@ c=============================================================================
       use BFieldGridTypemodule
       use LatticeInternal, only: linbend
       use Picglb, only: zbeam,zgrid
-      use InGen3d, only: filt,solvergeom,l2symtry,l4symtry
+      use InGen3d, only: filt,l2symtry,l4symtry
       use GridBoundary3d, only: bound0,boundnz,boundxy
       use PSOR3d, only: gridmode
       use Parallel, only: my_index,nslaves,izfsslave,nzfsslave

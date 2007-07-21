@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.128 $, $Date: 2007/06/12 16:32:39 $
+c@(#) File F3D.M, version $Revision: 3.129 $, $Date: 2007/07/21 00:23:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4517,7 +4517,7 @@ c=============================================================================
       subroutine setcndtr(xmmin,ymmin,zmminlocal,zmmin,zbeam,zgrid,nx,ny,nz,
      &                    dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
-      use InGen, ONLY:fstype
+c     use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom,XZgeom
       use Conductor3d
       integer(ISZ):: nx,ny,nz
@@ -6163,7 +6163,6 @@ c===========================================================================
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                     condid)
       use Surface_of_Rev
-      use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
       use Conductor3d
       character(*):: rofzfunc
@@ -6769,8 +6768,7 @@ c========================================================================
      &                    ix_axis,iy_axis,
      &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
-      use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,XYZgeom,AMRgeom
       use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
@@ -7379,7 +7377,6 @@ c===========================================================================
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                       condid)
       use Surface_of_Rev
-      use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,XYZgeom,RZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
       use Conductor3d
       character(*):: rminofz,rmaxofz

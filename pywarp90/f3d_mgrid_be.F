@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.37 $, $Date: 2007/07/11 18:07:07 $
+c version $Revision: 1.38 $, $Date: 2007/07/21 00:23:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -71,7 +71,6 @@ c=============================================================================
       subroutine setupiondensitygrid3d(xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nzlocal,
      &                                 rho,iondensitygrid3d)
       use BoltzmannElectrons
-      use Constant,Only: eps0
       use Grid3dtypemodule
       real(kind=8):: xmmin,ymmin,zmmin
       integer(ISZ):: nx,ny,nzlocal
