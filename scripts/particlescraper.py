@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.57 2007/06/26 12:44:51 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.58 2007/07/23 22:26:45 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -86,21 +86,15 @@ conductors are an argument.
     if self.lsavecondid:
       top.lsavelostpart = true
     if self.lsaveintercept:
-      if not top.lsaveoldpos:top.lsaveoldpos=true
       # --- Note that nextpid returns numbers based on 1 based indexing
-      if top.xoldpid==0: top.xoldpid=nextpid()
-      if top.yoldpid==0: top.yoldpid=nextpid()
-      if top.zoldpid==0: top.zoldpid=nextpid()
-      self.xoldpid = top.xoldpid - 1
-      self.yoldpid = top.yoldpid - 1
-      self.zoldpid = top.zoldpid - 1
+      self.xoldpid = nextpid() - 1
+      self.yoldpid = nextpid() - 1
+      self.zoldpid = nextpid() - 1
       if self.lrefineintercept or self.lrefineallintercept:
-        if top.uxoldpid==0: top.uxoldpid=nextpid()
-        if top.uyoldpid==0: top.uyoldpid=nextpid()
-        if top.uzoldpid==0: top.uzoldpid=nextpid()
-        self.uxoldpid = top.uxoldpid - 1
-        self.uyoldpid = top.uyoldpid - 1
-        self.uzoldpid = top.uzoldpid - 1
+        self.uxoldpid = nextpid() - 1
+        self.uyoldpid = nextpid() - 1
+        self.uzoldpid = nextpid() - 1
+      installbeforestep(self.saveolddata)
       setuppgroup(top.pgroup)
     self.l_print_timing=0
     # --- If the user specified the grid, then add the conductors
@@ -199,6 +193,19 @@ after load balancing."""
     # --- There is a problem with this so don't use for now
     #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
     #                   self.grid.nx,self.grid.ny,self.grid.nz)
+
+  def saveolddata(self):
+    for js in xrange(top.pgroup.ns):
+      if top.pgroup.ldts[js]:
+        # --- The code can be written this way now since the get routines
+        # --- can now return a direct reference to the data.
+        getpid(id=self.xoldpid,js=js,gather=0)[:] = getx(js=js,gather=0)
+        getpid(id=self.yoldpid,js=js,gather=0)[:] = gety(js=js,gather=0)
+        getpid(id=self.zoldpid,js=js,gather=0)[:] = getz(js=js,gather=0)
+        if self.lrefineintercept or self.lrefineallintercept:
+          getpid(id=self.uxoldpid,js=js,gather=0)[:] = getux(js=js,gather=0)
+          getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
+          getpid(id=self.uzoldpid,js=js,gather=0)[:] = getuz(js=js,gather=0)
 
   def scrapeall(self,clear=0,local=0):
     if local:
