@@ -5682,7 +5682,6 @@ INTEGER(ISZ) :: i, ic
       call solve_multigridz(grid=grid)
     ELSE IF(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom) then
       call solve_multigridrz(grid=grid, accuracy=accuracy, l_for_timing=.false.)
-      if (l_get_fields_on_grid) call getfieldsfromphip(grid%phip,grid%bndfirst,grid%nr,grid%nz,grid%dr,grid%dz,grid%erp,grid%ezp)
     END IF
 
     IF(associated(grid%next)) call solve_mgridrz(grid%next,accuracy,.false.)
@@ -6059,6 +6058,7 @@ TYPE(CONDtype), POINTER :: c
   b%cndlast%nbbnd = conductors%evensubgrid%n + conductors%oddsubgrid%n
   b%cndlast%ncond = conductors%interior%n
   iii=0
+!  write(0,*) conductors%interior%indx(kl,:)
   do ii=1,conductors%interior%n
     iii = iii + 1
     b%cndlast%jcond(iii) = conductors%interior%indx(0 ,ii)+1
@@ -6488,7 +6488,7 @@ do iz=0,nzzarr
   wzg = (iz*dzz - zz)*dzi - izg
   izg = izg+1
 
-  if (1 <= izg .and. izg <= nz+1) then
+  if (1 <= izg .and. izg <= nzlocal+1) then
    linechg(iz) = 0.
    do j = 1, basegrid%nr+1
     linechg(iz) = linechg(iz) + basegrid%rho(j,izg)/(basegrid%invvol(j)*basegrid%dz)*(1. - wzg)
@@ -6496,7 +6496,7 @@ do iz=0,nzzarr
   else
     linechg(iz) = 0.
   endif
-  if (1 <= izg+1 .and. izg+1 <= nz+1) then
+  if (1 <= izg+1 .and. izg+1 <= nzlocal+1) then
    do j = 1, basegrid%nr+1
     linechg(iz) = linechg(iz) + basegrid%rho(j,izg+1)/(basegrid%invvol(j)*basegrid%dz)*wzg
    end do
@@ -8157,7 +8157,8 @@ implicit none
 
   if(.not.basegrid%l_parallel) return
   call get_phip_from_phi(basegrid)
-
+  if (l_get_fields_on_grid) call getallfieldsfromphip()
+  
 end subroutine getphiforparticlesrz
 
 subroutine get_phip_from_phi(grid)
@@ -10101,7 +10102,8 @@ TYPE(BNDtype), pointer :: b
       mglevelsnz(mglevel) = b%nz
       mglevelsiz(mglevel) = 0
 #endif
-      mglevelsnzlocal(mglevel) = b%nz
+!      mglevelsnzlocal(mglevel) = b%nz
+      mglevelsnz(mglevel) = b%nz ! mglevelsnzlocal does not seem to be used
       mglevelsly(mglevel) = 1.
       mglevelslz(mglevel) = b%dz/grid%bndfirst%dz
     end if
@@ -10986,3 +10988,21 @@ enddo
 return
 
 end subroutine updateguardcells2d
+
+subroutine getallfieldsfromphip()
+use multigridrz
+TYPE(GRIDtype), POINTER :: f
+integer(ISZ) :: i
+
+f => basegrid
+do i=1, ngrids
+  call getfieldsfromphip(f%phip,f%bndfirst,f%nr,f%nz,f%dr,f%dz,f%erp,f%ezp)
+  if(associated(f%next)) then
+    f=>f%next
+  elseif(associated(f%down)) then
+    f=>f%down
+  endif
+enddo
+return
+
+end subroutine getallfieldsfromphip
