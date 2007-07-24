@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.373 $, $Date: 2007/07/19 17:55:31 $
+c@(#) File W3D.F, version $Revision: 3.374 $, $Date: 2007/07/24 18:35:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4325,6 +4325,11 @@ c  Picglb is included only to use zbeam
 c  Call the user supplied particle loading routine if requested
       if (lcallparticleloader) call execuser("callparticleloader")
 
+c     --- Make sure that sid is set if it is not set by the user.
+      do js=0,pgroup%ns-1
+        if (pgroup%sid(js) == -1) pgroup%sid(js) = js
+      enddo
+
 c  If distrbtn is not set by the user, exit
       if (distrbtn == "none") then
 !$OMP MASTER
@@ -4471,7 +4476,6 @@ c  Allocate scratch space for load. Must be done in the parallel block
       endif
 
       do js=0,pgroup%ns-1
-        if (pgroup%sid(js) == -1) pgroup%sid(js) = js
         isid = pgroup%sid(js)+1
 
 c       --- Get number of particles to be loaded for this species.
@@ -5142,11 +5146,6 @@ c--------------------------------
 
 c     --- end of if checking for positive npm and distrbtn is not preload
       endif
-
-c     --- Make sure that sid is set if it is not set by the user.
-      do js=0,pgroup%ns-1
-        if (pgroup%sid(js) == -1) pgroup%sid(js) = js
-      enddo
 
 c     --- Find maximum of zdist, which is used to scale sw.  See below.
       if (nzdist > 0) then
