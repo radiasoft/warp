@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.164 2007/07/11 18:34:01 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.165 2007/07/24 20:48:15 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1703,6 +1703,8 @@ Creates a grid object which can generate conductor data.
     self.nz = _default(nz,solver.nz)
     self.nzlocal = _default(nzlocal,solver.nzlocal)
     if self.nzlocal == 0: self.nzlocal = self.nz
+    if nz is not None and nzlocal is None and not lparallel:
+      self.nzlocal = self.nz
     self.xmmin = _default(xmmin,solver.xmmin)
     self.ymmin = _default(ymmin,solver.ymmin)
     self.zmmin = _default(zmmin,solver.zmmin)
