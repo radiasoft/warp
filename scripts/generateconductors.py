@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.165 2007/07/24 20:48:15 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.166 2007/07/25 15:23:42 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -399,7 +399,7 @@ Should never be directly created by the user.
     mins = self.getextent().mins
     maxs = self.getextent().maxs
     g = getregisteredsolver()
-    if g is None and (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]):
+    if g is None and (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom]):
       g = frz.basegrid
       # --- Note that frz.basegrid.phi has fortran ordering and the .shape
       # --- attribute can only be changed on C ordered arrays. The transpose
@@ -499,7 +499,7 @@ Should never be directly created by the user.
       # --- accounted for properly. It needs to be explicitly subtracted off
       # --- since it should not be included as image charge.)
       qinterior=zeros(1,'d')
-      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom]:
+      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom]:
         cond_sumrhointerior2d(qinterior,g,nx,nz,rho[:,0,:],ixmin,ixmax,izmin,izmax,dx,xmmin)
       else:
         subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
@@ -860,6 +860,10 @@ Assembly aligned along X axis
     arglist[-11] = argtuple[-10]
     arglist[-10] = argtuple[- 9]
     arglist[- 9] = argtuple[-11]
+    # --- permutate velocities
+    arglist[-8] = argtuple[-7]
+    arglist[-7] = argtuple[-6]
+    arglist[-6] = argtuple[-8]
     # --- permutate intercept coordinates
     arglist[-5] = argtuple[-4]
     arglist[-4] = argtuple[-3]
@@ -871,9 +875,17 @@ Assembly aligned along X axis
     # --- Undo the surface normals
     ttheta = arglist[-2]
     tphi = arglist[-1]
-    itheta = arctan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
-                     sin(tphi)*sin(ttheta))
-    iphi = arctan2(cos(tphi)*sin(ttheta),cos(ttheta))
+    if 0:  # original coding from DPG
+      itheta = arctan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
+                       sin(tphi)*sin(ttheta))
+      iphi = arctan2(cos(tphi)*sin(ttheta),cos(ttheta))
+    else: # alternative from JLV
+      y=cos(tphi)*sin(ttheta)
+      z=sin(tphi)*sin(ttheta)
+      x=cos(ttheta)
+      r=sqrt(x*x+y*y)
+      itheta = arctan2(r,z)
+      iphi   = arctan2(y,x)
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
 
@@ -946,6 +958,9 @@ Assembly aligned along Y axis
     apply(self.zgeneratord,arglist)
 
   def yintercept(self,*argtuple):
+#    l=len(argtuple)
+#    for i in range(l):
+#      print -i-1,argtuple[-i-1]
     arglist = list(argtuple)
     # --- permutate the object center
     arglist[-15] = argtuple[-13]
@@ -955,6 +970,10 @@ Assembly aligned along Y axis
     arglist[-11] = argtuple[- 9]
     arglist[-10] = argtuple[-11]
     arglist[- 9] = argtuple[-10]
+    # --- permutate velocities
+    arglist[-8] = argtuple[-6]
+    arglist[-7] = argtuple[-8]
+    arglist[-6] = argtuple[-7]
     # --- permutate intercept coordinates
     arglist[-5] = argtuple[-3]
     arglist[-4] = argtuple[-5]
@@ -966,9 +985,17 @@ Assembly aligned along Y axis
     # --- Undo the surface normals
     ttheta = arglist[-2]
     tphi = arglist[-1]
-    itheta = arctan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
-                   cos(tphi)*sin(ttheta))
-    iphi = arctan2(cos(ttheta),sin(tphi)*sin(ttheta))
+    if 0:  # original coding from DPG
+      itheta = arctan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
+                     cos(tphi)*sin(ttheta))
+      iphi = arctan2(cos(ttheta),sin(tphi)*sin(ttheta))
+    else: # alternative from JLV
+      z=cos(tphi)*sin(ttheta)
+      x=sin(tphi)*sin(ttheta)
+      y=cos(ttheta)
+      r=sqrt(x*x+y*y)
+      itheta = arctan2(r,z)
+      iphi   = arctan2(y,x)
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
 
@@ -1337,7 +1364,7 @@ Installs the data into the WARP database
     # --- database. This also copies all of the accumulated data back into
     # --- the database to allow for plotting and diagnostics.
     if ntot > 0 and installrz:
-      if(solvergeom==w3d.RZgeom or solvergeom==w3d.XZgeom or solvergeom==w3d.XYgeom):
+      if solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom]:
         if grid is None:
           frz.install_conductors_rz(conductors,frz.basegrid)
         else:
