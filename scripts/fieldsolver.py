@@ -685,8 +685,11 @@ the diagnostic is of interest and is meaningfull.
 
     # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
     # --- zmesh[izpslave+nzpslave] > zpslmax.
-    self.izpslave[:] = int((top.zpslmin - self.zmmin)/self.dz) - self.nzpguard
-    self.nzpslave[:] = (int((top.zpslmax - self.zmmin)/self.dz) -
+    # --- Use nint to remove round off problems - the expression
+    # --- (top.zpslmin - self.zmmin)/self.dz will always be an integer
+    # --- within roundoff anyway.
+    self.izpslave[:] = nint((top.zpslmin - self.zmmin)/self.dz) - self.nzpguard
+    self.nzpslave[:] = (nint((top.zpslmax - self.zmmin)/self.dz) -
                        self.izpslave + 1 + 2*self.nzpguard)
 
     # --- Make sure that the processors don't have grid cells
