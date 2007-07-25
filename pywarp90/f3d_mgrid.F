@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.151 $, $Date: 2007/07/21 00:25:32 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.152 $, $Date: 2007/07/25 16:34:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1292,6 +1292,12 @@ c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
       real(kind=8):: boundsavey(0:ny,2,0:nzlocal)
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr
       integer(ISZ):: ii,ix,iy,iz,ic,i1,i2
+      integer(ISZ):: nphi,nrho,nrstar,nxx
+
+      nphi = (1+nx)*(1+ny)*(3+nzlocal)
+      nrho = (1+nx)*(1+ny)*(1+nzlocal)
+      nrstar = 3+nzlocal
+      nxx = (nx+1)*(ny+1)
 
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(dxsqi)
@@ -1370,13 +1376,15 @@ c       --- no bends
         call mgsor_loop(parity,1,0,0,1,izl*nxy+2,(izr+1)*nxy,2,
      &                  iimx,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       else 
 c       --- bends
         call mgsor_loop(parity,1,izl,izr,1,2,nxy,2,
      &                  iimx,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif 
 
 c     --- Transverse boundaries     
@@ -1399,25 +1407,29 @@ c     --- Neumann boundary conditions for the transverse planes
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  -iimx,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(1) == 1) then
         call mgsor_loop(parity,nx+1,izl,izr,1,2*(nx+1),(nx+1)*ny,2*(nx+1),
      &                  iimx,-iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(2) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(3) == 1) then
         call mgsor_loop(parity,1,izl,izr,1,(nx+1)*ny+2,(nx+1)*(ny+1)-1,2,
      &                  iimx,iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
 
 c     --- lines at transverse edges
@@ -1425,25 +1437,29 @@ c     --- lines at transverse edges
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  -iimx,iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(1) == 1 .or. localbounds(2) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nx+1,nxy*(izr-izl)+nx+1,2*nxy,
      &                  iimx,-iipx,-iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(0) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy-nx,nxy*(izr-izl)+nxy-nx,2*nxy,
      &                  -iimx,iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(1) == 1 .or. localbounds(3) == 1) then
         call mgsor_loop(parity,nxy,izl,izl,1,nxy,nxy*(izr-izl)+nxy,2*nxy,
      &                  iimx,-iipx,iimy,-iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
 
 c     --- Periodic boundary conditions for the transverse planes
@@ -1451,13 +1467,15 @@ c     --- Periodic boundary conditions for the transverse planes
         call mgsor_loop(parity,iipy,izl,izr,1,nx+2,(nx+1)*ny-nx,2*(nx+1),
      &                  nx-1,iipx,iimy,iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(2) == 2) then
         call mgsor_loop(parity,1,izl,izr,1,2,nx,2,
      &                  iimx,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
       endif
       if (localbounds(1) == 2 .or. localbounds(3) == 2) then
         do iz=izl-1,izr-1
@@ -1478,7 +1496,8 @@ c     --- lines at transverse edges
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
      &                  nx-1,iipx,(nx+1)*(ny-1),iipy,iimz,iipz,
      &                  phi,rho,nxy,dxsqic,dysqic,dzsqic,spm1,linbend,
-     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx)
+     &                  rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,bendx,
+     &                  nphi,nrho,nrstar,nxx)
         do iz=izl-1+mod(izl-1+parity,2),izr-1,2
           phi(nx,0,iz) = phi(0,0,iz)
           phi(0,ny,iz) = phi(0,0,iz)
@@ -1550,12 +1569,14 @@ c=============================================================================
       subroutine mgsor_loop(i_parity,s_parity,izl,izr,izstep,
      &                      ii1,ii2,iistep,iimx,iipx,iimy,iipy,iimz,iipz,
      &                      phi1d,rho1d,nxy,dxsqic,dysqic,dzsqic,spm1,linbends,
-     &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,xx)
-      real(kind=8):: phi1d(*),rho1d(*),rstar(*),xx(*)
+     &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,xx,
+     &                      nphi,nrho,nrstar,nxx)
+      real(kind=8):: phi1d(nphi),rho1d(nrho),rstar(nrstar),xx(nxx)
       integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
       integer(ISZ):: iimx,iipx,iimy,iipy,iimz,iipz
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,dx,dxsqi,dysqi,dzsqi,rdel,const
       logical(ISZ):: linbends
+      integer(ISZ):: nphi,nrho,nrstar,nxx
 
 c This routine provides the loops over the phi array which solves the 
 c iterative equation.  The loops are set up to do an outer loop over
@@ -2698,21 +2719,19 @@ c=============================================================================
       integer(ISZ):: nxcoarse,nycoarse,nzlocalcoarse,nzcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
 
-c     --- Calculate the size of the next coarsest grid. If the current
-c     --- size is twice and odd integer, the next coarsest size will be
-c     --- n/2+1, gauranteeing that it is even.
+c     --- Calculate the size of the next coarsest grid.
+c     --- The resulting number of coarse cells must be >= n/2.
+c     --- Also, the number of cells in x and y must be even.
 c     --- Note that nzlocalcoarse is only used if full-coarsening is done.
 
       real(kind=8):: mingridsize
 
-      nxcoarse = nx/2
+      nxcoarse = (nx+1)/2
       if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
-      nycoarse = ny/2
+      nycoarse = (ny+1)/2
       if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
-      nzlocalcoarse = nzlocal/2
-      if (mod(nzlocalcoarse,2) == 1) nzlocalcoarse = nzlocalcoarse + 1
-      nzcoarse = nz/2
-      if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+      nzlocalcoarse = (nzlocal+1)/2
+      nzcoarse = (nz+1)/2
 
       mingridsize = min(dx,dy)
       mingridsize = min(mingridsize,dz)
