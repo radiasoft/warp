@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.152 $, $Date: 2007/07/25 16:34:12 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.153 $, $Date: 2007/07/25 16:36:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1571,12 +1571,12 @@ c=============================================================================
      &                      phi1d,rho1d,nxy,dxsqic,dysqic,dzsqic,spm1,linbends,
      &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,xx,
      &                      nphi,nrho,nrstar,nxx)
+      integer(ISZ):: nphi,nrho,nrstar,nxx
       real(kind=8):: phi1d(nphi),rho1d(nrho),rstar(nrstar),xx(nxx)
       integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
       integer(ISZ):: iimx,iipx,iimy,iipy,iimz,iipz
       real(kind=8):: dxsqic,dysqic,dzsqic,spm1,dx,dxsqi,dysqi,dzsqi,rdel,const
       logical(ISZ):: linbends
-      integer(ISZ):: nphi,nrho,nrstar,nxx
 
 c This routine provides the loops over the phi array which solves the 
 c iterative equation.  The loops are set up to do an outer loop over
