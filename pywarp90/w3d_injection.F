@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.94 $, $Date: 2007/07/21 00:14:50 $
+c@(#) File w3d_injection.F, version $Revision: 1.95 $, $Date: 2007/07/27 22:24:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -52,6 +52,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: p1x,p1y,p1z,p2x,p2y,p2z,w1x,w1y,w1z,area,circum
       real(kind=8):: ellipseperimeter
+      real(kind=8):: thetaextent,dtheta,tmin,tmax
       integer(ISZ):: i1x,i1y,i1z
       real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
@@ -60,7 +61,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8),pointer:: ppvz(:)
       integer(ISZ):: spreadx, spready
       integer(ISZ):: ixmin,ixmax,iymin,iymax
-      logical(ISZ):: linj_cell
+      logical(ISZ):: linj_cell,ltinj_full_circle
       real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
       real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
       real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
@@ -1455,14 +1456,27 @@ c               --- Skip sections that are out of the grid
                   rsign = -1.
                 endif
 
-c               --- Area of section of emitting surface.
-                circum = ellipseperimeter(ainj,binj)
+c               --- Area of section of emitting surface. Note that the circum includes
+c               --- any reduced angular extent.
+                thetaextent = thetamaxtinj(iz,ij) - thetamintinj(iz,ij)
+                circum = ellipseperimeter(ainj,binj)*thetaextent/(2.*pi)
                 area = dztinj(ij)*circum/nttinj(ij)
+                dtheta = thetaextent/nttinj(ij)
+
+c               --- Check if the angular extent is 2*pi, in which case particles are
+c               --- loaded over the full circle. The main issue is whether particles
+c               --- at the min and max theta range overlap or not. The dtheta/2 is
+c               --- an ad hoc fuzz to avoid round off problems.
+                if (thetaextent < 2.*pi - dtheta/2.) then
+                  ltinj_full_circle = .false.
+                else
+                  ltinj_full_circle = .true.
+                endif
 
                 do ith=0,nttinj(ij)-1
 
 c                 --- angle of point in transverse plane
-                  aa = ith*2.*pi/nttinj(ij)
+                  aa = thetamintinj(iz,ij) + ith*dtheta
                   p1x = ainj*cos(aa)
                   p1y = binj*sin(aa)
 c                 rinj = sqrt(p1x**2 + p1y**2)
@@ -1536,6 +1550,7 @@ c                   --- get charge density at injection point
                     rnn=(eps0*vavez*dri - rr*abs(dr))*area/
      &                   pgroup%sq(is)/pgroup%sw(is)*ftinject(jsid+1,ij)
                   endif
+
                   rnn = min(rnn,
      &                      abs(jmaxtinj(ij)*area*fulldt_s/pgroup%sq(is)/
      &                      pgroup%sw(is)*ftinject(jsid+1,ij)))
@@ -1558,12 +1573,21 @@ c                   --- Only inject particles within the injection region.
                     if (pgroup%zp(ii) < inj_zmmin .or. pgroup%zp(ii) >= inj_zmmax) cycle
 
                     t = wrandom(xrandom,injctcnt,dig3,1,1)
-                    t = aa + (t - .5)*2.*pi/nttinj(ij)
+                    t = aa + (t - .5)*dtheta
+
+                    if (.not. ltinj_full_circle) then
+c                     --- If not loading particles into the full circle, then skip
+c                     --- particles beyond thetamin and thetamax.
+                      tmin = thetamintinj(iz,ij)*(1.-wz) + thetamintinj(iz+1,ij)*wz
+                      tmax = thetamaxtinj(iz,ij)*(1.-wz) + thetamaxtinj(iz+1,ij)*wz
+                      if (t < tmin .or. t > tmax) cycle
+                    endif
+
                     pgroup%xp(ii) = xtinject(ij) + (ainj*(1.-wz) + ainjp1*wz)*cos(t)
                     pgroup%yp(ii) = ytinject(ij) + (binj*(1.-wz) + binjp1*wz)*sin(t)
-                    vtx = 0.5*vztinject(ij)*emitx_s(jsid+1)/(circum/(2.*pi)) + 
+                    vtx = 0.5*vztinject(ij)*emitx_s(jsid+1)/(circum/thetaextent) + 
      &                    vthperp_s(jsid+1)
-                    vty = 0.5*vztinject(ij)*emity_s(jsid+1)/(circum/(2.*pi)) + 
+                    vty = 0.5*vztinject(ij)*emity_s(jsid+1)/(circum/thetaextent) + 
      &                    vthperp_s(jsid+1)
                     pgroup%uxp(ii) = vnorm*cos(t) +
      &                    vtx*wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
@@ -1933,7 +1957,7 @@ c=============================================================================
       integer(ISZ):: js,is,jsid,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
-      real(kind=8):: circum
+      real(kind=8):: circum,circummax
       integer(ISZ), external :: oneiftrue, nextpid
       real(kind=8):: ellipseperimeter
       real(kind=8):: substarttime,wtime
@@ -2153,13 +2177,19 @@ c Set the z cell size and number for transverse injection. The user can set nzti
 c Set the default values of atinject and btinject and calculate the number of theta
 c points if not already set.
       do ij=1,ntinj
-        circum = 0.
+        circummax = 0.
         do iz=0,nztmax
           if (atinject(iz,ij) == -1.) atinject(iz,ij) = a0
           if (btinject(iz,ij) == -1.) btinject(iz,ij) = b0
-          circum = max(circum,ellipseperimeter(atinject(:,ij),btinject(:,ij)))
+          if (thetamintinj(iz,ij) == -1. .and. thetamaxtinj(iz,ij) == -1.) then
+            thetamintinj(iz,ij) = 0.
+            thetamaxtinj(iz,ij) = 2.*pi
+          endif
+          circum = ellipseperimeter(atinject(:,ij),btinject(:,ij))*
+     &             (thetamaxtinj(iz,ij) - thetamintinj(iz,ij))/(2.*pi)
+          circummax = max(circummax,circum)
         enddo
-        if (nttinj(ij) == 0) nttinj(ij) = nint(circum/min(inj_dx,inj_dy))
+        if (nttinj(ij) == 0) nttinj(ij) = nint(circummax/min(inj_dx,inj_dy))
         nttinjmax = max(nttinjmax,nttinj(ij))
       enddo
       call gchange("InjectVars",0)
