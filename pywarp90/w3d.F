@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.374 $, $Date: 2007/07/24 18:35:40 $
+c@(#) File W3D.F, version $Revision: 3.375 $, $Date: 2007/07/27 22:33:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8637,7 +8637,14 @@ c Does everything needed to apply particle boundary conditions.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Reset lost particles counter if requested
-      if (lresetlostpart) npslost=0
+      if (lresetlostpart) then
+        do is=1,pgroup%ns
+c         --- do it only if species was advanced on this time step
+          if (pgroup%ldts(is-1)) then
+            npslost(is)=0
+          end if
+        end do
+      end if
 
 c     --- Apply particle boundary conditions
       call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
