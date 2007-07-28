@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.30 2007/07/11 18:30:44 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.31 2007/07/28 04:18:38 jlvay Exp $"
 
 from warp import with_numpy,gettypecode
 if with_numpy:
@@ -13,14 +13,21 @@ from types import *
 # --- Try import mpi - if not found, then run in serial mode
 try:
   import mpi
+  mpi.synchronizeQueuedOutput(None)
   me = mpi.rank
   npes = mpi.procs
 except ImportError:
   me = 0
   npes = 0
 
-if npes > 0: lparallel = 1
-else:        lparallel = 0
+import sys
+# --- for some reason, npes=1 when MPI=FALSE on OSX
+if sys.platform=='darwin':
+  npes_serial=1
+else:
+  npes_serial=0
+if npes > npes_serial: lparallel = 1
+else:                  lparallel = 0
 
 # --- The interface has changed some in the newest version of pyMPI.
 # --- Check the interface to the mpi.recv command. The newer versions
