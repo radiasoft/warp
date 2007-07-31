@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.38 $, $Date: 2007/07/21 00:23:16 $
+c version $Revision: 1.39 $, $Date: 2007/07/31 23:09:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -378,7 +378,6 @@ c     use BoltzmannElectrons
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dysqi,dzsqi
-      real(kind=8):: mingridsize
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8),allocatable:: Lphi(:,:,:),Lphicoarse(:,:,:)
       real(kind=8),allocatable:: phicoarsesave(:,:,:)
@@ -432,36 +431,10 @@ c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nz >= 4 .and.
      &    mglevel < mgmaxlevels) then
 
-c       --- Calculate the size of the next coarsest grid. If the current
-c       --- size is twice an odd integer, the next coarsest size will be
-c       --- n/2+1, gauranteeing that it is even.
-c       --- Note that nzlocalcoarse is only used if full-coarsening is done.
-        nxcoarse = nx/2
-        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
-        nycoarse = ny/2
-        if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
-        nzlocalcoarse = nzlocal/2
-        if (mod(nzlocalcoarse,2) == 1) nzlocalcoarse = nzlocalcoarse + 1
-        nzcoarse = nz/2
-        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+        call getnextcoarselevel3d(nx,ny,nzlocal,nz,dx,dy,dz,
+     &                            nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,
+     &                            dxcoarse,dycoarse,dzcoarse)
 
-        mingridsize = min(dx,dy)
-        mingridsize = min(mingridsize,dz)
-
-        if (dx > 4./3.*mingridsize) then
-          nxcoarse = nx
-        endif
-        if (dy > 4./3.*mingridsize) then
-          nycoarse = ny
-        endif
-        if (dz > 4./3.*mingridsize) then
-          nzlocalcoarse = nzlocal
-          nzcoarse = nz
-        endif
-
-        dxcoarse = dx*nx/nxcoarse
-        dycoarse = dy*ny/nycoarse
-        dzcoarse = dz*nz/nzcoarse
         dxcoarsesqi = 1./dxcoarse**2
         dycoarsesqi = 1./dycoarse**2
         dzcoarsesqi = 1./dzcoarse**2
