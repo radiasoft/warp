@@ -5421,6 +5421,9 @@ REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
   END if
 
   call solve_mgridrz(basegrid,mgridrz_accuracy,.true.)
+#ifndef MPIPARALLEL
+  if (l_get_fields_on_grid) call getallfieldsfromphip()
+#endif
 
   u0(1:nr0+1,1:nz0+1)=basegrid%phi(1:nr0+1,1:nz0+1)
 
@@ -5445,6 +5448,9 @@ REAL(8), INTENT(IN OUT) :: rho0(nx0+1,ny0+1)
   if (basegrid%izrbnd==dirichlet .or. basegrid%izrbnd==patchbnd) basegrid%phi(1:nx0+1,ny0+1) = u0(:,ny0+1)
 
   call solve_mgridrz(basegrid,mgridrz_accuracy,.true.)
+#ifndef MPIPARALLEL
+  if (l_get_fields_on_grid) call getallfieldsfromphip()
+#endif
 
   u0(1:nx0+1,1:ny0+1)=basegrid%phi(1:nx0+1,1:ny0+1)
 
@@ -8155,8 +8161,7 @@ subroutine getphiforparticlesrz()
 USE multigridrz
 implicit none
 
-  if(.not.basegrid%l_parallel) return
-  call get_phip_from_phi(basegrid)
+  if(basegrid%l_parallel) call get_phip_from_phi(basegrid)
   if (l_get_fields_on_grid) call getallfieldsfromphip()
   
 end subroutine getphiforparticlesrz
