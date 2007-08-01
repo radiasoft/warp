@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.58 2007/07/23 22:26:45 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.59 2007/08/01 00:29:54 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -407,16 +407,6 @@ after load balancing."""
           # --- position.
           self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
 
-          # --- Do the replacements as described above. Note that for lost
-          # --- particles, xc,yc,zc hold the positions of the particles one
-          # --- small time step into the conductor.
-          put(top.pgroup.xp,iclose1,xc)
-          put(top.pgroup.yp,iclose1,yc)
-          put(top.pgroup.zp,iclose1,zc)
-          put(top.pgroup.uxp,iclose1,uxo)
-          put(top.pgroup.uyp,iclose1,uyo)
-          put(top.pgroup.uzp,iclose1,uzo)
-
           # --- Determine whether the refined positions are lost.
           refinedisinside = nint(c.isinside(xc,yc,zc).isinside)
 
@@ -429,6 +419,17 @@ after load balancing."""
           # --- ic lists the particles that are lost in the refined
           # --- calculation. These will be scraped.
           ic = take(iclose,compress(refinedisinside,ii))
+
+          # --- Do the replacements as described above. Note that for lost
+          # --- particles, xc,yc,zc hold the positions of the particles one
+          # --- small time step into the conductor.
+          iuserefined = compress(currentisinside | refinedisinside,iclose1)
+          put(top.pgroup.xp,iuserefined,take(xc,iuserefined))
+          put(top.pgroup.yp,iuserefined,take(yc,iuserefined))
+          put(top.pgroup.zp,iuserefined,take(zc,iuserefined))
+          put(top.pgroup.uxp,iuserefined,take(uxo,iuserefined))
+          put(top.pgroup.uyp,iuserefined,take(uyo,iuserefined))
+          put(top.pgroup.uzp,iuserefined,take(uzo,iuserefined))
 
           # --- Note that the old values of the positions are changed
           # --- only for particles for which the refined calculation
@@ -563,7 +564,16 @@ after load balancing."""
       zc = take(z8,ii)
       ic = take(iscrape,ii)
       ic = compress(c.isinside(xc,yc,zc).isinside,ic)
-      if len(ic) == 0: continue
+      if len(ic) == 0:
+        if self.lcollectlpdata and not local:
+          # --- This parallelsum coordinates with the other processors
+          w=parallelsum(0.)
+          if w<>0.:
+            c.lostparticles_data += [[top.time, 
+                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                      top.dt,
+                                      jsid]]
+        continue
       # --- For particles which are inside, set pid to the id of the conductor
       # --- where the particle is lost.
       put(top.pidlost[:,-1],ic,c.condid)
@@ -623,16 +633,15 @@ after load balancing."""
         put(top.yplost,ic,intercept.yi)
         put(top.zplost,ic,intercept.zi)
 
-        if self.lrefineintercept:
-          # --- Also, reset the velocities
-          if top.lrelativ:
-            beta = sqrt(vx**2 + vy**2 + vz**2)/clight
-            gamma = 1./sqrt((1.-beta)*(1.+beta))
-          else:
-            gamma = 1.
-          put(top.uxplost,ic,vx*gamma)
-          put(top.uyplost,ic,vy*gamma)
-          put(top.uzplost,ic,vz*gamma)
+        # --- Also, reset the velocities
+        if top.lrelativ:
+          beta = sqrt(vx**2 + vy**2 + vz**2)/clight
+          gamma = 1./sqrt((1.-beta)*(1.+beta))
+        else:
+          gamma = 1.
+        put(top.uxplost,ic,vx*gamma)
+        put(top.uyplost,ic,vy*gamma)
+        put(top.uzplost,ic,vz*gamma)
 
         # --- Set the angle of incidence and time of interception
         put(top.pidlost[:,-3],ic,intercept.itheta)
