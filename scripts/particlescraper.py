@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.59 2007/08/01 00:29:54 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.60 2007/08/01 17:54:06 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -423,13 +423,15 @@ after load balancing."""
           # --- Do the replacements as described above. Note that for lost
           # --- particles, xc,yc,zc hold the positions of the particles one
           # --- small time step into the conductor.
-          iuserefined = compress(currentisinside | refinedisinside,iclose1)
-          put(top.pgroup.xp,iuserefined,take(xc,iuserefined))
-          put(top.pgroup.yp,iuserefined,take(yc,iuserefined))
-          put(top.pgroup.zp,iuserefined,take(zc,iuserefined))
-          put(top.pgroup.uxp,iuserefined,take(uxo,iuserefined))
-          put(top.pgroup.uyp,iuserefined,take(uyo,iuserefined))
-          put(top.pgroup.uzp,iuserefined,take(uzo,iuserefined))
+          iio         = currentisinside | refinedisinside
+          iiu         = compress(iio,arange(shape(xc)[0]))
+          iuserefined = compress(iio,iclose1)
+          put(top.pgroup.xp, iuserefined,take(xc, iiu))
+          put(top.pgroup.yp, iuserefined,take(yc, iiu))
+          put(top.pgroup.zp, iuserefined,take(zc, iiu))
+          put(top.pgroup.uxp,iuserefined,take(uxo,iiu))
+          put(top.pgroup.uyp,iuserefined,take(uyo,iiu))
+          put(top.pgroup.uzp,iuserefined,take(uzo,iiu))
 
           # --- Note that the old values of the positions are changed
           # --- only for particles for which the refined calculation
