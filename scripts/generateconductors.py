@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.167 2007/08/06 17:39:49 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.168 2007/08/06 22:07:52 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -147,7 +147,7 @@ Installs the given conductors.
     elif __main__.__dict__.has_key("AMRtree"):
       __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
       return
-  
+
   # --- Use whatever conductors object was specified, or
   # --- if no special solver is being used, use f3d.conductors.
   if conductors is None: conductors = f3d.conductors
@@ -161,7 +161,7 @@ Installs the given conductors.
   # Then install it
   g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
   installedconductors.append(a)
-  
+
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -233,7 +233,7 @@ Should never be directly created by the user.
 
     self.accuimagechargeenabled = 0
     if self.laccuimagecharge: self.enable_accuimagecharge()
-    
+
   def getkwlist(self):
     kwlist = []
     for k in self.kwlist:
@@ -361,7 +361,7 @@ Should never be directly created by the user.
     if ne>0:deposgrid1d(1,ne,te,qe,nt,qt,qtmp,tmin,tmax)
     if ni>0:deposgrid1d(1,ni,ti,qi,nt,qt,qtmp,tmin,tmax)
     return arange(tmin,tmax+0.1*dt,dt),qt/dt
-   
+
   def plot_current_history(self,js=None,l_lost=1,l_emit=1,l_image=1,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
     """
   Plots conductor current history:
@@ -380,13 +380,13 @@ Should never be directly created by the user.
     plg(current,time,color=color,width=width,type=type)
     ptitles('Current history at '+self.name,'time (s)','I (A)')
 
-  def enable_accuimagecharge(self): 
+  def enable_accuimagecharge(self):
     if self.accuimagechargeenabled: return
     self.accuimagechargeenabled = 1
     if not isinstalledafterfs(self.accuimagecharge):
       installafterfs(self.accuimagecharge)
 
-  def disable_accuimagecharge(self): 
+  def disable_accuimagecharge(self):
     if not self.accuimagechargeenabled: return
     self.accuimagechargeenabled = 0
     if isinstalledafterfs(self.accuimagecharge):
@@ -414,6 +414,8 @@ Should never be directly created by the user.
       nx = frz.basegrid.nr
       ny = 0
       nz = frz.basegrid.nz
+      if lparallel: nzlocal = frz.basegrid.nzpar
+      else:         nzlocal = nz
       dx = frz.basegrid.dr
       dy = 1.
       dz = frz.basegrid.dz
@@ -423,6 +425,7 @@ Should never be directly created by the user.
       ymmax = mins[1]
       zmmin = frz.basegrid.zmin
       zmmax = frz.basegrid.zmax
+      izfsslave = top.izfsslave
       # --- This needs to be fixed to handle mesh refinement properly
       l2symtry = w3d.l2symtry
       l4symtry = w3d.l4symtry
@@ -439,7 +442,8 @@ Should never be directly created by the user.
       rho = g.rho
       nx = g.nx
       ny = g.ny
-      nz = g.nzlocal
+      nz = g.nz
+      nzlocal = g.nzlocal
       dx = g.dx
       dy = g.dy
       dz = g.dz
@@ -449,6 +453,7 @@ Should never be directly created by the user.
       ymmax = g.ymmax
       zmmin = g.zmmin
       zmmax = g.zmmax
+      izfsslave = g.izfsslave
       l2symtry = g.l2symtry
       l4symtry = g.l4symtry
 
@@ -459,18 +464,25 @@ Should never be directly created by the user.
     xmax = min(xmmax,maxs[0])
     ymax = min(ymmax,maxs[1])
     zmax = min(zmmax,maxs[2])
+
     # get box boundaries at nodes locations
-    ixmin = max(0,      int((xmin-xmmin)/dx))
-    iymin = max(0,      int((ymin-ymmin)/dy))
-    izmin = max(0,      int((zmin-zmmin)/dz))   
+    ixmin = max(0,  int((xmin-xmmin)/dx))
+    iymin = max(0,  int((ymin-ymmin)/dy))
+    izmin = max(0,  int((zmin-zmmin)/dz))
+    izminlocal = max(0,  int((zmin-zmmin)/dz) - izfsslave[me])
     ixmax = min(nx, int((xmax-xmmin)/dx)+1)
     iymax = min(ny, int((ymax-ymmin)/dy)+1)
     izmax = min(nz, int((zmax-zmmin)/dz)+1)
+    izmaxlocal = min(nzlocal, int((zmax-zmmin)/dz)+1 - izfsslave[me])
 
-    if me>0:izmin=max(izmin,2)
+    # --- When in parallel, there is some overlap of the rho and phi arrays.
+    # --- This statement increases izminlocal so that the overlap region
+    # --- does not get multiply counted.
+    if me>0:izminlocal=max(izminlocal,2)
 
-    izminp = izmin+1
-    izmaxp = izmax+1
+    # --- The "+1" is needed because of the guard cells in z for phi.
+    izminp = izminlocal+1
+    izmaxp = izmaxlocal+1
 
     if w3d.solvergeom in [w3d.RZgeom]:
       # --- The rfac is to take into account the r dtheta term in the integrals.
@@ -482,14 +494,15 @@ Should never be directly created by the user.
       rfac = ones([ixmax-ixmin+1,iymax-iymin+1],'d')
       rmin = 1.
       rmax = 1.
-    
+
     # accumulate charge due to integral form of Gauss Law
     q = 0.
     qc = 0.
     if ixmax >= ixmin and iymax >= iymin and izmaxp >= izminp:
 
       # compute total charge inside volume
-      qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1]*rfac[:,:,NewAxis])))*dx*dy*dz
+      qc = sum(sum(sum(rho[ixmin:ixmax+1,iymin:iymax+1,izminlocal:izmaxlocal+1]*
+                       rfac[:,:,NewAxis])))*dx*dy*dz
 
 # --- This block of code is needed if the rho in conductor interiors is
 # --- not zeroed out. Note that the setting of interior above is also needed.
@@ -500,23 +513,26 @@ Should never be directly created by the user.
       # --- since it should not be included as image charge.)
       qinterior=zeros(1,'d')
       if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom]:
-        cond_sumrhointerior2d(qinterior,g,nx,nz,rho[:,0,:],ixmin,ixmax,izmin,izmax,dx,xmmin)
+        cond_sumrhointerior2d(qinterior,g,nx,nzlocal,rho[:,0,:],
+                              ixmin,ixmax,izminlocal,izmaxlocal,dx,xmmin)
       else:
-        subcond_sumrhointerior(qinterior,interior,nx,ny,nz,rho,
-                               ixmin,ixmax,iymin,iymax,izmin,izmax)
+        subcond_sumrhointerior(qinterior,interior,nx,ny,nzlocal,rho,
+                               ixmin,ixmax,iymin,iymax,izminlocal,izmaxlocal)
       qc = qc - qinterior[0]*dx*dy*dz
 
       # --- Sum the normal E field on the surface of the volume
-      if 0<=izmax<nz:   
+      # --- When in parallel, z planes are skipped if they are not at the edge of
+      # --- the region of interest.
+      if 0<=izmaxlocal<nzlocal and izmax == izmaxlocal+izfsslave[me]:
         q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ]
                       -phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ])*rfac))*dx*dy/dz
-      if 0<izmin<=nz:    
+      if 0<izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]:
         q += sum(sum(( phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ]
                       -phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ])*rfac))*dx*dy/dz
-      if 0<=ixmax<nx: 
+      if 0<=ixmax<nx:
         q += sum(sum(( phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1]
                       -phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1])*rmax))*dz*dy/dx
-      if 0<ixmin<=nx:     
+      if 0<ixmin<=nx:
         q += sum(sum(( phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1]
                       -phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1])*rmin))*dz*dy/dx
       if 0<=iymax<ny:
@@ -535,26 +551,27 @@ Should never be directly created by the user.
        qc=qc*2.
       if l2symtry or l4symtry:
        if iymin==0:
-         if 0<=izmax< nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
-         if 0< izmin<=nz: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
+         if 0<=izmaxlocal< nzlocal and izmax == izmaxlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
+         if 0< localizmin<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
          if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
          if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
-         qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*dx*dy*dz
+         qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izminlocal:izmaxlocal+1]))*dx*dy*dz
       if l4symtry:
        if ixmin==0:
-         if 0<=izmax< nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
-         if 0< izmin<=nz: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
+         if 0<=izmaxlocal< nzlocal and izmax == izmaxlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izmaxp+1] -phi[ixmin,iymin:iymax+1,izmaxp] )*dx*dy/dz
+         if 0< izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin,iymin:iymax+1,izminp-1] -phi[ixmin,iymin:iymax+1,izminp] )*dx*dy/dz
          if 0<=iymax< ny: q -= 2.*sum(phi[ixmin,iymax+1,izminp:izmaxp+1]-phi[ixmin,iymax,izminp:izmaxp+1])*dx*dz/dy
          if 0< iymin<=ny: q -= 2.*sum(phi[ixmin,iymin-1,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dx*dz/dy
-         qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*dx*dy*dz
+         qc -= 2.*sum(sum(rho[ixmin,iymin:iymax+1,izminlocal:izmaxlocal+1]))*dx*dy*dz
        if ixmin==0 and iymin==0:
-         if 0<=izmax< nz: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
-         if 0< izmin<=nz: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
-         qc += sum(rho[ixmin,iymin,izmin:izmax+1])*dx*dy*dz
-      
+         if 0<=izmaxlocal< nzlocal: q += (phi[ixmin,iymin,izmaxp+1]-phi[ixmin,iymin,izmaxp])*dx*dy/dz
+         if 0< izminlocal<=nzlocal: q += (phi[ixmin,iymin,izminp-1]-phi[ixmin,iymin,izminp])*dx*dy/dz
+         qc += sum(rho[ixmin,iymin,izminlocal:izmaxlocal+1])*dx*dy*dz
+
+    # --- Gather up the charges from all of the parallel processors.
     q  = parallelsum(q)
     qc = parallelsum(qc)
-    
+
     self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
@@ -563,8 +580,8 @@ Should never be directly created by the user.
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
       window(0)
-      zmin=zmmin+izmin*dz
-      zmax=zmmin+izmax*dz
+      zmin=zmmin+izminlocal*dz
+      zmax=zmmin+izmaxlocal*dz
       xmin=xmmin+ixmin*dx
       xmax=xmmin+ixmax*dx
       ymin=ymmin+iymin*dy
@@ -1127,13 +1144,13 @@ distances to outside the surface are positive, inside negative.
     self.fuzzsign = -1
 
     self.append(self)
-   
+
   def setvoltages(self,voltage):
     "Routine to set appropriate voltages."
     # --- The voltage can be a number, a class instance, or a function.
     # --- If it is an instance, the class must have a method getvolt
     # --- that takes the time as an argument. If a function, it must
-    # --- take one argument, the time.  
+    # --- take one argument, the time.
     if type(voltage) == FunctionType:
       v = voltage(top.time)
     elif type(voltage) == InstanceType:
@@ -1141,11 +1158,11 @@ distances to outside the surface are positive, inside negative.
     else:
       v = voltage
     self.vs = v + zeros((6,self.ndata),'d')
-   
+
   def setcondids(self,condid):
     "Routine to setcondid condids."
     self.ns = int(condid) + zeros((6,self.ndata),'l')
-   
+
   def setlevels(self,level):
     self.mglevel = level + zeros(self.ndata,'l')
 
@@ -1343,7 +1360,7 @@ Installs the data into the WARP database
         conductors.evensubgrid.numb[:,ne:ne+nenew] = take(data.ns,ii,1)
         conductors.evensubgrid.ilevel[ne:ne+nenew] = take(data.mglevel,ii)
         ne = ne + nenew
-          
+
 
       nonew = sum(where(data.parity == 1,1,0))
       if nonew > 0:
@@ -1443,7 +1460,7 @@ The attribute 'distance' holds the calculated distance.
       self.yy = yy
       self.zz = zz
       self.distance = distance
-   
+
   def __neg__(self):
     "Distance not operator."
     return Distance(self.xx,self.yy,self.zz, -self.distance)
@@ -1531,7 +1548,7 @@ The attribute 'isinside' holds the flag specifying whether a point is in or out
       self.zz = zz
       self.aura = aura
       self.isinside = isinside*self.condid
-   
+
   def __neg__(self):
     "IsInside not operator."
     return IsInside(self.xx,self.yy,self.zz,
@@ -1597,7 +1614,7 @@ at the intersection point.
       self.zi = zi
       self.itheta = itheta
       self.iphi = iphi
-   
+
   def __neg__(self):
     "Intercept not operator."
     return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
@@ -1743,7 +1760,7 @@ Creates a grid object which can generate conductor data.
     self.nslaves = _default(nslaves,solvertop.nslaves)
     self.izslave = _default(izslave,solvertop.izfsslave)
     self.nzslave = _default(nzslave,solvertop.nzfsslave)
-    
+
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
     self.ymin = _default(ymin,self.ymmin)
@@ -2021,7 +2038,7 @@ Clears out any data in isinside by recreating the array.
     """
     ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
     self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
-    
+
   def removeisinside(self,a,nooverlap=0):
     """
 Removes an assembly from the isinside data. This assumes that that assembly
@@ -2323,7 +2340,7 @@ Cylinder with rounded corners aligned with z-axis
       zz[2] = zz[1]
       rr[1:3] = sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2)
     Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
-    
+
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
@@ -2437,7 +2454,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
       rr[1] = rfixed
       rr[2] = rfixed
     Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
-    
+
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=rend,rendzmax=rend,
@@ -4448,7 +4465,7 @@ Or give the quadrupole id to use...
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
-  
+
   # --- Add end plates
   if pw > 0. and (ap > 0. or pa > 0.):
     if pa == 0.: pa = ap
@@ -4482,7 +4499,7 @@ Or give the quadrupole id to use...
                             zcent+0.5*(rl+gl)+pw/2.,ridsign*condid,
                             kw=kw)
     quad = quad + plate1 + plate2
-    
+
   return quad
 
 #============================================================================
@@ -4502,7 +4519,7 @@ except:
 
 class SRFRVLApart:
   """
-Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
+Class for creating a surface of revolution conductor part using lines and arcs as primitives.
  - name:   name of conductor part
  - data:   list of lines and arcs (this must be a continuous curve)
             o the first element is the starting point
@@ -4525,7 +4542,7 @@ Class for creating a surface of revolution conductor part using lines and arcs a
     if(color <> 'none'):
       colort=color
       colorb=color
-      
+
     for j,d in enumerate(self.data):
       if(j==0):
         s=[d[0]*scx,d[1]*scy]
@@ -4561,7 +4578,7 @@ Class for creating a surface of revolution conductor part using lines and arcs a
     """
   Draw an arc as ncirc segments.
     """
-    xy = self.get_xy_arc(x0,y0,x1,y1,xc,yc,ncirc)  
+    xy = self.get_xy_arc(x0,y0,x1,y1,xc,yc,ncirc)
     pldj(xy[0][0:ncirc-1],xy[1][0:ncirc-1],
          xy[0][1:ncirc],  xy[1][1:ncirc],
          color=color,width=width)
@@ -4645,7 +4662,7 @@ containing a list of primitives.
         zc_srmin = zeros(nsrmin,Float)
 
       # Fill arrays with datas from parts.
-      do = data[0] 
+      do = data[0]
       for d in data[1:]:
         if(d[-1]=='t'):
           z_srmax[it]=do[0]
@@ -4688,7 +4705,7 @@ containing a list of primitives.
         r_srmax=take(r_srmax,args)
         zc_srmax=take(zc_srmax,argsc)
         rc_srmax=take(rc_srmax,argsc)
-      
+
       # Register parts.
       if(l_t==1 and l_b==1):
         part.installed = ZSrfrvInOut('','',
@@ -4739,10 +4756,10 @@ containing a list of primitives.
       # store installed conductor in a list
       if i == 0:
         self.cond = self.parts[i].installed
-      else:    
+      else:
         self.cond += self.parts[i].installed
     if(install):self.install(l_verbose=l_verbose)
-    
+
   def install(self,grid=None,l_verbose=1,l_recursive=1):
     """
   Install SRFRVLA conductors.
@@ -4780,7 +4797,7 @@ containing a list of primitives.
       colorb=color
     for part in self.parts:
       part.draw(ncirc,scx,scy,colort,colorb,color,signx,width)
-  
+
   def shift(self,s,dir):
     """
   Shifts conductor parts using a scalar shift of a list of shifts.
@@ -4857,11 +4874,11 @@ class SRFRVLAfromfile(SRFRVLAsystem):
   """
 Class for reading SRFRVLA data from file.
   - filename: name of input file
-  - voltages: list of voltages of conductor parts 
-  - condids: list of IDs of conductor parts 
-  - zshifts=None (optional): list of shifts in Z to apply to conductor parts 
-  - rshifts=None (optional): list of shifts in R to apply to conductor parts 
-  - install=1 (optional): flag for installation of conductors immediately after reading 
+  - voltages: list of voltages of conductor parts
+  - condids: list of IDs of conductor parts
+  - zshifts=None (optional): list of shifts in Z to apply to conductor parts
+  - rshifts=None (optional): list of shifts in R to apply to conductor parts
+  - install=1 (optional): flag for installation of conductors immediately after reading
   """
   def __init__(self,filename,voltages,condids,zshifts=None,rshifts=None,install=1,l_verbose=1):
     """
@@ -4919,7 +4936,7 @@ Class for reading SRFRVLA data from file.
       self.SRFRVLAconds += [SRFRVLAcond(self.condnames[i],parts,self.voltages[i],self.condids[i],install=0)]
     SRFRVLAsystem.__init__(self,self.SRFRVLAconds)
     if install:self.install(l_verbose=l_verbose)
-    
+
   def install(self,l_verbose=1,grid=None,l_recursive=1):
     # Install conductors
     for conductor in self.SRFRVLAconds:
@@ -4933,7 +4950,7 @@ Creates a circle.
   - r: radius
   """
   def __init__(self,name,c,r):
-    assert r>0., 'In SRFRVLA_circle, r must be >0.' 
+    assert r>0., 'In SRFRVLA_circle, r must be >0.'
     x = c[0]
     y = c[1]
     data = []
@@ -4942,7 +4959,7 @@ Creates a circle.
     data.append([x,y-r,x,y,'b'])
     data.append([x-r,y,x,y,'b'])
     SRFRVLApart.__init__(self,name,data)
-  
+
 class SRFRVLA_rectangle(SRFRVLApart):
   """
 Creates a rectangle.
@@ -4952,7 +4969,7 @@ Creates a rectangle.
   - h: height
   """
   def __init__(self,name,c,l,h):
-    assert l>0. and h>0., 'In SRFRVLA_rectangle, l, h must be >0.' 
+    assert l>0. and h>0., 'In SRFRVLA_rectangle, l, h must be >0.'
     x1 = c[0]-0.5*l
     x2 = c[0]+0.5*l
     y1 = c[1]-0.5*h
@@ -4964,7 +4981,7 @@ Creates a rectangle.
     data.append([x2,y1,'t'])
     data.append([x1,y1,'b'])
     SRFRVLApart.__init__(self,name,data)
-  
+
 class SRFRVLA_rnd_rectangle(SRFRVLApart):
   """
 Creates a rectangle with rounded edge.
@@ -4975,7 +4992,7 @@ Creates a rectangle with rounded edge.
   - r: radius of rounded edges
   """
   def __init__(self,name,c,l,h,r):
-    assert r>=0. and l>=0. and h>=0., 'In SRFRVLA_rnd_rectangle, r, l, h must be >=0.' 
+    assert r>=0. and l>=0. and h>=0., 'In SRFRVLA_rnd_rectangle, r, l, h must be >=0.'
     l = max(l,2.*r)
     h = max(h,2.*r)
     x1 = c[0]-0.5*l
