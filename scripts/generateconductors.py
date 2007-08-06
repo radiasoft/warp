@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.166 2007/07/25 15:23:42 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.167 2007/08/06 17:39:49 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1709,7 +1709,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     l2symtry=None,l4symtry=None,
                     installrz=1,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None,
-                    solver=None,mgmaxlevels=None,nzfull=None):
+                    solver=None,mgmaxlevels=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -1717,7 +1717,6 @@ Creates a grid object which can generate conductor data.
     self.zbeam = zbeam
     if self.zbeam is None: zbeam = top.zbeam
     else:                  zbeam = self.zbeam
-    if nzfull is not None: nz = nzfull
 
     if solver is None:
       solver = w3d
