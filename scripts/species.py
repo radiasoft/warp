@@ -155,13 +155,15 @@ Creates a new species of particles. All arguments are optional.
   - name='': species name
   - nautodt=1: number of species to setup for automatic subcycling.
                The slowest will have dt = 2**(nautodt-1)*top.dt.
+  - efetch=1: Method to use for fetching the self fields. See documentation
+              of top.efetch for more info.
   - fselfb=0.: z velocity to use when applying relativistic corrections.
                No corrections are done if it is zero.
   - limplicit=false: Flag to turn on the implicit particle advance for this
                      species.
   """
   def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
-                    fselfb=None,limplicit=None):
+                    efetch=None,fselfb=None,limplicit=None):
     # --- Note that some default arguments are None in case the user had
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
@@ -175,11 +177,13 @@ Creates a new species of particles. All arguments are optional.
     self.name=name
     self.nautodt = nautodt
     if self.nautodt > 1 and top.chdtspid == 0: top.chdtspid = nextpid()
+    if efetch is not None: top.efetch[self.jslist[-1]] = efetch
     if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
     if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
     for i in range(nautodt-1):
       self.add_group()
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
+      if efetch is not None: top.efetch[self.jslist[-1]] = efetch
       if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
       if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
       # --- zero out sp_fract for the extra species added with larger ndts
