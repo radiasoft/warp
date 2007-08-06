@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.60 2007/08/01 17:54:06 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.61 2007/08/06 22:15:08 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -405,20 +405,25 @@ after load balancing."""
           # --- particle is currently not lost, but in the refined calculation
           # --- is lost, then replace the current position with the refined
           # --- position.
-          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
+          self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,
+                               ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
 
           # --- Determine whether the refined positions are lost.
           refinedisinside = nint(c.isinside(xc,yc,zc).isinside)
 
-          # --- iic lists the particles that are either currently lost or
-          # --- lost in the refined calculation. Both types of particles have
-          # --- had their positions modified so are included in the list of
-          # --- particles that don't need to be further handled.
-          iic = compress(currentisinside | refinedisinside,ii)
-
-          # --- ic lists the particles that are lost in the refined
-          # --- calculation. These will be scraped.
-          ic = take(iclose,compress(refinedisinside,ii))
+          # --- iic lists the particles that are lost in the refined
+          # --- calculation. These will be scraped. Particles which were
+          # --- considered lost but where not lost based on the refined
+          # --- calculation still need to have their refined positions checked
+          # --- against other conductors. There is a possible problem here.
+          # --- The refined trajectory could put the particle in a different
+          # --- grid cell than the original, and it could be inside a conductor
+          # --- that the original wasn't considered close too. This would leave
+          # --- that particle unscraped at that refined position but inside
+          # --- a conductor. This case would be messy to deal with, requiring
+          # --- a second loop over conductors.
+          iic = compress(refinedisinside,ii)
+          ic = take(iclose,iic)
 
           # --- Do the replacements as described above. Note that for lost
           # --- particles, xc,yc,zc hold the positions of the particles one
@@ -638,6 +643,16 @@ after load balancing."""
         # --- Also, reset the velocities
         if top.lrelativ:
           beta = sqrt(vx**2 + vy**2 + vz**2)/clight
+          # --- If beta is too large, then reset the velocities. Note that
+          # --- there may be some other but that is making beta too large.
+          # --- It looks like in some cases, the x and xold etc positions are
+          # --- inconsistent and very far from each each, giving an errorneous
+          # --- value of vx etc.
+          if beta >= 0.99999:
+            vx = vx/beta*0.99999
+            vy = vy/beta*0.99999
+            vz = vz/beta*0.99999
+            beta = 0.99999
           gamma = 1./sqrt((1.-beta)*(1.+beta))
         else:
           gamma = 1.
