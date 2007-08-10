@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.76 2007/07/11 18:30:44 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.77 2007/08/10 00:15:31 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -262,11 +262,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
           # --- the file big enough to fit the data from all of the
           # --- processors. Other arrays have special requirements.
           # --- First deal with the exceptions
-          if vname == 'npmaxlost_s' and p == 'top':
-            # --- This is set to be correct globally
-            ff.write(pdbname,array([0]+list(cumsum(sum(npslost_p[:,:])))))
-            ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,top.ns+1))
-          elif vname == 'inslost' and p == 'top':
+          if vname == 'inslost' and p == 'top':
             # --- This is set to be correct globally
             iii = array([1])
             if top.ns > 1:
@@ -391,8 +387,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- The data is now written into the space which was set aside
         # --- above by PE0.
         # --- First the exceptions
-        if p == 'top' and vname in ['ipmax_s','ins','nps',
-                                    'npmaxlost_s','inslost','npslost']:
+        if p == 'top' and vname in ['ins','nps','inslost','npslost']:
           # --- Write out to parallel space
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
         elif p == 'top' and vname in ['xplost','yplost','zplost',
@@ -581,18 +576,10 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0,lreturnff=0)
       parallelvar = re.search('parallel',a)
       if not parallelvar: continue
       # --- Many arrays need special handling. These are dealt with first.
-      if vname == 'ipmax_s' and p == 'top':
-        itriple = array([me,me,1,0,top.ns,1])
-        data = ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...]
-        setattr(pkg,vname,data)
-      elif p == 'top' and vname in ['ins','nps']:
+      if p == 'top' and vname in ['ins','nps']:
         # --- These have already been restored above since they are
         # --- needed to read in the particles.
         continue
-      elif vname == 'npmaxlost_s' and p == 'top':
-        itriple = array([me,me,1,0,top.ns,1])
-        data = ff.read_part(vname+"@"+p+"@parallel",itriple)[0,...]
-        setattr(pkg,vname,data)
       elif p == 'top' and vname in ['inslost','npslost']:
         # --- These have already been restored above since they are
         # --- needed to read in the lost particles.

@@ -211,7 +211,6 @@ Creates a new species of particles. All arguments are optional.
       js=top.pgroup.ns-1
       if js > 0:
         top.pgroup.ins[js] = top.pgroup.ins[js-1]+top.pgroup.nps[js-1]
-      top.pgroup.ipmax_s[js] = top.pgroup.ins[js]+top.pgroup.nps[js]-1
       top.pgroup.sid[js] = js
     self.jslist.append(js)
     type=self.type

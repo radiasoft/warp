@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.61 2007/07/11 18:30:43 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.62 2007/08/10 00:15:32 dave Exp $"
 
 
 ##############################################################################
@@ -289,9 +289,7 @@ set when a current is specified"""
 
     # --- set number of particles to zero.
     top.pgroup.nps = 0
-    top.pgroup.ins[0:] = top.pgroup.ipmax_s[1:]
-    # --- Make sure that ins has a minimum value of 1.
-    top.pgroup.ins[:] = where(top.pgroup.ins==0,1,top.pgroup.ins)
+    top.pgroup.ins = 1
 
     # --- call insertbeforeriter if defined
     if insertbeforeiter is not None:

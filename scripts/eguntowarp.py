@@ -3,7 +3,7 @@
 from warp import *
 import getzmom
 
-eguntowarp_version = '$Id: eguntowarp.py,v 1.5 2006/05/01 23:46:52 dave Exp $'
+eguntowarp_version = '$Id: eguntowarp.py,v 1.6 2007/08/10 00:15:32 dave Exp $'
 def eguntowarpdoc():
   import eguntowarp
   print eguntowarp.__doc__
@@ -104,7 +104,7 @@ EgunToWarp
   # --- Generate the particles
   def getparticles(s):
     # --- Make sure there is enough space
-    chckpart(top.pgroup,1,int(s.totalninject+1),0,true)
+    chckpart(top.pgroup,1,int(s.totalninject+1),0)
     print top.pgroup.ins,top.pgroup.npmax,int(s.totalninject+1)
     # --- Loop over the egun trajectories, load a ring of particles for each.
     injectedsofar = 0

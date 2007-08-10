@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.33 2007/06/04 23:02:54 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.34 2007/08/10 00:15:32 dave Exp $"
 
 class TraceParticle:
   """
@@ -60,16 +60,19 @@ Available methods...
     self.enabled = 0
 
     # --- Check if species needs to be setup
-    if self.js not in TraceParticle._instance_dict:
+    if js not in TraceParticle._instance_dict:
       TraceParticle._instance_dict[js] = 1
-      if top.pgroup.nps[self.js] == 0:
-        top.pgroup.ins[self.js] = top.pgroup.ipmax_s[self.js] + 1
-      if top.pgroup.sq[self.js] == 0.:
-        top.pgroup.sq[self.js] = top.zion*top.echarge
-      if top.pgroup.sm[self.js] == 0.:
-        top.pgroup.sm[self.js] = top.aion*top.amu
-      if top.pgroup.sid[self.js] == -1:
-        top.pgroup.sid[self.js] = self.js
+      if top.pgroup.nps[js] == 0:
+        if js == 0:
+          top.pgroup.ins[js] = 1
+        else:
+          top.pgroup.ins[js] = top.pgroup.ins[js-1] + top.pgroup.nps[js-1]
+      if top.pgroup.sq[js] == 0.:
+        top.pgroup.sq[js] = top.zion*top.echarge
+      if top.pgroup.sm[js] == 0.:
+        top.pgroup.sm[js] = top.aion*top.amu
+      if top.pgroup.sid[js] == -1:
+        top.pgroup.sid[js] = js
 
     # --- Use the particle's ssn to keep track of them
     if top.spid == 0: top.spid = nextpid()
@@ -418,13 +421,16 @@ Available methods...
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
                     maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0):
-    if self.js not in TraceParticle._instance_dict:
+    if js not in TraceParticle._instance_dict:
       TraceParticle._instance_dict[js] = 1
-      top.pgroup.ins[self.js] = top.pgroup.ipmax_s[self.js] + 1
-      top.pgroup.nps[self.js] = 0
-      top.pgroup.sq[self.js] = top.zion*top.echarge
-      top.pgroup.sm[self.js] = top.aion*top.amu
-      top.pgroup.sw[self.js] = 0.
+      if js == 0:
+        top.pgroup.ins[js] = 1
+      else:
+        top.pgroup.ins[js] = top.pgroup.ins[js-1] + top.pgroup.nps[js-1]
+      top.pgroup.nps[js] = 0
+      top.pgroup.sq[js] = top.zion*top.echarge
+      top.pgroup.sm[js] = top.aion*top.amu
+      top.pgroup.sw[js] = 0.
     TraceParticle.__init__(self,x,y,z,vx,vy,vz,maxsteps,savedata,js)
     # --- Do some initialization
     self.spsetup(zerophi)
@@ -544,14 +550,17 @@ Available methods...
     # --- Do some global initialization
     top.allspecl = true
     self.js = js
-    if self.js not in SingleParticle._instance_dict:
+    if js not in SingleParticle._instance_dict:
       SingleParticle._instance_dict[js] = 1
-      top.pgroup.ins[self.js] = top.pgroup.ipmax_s[self.js] + 1
-      top.pgroup.nps[self.js] = 0
-      top.pgroup.sq[self.js] = top.zion*top.echarge
-      top.pgroup.sm[self.js] = top.aion*top.amu
-      top.pgroup.sw[self.js] = 0.
-      if top.pgroup.sid[self.js] == -1: top.pgroup.sid[self.js] = self.js
+      if js == 0:
+        top.pgroup.ins[js] = 1
+      else:
+        top.pgroup.ins[js] = top.pgroup.ins[js-1] + top.pgroup.nps[js-1]
+      top.pgroup.nps[js] = 0
+      top.pgroup.sq[js] = top.zion*top.echarge
+      top.pgroup.sm[js] = top.aion*top.amu
+      top.pgroup.sw[js] = 0.
+      if top.pgroup.sid[js] == -1: top.pgroup.sid[js] = js
     self.savedata = savedata
     self.enabled = 0
     # --- Do some initialization
@@ -670,7 +679,7 @@ initial data.
     self.enabled = 1
     self.startit = top.it
     # --- make sure there is space
-    chckpart(top.pgroup,self.js+1,0,self.nn,false)
+    chckpart(top.pgroup,self.js+1,0,self.nn)
     # --- load the data
     ip1 = top.pgroup.ins[self.js] - 1 + top.pgroup.nps[self.js]
     top.pgroup.nps[self.js] = top.pgroup.nps[self.js] + self.nn

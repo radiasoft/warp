@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.144 2007/07/11 18:25:21 dave Exp $"
+warp_version = "$Id: warp.py,v 1.145 2007/08/10 00:15:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -676,7 +676,7 @@ def fixrestoreswithoriginalparticlearrays(ff):
   # --- Do this first since ipmax_s needs the correct size
   top.pgroup.ns = top.ns
   # --- Only these needs to be read in.
-  top.pgroup.ipmax_s = ff.read('npmax_s@top')
+  #top.pgroup.ipmax_s = ff.read('npmax_s@top')
   top.pgroup.npmax = ff.read("npmax@top")
   top.pgroup.npid = ff.read("npid@top")
   top.pgroup.sm = ff.read("sm@top")
