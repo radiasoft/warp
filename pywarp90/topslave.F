@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.51 $, $Date: 2007/08/03 22:24:29 $
+c TOPSLAVE.M, version $Revision: 1.52 $, $Date: 2007/08/10 00:12:50 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -68,10 +68,6 @@ c     integer(MPIISZ),allocatable:: blocklengths(:),displacements(:)
       integer(MPIISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(MPIISZ):: mpinewtype,mpirequest
       integer(MPIISZ):: messid = 20
-
-c     --- This is needed for a kind parameter on the logical constant
-c     --- passed into chckpart below.
-      integer,parameter:: isz=ISZ
 
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -357,8 +353,7 @@ c     call VTBEGIN(40,IERR)
 c       --- Make sure that there is space for the incoming data.
         do is=1,ns
           call chckpart(pgroup,int(is,ISZ),
-     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ),
-     &                  .false._isz)
+     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
         enddo
 #ifdef VAMPIR
 c     call VTEND(40,IERR)
@@ -453,22 +448,6 @@ c     call VTBEGIN(60,IERR)
             endif
           enddo
         endif
-
-        do is=1,ns-1
-          if ((pgroup%nps(is) + pgroup%nps(is+1)) > 0) then
-c           --- This puts ipmax_s is a nice place between the species that allows
-c           --- each to grew without shifting particles around.
-c           --- Though ipmax_s will most likely be removed since it is not really
-c           --- needed.
-            pgroup%ipmax_s(is) = (pgroup%nps(is+1)*(pgroup%ins(is) + pgroup%nps(is) - 1.) +
-     &                            pgroup%nps(is)*(pgroup%ins(is+1) - 1.))/
-     &                           (pgroup%nps(is) + pgroup%nps(is+1))
-          else
-            pgroup%ipmax_s(is) = (pgroup%ins(is) + pgroup%nps(is) - 1 +
-     &                            pgroup%ins(is+1) - 1)/2
-          endif
-        enddo
-        pgroup%ipmax_s(ns) = pgroup%npmax
 
 #ifdef VAMPIR
 c     call VTEND(60,IERR)

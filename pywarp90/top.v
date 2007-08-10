@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.212 $, $Date: 2007/07/27 22:24:17 $
+#@(#) File TOP.V, version $Revision: 3.213 $, $Date: 2007/08/10 00:12:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.212 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.213 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1031,8 +1031,9 @@ lcallfetchb               logical /.false./
    # When true, the fetchb routine is called during the time step
 clearlostpart             integer /1/
    # When 0, do not clear lost particles, when 1, swap lost particles with
-   # ones at the end of the array (much faster), when 2, shift particles to
-   # fill in the gaps (much slower)
+   # ones at the end of the array (much faster), when 2, shift particles down to
+   # fill in the gaps (much slower), when 3, shift particles up to fill in the
+   # gaps (also much slower)
 courantmin                     real    /0.25/
    # minimum fraction of particle courant condition under which particle time step is multiplied by two
 courantmax                     real    /0.5/
@@ -2070,9 +2071,6 @@ particlesortbyindex(pgroup:ParticleGroup,pindex(np):integer,pindexmin:integer,
 ns     integer    /1/  # Number of species
 npmax  integer    /0/  # Size of data arrays
 npid   integer    /0/  # number of columns for pid.
-ipmax_s(0:ns)  _integer [1] /0/
-   # Maximum index of particles of each species
-   # Index of 0 is used as a guard and always has a value of zero.
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
@@ -2190,7 +2188,6 @@ npidlost            integer /1/ # Number of columns in pidlist
 lostpartchunksize   integer /1000/
 inslost(ns)        _integer /0/ # Index of first lost particles of species
 npslost(ns)        _integer /0/ # Number of lost particles in species
-npmaxlost_s(0:ns)  _integer /0/ # Max index of lost particles for species
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
 xplost(npmaxlost)  _real [m]    # X-positions of lost particles
 yplost(npmaxlost)  _real [m]    # Y-positions of lost particles
@@ -2512,8 +2509,7 @@ setuppgroup(pgroup:ParticleGroup) subroutine
 alotpart(pgroup:ParticleGroup)
              subroutine # Allocate space for particles and setup 
                         # associated data
-chckpart(pgroup:ParticleGroup,is:integer,nlower:integer,nhigher:integer,
-         lfullshft:logical)
+chckpart(pgroup:ParticleGroup,is:integer,nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles.
 addpart(pgroup:ParticleGroup,nn:integer,npid:integer,
         x(nn):real,y(nn):real,z(nn):real,vx(nn):real,vy(nn):real,vz(nn):real,

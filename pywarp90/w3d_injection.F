@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.95 $, $Date: 2007/07/27 22:24:18 $
+c@(#) File w3d_injection.F, version $Revision: 1.96 $, $Date: 2007/08/10 00:12:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -186,7 +186,7 @@ c         --- Loop over species.
               if (nn == 0) cycle
 
 c             --- Check if there is enough room for the new injected particles.
-              call chckpart(pgroup,is,nn,0,.true.)
+              call chckpart(pgroup,is,nn,0)
 
             else
 
@@ -202,7 +202,7 @@ c             --- injected and but the average number will be less than 1.
               if(nn==0) cycle
 
 c             --- Check if there is enough room for the new injected particles.
-              call chckpart(pgroup,is,nn,0,.true.)
+              call chckpart(pgroup,is,nn,0)
 
 c             --- Make sure there is enough temp space
               if (nn > npgrp) then
@@ -849,20 +849,20 @@ c                 --- that there is enough room available in case the
 c                 --- first estimate is wrong.
                   if(.not.l_inj_regular) then
                     if(.not.l_inj_rz) then
-                      call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
-     &                              int(nn*ainj*binj*pi*dxi*dyi)),0,.true.)
+                      call chckpart(pgroup,is,
+     &                              max(nn,int(nn*ainj*binj*pi*dxi*dyi)),0)
                     else
-                      call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
-     &                              int(nn*ainj*dxi)),0,.true.)
+                      call chckpart(pgroup,is,
+     &                              max(nn,int(nn*ainj*dxi)),0)
                     end if
                   else
-                    call chckpart(pgroup,is,max(nn+npinje_s(jsid+1),
-     &                            int((inj_nx+1)*(inj_ny+1))),0,.true.)
+                    call chckpart(pgroup,is,
+     &                            max(nn,int((inj_nx+1)*(inj_ny+1))),0)
                   end if
 
 c                 --- loop to load new particles
                   do ip=1,nn
-                    ii = pgroup%ins(is) - npinje_s(jsid+1) - 1
+                    ii = pgroup%ins(is) - 1
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
 
@@ -1083,10 +1083,20 @@ c                   --- Save SSN
                       ssn = ssn+1
                     end if
 
-c                   --- increment particle counter
+c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
                     npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
                     inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) + 1.
+
+c                   --- total number of particles injected.
+                    npinject = npinject + npinje_s(jsid+1)
+
+c                   --- Make injected particle live, though more work will
+c                   --- to be done to it below before its ready. But now, if
+c                   --- chckpart shifts particles around, this one will be
+c                   --- shifted also.
+                    pgroup%ins(is) = pgroup%ins(is) - 1
+                    pgroup%nps(is) = pgroup%nps(is) + 1
 
                   enddo
 c                 --- end of loop over particles
@@ -1100,7 +1110,7 @@ c           --- end loop over iy
 c           --- Transform particles to lab frame
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
-              ii = pgroup%ins(is) - npinje_s(is)
+              ii = pgroup%ins(is)
               nn = npinjtmp(jsid+1,ij)
               if (nn > 0) then
 c               --- The check if nn > 0 is needed since if npmax was zero
@@ -1121,26 +1131,37 @@ c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
-            ii = pgroup%ins(is) - npinje_s(jsid+1)
-            if (npinje_s(jsid+1) > 0) then
-              call stckxy3d(npinje_s(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
-     &                      pgroup%yp(ii),ymmax,
-     &                      ymmin,dy,pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
-     &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
-     &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
-              call processlostpart(pgroup,is,clearlostpart,time,zbeam)
-            endif
-          enddo
+            ii = pgroup%ins(is)
+            nn = npinje_s(jsid+1)
+            if (nn == 0) cycle
 
-          do is=1,pgroup%ns
-            jsid = pgroup%sid(is-1)
-            if (.not. pgroup%ldts(is-1)) cycle
-c           --- Sum npinje_s to get the total number of particles injected.
-            npinject = npinject + npinje_s(jsid+1)
+            call stckxy3d(nn,pgroup%xp(ii),xmmax,xmmin,dx,
+     &                    pgroup%yp(ii),ymmax,ymmin,dy,
+     &                    pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
+     &                    pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
+     &                    zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
 
-c           --- make injected particles live particles
-            pgroup%ins(is) = pgroup%ins(is) - npinje_s(jsid+1)
-            pgroup%nps(is) = pgroup%nps(is) + npinje_s(jsid+1)
+c           --- Zero out uzp for scraped particles. This is done here
+c           --- explicitly instead of calling processlostpart to minimize
+c           --- fiddling with parameters, like lsavelostpart.
+            where (pgroup%gaminv(ii:ii+nn-1)==0.) pgroup%uzp(ii:ii+nn-1) = 0.
+
+c           --- Temporarily set nps so that only recently injected
+c           --- particles are affected. This is done only for optimization.
+            nn = pgroup%nps(is) - npinje_s(jsid+1)
+            pgroup%nps(is) = npinje_s(jsid+1)
+
+c           --- Clear out the lost particles. Set fillmethod=3 so that
+c           --- live particles are shifted upward. This keeps the block
+c           --- of injected particle contiguous with the rest of the
+c           --- live particles.
+            call clearpart(pgroup,is,3)
+              
+c           --- Adjust npinje_s(jsid+1) so it doesn't include the particles
+c           --- which were just scraped. Also, reset pgroup%nps(is).
+            npinje_s(jsid+1) = pgroup%nps(is)
+            pgroup%nps(is) = nn + npinje_s(jsid+1)
+
           enddo
 
 c         --- Now, advance the particles off of the emitting surface using
@@ -1242,6 +1263,7 @@ c         --- loop over species
           do is=1,pgroup%ns
             jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
+            if (pgroup%nps(is) == 0) cycle
             fulldt_s = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
 
 #ifndef MPIPARALLEL
@@ -1259,7 +1281,6 @@ c           --- are particles which still have noninteger pid(:,injpid).
               return
             endif
 
-            if (pgroup%nps(is) == 0) cycle
             i1 = pgroup%ins(is)
             i2 = pgroup%ins(is)+pgroup%nps(is)-1
             where (pgroup%pid(i1:i2,injpid) < ninject+1)
@@ -1559,12 +1580,11 @@ c                   --- get charge density at injection point
 c                 --- Make sure there is room for more particles.  Estimate
 c                 --- total number of particles to be injected from the
 c                 --- source.
-                  call chckpart(pgroup,is,ntinject(jsid+1) + nn*nttinj(ij)*nztinj(ij),
-     &                          0,.true.)
-                  call chckpart(pgroup,is,nn,0,.true.)
+                  call chckpart(pgroup,is,
+     &                          max(nn,ntinject(jsid+1) + nn*nttinj(ij)*nztinj(ij)),0)
 
                   do ip=1,nn
-                    ii = pgroup%ins(is) - nti - 1
+                    ii = pgroup%ins(is) - 1
 c                   --- calculate position of new particle
                     wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     pgroup%zp(ii) = zm + wz*dztinj(ij)
@@ -1606,8 +1626,6 @@ c                     --- particles beyond thetamin and thetamax.
                     else
                       pgroup%gaminv(ii) = 1.
                     endif
-c                   --- increment particle counter
-                    nti = nti + 1
 c                   --- Clear out any old data from pid. This is done here
 c                   --- before pid is used anywhere.
                     pgroup%pid(ii,:) = 0.
@@ -1624,8 +1642,23 @@ c                   --- by the radius.
                     if (wpid > 0) then
                       pgroup%pid(ii,wpid) = wtinject(ij,is)
                     endif
+
+c                   --- increment particle counter
+                    nti = nti + 1
+
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
+
+c                   --- total number of particles injected
+                    npinject = npinject + ntinject(jsid+1)
+
+c                   --- Make injected particle live, though more work will
+c                   --- to be done to it below before its ready. But now, if
+c                   --- chckpart shifts particles around, this one will be
+c                   --- shifted also.
+                    pgroup%ins(is) = pgroup%ins(is) - 1
+                    pgroup%nps(is) = pgroup%nps(is) + 1
+
                   enddo
                 enddo
               enddo
@@ -1646,26 +1679,37 @@ c         --- removal of particles outside the grid.
           do is=1,pgroup%ns
             jsid = pgroup%sid(is-1)
             if (.not. pgroup%ldts(is-1)) cycle
-            ii = pgroup%ins(is) - ntinject(jsid+1)
-            if (ntinject(jsid+1) > 0) then
-              call stckxy3d(ntinject(jsid+1),pgroup%xp(ii),xmmax,xmmin,dx,
-     &                      pgroup%yp(ii),ymmax,
-     &                      ymmin,dy,pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
-     &                      pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
-     &                      zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
-              call processlostpart(pgroup,is,clearlostpart,time,zbeam)
-            endif
-          enddo
+            ii = pgroup%ins(is)
+            nn = ntinject(jsid+1)
+            if (nn == 0) cycle
 
-          do is=1,pgroup%ns
-            jsid = pgroup%sid(is-1)
-            if (.not. pgroup%ldts(is-1)) cycle
-c           --- Sum ntinject to get the total number of particles injected.
-            npinject = npinject + ntinject(jsid+1)
+            call stckxy3d(nn,pgroup%xp(ii),xmmax,xmmin,dx,
+     &                    pgroup%yp(ii),ymmax,ymmin,dy,
+     &                    pgroup%zp(ii),zmminlocal,dz,pgroup%uxp(ii),
+     &                    pgroup%uyp(ii),pgroup%uzp(ii),pgroup%gaminv(ii),
+     &                    zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
 
-c           --- make injected particles live particles
-            pgroup%ins(is) = pgroup%ins(is) - ntinject(jsid+1)
-            pgroup%nps(is) = pgroup%nps(is) + ntinject(jsid+1)
+c           --- Zero out uzp for scraped particles. This is done here
+c           --- explicitly instead of calling processlostpart to minimize
+c           --- fiddling with parameters, like lsavelostpart.
+            where (pgroup%gaminv(ii:ii+nn-1)==0.) pgroup%uzp(ii:ii+nn-1) = 0.
+
+c           --- Temporarily set nps so that only recently injected
+c           --- particles are affected. This is done only for optimization.
+            nn = pgroup%nps(is) - ntinject(jsid+1)
+            pgroup%nps(is) = ntinject(jsid+1)
+
+c           --- Clear out the lost particles. Set fillmethod=3 so that
+c           --- live particles are shifted upward. This keeps the block
+c           --- of injected particle contiguous with the rest of the
+c           --- live particles.
+            call clearpart(pgroup,is,3)
+              
+c           --- Adjust ntinject(jsid+1) so it doesn't include the particles
+c           --- which were just scraped. Also, reset pgroup%nps(is).
+            ntinject(jsid+1) = pgroup%nps(is)
+            pgroup%nps(is) = nn + ntinject(jsid+1)
+
           enddo
 
 c         --- print warning if no particles were injected
@@ -2106,8 +2150,7 @@ c Also set particle parameters: charge, mass and weight
       do js=0,pgroup%ns-1
         jsid = pgroup%sid(js)
         if (maxval(pgroup%nps) /= 0) then
-          call chckpart(pgroup,js+1,int(injctspc*sp_fract(jsid+1)/total_frac+1),
-     &                  0,.true.)
+          call chckpart(pgroup,js+1,int(injctspc*sp_fract(jsid+1)/total_frac+1),0)
         endif
         if (pgroup%sq(js+1) == 0.) pgroup%sq(js+1) = zion_s(jsid+1)*echarge
         if (pgroup%sm(js+1) == 0.) pgroup%sm(js+1) = aion_s(jsid+1)*amu

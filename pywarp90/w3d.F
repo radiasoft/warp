@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.375 $, $Date: 2007/07/27 22:33:19 $
+c@(#) File W3D.F, version $Revision: 3.376 $, $Date: 2007/08/10 00:12:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4543,7 +4543,7 @@ c       --- domain decomposition is allowed.
 
 !$OMP MASTER
 c       --- Make sure there is space allocated for the new particles.
-        call chckpart(pgroup,js+1,0,npm,.false.)
+        call chckpart(pgroup,js+1,0,npm)
 !$OMP END MASTER
 
         ip = pgroup%ins(js+1) - 1
