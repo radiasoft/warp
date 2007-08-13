@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.271 $, $Date: 2007/07/14 00:33:24 $
+#@(#) File W3D.V, version $Revision: 3.272 $, $Date: 2007/08/13 22:05:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.271 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.272 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -702,6 +702,17 @@ uyeff(npint)    _real [m/s]       # interpolated uy
 uzeff(npint)    _real [m/s]       # interpolated uz
 alpha(npint)    _real             # interepolation parameter
 alphabar(npint) _real             # complement of interp param
+
+*********** W3Dcollisions:
+langevincollisions2d(lself:logical,np:integer,
+                     ux1(np):real,uy1(np):real,uz1(np):real,
+                     vxmi(np):real,vymi(np):real,vzmi(np):real,
+                     density2(np):real,vthsqi2(np):real,
+                     q1:real,q2:real,m1:real,m2:real,
+                     vthsqinit1:real,vthsqinit2:real,
+                     dt:real,loglambda:real,epvth:real)
+                         subroutine      # Langevin collision operator for like and
+                                         # unlike particle species
 
 *********** AMR dump:
 AMRlevels                  integer /0/   # number of mesh refinement levels
