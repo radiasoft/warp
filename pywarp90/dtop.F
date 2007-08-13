@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.154 $, $Date: 2007/07/21 00:23:59 $
+c@(#) File DTOP.F, version $Revision: 3.155 $, $Date: 2007/08/13 22:06:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.154 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.155 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1879,38 +1879,38 @@ c       --- if within grid, accumulate
           wx = gx - ix
           wy = gy - iy
           wz = gz - iz
-          grid(ix  ,iy  ,iz, 1)   = grid(ix  ,iy  ,iz, 1)   + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz, 1)   = grid(ix+1,iy  ,iz, 1)   + w(ip)*vx(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz, 1)   = grid(ix  ,iy+1,iz, 1)   + w(ip)*vx(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz, 1)   = grid(ix+1,iy+1,iz, 1)   + w(ip)*vx(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz  , 1) = grid(ix  ,iy  ,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz  , 1) = grid(ix+1,iy  ,iz  , 1) + w(ip)*vx(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz  , 1) = grid(ix  ,iy+1,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz  , 1) = grid(ix+1,iy+1,iz  , 1) + w(ip)*vx(ip)*      wx *      wy *(1. - wz)
           grid(ix  ,iy  ,iz+1, 1) = grid(ix  ,iy  ,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*      wz
           grid(ix+1,iy  ,iz+1, 1) = grid(ix+1,iy  ,iz+1, 1) + w(ip)*vx(ip)*      wx *(1. - wy)*      wz
           grid(ix  ,iy+1,iz+1, 1) = grid(ix  ,iy+1,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*      wy *      wz
           grid(ix+1,iy+1,iz+1, 1) = grid(ix+1,iy+1,iz+1, 1) + w(ip)*vx(ip)*      wx *      wy *      wz 
-          grid(ix  ,iy  ,iz, 2)   = grid(ix  ,iy  ,iz, 2)   + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz, 2)   = grid(ix+1,iy  ,iz, 2)   + w(ip)*vy(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz, 2)   = grid(ix  ,iy+1,iz, 2)   + w(ip)*vy(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz, 2)   = grid(ix+1,iy+1,iz, 2)   + w(ip)*vy(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz  , 2) = grid(ix  ,iy  ,iz  , 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz  , 2) = grid(ix+1,iy  ,iz  , 2) + w(ip)*vy(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz  , 2) = grid(ix  ,iy+1,iz  , 2) + w(ip)*vy(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz  , 2) = grid(ix+1,iy+1,iz  , 2) + w(ip)*vy(ip)*      wx *      wy *(1. - wz)
           grid(ix  ,iy  ,iz+1, 2) = grid(ix  ,iy  ,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*      wz
           grid(ix+1,iy  ,iz+1, 2) = grid(ix+1,iy  ,iz+1, 2) + w(ip)*vy(ip)*      wx *(1. - wy)*      wz
           grid(ix  ,iy+1,iz+1, 2) = grid(ix  ,iy+1,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*      wy *      wz
           grid(ix+1,iy+1,iz+1, 2) = grid(ix+1,iy+1,iz+1, 2) + w(ip)*vy(ip)*      wx *      wy *      wz 
-          grid(ix  ,iy  ,iz, 3)   = grid(ix  ,iy  ,iz, 3)   + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz, 3)   = grid(ix+1,iy  ,iz, 3)   + w(ip)*vz(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz, 3)   = grid(ix  ,iy+1,iz, 3)   + w(ip)*vz(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz, 3)   = grid(ix+1,iy+1,iz, 3)   + w(ip)*vz(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz  , 3) = grid(ix  ,iy  ,iz  , 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz  , 3) = grid(ix+1,iy  ,iz  , 3) + w(ip)*vz(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz  , 3) = grid(ix  ,iy+1,iz  , 3) + w(ip)*vz(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz  , 3) = grid(ix+1,iy+1,iz  , 3) + w(ip)*vz(ip)*      wx *      wy *(1. - wz)
           grid(ix  ,iy  ,iz+1, 3) = grid(ix  ,iy  ,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*      wz
           grid(ix+1,iy  ,iz+1, 3) = grid(ix+1,iy  ,iz+1, 3) + w(ip)*vz(ip)*      wx *(1. - wy)*      wz
           grid(ix  ,iy+1,iz+1, 3) = grid(ix  ,iy+1,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*      wy *      wz
           grid(ix+1,iy+1,iz+1, 3) = grid(ix+1,iy+1,iz+1, 3) + w(ip)*vz(ip)*      wx *      wy *      wz 
-          gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
-          gridcount(ix+1,iy  ,iz)   = gridcount(ix+1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
-          gridcount(ix  ,iy+1,iz)   = gridcount(ix  ,iy+1,iz)   + (1. - wx)*      wy *(1. - wz)
-          gridcount(ix+1,iy+1,iz)   = gridcount(ix+1,iy+1,iz)   +       wx *      wy *(1. - wz)
-          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + (1. - wx)*(1. - wy)*      wz
-          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) +       wx *(1. - wy)*      wz
-          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + (1. - wx)*      wy *      wz
-          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) +       wx *      wy *      wz
+          gridcount(ix  ,iy  ,iz  ) = gridcount(ix  ,iy  ,iz  ) + w(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          gridcount(ix+1,iy  ,iz  ) = gridcount(ix+1,iy  ,iz  ) + w(ip)*      wx *(1. - wy)*(1. - wz)
+          gridcount(ix  ,iy+1,iz  ) = gridcount(ix  ,iy+1,iz  ) + w(ip)*(1. - wx)*      wy *(1. - wz)
+          gridcount(ix+1,iy+1,iz  ) = gridcount(ix+1,iy+1,iz  ) + w(ip)*      wx *      wy *(1. - wz)
+          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + w(ip)*(1. - wx)*(1. - wy)*      wz
+          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) + w(ip)*      wx *(1. - wy)*      wz
+          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + w(ip)*(1. - wx)*      wy *      wz
+          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) + w(ip)*      wx *      wy *      wz
         endif
 
       enddo
