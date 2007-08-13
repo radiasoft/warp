@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.21 2007/06/06 17:39:24 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.22 2007/08/13 22:10:24 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -40,8 +40,9 @@ Class for generating secondaries
  - min_age: this sets a minimum age for a macroparticle in order to 
             qualify for emitting secondaries (must be old enough to procreate :-) ).
             This is in units of time steps. The default is None (no minimum age required).
- - set_params_user: function that sets SEY parameters provided by the user.
-                    Default is None: default set_params routine is used.
+ - set_params_user: optional function that sets SEY parameters provided by the user.
+                    The default routine is always called, so this routine only
+                    needs to set parameters which differ.
  - vmode: 1 (default) -> uses instantaneous velocity to compute angle to normal of conductor
           2           -> uses difference between current and old positions to compute angle to normal of conductor
  - l_verbose: sets verbosity (default=0). 
@@ -743,9 +744,11 @@ Class for generating secondaries
 #    print 'time Secondaries = ',time.clock()-t1,'s',t2-t1,t3-t2,t4-t3
     
   def call_set_params_user(self,maxsec,mat_num=None):
-    if self.set_params_user is None:
-      self.set_params(maxsec,mat_num)
-    else:
+    # --- Always call the default version of the routine. The user's routine
+    # --- only needs to set the parameters that are different.
+    self.set_params(maxsec,mat_num)
+    # --- Now call the user's routine if there is one.
+    if self.set_params_user is not None:
       if type(self.set_params_user) is StringType:
         # --- This is needed primarily since a user defined function cannot be
         # --- directly picklable and so only the name is saved.
