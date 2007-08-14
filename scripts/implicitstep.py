@@ -1,5 +1,5 @@
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.4 2007/06/22 21:21:35 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.5 2007/08/14 23:36:41 dave Exp $"
 
 from warp import *
 
@@ -29,9 +29,6 @@ Handles implicit time stepping.
     self.uzoldpid = nextpid() - 1
     self.gaminvoldpid = nextpid() - 1
     setuppgroup(top.pgroup)
-
-    # --- The reset of the E fields will also be done here
-    top.lresetparticlee = false
 
   def __setstate(self,dict):
     self.__dict__.update(dict)
@@ -188,6 +185,9 @@ Handles implicit time stepping.
 
     # --- Announce that we're running
     if top.it == 0: remark(" ***  Implicit particle simulation running")
+
+    # --- The reset of the E fields is controlloed by this class
+    top.lresetparticlee = false
 
     # --- Advance the grid frame
     self.advancezgrid()
