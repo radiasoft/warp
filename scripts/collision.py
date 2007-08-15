@@ -2,7 +2,7 @@
 """
 from warp import *
 import time
-collision_version = "$Id: collision.py,v 1.2 2007/08/15 18:35:49 dave Exp $"
+collision_version = "$Id: collision.py,v 1.3 2007/08/15 19:01:27 dave Exp $"
 
 def collisiondoc():
   import collision
@@ -187,6 +187,61 @@ the fieldspecies is affected by collision against the testspecies.
       if self.pbounds[5] == 2: grid[:,:,-1,...] = grid[:,:,0,...]
 
   # --------------------------------------------------------------------
+  def deposgrid3dvect(self,np,x,y,z,ux,uy,uz,w,velocitygrid,densitygrid):
+    deposgrid3dvect(1,np,x,y,z,ux,uy,uz,w,
+                    self.nx,self.ny,self.nz,
+                    velocitygrid,densitygrid,
+                    self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)
+
+  def getgrid3d(self,np,x,y,z,data,grid):
+    getgrid3d(np,x,y,z,data,self.nx,self.ny,self.nz,grid,
+              self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
+              self.l2symtry,self.l4symtry)
+
+  def deposgrid3d(self,np,x,y,z,data,grid,count):
+      deposgrid3d(1,np,x,y,z,data,self.nx,self.ny,self.nz,grid,count,
+                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)
+
+  # --------------------------------------------------------------------
+  def getvthsqinit(self,species):
+
+    # --- Get the particle data of the species.
+    np = getn(js=species,gather=0)
+    x = getx(js=species,gather=0)
+    y = gety(js=species,gather=0)
+    z = getz(js=species,gather=0)
+    ux = getux(js=species,gather=0)
+    uy = getuy(js=species,gather=0)
+    uz = getuz(js=species,gather=0)
+    if top.wpid > 0: w = getpid(js=species,id=top.wpid-1)
+    else:            w = ones(np,'d')
+
+    # --- Create the various arrays
+    densitygrid = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
+    velocitygrid = fzeros((1+self.nx,1+self.ny,1+self.nz,3),'d')
+
+    # --- Calculate the velocity averages, as well as the density.
+    self.deposgrid3dvect(np,x,y,z,ux,uy,uz,w,velocitygrid,densitygrid)
+    self.handlegridboundaries(densitygrid)
+    self.handlegridboundaries(velocitygrid)
+    gridcount = where(densitygrid > 0.,densitygrid,1.)
+    velocitygrid /= gridcount[...,NewAxis]
+    densitygrid *= (top.pgroup.sw[species]/(self.dx*self.dy*self.dz))
+
+    # --- Fetch the average velocity for the field particles, which is used
+    # --- to calculate vthermal**2.
+    uxbar = zeros(np,'d')
+    uybar = zeros(np,'d')
+    uzbar = zeros(np,'d')
+    self.getgrid3d(np,x,y,z,uxbar,velocitygrid[...,0])
+    self.getgrid3d(np,x,y,z,uybar,velocitygrid[...,1])
+    self.getgrid3d(np,x,y,z,uzbar,velocitygrid[...,2])
+
+    # --- Calculate the initial vthermal**2
+    vthsq = ave(((ux - uxbar)**2 + (uy - uybar)**2 + (uz - uzbar)**2)/3.)
+    return vthsq
+
+  # --------------------------------------------------------------------
   def docollisions(self):
 
     # --- Only do the collisions every ncint steps.
@@ -217,10 +272,7 @@ the fieldspecies is affected by collision against the testspecies.
       self.vthsqgrid = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
 
       # --- Calculate the velocity averages, as well as the density.
-      deposgrid3dvect(1,fnp,x,y,z,ux,uy,uz,w,
-                      self.nx,self.ny,self.nz,
-                      self.velocitygrid,self.densitygrid,
-                      self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)
+      self.deposgrid3dvect(fnp,x,y,z,ux,uy,uz,w,self.velocitygrid,self.densitygrid)
       self.handlegridboundaries(self.densitygrid)
       self.handlegridboundaries(self.velocitygrid)
       gridcount = where(self.densitygrid > 0.,self.densitygrid,1.)
@@ -232,24 +284,16 @@ the fieldspecies is affected by collision against the testspecies.
       uxbar = zeros(fnp,'d')
       uybar = zeros(fnp,'d')
       uzbar = zeros(fnp,'d')
-      getgrid3d(fnp,x,y,z,uxbar,self.nx,self.ny,self.nz,self.velocitygrid[...,0],
-                self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                self.l2symtry,self.l4symtry)
-      getgrid3d(fnp,x,y,z,uybar,self.nx,self.ny,self.nz,self.velocitygrid[...,1],
-                self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                self.l2symtry,self.l4symtry)
-      getgrid3d(fnp,x,y,z,uzbar,self.nx,self.ny,self.nz,self.velocitygrid[...,2],
-                self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                self.l2symtry,self.l4symtry)
+      self.getgrid3d(fnp,x,y,z,uxbar,self.velocitygrid[...,0])
+      self.getgrid3d(fnp,x,y,z,uybar,self.velocitygrid[...,1])
+      self.getgrid3d(fnp,x,y,z,uzbar,self.velocitygrid[...,2])
 
       # --- Calculate and fetch the average vthermal**2
       vthsq = ((ux - uxbar)**2 + (uy - uybar)**2 + (uz - uzbar)**2)/3.
       junk = fzeros(self.densitygrid.shape,'d') # count won't include w so is not used
       # --- Note that the vthermal**2 is weighted to be consistent with gridcount
       # --- as calculated above.
-      deposgrid3d(1,fnp,x,y,z,w*vthsq,
-                  self.nx,self.ny,self.nz,self.vthsqgrid,junk,
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax)
+      self.deposgrid3d(fnp,x,y,z,w*vthsq,self.vthsqgrid,junk)
       self.handlegridboundaries(self.vthsqgrid)
       self.vthsqgrid /= gridcount
 
@@ -276,33 +320,23 @@ the fieldspecies is affected by collision against the testspecies.
         uxbar = zeros(tnp,'d')
         uybar = zeros(tnp,'d')
         uzbar = zeros(tnp,'d')
-        getgrid3d(tnp,x,y,z,density,self.nx,self.ny,self.nz,self.densitygrid,
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                  self.l2symtry,self.l4symtry)
-        getgrid3d(tnp,x,y,z,uxbar,self.nx,self.ny,self.nz,self.velocitygrid[...,0],
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                  self.l2symtry,self.l4symtry)
-        getgrid3d(tnp,x,y,z,uybar,self.nx,self.ny,self.nz,self.velocitygrid[...,1],
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                  self.l2symtry,self.l4symtry)
-        getgrid3d(tnp,x,y,z,uzbar,self.nx,self.ny,self.nz,self.velocitygrid[...,2],
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                  self.l2symtry,self.l4symtry)
+        self.getgrid3d(tnp,x,y,z,density,self.densitygrid)
+        self.getgrid3d(tnp,x,y,z,uxbar,self.velocitygrid[...,0])
+        self.getgrid3d(tnp,x,y,z,uybar,self.velocitygrid[...,1])
+        self.getgrid3d(tnp,x,y,z,uzbar,self.velocitygrid[...,2])
 
-        # --- Calculate the initial vthermal**2 if needed. This may not be a
-        # --- good thing to do here since this is subtracting the average
-        # --- velocity of the field species. A more appropriate calculation
-        # --- would subtract the average velocity of the test species.
+        # --- Calculate the initial vthermal**2 if needed. This is done in
+        # --- a separate routine which calculates and subtracts the average
+        # --- velocity of the test speices. Note that the uxbar etc
+        # --- calculated above are from the field species and is not the
+        # --- correct thing to subtract.
         if test not in self.vthsqinit:
-          vthsqtest = ((ux - uxbar)**2 + (uy - uybar)**2 + (uz - uzbar)**2)/3.
-          self.vthsqinit[test] = ave(vthsqtest)
+          self.vthsqinit[test] = self.getvthsqinit(test)
 
         # --- Get the vthermal**2 of the field speices at the test particle
         # --- locations.
         vthsqfield = zeros(tnp,'d')
-        getgrid3d(tnp,x,y,z,vthsqfield,self.nx,self.ny,self.nz,self.vthsqgrid,
-                  self.xmin,self.xmax,self.ymin,self.ymax,self.zmin,self.zmax,
-                  self.l2symtry,self.l4symtry)
+        self.getgrid3d(tnp,x,y,z,vthsqfield,self.vthsqgrid)
 
         # --- Calculate log(lambda) if needed.
         if self.loglambda is None:
