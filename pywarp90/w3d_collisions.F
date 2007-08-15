@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_collision.F, version $Revision: 1.1 $, $Date: 2007/08/13 22:05:08 $
+c@(#) File w3d_collision.F, version $Revision: 1.2 $, $Date: 2007/08/15 18:32:34 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This has routines handling particle collisions
@@ -53,7 +53,7 @@ c can cause a runaway of particle energy.--DON'T NEED TO WORRY THIS.
 c     --- First, calculate the part of the collision frequency that
 c     --- depends on constants or global quantities.
       nudtcoeff = dt*2**1.5/(3.*sqrt(pi))*
-     &            4.*pi*q1**2*q2**2*loglambda/m1**2
+     &            q1**2*q2**2*loglambda/m1**2/(4.*pi*eps0**2)
 
 
 c     --- Weight factor to the thermal velocity incorporated to deal with
