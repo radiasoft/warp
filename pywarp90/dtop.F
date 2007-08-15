@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.155 $, $Date: 2007/08/13 22:06:51 $
+c@(#) File DTOP.F, version $Revision: 3.156 $, $Date: 2007/08/15 18:34:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.155 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.156 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1764,7 +1764,8 @@ c Also, if itask is zero, then the data is divided by the number density
 c of particles.
 c This allows data to be accumulated to obtain better statistics.
 
-      integer(ISZ):: ip,ix,iy,iz
+      integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
+      integer(ISZ):: nxtemp,nytemp,nztemp
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
 
 c     --- Reset grids if requested
@@ -1775,43 +1776,76 @@ c     --- Reset grids if requested
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
+      if (ymax == ymin) then
+        dyi = 1.
+      else
+        dyi = ny/(ymax - ymin)
+      endif
       dzi = nz/(zmax - zmin)
+
+      nxtemp = nx
+      nytemp = ny
+      nztemp = nz
+      if (nx == 0) nxtemp = 1
+      if (ny == 0) nytemp = 1
+      if (nz == 0) nztemp = 1
+
+      gx = 0.
+      gy = 0.
+      gz = 0.
+      ix = 0
+      iy = 0
+      iz = 0
+      ixp1 = 0
+      iyp1 = 0
+      izp1 = 0
+      wx = 0.
+      wy = 0.
+      wz = 0.
 
 c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        gx = (x(ip) - xmin)*dxi
-        gy = (y(ip) - ymin)*dyi
-        gz = (z(ip) - zmin)*dzi
+        if (nx > 0) gx = (x(ip) - xmin)*dxi
+        if (ny > 0) gy = (y(ip) - ymin)*dyi
+        if (nz > 0) gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny .and.
-     &      0. <= gz .and. gz < nz) then
-          ix = int(gx)
-          iy = int(gy)
-          iz = int(gz)
-          wx = gx - ix
-          wy = gy - iy
-          wz = gz - iz
+        if (0. <= gx .and. gx < nxtemp .and.
+     &      0. <= gy .and. gy < nytemp .and.
+     &      0. <= gz .and. gz < nztemp) then
+          if (nx > 0) then
+            ix = int(gx)
+            ixp1 = ix + 1
+            wx = gx - ix
+          endif
+          if (ny > 0) then
+            iy = int(gy)
+            iyp1 = iy + 1
+            wy = gy - iy
+          endif
+          if (nz > 0) then
+            izp1 = iz + 1
+            iz = int(gz)
+            wz = gz - iz
+          endif
           grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz)   = grid(ix+1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz)   = grid(ix  ,iy+1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz)   = grid(ix+1,iy+1,iz)   + q(ip)*      wx *      wy *(1. - wz)
-          grid(ix  ,iy  ,iz+1) = grid(ix  ,iy  ,iz+1) + q(ip)*(1. - wx)*(1. - wy)*      wz
-          grid(ix+1,iy  ,iz+1) = grid(ix+1,iy  ,iz+1) + q(ip)*      wx *(1. - wy)*      wz
-          grid(ix  ,iy+1,iz+1) = grid(ix  ,iy+1,iz+1) + q(ip)*(1. - wx)*      wy *      wz
-          grid(ix+1,iy+1,iz+1) = grid(ix+1,iy+1,iz+1) + q(ip)*      wx *      wy *      wz 
+          grid(ixp1,iy  ,iz)   = grid(ixp1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iyp1,iz)   = grid(ix  ,iyp1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ixp1,iyp1,iz)   = grid(ixp1,iyp1,iz)   + q(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,izp1) = grid(ix  ,iy  ,izp1) + q(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ixp1,iy  ,izp1) = grid(ixp1,iy  ,izp1) + q(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iyp1,izp1) = grid(ix  ,iyp1,izp1) + q(ip)*(1. - wx)*      wy *      wz
+          grid(ixp1,iyp1,izp1) = grid(ixp1,iyp1,izp1) + q(ip)*      wx *      wy *      wz 
           gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
-          gridcount(ix+1,iy  ,iz)   = gridcount(ix+1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
-          gridcount(ix  ,iy+1,iz)   = gridcount(ix  ,iy+1,iz)   + (1. - wx)*      wy *(1. - wz)
-          gridcount(ix+1,iy+1,iz)   = gridcount(ix+1,iy+1,iz)   +       wx *      wy *(1. - wz)
-          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + (1. - wx)*(1. - wy)*      wz
-          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) +       wx *(1. - wy)*      wz
-          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + (1. - wx)*      wy *      wz
-          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) +       wx *      wy *      wz
+          gridcount(ixp1,iy  ,iz)   = gridcount(ixp1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
+          gridcount(ix  ,iyp1,iz)   = gridcount(ix  ,iyp1,iz)   + (1. - wx)*      wy *(1. - wz)
+          gridcount(ixp1,iyp1,iz)   = gridcount(ixp1,iyp1,iz)   +       wx *      wy *(1. - wz)
+          gridcount(ix  ,iy  ,izp1) = gridcount(ix  ,iy  ,izp1) + (1. - wx)*(1. - wy)*      wz
+          gridcount(ixp1,iy  ,izp1) = gridcount(ixp1,iy  ,izp1) +       wx *(1. - wy)*      wz
+          gridcount(ix  ,iyp1,izp1) = gridcount(ix  ,iyp1,izp1) + (1. - wx)*      wy *      wz
+          gridcount(ixp1,iyp1,izp1) = gridcount(ixp1,iyp1,izp1) +       wx *      wy *      wz
         endif
 
       enddo
@@ -1847,7 +1881,8 @@ c Also, if itask is zero, then the data is divided by the number density
 c of particles.
 c This allows data to be accumulated to obtain better statistics.
 
-      integer(ISZ):: ip,ix,iy,iz
+      integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
+      integer(ISZ):: nxtemp,nytemp,nztemp
       real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
 
 c     --- Reset grids if requested
@@ -1858,59 +1893,92 @@ c     --- Reset grids if requested
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
+      if (ymax == ymin) then
+        dyi = 1.
+      else
+        dyi = ny/(ymax - ymin)
+      endif
       dzi = nz/(zmax - zmin)
+
+      nxtemp = nx
+      nytemp = ny
+      nztemp = nz
+      if (nx == 0) nxtemp = 1
+      if (ny == 0) nytemp = 1
+      if (nz == 0) nztemp = 1
+
+      gx = 0.
+      gy = 0.
+      gz = 0.
+      ix = 0
+      iy = 0
+      iz = 0
+      ixp1 = 0
+      iyp1 = 0
+      izp1 = 0
+      wx = 0.
+      wy = 0.
+      wz = 0.
 
 c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        gx = (x(ip) - xmin)*dxi
-        gy = (y(ip) - ymin)*dyi
-        gz = (z(ip) - zmin)*dzi
+        if (nx > 0) gx = (x(ip) - xmin)*dxi
+        if (ny > 0) gy = (y(ip) - ymin)*dyi
+        if (nz > 0) gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, accumulate
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny .and.
-     &      0. <= gz .and. gz < nz) then
-          ix = int(gx)
-          iy = int(gy)
-          iz = int(gz)
-          wx = gx - ix
-          wy = gy - iy
-          wz = gz - iz
+        if (0. <= gx .and. gx < nxtemp .and.
+     &      0. <= gy .and. gy < nytemp .and.
+     &      0. <= gz .and. gz < nztemp) then
+          if (nx > 0) then
+            ix = int(gx)
+            ixp1 = ix + 1
+            wx = gx - ix
+          endif
+          if (ny > 0) then
+            iy = int(gy)
+            iyp1 = iy + 1
+            wy = gy - iy
+          endif
+          if (nz > 0) then
+            izp1 = iz + 1
+            iz = int(gz)
+            wz = gz - iz
+          endif
           grid(ix  ,iy  ,iz  , 1) = grid(ix  ,iy  ,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz  , 1) = grid(ix+1,iy  ,iz  , 1) + w(ip)*vx(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz  , 1) = grid(ix  ,iy+1,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz  , 1) = grid(ix+1,iy+1,iz  , 1) + w(ip)*vx(ip)*      wx *      wy *(1. - wz)
-          grid(ix  ,iy  ,iz+1, 1) = grid(ix  ,iy  ,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*      wz
-          grid(ix+1,iy  ,iz+1, 1) = grid(ix+1,iy  ,iz+1, 1) + w(ip)*vx(ip)*      wx *(1. - wy)*      wz
-          grid(ix  ,iy+1,iz+1, 1) = grid(ix  ,iy+1,iz+1, 1) + w(ip)*vx(ip)*(1. - wx)*      wy *      wz
-          grid(ix+1,iy+1,iz+1, 1) = grid(ix+1,iy+1,iz+1, 1) + w(ip)*vx(ip)*      wx *      wy *      wz 
+          grid(ixp1,iy  ,iz  , 1) = grid(ixp1,iy  ,iz  , 1) + w(ip)*vx(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iyp1,iz  , 1) = grid(ix  ,iyp1,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ixp1,iyp1,iz  , 1) = grid(ixp1,iyp1,iz  , 1) + w(ip)*vx(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,izp1, 1) = grid(ix  ,iy  ,izp1, 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ixp1,iy  ,izp1, 1) = grid(ixp1,iy  ,izp1, 1) + w(ip)*vx(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iyp1,izp1, 1) = grid(ix  ,iyp1,izp1, 1) + w(ip)*vx(ip)*(1. - wx)*      wy *      wz
+          grid(ixp1,iyp1,izp1, 1) = grid(ixp1,iyp1,izp1, 1) + w(ip)*vx(ip)*      wx *      wy *      wz 
           grid(ix  ,iy  ,iz  , 2) = grid(ix  ,iy  ,iz  , 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz  , 2) = grid(ix+1,iy  ,iz  , 2) + w(ip)*vy(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz  , 2) = grid(ix  ,iy+1,iz  , 2) + w(ip)*vy(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz  , 2) = grid(ix+1,iy+1,iz  , 2) + w(ip)*vy(ip)*      wx *      wy *(1. - wz)
-          grid(ix  ,iy  ,iz+1, 2) = grid(ix  ,iy  ,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*      wz
-          grid(ix+1,iy  ,iz+1, 2) = grid(ix+1,iy  ,iz+1, 2) + w(ip)*vy(ip)*      wx *(1. - wy)*      wz
-          grid(ix  ,iy+1,iz+1, 2) = grid(ix  ,iy+1,iz+1, 2) + w(ip)*vy(ip)*(1. - wx)*      wy *      wz
-          grid(ix+1,iy+1,iz+1, 2) = grid(ix+1,iy+1,iz+1, 2) + w(ip)*vy(ip)*      wx *      wy *      wz 
+          grid(ixp1,iy  ,iz  , 2) = grid(ixp1,iy  ,iz  , 2) + w(ip)*vy(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iyp1,iz  , 2) = grid(ix  ,iyp1,iz  , 2) + w(ip)*vy(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ixp1,iyp1,iz  , 2) = grid(ixp1,iyp1,iz  , 2) + w(ip)*vy(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,izp1, 2) = grid(ix  ,iy  ,izp1, 2) + w(ip)*vy(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ixp1,iy  ,izp1, 2) = grid(ixp1,iy  ,izp1, 2) + w(ip)*vy(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iyp1,izp1, 2) = grid(ix  ,iyp1,izp1, 2) + w(ip)*vy(ip)*(1. - wx)*      wy *      wz
+          grid(ixp1,iyp1,izp1, 2) = grid(ixp1,iyp1,izp1, 2) + w(ip)*vy(ip)*      wx *      wy *      wz 
           grid(ix  ,iy  ,iz  , 3) = grid(ix  ,iy  ,iz  , 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          grid(ix+1,iy  ,iz  , 3) = grid(ix+1,iy  ,iz  , 3) + w(ip)*vz(ip)*      wx *(1. - wy)*(1. - wz)
-          grid(ix  ,iy+1,iz  , 3) = grid(ix  ,iy+1,iz  , 3) + w(ip)*vz(ip)*(1. - wx)*      wy *(1. - wz)
-          grid(ix+1,iy+1,iz  , 3) = grid(ix+1,iy+1,iz  , 3) + w(ip)*vz(ip)*      wx *      wy *(1. - wz)
-          grid(ix  ,iy  ,iz+1, 3) = grid(ix  ,iy  ,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*      wz
-          grid(ix+1,iy  ,iz+1, 3) = grid(ix+1,iy  ,iz+1, 3) + w(ip)*vz(ip)*      wx *(1. - wy)*      wz
-          grid(ix  ,iy+1,iz+1, 3) = grid(ix  ,iy+1,iz+1, 3) + w(ip)*vz(ip)*(1. - wx)*      wy *      wz
-          grid(ix+1,iy+1,iz+1, 3) = grid(ix+1,iy+1,iz+1, 3) + w(ip)*vz(ip)*      wx *      wy *      wz 
+          grid(ixp1,iy  ,iz  , 3) = grid(ixp1,iy  ,iz  , 3) + w(ip)*vz(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iyp1,iz  , 3) = grid(ix  ,iyp1,iz  , 3) + w(ip)*vz(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ixp1,iyp1,iz  , 3) = grid(ixp1,iyp1,iz  , 3) + w(ip)*vz(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,izp1, 3) = grid(ix  ,iy  ,izp1, 3) + w(ip)*vz(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ixp1,iy  ,izp1, 3) = grid(ixp1,iy  ,izp1, 3) + w(ip)*vz(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iyp1,izp1, 3) = grid(ix  ,iyp1,izp1, 3) + w(ip)*vz(ip)*(1. - wx)*      wy *      wz
+          grid(ixp1,iyp1,izp1, 3) = grid(ixp1,iyp1,izp1, 3) + w(ip)*vz(ip)*      wx *      wy *      wz 
           gridcount(ix  ,iy  ,iz  ) = gridcount(ix  ,iy  ,iz  ) + w(ip)*(1. - wx)*(1. - wy)*(1. - wz)
-          gridcount(ix+1,iy  ,iz  ) = gridcount(ix+1,iy  ,iz  ) + w(ip)*      wx *(1. - wy)*(1. - wz)
-          gridcount(ix  ,iy+1,iz  ) = gridcount(ix  ,iy+1,iz  ) + w(ip)*(1. - wx)*      wy *(1. - wz)
-          gridcount(ix+1,iy+1,iz  ) = gridcount(ix+1,iy+1,iz  ) + w(ip)*      wx *      wy *(1. - wz)
-          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + w(ip)*(1. - wx)*(1. - wy)*      wz
-          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) + w(ip)*      wx *(1. - wy)*      wz
-          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + w(ip)*(1. - wx)*      wy *      wz
-          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) + w(ip)*      wx *      wy *      wz
+          gridcount(ixp1,iy  ,iz  ) = gridcount(ixp1,iy  ,iz  ) + w(ip)*      wx *(1. - wy)*(1. - wz)
+          gridcount(ix  ,iyp1,iz  ) = gridcount(ix  ,iyp1,iz  ) + w(ip)*(1. - wx)*      wy *(1. - wz)
+          gridcount(ixp1,iyp1,iz  ) = gridcount(ixp1,iyp1,iz  ) + w(ip)*      wx *      wy *(1. - wz)
+          gridcount(ix  ,iy  ,izp1) = gridcount(ix  ,iy  ,izp1) + w(ip)*(1. - wx)*(1. - wy)*      wz
+          gridcount(ixp1,iy  ,izp1) = gridcount(ixp1,iy  ,izp1) + w(ip)*      wx *(1. - wy)*      wz
+          gridcount(ix  ,iyp1,izp1) = gridcount(ix  ,iyp1,izp1) + w(ip)*(1. - wx)*      wy *      wz
+          gridcount(ixp1,iyp1,izp1) = gridcount(ixp1,iyp1,izp1) + w(ip)*      wx *      wy *      wz
         endif
 
       enddo
@@ -1942,8 +2010,8 @@ c=============================================================================
 
 c Gathers data from a 3-D mesh onto particle positions.
 
-      integer(ISZ):: ip,ix,iy,iz
-      real(kind=8):: gx,gy,gz
+      integer(ISZ):: ip,ix,iy,iz,ixp1,iyp1,izp1
+      real(kind=8):: xx,yy,gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
       real(kind=8):: xsymmetryplane,ysymmetryplane
 
@@ -1953,45 +2021,71 @@ c     --- These now default to zero, but could be input quantities.
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
+      if (ymax == ymin) then
+        dyi = 1.
+      else
+        dyi = ny/(ymax - ymin)
+      endif
       dzi = nz/(zmax - zmin)
+
+      gx = 0.
+      gy = 0.
+      gz = 0.
+      ix = 0
+      iy = 0
+      iz = 0
+      ixp1 = 0
+      iyp1 = 0
+      izp1 = 0
+      wx = 0.
+      wy = 0.
+      wz = 0.
 
 c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid, taking into account any symmetries.
         if (l4symtry) then
-          gx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
-          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          xx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+          yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else if (l2symtry) then
-          gx = x(ip)
-          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
+          xx = x(ip)
+          yy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else
-          gx = x(ip)
-          gy = y(ip)
+          xx = x(ip)
+          yy = y(ip)
         endif
-        gx = (gx    - xmin)*dxi
-        gy = (gy    - ymin)*dyi
-        gz = (z(ip) - zmin)*dzi
+        if (nx > 0) gx = (xx    - xmin)*dxi
+        if (ny > 0) gy = (yy    - ymin)*dyi
+        if (nz > 0) gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, gather
         if (0. <= gx .and. gx <= nx .and.
      &      0. <= gy .and. gy <= ny .and.
      &      0. <= gz .and. gz <= nz) then
-          ix = int(gx)
-          iy = int(gy)
-          iz = int(gz)
-          wx = gx - ix
-          wy = gy - iy
-          wz = gz - iz
+          if (nx > 0) then
+            ix = int(gx)
+            ixp1 = ix + 1
+            wx = gx - ix
+          endif
+          if (ny > 0) then
+            iy = int(gy)
+            iyp1 = iy + 1
+            wy = gy - iy
+          endif
+          if (nz > 0) then
+            izp1 = iz + 1
+            iz = int(gz)
+            wz = gz - iz
+          endif
           f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
-     &            grid(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
-     &            grid(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
-     &            grid(ix+1,iy+1,iz  )*      wx *      wy *(1. - wz) +
-     &            grid(ix  ,iy  ,iz+1)*(1. - wx)*(1. - wy)*      wz  +
-     &            grid(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
-     &            grid(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
-     &            grid(ix+1,iy+1,iz+1)*      wx *      wy *      wz
+     &            grid(ixp1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
+     &            grid(ix  ,iyp1,iz  )*(1. - wx)*      wy *(1. - wz) +
+     &            grid(ixp1,iyp1,iz  )*      wx *      wy *(1. - wz) +
+     &            grid(ix  ,iy  ,izp1)*(1. - wx)*(1. - wy)*      wz  +
+     &            grid(ixp1,iy  ,izp1)*      wx *(1. - wy)*      wz  +
+     &            grid(ix  ,iyp1,izp1)*(1. - wx)*      wy *      wz  +
+     &            grid(ixp1,iyp1,izp1)*      wx *      wy *      wz
         endif
 
       enddo
