@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.10 $, $Date: 2007/04/24 21:37:37 $
+c@(#) File top_lattice.F, version $Revision: 3.11 $, $Date: 2007/08/15 19:04:32 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3245,7 +3245,7 @@ c           --- breaks down at r = 0.
                 tez(ip) = tez(ip) + rr(ip)*(coeffp*cosnt - alphap*coeff*sinnt)
               endif
             enddo
-          else
+          else if (n > 0 .and. v >= 0) then
 c           --- Apply the rest of the multipoles.
             f = 1. + 2.*v/n
             fz = 1./n
@@ -3423,7 +3423,7 @@ c           --- breaks down at r = 0.
                 tbz(ip) = tbz(ip) + rr(ip)*(coeffp*sinnt + alphap*coeff*cosnt)
               endif
             enddo
-          else
+          else if (n > 0 .and. v >= 0) then
 c           --- Apply the rest of the multipoles.
             f = 1. + 2.*v/n
             fz = 1./n
