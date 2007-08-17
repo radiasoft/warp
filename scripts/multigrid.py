@@ -343,7 +343,7 @@ class MultiGrid(SubcycledPoissonSolver):
       getefieldatconductors(conductorobject,
                             self.potentialp,self.dx,self.dy,self.dz,
                             self.nxp,self.nyp,self.nzp,
-                            self.nxguard,self.nyguard,self.nzguard)
+                            self.nxguard,self.nyguard,self.nzguard,self.bounds)
     if sometrue(top.efetch == 3):
       self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
