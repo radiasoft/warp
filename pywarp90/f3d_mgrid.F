@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.153 $, $Date: 2007/07/25 16:36:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.154 $, $Date: 2007/08/17 00:00:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3638,7 +3638,8 @@ c       --- Since it is not needed, make sure that the memory is freed.
       end
 c=============================================================================
       subroutine getefieldatconductors(conductors,phi,
-     &                                 dx,dy,dz,nx,ny,nz,delx,dely,delz)
+     &                                 dx,dy,dz,nx,ny,nz,delx,dely,delz,
+     &                                 bounds)
       use ConductorTypemodule
       use Subtimers3d
       use Conductor3d,Only:lcorrectede
@@ -3647,8 +3648,10 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       integer(ISZ):: delx,dely,delz
       real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
+      integer(ISZ):: bounds(0:5)
 
       integer(ISZ):: ic,ix,iy,iz,nmax
+      integer(ISZ):: mx,my,mz,px,py,pz
       real(kind=8),pointer:: dels(:,:),volt(:,:)
       real(kind=8),pointer:: efield0(:,:),efieldd(:,:)
 
@@ -3666,9 +3669,27 @@ c=============================================================================
         ix = conductors%evensubgrid%indx(0,ic)
         iy = conductors%evensubgrid%indx(1,ic)
         iz = conductors%evensubgrid%indx(2,ic)
-        call SETEE(0,1,0,0,1./dx)
-        call SETEE(1,0,1,0,1./dy)
-        call SETEE(2,0,0,1,1./dz)
+        mx = -1
+        my = -1
+        mz = -1
+        px = +1
+        py = +1
+        pz = +1
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 0) mx = 0
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 1) mx = +1
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 2) mx = +nx
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 0) px = 0
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 1) px = -1
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 2) px = -nx
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 0) my = 0
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 1) my = +1
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 2) my = +ny
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 0) py = 0
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 1) py = -1
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 2) py = -ny
+        call SETEE(0,mx,0,0,px,0,0,1./dx)
+        call SETEE(1,0,my,0,0,py,0,1./dy)
+        call SETEE(2,0,0,mz,0,0,pz,1./dz)
       enddo
 
       volt => conductors%oddsubgrid%volt
@@ -3679,17 +3700,35 @@ c=============================================================================
         ix = conductors%oddsubgrid%indx(0,ic)
         iy = conductors%oddsubgrid%indx(1,ic)
         iz = conductors%oddsubgrid%indx(2,ic)
-        call SETEE(0,1,0,0,1./dx)
-        call SETEE(1,0,1,0,1./dy)
-        call SETEE(2,0,0,1,1./dz)
+        mx = -1
+        my = -1
+        mz = -1
+        px = +1
+        py = +1
+        pz = +1
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 0) mx = 0
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 1) mx = +1
+        if (delx == 0 .and. ix == 0  .and. bounds(0) == 2) mx = +nx
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 0) px = 0
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 1) px = -1
+        if (delx == 0 .and. ix == nx .and. bounds(1) == 2) px = -nx
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 0) my = 0
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 1) my = +1
+        if (dely == 0 .and. iy == 0  .and. bounds(2) == 2) my = +ny
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 0) py = 0
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 1) py = -1
+        if (dely == 0 .and. iy == ny .and. bounds(3) == 2) py = -ny
+        call SETEE(0,mx,0,0,px,0,0,1./dx)
+        call SETEE(1,0,my,0,0,py,0,1./dy)
+        call SETEE(2,0,0,mz,0,0,pz,1./dz)
       enddo
 
       return
       CONTAINS
 
 c       ---------------------------------------------------------------------
-        subroutine SETEE(id,px,py,pz,di)
-        integer(ISZ):: id,px,py,pz
+        subroutine SETEE(id,mx,my,mz,px,py,pz,di)
+        integer(ISZ):: id,mx,my,mz,px,py,pz
         real(kind=8):: di
         real(kind=8):: ppp,dd0,dd1,vv0,vv1
 
@@ -3697,7 +3736,7 @@ c       ---------------------------------------------------------------------
           vv0 = volt(2*id,ic)
           dd0 = dels(2*id,ic)
         else
-          vv0 = phi(ix-px,iy-py,iz-pz)
+          vv0 = phi(ix+mx,iy+my,iz+mz)
           dd0 = 1.
         endif
         if (0. < dels(2*id+1,ic) .and. dels(2*id+1,ic) <= 1.) then
@@ -3710,8 +3749,8 @@ c       ---------------------------------------------------------------------
         ppp = phi(ix,iy,iz)
         efield0(id,ic) = (dd1/(dd0 + dd1)*(vv0 - ppp)/dd0 +
      &                    dd0/(dd0 + dd1)*(ppp - vv1)/dd1)*di
-        if (ix-px >= 0 .and. iy-py >= 0 .and. iz-pz >= 0) then
-          if (conductors%icgrid(ix-px,iy-py,iz-pz) > nmax) then
+        if (ix+mx >= 0 .and. iy+my >= 0 .and. iz+mz >= 0) then
+          if (conductors%icgrid(ix+mx,iy+my,iz+mz) > nmax) then
             efieldd(2*id,ic) =
      &            ((vv0-ppp)/dd0 - (2.-dd0)/(2.+dd1)*(ppp-vv1)/dd1)*
      &            ((2.+dd1)/(dd1+dd0))*di

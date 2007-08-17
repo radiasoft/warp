@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.179 $, $Date: 2007/07/11 18:01:32 $
+#@(#) File F3D.V, version $Revision: 3.180 $, $Date: 2007/08/17 00:00:10 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.179 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.180 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -335,7 +335,7 @@ setupconductorfielddata(nx:integer,ny:integer,nzlocal:integer,nz:integer,
                         izfsslave:integer,nzfsslave:integer) subroutine
 getefieldatconductors(conductors:ConductorType,phi:real,
                       dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
-                      delx:integer,dely:integer,delz:integer)
+                      delx:integer,dely:integer,delz:integer,bounds(0:5):integer)
                     subroutine
 sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
                     np:integer,xp:real,yp:real,zp:real,zgrid:real,
