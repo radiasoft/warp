@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.201 2007/07/19 16:13:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.202 2007/08/20 18:01:31 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2379,6 +2379,25 @@ def ppzbz(iw=0,**kw):
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzbz.__doc__ = ppzbz.__doc__ + ppgeneric_doc('z',"bz")
+##########################################################################
+def ppexey(iw=0,**kw):
+  "Plots Ex-Ey."
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppexey,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.xpplmin*top.vbeam,top.xpplmax*top.vbeam,
+                      top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw.setdefault('local',0)
+  settitles("Ey vs Ex","Ex","Ey",pptitleright(iw=iw,kwdict=kw))
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  return ppgeneric(getey(ii=ii,gather=0,**kw),getex(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppexey.__doc__ = ppexey.__doc__ + ppgeneric_doc("Ex","Ey")
+
 ##########################################################################
 def ppxy(iw=0,**kw):
   "Plots X-Y"
