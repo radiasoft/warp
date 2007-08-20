@@ -100,8 +100,8 @@ Class for generating photo-electrons
         w3d.ymmax=-w3d.ymmin
         w3d.solvergeom=w3d.XZgeom
       else:
-        w3d.zmminlocal=-0.5#*pos.slength
-        w3d.zmmaxlocal=-w3d.zmminlocal
+        w3d.zmmin=-0.5#*pos.slength
+        w3d.zmmax=-w3d.zmmin
         w3d.solvergeom=w3d.XYgeom
       if self.l_posmgsolver:
         frz.mgridrz_ncmax=0
@@ -114,12 +114,14 @@ Class for generating photo-electrons
     if conductors is None:
       if l_switchyz:
         if pos.ichsh==1: # elliptical
+          print w3d.nz,w3d.nzlocal
           self.pipe = YCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
                                                    radius      = pos.ach,
                                                    length      = (w3d.ymmax-w3d.ymmin)*10.,
                                                    ycent       = 0.5*(w3d.ymmin+w3d.ymmax),
                                                    condid      = 1)
-          self.pipescraper = -Sphere(radius=pos.ach,condid=1)
+          self.pipescraper = self.pipe
+#          self.pipescraper = -Sphere(radius=pos.ach,condid=1)
         if pos.ichsh==2: # rectangular
           self.pipe = Box(xsize=2.*pos.ach,
                           zsize=3.*pos.bch,
@@ -138,12 +140,13 @@ Class for generating photo-electrons
                           ysize=pos.slength,
                           zcent=-2.*pos.bch)
           self.pipescraper = self.pipe
-        self.scrapegrid=Grid(nx=nx,ny=w3d.nz,nzlocal=ny,nz=ny)
+#        self.scrapegrid=Grid(nx=nx,ny=w3d.nz,nzlocal=ny,nz=ny)
+#        self.scrapegrid=Grid(nx=nx,ny=ny,nzlocal=w3d.nzlocal,nz=w3d.nz)
       else:
         if pos.ichsh==1: # elliptical
           self.pipe = ZCylinderEllipticOut(ellipticity = pos.bch/pos.ach,
                                                    radius      = pos.ach,
-                                                   length      = w3d.zmmax-w3d.zmmin,
+                                                   length      = (w3d.zmmax-w3d.zmmin)*10.,
                                                    zcent       = 0.5*(w3d.zmmin+w3d.zmmax),
                                                    condid      = 1)
         if pos.ichsh==2: # rectangular
@@ -172,9 +175,10 @@ Class for generating photo-electrons
                                      lsaveintercept=1,
                                      lsavecondid=1,
                                      lcollectlpdata=1,
-                                     grid=self.scrapegrid,
+ #                                    grid=self.scrapegrid,
                                      lrefineintercept=0,
                                      lrefineallintercept=lrefineallintercept,
+                                     nstepsperorbit=8,
                                      aura=aura)
 #            self.scraper.l_print_timing=1
       self.conductors = [self.pipe]
@@ -408,8 +412,14 @@ Class for generating photo-electrons
     wsel=top.pgroup.sw[sel.jslist[0]]
     self.rays=fzeros([3,n],'d')
     self.rays[0,:]=concatenate((pel.getx(),sel.getx(),))
-    self.rays[1,:]=concatenate((pel.gety(),sel.gety(),))
-    self.rays[2,:]=concatenate((wpel*pel.getpid(id=top.wpid-1),wsel*sel.getpid(id=top.wpid-1),))
+    if self.l_switchyz:
+      self.rays[1,:]=concatenate((pel.getz(),sel.getz(),))
+    else:
+      self.rays[1,:]=concatenate((pel.gety(),sel.gety(),))
+    if top.wpid>0:
+      self.rays[2,:]=concatenate((wpel*pel.getpid(id=top.wpid-1),wsel*sel.getpid(id=top.wpid-1),))
+    else:
+      self.rays[2,:]=wpel
     mgdeposit2dln(pos.xl,pos.yb,n,pos.imax,pos.jmax,pos.rhs0,self.rays)
 #solve for the electric potential
 #initm =2 starting from the coarsest grid iteration.
@@ -441,7 +451,10 @@ Class for generating photo-electrons
 #	scale=4*pi/(cellszx*cellszy)
     x = pg.xp[il:iu]
     ex = pg.ex[il:iu]
-    weights = pg.pid[il:iu,top.wpid-1]
+    if top.wpid>0:
+      weights = pg.pid[il:iu,top.wpid-1]
+    else:
+      weights = ones(np,'d')
     if self.l_switchyz:
       y = pg.zp[il:iu]
       ey = pg.ez[il:iu]
