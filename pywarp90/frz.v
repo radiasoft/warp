@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.61 $, $Date: 2007/06/04 22:51:47 $
+#@(#) File FRZ.V, version $Revision: 3.62 $, $Date: 2007/08/20 17:47:00 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.61 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.62 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -217,6 +217,8 @@ rhoweightr(xp(np):real,yp(np):real,np:integer,q:real,nx:integer,dx:real,xmmin:re
          # deposit charge on radial grid
 rhoweightrz(xp:real,yp:real,zp:real,np:integer,q:real,nr:integer,nz:integer,
             dr:real,dz:real,rgrid:real,zgrid:real) subroutine
+rhoweightrz_weights(xp:real,yp:real,zp:real,w:real,np:integer,q:real,nr:integer,nz:integer,
+            dr:real,dz:real,rgrid:real,zgrid:real) subroutine
 rhoweightrzgrid(grid:GRIDtype,xp(np):real,yp(np):real,zp(np):real,np:integer,
                 q:real,nr:integer,nz:integer,dr:real,dz:real,
                 rgrid:real,zgrid:real) subroutine
@@ -291,6 +293,7 @@ getanalyticbtheta(bfield:BFieldGridType) subroutine
 updateguardcells2d() subroutine
          # update guard cells of 2D multigrid solver
 setrhopandphiprz() subroutine
+getallfieldsfromphip() subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
