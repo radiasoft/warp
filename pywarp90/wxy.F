@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.84 $, $Date: 2007/07/21 00:23:16 $
+c@(#) File WXY.M, version $Revision: 3.85 $, $Date: 2007/08/20 17:51:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -269,7 +269,7 @@ c Initialize grid when solvergeom=XYgeom
         nzlocal = 0
         nz = nzlocal
         fstype = 10
-        call init_base(nx,ny,dx,dy,xmmin,ymmin)
+        call init_base(nx,ny,dx,dy,xmmin,ymmin,.false.)
       end if
 
 c  Create the dynamic arrays for particles (set npmax to an estimated 

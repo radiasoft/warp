@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.376 $, $Date: 2007/08/10 00:12:50 $
+c@(#) File W3D.F, version $Revision: 3.377 $, $Date: 2007/08/20 17:49:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -327,9 +327,17 @@ c  Initialize base grid for RZ solver
      &     solvergeom==XZgeom .or.
      &     solvergeom==Rgeom  .or.
      &     solvergeom==Zgeom) then
-          call init_base(nx,nzlocal,dx,dz,xmmin,zmminlocal)
+#ifdef MPIPARALLEL
+          call init_base(nx,nzlocal,dx,dz,xmmin,zmminlocal,.true.)
+#else
+          call init_base(nx,nzlocal,dx,dz,xmmin,zmminlocal,.false.)
+#endif
         elseif(solvergeom==XYgeom) then
-          call init_base(nx,ny,dx,dy,xmmin,ymmin)
+#ifdef MPIPARALLEL
+          call init_base(nx,ny,dx,dy,xmmin,ymmin,.true.)
+#else
+          call init_base(nx,ny,dx,dy,xmmin,ymmin,.false.)
+#endif
         end if
       end if
 
