@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.145 2007/08/10 00:15:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.146 2007/08/20 18:00:34 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -182,6 +182,10 @@ except AttrbuteError:
   periodic  = 2
   absorb    = 0
   reflect   = 1
+
+# --- Set pgroup
+top.pgroup = ParticleGroup()
+top.pgroup.gchange()
 
 # --- Get start time
 top.starttime = time.time()
