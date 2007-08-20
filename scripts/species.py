@@ -243,13 +243,22 @@ Creates a new species of particles. All arguments are optional.
     except:
       pass
      
-  def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,nz=None,lost=0,charge=0,dens=None):
-    if xmin is None:xmin=w3d.xmmin
-    if xmax is None:xmax=w3d.xmmax
-    if ymin is None:ymin=w3d.ymmin
-    if ymax is None:ymax=w3d.ymmax
-    if zmin is None:zmin=w3d.zmmin
-    if zmax is None:zmax=w3d.zmmax
+  def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
+                  nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1):
+    if l_minmax_grid:
+      if xmin is None:xmin=w3d.xmmin
+      if xmax is None:xmax=w3d.xmmax
+      if ymin is None:ymin=w3d.ymmin
+      if ymax is None:ymax=w3d.ymmax
+      if zmin is None:zmin=w3d.zmmin
+      if zmax is None:zmax=w3d.zmmax
+    else:
+      if xmin is None:xmin=min(self.getx())
+      if xmax is None:xmax=max(self.getx())
+      if ymin is None:ymin=min(self.gety())
+      if ymax is None:ymax=max(self.gety())
+      if zmin is None:zmin=min(self.getz())
+      if zmax is None:zmax=max(self.getz())
     if dens is None:
       if nx is None:nx=w3d.nx
       if ny is None:ny=w3d.ny
@@ -263,17 +272,26 @@ Creates a new species of particles. All arguments are optional.
       density = dens
       densityc = fzeros([nx+1,ny+1,nz+1],'d')
 
+    np=0
     for js in self.jslist:
-      #print js
+      np+=getn(js=js)
+    if np==0:
+      if dens is None:
+        return density
+      else:
+        return
+    for js in self.jslist:
       x=getx(js=js,lost=lost,gather=0)
       y=gety(js=js,lost=lost,gather=0)
       z=getz(js=js,lost=lost,gather=0)
-      np=len(x)
-      if np > 0:
+      np=shape(x)[0]
+      if top.wpid==0:
         w=top.pgroup.sw[js]*ones(np,'d')
-        if charge:w*=top.pgroup.sq[js]    
-        deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
-    density[...] *= nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+      else:
+        w=top.pgroup.sw[js]*self.getpid(id=top.wpid-1)
+      if charge:w*=top.pgroup.sq[js]   
+      deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+    if l_dividebyvolume:density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
     density[...] = parallelsum(density)
     if dens is None:return density
   
@@ -293,17 +311,23 @@ Creates a new species of particles. All arguments are optional.
 
     if lallindomain:
       # --- Crop the zmin and zmax to be within the local domain
-      zminp = max(zmin,min(zmax,w3d.zmminp))
-      zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+      zminp = max(zmin,min(zmax,w3d.zmminp+top.zgrid))
+      zmaxp = min(zmax,max(zmin,w3d.zmmaxp+top.zgrid))
     else:
       # --- Crop the zmin and zmax to be within the global domain
-      zminp = max(zmin,w3d.zmmin)
-      zmaxp = min(zmax,w3d.zmmax)
+      zminp = max(zmin,w3d.zmmin+top.zgrid)
+      zmaxp = min(zmax,w3d.zmmax+top.zgrid)
 
     if spacing == 'random':
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
-      np = nint((zmaxp - zminp)/(zmax - zmin)*np)
+      if zmin==zmax:
+        if lallindomain:
+          if zmin>w3d.zmmaxp+top.zgrid or zmax<w3d.zmminp+top.zgrid:return
+        else:
+          if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
+      else:
+        np = nint((zmaxp - zminp)/(zmax - zmin)*np)
       if np == 0: return
       x = RandomArray.random(np)
       y = RandomArray.random(np)
@@ -311,21 +335,29 @@ Creates a new species of particles. All arguments are optional.
       z = (zminp + (zmaxp - zminp)*z - zmin)/(zmax - zmin)
 
     elif spacing == 'uniform':
-      if ymax > ymin: dims = 3
+      if ymax > ymin and zmax > zmin: dims = 3
       else:           dims = 2
       if nx is None: nx = nint(np**(1./dims))
       if ny is None:
-        if dims == 3: ny = nint(np**(1./dims))
+        if dims == 3 or ymax>ymin: ny = nint(np**(1./dims))
         else:         ny = 1
-      if nz is None: nz = nint(np**(1./dims))
+      if nz is None:
+        if dims == 3 or zmax>zmin: nz = nint(np**(1./dims))
+        else:         nz = 1
 
       # --- Find the range of particle z locations within the cropped
       # --- zmin and max.
-      dz = (zmax - zmin)/nz
-      izminp = int((zminp - zmin)/dz + 0.5)
-      izmaxp = int((zmaxp - zmin)/dz + 0.5)
-      nzp = max(0,izmaxp - izminp)
-      np = nx*ny*nzp
+      if zmin==zmax:
+        if lallindomain:
+          if zmin>w3d.zmmaxp+top.zgrid or zmax<w3d.zmminp+top.zgrid:return
+        else:
+          if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
+      else:
+        dz = (zmax - zmin)/nz
+        izminp = int((zminp - zmin)/dz + 0.5)
+        izmaxp = int((zmaxp - zmin)/dz + 0.5)
+        nzp = max(0,izmaxp - izminp)
+        np = nx*ny*nzp
       if np == 0: return
 
       if dims == 3:
@@ -333,16 +365,20 @@ Creates a new species of particles. All arguments are optional.
                           0.5/ny,1./ny,ny-1,
                           (izminp + 0.5)/nz,1./nz,nzp-1)
       else:
-        x,z = getmesh2d(0.5/nx,1./nx,nx-1,
-                        (izminp + 0.5)/nz,1./nz,nzp-1)
-        y = zeros((nx,nz),'d')
+        if ymin==ymax:
+          x,z = getmesh2d(0.5/nx,1./nx,nx-1,
+                          (izminp + 0.5)/nz,1./nz,nzp-1)
+          y = zeros((nx,nz),'d')
+        if zmin==zmax:
+          x,y = getmesh2d(0.5/nx,1./nx,nx-1,
+                          0.5/ny,1./ny,ny-1)
+          z = zeros((nx,ny),'d')
 
       # --- Perform a transpose so that the data is ordered with increasing z.
       # --- The copy is needed since transposed arrays cannot be reshaped.
       x = transpose(x).copy()
       y = transpose(y).copy()
       z = transpose(z).copy()
-
       x.shape = (np,)
       y.shape = (np,)
       z.shape = (np,)
@@ -463,15 +499,44 @@ in radius squared.
     self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_gaussian_dist(self,np,deltax,deltay,deltaz,vthx=0.,vthy=0.,vthz=0.,
-                        xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,js=None,**kw):
-    x=RandomArray.normal(xmean,deltax,np)
-    y=RandomArray.normal(ymean,deltay,np)
-    z=RandomArray.normal(zmean,deltaz,np)
-    vx=RandomArray.normal(vxmean,vthx,np)
-    vy=RandomArray.normal(vymean,vthy,np)
-    vz=RandomArray.normal(vzmean,vthz,np)
-    self.addpart(x,y,z,vx,vy,vz,js=js,**kw)
-    
+                        xmean=0.,ymean=0.,zmean=0.,vxmean=0.,vymean=0.,vzmean=0.,
+                        zdist='random',nz=1000,fourfold=0,js=None,**kw):
+    if fourfold:np=nint(float(np)/4)
+    if zdist=='random':
+      x=RandomArray.normal(0.,deltax,np)
+      y=RandomArray.normal(0.,deltay,np)
+      z=RandomArray.normal(0.,deltaz,np)
+      vx=RandomArray.normal(0.,vthx,np)
+      vy=RandomArray.normal(0.,vthy,np)
+      vz=RandomArray.normal(0.,vthz,np)
+      self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
+      if fourfold:
+        self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+        self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
+        self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+    if zdist=='regular': 
+      dz=16.*deltaz/nz
+      zmin=-(float(nz/2)-0.5)*dz
+      for i in range(nz):
+        zadd=zmin+i*dz
+        Nadd =max(0.,np*dz*exp(-0.5*(zadd/deltaz)**2)/(sqrt(2.*pi)*deltaz))
+        if ranf()<(Nadd-int(Nadd)):
+          Nadd=int(Nadd)+1
+        else:
+          Nadd=int(Nadd)
+        if Nadd>0:
+          x=RandomArray.normal(0.,deltax,Nadd)
+          y=RandomArray.normal(0.,deltay,Nadd)
+          z=zadd+dz*(RandomArray.random(Nadd)-0.5)
+          vx=RandomArray.normal(0.,vthx,Nadd)
+          vy=RandomArray.normal(0.,vthy,Nadd)
+          vz=RandomArray.normal(0.,vthz,Nadd)
+          self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
+    if fourfold:
+      self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+      self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
+      self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+
   def getn(self,**kw):
     return getn(jslist=self.jslist,**kw)
     
@@ -504,6 +569,24 @@ in radius squared.
     
   def getuz(self,**kw):
     return getuz(jslist=self.jslist,**kw)
+    
+  def getex(self,**kw):
+    return getex(jslist=self.jslist,**kw)
+    
+  def getey(self,**kw):
+    return getey(jslist=self.jslist,**kw)
+    
+  def getez(self,**kw):
+    return getez(jslist=self.jslist,**kw)
+    
+  def getbx(self,**kw):
+    return getbx(jslist=self.jslist,**kw)
+    
+  def getby(self,**kw):
+    return getby(jslist=self.jslist,**kw)
+    
+  def getbz(self,**kw):
+    return getbz(jslist=self.jslist,**kw)
     
   def getxp(self,**kw):
     return getxp(jslist=self.jslist,**kw)
@@ -597,3 +680,57 @@ in radius squared.
 
   def pprvz(self,**kw):
     return pprvz(jslist=self.jslist,**kw)
+
+  def ppxex(self,**kw):
+    return ppxex(jslist=self.jslist,**kw)
+
+  def ppxey(self,**kw):
+    return ppxey(jslist=self.jslist,**kw)
+
+  def ppxez(self,**kw):
+    return ppxez(jslist=self.jslist,**kw)
+
+  def ppyex(self,**kw):
+    return ppyex(jslist=self.jslist,**kw)
+
+  def ppyey(self,**kw):
+    return ppyey(jslist=self.jslist,**kw)
+
+  def ppyez(self,**kw):
+    return ppyez(jslist=self.jslist,**kw)
+
+  def ppzex(self,**kw):
+    return ppzex(jslist=self.jslist,**kw)
+
+  def ppzey(self,**kw):
+    return ppzey(jslist=self.jslist,**kw)
+
+  def ppzez(self,**kw):
+    return ppzez(jslist=self.jslist,**kw)
+
+  def ppxbx(self,**kw):
+    return ppxbx(jslist=self.jslist,**kw)
+
+  def ppxby(self,**kw):
+    return ppxby(jslist=self.jslist,**kw)
+
+  def ppxbz(self,**kw):
+    return ppxbz(jslist=self.jslist,**kw)
+
+  def ppybx(self,**kw):
+    return ppybx(jslist=self.jslist,**kw)
+
+  def ppyby(self,**kw):
+    return ppyby(jslist=self.jslist,**kw)
+
+  def ppybz(self,**kw):
+    return ppybz(jslist=self.jslist,**kw)
+
+  def ppzbx(self,**kw):
+    return ppzbx(jslist=self.jslist,**kw)
+
+  def ppzby(self,**kw):
+    return ppzby(jslist=self.jslist,**kw)
+
+  def ppzbz(self,**kw):
+    return ppzbz(jslist=self.jslist,**kw)
