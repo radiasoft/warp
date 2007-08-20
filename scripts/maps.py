@@ -34,14 +34,22 @@ class Maps:
       il = pg.ins[js]-1+self.nparpgrp*ig
       iu = min(il+self.nparpgrp,pg.ins[js]-1+pg.nps[js])
       np = iu-il
-      xp = pg.xp[il:iu].copy()
-      yp = pg.yp[il:iu].copy()
-      scf = pg.gaminv[il:iu]/top.vbeam
-      pg.xp [il:iu] = self.Mtx[0,0]*xp     + self.Mtx[0,1]*pg.uxp[il:iu]*scf
-      pg.uxp[il:iu] = self.Mtx[1,0]*xp/scf + self.Mtx[1,1]*pg.uxp[il:iu]
-      pg.yp [il:iu] = self.Mty[0,0]*yp     + self.Mty[0,1]*pg.uyp[il:iu]*scf
-      pg.uyp[il:iu] = self.Mty[1,0]*yp/scf + self.Mty[1,1]*pg.uyp[il:iu]
-
+      apply_simple_map(np,
+                       pg.xp[il:iu],
+                       pg.yp[il:iu],
+                       pg.uxp[il:iu],
+                       pg.uyp[il:iu],
+                       pg.gaminv[il:iu],
+                       self.Mtx,
+                       self.Mty,
+                       top.vbeam)
+#      xp = pg.xp[il:iu].copy()
+#      yp = pg.yp[il:iu].copy()
+#      scf = pg.gaminv[il:iu]/top.vbeam
+#      pg.xp [il:iu] = self.Mtx[0,0]*xp     + self.Mtx[0,1]*pg.uxp[il:iu]*scf
+#      pg.uxp[il:iu] = self.Mtx[1,0]*xp/scf + self.Mtx[1,1]*pg.uxp[il:iu]
+#      pg.yp [il:iu] = self.Mty[0,0]*yp     + self.Mty[0,1]*pg.uyp[il:iu]*scf
+#      pg.uyp[il:iu] = self.Mty[1,0]*yp/scf + self.Mty[1,1]*pg.uyp[il:iu]
 
   def apply_space_charge_kick(self,sp):
     js=sp.jslist[0]
@@ -87,10 +95,10 @@ class Maps:
       np = iu-il
       if self.l_verbose:print 'stckxy3d beam'
       zpartbndwithdata(np,pg.zp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                       w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+                       w3d.zmmaxlocal,w3d.zmminlocal,w3d.dz,top.zgrid)
       stckxy3d(np,pg.xp[il:iu],w3d.xmmax,w3d.xmmin,w3d.dx,
                   pg.yp[il:iu],w3d.ymmax,w3d.ymmin,w3d.dy,
-                  pg.zp[il:iu],w3d.zmmin,w3d.dz,
+                  pg.zp[il:iu],w3d.zmminlocal,w3d.dz,
                   pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
                   top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
