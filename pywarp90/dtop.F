@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.156 $, $Date: 2007/08/15 18:34:28 $
+c@(#) File DTOP.F, version $Revision: 3.157 $, $Date: 2007/08/20 17:45:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.156 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.157 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3354,5 +3354,23 @@ c           --- point is inside if a conductor can be ignored.
       return
       end subroutine reduceisinsidegrid
 c=============================================================================
+c=============================================================================
+      subroutine apply_simple_map(n,x,y,ux,uy,gaminv,Mtx,Mty,vbeam)
+c applies simple linear map
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),ux(n),uy(n),gaminv(n),Mtx(2,2),Mty(2,2),vbeam,scf,xtmp,ytmp
 
+        do i = 1,n
+          scf = gaminv(i)/vbeam
+          xtmp = x(i)
+          ytmp = y(i)
+          x (i) = Mtx(1,1)*xtmp     + Mtx(1,2)*ux(i)*scf
+          ux(i) = Mtx(2,1)*xtmp/scf + Mtx(2,2)*ux(i)
+          y (i) = Mty(1,1)*ytmp     + Mty(1,2)*uy(i)*scf
+          uy(i) = Mty(2,1)*ytmp/scf + Mty(2,2)*uy(i)
+        end do
+        
+        return
+      end subroutine apply_simple_map
+c=============================================================================
 
