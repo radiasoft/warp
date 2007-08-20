@@ -641,6 +641,9 @@ c     sets ej and bj.
       jsid = pgroup%sid(is-1)
 c     print*,"*****SETTING FIELDS"
 c      print*,"pre-fetche3d1,x,ey,ez = ",x(1),ey(1),ez(1)
+      ex(:) = 0.
+      ey(:) = 0.
+      ez(:) = 0.
       call fetche3dfrompositions(jsid,pgroup%ndts(is-1),npd,x,y,z,ex,ey,ez)
 c      call fetche3d1(pgroup,npd,x,y,z)
 c      print*,"pre-othere3d,x,ey,ez = ",x(1),ey(1),ez(1)
