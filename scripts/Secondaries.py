@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.22 2007/08/13 22:10:24 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.23 2007/08/20 21:49:51 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -69,7 +69,7 @@ Class for generating secondaries
       w3d.l_inj_rec_inittime=true
       if top.tpid==0:
         top.tpid=nextpid()
-        gchange('Particles')
+        setuppgroup(top.pgroup)
     self.install()
     if xoldpid is None:
       self.xoldpid=top.npid-3
