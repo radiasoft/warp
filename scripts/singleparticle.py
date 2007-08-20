@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.34 2007/08/10 00:15:32 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.35 2007/08/20 17:58:43 jlvay Exp $"
 
 class TraceParticle:
   """
@@ -125,7 +125,7 @@ Available methods...
     # --- Set gamma inverse
     if top.lrelativ:
       vsqinit = self.vxinit**2+self.vyinit**2+self.vzinit**2
-      self.giint = sqrt(1.- vsqinit/clight**2)
+      self.giinit = sqrt(1.- vsqinit/clight**2)
     else:
       self.giinit = 1.
     self.uxinit = self.vxinit/self.giinit
