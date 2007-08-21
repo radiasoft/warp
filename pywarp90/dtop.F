@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.157 $, $Date: 2007/08/20 17:45:19 $
+c@(#) File DTOP.F, version $Revision: 3.158 $, $Date: 2007/08/21 19:54:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.157 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.158 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1826,8 +1826,8 @@ c       --- if within grid, accumulate
             wy = gy - iy
           endif
           if (nz > 0) then
-            izp1 = iz + 1
             iz = int(gz)
+            izp1 = iz + 1
             wz = gz - iz
           endif
           grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
@@ -1943,8 +1943,8 @@ c       --- if within grid, accumulate
             wy = gy - iy
           endif
           if (nz > 0) then
-            izp1 = iz + 1
             iz = int(gz)
+            izp1 = iz + 1
             wz = gz - iz
           endif
           grid(ix  ,iy  ,iz  , 1) = grid(ix  ,iy  ,iz  , 1) + w(ip)*vx(ip)*(1. - wx)*(1. - wy)*(1. - wz)
@@ -2074,8 +2074,8 @@ c       --- if within grid, gather
             wy = gy - iy
           endif
           if (nz > 0) then
-            izp1 = iz + 1
             iz = int(gz)
+            izp1 = iz + 1
             wz = gz - iz
           endif
           f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
