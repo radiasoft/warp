@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.23 2007/08/20 21:49:51 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.24 2007/08/22 11:21:57 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -199,8 +199,9 @@ Class for generating secondaries
     self.inter[isinc]['emitted_species'] += [emitted_species]
     self.inter[isinc]['material']        += [material]
     self.inter[isinc]['type']            += [interaction_type]
-    if scale_factor is not None and scale_factor>1.:
-      raise('Error in secondaries: scale_factor must be less than 1.')
+    if incident_species.type.__class__ is Atom:
+      if scale_factor is not None and scale_factor>1.:
+        raise('Error in secondaries: scale_factor must be less than 1.')
     self.inter[isinc]['scale_factor']    += [scale_factor]
     for e in emitted_species:
       js=e.jslist[0]
@@ -515,9 +516,11 @@ Class for generating secondaries
             if incident_species.type is Electron:
 #             try: # need try since will generate error if no secondaries are created
                if top.wpid>0:
-                 self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[incident_species]['type'][ics])
+                 self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[incident_species]['type'][ics],
+                                           scale_factor=self.inter[incident_species]['scale_factor'][ics])
                else:
-                 self.generate_secondaries(e0[i],coseta[i],weight,self.inter[incident_species]['type'][ics])
+                 self.generate_secondaries(e0[i],coseta[i],weight,self.inter[incident_species]['type'][ics],
+                                           scale_factor=self.inter[incident_species]['scale_factor'][ics])
                ns=self.secelec_ns[0]
                ut=self.secelec_ut[:ns]
                un=self.secelec_un[:ns]
@@ -1074,7 +1077,7 @@ Class for generating secondaries
          pos.tpar4 = 0.
 
 
-  def generate_secondaries(self,Ek0,costheta,weight,itype,maxsec=10):
+  def generate_secondaries(self,Ek0,costheta,weight,itype,maxsec=10,scale_factor=None):
    """
 Wrapper to secondary electrons routine secelec.
  - Ek0      # energy in eV
@@ -1111,7 +1114,8 @@ components of the secondaries (dimensionless).
    ndeltspm=0
    np0lt0=0
    np1gt1=0
-   pos.secelec(Ek0,costheta,weight, #in
+   if scale_factor is None:     
+     pos.secelec(Ek0,costheta,weight, #in
           self.secelec_ns,self.secelec_un,self.secelec_ut,self.secelec_uz,self.secelec_ityps,
           self.secelec_ekstot,self.secelec_dele,self.secelec_delr,self.secelec_delts,
           maxsec,pos.enpar,pos.pnpar,pos.matsurf,
@@ -1121,6 +1125,21 @@ components of the secondaries (dimensionless).
           pos.rpar1,pos.rpar2,pos.tpar1,pos.tpar2,pos.tpar3,
           pos.tpar4,pos.tpar5,pos.tpar6,pos.epar1,pos.epar2,
           pos.P1rinf,pos.P1einf,pos.P1epk,pos.powts,pos.powe,pos.qr,pos.nbc,
+          pos.rp0lt0,pos.rp1gt1,pos.rdeltspm,pos.rdelerm)
+   else:
+     pos.secelec(Ek0,costheta,weight, #in
+          self.secelec_ns,self.secelec_un,self.secelec_ut,self.secelec_uz,self.secelec_ityps,
+          self.secelec_ekstot,self.secelec_dele,self.secelec_delr,self.secelec_delts,
+          maxsec,pos.enpar,pos.pnpar,pos.matsurf,
+          pos.pangsec,pos.pmax,pos.pr,pos.sige,
+          pos.iprob,ndelerm,ndeltspm,np0lt0,np1gt1,
+          scale_factor*pos.dtspk,pos.Ecr,pos.E0tspk,pos.E0epk,pos.E0w,
+          pos.rpar1,pos.rpar2,pos.tpar1,pos.tpar2,pos.tpar3,
+          pos.tpar4,pos.tpar5,pos.tpar6,pos.epar1,pos.epar2,
+          scale_factor*pos.P1rinf,
+          scale_factor*pos.P1einf,
+          scale_factor*pos.P1epk,
+          pos.powts,pos.powe,pos.qr,pos.nbc,
           pos.rp0lt0,pos.rp1gt1,pos.rdeltspm,pos.rdelerm)
 #	call secelec(Ek0,costheta,chm(n),ns,vgns,vgts,vgzs,ityps,ens,
 #     + dele,delr,delts,
@@ -1427,7 +1446,8 @@ Class for generating photo-electrons
          weights = ones(pos.nlast,'d')
        if self.l_switchyz:
            self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
-                         pos.z[:pos.nlast]*0.,
+#                         pos.z[:pos.nlast]*0.,
+                         (pos.z[:pos.nlast]/pos.slength)*dy+i*dy+ymin,
                          pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
                          pos.vgx[:pos.nlast],
                          pos.vgz[:pos.nlast],
