@@ -102,7 +102,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.168 2007/08/06 22:07:52 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.169 2007/08/22 12:26:07 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -552,7 +552,7 @@ Should never be directly created by the user.
       if l2symtry or l4symtry:
        if iymin==0:
          if 0<=izmaxlocal< nzlocal and izmax == izmaxlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izmaxp+1] -phi[ixmin:ixmax+1,iymin,izmaxp] )*dx*dy/dz
-         if 0< localizmin<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
+         if 0< izminlocal<=nzlocal and izmin == izminlocal+izfsslave[me]: q -= 2.*sum(phi[ixmin:ixmax+1,iymin,izminp-1] -phi[ixmin:ixmax+1,iymin,izminp] )*dx*dy/dz
          if 0<=ixmax< nx: q -= 2.*sum(phi[ixmax+1,iymin,izminp:izmaxp+1]-phi[ixmax,iymin,izminp:izmaxp+1])*dz*dy/dx
          if 0< ixmin<=nx: q -= 2.*sum(phi[ixmin-1,iymin,izminp:izmaxp+1]-phi[ixmin,iymin,izminp:izmaxp+1])*dz*dy/dx
          qc -= 2.*sum(sum(rho[ixmin:ixmax+1,iymin,izminlocal:izmaxlocal+1]))*dx*dy*dz
