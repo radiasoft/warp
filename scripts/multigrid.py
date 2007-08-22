@@ -316,10 +316,10 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.izfsslave,self.nzfsslave)
 
   def getpotentialpforparticles(self,*args):
+    self.setpotentialpforparticles(*args)
     if not self.lparallel:
       SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
     else:
-      self.setpotentialpforparticles(*args)
       if isinstance(self.potential,FloatType): return
       if isinstance(self.potentialp,FloatType): return
       getphipforparticles3d(1,self.nx,self.ny,self.nzlocal,self.potential,
@@ -345,7 +345,6 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.nxp,self.nyp,self.nzp,
                             self.nxguard,self.nyguard,self.nzguard,self.bounds)
     if sometrue(top.efetch == 3):
-      self.setpotentialpforparticles(*args)
       self.setfieldpforparticles(*args)
       indts = args[1]
       # --- If this is the first group, set make sure that fieldp gets
