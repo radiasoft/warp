@@ -62,7 +62,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.54 2007/07/11 18:30:44 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.55 2007/08/23 22:16:14 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1988,20 +1988,35 @@ hele arrays with the same suffices:
   assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
-  # --- Get a dict of the input arguments and their values.
-  ldict = locals()
-
   # --- Get the number of multipole components in this element.
   # --- Assume 1 for the case where ae and am are scalars.
-  # --- Check top.nhmlt to see if the arrays are big enough for that number.
   nh = 1
   try: nh = len(ae)
-  except TypeError: pass
+  except TypeError: ae = [ae]
   try: nh = len(am)
-  except TypeError: pass
+  except TypeError: [am]
+
+  # --- Check if these inputs are sequences, and if not, make them lists.
+  try: len(nn)
+  except TypeError: nn = nh*[nn]
+  try: len(vv)
+  except TypeError: vv = nh*[vv]
+  try: len(pe)
+  except TypeError: pe = nh*[pe]
+  try: len(pm)
+  except TypeError: pm = nh*[pm]
+  try: len(ep)
+  except TypeError: ep = nh*[ep]
+  try: len(mp)
+  except TypeError: mp = nh*[mp]
+
+  # --- Check top.nhmlt to see if the arrays are big enough for that number.
   if nh > top.nhmlt:
     top.nhmlt = nh
     gchange("Lattice")
+
+  # --- Get a dict of the input arguments and their values.
+  ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
   # --- there are already heles, then find the place where the new one is to
@@ -2049,7 +2064,7 @@ hele arrays with the same suffices:
       e[ie] = ldict[xx]
     else:
       # --- These are quantities input for each multipole component
-      e[:,ie] = ldict[xx]
+      e[:len(ldict[xx]),ie] = ldict[xx]
 
   return ie
 
