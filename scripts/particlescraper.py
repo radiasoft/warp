@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.63 2007/08/24 17:41:48 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.64 2007/08/24 23:46:06 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -146,11 +146,11 @@ conductors are an argument.
 after load balancing."""
     if self.grid is None: lforce = 1
     if self.usergrid and not lforce: return
-    if lparallel: nz = top.nzpslave[me]
-    else:         nz = w3d.nz
+    if lparallel: nzlocal = top.nzpslave[me]
+    else:         nzlocal = w3d.nzlocal
     if (not lforce and (self.grid.nx == w3d.nx and
                         self.grid.ny == w3d.ny and
-                        self.grid.nz ==     nz and
+                        self.grid.nzlocal == nzlocal and
                         self.grid.xmmin == w3d.xmmin and
                         self.grid.xmmax == w3d.xmmax and
                         self.grid.ymmin == w3d.ymmin and
@@ -165,12 +165,13 @@ after load balancing."""
     self.grid = Grid(izslave=top.izpslave.copy(),nzslave=top.nzpslave.copy())
     self.updateconductors()
     if top.chdtspid>0:
-      if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nz:
+      if w3d.nxc<>self.grid.nx or w3d.nyc<>self.grid.ny or w3d.nzc<>self.grid.nzlocal:
         w3d.nxc=self.grid.nx
         w3d.nyc=self.grid.ny
-        w3d.nzc=self.grid.nz
+        w3d.nzc=self.grid.nzlocal
         gchange('Fields3dParticles')
-        sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,self.grid.nx,self.grid.ny,self.grid.nz)
+        sum_neighbors3d(nint(self.grid.isinside),w3d.isnearbycond,
+                        w3d.nxc,w3d.nyc,w3d.nzc)
 
   def updateconductors(self):
     for c in self.conductors:
