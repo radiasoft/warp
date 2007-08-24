@@ -101,8 +101,9 @@ import operator
 import pyOpenDX
 import VPythonobjects
 from string import *
+from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.169 2007/08/22 12:26:07 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.170 2007/08/24 17:03:55 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -219,9 +220,9 @@ Should never be directly created by the user.
       if name in kw: del kw[name]
     assert len(kw) == 0,"Invalid keyword arguments "+str(kw.keys())
 
-    self.lostparticles_data  = []
-    self.emitparticles_data  = []
-    self.imageparticles_data = []
+    self.lostparticles_data  = AppendableArray(typecode='d',unitshape=[4])
+    self.emitparticles_data  = AppendableArray(typecode='d',unitshape=[4])
+    self.imageparticles_data = AppendableArray(typecode='d',unitshape=[2])
     self.lostparticles_angles    = {}
     self.lostparticles_energies  = {}
     self.lostparticles_minenergy = {}
@@ -303,8 +304,9 @@ Should never be directly created by the user.
     """
   Returns conductor current history:
     - js=None    : select species to consider (default None means that contribution from all species are added)
-    - l_lost=1   : logical flag to set if lost particles are taken into account
-    - l_emit=1   : logical flag to set if emitted particles are taken into account
+    - l_lost=1   : logical flag setting wether lost particles are taken into account
+    - l_emit=1   : logical flag setting wether emitted particles are taken into account
+    - l_image=1  : logical flag setting wether image "particles" are taken into account
     - t_min=None : min time
     - t_max=None : max time
     - nt=100     : nb of cells
@@ -317,8 +319,8 @@ Should never be directly created by the user.
     tmaxi=top.time
     # collect lost particles data
     nl = 0
-    if l_lost and len(self.lostparticles_data) > 0:
-      datal = array(self.lostparticles_data)
+    datal = self.lostparticles_data.data()
+    if l_lost and len(datal) > 0:
       ql = datal[:,1].copy()
       tl = datal[:,0].copy()
       if tmin is None:tminl=min(tl)
@@ -330,8 +332,8 @@ Should never be directly created by the user.
       nl = shape(ql)[0]
     # collect emitted particles data
     ne = 0
-    if l_emit and len(self.emitparticles_data) > 0:
-      datae = array(self.emitparticles_data)
+    datae = self.emitparticles_data.data()
+    if l_emit and len(datae) > 0:
       qe = -datae[:,1].copy()
       te =  datae[:,0].copy()
       if tmin is None:tmine=min(te)
@@ -343,8 +345,8 @@ Should never be directly created by the user.
       ne = shape(qe)[0]
     # collect accumulated image data
     ni = 0
-    if l_image and len(self.imageparticles_data) > 2:
-      datai = array(self.imageparticles_data)
+    datai = self.imageparticles_data.data()
+    if l_image and len(datai) > 2:
       qi = 0.5*(datai[2:,1]-datai[:-2,1])
       ti = datai[1:-1,0].copy()
       if tmin is None:tmini=min(ti)
@@ -366,8 +368,9 @@ Should never be directly created by the user.
     """
   Plots conductor current history:
     - js=None      : select species to consider (default None means that contribution from all species are added)
-    - l_lost=1     : logical flag to set if lost particles are taken into account
-    - l_emit=1     : logical flag to set if emitted particles are taken into account
+    - l_lost=1     : logical flag setting wether lost particles are taken into account
+    - l_emit=1     : logical flag setting wether emitted particles are taken into account
+    - l_image=1    : logical flag setting wether image "particles" are taken into account
     - t_min=None   : min time
     - t_max=None   : max time
     - nt=100       : nb of cells
@@ -572,7 +575,7 @@ Should never be directly created by the user.
     q  = parallelsum(q)
     qc = parallelsum(qc)
 
-    self.imageparticles_data += [[top.time,q*eps0+qc]]
+    self.imageparticles_data.append(array([top.time,q*eps0+qc]))
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
       window(0)
