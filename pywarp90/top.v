@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.214 $, $Date: 2007/08/20 17:44:15 $
+#@(#) File TOP.V, version $Revision: 3.215 $, $Date: 2007/08/24 22:56:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.214 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.215 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1996,6 +1996,7 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
 # Dynamic particle arrays, and related data
 npmax  integer    /0/ +parallel  # Maximum no. of particles
                                  # (user input for some loadings)
+pgroupstatic ParticleGroup +parallel # Main group holding the particles
 pgroup _ParticleGroup +parallel # Main group holding the particles
 nplive integer    /0/  # No. of "live" particles
 npid   integer    /0/  # number of columns for pid.
