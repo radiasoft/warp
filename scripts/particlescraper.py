@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.61 2007/08/06 22:15:08 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.62 2007/08/24 17:06:53 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -94,7 +94,7 @@ conductors are an argument.
         self.uxoldpid = nextpid() - 1
         self.uyoldpid = nextpid() - 1
         self.uzoldpid = nextpid() - 1
-      installbeforestep(self.saveolddata)
+#      installbeforestep(self.saveolddata)
       setuppgroup(top.pgroup)
     self.l_print_timing=0
     # --- If the user specified the grid, then add the conductors
@@ -196,6 +196,7 @@ after load balancing."""
 
   def saveolddata(self):
     for js in xrange(top.pgroup.ns):
+#      print js,top.pgroup.ldts[js]
       if top.pgroup.ldts[js]:
         # --- The code can be written this way now since the get routines
         # --- can now return a direct reference to the data.
@@ -230,7 +231,8 @@ after load balancing."""
           self.savecondid(js,local=local)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
-
+    self.saveolddata()
+    
   def scrape(self,js):
     # --- If there are no particles in this species, that nothing needs to be done
     if top.pgroup.nps[js] == 0: return
@@ -484,10 +486,10 @@ after load balancing."""
           # --- This parallelsum coordinates with the ones below.
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data += [[top.time, 
-                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
-                                      top.dt,
-                                      jsid]]
+            c.lostparticles_data.append(array([top.time, 
+                                               w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                               top.dt,
+                                               jsid]))
       return
 
     # --- First make sure there is extra space in the pidlost array.
@@ -561,10 +563,10 @@ after load balancing."""
           # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data += [[top.time, 
-                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
-                                      top.dt,
-                                      jsid]]
+            c.lostparticles_data.append(array([top.time, 
+                                               w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                               top.dt,
+                                               jsid]))
         continue
       xc = take(x8,ii)
       yc = take(y8,ii)
@@ -576,10 +578,10 @@ after load balancing."""
           # --- This parallelsum coordinates with the other processors
           w=parallelsum(0.)
           if w<>0.:
-            c.lostparticles_data += [[top.time, 
-                                      w*top.pgroup.sq[js]*top.pgroup.sw[js],
-                                      top.dt,
-                                      jsid]]
+            c.lostparticles_data.append(array([top.time, 
+                                               w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                               top.dt,
+                                               jsid]))
         continue
       # --- For particles which are inside, set pid to the id of the conductor
       # --- where the particle is lost.
@@ -674,10 +676,10 @@ after load balancing."""
           w = sum(take(top.pidlost[:,top.wpid-1],pidtoconsider))
         # --- This parallelsum coordinates with the ones above
         if not local:w=parallelsum(w)
-        c.lostparticles_data += [[top.time, 
-                                  w*top.pgroup.sq[js]*top.pgroup.sw[js],
-                                  top.dt,
-                                  jsid]]
+        c.lostparticles_data.append(array([top.time, 
+                                           w*top.pgroup.sq[js]*top.pgroup.sw[js],
+                                           top.dt,
+                                           jsid]))
 
 
   def getrefinedtimestepnumber(self,dt,bx,by,bz,q,m):
