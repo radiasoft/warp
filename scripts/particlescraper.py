@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.62 2007/08/24 17:06:53 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.63 2007/08/24 17:41:48 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -231,7 +231,8 @@ after load balancing."""
           self.savecondid(js,local=local)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
-    self.saveolddata()
+    if self.lsaveintercept:
+      self.saveolddata()
     
   def scrape(self,js):
     # --- If there are no particles in this species, that nothing needs to be done
