@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.24 2007/08/22 11:21:57 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.25 2007/08/24 17:04:56 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -721,10 +721,10 @@ Class for generating secondaries
         for ie in range(len(self.inter[js]['emitted'][ics])):
           totemit = parallelsum(self.inter[js]['emitted'][ics][ie])
           if abs(totemit)>0.:
-            c.emitparticles_data += [[top.time, 
-                                      totemit,
-                                      top.dt,
-                                      self.inter[js]['emitted_species'][ics][ie].jslist[0]]]
+            c.emitparticles_data.append(array([top.time, 
+                                               totemit,
+                                               top.dt,
+                                               self.inter[js]['emitted_species'][ics][ie].jslist[0]]))
 
     # append history arrays
     weighttot = parallelsum(weighttot)
