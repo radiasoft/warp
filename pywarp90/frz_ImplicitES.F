@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.16 $, $Date: 2007/07/11 18:09:07 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.17 $, $Date: 2007/08/28 18:29:45 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -100,7 +100,7 @@ c     --- First, generate the chi tensor from chi0 and the B field.
             ox = 0.5*qomdt(js)*bongrid(ix,iz,0)
             oy = 0.5*qomdt(js)*bongrid(ix,iz,1)
             oz = 0.5*qomdt(js)*bongrid(ix,iz,2)
-            oo = 1./(1. + sqrt(ox**2 + oy**2 + oz**2))
+            oo = 1./(1. + ox**2 + oy**2 + oz**2)
 
             chi(0,0,ix,iz) = chi(0,0,ix,iz) + chi0(ix,iz,js)*oo*(1. + ox**2)
             chi(0,1,ix,iz) = chi(0,1,ix,iz) + chi0(ix,iz,js)*oo*(ox*oz + oy)
