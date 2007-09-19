@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.25 2007/08/24 17:04:56 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.26 2007/09/19 14:50:11 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -170,15 +170,16 @@ Class for generating secondaries
     self.__dict__.update(dict)
     self.creattxphysicsarrays()
 
-  def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,scale_factor=None):
+  def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,
+               scale_factor=None,scale_factor_velocity=1.,forced_yield=None):
     if material is None: material = conductor.material
-    if interaction_type is None:
+    if interaction_type is None and incident_species.type is Electron:
       if material=='Cu' and incident_species.type is Electron: interaction_type=1
       if material=='SS' and incident_species.type is Electron: interaction_type=2
-      if material=='Au' and incident_species.type is Hydrogen: interaction_type=3
-      if material=='Au' and incident_species.type is Helium:   interaction_type=4
-      if material=='SS' and incident_species.type is Potassium:interaction_type=5
-    if interaction_type is None:raise('Error in Secondaries: invalid material or incident species')
+#      if material=='Au' and incident_species.type is Hydrogen: interaction_type=3
+#      if material=='Au' and incident_species.type is Helium:   interaction_type=4
+#      if material=='SS' and incident_species.type is Potassium:interaction_type=5
+      if interaction_type is None:raise('Error in Secondaries: invalid material or incident species')
     isinc=incident_species
     if type(emitted_species)<>type([]):emitted_species=[emitted_species]
     issec=[]
@@ -187,7 +188,7 @@ Class for generating secondaries
     if not self.inter.has_key(isinc):
         self.inter[isinc]={}
         for key in ['emitted','condids','issec','conductors','type','isneut','incident_species', \
-                    'emitted_species','material','scale_factor']:
+                    'emitted_species','material','scale_factor','scale_factor_velocity','forced_yield']:
           self.inter[isinc][key]=[]
         self.inter[isinc]['incident_species']=incident_species
     self.inter[isinc]['condids']         += [conductor.condid]
@@ -199,10 +200,9 @@ Class for generating secondaries
     self.inter[isinc]['emitted_species'] += [emitted_species]
     self.inter[isinc]['material']        += [material]
     self.inter[isinc]['type']            += [interaction_type]
-    if incident_species.type.__class__ is Atom:
-      if scale_factor is not None and scale_factor>1.:
-        raise('Error in secondaries: scale_factor must be less than 1.')
     self.inter[isinc]['scale_factor']    += [scale_factor]
+    self.inter[isinc]['scale_factor_velocity'] += [scale_factor_velocity]
+    self.inter[isinc]['forced_yield']    += [forced_yield]
     for e in emitted_species:
       js=e.jslist[0]
       if not self.x.has_key(js):
@@ -512,8 +512,31 @@ Class for generating secondaries
           if self.l_verbose:print 'e0, coseta',e0[i],coseta[i]
           for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][ics]):
            js_new=emitted_species.jslist[0]
-           if emitted_species.type is Electron:
+           forced_yield = self.inter[incident_species]['forced_yield'][ics]
+           if forced_yield is not None:
+            ####################################################################
+            # emission with imposed yield (note that initial velocity is tiny) #
+            ####################################################################
+             if type(forced_yield) is type(0.):
+               ns=int(forced_yield)
+               if ranf()<(forced_yield-ns):ns+=1
+             else:
+               ns = forced_yield
+             xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
+             ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy 
+             znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
+             tmp = ones(ns,'d')
+             self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
+             if top.wpid==0:
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,itype=None)
+             else:
+                self.addpart(ns,xnew,ynew,znew,1.e-10*tmp,1.e-10*tmp,1.e-10*tmp,js_new,ones(ns)*weight[i],None)
+             
+           elif emitted_species.type is Electron:
             if incident_species.type is Electron:
+            ##########################################
+            # electron-induced emission of electrons #
+            ##########################################
 #             try: # need try since will generate error if no secondaries are created
                if top.wpid>0:
                  self.generate_secondaries(e0[i],coseta[i],weight[i],self.inter[incident_species]['type'][ics],
@@ -535,65 +558,80 @@ Class for generating secondaries
 #             except:
 #               ns=0
             else: # incidents are atoms or ions
-             if incident_species.type.__class__ is Atom:
+            ##########################################
+            # atom/ion-induced emission of electrons #
+            ##########################################
+             if incident_species.type.__class__ in [Atom,Molecule]:
 #              try:
 
                if self.inter[incident_species]['material'][ics]=='SS':target_num=10025
 #              -- version 0.2.1
-               ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
-                                          max(0.04,coseta[i]),
-                                          float(incident_species.type.Z),
-                                          incident_species.type.A,
-                                          target_num,
-                                          self.emitted_e,
-                                          self.emitted_bn,
-                                          self.emitted_bt,
-                                          self.emitted_bz)
+               scale_factor = self.inter[incident_species]['scale_factor'][ics]
+               if scale_factor is None or scale_factor==1.:
+                 nbatches = 1
+                 l_scale_factor = false
+               else:
+                 nbatches = int(scale_factor)+1
+                 l_scale_factor = true
+               nsemit = 0
+               untx=AppendableArray(typecode='d',autobump=10)
+               uttx=AppendableArray(typecode='d',autobump=10)
+               uztx=AppendableArray(typecode='d',autobump=10)
+               for ibatch in range(nbatches):
+                 ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
+                                            max(0.04,coseta[i]),
+                                            float(incident_species.type.Z),
+                                            incident_species.type.A,
+                                            target_num,
+                                            self.emitted_e,
+                                            self.emitted_bn,
+                                            self.emitted_bt,
+                                            self.emitted_bz)
 #              -- version 0.6.1
-#               ion_ind_e0 = txphysics.doubleArray(1)
-#               ion_ind_ct = txphysics.doubleArray(1)
-#               ion_ind_e0[0] = e0[i]/(1.e6*incident_species.type.A)
-#               ion_ind_ct[0] = max(0.04,coseta[i])
-#               ns,self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
-#               txphysics.ion_ind_elecs(1, # size of input array
-#                                       ion_ind_e0,
-#                                       ion_ind_ct,
-#                                       float(incident_species.type.Z),
-#                                       incident_species.type.A,
-#                                       target_num,
-#                                       0.)
-               ns = min(ns,self.npmax)
-               if self.inter[incident_species]['scale_factor'][ics] is not None:
-                 # scale by user provided factor (default is not to scale)
-                 fns=float(ns)*self.inter[incident_species]['scale_factor'][ics]
-                 ns=int(fns)
-                 if ranf()<(fns-ns):ns+=1
-               self.coseta=coseta[i]
-               itype=None
-               nsemit=ns+0
-               # for some reason, the energy is sometimes negative on OSX
-               for iemit in range(ns):
-                 if self.emitted_e[iemit]<0.:
-                   print 'Warning: negative energy from txphysics.ion_ind_elecs:',self.emitted_e[iemit]
-                   nsemit-=1
-               un=zeros(nsemit,'d')
-               ut=zeros(nsemit,'d')
-               uz=zeros(nsemit,'d')
-               iwemit=0
-               for iemit in range(ns):
-                 if self.emitted_e[iemit]>=0.:
-                   gammac = clight/sqrt(1.-self.emitted_bn[iemit]**2 \
-                                          +self.emitted_bt[iemit]**2 \
-                                          +self.emitted_bz[iemit]**2)
-                   un[iwemit]=gammac*self.emitted_bn[iemit] 
-                   ut[iwemit]=gammac*self.emitted_bt[iemit] 
-                   uz[iwemit]=gammac*self.emitted_bz[iemit] 
-                   iwemit+=1
+#                 ion_ind_e0 = txphysics.doubleArray(1)
+#                 ion_ind_ct = txphysics.doubleArray(1)
+#                 ion_ind_e0[0] = e0[i]/(1.e6*incident_species.type.A)
+#                 ion_ind_ct[0] = max(0.04,coseta[i])
+#                 ns,self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
+#                 txphysics.ion_ind_elecs(1, # size of input array
+#                                         ion_ind_e0,
+#                                         ion_ind_ct,
+#                                         float(incident_species.type.Z),
+#                                         incident_species.type.A,
+#                                         target_num,
+#                                         0.)
+                 self.coseta=coseta[i]
+                 if l_scale_factor:
+                   emitfrac=scale_factor-ibatch 
+                 if l_scale_factor and emitfrac<1.:
+                   for iemit in range(ns):
+                     if self.emitted_e[iemit]>=0. and ranf()<emitfrac:
+                       gammac = clight/sqrt(1.-self.emitted_bn[iemit]**2 \
+                                              +self.emitted_bt[iemit]**2 \
+                                              +self.emitted_bz[iemit]**2)
+                       untx.append(gammac*self.emitted_bn[iemit])
+                       uttx.append(gammac*self.emitted_bt[iemit])
+                       uztx.append(gammac*self.emitted_bz[iemit])
+                       nsemit+=1
+                 else:
+                   for iemit in range(ns):
+                     if self.emitted_e[iemit]>=0.:
+                       gammac = clight/sqrt(1.-self.emitted_bn[iemit]**2 \
+                                              +self.emitted_bt[iemit]**2 \
+                                              +self.emitted_bz[iemit]**2)
+                       untx.append(gammac*self.emitted_bn[iemit])
+                       uttx.append(gammac*self.emitted_bt[iemit])
+                       uztx.append(gammac*self.emitted_bz[iemit])
+                       nsemit+=1
                ns=nsemit
+               itype=None
+               un=untx.data()
+               ut=uttx.data()
+               uz=uztx.data()
+               del untx,uttx,uztx
                if self.l_verbose:
                  print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
-#              except:
-#               ns=0
+
             if self.l_record_timing:
               t.finish()
               tgen+=t.micro()
@@ -623,6 +661,7 @@ Class for generating secondaries
              uxsec = cosphi[i]*costheta[i]*ut0 - sinphi[i]*uz0 + cosphi[i]*sintheta[i]*un0
              uysec = sinphi[i]*costheta[i]*ut0 + cosphi[i]*uz0 + sinphi[i]*sintheta[i]*un0
              uzsec =          -sintheta[i]*ut0                 +           costheta[i]*un0
+             del un,ut,uz,un0,ut0,uz0
              if self.l_record_timing:
                t.finish()
                tprepadd+=t.micro()
@@ -655,8 +694,10 @@ Class for generating secondaries
                 self.addpart(ns,xnew,ynew,znew,uxsec,uysec,uzsec,js_new,ones(ns)*weight[i],itype)
                ek0emitav += sum(e0emit)
               
-           # emit neutrals
-           if emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
+           ########################
+           # emission of neutrals #
+           ########################
+           elif emitted_species.type.__class__ is not Particle and emitted_species.charge_state==0: 
             my_yield=1.+1.82e-4*exp(0.09*180./pi*arccos(coseta[i]))
             ns = int(my_yield)
             # --- The ns+1 is only a temporary fix to avoid an array out of
@@ -673,13 +714,17 @@ Class for generating secondaries
             #compute the desorbed neutrals
             # note that the gamma0 (1.) and rel_weight (top.pgroup.sw[js_new]/top.pgroup.sw[js]) are actually not used
             desorb.desorb(my_yield,v[0][i],v[1][i],v[2][i],theta[i],phi[i],1.,0.4,top.pgroup.sm[js],top.pgroup.sw[js_new]/top.pgroup.sw[js],vx,vy,vz)
+            scale_factor_velocity = self.inter[incident_species]['scale_factor_velocity'][ics]
             for ivnew in range(ns):
-              vxnew[ivnew]=vx[ivnew]
-              vynew[ivnew]=vy[ivnew]
-              vznew[ivnew]=vz[ivnew]
-            xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
-            ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy
-            znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
+              vxnew[ivnew]=vx[ivnew]*scale_factor_velocity
+              vynew[ivnew]=vy[ivnew]*scale_factor_velocity
+              vznew[ivnew]=vz[ivnew]*scale_factor_velocity
+#            xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
+#            ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy
+#            znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
+            xnew = xplost[i]+n_unit0[0][i]*1.*w3d.dx
+            ynew = yplost[i]+n_unit0[1][i]*1.*w3d.dy
+            znew = zplost[i]+n_unit0[2][i]*1.*w3d.dz
 #            pid[:,self.xoldpid]=xnew-vxnew*top.dt
 #            pid[:,self.yoldpid]=ynew-vynew*top.dt
 #            pid[:,self.zoldpid]=znew-vznew*top.dt
@@ -719,7 +764,7 @@ Class for generating secondaries
     for js in self.inter.keys():
       for ics,c in enumerate(self.inter[js]['conductors']):
         for ie in range(len(self.inter[js]['emitted'][ics])):
-          totemit = parallelsum(self.inter[js]['emitted'][ics][ie])
+          totemit = globalsum(self.inter[js]['emitted'][ics][ie])
           if abs(totemit)>0.:
             c.emitparticles_data.append(array([top.time, 
                                                totemit,
@@ -727,9 +772,9 @@ Class for generating secondaries
                                                self.inter[js]['emitted_species'][ics][ie].jslist[0]]))
 
     # append history arrays
-    weighttot = parallelsum(weighttot)
-    ek0av = parallelsum(ek0av)
-    costhav = parallelsum(costhav)
+    weighttot = globalsum(weighttot)
+    ek0av = globalsum(ek0av)
+    costhav = globalsum(costhav)
     if me==0:
      if weighttot<>0.:
       self.htime.append(top.time)
