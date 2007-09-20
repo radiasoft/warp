@@ -346,27 +346,27 @@ REAL(kind=8) :: sigma_local, sigmab, sigmab_next, tp, tpp, tm, tmm, g, gp, gm
         sigma_local = MIN(1.e15,abs(tpp-1./tp)/dx)
       END if
       IF(sigma_local == 0.) then
+      ! --- end of mesh
         a  =  1.
         bp =  dt / dx
-        bm =  -bp
       else
         a  =  EXP(-sigma_local*dt)
         bp =  (1.-a)/(sigma_local*dx)
-        bm =  -bp
       END if
+      bm =  -bp
     case (apml_exponential)
       sigmab = coef_sigmab*sigma
       IF(sigma == 0.) then
+      ! --- end of mesh
         a  =  1.
         bp =  dt / dx
         bm =  -bp
       else
+        a  =  EXP(-sigma*dt)
         IF(sigmab==0.) then
-          a  =  EXP(-sigma*dt)
           bp =  (1.-a)/(sigma*dx)
           bm =  -bp
         else
-          a  =  EXP(-sigma*dt)
           bp =  (sigmab/sigma)*(1.-a)/(1.-EXP(-sigmab*dx))
           bm =  -EXP(-sigmab*dx)*bp
         END if
@@ -763,7 +763,7 @@ end subroutine move_bnd
 function ijk(bnd,j,k)
 implicit none
 TYPE(type_bnd), INTENT(INOUT) :: bnd
-INTEGER :: ijk
+INTEGER(ISZ) :: ijk
 INTEGER(ISZ), INTENT(IN) :: j, k
 
 IF(k<1.or.k>bnd%ny+1.or.j<1.or.j>bnd%nx+1) then
