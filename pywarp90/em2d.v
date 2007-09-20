@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.12 $, $Date: 2006/10/25 23:07:52 $
+#@(#) File EM2D.V, version $Revision: 1.13 $, $Date: 2007/09/20 16:53:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -18,6 +18,7 @@ apml_ssa         integer /5/
 apml_lwa         integer /6/
 
 *********** EM2D_bnd dump:
+l_pml_cummer  logical    /.false./
 s_max_init       real    /4./
 s_max_x          real
 s_max_y          real
@@ -31,6 +32,12 @@ bndexeybzf       _type_bnd
 bndbxbyez        _type_bnd
 bndbxbyezc       _type_bnd
 bndbxbyezf       _type_bnd
+bndexeybz_c        _type_bnd_cummer
+bndexeybzc_c       _type_bnd_cummer
+bndexeybzf_c       _type_bnd_cummer
+bndbxbyez_c        _type_bnd_cummer
+bndbxbyezc_c       _type_bnd_cummer
+bndbxbyezf_c       _type_bnd_cummer
 
 *********** EM2D_FIELDobjects dump:
 l_onegrid                    logical /.true./
@@ -95,6 +102,7 @@ smooth2d_lindman(q(0:nx+3,0:ny+2),nx,ny) subroutine
 move_window_field(f:EM2D_FIELDtype) subroutine
 project_j(f:EM2D_FIELDtype,fc:EM2D_FIELDtype,ff:EM2D_FIELDtype) subroutine
 set_substitute_fields(field:EM2D_FIELDtype,fpatchcoarse:EM2D_FIELDtype,fpatchfine:EM2D_FIELDtype) subroutine
+bndijk(f:EM2D_FIELDtype,j:integer,k:integer) integer function
 
 %%%%%%%% type_bnd:
 n integer
@@ -126,6 +134,47 @@ cBzx(1:n) _real
 aBzy(1:n) _real
 bBzy(1:n) _real
 cBzy(1:n) _real
+
+%%%%%%%% type_bnd_cummer:
+n integer
+nx integer
+ny integer
+nbndx integer
+nbndy integer
+n1x integer
+nbot integer
+nint integer
+ntop integer
+nbot1 integer
+nbot2 integer
+ntop1 integer
+ntop2 integer
+Ex(1:n) _real
+Ey(1:n) _real
+Bz(1:n) _real
+Extild(1:n) _real
+Eytild(1:n) _real
+Bzxtild(1:n) _real
+Bzytild(1:n) _real
+aEx(1:n) _real
+bEx(1:n) _real
+cEx(1:n) _real
+aEy(1:n) _real
+bEy(1:n) _real
+cEy(1:n) _real
+aBz(1:n) _real
+bBzx(1:n) _real
+cBzx(1:n) _real
+bBzy(1:n) _real
+cBzy(1:n) _real
+aExtild(1:n) _real
+aEytild(1:n) _real
+aBzxtild(1:n) _real
+aBzytild(1:n) _real
+bExtild(1:n) _real
+bEytild(1:n) _real
+bBzxtild(1:n) _real
+bBzytild(1:n) _real
 
 %%%%%%%% EM2D_FIELDtype:
 nx integer
@@ -202,3 +251,5 @@ tpulse(0:npulse+1) _real
 pulse(0:npulse+1) _real
 bndexeybz _type_bnd
 bndbxbyez _type_bnd
+bndexeybz_cummer _type_bnd_cummer
+bndbxbyez_cummer _type_bnd_cummer
