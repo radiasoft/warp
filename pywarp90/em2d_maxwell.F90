@@ -6,6 +6,10 @@ module mod_field
 
 use EM2D_FIELDtypemodule
 USE mod_bnd
+USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
+                    move_bnd_cummer => move_bnd, &
+                    move_window_bnd_cummer => move_window_bnd , &
+                    ijk_cummer => ijk
 USE EM2D_FIELDobjects
 use GlobalVars
 use Picglb
@@ -14,6 +18,9 @@ implicit none
 TYPE bnd_pointer
   type(type_bnd), POINTER :: b
 end type bnd_pointer
+TYPE bnd_cummer_pointer
+  type(type_bnd_cummer), POINTER :: b
+end type bnd_cummer_pointer
 !type(bnd_pointer), dimension(3,2) :: bnds ! first dimension is for [main grid, coarse patch, fine patch]
 !                                          ! second dimension is for [(Ex,Ey,Bz),(Bx,By,Ez)]
 !INTEGER, parameter :: base=1, patchcoarse=2, patchfine=3
@@ -155,12 +162,21 @@ dtsdy = f%clight**2*dt/f%dy
 mudt  = f%mu0*f%clight**2*dt
 
 if (f%l_apply_pml) then
-  call exchange_bnd_field2(f%bndbxbyez,f)
+  if(l_pml_cummer) then
+    call exchange_bnd_field2_apml_cummer(f%bndbxbyez_cummer,f)
+  else
+    call exchange_bnd_field2_apml(f%bndbxbyez,f)
+  end if
 END IF
 
 if (f%l_apply_pml) then 
-  call move_bnd(f%bndexeybz)
-  call move_bnd(f%bndbxbyez)
+  if(l_pml_cummer) then
+    call move_bnd_cummer(f%bndexeybz_cummer)
+    call move_bnd_cummer(f%bndbxbyez_cummer)
+  else
+    call move_bnd(f%bndexeybz)
+    call move_bnd(f%bndbxbyez)
+  end if
 end if
 
 ! advance Ex
@@ -266,7 +282,11 @@ end if
 !END if
 
 if (f%l_apply_pml) then
-  call exchange_bnd_field(f%bndexeybz,f)
+  if(l_pml_cummer) then
+    call exchange_bnd_field_apml_cummer(f%bndexeybz_cummer,f)
+  else
+    call exchange_bnd_field_apml(f%bndexeybz,f)
+  end if
 END IF
 
 return
@@ -274,10 +294,57 @@ end subroutine champ_e
 
 !************* SUBROUTINE exchange_bnd_field  ****************************************
 
-subroutine exchange_bnd_field(b, f)
+subroutine exchange_bnd_field_apml(b,f)
  implicit none
 
 TYPE(type_bnd  ) :: b
+TYPE(EM2D_FIELDtype) :: f
+
+  call exchange_bnd_field(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,f)
+  
+  return
+end subroutine exchange_bnd_field_apml
+
+subroutine exchange_bnd_field_apml_cummer(b,f)
+ implicit none
+
+TYPE(type_bnd_cummer) :: b
+TYPE(EM2D_FIELDtype) :: f
+
+  call exchange_bnd_field(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,f)
+  call exchange_bnd_field_tild(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,b%Extild,b%Eytild,f)
+  
+  return
+end subroutine exchange_bnd_field_apml_cummer
+
+subroutine exchange_bnd_field2_apml(b,f)
+ implicit none
+
+TYPE(type_bnd  ) :: b
+TYPE(EM2D_FIELDtype) :: f
+
+  call exchange_bnd_field2(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,f)
+  
+  return
+end subroutine exchange_bnd_field2_apml
+
+subroutine exchange_bnd_field2_apml_cummer(b,f)
+ implicit none
+
+TYPE(type_bnd_cummer) :: b
+TYPE(EM2D_FIELDtype) :: f
+
+  call exchange_bnd_field2(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,f)
+  call exchange_bnd_field_tild(b%nbndx,b%nbndy,b%ntop1,b%ntop2,b%nbot1,b%nbot2,b%n1x,b%nint,b%Ex,b%Ey,b%Extild,b%Eytild,f)
+  
+  return
+end subroutine exchange_bnd_field2_apml_cummer
+
+subroutine exchange_bnd_field(nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint,Ex,Ey,f)
+ implicit none
+
+integer :: nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint
+real(kind=8),dimension(:) :: Ex,Ey
 TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: jb, kb, jf, kf,jk1,jk
@@ -289,57 +356,57 @@ if(f%ylbound==periodic) then
 !else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 else 
   kf = 0
-  kb = kf + b%nbndy
-  jk1=b%ntop1+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop1+kb*n1x
   do jf = 0, f%nx+1
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk=jk1+jb
-    f%Ex(jf,kf) = b%Ex(jk)
+    f%Ex(jf,kf) = Ex(jk)
   end do
 
   kf = f%ny+2
-  kb = kf + b%nbndy
-  jk1=b%ntop2+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop2+kb*n1x
   do jf = 0, f%nx+1
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk=jk1+jb
-    f%Ex(jf,kf) = b%Ex(jk)
+    f%Ex(jf,kf) = Ex(jk)
   end do
 
   kf = 1
-  kb = kf + b%nbndy
-  jk1=b%ntop1+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop1+kb*n1x
   do jf = 1, f%nx
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk=jk1+jb
-    b%Ex(jk) = f%Ex(jf,kf)
+    Ex(jk) = f%Ex(jf,kf)
   end do
 
   kf = f%ny+1
-  kb = kf + b%nbndy
-  jk1=b%ntop2+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop2+kb*n1x
   do jf = 1, f%nx
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk=jk1+jb
-    b%Ex(jk) = f%Ex(jf,kf)
+    Ex(jk) = f%Ex(jf,kf)
   end do
 
   kf = 0
-  kb = kf + b%nbndy
-  jk1=b%ntop1+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop1+kb*n1x
   do jf = 1, f%nx+1
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk = jk1+jb
-    b%Ey(jk) = f%Ey(jf,kf)
+    Ey(jk) = f%Ey(jf,kf)
   end do
 
   kf = f%ny+1
-  kb = kf + b%nbndy
-  jk1=b%ntop2+kb*b%n1x
+  kb = kf + nbndy
+  jk1=ntop2+kb*n1x
   do jf = 1, f%nx+1
-    jb = jf+b%nbndx
+    jb = jf+nbndx
     jk = jk1+jb
-    b%Ey(jk) = f%Ey(jf,kf)
+    Ey(jk) = f%Ey(jf,kf)
   end do
 end if
 
@@ -349,152 +416,153 @@ if(f%xlbound==periodic) then
 
 else if(.not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
   jf = 0
-  jb = jf + b%nbndx
-  jk1=b%ntop1+jb
+  jb = jf + nbndx
+  jk1=ntop1+jb
   do kf=0,1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%Ey(jf,kf)=Ey(jk)
   enddo
-  jk1=b%nbot1+jb
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    f%Ey(jf,kf)=Ey(jk)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf=f%ny,f%ny+1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%Ey(jf,kf)=Ey(jk)
   enddo
 
 
   jf = f%nx+2
-  jb = jf + b%nbndx
-  jk1=b%ntop1+jb
+  jb = jf + nbndx
+  jk1=ntop1+jb
   do kf=0,1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%Ey(jf,kf)=Ey(jk)
   enddo
-  jk1=b%nbot2+jb
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    f%Ey(jf,kf)=Ey(jk)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf=f%ny,f%ny+1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%Ey(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%Ey(jf,kf)=Ey(jk)
   enddo
 
   jf = 0
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
+  jk=ntop1+jb+n1x*(kf+nbndy)
   if(f%js==1) then
-    b%Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
+    Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
   else
-    b%Ex(jk) = f%Ex(jf,kf) 
+    Ex(jk) = f%Ex(jf,kf) 
   end if
 
-  jk1=b%nbot1+jb
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
+    kb = kf+nbndy
+    jk=jk1+kb*nint
     if(f%js==1) then
-      b%Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
+      Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
     else
-      b%Ex(jk) = f%Ex(jf,kf) 
+      Ex(jk) = f%Ex(jf,kf) 
     end if
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf = f%ny, f%ny+1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%n1x
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
     if(f%js==1) then
-      b%Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
+      Ex(jk) = f%Ex(jf,kf) - f%Ex_in(kf)
     else
-      b%Ex(jk) = f%Ex(jf,kf) 
+      Ex(jk) = f%Ex(jf,kf) 
     end if
   end do
 
   jf = f%nx+1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
-  b%Ex(jk) = f%Ex(jf,kf)
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Ex(jk) = f%Ex(jf,kf)
 
-  jk1=b%nbot2+jb
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ex(jk) = f%Ex(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ex(jk) = f%Ex(jf,kf)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf = f%ny, f%ny+1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    b%Ex(jk) = f%Ex(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
+    Ex(jk) = f%Ex(jf,kf)
   end do
 
   jf = 1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
+  jk=ntop1+jb+n1x*(kf+nbndy)
     if(f%js==1) then
-      b%Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
+      Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
     else
-      b%Ey(jk) = f%Ey(jf,kf) 
+      Ey(jk) = f%Ey(jf,kf) 
     end if
-  jk1=b%nbot1+jb
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
+    kb = kf+nbndy
+    jk=jk1+kb*nint
     if(f%js==1) then
-      b%Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
+      Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
     else
-      b%Ey(jk) = f%Ey(jf,kf) 
+      Ey(jk) = f%Ey(jf,kf) 
     end if
   enddo
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   kf = f%ny
-  kb = kf+b%nbndy
-  jk=jk1+kb*b%n1x
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
   if(f%js==1) then
-    b%Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
+    Ey(jk) = f%Ey(jf,kf) - f%Ey_in(kf)
   else
-    b%Ey(jk) = f%Ey(jf,kf)
+    Ey(jk) = f%Ey(jf,kf)
   end if
 
   jf = f%nx+1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
-  b%Ey(jk) = f%Ey(jf,kf) 
-  jk1=b%nbot2+jb
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Ey(jk) = f%Ey(jf,kf) 
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ey(jk) = f%Ey(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ey(jk) = f%Ey(jf,kf)
   enddo
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   kf = f%ny
-  kb = kf+b%nbndy
-  jk=jk1+kb*b%n1x
-  b%Ey(jk) = f%Ey(jf,kf)
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
+  Ey(jk) = f%Ey(jf,kf)
 end if
 
 return
 END subroutine exchange_bnd_field
 
-subroutine exchange_bnd_field2(b, f)
+subroutine exchange_bnd_field2(nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint,Ex,Ey,f)
  implicit none
 
-TYPE(type_bnd  ) :: b
+integer :: nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint
+real(kind=8),dimension(:) :: Ex,Ey
 TYPE(EM2D_FIELDtype) :: f
 
 INTEGER :: jb, kb, jf, kf,jk1,jk
@@ -506,67 +574,67 @@ if(f%ylbound==periodic) then
 !else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 else 
 kf = 0
-kb = kf + b%nbndy
-jk1=b%ntop1+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop1+kb*n1x
 do jf = 0, f%nx+1
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk=jk1+jb
-  f%Bx(jf,kf) = b%Ex(jk)
+  f%Bx(jf,kf) = Ex(jk)
 end do
 
 kf = f%ny+2
-kb = kf + b%nbndy
-jk1=b%ntop2+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop2+kb*n1x
 do jf = 0, f%nx+1
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk=jk1+jb
-  f%Bx(jf,kf) = b%Ex(jk)
+  f%Bx(jf,kf) = Ex(jk)
 end do
 
 kf = 1
-kb = kf + b%nbndy
-jk1=b%ntop1+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop1+kb*n1x
 do jf = 1, f%nx
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk=jk1+jb
   if (f%js==1) then
-    b%Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
+    Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
   else
-    b%Ex(jk) = f%Bx(jf,kf)
+    Ex(jk) = f%Bx(jf,kf)
   end if
 end do
 
 kf = f%ny+1
-kb = kf + b%nbndy
-jk1=b%ntop2+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop2+kb*n1x
 do jf = 1, f%nx
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk=jk1+jb
-  b%Ex(jk) = f%Bx(jf,kf)
+  Ex(jk) = f%Bx(jf,kf)
 end do
 end if
 
 !if(.not. (l_moving_window .and. l_elaser_out_plane)) then
 kf = 0
-kb = kf + b%nbndy
-jk1=b%ntop1+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop1+kb*n1x
 do jf = 1, f%nx+1
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk = jk1+jb
   if(f%js==1) then
-    b%Ey(jk) = f%By(jf,kf) - f%By_in(jf)
+    Ey(jk) = f%By(jf,kf) - f%By_in(jf)
   else
-    b%Ey(jk) = f%By(jf,kf)
+    Ey(jk) = f%By(jf,kf)
   end if
 end do
 
 kf = f%ny+1
-kb = kf + b%nbndy
-jk1=b%ntop2+kb*b%n1x
+kb = kf + nbndy
+jk1=ntop2+kb*n1x
 do jf = 1, f%nx+1
-  jb = jf+b%nbndx
+  jb = jf+nbndx
   jk = jk1+jb
-  b%Ey(jk) = f%By(jf,kf)
+  Ey(jk) = f%By(jf,kf)
 end do
 !end if
 
@@ -576,130 +644,258 @@ if(f%xlbound==periodic) then
 
 else if(.not. (l_moving_window .and. (.not. l_elaser_out_plane))) then
   jf = 0
-  jb = jf + b%nbndx
-  jk1=b%ntop1+jb
+  jb = jf + nbndx
+  jk1=ntop1+jb
   do kf=0,1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%By(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%By(jf,kf)=Ey(jk)
   enddo
-  jk1=b%nbot1+jb
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    f%By(jf,kf)=b%Ey(jk)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    f%By(jf,kf)=Ey(jk)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf=f%ny,f%ny+1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%By(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%By(jf,kf)=Ey(jk)
   enddo
 
   jf = f%nx+2
-  jb = jf + b%nbndx
-  jk1=b%ntop1+jb
+  jb = jf + nbndx
+  jk1=ntop1+jb
   do kf=0,1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%By(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%By(jf,kf)=Ey(jk)
   enddo
-  jk1=b%nbot2+jb
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    f%By(jf,kf)=b%Ey(jk)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    f%By(jf,kf)=Ey(jk)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf=f%ny,f%ny+1
-    kb=kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    f%By(jf,kf)=b%Ey(jk)
+    kb=kf+nbndy
+    jk=jk1+kb*n1x
+    f%By(jf,kf)=Ey(jk)
   enddo
 
    jf = 0
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
+  jk=ntop1+jb+n1x*(kf+nbndy)
     if(f%js==1) then
-      b%Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
+      Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
     else
-      b%Ex(jk) = f%Bx(jf,kf) 
+      Ex(jk) = f%Bx(jf,kf) 
     end if
 
-  jk1=b%nbot1+jb
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ex(jk) = f%Bx(jf,kf) 
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ex(jk) = f%Bx(jf,kf) 
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf = f%ny, f%ny+1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    b%Ex(jk) = f%Bx(jf,kf) 
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
+    Ex(jk) = f%Bx(jf,kf) 
   end do
 
   jf = f%nx+1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
+  jk=ntop1+jb+n1x*(kf+nbndy)
     if(f%js==1) then
-      b%Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
+      Ex(jk) = f%Bx(jf,kf) - f%Bx_in(jf)
     else
-      b%Ex(jk) = f%Bx(jf,kf)
+      Ex(jk) = f%Bx(jf,kf)
     end if
 
-  jk1=b%nbot2+jb
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ex(jk) = f%Bx(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ex(jk) = f%Bx(jf,kf)
   end do
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   do kf = f%ny, f%ny+1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%n1x
-    b%Ex(jk) = f%Bx(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
+    Ex(jk) = f%Bx(jf,kf)
   end do
 
   jf = 1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
-  b%Ey(jk) = f%By(jf,kf) 
-  jk1=b%nbot1+jb
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Ey(jk) = f%By(jf,kf) 
+  jk1=nbot1+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ey(jk) = f%By(jf,kf) 
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ey(jk) = f%By(jf,kf) 
   enddo
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   kf = f%ny
-  kb = kf+b%nbndy
-  jk=jk1+kb*b%n1x
-  b%Ey(jk) = f%By(jf,kf)
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
+  Ey(jk) = f%By(jf,kf)
 
   jf = f%nx+1
-  jb = jf + b%nbndx
+  jb = jf + nbndx
   kf=1
-  jk=b%ntop1+jb+b%n1x*(kf+b%nbndy)
-  b%Ey(jk) = f%By(jf,kf) 
-  jk1=b%nbot2+jb
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Ey(jk) = f%By(jf,kf) 
+  jk1=nbot2+jb
   do kf = 2, f%ny-1
-    kb = kf+b%nbndy
-    jk=jk1+kb*b%nint
-    b%Ey(jk) = f%By(jf,kf)
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Ey(jk) = f%By(jf,kf)
   enddo
-  jk1=b%ntop2+jb
+  jk1=ntop2+jb
   kf = f%ny
-  kb = kf+b%nbndy
-  jk=jk1+kb*b%n1x
-  b%Ey(jk) = f%By(jf,kf)
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
+  Ey(jk) = f%By(jf,kf)
 end if
 
 return
 END subroutine exchange_bnd_field2
+
+
+subroutine exchange_bnd_field_tild(nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint,Ex,Ey,Extild,Eytild,f)
+ implicit none
+
+integer :: nbndx,nbndy,ntop1,ntop2,nbot1,nbot2,n1x,nint
+real(kind=8),dimension(:) :: Ex,Ey,Extild,Eytild
+TYPE(EM2D_FIELDtype) :: f
+
+INTEGER :: jb, kb, jf, kf,jk1,jk
+
+if(.not. f%ylbound==periodic) then
+!else if(.not. (l_moving_window .and. l_elaser_out_plane)) then
+
+  kf = 1
+  kb = kf + nbndy
+  jk1=ntop1+kb*n1x
+  do jf = 1, f%nx
+    jb = jf+nbndx
+    jk=jk1+jb
+    Extild(jk) = Ex(jk)
+  end do
+
+  kf = f%ny+1
+  kb = kf + nbndy
+  jk1=ntop2+kb*n1x
+  do jf = 1, f%nx
+    jb = jf+nbndx
+    jk=jk1+jb
+    Extild(jk) = Ex(jk)
+  end do
+
+  kf = 0
+  kb = kf + nbndy
+  jk1=ntop1+kb*n1x
+  do jf = 1, f%nx+1
+    jb = jf+nbndx
+    jk = jk1+jb
+    Eytild(jk) = Ey(jk)
+  end do
+
+  kf = f%ny+1
+  kb = kf + nbndy
+  jk1=ntop2+kb*n1x
+  do jf = 1, f%nx+1
+    jb = jf+nbndx
+    jk = jk1+jb
+    Eytild(jk) = Ey(jk)
+  end do
+end if
+
+if(.not. f%xlbound==periodic .and. .not. (l_moving_window .and. (.not.l_elaser_out_plane))) then
+
+  jf = 0
+  jb = jf + nbndx
+  kf=1
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Extild(jk) = Ex(jk)
+
+  jk1=nbot1+jb
+  do kf = 2, f%ny-1
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Extild(jk) = Ex(jk)
+  end do
+  jk1=ntop2+jb
+  do kf = f%ny, f%ny+1
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
+    Extild(jk) = Ex(jk)
+  end do
+
+  jf = f%nx+1
+  jb = jf + nbndx
+  kf=1
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Extild(jk) = Ex(jk)
+
+  jk1=nbot2+jb
+  do kf = 2, f%ny-1
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Extild(jk) = Ex(jk)
+  end do
+  jk1=ntop2+jb
+  do kf = f%ny, f%ny+1
+    kb = kf+nbndy
+    jk=jk1+kb*n1x
+    Extild(jk) = Ex(jk)
+  end do
+
+  jf = 1
+  jb = jf + nbndx
+  kf=1
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Eytild(jk) = Ey(jk)
+  jk1=nbot1+jb
+  do kf = 2, f%ny-1
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Eytild(jk) = Ey(jk)
+  enddo
+  jk1=ntop2+jb
+  kf = f%ny
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
+  Eytild(jk) = Ey(jk)
+
+  jf = f%nx+1
+  jb = jf + nbndx
+  kf=1
+  jk=ntop1+jb+n1x*(kf+nbndy)
+  Eytild(jk) = Ey(jk)
+  jk1=nbot2+jb
+  do kf = 2, f%ny-1
+    kb = kf+nbndy
+    jk=jk1+kb*nint
+    Eytild(jk) = Ey(jk)
+  enddo
+  jk1=ntop2+jb
+  kf = f%ny
+  kb = kf+nbndy
+  jk=jk1+kb*n1x
+  Eytild(jk) = Ey(jk)
+end if
+
+return
+END subroutine exchange_bnd_field_tild
 
 !*************************  SUBROUTINE griuni****************************************
 
@@ -1219,10 +1415,18 @@ subroutine move_window_field(f)
 use EM2D_FIELDtypemodule
 use mod_field,Only: l_elaser_out_plane,shift_fields_1cell
 use mod_bnd
+USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
+                    move_bnd_cummer => move_bnd, &
+                    move_window_bnd_cummer => move_window_bnd                    
 TYPE(EM2D_FIELDtype):: f
   call shift_fields_1cell(f)
-  call move_window_bnd(f%bndexeybz,f%rap,.false.)!l_elaser_out_plane)
-  call move_window_bnd(f%bndbxbyez,f%rap,.false.)!l_elaser_out_plane)
+  if(l_pml_cummer) then
+    call move_window_bnd_cummer(f%bndexeybz_cummer,f%rap,.false.)!l_elaser_out_plane)
+    call move_window_bnd_cummer(f%bndbxbyez_cummer,f%rap,.false.)!l_elaser_out_plane)
+  else
+    call move_window_bnd(f%bndexeybz,f%rap,.false.)!l_elaser_out_plane)
+    call move_window_bnd(f%bndbxbyez,f%rap,.false.)!l_elaser_out_plane)
+  end if
   if (l_elaser_out_plane .and. .false.) then
     f%ymin  =f%ymin  +f%dy*f%rap
     f%ymax  =f%ymax  +f%dy*f%rap
@@ -1323,6 +1527,9 @@ subroutine smooth2(q,nx,ny)
 !************* SUBROUTINE init_fields  *************************************************
 subroutine init_fields(f,nx, ny, nbndx, nbndy, dt, dx, dy, clight, mu0, xmin, ymin, rap, xlb, ylb, xrb, yrb)
 use mod_bnd
+USE mod_bnd_cummer, create_bnd_cummer => create_bnd, &
+                    move_bnd_cummer => move_bnd, &
+                    move_window_bnd_cummer => move_window_bnd                    
 use mod_field, only:EM2D_FIELDtype, l_copyfields, l_elaser_out_plane
 implicit none
 
@@ -1333,8 +1540,13 @@ REAL(kind=8), INTENT(IN) :: dt, dx, dy, xmin, ymin, clight, mu0
 INTEGER :: k,m
 
 !f => NewEM2D_FIELDType()
-f%bndexeybz => Newtype_bnd()
-f%bndbxbyez => Newtype_bnd()
+if(l_pml_cummer) then
+  f%bndexeybz_cummer => Newtype_bnd_cummer()
+  f%bndbxbyez_cummer => Newtype_bnd_cummer()
+else
+  f%bndexeybz => Newtype_bnd()
+  f%bndbxbyez => Newtype_bnd()
+end if 
 
 f%l_apply_pml=.true.
 f%nx = nx
@@ -1367,9 +1579,14 @@ end if
   END if
 !  call EM2D_FIELDtypeallot(f)
 
-call create_bnd(f%bndexeybz, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
-call create_bnd(f%bndbxbyez, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
-  
+if(l_pml_cummer) then
+  call create_bnd_cummer(f%bndexeybz_cummer, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+  call create_bnd_cummer(f%bndbxbyez_cummer, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+else
+  call create_bnd(f%bndexeybz, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+  call create_bnd(f%bndbxbyez, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
+end if
+
   call EM2D_FIELDtypeallot(f)
 
 
@@ -1551,3 +1768,17 @@ integer :: nxfsum, nyfsum, nxpatch, nypatch, ixpatch, iypatch, rap
 
   return
 end subroutine set_substitute_fields
+
+function bndijk(f,j,k)
+use mod_field
+TYPE(EM2D_FIELDtype) :: f
+integer(ISZ) :: j,k,bndijk
+
+if (l_pml_cummer) then
+  bndijk = ijk_cummer(f%bndexeybz_cummer,j,k)
+else
+  bndijk = ijk(f%bndexeybz,j,k)
+end if
+
+return
+end function bndijk
