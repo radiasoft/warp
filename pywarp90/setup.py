@@ -53,7 +53,8 @@ warpobjects = warpobjects + ['top_lattice.o','dtop.o',
                              'fxy_mgrid.o',
                              'dwrz.o',
                              'frz_mgrid.o','frz_mgrid_be.o','frz_ImplicitES.o',
-                             'em2d_apml.o','em2d_maxwell.o']
+                             'em2d_apml.o','em2d_apml_cummer.o',
+                             'em2d_maxwell.o']
 if parallel:
   warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
                                'w3dslave.o']
