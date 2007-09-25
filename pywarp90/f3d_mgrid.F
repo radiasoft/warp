@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.154 $, $Date: 2007/08/17 00:00:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.155 $, $Date: 2007/09/25 17:40:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1699,7 +1699,7 @@ c           --- r is set to 1 over (rs+x) to reduce the number of divides.
             dh = 1./rstar(iz+2) - 1./rstar(iz)
             if (abs(dh) > SMALLPOS .and. abs(rs) < LARGEPOS*1.e-6) then
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
-                x = xx(ii-iz*nxy)
+                x = xx(mod(ii-1,nxy)+1)
                 r = 1./(rs + x)
                 xfact    = (x*r)*((x*r)-2.) 
                 del2bndc = const/( 1.+xfact*rdel )
@@ -1716,7 +1716,7 @@ c           --- r is set to 1 over (rs+x) to reduce the number of divides.
 c           --- current z-slice is near border of a bend only
             elseif (abs(dh) > SMALLPOS) then
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
-                x = xx(ii-iz*nxy)
+                x = xx(mod(ii-1,nxy)+1)
                 phi1d(ii) = rho1d(ii-nxy) + const*(
      &              (phi1d(ii+iipx) + phi1d(ii+iimx))*dxsqi +
      &              (phi1d(ii+iipy) + phi1d(ii+iimy))*dysqi +
@@ -1728,7 +1728,7 @@ c           --- current z-slice is near border of a bend only
 c           --- current z-slice is in a bend only
             elseif (abs(rs) < LARGEPOS*1.e-6) then
               do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
-                x = xx(ii-iz*nxy)
+                x = xx(mod(ii-1,nxy)+1)
                 r = 1./(rs + x)
                 xfact    = (x*r)*((x*r)-2.)
                 del2bndc = const/( 1.+xfact*rdel )
