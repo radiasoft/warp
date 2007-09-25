@@ -26,7 +26,15 @@ class Atom(Particle):
     self.Period=Period
 
 class Molecule(Particle):
-  def __init__(self,Symbol,mass,name=None):
+  def __init__(self,Symbol,composition,name=None):
+    self.composition=composition
+    mass=0.
+    self.A=0
+    self.Z=0
+    for c in composition:
+      mass+=c.mass
+      self.A+=c.A
+      self.Z+=c.Z
     Particle.__init__(self,mass=mass,Symbol=Symbol,name=name)
 
 periodic_table={}
@@ -133,12 +141,12 @@ Positron=Particle(charge= echarge,mass=emass,Symbol='e+',name='Positron')
 
 Proton = Particle(mass=  amu, Symbol='P',name='Proton')
 
-Dihydrogen = Molecule(mass= 2.*amu, Symbol='H2',name='Dihydrogen')
-Dinitrogen = Molecule(mass=28.*amu, Symbol='N2',name='Dinitrogen')
-Dioxygen   = Molecule(mass=32.*amu, Symbol='O2',name='Dioxygen')
-Carbon_Monoxide = Molecule(mass=28.*amu, Symbol='CO',name='Carbon_Monoxide')
-Carbon_Dioxide  = Molecule(mass=44.*amu, Symbol='CO2',name='Carbon_Dioxide')
-Water           = Molecule(mass=18.*amu, Symbol='H2O',name='Water')
+Dihydrogen = Molecule(composition=[Hydrogen,Hydrogen], Symbol='H2',name='Dihydrogen')
+Dinitrogen = Molecule(composition=[Nitrogen,Nitrogen], Symbol='N2',name='Dinitrogen')
+Dioxygen   = Molecule(composition=[Oxygen,Oxygen], Symbol='O2',name='Dioxygen')
+Carbon_Monoxide = Molecule(composition=[Carbon,Oxygen], Symbol='CO',name='Carbon_Monoxide')
+Carbon_Dioxide  = Molecule(composition=[Carbon,Oxygen,Oxygen], Symbol='CO2',name='Carbon_Dioxide')
+Water           = Molecule(composition=[Hydrogen,Hydrogen,Oxygen], Symbol='H2O',name='Water')
 
 class Species:
   """
@@ -162,12 +170,15 @@ Creates a new species of particles. All arguments are optional.
   - limplicit=false: Flag to turn on the implicit particle advance for this
                      species.
   """
-  def __init__(self,js=None,type=Electron,charge=echarge,mass=emass,charge_state=0,weight=None,name='',nautodt=1,
+  def __init__(self,js=None,pgroup=top.pgroup,
+                    type=Electron,charge=echarge,mass=emass,charge_state=0,
+                    weight=None,name='',nautodt=1,
                     efetch=None,fselfb=None,limplicit=None):
     # --- Note that some default arguments are None in case the user had
     # --- set the values in pgroup already, in which case they should not
     # --- be overwritten here unless the inputs are explicitly set.
     self.jslist=[]
+    self.pgroup=pgroup
     self.type=type
     self.add_group(js,charge=charge,mass=mass,charge_state=charge_state,weight=weight)
     self.charge=top.pgroup.sq[self.jslist[0]]
@@ -180,7 +191,7 @@ Creates a new species of particles. All arguments are optional.
     if efetch is not None: top.efetch[self.jslist[-1]] = efetch
     if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
     if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
-    for i in range(nautodt-1):
+    for i in xrange(nautodt-1):
       self.add_group()
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
       if efetch is not None: top.efetch[self.jslist[-1]] = efetch
@@ -285,16 +296,17 @@ Creates a new species of particles. All arguments are optional.
       y=gety(js=js,lost=lost,gather=0)
       z=getz(js=js,lost=lost,gather=0)
       np=shape(x)[0]
-      if top.wpid==0:
-        w=top.pgroup.sw[js]*ones(np,'d')
-      else:
-        w=top.pgroup.sw[js]*self.getpid(id=top.wpid-1)
-      if charge:w*=top.pgroup.sq[js]   
-      deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
+      if np>0:
+        if top.wpid==0:
+          w=top.pgroup.sw[js]*ones(np,'d')
+        else:
+          w=top.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
+        if charge:w*=top.pgroup.sq[js]   
+        deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
     if l_dividebyvolume:density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
     density[...] = parallelsum(density)
     if dens is None:return density
-  
+     
   def addpart(self,x,y,z,vx,vy,vz,gi=1.,js=None,lmomentum=false,**kw):
     if js is None:
       js=self.jslist[0]
@@ -517,7 +529,7 @@ in radius squared.
     if zdist=='regular': 
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
-      for i in range(nz):
+      for i in xrange(nz):
         zadd=zmin+i*dz
         Nadd =max(0.,np*dz*exp(-0.5*(zadd/deltaz)**2)/(sqrt(2.*pi)*deltaz))
         if ranf()<(Nadd-int(Nadd)):
@@ -536,7 +548,552 @@ in radius squared.
       self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
       self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
       self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+    
+  def gather_zmmnts_locs(self):
+    get_zmmnts_stations(len(self.jslist),
+                              array(self.jslist),
+                              self.pgroup,
+                              self.nzmmnts_locs,
+                              self.zmmnts_locs[0],
+                              self.zmmnts_locs[-1],
+                              self.zmmnts_locs_vfrm,
+                              self.zmmnts_locs_pnum,
+                              self.zmmnts_locs_xbar,
+                              self.zmmnts_locs_ybar,
+                              self.zmmnts_locs_xpbar,
+                              self.zmmnts_locs_ypbar,
+                              self.zmmnts_locs_x2,
+                              self.zmmnts_locs_y2,
+                              self.zmmnts_locs_xp2,
+                              self.zmmnts_locs_yp2,
+                              self.zmmnts_locs_xxp,
+                              self.zmmnts_locs_yyp)
+    self.zmmnts_gathered=false
+    
+  def gatherall_zmmnts_locs(self):
+    self.zmmnts_locs_pnum = parallelsum(self.zmmnts_locs_pnum)
+    self.zmmnts_locs_xbar = parallelsum(self.zmmnts_locs_xbar)
+    self.zmmnts_locs_ybar = parallelsum(self.zmmnts_locs_ybar)
+    self.zmmnts_locs_xpbar = parallelsum(self.zmmnts_locs_xpbar)
+    self.zmmnts_locs_ypbar = parallelsum(self.zmmnts_locs_ypbar)
+    self.zmmnts_locs_x2 = parallelsum(self.zmmnts_locs_x2)
+    self.zmmnts_locs_y2 = parallelsum(self.zmmnts_locs_y2)
+    self.zmmnts_locs_xp2 = parallelsum(self.zmmnts_locs_xp2)
+    self.zmmnts_locs_yp2 = parallelsum(self.zmmnts_locs_yp2)
+    self.zmmnts_locs_xxp = parallelsum(self.zmmnts_locs_xxp)
+    self.zmmnts_locs_yyp = parallelsum(self.zmmnts_locs_yyp)
+    if me>0:
+      self.zmmnts_locs_pnum[...]=0.
+      self.zmmnts_locs_xbar[...]=0.
+      self.zmmnts_locs_ybar[...]=0.
+      self.zmmnts_locs_xpbar[...]=0.
+      self.zmmnts_locs_ypbar[...]=0.
+      self.zmmnts_locs_x2[...]=0.
+      self.zmmnts_locs_y2[...]=0.
+      self.zmmnts_locs_xp2[...]=0.
+      self.zmmnts_locs_yp2[...]=0.
+      self.zmmnts_locs_xxp[...]=0.
+      self.zmmnts_locs_yyp[...]=0.
+    self.zmmnts_locs_gathered=true
 
+  def set_zmmnts_locs(self,zmin,zmax,nz,vfrm=0.):
+    self.zmmnts_locs  = getmeshcoordinates([zmin],[(zmax-zmin)/(nz-1)],[nz-1])[0]
+    self.nzmmnts_locs = nz
+    self.zmmnts_locs_vfrm = vfrm
+    self.dzmmnts_locs = (zmax-zmin)/(nz-1)
+    self.zmmnts_locs_pnum = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_xbar = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_ybar = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_zbar = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_xpbar = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_ypbar = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_x2 = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_y2 = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_z2 = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_xp2 = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_yp2 = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_xxp = zeros(self.nzmmnts_locs,'d')
+    self.zmmnts_locs_yyp = zeros(self.nzmmnts_locs,'d')
+    if top.xoldpid==0:top.xoldpid=nextpid()
+    if top.yoldpid==0:top.yoldpid=nextpid()
+    if top.zoldpid==0:top.zoldpid=nextpid()
+    if top.uxoldpid==0:top.uxoldpid=nextpid()
+    if top.uyoldpid==0:top.uyoldpid=nextpid()
+    if top.uzoldpid==0:top.uzoldpid=nextpid()
+    self.zmmnts_locs_gathered=true
+    installafterstep(self.gather_zmmnts_locs)
+   
+  def set_zmmnts(self):
+    self.zmmnts_pnum = AppendableArray(typecode='d')
+    self.zmmnts_xbar =AppendableArray(typecode='d')
+    self.zmmnts_ybar =AppendableArray(typecode='d')
+    self.zmmnts_zbar =AppendableArray(typecode='d')
+    self.zmmnts_xpbar =AppendableArray(typecode='d')
+    self.zmmnts_ypbar =AppendableArray(typecode='d')
+    self.zmmnts_xpnbar =AppendableArray(typecode='d')
+    self.zmmnts_ypnbar =AppendableArray(typecode='d')
+    self.zmmnts_x2 =AppendableArray(typecode='d')
+    self.zmmnts_y2 =AppendableArray(typecode='d')
+    self.zmmnts_z2 =AppendableArray(typecode='d')
+    self.zmmnts_xp2 =AppendableArray(typecode='d')
+    self.zmmnts_yp2 =AppendableArray(typecode='d')
+    self.zmmnts_xxp =AppendableArray(typecode='d')
+    self.zmmnts_yyp =AppendableArray(typecode='d')
+    self.zmmnts_xpn2 =AppendableArray(typecode='d')
+    self.zmmnts_ypn2 =AppendableArray(typecode='d')
+    self.zmmnts_xxpn =AppendableArray(typecode='d')
+    self.zmmnts_yypn =AppendableArray(typecode='d')
+    self.zmmnts_gathered=true
+    installafterstep(self.gather_zmmnts)
+   
+  def gather_zmmnts(self):
+    print 'gather_zmmnts'
+    self.zmmnts_pnum.append(self.getn(gather=0))
+    xbar = 0.
+    ybar = 0.
+    zbar = 0.
+    xpbar = 0.
+    ypbar = 0.
+    xpnbar = 0.
+    ypnbar = 0.
+    x2 = 0.
+    y2 = 0.
+    z2 = 0.
+    xp2 = 0.
+    yp2 = 0.
+    xxpbar = 0.
+    yypbar = 0.
+    xpn2 = 0.
+    ypn2 = 0.
+    xxpnbar = 0.
+    yypnbar = 0.
+    pg=self.pgroup
+    nparpgrp = 1024
+    xpa = zeros(nparpgrp,'d')
+    ypa = zeros(nparpgrp,'d')
+    xpna = zeros(nparpgrp,'d')
+    ypna = zeros(nparpgrp,'d')
+    betaa = zeros(nparpgrp,'d')
+    for js in self.jslist:
+      if pg.nps[js]==0:continue
+      ng = 1+pg.nps[js]/nparpgrp
+      for ig in range(ng):
+        il = pg.ins[js]-1+nparpgrp*ig
+        iu = min(il+nparpgrp,pg.ins[js]-1+pg.nps[js])
+        np = iu-il
+        x = pg.xp[il:iu]
+        y = pg.yp[il:iu]
+        z = pg.zp[il:iu]        
+        xpa[:np] = pg.uxp[il:iu]/pg.uzp[il:iu]
+        ypa[:np] = pg.uyp[il:iu]/pg.uzp[il:iu]
+        gaminv =  pg.gaminv[il:iu]
+        betaa[:np] = (1.-gaminv)*(1.+gaminv)
+        xpna[:np] = xpa[:np]*betaa[:np]/gaminv
+        ypna[:np] = ypa[:np]*betaa[:np]*gaminv
+        xp=xpa[:np]
+        yp=ypa[:np]
+        xpn=xpna[:np]
+        ypn=ypna[:np]
+        beta=betaa[:np]
+        xbar+=sum(x)      
+        ybar+=sum(y)      
+        zbar+=sum(z)      
+        xpbar+=sum(xp)      
+        ypbar+=sum(yp)      
+        xpnbar+=sum(xpn)      
+        ypnbar+=sum(ypn)      
+        x2+=sum(x*x)      
+        y2+=sum(y*y)      
+        z2+=sum(z*z)      
+        xp2+=sum(xp*xp)      
+        yp2+=sum(yp*yp)      
+        xpn2+=sum(xpn*xpn)      
+        ypn2+=sum(ypn*ypn)      
+        xxpbar+=sum(x*xp)      
+        yypbar+=sum(y*yp)        
+        xxpnbar+=sum(x*xpn)      
+        yypnbar+=sum(y*ypn)      
+    self.zmmnts_xbar.append(xbar)
+    self.zmmnts_ybar.append(ybar)
+    self.zmmnts_zbar.append(zbar)
+    self.zmmnts_xpbar.append(xpbar)
+    self.zmmnts_ypbar.append(ypbar)
+    self.zmmnts_x2.append(x2)
+    self.zmmnts_y2.append(y2)
+    self.zmmnts_z2.append(z2)
+    self.zmmnts_xp2.append(xp2)
+    self.zmmnts_yp2.append(yp2)
+    self.zmmnts_xxp.append(xxpbar)
+    self.zmmnts_yyp.append(yypbar)
+    self.zmmnts_xpnbar.append(xpnbar)
+    self.zmmnts_ypnbar.append(ypnbar)
+    self.zmmnts_xpn2.append(xpn2)
+    self.zmmnts_ypn2.append(ypn2)
+    self.zmmnts_xxpn.append(xxpnbar)
+    self.zmmnts_yypn.append(yypnbar)
+    self.zmmnts_gathered=false
+    print 'gather_zmmnts_done'
+    
+  def gatherall_zmmnts(self):
+    self.zmmnts_pnum.data()[...] = parallelsum(self.zmmnts_pnum.data())
+    self.zmmnts_xbar.data()[...] = parallelsum(self.zmmnts_xbar.data())
+    self.zmmnts_ybar.data()[...] = parallelsum(self.zmmnts_ybar.data())
+    self.zmmnts_xpbar.data()[...] = parallelsum(self.zmmnts_xpbar.data())
+    self.zmmnts_ypbar.data()[...] = parallelsum(self.zmmnts_ypbar.data())
+    self.zmmnts_xpnbar.data()[...] = parallelsum(self.zmmnts_xpnbar.data())
+    self.zmmnts_ypnbar.data()[...] = parallelsum(self.zmmnts_ypnbar.data())
+    self.zmmnts_x2.data()[...] = parallelsum(self.zmmnts_x2.data())
+    self.zmmnts_y2.data()[...] = parallelsum(self.zmmnts_y2.data())
+    self.zmmnts_xp2.data()[...] = parallelsum(self.zmmnts_xp2.data())
+    self.zmmnts_yp2.data()[...] = parallelsum(self.zmmnts_yp2.data())
+    self.zmmnts_xxp.data()[...] = parallelsum(self.zmmnts_xxp.data())
+    self.zmmnts_yyp.data()[...] = parallelsum(self.zmmnts_yyp.data())
+    self.zmmnts_xpn2.data()[...] = parallelsum(self.zmmnts_xpn2.data())
+    self.zmmnts_ypn2.data()[...] = parallelsum(self.zmmnts_ypn2.data())
+    self.zmmnts_xxpn.data()[...] = parallelsum(self.zmmnts_xxpn.data())
+    self.zmmnts_yypn.data()[...] = parallelsum(self.zmmnts_yypn.data())
+    if me>0:
+      self.zmmnts_pnum.data()[...]=0.
+      self.zmmnts_xbar.data()[...]=0.
+      self.zmmnts_ybar.data()[...]=0.
+      self.zmmnts_xpbar.data()[...]=0.
+      self.zmmnts_ypbar.data()[...]=0.
+      self.zmmnts_xpnbar.data()[...]=0.
+      self.zmmnts_ypnbar.data()[...]=0.
+      self.zmmnts_x2.data()[...]=0.
+      self.zmmnts_y2.data()[...]=0.
+      self.zmmnts_xp2.data()[...]=0.
+      self.zmmnts_yp2.data()[...]=0.
+      self.zmmnts_xxp.data()[...]=0.
+      self.zmmnts_yyp.data()[...]=0.
+      self.zmmnts_xpn2.data()[...]=0.
+      self.zmmnts_ypn2.data()[...]=0.
+      self.zmmnts_xxpn.data()[...]=0.
+      self.zmmnts_yypn.data()[...]=0.
+    self.zmmnts_gathered=true
+
+  def getzmmnts_pnum(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      return self.zmmnts_pnum.data()
+    else:
+      return None
+      
+  def getzmmnts_xrms(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return sqrt(self.zmmnts_x2.data()/pnum)
+    else:
+      return None
+      
+  def getzmmnts_yrms(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return sqrt(self.zmmnts_y2.data()/pnum)
+    else:
+      return None
+      
+  def getzmmnts_xprms(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return sqrt(self.zmmnts_xp2.data()/pnum)
+    else:
+      return None
+      
+  def getzmmnts_yprms(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return sqrt(self.zmmnts_yp2.data()/pnum)
+    else:
+      return None
+      
+  def getzmmnts_xbar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_xbar.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_ybar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_ybar.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_xpbar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_xpbar.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_ypbar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_ypbar.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_xxpbar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_xxp.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_yypbar(self): 
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+      return self.zmmnts_yyp.data()/pnum
+    else:
+      return None
+      
+  def getzmmnts_emitxrms(self):
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+    xbar = self.getzmmnts_xbar()
+    xpbar = self.getzmmnts_xpbar()
+    xxp = self.zmmnts_xxp.data()/pnum
+    x2  = self.zmmnts_x2.data()/pnum
+    xp2 = self.zmmnts_xp2.data()/pnum
+    return sqrt((x2-xbar*xbar)*(xp2-xpbar*xpbar)-(xxp-xbar*xpbar)**2)
+
+  def getzmmnts_emityrms(self):
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+    ybar = self.getzmmnts_ybar()
+    ypbar = self.getzmmnts_ypbar()
+    yyp = self.zmmnts_yyp.data()/pnum
+    y2  = self.zmmnts_y2.data()/pnum
+    yp2 = self.zmmnts_yp2.data()/pnum
+    return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
+      
+  def getzmmnts_emitxnrms(self):
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+    xbar = self.getzmmnts_xbar()
+    xpnbar = self.zmmnts_xpnbar.data()/pnum
+    xxpn = self.zmmnts_xxpn.data()/pnum
+    x2  = self.zmmnts_x2.data()/pnum
+    xpn2 = self.zmmnts_xpn2.data()/pnum
+    return sqrt((x2-xbar*xbar)*(xpn2-xpnbar*xpnbar)-(xxpn-xbar*xpnbar)**2)
+
+  def getzmmnts_emitynrms(self):
+    if not self.zmmnts_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_pnum.data()>smallpos,self.zmmnts_pnum.data(),1.)
+    ybar = self.getzmmnts_ybar()
+    ypnbar = self.zmmnts_ypnbar.data()/pnum
+    yypn = self.zmmnts_yypn.data()/pnum
+    y2  = self.zmmnts_y2.data()/pnum
+    ypn2 = self.zmmnts_ypn2.data()/pnum
+    return sqrt((y2-ybar*ybar)*(ypn2-ypnbar*ypnbar)-(yypn-ybar*ypnbar)**2)
+
+  def plzmmnts_data(self,x,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
+    if me==0:
+      zst = self.zmmnts_locs
+      pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
+
+  def plzmmnts_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_xbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_ybar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_xrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_yrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_xprms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_yprms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_xpbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_ypbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_xxpbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_yypbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_emitxrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_data(self.getzmmnts_emityrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def getzmmnts_locs_pnum(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      return self.zmmnts_locs_pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_xrms(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return sqrt(self.zmmnts_locs_x2/pnum)
+    else:
+      return None
+      
+  def getzmmnts_locs_yrms(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return sqrt(self.zmmnts_locs_y2/pnum)
+    else:
+      return None
+      
+  def getzmmnts_locs_xprms(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return sqrt(self.zmmnts_locs_xp2/pnum)
+    else:
+      return None
+      
+  def getzmmnts_locs_yprms(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return sqrt(self.zmmnts_locs_yp2/pnum)
+    else:
+      return None
+      
+  def getzmmnts_locs_xbar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_xbar/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_ybar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_ybar/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_xpbar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_xpbar/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_ypbar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_ypbar/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_xxpbar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_xxp/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_yypbar(self): 
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me==0:
+      pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+      return self.zmmnts_locs_yyp/pnum
+    else:
+      return None
+      
+  def getzmmnts_locs_emitxrms(self):
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+    xbar = self.getzmmnts_locs_xbar()
+    xpbar = self.getzmmnts_locs_xpbar()
+    xxp = self.zmmnts_locs_xxp/pnum
+    x2  = self.zmmnts_locs_x2/pnum
+    xp2 = self.zmmnts_locs_xp2/pnum
+    return sqrt((x2-xbar*xbar)*(xp2-xpbar*xpbar)-(xxp-xbar*xpbar)**2)
+
+  def getzmmnts_locs_emityrms(self):
+    if not self.zmmnts_locs_gathered:self.gatherall_zmmnts()
+    if me>0:return None
+    pnum = where(self.zmmnts_locs_pnum>smallpos,self.zmmnts_locs_pnum,1.)
+    ybar = self.getzmmnts_locs_ybar()
+    ypbar = self.getzmmnts_locs_ypbar()
+    yyp = self.getzmmnts_locs_yypbar()
+    y2  = self.zmmnts_locs_y2/pnum
+    yp2 = self.zmmnts_locs_yp2/pnum
+    return sqrt((y2-ybar*ybar)*(yp2-ypbar*ypbar)-(yyp-ybar*ypbar)**2)
+
+  def plzmmnts_locs_data(self,x,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):
+    if me==0:
+      zst = self.zmmnts_locs
+      pla(yscale*x,xscale*(zst-xoffset),color=color,width=width)
+
+  def plzmmnts_locs_xbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_xbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_ybar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_ybar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_xrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_xrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_yrms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_yrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_xprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_xprms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_yprms(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_yprms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_xpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_xpbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_ypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_ypbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_xxpbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_xxpbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_yypbar(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_yypbar(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_emitx(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_emitxrms(),color,width,type,xscale,yscale,xoffset)
+    
+  def plzmmnts_locs_emity(self,color=black,width=1,type='solid',xscale=1.,yscale=1.,xoffset=0.):  
+    self.plzmmnts_locs_data(self.getzmmnts_locs_emityrms(),color,width,type,xscale,yscale,xoffset)
+    
   def getn(self,**kw):
     return getn(jslist=self.jslist,**kw)
     
