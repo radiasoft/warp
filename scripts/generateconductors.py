@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.170 2007/08/24 17:03:55 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.171 2007/09/28 16:34:33 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1835,11 +1835,11 @@ Creates a grid object which can generate conductor data.
     nx = nint(self.nx/self.mglevellx[mglevel])
     ny = nint(self.ny/self.mglevelly[mglevel])
     iz = self.mgleveliz[mglevel]
-    nz = self.mglevelnz[mglevel]
-    return dx,dy,dz,nx,ny,nz,iz
+    nzlocal = self.mglevelnz[mglevel]
+    return dx,dy,dz,nx,ny,nzlocal,iz
 
   def getmesh(self,mglevel=0,extent=None):
-    dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
+    dx,dy,dz,nx,ny,nzlocal,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
     if self.zbeam is None: zbeam = top.zbeam
@@ -1848,7 +1848,7 @@ Creates a grid object which can generate conductor data.
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
     zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
-    zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+zbeam)
+    zmax = min(self.zmax,self.zmmin+(iz+nzlocal)*dz+zbeam)
     if extent is not None:
       xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
       xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
@@ -1861,7 +1861,7 @@ Creates a grid object which can generate conductor data.
 
     xmesh = self.xmmin + dx*arange(nx+1)
     ymesh = self.ymmin + dy*arange(ny+1)
-    zmesh =      zmmin + dz*arange(nz+1) + zbeam
+    zmesh =      zmmin + dz*arange(nzlocal+1) + zbeam
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
@@ -1871,12 +1871,12 @@ Creates a grid object which can generate conductor data.
     ix = nint((x - self.xmmin)/dx)
     iy = nint((y - self.ymmin)/dy)
     iz = zeros(len(xmesh)*len(ymesh),'l')
-    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam
+    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam
 
   def checkoverlap(self,mglevel,extent):
     if extent is None: return 1
 
-    dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
+    dx,dy,dz,nx,ny,nzlocal,iz = self.getmeshsize(mglevel)
 
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
@@ -1884,7 +1884,7 @@ Creates a grid object which can generate conductor data.
       if self.zbeam is None: zbeam = top.zbeam
       else:                  zbeam = self.zbeam
       zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
-      zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+zbeam)
+      zmax = min(self.zmax,self.zmmin+(iz+nzlocal)*dz+zbeam)
     else:
       zmin = self.zmin
       zmax = self.zmax
@@ -1944,7 +1944,7 @@ Assembly on this grid.
     if timeit: tt2[8] = tt2[8] + wtime() - tt1
     for i in range(self.mglevels):
       if timeit: tt1 = wtime()
-      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam=self.getmesh(i,aextent)
+      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam=self.getmesh(i,aextent)
       if timeit: tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
       for zz in zmesh:
@@ -2007,11 +2007,11 @@ grid points.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.distances[0,0,0]
     except AttributeError:
-      self.distances = fzeros((1+nx,1+ny,1+nz),'d')
+      self.distances = fzeros((1+nx,1+ny,1+nzlocal),'d')
     ix1 = min(ix)
     ix2 = max(ix)
     iy1 = min(iy)
@@ -2039,8 +2039,8 @@ grid points.
     """
 Clears out any data in isinside by recreating the array.
     """
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
-    self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
+    self.isinside = fzeros((1+nx,1+ny,1+nzlocal),'d')
 
   def removeisinside(self,a,nooverlap=0):
     """
@@ -2064,7 +2064,7 @@ assembly.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nzlocal,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.isinside[0,0,0]
     except AttributeError:
@@ -2188,6 +2188,42 @@ Cylinder class
     # --- This is the easiest thing to do without thinking.
     ll = sqrt(self.radius**2 + (self.length/2.)**2)
     self.createextent([-ll,-ll,-ll],[+ll,+ll,+ll])
+
+  def draw(self,color='fg',filled=None,fullplane=1,**kw):
+    """
+Plots the r versus z
+ - color='fg': color of outline, set to None to not plot the outline
+ - filled=None: when set to an integer, fills the outline with the color
+                specified from the current palette. Should be between 0 and 199.
+ - fullplane=1: when true, plot the top and bottom, i.e. r vs z, and -r vs z.
+ - rmin=0.: inner range in r to include in plot
+    """
+    # --- This is kind of a hack, but this routine doesn't make much sense
+    # --- for an arbitrarily rotated cylinder.
+    r = array([self.radius,self.radius,-self.radius,-self.radius,self.radius])
+    z = self.length*array([-0.5,0.5,0.5,-0.5,-0.5])
+
+    ct = cos(self.theta)
+    st = sin(self.theta)
+    cp = cos(self.phi)
+    sp = sin(self.phi)
+    xp = +r*ct - 0*st*sp + z*st*cp
+    yp =       + 0*cp    + z*sp
+    zp = -r*st - 0*ct*sp + z*ct*cp
+
+    self.plotdata(xp,zp,color=color,filled=filled,fullplane=0)
+
+  def createdxobject(self,kwdict={},**kw):
+    kw.update(kwdict)
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       theta=self.theta,phi=self.phi,
+                       rofzdata=[self.radius,self.radius],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       kwdict=kw)
+    self.dxobject = v
 
 #============================================================================
 class Cylinders(Assembly):
