@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.64 2007/08/24 23:46:06 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.65 2007/09/29 00:19:35 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -209,6 +209,20 @@ after load balancing."""
           getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
           getpid(id=self.uzoldpid,js=js,gather=0)[:] = getuz(js=js,gather=0)
 
+  def applysymmetry(self,xc,yc):
+    # --- Apply symmetry conditions to the positions so that the data passed
+    # --- into isinside is consistent with that obtained from the grid.
+    if self.grid.l4symtry:
+      xcsym = abs(xc)
+      ycsym = abs(yc)
+    elif self.grid.l2symtry:
+      xcsym = xc
+      ycsym = abs(yc)
+    else:
+      xcsym = xc
+      ycsym = yc
+    return xcsym,ycsym
+
   def scrapeall(self,clear=0,local=0):
     if local:
       if len(self.conductors)==0 or sum(top.pgroup.nps)==0: return
@@ -368,7 +382,8 @@ after load balancing."""
         # --- Find the particles that are currently inside and down-select
         # --- the indices. The nint is needed since the quantities is used in
         # --- logical expressions below which require ints.
-        currentisinside = nint(c.isinside(xc,yc,zc).isinside)
+        xcsym,ycsym = self.applysymmetry(xc,yc)
+        currentisinside = nint(c.isinside(xcsym,ycsym,zc).isinside)
         iic = compress(currentisinside,ii)
         ic = take(iclose,iic)
 
@@ -413,7 +428,8 @@ after load balancing."""
                                ex,ey,ez,bx,by,bz,itime,dt,q,m,currentisinside)
 
           # --- Determine whether the refined positions are lost.
-          refinedisinside = nint(c.isinside(xc,yc,zc).isinside)
+          xcsym,ycsym = self.applysymmetry(xc,yc)
+          refinedisinside = nint(c.isinside(xcsym,ycsym,zc).isinside)
 
           # --- iic lists the particles that are lost in the refined
           # --- calculation. These will be scraped. Particles which were
@@ -573,8 +589,10 @@ after load balancing."""
       xc = take(x8,ii)
       yc = take(y8,ii)
       zc = take(z8,ii)
+
+      xcsym,ycsym = self.applysymmetry(xc,yc)
       ic = take(iscrape,ii)
-      ic = compress(c.isinside(xc,yc,zc).isinside,ic)
+      ic = compress(c.isinside(xcsym,ycsym,zc).isinside,ic)
       if len(ic) == 0:
         if self.lcollectlpdata and not local:
           # --- This parallelsum coordinates with the other processors
@@ -793,7 +811,8 @@ luserefinedifnotlost: when true, if the refined particle orbit is not lost,
       #pldj(xo,yo,xc,yc,color=green)
 
       # --- Check whether the new positions are inside of the conductor.
-      isinside = c.isinside(xc,yc,zc).isinside
+      xcsym,ycsym = self.applysymmetry(xc,yc)
+      isinside = c.isinside(xcsym,ycsym,zc).isinside
 
       # --- For the particles that are still outside, set the old positions
       # --- to be the updated positions
