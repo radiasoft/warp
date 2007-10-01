@@ -411,7 +411,8 @@ Creates a new species of particles. All arguments are optional.
     self.addpart(x,y,z,vx,vy,vz,js=js,gi=gi,**kw)
     
   def add_uniform_cylinder(self,np,rmax,zmin,zmax,vthx=0.,vthy=0.,vthz=0.,
-                           xmean=0.,ymean=0,vxmean=0.,vymean=0.,vzmean=0.,
+                           xmean=0.,ymean=0,zmean=0,vxmean=0.,vymean=0.,vzmean=0.,
+                           theta=0.,phi=0.,
                            js=None,
                            lmomentum=0,spacing='random',nr=None,nz=None,
                            thetamin=0.,thetamax=2.*pi,
@@ -425,8 +426,14 @@ in radius squared.
  - rmax: radius of cylinder
  - zmin,zmax: z extent of the cylinder
  - vthx, vthy, vthz: thermal velocity, defaults to 0.
- - xmean,ymean: transverse center of the cylinder, defaults to 0.
+ - xmean,ymean,zmean: center of the cylinder, defaults to 0.
  - vxmean,vymean,vzmean: directed velocity, defaults to 0.
+ - theta,phi: angle of cylinder about the center, 
+              The transformation to lab frame is a rotation about the x axis by phi,
+              followed by a rotation about the new y axis by theta.
+              Note that the position mins and maxs and the velocity averages and means
+              are relative to the rotated frame and are automatically transformed
+              into the lab frame. The position means are relative to the lab frame.
  - js: particle species number, don't set it unless you mean it
  - lmomentum=false: Set to false when velocities are input as velocities, true
                     when input as massless momentum (as WARP stores them).
@@ -434,7 +441,7 @@ in radius squared.
  - spacing='random': either 'random' or 'uniform' particle spacing. For uniform,
                      r and z are uniform, theta is still random
  - nr,nz: for 'uniform' spacing, number of particles along r and z axis
- - thetamin=0.,thetamax=2.*pi: range of theta
+ - thetamin=0.,thetamax=2.*pi: range of theta around the cylinder
  - lvariableweights: By default, if wpid is set, then the particles will be
                      weighted according to their radius, otherwise all will
                      have the same weight. Use this option to override the
@@ -443,14 +450,22 @@ in radius squared.
                    only matters when parallel.
     """
 
-    if lallindomain:
-      # --- Crop the zmin and zmax to be within the local domain
-      zminp = max(zmin,min(zmax,w3d.zmminp))
-      zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+    if theta == 0. and phi == 0.:
+      # --- When no angle is specified, then the clipping to the domain
+      # --- can be done directly on the zmin and zmax
+      if lallindomain:
+        # --- Crop the zmin and zmax to be within the local domain
+        zminp = max(zmin,min(zmax,w3d.zmminp))
+        zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+      else:
+        # --- Crop the zmin and zmax to be within the global domain
+        zminp = max(zmin,w3d.zmmin)
+        zmaxp = min(zmax,w3d.zmmax)
     else:
-      # --- Crop the zmin and zmax to be within the global domain
-      zminp = max(zmin,w3d.zmmin)
-      zmaxp = min(zmax,w3d.zmmax)
+      # --- When angles are specified, the clipping must be done on a particle
+      # --- by particle basis. Copy the zmin and zmax directly over to start.
+      zminp = zmin
+      zmaxp = zmax
 
     if spacing == 'random':
       # --- Adjust the number of particles to load to based on the
@@ -483,7 +498,7 @@ in radius squared.
       r.shape = (np,)
       z.shape = (np,)
 
-    theta=(thetamax-thetamin)*RandomArray.random(np) + thetamin
+    thetap=(thetamax-thetamin)*RandomArray.random(np) + thetamin
 
     if lvariableweights is None:
       lvariableweights = (top.wpid != 0)
@@ -495,13 +510,52 @@ in radius squared.
     else:
       kw['w'] = 2*r
 
-    x=xmean+rmax*r*cos(2.*pi*theta)
-    y=ymean+rmax*r*sin(2.*pi*theta)
-    z=zmin+(zmax-zmin)*z
+    x = rmax*r*cos(2.*pi*thetap)
+    y = rmax*r*sin(2.*pi*thetap)
+    z = zmin+(zmax-zmin)*z
 
-    vx=RandomArray.normal(vxmean,vthx,np)
-    vy=RandomArray.normal(vymean,vthy,np)
-    vz=RandomArray.normal(vzmean,vthz,np)
+    if theta != 0. or phi != 0.:
+      # --- Transform from rotated frame into the lab frame.
+      ct = cos(theta)
+      st = sin(theta)
+      cp = cos(phi)
+      sp = sin(phi)
+      x1 = +x*ct - y*st*sp + z*st*cp
+      y1 =       + y*cp    + z*sp
+      z1 = -x*st - y*ct*sp + z*ct*cp
+      x,y,z = x1,y1,z1
+      # --- Also rotate the mean and thermal velocities.
+      vxmean1 = +vxmean*ct - vymean*st*sp + vzmean*st*cp
+      vymean1 =            + vymean*cp    + vzmean*sp
+      vzmean1 = -vxmean*st - vymean*ct*sp + vzmean*ct*cp
+      vxmean,vymean,vzmean = vxmean1,vymean1,vzmean1
+      vthx1 = +vthx*ct - vthy*st*sp + vthz*st*cp
+      vthy1 =          + vthy*cp    + vthz*sp
+      vthz1 = -vthx*st - vthy*ct*sp + vthz*ct*cp
+      vthx,vthy,vthz = vthx1,vthy1,vthz1
+
+    # --- Now add the means, after the rotation transform.
+    x += xmean
+    y += ymean
+    z += zmean
+
+    if theta != 0. or phi != 0.:
+      # --- When angles are specified, the clipping must be done on a particle
+      # --- by particle basis.
+      if lallindomain:
+        # --- Crop the z's to be within the local particle domain
+        indomain = logical_and(w3d.zmminp<=z,z<w3d.zmmaxp)
+      else:
+        # --- Crop the z's to be within the global grid domain
+        indomain = logical_and(w3d.zmmin<=z,z<w3d.zmmax)
+      x = compress(indomain,x)
+      y = compress(indomain,y)
+      z = compress(indomain,z)
+      np = len(z)
+
+    vx = RandomArray.normal(vxmean,vthx,np)
+    vy = RandomArray.normal(vymean,vthy,np)
+    vz = RandomArray.normal(vzmean,vthz,np)
     if lmomentum:
       gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
     else:
