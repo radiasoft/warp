@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.33 $, $Date: 2006/01/25 01:42:36 $
+#@(#) File ENV.V, version $Revision: 3.34 $, $Date: 2007/10/08 17:32:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.33 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.34 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -147,4 +147,15 @@ envxport(np,z(np):real,a(np):real,ap(np):real,b(np):real,bp(np):real,
          x(np):real,xp(np):real,y(np):real,yp(np):real,vz(np):real,
          emitx(np):real,emity(np):real,ibeam(np):real) integer function
          # Export routine with envelope data at z(1:np)
-
+RK4HillSolve(karray(2*numsteps+1):real,si:real,sf:real,xi:real,xpi:real,
+	     numsteps:integer,xxparray(numsteps+1,2):real) subroutine
+	 # Solves Hill's Equation on interval [si,sf] subject to initial 
+	 # conditions xi and xpi via the RK4 method
+kappax(z:real) real function  # x-plane lattice focusing function
+kappay(z:real) real function  # y-plane lattice focusing function
+kappaxvec(zarray(n):real,karray(n):real,n:integer) subroutine
+	 # Calculates kappax at each point in zarray and stores those values 
+	 # in karray
+kappayvec(zarray(n):real,karray(n):real,n:integer) subroutine
+	 # Calculates kappay at each point in zarray and stores those values 
+	 # in karray

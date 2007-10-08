@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.34 $, $Date: 2007/04/24 21:37:35 $
+c@(#) File ENV.M, version $Revision: 3.35 $, $Date: 2007/10/08 17:32:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -671,8 +671,8 @@ c=======================================================================
       use Mult_data
       use SemiTransparentDisc
       real(kind=8):: z,time,zion,aion,gamma,vz,ek,dz
-      real(kind=8):: dedr,dexdx,deydy,dbdr,p,a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02
-      real(kind=8):: emitnx_l,emitny_l 
+      real(kind=8):: dedr,dexdx,deydy,dbdr,p
+      real(kind=8):: a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02,emitnx_l,emitny_l
       real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
       logical(ISZ):: lrelativ
@@ -828,7 +828,7 @@ c             --- quadrupole field
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- solenoidal field 
-                bz = bz + heleam(ii,ih)*frac 
+              bz = bz + heleam(ii,ih)*frac
             endif
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
@@ -1367,3 +1367,124 @@ c Press, 1986, pg 292, Ch 10
       go to 1
       end
 c=========================================================================
+c========================================================================
+      subroutine RK4HillSolve(karray,si,sf,xi,xpi,numsteps,xxparray)
+c     Solves Hill's Equation x''(s) + k(s) = 0, x(si) = xi, x'(si) = xpi 
+c     on interval [si,sf].
+c     Inputs:
+c       karray: array of k values with dimension 2*numsteps+1
+c       si: initial s value
+c       sf: final s value, usually equal to si+lperiod
+c       xi: initial x value
+c       xpi: initial x' value
+c       numsteps: number of evenly spaced subintervals on [si,sf]
+c       xxparray: dummy array to be modified
+c     Output:
+c       xxparray: array with dimensions (numsteps+1,2) containing v values
+c       in column 1 and xp values in column 2
+      integer(ISZ):: numsteps,i
+      real(kind=8):: si,sf,xi,xpi,ds
+      real(kind=8):: karray(2*numsteps+1),xxparray(numsteps+1,2)
+      real(kind=8):: k1x,k1xp,k2x,k2xp,k3x,k3xp,k4x,k4xp
+c     calculate step size 
+      ds = (sf-si)/numsteps
+c     set initial conditions
+c     xxparray(1,1) = xi  = initial x  value
+c     xxparray(1,2) = xpi = initial xp value
+      xxparray(1,1) = xi
+      xxparray(1,2) = xpi
+      do i=1,numsteps
+         k1x  = ds*xxparray(i,2)
+         k1xp = ds*(-karray(2*i-1))*xxparray(i,1)
+         k2x  = ds*(xxparray(i,2)+k1xp/2.)
+         k2xp = ds*(-karray(2*i))*(xxparray(i,1)+k1x/2.)
+         k3x  = ds*(xxparray(i,2)+k2xp/2.)
+         k3xp = ds*(-karray(2*i))*(xxparray(i,1)+k2x/2.)
+         k4x  = ds*(xxparray(i,2)+k3xp)
+         k4xp = ds*(-karray(2*i+1))*(xxparray(i,1)+k3x)
+         
+         xxparray(i+1,1) = xxparray(i,1) + (k1x+ 2.*k2x+ 2.*k3x+ k4x)/6.
+         xxparray(i+1,2) = xxparray(i,2) + (k1xp+2.*k2xp+2.*k3xp+k4xp)/6.
+      end do
+      return
+      end
+c========================================================================
+      function kappax(z)
+c     x-plane lattice focusing function
+      use Picglb
+      use Beam_acc
+      real(kind=8):: z,dz
+      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kappax
+      dz = SMALLPOS
+      call envflatt(z,time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
+     & dedr,dexdx,deydy,dbdr,0.,
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot)
+      kappax = -fa
+      return
+      end
+c========================================================================
+      function kappay(z)
+c     y-plane lattice focusing function
+      use Picglb
+      use Beam_acc
+      real(kind=8):: z,dz
+      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      real(kind=8):: kappay
+      dz = SMALLPOS
+      call envflatt(z,time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
+     & dedr,dexdx,deydy,dbdr,0.,
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot)
+      kappay = -fb
+      return
+      end
+c========================================================================
+      subroutine kappaxvec(zarray,karray,n)
+c     Calculates kappax at each point in zarray and stores those values in 
+c     karray
+      use Picglb
+      use Beam_acc
+      real(kind=8):: z,dz
+      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      integer(ISZ):: i,n
+      real(kind=8):: zarray(n),karray(n)
+      dz = SMALLPOS
+      do i=1,n
+        call envflatt(zarray(i),time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
+     & dedr,dexdx,deydy,dbdr,0.,
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot)
+        karray(i) = -fa 
+      end do
+      return
+      end
+c========================================================================
+      subroutine kappayvec(zarray,karray,n)
+c     Calculates kappay at each point in zarray and stores those values in 
+c     karray
+      use Picglb
+      use Beam_acc
+      real(kind=8):: z,dz
+      real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
+      real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
+      integer(ISZ):: i,n
+      real(kind=8):: zarray(n),karray(n)
+      dz = SMALLPOS
+      do i=1,n
+        call envflatt(zarray(i),time,zion,aion,lrelativ,gammabar,vbeam,ekin,dz,
+     & dedr,dexdx,deydy,dbdr,0.,
+     & 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+     & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
+     & fqxplot, fqyplot, fuxplot, fuyplot)
+        karray(i) = -fb 
+      end do
+      return
+      end
