@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.45 $, $Date: 2007/06/05 00:55:22 $
+c W3DSLAVE.M, version $Revision: 1.46 $, $Date: 2007/10/09 23:37:23 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -82,6 +82,13 @@ c     --- Reset local values
       izfsmax = nzfsslave(my_index)
       zmminlocal = zmmin + izfsslave(my_index)*dz
       zmmaxlocal = zmmin + (izfsslave(my_index) + nzfsslave(my_index))*dz
+
+      xpminlocal = xmmin
+      xpmaxlocal = xmmax
+      ypminlocal = ymmin
+      ypmaxlocal = ymmax
+      zpminlocal = zpslmin(my_index)
+      zpmaxlocal = zpslmax(my_index)
 
 c     --- Set value of izextra, which is the amount of extra space at the
 c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
