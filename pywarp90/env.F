@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.35 $, $Date: 2007/10/08 17:32:02 $
+c@(#) File ENV.M, version $Revision: 3.36 $, $Date: 2007/10/09 23:35:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -174,7 +174,7 @@ c           vz(1:np), epsx(1:np), epsy(1:np), ib(1:np)
 
 
       integer(ISZ):: i,ip
-      real(kind=8):: zpmin,zpmax,w0,w1,gammabeta
+      real(kind=8):: zzmin,zzmax,w0,w1,gammabeta
 
 c  Check if there is any envelope data
       if (.not. ASSOCIATED(aenv)) then
@@ -184,13 +184,13 @@ c  Check if there is any envelope data
 
 c  Validity check on input
 
-      zpmin = 1.e6
-      zpmax = -1.e6
+      zzmin = 1.e6
+      zzmax = -1.e6
       do ip = 1,np
-         zpmin = min(zpmin, z(ip))
-         zpmax = max(zpmax, z(ip))
+         zzmin = min(zzmin, z(ip))
+         zzmax = max(zzmax, z(ip))
       enddo
-      if (zpmin < zl .or. zpmax > zu) then
+      if (zzmin < zl .or. zzmax > zu) then
          envxport = 1
          return
       endif
