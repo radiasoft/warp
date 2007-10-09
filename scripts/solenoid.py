@@ -22,7 +22,7 @@ included, up B0'''.
 """
 from warp import *
 from lattice import addnewmmlt
-solenoid_version = "$Id: solenoid.py,v 1.5 2007/08/07 20:29:58 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.6 2007/10/09 23:28:41 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -53,6 +53,43 @@ def B0ppp(z,zcent,k,R,l):
   c4 = 4*R**2 + (l + 2*z)**2
   return (192*k*mu0*R**2*(-(c3)**-2.5 + (c4)**-2.5 + 
                    R**2*(5/(c3)**3.5 - 5/(c4)**3.5)))
+
+def B0p4(z,zcent,k,R,l):
+  z = z - zcent
+  c3 = 4*R**2 + (l - 2*z)**2
+  c4 = 4*R**2 + (l + 2*z)**2
+  return 1920*k*mu0*R**2*(l*(-c3**-3.5 - c4**-3.5 +
+                             7*(c3**-4.5 + c4**-4.5)*R**2) +
+                          2*(c3**-3.5 - c4**-3.5 +
+                             (-7/c3**4.5 + 7/c4**4.5)*R**2)*z)
+
+def B0p5(z,zcent,k,R,l):
+  z = z - zcent
+  c3 = 4*R**2 + (l - 2*z)**2
+  c4 = 4*R**2 + (l + 2*z)**2
+  return 23040*k*mu0*R**2*(-c3**-3.5 + c4**-3.5 +
+                           14*(c3**-4.5 - c4**-4.5)*R**2 +
+                           42*(-c3**-5.5 + c4**-5.5)*R**4)
+
+def B0p6(z,zcent,k,R,l):
+  z = z - zcent
+  c3 = 4*R**2 + (l - 2*z)**2
+  c4 = 4*R**2 + (l + 2*z)**2
+  return 322560*k*mu0*R**2*(l*(-c3**-4.5 - c4**-4.5 +
+                               18*(c3**-5.5 + c4**-5.5)*R**2 +
+                               (-66/c3**6.5 - 66/c4**6.5)*R**4) + 
+                            2*(c3**-4.5 - c4**-4.5 +
+                               18*(-c3**-5.5 + c4**-5.5)*R**2 +
+                               66*(c3**-6.5 - c4**-6.5)*R**4)*z)
+
+def B0p7(z,zcent,k,R,l):
+  z = z - zcent
+  c3 = 4*R**2 + (l - 2*z)**2
+  c4 = 4*R**2 + (l + 2*z)**2
+  return 5160960*k*mu0*R**2*(-c3**-4.5 + c4**-4.5 +
+                             27*(c3**-5.5 - c4**-5.5)*R**2 +
+                             198*(-c3**-6.5 + c4**-6.5)*R**4 +
+                             429*(c3**-7.5 - c4**-7.5)*R**6)
 
 def Bz(r,z,zcent,k,R,l):
   z = z - zcent
@@ -116,7 +153,9 @@ def Br(r,z,zcent,k,R,l):
 #               (R**2 + (l/2. + z)**2)**-1.5)))/32.)
 
 
-def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=0.,nzpoints=10000,fringelen=10.,
+def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=0.,
+                nzpoints=10000,fringelen=10.,
+                nsheets=1,
                 **kw):
   """
 Adds a solenoid element as an mmlt lattice element.
@@ -124,6 +163,7 @@ Adds a solenoid element as an mmlt lattice element.
  - zf: z end of the current sheet
  - ri: inner radius of the sheet
  - ro=ri: outer radius of the sheet (note that only (ri+ro)/2 is actually used)
+ - nsheets=1: number of current sheets
  - maxbz: maximum Bz field in T; used to calculate current if specified
  - current: current in the sheet, in units of Ampere-turns/meter; ignored for nonzero maxbz
  - nzpoints=10000: number of points in the table generated
@@ -133,25 +173,39 @@ Note that the actual sheet radius is given be (ri+ro)/2. The aperture is given
 by ri. The fringelen uses the actual sheet radius.
   """
   if ro is None: ro = ri
+  if nsheets == 1:
+    rsheets = array([(ri + ro)/2.])
+  else:
+    rsheets = ri + arange(nsheets)*(ro-ri)/(nsheets-1)
+
   zcent = (zi + zf)/2.
-  R = (ri + ro)/2.
   l = (zf - zi)
   
   if maxbz is not None:
-    current = maxbz * sqrt(4.0*(R/l)**2 + 1.0) / mu0
+    current = maxbz/(mu0*sum(1./sqrt(4.0*(rsheets/l)**2 + 1.0)))
   if current == 0.0:
     print 'warning: solenoid with zero current at zcent = %-6.3f' % zcent
 
-  zs = zi - fringelen*R
-  ze = zf + fringelen*R
-  ap = ri
+  zs = zi - fringelen*max(rsheets)
+  ze = zf + fringelen*max(rsheets)
+  ap = kw.get('ap',ri)
   z = span(zs,ze,nzpoints+1)
   ms  = zeros((nzpoints+1,2),'d')
   msp = zeros((nzpoints+1,2),'d')
-  ms[:,0]  = B0(z,zcent,current,R,l)
-  msp[:,0] = B0p(z,zcent,current,R,l)
-  ms[:,1]  = B0pp(z,zcent,current,R,l)
-  msp[:,1] = B0ppp(z,zcent,current,R,l)
+
+  for R in rsheets:
+    ms[:,0]  += B0(z,zcent,current,R,l)
+    msp[:,0] += B0p(z,zcent,current,R,l)
+    ms[:,1]  += B0pp(z,zcent,current,R,l)
+    msp[:,1] += B0ppp(z,zcent,current,R,l)
+    # --- This is a slowly converging series for radius approaching R
+    # --- so having extra terms doesn't help, and can be worse since the
+    # --- terms get larger at first.
+    #ms[:,2]  += B0p4(z,zcent,current,R,l)
+    #msp[:,2] += B0p5(z,zcent,current,R,l)
+    #ms[:,3]  += B0p6(z,zcent,current,R,l)
+    #msp[:,3] += B0p7(z,zcent,current,R,l)
+
   nn = [0,0]
   vv = [0,1]
   return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv,**kw)
