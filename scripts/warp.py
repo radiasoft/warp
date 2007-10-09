@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.147 2007/08/24 22:56:07 dave Exp $"
+warp_version = "$Id: warp.py,v 1.148 2007/10/09 23:30:17 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -491,7 +491,8 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
             elements.
  - js=0: species to get mass and charge from. Only affects accl elements.
   """
-  n = len(x)
+  try: n = len(x)
+  except TypeError: n = 1
   if n == 0: return
 
   # --- Allow z to be a scalar (as in the slice case)
