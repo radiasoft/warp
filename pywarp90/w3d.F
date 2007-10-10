@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.378 $, $Date: 2007/10/09 23:37:22 $
+c@(#) File W3D.F, version $Revision: 3.379 $, $Date: 2007/10/10 22:54:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5844,125 +5844,158 @@ c       --- transverse boundaries.
 !$OMP&                 iinext,jjnext,kknext,u1next,v1next,w1next)
 !$OMP&FIRSTPRIVATE(np)
 
-c     --- vectorized loop to compute indices, weights
-      if (l2symtry) then
-        iinext = int((xp(1) - xmmin)*dxi)
-        jjnext = int((abs(yp(1)) - ymmin)*dyi)
-        kknext = int((zp(1) - zgrid - zmmin)*dzi)
-        u1next = (xp(1) - xmmin)*dxi - iinext
-        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
-        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+      if (ny > 0) then
+
+c       --- vectorized loop to compute indices, weights
+        if (l2symtry) then
+          iinext = int((xp(1) - xmmin)*dxi)
+          jjnext = int((abs(yp(1)) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (xp(1) - xmmin)*dxi - iinext
+          v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
-        do ip = 1,np
-          ii = iinext
-          jj = jjnext
-          kk = kknext
-          u1 = u1next
-          v1 = v1next
-          w1 = w1next
-          if (ip < np) then
-            iinext = int((xp(ip+1) - xmmin)*dxi)
-            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
-            u1next = (xp(ip+1) - xmmin)*dxi - iinext
-            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
-            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
-          endif
-          if (uzp(ip) == 0) cycle
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-          gyfact = 1.
-          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
-        enddo
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((xp(ip+1) - xmmin)*dxi)
+              jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (xp(ip+1) - xmmin)*dxi - iinext
+              v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            if (uzp(ip) == 0) cycle
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            gyfact = 1.
+            if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gyfact
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gyfact
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
 !$OMP END DO
-      elseif (l4symtry) then
-        iinext = int((abs(xp(1)) - xmmin)*dxi)
-        jjnext = int((abs(yp(1)) - ymmin)*dyi)
-        kknext = int((zp(1) - zgrid - zmmin)*dzi)
-        u1next = (abs(xp(1)) - xmmin)*dxi - iinext
-        v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
-        w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+        elseif (l4symtry) then
+          iinext = int((abs(xp(1)) - xmmin)*dxi)
+          jjnext = int((abs(yp(1)) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (abs(xp(1)) - xmmin)*dxi - iinext
+          v1next = (abs(yp(1)) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
-        do ip = 1,np
-          ii = iinext
-          jj = jjnext
-          kk = kknext
-          u1 = u1next
-          v1 = v1next
-          w1 = w1next
-          if (ip < np) then
-            iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
-            jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
-            kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
-            u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
-            v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
-            w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
-          endif
-          if (uzp(ip) == 0) cycle
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-          gxfact = 1.
-          gyfact = 1.
-          if (ii == 0 .and. xmmin == 0.) gxfact = 2.
-          if (jj == 0 .and. ymmin == 0.) gyfact = 2.
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
-        enddo
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((abs(xp(ip+1)) - xmmin)*dxi)
+              jjnext = int((abs(yp(ip+1)) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (abs(xp(ip+1)) - xmmin)*dxi - iinext
+              v1next = (abs(yp(ip+1)) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            if (uzp(ip) == 0) cycle
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            gxfact = 1.
+            gyfact = 1.
+            if (ii == 0 .and. xmmin == 0.) gxfact = 2.
+            if (jj == 0 .and. ymmin == 0.) gyfact = 2.
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g*gxfact*gyfact
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g*gyfact
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g*gxfact
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g*gxfact*gyfact
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g*gyfact
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g*gxfact
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
 !$OMP END DO
-      else
+        else
+c         --- normal loop
+          iinext = int((xp(1) - xmmin)*dxi)
+          jjnext = int((yp(1) - ymmin)*dyi)
+          kknext = int((zp(1) - zgrid - zmmin)*dzi)
+          u1next = (xp(1) - xmmin)*dxi - iinext
+          v1next = (yp(1) - ymmin)*dyi - jjnext
+          w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
+!$OMP DO
+          do ip = 1,np
+            ii = iinext
+            jj = jjnext
+            kk = kknext
+            u1 = u1next
+            v1 = v1next
+            w1 = w1next
+            if (ip < np) then
+              iinext = int((xp(ip+1) - xmmin)*dxi)
+              jjnext = int((yp(ip+1) - ymmin)*dyi)
+              kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
+              u1next = (xp(ip+1) - xmmin)*dxi - iinext
+              v1next = (yp(ip+1) - ymmin)*dyi - jjnext
+              w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
+            endif
+            if (uzp(ip) == 0) cycle
+            u0 = 1. - u1
+            v0 = 1. - v1
+            w0 = 1. - w1
+            rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
+            rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
+            rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
+            rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
+            rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
+            rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
+            rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
+            rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          enddo
+!$OMP END DO
+        endif
+
+      else if (ny == 0) then
+
 c       --- normal loop
         iinext = int((xp(1) - xmmin)*dxi)
-        jjnext = int((yp(1) - ymmin)*dyi)
         kknext = int((zp(1) - zgrid - zmmin)*dzi)
         u1next = (xp(1) - xmmin)*dxi - iinext
-        v1next = (yp(1) - ymmin)*dyi - jjnext
         w1next = (zp(1) - zgrid - zmmin)*dzi - kknext
 !$OMP DO
         do ip = 1,np
           ii = iinext
-          jj = jjnext
           kk = kknext
           u1 = u1next
-          v1 = v1next
           w1 = w1next
           if (ip < np) then
             iinext = int((xp(ip+1) - xmmin)*dxi)
-            jjnext = int((yp(ip+1) - ymmin)*dyi)
             kknext = int((zp(ip+1) - zgrid - zmmin)*dzi)
             u1next = (xp(ip+1) - xmmin)*dxi - iinext
-            v1next = (yp(ip+1) - ymmin)*dyi - jjnext
             w1next = (zp(ip+1) - zgrid - zmmin)*dzi - kknext
           endif
           if (uzp(ip) == 0) cycle
           u0 = 1. - u1
-          v0 = 1. - v1
           w0 = 1. - w1
-          rho(ii  ,jj  ,kk  ) = rho(ii  ,jj  ,kk  ) + u0*v0*w0*g
-          rho(ii+1,jj  ,kk  ) = rho(ii+1,jj  ,kk  ) + u1*v0*w0*g
-          rho(ii  ,jj+1,kk  ) = rho(ii  ,jj+1,kk  ) + u0*v1*w0*g
-          rho(ii+1,jj+1,kk  ) = rho(ii+1,jj+1,kk  ) + u1*v1*w0*g
-          rho(ii  ,jj  ,kk+1) = rho(ii  ,jj  ,kk+1) + u0*v0*w1*g
-          rho(ii+1,jj  ,kk+1) = rho(ii+1,jj  ,kk+1) + u1*v0*w1*g
-          rho(ii  ,jj+1,kk+1) = rho(ii  ,jj+1,kk+1) + u0*v1*w1*g
-          rho(ii+1,jj+1,kk+1) = rho(ii+1,jj+1,kk+1) + u1*v1*w1*g
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*v0*w0*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*v0*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*v0*w1*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*v0*w1*g
         enddo
 !$OMP END DO
+
       endif
 
 !$OMP END PARALLEL
