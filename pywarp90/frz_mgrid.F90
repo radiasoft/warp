@@ -4747,10 +4747,10 @@ t_solve = wtime() - t_solve
 #ifdef MPIPARALLEL
 !IF(my_index==0) then
 #endif
-  IF(lverbose>=1 .and. grid%gid(1)==basegrid%gid(1)) then
+  IF(lverbose>=1 .and. (.not. ASSOCIATED(basegrid) .or. grid%gid(1)==basegrid%gid(1))) then
     write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
   END if
-  IF(lverbose>=2 .and. grid%gid(1)/=basegrid%gid(1)) then
+  IF(lverbose>=2 .and. (ASSOCIATED(basegrid) .and.  grid%gid(1)/=basegrid%gid(1))) then
     write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
     WRITE(o_line,'("grid Nb: ",i5,", Nr = ",i5,", Nz = ",i5)') grid%gid(1),grid%nr,grid%nz; call remark(trim(o_line))
   END if
