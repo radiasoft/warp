@@ -62,7 +62,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.55 2007/08/23 22:16:14 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.56 2007/10/13 00:33:33 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2574,7 +2574,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
 def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
                ph=0.,sp=0.,cp=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None,
-               nx=None,ny=None,nz=None):
+               rz=false,nx=None,ny=None,nz=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
 appropriate location.
@@ -2586,6 +2586,7 @@ takes precedence):
 Or, one or more 3-D field arrays may be specified
   - bx, by, bz
   - dx,dy: transverse grid cell size must also be specified
+  - rz=false: set to true if data is RZ only
 The following are all optional and have the same meaning and default as the
 bgrd arrays with the same suffices:
   - xs,ys,ap,ox,oy,ph,sp,cp,sf,sc,sy
@@ -2670,6 +2671,7 @@ of dx, dy, nx, ny, nz, must be passed in"""
     if bx is not None: top.bgrdbx[:nx+1,:ny+1,:nz+1,-1] = bx
     if by is not None: top.bgrdby[:nx+1,:ny+1,:nz+1,-1] = by
     if bz is not None: top.bgrdbz[:nx+1,:ny+1,:nz+1,-1] = bz
+    top.bgrdrz[-1] = rz
 
   # --- Return the id of the new dataset. This allows the user to refer to
   # --- this new dataset without having to know its actual number.
