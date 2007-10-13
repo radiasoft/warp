@@ -323,8 +323,8 @@ Creates a new species of particles. All arguments are optional.
 
     if lallindomain:
       # --- Crop the zmin and zmax to be within the local domain
-      zminp = max(zmin,min(zmax,w3d.zmminp+top.zgrid))
-      zmaxp = min(zmax,max(zmin,w3d.zmmaxp+top.zgrid))
+      zminp = max(zmin,min(zmax,top.zpminlocal+top.zgrid))
+      zmaxp = min(zmax,max(zmin,top.zpmaxlocal+top.zgrid))
     else:
       # --- Crop the zmin and zmax to be within the global domain
       zminp = max(zmin,w3d.zmmin+top.zgrid)
@@ -335,7 +335,8 @@ Creates a new species of particles. All arguments are optional.
       # --- width of the cropped zmin and max and the original
       if zmin==zmax:
         if lallindomain:
-          if zmin>w3d.zmmaxp+top.zgrid or zmax<w3d.zmminp+top.zgrid:return
+          if zmin>top.zpmaxlocal+top.zgrid or zmax<top.zpminlocal+top.zgrid:
+            return
         else:
           if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
       else:
@@ -361,7 +362,8 @@ Creates a new species of particles. All arguments are optional.
       # --- zmin and max.
       if zmin==zmax:
         if lallindomain:
-          if zmin>w3d.zmmaxp+top.zgrid or zmax<w3d.zmminp+top.zgrid:return
+          if zmin>top.zpmaxlocal+top.zgrid or zmax<top.zpminlocal+top.zgrid:
+            return
         else:
           if zmin>w3d.zmmax+top.zgrid or zmax<w3d.zmmin+top.zgrid:return
       else:
@@ -455,8 +457,8 @@ in radius squared.
       # --- can be done directly on the zmin and zmax
       if lallindomain:
         # --- Crop the zmin and zmax to be within the local domain
-        zminp = max(zmin,min(zmax,w3d.zmminp))
-        zmaxp = min(zmax,max(zmin,w3d.zmmaxp))
+        zminp = max(zmin,min(zmax,top.zpminlocal))
+        zmaxp = min(zmax,max(zmin,top.zpmaxlocal))
       else:
         # --- Crop the zmin and zmax to be within the global domain
         zminp = max(zmin,w3d.zmmin)
@@ -544,7 +546,7 @@ in radius squared.
       # --- by particle basis.
       if lallindomain:
         # --- Crop the z's to be within the local particle domain
-        indomain = logical_and(w3d.zmminp<=z,z<w3d.zmmaxp)
+        indomain = logical_and(top.zpminlocal<=z,z<top.zpmaxlocal)
       else:
         # --- Crop the z's to be within the global grid domain
         indomain = logical_and(w3d.zmmin<=z,z<w3d.zmmax)
