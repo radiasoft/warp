@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.11 $, $Date: 2007/08/15 19:04:32 $
+c@(#) File top_lattice.F, version $Revision: 3.12 $, $Date: 2007/10/13 00:32:41 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -3856,8 +3856,9 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,id
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id,jp1
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: txp0,typ0
       real(kind=8):: tbx,tby
 
 c  Evaluation of B, vectorized over particles
@@ -3896,6 +3897,7 @@ c         --- find transverse particle coordinate in frame of gridded field
 c         --- transverse offsets
           txp = xp(ip) - bgrdox(ii)
           typ = yp(ip) - bgrdoy(ii)
+
 c         --- transverse rotation to take into account an active rotation 
 c         --- of the field element.  Particles are rotated in that oposite 
 c         --- sense of the element. Later the field components accumulated 
@@ -3905,6 +3907,14 @@ c         --- must be rotated back.
             txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
             typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
           endif 
+
+c         --- If data is in RZ, then replace x with the radius and y=ys
+          if (bgrdrz(id)) then
+            txp0 = txp
+            typ0 = typ
+            txp = sqrt(txp**2 + typ**2)
+            typ = bgrdys(ii)
+          endif
 
 c         --- Shift coordinates to measure from the edge of the field grid
           txp = txp - bgrdxs(ii)
@@ -3965,29 +3975,36 @@ c         --- Calculate linear weights
           w0 = 1. - w1
 
 c         --- Only calculate for particles inside the B field grid
-          if (0 <= i .and. i < bgrdnx .and.
-     &        0 <= j .and. j < bgrdny .and.
-     &        0 <= k .and. k < bgrdnz) then
+          if ((0 <= i .and. i < bgrdnx) .and.
+     &        (0 <= j .and. j < bgrdny .or. bgrdrz(id)) .and.
+     &        (0 <= k .and. k < bgrdnz)) then
 
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
+            jp1 = j + 1
+            if (bgrdrz(id)) then
+              jp1 = j
+              v0 = 1.
+              v1 = 0.
+            endif
+
             tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*bgrdbx(i  ,j+1,k  ,id) +
-     &                        u1*v1*w0*bgrdbx(i+1,j+1,k  ,id) +
+     &                        u0*v1*w0*bgrdbx(i  ,jp1,k  ,id) +
+     &                        u1*v1*w0*bgrdbx(i+1,jp1,k  ,id) +
      &                        u0*v0*w1*bgrdbx(i  ,j  ,k+1,id) +
      &                        u1*v0*w1*bgrdbx(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*bgrdbx(i  ,j+1,k+1,id) +
-     &                        u1*v1*w1*bgrdbx(i+1,j+1,k+1,id))
+     &                        u0*v1*w1*bgrdbx(i  ,jp1,k+1,id) +
+     &                        u1*v1*w1*bgrdbx(i+1,jp1,k+1,id))
 
             tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
      &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,id) +
-     &                        u0*v1*w0*bgrdby(i  ,j+1,k  ,id) +
-     &                        u1*v1*w0*bgrdby(i+1,j+1,k  ,id) +
+     &                        u0*v1*w0*bgrdby(i  ,jp1,k  ,id) +
+     &                        u1*v1*w0*bgrdby(i+1,jp1,k  ,id) +
      &                        u0*v0*w1*bgrdby(i  ,j  ,k+1,id) +
      &                        u1*v0*w1*bgrdby(i+1,j  ,k+1,id) +
-     &                        u0*v1*w1*bgrdby(i  ,j+1,k+1,id) +
-     &                        u1*v1*w1*bgrdby(i+1,j+1,k+1,id))
+     &                        u0*v1*w1*bgrdby(i  ,jp1,k+1,id) +
+     &                        u1*v1*w1*bgrdby(i+1,jp1,k+1,id))
 
 c            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
 c              temp = tbx 
@@ -4003,18 +4020,25 @@ c               orientation if the element is rotated.
               tby = temp*bgrdsp(ii) + tby*bgrdcp(ii)         
             endif 
 
+            if (bgrdrz(id)) then
+c             --- For the RZ case, tbx now holds Br. Convert it to Bx and By.
+c             --- Note that this ignores Btheta (in tby) for now.
+              tby = tbx*typ0/txp
+              tbx = tbx*txp0/txp
+            endif
+
 c           --- tranverse field 
             bx(ip) = bx(ip) + tbx
             by(ip) = by(ip) + tby
 
             bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
      &                                    u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
-     &                                    u0*v1*w0*bgrdbz(i  ,j+1,k  ,id) +
-     &                                    u1*v1*w0*bgrdbz(i+1,j+1,k  ,id) +
+     &                                    u0*v1*w0*bgrdbz(i  ,jp1,k  ,id) +
+     &                                    u1*v1*w0*bgrdbz(i+1,jp1,k  ,id) +
      &                                    u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
      &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
-     &                                    u0*v1*w1*bgrdbz(i  ,j+1,k+1,id) +
-     &                                    u1*v1*w1*bgrdbz(i+1,j+1,k+1,id))
+     &                                    u0*v1*w1*bgrdbz(i  ,jp1,k+1,id) +
+     &                                    u1*v1*w1*bgrdbz(i+1,jp1,k+1,id))
 
           endif
 

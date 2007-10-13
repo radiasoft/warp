@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.217 $, $Date: 2007/10/09 23:37:22 $
+#@(#) File TOP.V, version $Revision: 3.218 $, $Date: 2007/10/13 00:32:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.217 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.218 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -553,12 +553,12 @@ egrdny integer /0/ # Number of Y cells
 egrdnz integer /0/ # Number of Z cells
 egrdns integer /0/ # Number of data sets
 egrdnc integer /0/ # Number of components stored in egrd
-egrddx(egrdns)                      _real [m]   # X cell size
-egrddy(egrdns)                      _real [m]   # Y cell size
-egrddz(egrdns)                      _real [m]   # Z cell size
-egrddxi(egrdns)                     _real [1/m] # 1 over X cell size (autoset)
-egrddyi(egrdns)                     _real [1/m] # 1 over Y cell size (autoset)
-egrddzi(egrdns)                     _real [1/m] # 1 over Z cell size (autoset)
+egrddx(egrdns)   _real [m]   # X cell size
+egrddy(egrdns)   _real [m]   # Y cell size
+egrddz(egrdns)   _real [m]   # Z cell size
+egrddxi(egrdns)  _real [1/m] # 1 over X cell size (autoset)
+egrddyi(egrdns)  _real [1/m] # 1 over Y cell size (autoset)
+egrddzi(egrdns)  _real [1/m] # 1 over Z cell size (autoset)
 egrdex(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ex
 egrdey(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ey
 egrdez(0:egrdnx,0:egrdny,0:egrdnz,egrdns) _real [T] # Ez
@@ -570,12 +570,13 @@ bgrdny integer /0/ # Number of Y cells
 bgrdnz integer /0/ # Number of Z cells
 bgrdns integer /0/ # Number of data sets
 bgrdnc integer /0/ # Number of components stored in bgrd
-bgrddx(bgrdns)                      _real [m]   # X cell size
-bgrddy(bgrdns)                      _real [m]   # Y cell size
-bgrddz(bgrdns)                      _real [m]   # Z cell size
-bgrddxi(bgrdns)                     _real [1/m] # 1 over X cell size (autoset)
-bgrddyi(bgrdns)                     _real [1/m] # 1 over Y cell size (autoset)
-bgrddzi(bgrdns)                     _real [1/m] # 1 over Z cell size (autoset)
+bgrddx(bgrdns)   _real [m]   # X cell size
+bgrddy(bgrdns)   _real [m]   # Y cell size
+bgrddz(bgrdns)   _real [m]   # Z cell size
+bgrddxi(bgrdns)  _real [1/m] # 1 over X cell size (autoset)
+bgrddyi(bgrdns)  _real [1/m] # 1 over Y cell size (autoset)
+bgrddzi(bgrdns)  _real [1/m] # 1 over Z cell size (autoset)
+bgrdrz(bgrdns)   _logical /0/ # When true, data is RZ only
 bgrdbx(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bx
 bgrdby(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # By
 bgrdbz(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bz
