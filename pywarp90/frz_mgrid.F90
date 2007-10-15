@@ -10817,7 +10817,7 @@ integer(ISZ):: ixlbnd
 
 end subroutine multigridrzb
 
-subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,bounds,u,rho)
+subroutine init_bworkgrid(nr,nz,dr,dz,rmin,zmin,bounds,u,rho,l_parallel)
 use Constant
 use BWorkRZ
 use multigridrz
@@ -10828,6 +10828,7 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 INTEGER(ISZ):: bounds(0:5)
 REAL(8), INTENT(IN),TARGET :: u(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN),TARGET :: rho(nr+1,nz+1)
+LOGICAL(ISZ), INTENT(IN) :: l_parallel
 
 INTEGER(ISZ) :: i,j, nzp
 TYPE(GRIDtype), POINTER :: bg
@@ -10844,6 +10845,7 @@ TYPE(BNDtype), POINTER :: b
   inveps0 = 1./eps0
 
 #ifdef MPIPARALLEL
+  bg%l_parallel = l_parallel
   if(bg%l_parallel) then
     workfact = mgridrz_workfact
     bg%nzp   = nzpslave(my_index)

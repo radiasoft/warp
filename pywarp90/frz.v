@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.62 $, $Date: 2007/08/20 17:47:00 $
+#@(#) File FRZ.V, version $Revision: 3.63 $, $Date: 2007/10/15 16:56:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.62 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.63 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -271,7 +271,8 @@ setphixz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
 
 init_bworkgrid(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,
                bounds(0:5):integer,
-               u(0:nr+2,0:nz+2):real,rho(nr+1,nz+1):real) subroutine
+               u(0:nr+2,0:nz+2):real,rho(nr+1,nz+1):real,l_parallel:logical)
+         subroutine
          # Sets up the GRDItype object used during the RZ magnetic field solve.
 multigridrzb(iwhich:integer,iaxis:integer,u0(0:nr0+2,0:nz0+2):real,
              rho0(nr0+1,nz0+1):real,nr0:integer,nz0:integer,accuracy:real)
