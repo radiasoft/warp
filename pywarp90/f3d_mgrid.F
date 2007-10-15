@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.155 $, $Date: 2007/09/25 17:40:06 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.156 $, $Date: 2007/10/15 22:58:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -497,6 +497,7 @@ c=============================================================================
      &                            mgmaxlevels,downpasses,uppasses,
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
+      use Subtimersf3d
       use ConductorTypemodule
       use Multigrid3d_diagnostic
       use formggetarraysuminterface
@@ -538,6 +539,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       integer(ISZ):: allocerror
       real(kind=8):: sss(2)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Check that the same coarsening was done for the conductors as is
 c     --- being done now. Note that only nzlocal is saved for the conductors so
@@ -787,11 +790,14 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nzlocal, ' Warp'
 #endif
 
+      if (lf3dtimesubs) timevcycle = timevcycle + wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine restrict2d(nx,ny,nzlocal,res,nxcoarse,nycoarse,rhocoarse,
      &                      ff,bounds,delx,dely)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nzlocal,delx,dely
       integer(ISZ):: nxcoarse,nycoarse
       real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-3:nzlocal+3)
@@ -809,6 +815,8 @@ c which is ff times too small with the current values of dxsqi etc.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
       real(kind=8):: w,r,dx,dy,dxi,dyi,wx(0:3),wy(0:3)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set the loop limits, including edges when appropriate.
       ixcoarsemin = 1
@@ -882,12 +890,16 @@ c     --- Set appropriate boundary values
       if (bounds(4) == 0) rhocoarse(:,:,0) = 0.
       if (bounds(5) == 0) rhocoarse(:,:,nzlocal) = 0.
 
+      if (lf3dtimesubs) timerestrict2d = timerestrict2d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine restrict3d(nx,ny,nzlocal,nz,res,
      &                      nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,rhocoarse,
      &                      ff,bounds,boundscoarse,lzoffset,delx,dely)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nzlocal,nz,delx,dely
       integer(ISZ):: nxcoarse,nycoarse,nzlocalcoarse,nzcoarse
       real(kind=8):: res(-delx:nx+delx,-dely:ny+dely,-3:nzlocal+3)
@@ -908,6 +920,8 @@ c too small with the current values of dxsqi etc.
       integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
       integer(ISZ):: izcoarsemin,izcoarsemax
       real(kind=8):: r,w,dx,dy,dz,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set the loop limits, including edges when appropriate.
       ixcoarsemin = 1
@@ -994,11 +1008,15 @@ c     --- Set appropriate boundary values
       if (boundscoarse(4) == 0) rhocoarse(:,:,0) = 0.
       if (boundscoarse(5) == 0) rhocoarse(:,:,nzlocalcoarse) = 0.
 
+      if (lf3dtimesubs) timerestrict3d = timerestrict3d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine expand2d(nx,ny,nzlocal,delx,dely,delz,phi,
      &                    nxcoarse,nycoarse,phicoarse,bounds)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nzlocal,delx,dely,delz
       integer(ISZ):: nxcoarse,nycoarse
       real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
@@ -1012,6 +1030,8 @@ c The expansion is only transverse.
       integer(ISZ):: ix,iy,iz
       integer(ISZ):: jx,jy,jz
       real(kind=8):: wx,wy,dx,dy
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set the loop limits, including edges when appropriate.
       izmin = -1
@@ -1064,12 +1084,16 @@ c     --- Set the loop limits, including edges when appropriate.
         enddo
       endif
 
+      if (lf3dtimesubs) timeexpand2d = timeexpand2d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine expand3d(nx,ny,nzlocal,nz,delx,dely,delz,phi,
      &                    nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,phicoarse,
      &                    bounds,lzoffset)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
       integer(ISZ):: nxcoarse,nycoarse,nzlocalcoarse,nzcoarse
       real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
@@ -1084,6 +1108,8 @@ c The expansion is only transverse.
       integer(ISZ):: jx,jy,jz
       real(kind=8):: dx,dy,dz
       real(kind=8):: wx,wy,wz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       dx = 1.*nxcoarse/nx
       if (ny > 0) dy = 1.*nycoarse/ny
@@ -1150,6 +1176,9 @@ c The expansion is only transverse.
       if (bounds(4) == 2 .and. nzlocal == nz) phi(:,:,-1) = phi(:,:,nzlocal-1)
       if (bounds(5) == 2 .and. nzlocal == nz) phi(:,:,nzlocal+1) = phi(:,:,1)
 
+      if (lf3dtimesubs) timeexpand3d = timeexpand3d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
@@ -1159,6 +1188,7 @@ c=============================================================================
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
+      use Subtimersf3d
       use Constant
       use ConductorTypemodule
       integer(ISZ):: mglevel,nx,ny,nzlocal,nz
@@ -1200,6 +1230,8 @@ c
 c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
 
       integer(ISZ):: parity,s_parity,e_parity
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
@@ -1245,12 +1277,16 @@ c     --- Exchange phi in the z guard planes
      &                    whosendingright,izsendingright)
 #endif
 
+      if (lf3dtimesubs) timesorpass3d = timesorpass3d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine sorhalfpass3d(parity,mglevel,nx,ny,nzlocal,nz,phi,rho,rstar,
      &                     dxsqi,dysqi,dzsqi,linbend,bendx,localbounds,
      &                     mgparam,mgform,lcndbndy,icndbndy,conductors)
+      use Subtimersf3d
       use Constant
       use ConductorTypemodule
       integer(ISZ):: parity,mglevel,nx,ny,nzlocal,nz
@@ -1293,6 +1329,8 @@ c rstar(-1) and rstar(nzlocal+1) are set based on the axial boundary conditions.
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr
       integer(ISZ):: ii,ix,iy,iz,ic,i1,i2
       integer(ISZ):: nphi,nrho,nrstar,nxx
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       nphi = (1+nx)*(1+ny)*(3+nzlocal)
       nrho = (1+nx)*(1+ny)*(1+nzlocal)
@@ -1563,6 +1601,9 @@ c     --- set phi in the z guard planes
       if (localbounds(4) == 2 .and. nzlocal == nz) phi(:,:,-1) = phi(:,:,nzlocal-1)
       if (localbounds(5) == 2 .and. nzlocal == nz) phi(:,:,nzlocal:nzlocal+1) = phi(:,:,0:1)
 
+      if (lf3dtimesubs) timesorhalfpass3d = timesorhalfpass3d +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
@@ -1571,6 +1612,7 @@ c=============================================================================
      &                      phi1d,rho1d,nxy,dxsqic,dysqic,dzsqic,spm1,linbends,
      &                      rstar,dx,dxsqi,dysqi,dzsqi,rdel,const,xx,
      &                      nphi,nrho,nrstar,nxx)
+      use Subtimersf3d
       integer(ISZ):: nphi,nrho,nrstar,nxx
       real(kind=8):: phi1d(nphi),rho1d(nrho),rstar(nrstar),xx(nxx)
       integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
@@ -1621,6 +1663,8 @@ c on HIF, an HP 735 workstation.
 
       integer(ISZ):: iz,ii,parity
       real(kind=8):: x,rs,r,xfact,del2bndc,dh,dxi
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       if (.not. linbends) then 
         if (izl == izr) then
@@ -1746,11 +1790,15 @@ c           --- current z-slice is in a bend only
 !$OMP END DO
       endif 
 
+      if (lf3dtimesubs) timemgsor_loop = timemgsor_loop +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine cond_potmg(interior,nx,ny,nzlocal,delx,dely,delz,phi,mglevel,
      &                      mgform,mgform2init)
+      use Subtimersf3d
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nzlocal,delx,dely,delz,mglevel,mgform
@@ -1760,6 +1808,8 @@ c=============================================================================
 c Set conductor points to the desired potential.
 
       integer(ISZ):: ic,ix,iy,iz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
@@ -1783,11 +1833,15 @@ c     --- phi to the voltage of the conductor, otherwise, set it to zero.
 !$OMP END DO
       endif
 
+      if (lf3dtimesubs) timecond_potmg = timecond_potmg +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine cond_potmgres(interior,nx,ny,nzlocal,res,mglevel,
      &                         mgform,mgform2init,delx,dely)
+      use Subtimersf3d
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nzlocal,mglevel,mgform,delx,dely
@@ -1797,6 +1851,8 @@ c=============================================================================
 c Set conductor points to the desired potential.
 
       integer(ISZ):: ic,ix,iy,iz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 !$OMP DO
       do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
@@ -1807,10 +1863,14 @@ c Set conductor points to the desired potential.
       enddo
 !$OMP END DO
 
+      if (lf3dtimesubs) timecond_potmgres = timecond_potmgres +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine cond_zerorhointerior(interior,nx,ny,nzlocal,rho)
+      use Subtimersf3d
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nzlocal
@@ -1819,6 +1879,8 @@ c=============================================================================
 c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 !$OMP DO
       do ic = interior%istart(0),interior%istart(1)-1
@@ -1829,11 +1891,15 @@ c Set rho to zero inside conductor points.
       enddo
 !$OMP END DO
 
+      if (lf3dtimesubs) timecond_zerorhointerior = timecond_zerorhointerior +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       real(kind=8) function cond_sumrhointerior(interior,nx,ny,nzlocal,rho,
      &                                  ixmin,ixmax,iymin,iymax,izmin,izmax)
+      use Subtimersf3d
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nzlocal
@@ -1844,6 +1910,9 @@ c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
       real(kind=8):: rhosum
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
       rhosum = 0.
 
 !$OMP DO
@@ -1860,11 +1929,15 @@ c Set rho to zero inside conductor points.
 !$OMP END DO
 
       cond_sumrhointerior = rhosum
+      if (lf3dtimesubs) timecond_sumrhointerior = timecond_sumrhointerior +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine subcond_sumrhointerior(rhosum,interior,nx,ny,nzlocal,rho,
      &                                  ixmin,ixmax,iymin,iymax,izmin,izmax)
+      use Subtimersf3d
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nzlocal
@@ -1875,6 +1948,9 @@ c Set rho to zero inside conductor points.
 
       integer(ISZ):: ic,ix,iy,iz
       real(kind=8):: rhosum
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
       rhosum = 0.
 
 !$OMP DO
@@ -1889,6 +1965,9 @@ c Set rho to zero inside conductor points.
         endif
       enddo
 !$OMP END DO
+
+      if (lf3dtimesubs) timesubcond_sumrhointerior = timesubcond_sumrhointerior +
+     &                                         wtime() - substarttime
 
       return
       end
@@ -2034,6 +2113,7 @@ c=============================================================================
       subroutine condbndymg(subgrid,nx,ny,nzlocal,delx,dely,delz,phi,rho,
      &                      dxsqic,dysqic,dzsqic,spm1,
      &                      mgparam,localbounds,mglevel,mgform,icndbndy)
+      use Subtimersf3d
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nzlocal,delx,dely,delz,mglevel
@@ -2062,6 +2142,8 @@ c points on the boundary.
       real(kind=8):: ppp
       logical(ISZ):: dosubgrid
       real(kind=8),pointer:: dels(:,:),volt(:,:)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       dxsqicos = dxsqic/mgparam
       dysqicos = dysqic/mgparam
@@ -2244,11 +2326,15 @@ c       --- calculate the new phi based on the boundary conditions
 
       endif
 
+      if (lf3dtimesubs) timecondbndymg = timecondbndymg +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine condbndymgint(subgrid,nx,ny,nzlocal,delx,dely,delz,phi,
      &                         localbounds,mglevel,icndbndy)
+      use Subtimersf3d
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nzlocal,delx,dely,delz,mglevel
@@ -2271,6 +2357,8 @@ c points on the boundary.
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
       integer(ISZ):: ix,iy,iz
       real(kind=8),pointer:: dels(:,:),volt(:,:)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       dels => subgrid%dels
       volt => subgrid%volt
@@ -2333,6 +2421,9 @@ c       --- set temporaries for boundaries
 
       endif
 
+      if (lf3dtimesubs) timecondbndymgint = timecondbndymgint +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
@@ -2340,6 +2431,7 @@ c=============================================================================
      &                       dxsqi,dysqi,dzsqi,
      &                       mgparam,localbounds,mglevel,
      &                       mgform,mgform2init,icndbndy)
+      use Subtimersf3d
       use ConductorSubGridTypemodule
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nzlocal,delx,dely,delz,mglevel
@@ -2383,6 +2475,8 @@ c points on the boundary.
       integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
       integer(ISZ):: ix,iy,iz
       real(kind=8),pointer:: dels(:,:),volt(:,:)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       const = 0.5/(dxsqi+dysqi+dzsqi)
       dxsqic = dxsqi*const
@@ -2582,12 +2676,16 @@ c       --- calculate the residual based on the boundary conditions
 
       endif
 
+      if (lf3dtimesubs) timecondbndyres = timecondbndyres +
+     &                                         wtime() - substarttime
+
       return
       end
 c=============================================================================
       subroutine residual(nx,ny,nzlocal,nz,dxsqi,dysqi,dzsqi,phi,rho,res,
      &                    mglevel,localbounds,mgparam,mgform,mgform2init,
      &                    lcndbndy,icndbndy,conductors)
+      use Subtimersf3d
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: dxsqi,dysqi,dzsqi
@@ -2617,6 +2715,9 @@ c the surface.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
       real(kind=8):: const,dxsqic,dysqic,dzsqic
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
       const = 0.5/(dxsqi+dysqi+dzsqi)
       dxsqic = dxsqi*mgparam*const
       dysqic = dysqi*mgparam*const
@@ -2706,6 +2807,9 @@ c     --- Longitudinal boundaries
       if (localbounds(5) == 1) res(:,:,nzlocal+1) = res(:,:,nzlocal-1)
       if (localbounds(4) == 2 .and. nzlocal == nz) res(:,:,-1) = res(:,:,nzlocal-1)
       if (localbounds(5) == 2 .and. nzlocal == nz) res(:,:,nzlocal+1) = res(:,:,1)
+
+      if (lf3dtimesubs) timeresidual = timeresidual +
+     &                                         wtime() - substarttime
 
       return
       end

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.180 $, $Date: 2007/08/17 00:00:10 $
+#@(#) File F3D.V, version $Revision: 3.181 $, $Date: 2007/10/15 22:58:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.180 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.181 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -974,6 +974,24 @@ timegatherpotentialfromparents real /0./
 timegatherafromparents real /0./
 timegatherjfromchild real /0./
 timecheckconductors real /0./
+
+timevcycle real /0./
+timerestrict2d real /0./
+timerestrict3d real /0./
+timeexpand2d real /0./
+timeexpand3d real /0./
+timesorpass3d real /0./
+timesorhalfpass3d real /0./
+timemgsor_loop real /0./
+timecond_potmg real /0./
+timecond_potmgres real /0./
+timecond_zerorhointerior real /0./
+timecond_sumrhointerior real /0./
+timesubcond_sumrhointerior real /0./
+timecondbndymg real /0./
+timecondbndymgint real /0./
+timecondbndyres real /0./
+timeresidual real /0./
 
 timeexchange_phi           real /0./
 timetranspose              real /0./
