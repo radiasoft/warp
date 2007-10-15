@@ -255,7 +255,7 @@ Creates a new species of particles. All arguments are optional.
       pass
      
   def get_density(self,xmin=None,xmax=None,nx=None,ymin=None,ymax=None,ny=None,zmin=None,zmax=None,
-                  nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1):
+                  nz=None,lost=0,charge=0,dens=None,l_minmax_grid=true,l_dividebyvolume=1,l4symtry=None,l2symtry=None):
     if l_minmax_grid:
       if xmin is None:xmin=w3d.xmmin
       if xmax is None:xmax=w3d.xmmax
@@ -263,6 +263,8 @@ Creates a new species of particles. All arguments are optional.
       if ymax is None:ymax=w3d.ymmax
       if zmin is None:zmin=w3d.zmmin
       if zmax is None:zmax=w3d.zmmax
+      if l4symtry is None:l4symtry=w3d.l4symtry
+      if l2symtry is None:l2symtry=w3d.l2symtry
     else:
       if xmin is None:xmin=min(self.getx())
       if xmax is None:xmax=max(self.getx())
@@ -270,6 +272,8 @@ Creates a new species of particles. All arguments are optional.
       if ymax is None:ymax=max(self.gety())
       if zmin is None:zmin=min(self.getz())
       if zmax is None:zmax=max(self.getz())
+      if l4symtry is None:l4symtry=false
+      if l2symtry is None:l2symtry=false
     if dens is None:
       if nx is None:nx=w3d.nx
       if ny is None:ny=w3d.ny
@@ -303,7 +307,13 @@ Creates a new species of particles. All arguments are optional.
           w=top.pgroup.sw[js]*getpid(js=js,id=top.wpid-1,gather=0)
         if charge:w*=top.pgroup.sq[js]   
         deposgrid3d(1,np,x,y,z,w,nx,ny,nz,density,densityc,xmin,xmax,ymin,ymax,zmin,zmax)
-    if l_dividebyvolume:density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+    if l_dividebyvolume:
+      density*=nx*ny*nz/((xmax-xmin)*(ymax-ymin)*(zmax-zmin))
+      if l4symtry:
+        density[0,:,:] *= 2
+        density[:,0,:] *= 2
+      if l2symtry:
+        density[:,0,:] *= 2
     density[...] = parallelsum(density)
     if dens is None:return density
      
