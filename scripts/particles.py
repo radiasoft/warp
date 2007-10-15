@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.59 2007/07/18 01:18:20 dave Exp $"
+particles_version = "$Id: particles.py,v 1.60 2007/10/15 18:02:10 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1281,6 +1281,11 @@ Adds particles to the simulation
   except TypeError: lengi = 1
   try:              lenpid = len(pid)
   except TypeError: lenpid = 1
+
+  # --- If any of the inputs are arrays that are zero length, then return
+  if (lenx == 0 or leny == 0 or lenz == 0 or
+      lenvx == 0 or lenvy == 0 or lenvz == 0 or
+      lengi == 0 or lenpid == 0): return
 
   # --- Max length of input arrays
   maxlen = max(lenx,leny,lenz,lenvx,lenvy,lenvz,lengi,lenpid)
