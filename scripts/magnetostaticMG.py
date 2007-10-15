@@ -278,7 +278,8 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     if self.lcylindrical:
       init_bworkgrid(self.nx,self.nzlocal,self.dx,self.dz,
                      self.xmmin,self.zmminlocal,self.bounds,
-                     self.potential[0,:,0,:],self.source[0,:,0,:])
+                     self.potential[0,:,0,:],self.source[0,:,0,:],
+                     self.lparallel)
 
     # --- Note that the arrays being passed in are not contiguous, which means
     # --- that copies are being done.
