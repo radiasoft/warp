@@ -564,6 +564,7 @@ in radius squared.
       y = compress(indomain,y)
       z = compress(indomain,z)
       np = len(z)
+      if np == 0: return
 
     vx = RandomArray.normal(vxmean,vthx,np)
     vy = RandomArray.normal(vymean,vthy,np)
