@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.12 $, $Date: 2007/10/13 00:32:41 $
+c@(#) File top_lattice.F, version $Revision: 3.13 $, $Date: 2007/10/17 01:08:41 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -4023,8 +4023,13 @@ c               orientation if the element is rotated.
             if (bgrdrz(id)) then
 c             --- For the RZ case, tbx now holds Br. Convert it to Bx and By.
 c             --- Note that this ignores Btheta (in tby) for now.
-              tby = tbx*typ0/txp
-              tbx = tbx*txp0/txp
+              if (txp .ne. 0) then
+                tby = tbx*typ0/txp
+                tbx = tbx*txp0/txp
+              else
+                tby = 0.
+                tbx = tbx
+              endif
             endif
 
 c           --- tranverse field 
