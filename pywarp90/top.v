@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.218 $, $Date: 2007/10/13 00:32:41 $
+#@(#) File TOP.V, version $Revision: 3.219 $, $Date: 2007/10/17 01:09:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.218 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.219 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1214,7 +1214,7 @@ thetainject(ninject) _real # theta angle of injection source
 phiinject(ninject)   _real # phi angle of injection source
 vzinject(ninject,ns) _real /0./ [m/s] # Starting velocity.
                                       # For inject == 1, autoset to vbeam
-finject(ninject,ns) _real  # Species fraction for each source
+finject(ninject,ns) _real /0./ # Species fraction for each source
 winject(ninject,ns) _real /1./ # Scale factor on the particle weight when
                                # weighted particles are used (when wpid > 0)
 inj_zstart(ninject) _real /0./ [m] # Starting location relative to the emitting
