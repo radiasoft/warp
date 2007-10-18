@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.158 $, $Date: 2007/08/21 19:54:45 $
+c@(#) File DTOP.F, version $Revision: 3.159 $, $Date: 2007/10/18 01:08:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -29,7 +29,7 @@ c  Makes call to hstall to utilize the hst package.
       logical(ISZ):: lgchange,checkzhistarray
 
       if (warpout > -1) then
-        call oneliner (warpout,itt,tim,pz,ese,ek)
+        call oneliner (warpout,itt,tim,pz(nsmmnt),ese,ek(nsmmnt))
       endif
 
 c     --- Call routine to print out diagnostics.  This can either be the
@@ -38,7 +38,7 @@ c     --- called 'oneliner'.
       if (loneliner) then
         call execuser("oneliner")
       else
-        if (lspecial) call oneliner (STDOUT,itt,tim,pz,ese,ek)
+        if (lspecial) call oneliner (STDOUT,itt,tim,pz(nsmmnt),ese,ek(nsmmnt))
       endif
 
       if (nhist > 0 .and. my_index == 0) then
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.158 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.159 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -683,13 +683,13 @@ c     --- The extra if statement deals with the cases where the quantity
 c     --- is very close to 10**(3i). The 5.e-5 is added since the f10.4 in the
 c     --- write statements will round up numbers within 5.e-5 of 10**(3i).
       if (time == 0.) then
-        ilogt = 0.
+        ilogt = 0
       else
         ilogt = int((log10(abs(time))-3.)/3.)*3
       endif
       if (time/10.**ilogt+5.e-5 >= 1000.) ilogt = ilogt + 3
       if (zbeam == 0.) then
-        ilogz = 0.
+        ilogz = 0
       else
         ilogz = int((log10(abs(zbeam))-3.)/3.)*3
       endif
