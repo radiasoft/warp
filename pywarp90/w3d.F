@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.380 $, $Date: 2007/10/18 01:04:16 $
+c@(#) File W3D.F, version $Revision: 3.381 $, $Date: 2007/10/18 16:33:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3706,6 +3706,7 @@ c  Evaluation of E, vectorized over particles
       tdzi = 1. / (2.*dz)
       dxi = 1./dx
       dzi = 1./dz
+      eyt = 0.
 
       if (efetch == 1 .or. efetch == 6) then
 
@@ -3718,7 +3719,6 @@ c  Evaluation of E, vectorized over particles
           inext = (xnext - xmmin)*dxi
           knext = (zp(1) - zgrid - zmmin)*dzi
 
-          eyt = 0.
           do ip = 1, np
 
             i = inext
@@ -3845,7 +3845,6 @@ c       --- the finite differences here..
           inext = xinext
           knext = zknext
 
-          eyt = 0.
           do ip = 1, np
 
             x = xnext
@@ -5993,10 +5992,10 @@ c       --- normal loop
           if (uzp(ip) == 0) cycle
           u0 = 1. - u1
           w0 = 1. - w1
-          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*v0*w0*g
-          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*v0*w0*g
-          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*v0*w1*g
-          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*v0*w1*g
+          rho(ii  ,0,kk  ) = rho(ii  ,0,kk  ) + u0*w0*g
+          rho(ii+1,0,kk  ) = rho(ii+1,0,kk  ) + u1*w0*g
+          rho(ii  ,0,kk+1) = rho(ii  ,0,kk+1) + u0*w1*g
+          rho(ii+1,0,kk+1) = rho(ii+1,0,kk+1) + u1*w1*g
         enddo
 !$OMP END DO
 
