@@ -4581,7 +4581,7 @@ REAL(8), allocatable, DIMENSION(:,:) :: uold, uinit
 REAL(8), allocatable, DIMENSION(:) :: uold_vlocs, uinit_vlocs
 INTEGER(ISZ), allocatable, DIMENSION(:) :: jlocs, klocs
 REAL(8) :: maxerr, maxerr_old, t_solve
-LOGICAL :: do_calc, has_diverged
+LOGICAL :: do_calc, has_diverged, ispatch
 TYPE(CONDtype), POINTER :: c
 
 nlevels = grid%nlevels
@@ -4747,10 +4747,19 @@ t_solve = wtime() - t_solve
 #ifdef MPIPARALLEL
 !IF(my_index==0) then
 #endif
-  IF(lverbose>=1 .and. (.not. ASSOCIATED(basegrid) .or. grid%gid(1)==basegrid%gid(1))) then
+! --- A check is made if basegrid is associated since this routine is sometimes used for other
+! --- than frz.basegrid. The code is written this way since some compilers don't short circuit
+! --- logical operations and so the association check must be done separately from the use of
+! --- basegrid.
+  if (ASSOCIATED(basegrid)) then
+    ispatch = (grid%gid(1)/=basegrid%gid(1))
+  else
+    ispatch = .false.
+  endif
+  IF(lverbose>=1 .and. .not. ispatch) then
     write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
   END if
-  IF(lverbose>=2 .and. (ASSOCIATED(basegrid) .and.  grid%gid(1)/=basegrid%gid(1))) then
+  IF(lverbose>=2 .and. ispatch) then
     write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
     WRITE(o_line,'("grid Nb: ",i5,", Nr = ",i5,", Nz = ",i5)') grid%gid(1),grid%nr,grid%nz; call remark(trim(o_line))
   END if
