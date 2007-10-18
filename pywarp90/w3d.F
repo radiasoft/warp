@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.379 $, $Date: 2007/10/10 22:54:56 $
+c@(#) File W3D.F, version $Revision: 3.380 $, $Date: 2007/10/18 01:04:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -490,7 +490,11 @@ c  Create the dynamic arrays for lab frame moments
 
       call remark(" ---  Allocating Lab_Moments")
       if (vbeam*dt /= 0.) then
-        nl = (zmmaxlocal-zmminlocal)/(vbeam*dt) +.5
+c       --- This number is just an estimate, so its value doesn't
+c       --- really matter, except for a slight efficiency with
+c       --- pre-allocating the memory. Add a min in case the
+c       --- expression becomes too large for integer conversion.
+        nl = int(min(1000.,(zmmaxlocal-zmminlocal)/(vbeam*dt) +.5))
       else
         nl = 1
       endif
