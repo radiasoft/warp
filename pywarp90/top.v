@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.219 $, $Date: 2007/10/17 01:09:05 $
+#@(#) File TOP.V, version $Revision: 3.220 $, $Date: 2007/10/18 01:05:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.219 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.220 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -619,15 +619,15 @@ pgrd(0:pgrdnx,0:pgrdny,-1:pgrdnz+1,pgrdns) _real [V] # Potential
 *********** LatticeInternal dump:
 # Internal lattice arrays, all derived from Lattice data
 # nzl is set to nz by pkg w3d (etc.) at generation
-dzl                   real [m]     # LatticeInternal mesh grid cell size
-dzli                  real [m]     # LatticeInternal grid cell size inverse
-zlframe               real [m]     # Location of LatticeInternal frame
-zltime                real [m]     # Time of LatticeInternal frame
-zlmin                 real [m]     # LatticeInternal mesh maximum in z
-zlmax                 real [m]     # LatticeInternal mesh minimum in z
-nzl                integer /0/ [1] # Number of LatticeInternal points
-nzlmax             integer /0/ [1] # Length of LatticeInternal arrays
-zlmesh(0:nzlmax)     _real [m]     # LatticeInternal Z mesh
+dzl                   real [m]      # LatticeInternal mesh grid cell size
+dzli                  real [m]      # LatticeInternal grid cell size inverse
+zlframe               real [m]      # Location of LatticeInternal frame
+zltime                real [m]      # Time of LatticeInternal frame
+zlmin                 real /0./ [m] # LatticeInternal mesh maximum in z
+zlmax                 real /0./ [m] # LatticeInternal mesh minimum in z
+nzl                integer /0/ [1]  # Number of LatticeInternal points
+nzlmax             integer /0/ [1]  # Length of LatticeInternal arrays
+zlmesh(0:nzlmax)     _real [m]      # LatticeInternal Z mesh
 ndrftol            integer /0/ # Maximum level of overlapping drft elements
 odrftoi(0:ndrft)   _integer     # Overlap indices for drft elements
 odrftio(0:ndrft)   _integer     # Overlap indices for drft elements
@@ -1339,10 +1339,10 @@ budker            real [1]         # Budker parameter
 vwave             real [m/s]       # Space charge wave velocity
 femtxofscx        real [1]         # Ratio X-emittance to X-space charge forces
 femtyofscy        real [1]         # Ratio X-emittance to X-space charge forces
-sigmax            real [degrees]   # Depressed   particle X-phase advance
-sigma0x           real [degrees]   # Undepressed particle X-phase advance 
-sigmay            real [degrees]   # Depressed   particle Y-phase advance
-sigma0y           real [degrees]   # Undepressed particle Y-phase advance 
+sigmax            real [degrees] /0./ # Depressed   particle X-phase advance
+sigma0x           real [degrees] /0./ # Undepressed particle X-phase advance 
+sigmay            real [degrees] /0./ # Depressed   particle Y-phase advance
+sigma0y           real [degrees] /0./ # Undepressed particle Y-phase advance 
 omegabx           real [s**-1]     # Depressed   X-betatron frequency
 omegab0x          real [s**-1]     # Undepressed X-betatron frequency
 omegaby           real [s**-1]     # Depressed   Y-betatron frequency
@@ -1361,8 +1361,8 @@ lambdab0y         real [m]         # Undepressed Y-betatron wavelength
 # nzzarr is usually set to nz by pkg w3d (etc.) at generation
 dzz                     real  [m]      # Z_arrays mesh grid cell size
 dzzi                    real  [m]      # Z_arrays mesh grid cell size inverse
-zzmin                   real  [m]      # Z_arrays mesh maximum in z
-zzmax                   real  [m]      # Z_arrays mesh minimum in z
+zzmin                   real  /0./ [m] # Z_arrays mesh maximum in z
+zzmax                   real  /0./ [m] # Z_arrays mesh minimum in z
 nzzarr            integer /0/ [1]      # Length of arrays in group Z_arrays
 nszarr            integer /0/          # Number of species z data is calculated
                                        # for. Defaults to zero, unless
@@ -1468,15 +1468,15 @@ rhomax(0:nzwind)           _real [C/m^3] # Charge dens. max-over-X,Y at ctr of w
 *********** Z_Moments dump:
 # Particle and field moment data (including emittances) at current timestep
 # as a function of Z 
-zmmntmax         real         # Moments grid maximum in Z
-zmmntmin         real         # Moments grid minimum in Z
-nzmmnt           integer /0/  # Number of points in z moments grid
-nszmmnt          integer /0/  # Number of species z moments data is
-                              # calculated for. Defaults to zero, unless
-                              # lspeciesmoments is true, then it defaults
-                              # to top.ns.
-dzm              real         # Moments grid cell size
-dzmi             real         # Moments grid cell size inverse
+zmmntmax         real /0./ [m] # Moments grid maximum in Z
+zmmntmin         real /0./ [m] # Moments grid minimum in Z
+nzmmnt           integer /0/   # Number of points in z moments grid
+nszmmnt          integer /0/   # Number of species z moments data is
+                               # calculated for. Defaults to zero, unless
+                               # lspeciesmoments is true, then it defaults
+                               # to top.ns.
+dzm              real [m]      # Moments grid cell size
+dzmi             real [1/m]    # Moments grid cell size inverse
 numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
                                  # particles, in units of top.dt.
@@ -1581,7 +1581,7 @@ nsmmnt integer /0/  # Number of species moments data is
                     # calculated for. Defaults to zero, unless
                     # lspeciesmoments is true, then it defaults to top.ns.
                     # Should always be same as nszmmnt.
-ese                real [J]      # Electrostatic energy
+ese                real [J] /0./ # Electrostatic energy
 ek(0:nsmmnt)      _real [J]      # Total Kinetic energy
 ekzmbe(0:nsmmnt)  _real [J]      # Total Z Kinetic energy minus beam energy
                       # 1/2m(vzsqbar - vbeam**2)
@@ -2207,27 +2207,27 @@ pidlost(npmaxlost,npidlost) _real [1] # Particle ID of lost particles
 # Globally useful quantities for PIC simulation
 time                      real  /0./
    # Problem time
-zbeam                     real  [m]
+zbeam                     real  /0./ [m]
    # Distance the center of the beam (actually, the "moving window") has moved
    # Advanced only when particles are advanced
-zgrid                     real  [m]
+zgrid                     real  /0./ [m]
    # Location of the center of the grid (actually, the "moving window") in the
    # lab frame.  Advanced only when IT is advanced
-zgridprv                  real  [m]
+zgridprv                  real  /0./ [m]
    # Prvious location of the grid.  Needed for fetch of E-field from grid.
-xpminlocal real [m]
+xpminlocal real /0./ [m]
    # Lower limit of the X extent of particles for the local domain.
-xpmaxlocal real [m]
+xpmaxlocal real /0./ [m]
    # Upper limit of the X extent of particles for the local domain.
-ypminlocal real [m]
+ypminlocal real /0./ [m]
    # Lower limit of the Y extent of particles for the local domain.
-ypmaxlocal real [m]
+ypmaxlocal real /0./ [m]
    # Upper limit of the Y extent of particles for the local domain.
-zpminlocal real [m]
+zpminlocal real /0./ [m]
    # Lower limit of the Z extent of particles for the local domain.
-zpmaxlocal real [m]
+zpmaxlocal real /0./ [m]
    # Upper limit of the Z extent of particles for the local domain.
-it                        integer           # Timestep counter
+it                        integer /0/       # Timestep counter
 ldump                     logical
    # Flag set when this step will end in a restart dump
 lfirst                    logical
