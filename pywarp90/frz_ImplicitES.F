@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.17 $, $Date: 2007/08/28 18:29:45 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.18 $, $Date: 2007/10/18 16:46:57 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -797,8 +797,8 @@ c     --- potential on the grid edge.
       ixmax = nx
       izmin = 0
       izmax = nzlocal
-      if (bounds(0) < 0) ixmin = 1
-      if (bounds(1) < 0) ixmax = nx - 1
+      if (bounds(0) < 1) ixmin = 1
+      if (bounds(1) < 1) ixmax = nx - 1
       if (bounds(4) < 1) izmin = 1
       if (bounds(5) < 1) izmax = nzlocal - 1
 
