@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.53 2007/06/04 23:02:51 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.54 2007/10/19 20:30:52 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -99,7 +99,10 @@ routines (such as ppxxp).
     if self.iz >= 0:
       return self.iz
     else:
-      return int((self.zz - top.zmmntmin)*top.dzmi)
+      if top.dzm != 0.:
+        return int((self.zz - top.zmmntmin)*top.dzmi)
+      else:
+        return -1
 
   def getzz(self):
     if self.iz >= 0:
