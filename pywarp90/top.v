@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.220 $, $Date: 2007/10/18 01:05:02 $
+#@(#) File TOP.V, version $Revision: 3.221 $, $Date: 2007/10/19 20:32:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.220 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.221 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -129,8 +129,8 @@ straight      real /0./               [1] # Percent of beam that isn't cigar
 emitlong      real /0./           [m-rad] # Longitudinal emittance
 eears         real /1./             [E/m] # Cigar Eears multiplier / switch
 gfactor       real /0./               [1] # Geometric factor (is set if 0)
-rwall         real                    [m] # Effective wall radius
-gammabar      real                    [1] # Relativistic gamma factor
+rwall         real /0./               [m] # Effective wall radius
+gammabar      real /0./               [1] # Relativistic gamma factor
 vbeam         real /0./             [m/s] # Beam speed: use 0 if ekin sets it
 lrelativ      logical /.false./           # Flag for relativity
 
@@ -1475,7 +1475,7 @@ nszmmnt          integer /0/   # Number of species z moments data is
                                # calculated for. Defaults to zero, unless
                                # lspeciesmoments is true, then it defaults
                                # to top.ns.
-dzm              real [m]      # Moments grid cell size
+dzm              real [m] /0./ # Moments grid cell size
 dzmi             real [1/m]    # Moments grid cell size inverse
 numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
 zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
