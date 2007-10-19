@@ -36,10 +36,11 @@ The default is to zero out rho.
   # --- Now call the appropriate compiled interface routine based on the
   # --- current package
   currpkg = package()[0]
-  if (currpkg == "w3d"):
-    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
-  elif (currpkg == "wxy"):
+  if (currpkg == "wxy"):
     loadrhoxy(pgroup,ins_i,nps_i,is_i,lzero)
+  else:
+    # --- Note that this works for all other packages, not just 3d.
+    loadrho3d(pgroup,ins_i,nps_i,is_i,lzero)
 
 #=============================================================================
 def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
@@ -61,8 +62,8 @@ package. Only w3d and wxy have field solves defined.
     top.fstime += endtime - starttime
   else:
     currpkg = package()[0]
-    if   (currpkg == "w3d"): fieldsol3d(iwhich)
-    elif (currpkg == "wxy"): fieldsolxy(iwhich)
+    if (currpkg == "wxy"): fieldsolxy(iwhich)
+    else:                  fieldsol3d(iwhich)
 
   if lafterfs: controllers.afterfs()
 
@@ -124,11 +125,11 @@ The default is to zero out rho.
   # --- Now call the appropriate compiled interface routine based on the
   # --- current package
   currpkg = package()[0]
-  if (currpkg == "w3d"):
-    loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
-  elif (currpkg == "wxy"):
+  if (currpkg == "wxy"):
     #loadrhoxy(ins_i,nps_i,is_i,lzero)
     print "loadj not support in wxy yet"
+  else:
+    loadj3d(pgroup,ins_i,nps_i,is_i,lzero)
 
 #=============================================================================
 # --- These routines are used to handle registered field solvers.
