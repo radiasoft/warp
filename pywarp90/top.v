@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.221 $, $Date: 2007/10/19 20:32:09 $
+#@(#) File TOP.V, version $Revision: 3.222 $, $Date: 2007/10/20 00:37:36 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.221 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.222 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -619,10 +619,10 @@ pgrd(0:pgrdnx,0:pgrdny,-1:pgrdnz+1,pgrdns) _real [V] # Potential
 *********** LatticeInternal dump:
 # Internal lattice arrays, all derived from Lattice data
 # nzl is set to nz by pkg w3d (etc.) at generation
-dzl                   real [m]      # LatticeInternal mesh grid cell size
-dzli                  real [m]      # LatticeInternal grid cell size inverse
-zlframe               real [m]      # Location of LatticeInternal frame
-zltime                real [m]      # Time of LatticeInternal frame
+dzl                   real [m] /0./ # LatticeInternal mesh grid cell size
+dzli                  real [m] /0./ # LatticeInternal grid cell size inverse
+zlframe               real [m] /0./ # Location of LatticeInternal frame
+zltime                real [m] /0./ # Time of LatticeInternal frame
 zlmin                 real /0./ [m] # LatticeInternal mesh maximum in z
 zlmax                 real /0./ [m] # LatticeInternal mesh minimum in z
 nzl                integer /0/ [1]  # Number of LatticeInternal points

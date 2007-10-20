@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.273 $, $Date: 2007/08/24 17:34:54 $
+#@(#) File W3D.V, version $Revision: 3.274 $, $Date: 2007/10/20 00:37:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.273 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.274 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -261,8 +261,8 @@ ny      integer    /2/             # Mesh points are 0,...,ny
 nz      integer    /2/  +parallel  # Full size of nz
 nzlocal integer    /2/  +parallel  # Mesh points are 0,...,nzlocal
 nzfull  integer    /2/             # Obsolete global value of nz
-zmminlocal  real [m]               # Local value of zmmin
-zmmaxlocal  real [m]               # Local value of zmmax
+zmminlocal  real [m] /0./          # Local value of zmmin
+zmmaxlocal  real [m] /0./          # Local value of zmmax
 zmminglobal real [m]               # Global value of zmmin
 zmmaxglobal real [m]               # Global value of zmmax
 
