@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.18 $, $Date: 2007/10/18 16:46:57 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.19 $, $Date: 2007/10/22 16:25:54 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -327,6 +327,8 @@ c     --- converted and expanded for the multigrid solver.
 
 c     --- Make sure guard planes have sensible values before beginning.
       call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,bounds,.false.)
+
+      localbounds = bounds
 
 #ifdef MPIPARALLEL
       lzoffset = 0
