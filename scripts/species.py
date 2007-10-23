@@ -527,7 +527,7 @@ in radius squared.
     z = zmin+(zmax-zmin)*z
 
     if theta != 0. or phi != 0.:
-      # --- Transform from rotated frame into the lab frame.
+      # --- Transform positions from rotated frame into the lab frame.
       ct = cos(theta)
       st = sin(theta)
       cp = cos(phi)
@@ -536,15 +536,6 @@ in radius squared.
       y1 =       + y*cp    + z*sp
       z1 = -x*st - y*ct*sp + z*ct*cp
       x,y,z = x1,y1,z1
-      # --- Also rotate the mean and thermal velocities.
-      vxmean1 = +vxmean*ct - vymean*st*sp + vzmean*st*cp
-      vymean1 =            + vymean*cp    + vzmean*sp
-      vzmean1 = -vxmean*st - vymean*ct*sp + vzmean*ct*cp
-      vxmean,vymean,vzmean = vxmean1,vymean1,vzmean1
-      vthx1 = +vthx*ct - vthy*st*sp + vthz*st*cp
-      vthy1 =          + vthy*cp    + vthz*sp
-      vthz1 = -vthx*st - vthy*ct*sp + vthz*ct*cp
-      vthx,vthy,vthz = vthx1,vthy1,vthz1
 
     # --- Now add the means, after the rotation transform.
     x += xmean
@@ -566,9 +557,18 @@ in radius squared.
       np = len(z)
       if np == 0: return
 
+    # --- Now the velocities are generated (after clipping the positions).
     vx = RandomArray.normal(vxmean,vthx,np)
     vy = RandomArray.normal(vymean,vthy,np)
     vz = RandomArray.normal(vzmean,vthz,np)
+
+    if theta != 0. or phi != 0.:
+      # --- Transform velocities from rotated frame into the lab frame.
+      vx1 = +vx*ct - vy*st*sp + vz*st*cp
+      vy1 =        + vy*cp    + vz*sp
+      vz1 = -vx*st - vy*ct*sp + vz*ct*cp
+      vx,vy,vz = vx1,vy1,vz1
+
     if lmomentum:
       gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
     else:
