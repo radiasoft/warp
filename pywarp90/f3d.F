@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.129 $, $Date: 2007/07/21 00:23:16 $
+c@(#) File F3D.M, version $Revision: 3.130 $, $Date: 2007/10/23 23:14:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -347,7 +347,7 @@ c-----------------------------------------------------------------------------
       real(kind=8):: klast, kdxb2, kdyb2, kdzb2, kdx, kdy, kdz
       real(kind=8):: dx,dy,dz,pib2,norm
       integer(ISZ):: i,j
-      logical(ISZ):: lattenuate,doperiodic,dodirichlet
+      logical(ISZ):: lattenuate,doperiodic,dodirichlet,doneumann
       logical(ISZ):: periodicsolve,dirichletsolve
 #ifdef MPIPARALLEL
       integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
@@ -412,6 +412,12 @@ c  Set useful constants
 c     --- Setup convenient logicals
       doperiodic = (bound0 == periodic) .or. (boundnz == periodic)
       dodirichlet = (bound0 == dirichlet) .or. (boundnz == dirichlet)
+      doneumann = (bound0 == neumann) .or. (boundnz == neumann)
+
+      if (doneumann) then
+        call kaboom("FFT solver does not support Neumann boundary conditions yet")
+        return
+      endif
 
 c     --- These are used to select which type of longitudinal solver to do.
 c     --- Periodic uses FFT's, Dirichlet used tridiagonal
@@ -649,7 +655,7 @@ c  Here we perform the periodic transforms in z, two y's at a time.
 c  We vectorize over x.  No scratch space is needed.
 
         if (periodicsolve .or. iwhich == 2) then
-c         --- Normalization factor include above in the transver transform
+c         --- Normalization factor include above in the transverse transform
           norm = 0.
         else
           norm = .5*dz
