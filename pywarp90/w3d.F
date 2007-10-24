@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.381 $, $Date: 2007/10/18 16:33:33 $
+c@(#) File W3D.F, version $Revision: 3.382 $, $Date: 2007/10/24 21:15:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -326,6 +326,13 @@ c  Setup arrays for potential and charge density for the particles.
       zpminlocal = zmminlocal
       zpmaxlocal = zmmaxlocal
 #endif
+
+      xpmin = xmmin
+      xpmax = xmmax
+      ypmin = ymmin
+      ypmax = ymmax
+      zpmin = zmmin
+      zpmax = zmmax
 
 c  Initialize base grid for RZ solver
       if (fstype == 10) then
