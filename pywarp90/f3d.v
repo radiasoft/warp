@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.181 $, $Date: 2007/10/15 22:58:20 $
+#@(#) File F3D.V, version $Revision: 3.182 $, $Date: 2007/10/24 20:53:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.181 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.182 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -133,7 +133,7 @@ nmax             integer  /0/  # Maximum number of points for sub-grid boundarie
 n                integer  /0/  # Number of points for sub-grid boundaries
 prevphi(nmax)    _real         # Saves phi for sub-grid boundaries
 indx(0:2,nmax)   _integer      # Location of points for sub-grid boundaries
-dels(0:5,nmax)   _real         # Distances to the surface - stored in the order
+dels(0:5,nmax)   _real   /2./  # Distances to the surface - stored in the order
                                # mx, px, my, py, mz, pz
 volt(0:5,nmax)   _real         # Voltage of points for sub-grid boundaries
 numb(0:5,nmax)   _integer      # ID of the conductor the points are in
