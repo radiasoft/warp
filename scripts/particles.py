@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.60 2007/10/15 18:02:10 dave Exp $"
+particles_version = "$Id: particles.py,v 1.61 2007/10/24 21:18:01 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1320,8 +1320,8 @@ Adds particles to the simulation
     if zmmin is None: zmmin = w3d.zmmin + top.zbeam
     if zmmax is None: zmmax = w3d.zmmax + top.zbeam
   else:
-    if zmmin is None: zmmin = top.zpslmin[me] + top.zbeam
-    if zmmax is None: zmmax = top.zpslmax[me] + top.zbeam
+    if zmmin is None: zmmin = top.zpminlocal + top.zbeam
+    if zmmax is None: zmmax = top.zpmaxlocal + top.zbeam
 
   # --- When running in slice mode, automatically set lallindomain to true.
   # --- It is assumed that all particles will be within the specified domain,
