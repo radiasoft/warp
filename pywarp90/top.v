@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.222 $, $Date: 2007/10/20 00:37:36 $
+#@(#) File TOP.V, version $Revision: 3.223 $, $Date: 2007/10/24 20:54:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.222 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.223 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1377,15 +1377,15 @@ rhoax(0:nzzarr)        _real  [C/m^3]  # charge density on axis
 phiax(0:nzzarr)        _real  [V]      # potential on axis
 ezax(0:nzzarr)         _real  [V/m]    # space charge E field on axis
 eearsofz(0:nzzarr)     _real  [V/m]    # confining Eears, as a function of z
-prwallz(0:nzzarr)      _real  [m]      # Radius at which particles are absorbed
-prwallxz(0:nzzarr)     _real  [m]      # X of center of cylindrical wall
-prwallyz(0:nzzarr)     _real  [m]      # Y of center of cylindrical wall
+prwallz(0:nzzarr)      _real  [m] /0./ # Radius at which particles are absorbed
+prwallxz(0:nzzarr)     _real  [m] /0./ # X of center of cylindrical wall
+prwallyz(0:nzzarr)     _real  [m] /0./ # Y of center of cylindrical wall
 prwelipz(0:nzzarr)     _real  [1] /1./ # Ellipticity of cylindrical wall
                                        # (ay = prwelipz*ax)
 lamkreal(0:nzzarr)     _real  [C/m]    # Real part of FFT of lambda
 lamkimag(0:nzzarr)     _real  [C/m]    # Imaginary part of FFT of lambda
 curr(0:nzzarr,0:nszarr)     _real [A]  # Beam current
-lostpars(0:nzzarr,0:nszarr) _integer   # number of lost particles by zcells
+lostpars(0:nzzarr,0:nszarr) _integer /0/ # number of lost particles by zcells
 
 
 xmaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used 
@@ -2136,7 +2136,7 @@ lvdts(0:nsndts-1) _logical /1/   # Set to true when the particle velocities
                                  # have been advanced
 itndts(0:nsndts-1) _integer /0/  # The time level of the position of the
                                  # ndts group
-zgridndts(0:nsndts-1) _real      # z location of the grid for each ndts group
+zgridndts(0:nsndts-1) _real /0./ # z location of the grid for each ndts group
 nrhopndtscopies integer /1/ # Number of copies of rho for each ndts group
                            # It defaults to 1 which is what is needed if
                            # there are only groups with ndts==1. Otherwise
@@ -2215,6 +2215,18 @@ zgrid                     real  /0./ [m]
    # lab frame.  Advanced only when IT is advanced
 zgridprv                  real  /0./ [m]
    # Prvious location of the grid.  Needed for fetch of E-field from grid.
+xpmin real /0./ [m]
+   # Lower limit of the X extent of particles for the global domain.
+xpmax real /0./ [m]
+   # Upper limit of the X extent of particles for the global domain.
+ypmin real /0./ [m]
+   # Lower limit of the Y extent of particles for the global domain.
+ypmax real /0./ [m]
+   # Upper limit of the Y extent of particles for the global domain.
+zpmin real /0./ [m]
+   # Lower limit of the Z extent of particles for the global domain.
+zpmax real /0./ [m]
+   # Upper limit of the Z extent of particles for the global domain.
 xpminlocal real /0./ [m]
    # Lower limit of the X extent of particles for the local domain.
 xpmaxlocal real /0./ [m]
