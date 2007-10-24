@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.85 $, $Date: 2007/08/20 17:51:41 $
+c@(#) File WXY.M, version $Revision: 3.86 $, $Date: 2007/10/24 21:15:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -257,6 +257,19 @@ c  Calculate mesh dimensioning quantities
       do k = 0, nzlocal
          zmeshlocal(k) = k * dz + zmminlocal
       enddo
+
+      xpmin = xmmin
+      xpmax = xmmax
+      ypmin = ymmin
+      ypmax = ymmax
+      zpmin = zmmin
+      zpmax = zmmax
+      xpminlocal = xmmin
+      xpmaxlocal = xmmax
+      ypminlocal = ymmin
+      ypmaxlocal = ymmax
+      zpminlocal = zmmin
+      zpmaxlocal = zmmax
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
