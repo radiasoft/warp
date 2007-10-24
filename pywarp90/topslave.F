@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.52 $, $Date: 2007/08/10 00:12:50 $
+c TOPSLAVE.M, version $Revision: 1.53 $, $Date: 2007/10/24 21:14:06 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -43,6 +43,7 @@ c===========================================================================
       use GlobalVars
       use InGen
       use InPart
+      use Picglb,Only: zpminlocal,zpmaxlocal
       use Parallel
       use Databuffers
       use Subcycling, Only: ndtstorho,zgridndts
@@ -55,7 +56,7 @@ c  track of how many left and sends to the appropriate processor.
 
       logical(ISZ):: ldoagain
       real(kind=8):: temp,pidtemp(pgroup%npid),syslen,zgrid
-      integer(MPIISZ):: is,ip,idest,ipid,ii,nn,indts
+      integer(MPIISZ):: is,ip,idest,ipid,ii,il,ir,nn,indts
       integer(MPIISZ):: ins_init(pgroup%ns),nps_init(pgroup%ns)
       integer(MPIISZ):: nsendleft(pgroup%ns),nsendright(pgroup%ns)
       integer(MPIISZ):: nrecvleft(pgroup%ns),nrecvright(pgroup%ns)
@@ -118,7 +119,7 @@ c         --- into the regions of neighboring processors.
 
 c           --- If particle exited to the left, switch with lowest particle
 c           --- in the arrays.
-            if (pgroup%zp(ip)-zgrid < zpslmin(my_index)) then
+            if (pgroup%zp(ip)-zgrid < zpminlocal) then
               idest = pgroup%ins(is)
               pgroup%ins(is) = pgroup%ins(is) + 1
               pgroup%nps(is) = pgroup%nps(is) - 1
@@ -150,7 +151,7 @@ c           endif
 
 c           --- If particle exited to the right, switch with highest particle
 c           --- in the arrays.
-            elseif (pgroup%zp(ip)-zgrid >= zpslmax(my_index)) then
+            elseif (pgroup%zp(ip)-zgrid >= zpmaxlocal) then
               idest = pgroup%ins(is) + pgroup%nps(is) - 1
               pgroup%nps(is) = pgroup%nps(is) - 1
 
@@ -190,14 +191,14 @@ c         --- ends of the full mesh.
 c         --- Periodic boundary conditions: all particles picked out have
 c         --- their z adjusted.
           if (my_index == 0 .and. pbound0==periodic) then
-            syslen = zpslmax(nslaves-1) - zpslmin(0)
+            syslen = zmmax - zmmin
 !$OMP PARALLEL DO
             do ip=ins_init(is),pgroup%ins(is)-1
               pgroup%zp(ip) = pgroup%zp(ip) + syslen
             enddo
 !$OMP END PARALLEL DO
           elseif (my_index == nslaves-1 .and. pboundnz==periodic) then
-            syslen = zpslmax(nslaves-1) - zpslmin(0)
+            syslen = zmmax - zmmin
 !$OMP PARALLEL DO
             do ip=pgroup%ins(is)+pgroup%nps(is),ins_init(is)+nps_init(is)-1
               pgroup%zp(ip) = pgroup%zp(ip) - syslen
@@ -350,11 +351,6 @@ c       --- First send the number of particles to be sent
 c     call VTEND(30,IERR)
 c     call VTBEGIN(40,IERR)
 #endif
-c       --- Make sure that there is space for the incoming data.
-        do is=1,ns
-          call chckpart(pgroup,int(is,ISZ),
-     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
-        enddo
 #ifdef VAMPIR
 c     call VTEND(40,IERR)
 c     call VTBEGIN(50,IERR)
@@ -386,68 +382,79 @@ c     call VTBEGIN(50,IERR)
 c     call VTEND(50,IERR)
 c     call VTBEGIN(60,IERR)
 #endif
-        if (nrecvleftsum > 0) then
-          ii = 1
-          do is=1,ns
+
+        il = 1
+        ir = 1
+        do is=1,ns
+
+c         --- Make sure that there is space for the incoming data.
+c         --- Note that chckpart must be called in this loop - if it is
+c         --- called for all species at once, it could double count the
+c         --- available space between species. If for example there where
+c         --- 10 empty elements between species and each needed 8 elements,
+c         --- chckpart wouldn't shift anything since it would see the 10
+c         --- would be enough for the 8 for each species, not knowing that
+c         --- 16 spaces is really needed.
+          call chckpart(pgroup,int(is,ISZ),
+     &                  int(nrecvleft(is),ISZ),int(nrecvright(is),ISZ))
+
+          if (nrecvleft(is) > 0) then
             nn = nrecvleft(is)
             if (nn > 0) then
               ip = pgroup%ins(is) - nn
-              pgroup%xp(ip:ip+nn-1)     = buffer3(ii      :ii+   nn-1)
-              pgroup%yp(ip:ip+nn-1)     = buffer3(ii+   nn:ii+ 2*nn-1)
-              pgroup%zp(ip:ip+nn-1)     = buffer3(ii+ 2*nn:ii+ 3*nn-1)
-              pgroup%uxp(ip:ip+nn-1)    = buffer3(ii+ 3*nn:ii+ 4*nn-1)
-              pgroup%uyp(ip:ip+nn-1)    = buffer3(ii+ 4*nn:ii+ 5*nn-1)
-              pgroup%uzp(ip:ip+nn-1)    = buffer3(ii+ 5*nn:ii+ 6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer3(ii+ 6*nn:ii+ 7*nn-1)
-              pgroup%ex(ip:ip+nn-1)     = buffer3(ii+ 7*nn:ii+ 8*nn-1)
-              pgroup%ey(ip:ip+nn-1)     = buffer3(ii+ 8*nn:ii+ 9*nn-1)
-              pgroup%ez(ip:ip+nn-1)     = buffer3(ii+ 9*nn:ii+10*nn-1)
-              pgroup%bx(ip:ip+nn-1)     = buffer3(ii+10*nn:ii+11*nn-1)
-              pgroup%by(ip:ip+nn-1)     = buffer3(ii+11*nn:ii+12*nn-1)
-              pgroup%bz(ip:ip+nn-1)     = buffer3(ii+12*nn:ii+13*nn-1)
+              pgroup%xp(ip:ip+nn-1)     = buffer3(il      :il+   nn-1)
+              pgroup%yp(ip:ip+nn-1)     = buffer3(il+   nn:il+ 2*nn-1)
+              pgroup%zp(ip:ip+nn-1)     = buffer3(il+ 2*nn:il+ 3*nn-1)
+              pgroup%uxp(ip:ip+nn-1)    = buffer3(il+ 3*nn:il+ 4*nn-1)
+              pgroup%uyp(ip:ip+nn-1)    = buffer3(il+ 4*nn:il+ 5*nn-1)
+              pgroup%uzp(ip:ip+nn-1)    = buffer3(il+ 5*nn:il+ 6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer3(il+ 6*nn:il+ 7*nn-1)
+              pgroup%ex(ip:ip+nn-1)     = buffer3(il+ 7*nn:il+ 8*nn-1)
+              pgroup%ey(ip:ip+nn-1)     = buffer3(il+ 8*nn:il+ 9*nn-1)
+              pgroup%ez(ip:ip+nn-1)     = buffer3(il+ 9*nn:il+10*nn-1)
+              pgroup%bx(ip:ip+nn-1)     = buffer3(il+10*nn:il+11*nn-1)
+              pgroup%by(ip:ip+nn-1)     = buffer3(il+11*nn:il+12*nn-1)
+              pgroup%bz(ip:ip+nn-1)     = buffer3(il+12*nn:il+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer3(il+(12+ipid)*nn:il+(13+ipid)*nn-1)
               enddo
-              ii = ii + nquant*nn
+              il = il + nquant*nn
               pgroup%ins(is) = pgroup%ins(is) - nn
               pgroup%nps(is) = pgroup%nps(is) + nn
-              if (maxval(pgroup%zp(ip:ip+nn-1))-zgrid > zpslmax(my_index)) then
+              if (maxval(pgroup%zp(ip:ip+nn-1))-zgrid > zpmaxlocal) then
                 ldoagain = .true.
               endif
             endif
-          enddo
-        endif
+          endif
 
-        if (nrecvrightsum > 0) then
-          ii = 1
-          do is=1,ns
+          if (nrecvright(is) > 0) then
             nn = nrecvright(is)
             if (nn > 0) then
               ip = pgroup%ins(is) + pgroup%nps(is)
-              pgroup%xp(ip:ip+nn-1)     = buffer4(ii      :ii+ 1*nn-1)
-              pgroup%yp(ip:ip+nn-1)     = buffer4(ii+   nn:ii+ 2*nn-1)
-              pgroup%zp(ip:ip+nn-1)     = buffer4(ii+ 2*nn:ii+ 3*nn-1)
-              pgroup%uxp(ip:ip+nn-1)    = buffer4(ii+ 3*nn:ii+ 4*nn-1)
-              pgroup%uyp(ip:ip+nn-1)    = buffer4(ii+ 4*nn:ii+ 5*nn-1)
-              pgroup%uzp(ip:ip+nn-1)    = buffer4(ii+ 5*nn:ii+ 6*nn-1)
-              pgroup%gaminv(ip:ip+nn-1) = buffer4(ii+ 6*nn:ii+ 7*nn-1)
-              pgroup%ex(ip:ip+nn-1)     = buffer4(ii+ 7*nn:ii+ 8*nn-1)
-              pgroup%ey(ip:ip+nn-1)     = buffer4(ii+ 8*nn:ii+ 9*nn-1)
-              pgroup%ez(ip:ip+nn-1)     = buffer4(ii+ 9*nn:ii+10*nn-1)
-              pgroup%bx(ip:ip+nn-1)     = buffer4(ii+10*nn:ii+11*nn-1)
-              pgroup%by(ip:ip+nn-1)     = buffer4(ii+11*nn:ii+12*nn-1)
-              pgroup%bz(ip:ip+nn-1)     = buffer4(ii+12*nn:ii+13*nn-1)
+              pgroup%xp(ip:ip+nn-1)     = buffer4(ir      :ir+ 1*nn-1)
+              pgroup%yp(ip:ip+nn-1)     = buffer4(ir+   nn:ir+ 2*nn-1)
+              pgroup%zp(ip:ip+nn-1)     = buffer4(ir+ 2*nn:ir+ 3*nn-1)
+              pgroup%uxp(ip:ip+nn-1)    = buffer4(ir+ 3*nn:ir+ 4*nn-1)
+              pgroup%uyp(ip:ip+nn-1)    = buffer4(ir+ 4*nn:ir+ 5*nn-1)
+              pgroup%uzp(ip:ip+nn-1)    = buffer4(ir+ 5*nn:ir+ 6*nn-1)
+              pgroup%gaminv(ip:ip+nn-1) = buffer4(ir+ 6*nn:ir+ 7*nn-1)
+              pgroup%ex(ip:ip+nn-1)     = buffer4(ir+ 7*nn:ir+ 8*nn-1)
+              pgroup%ey(ip:ip+nn-1)     = buffer4(ir+ 8*nn:ir+ 9*nn-1)
+              pgroup%ez(ip:ip+nn-1)     = buffer4(ir+ 9*nn:ir+10*nn-1)
+              pgroup%bx(ip:ip+nn-1)     = buffer4(ir+10*nn:ir+11*nn-1)
+              pgroup%by(ip:ip+nn-1)     = buffer4(ir+11*nn:ir+12*nn-1)
+              pgroup%bz(ip:ip+nn-1)     = buffer4(ir+12*nn:ir+13*nn-1)
               do ipid=1,pgroup%npid
-                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ii+(12+ipid)*nn:ii+(13+ipid)*nn-1)
+                pgroup%pid(ip:ip+nn-1,ipid) = buffer4(ir+(12+ipid)*nn:ir+(13+ipid)*nn-1)
               enddo
-              ii = ii + nquant*nn
+              ir = ir + nquant*nn
               pgroup%nps(is) = pgroup%nps(is) + nn
-              if (minval(pgroup%zp(ip:ip+nn-1))-zgrid < zpslmin(my_index)) then
+              if (minval(pgroup%zp(ip:ip+nn-1))-zgrid < zpminlocal) then
                 ldoagain = .true.
               endif
             endif
-          enddo
-        endif
+          endif
+        enddo
 
 #ifdef VAMPIR
 c     call VTEND(60,IERR)
@@ -552,7 +559,7 @@ c at once.
 
       integer(MPIISZ),allocatable:: zprocs(:)
       integer(MPIISZ):: nzp,izp,ip,izp1,izp2
-      real(kind=8):: wzp,dzp,zpmin,zpmax
+      real(kind=8):: wzp,dzp
       real(kind=8),allocatable:: ptemp(:,:),precv(:,:)
       integer(MPIISZ),allocatable:: pprocs(:)
       integer(MPIISZ):: pins(0:pgroup%ns-1,0:nslaves-1)
@@ -574,8 +581,6 @@ c     --- First, create z-array that specifies which processors owns which
 c     --- location. This is used to make the sorting of particles to
 c     --- processors efficient. Using this array avoids having to loop
 c     --- over every processor to find which one the particle is in.
-      zpmin = zpslmin(0)
-      zpmax = zpslmax(nslaves-1)
       dzp = minval(zpslmax-zpslmin)/10.
       nzp = min(100000,int((zpmax-zpmin)/dzp))
       dzp = (zpmax - zpmin)/nzp
@@ -778,6 +783,7 @@ c=============================================================================
       use ParticleGroupmodule
       use Subtimerstop
       use InPart
+      use Picglb,Only: zpminlocal,zpmaxlocal
       use Parallel
       use Subcycling, Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
@@ -794,8 +800,8 @@ c outside the mesh.
         zgrid = zgridndts(indts)
 !$OMP PARALLEL DO REDUCTION(+:nout)
         do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-          if (pgroup%zp(ip)-zgrid < zpslmin(my_index) .or.
-     &        pgroup%zp(ip)-zgrid >= zpslmax(my_index)) then
+          if (pgroup%zp(ip)-zgrid < zpminlocal .or.
+     &        pgroup%zp(ip)-zgrid >= zpmaxlocal) then
             nout = nout + 1
           endif
         enddo
