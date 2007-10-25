@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.171 2007/09/28 16:34:33 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.172 2007/10/25 20:32:11 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3359,8 +3359,8 @@ Methods:
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
-      if zmin is None: zmin = self.rofzdata[0]
-      if zmax is None: zmax = self.rofzdata[-1]
+      if zmin is None: zmin = self.zdata[0]
+      if zmax is None: zmax = self.zdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
@@ -3501,8 +3501,8 @@ Methods:
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
-      if zmin is None: zmin = self.rofzdata[0]
-      if zmax is None: zmax = self.rofzdata[-1]
+      if zmin is None: zmin = self.zdata[0]
+      if zmax is None: zmax = self.zdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
