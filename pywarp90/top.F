@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.214 $, $Date: 2007/08/10 00:12:49 $
+c@(#) File TOP.F, version $Revision: 3.215 $, $Date: 2007/10/29 20:37:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2452,13 +2452,18 @@ c=============================================================================
       use GlobalVars
       use InGen
       use InPart
+      use Picglb,Only: zgrid
       use Subcycling,Only: ndtstorho,zgridndts
       type(ParticleGroup):: pgroup
       real(kind=8):: zmmax,zmmin,dz
 
 c  Impose boundary conditions on zp
 
-      real(kind=8):: syslen,zgrid
+c  --- Note that if ndtstorho (and therefore zgridndts) has not been setup
+c  --- yet, then the code uses zgrid instead of zgridndts. This would likely
+c  --- only ever happen if this is called before a generate had been done.
+
+      real(kind=8):: syslen,zg
       integer(ISZ):: is,ip,indts
 
 c Parallel version makes call to special routine zpartbnd_slave
@@ -2472,15 +2477,19 @@ c     --- periodic boundary condition
         do is=1,pgroup%ns
           if (.not. pgroup%ldts(is-1)) cycle
           indts = ndtstorho(pgroup%ndts(is-1))
-          zgrid = zgridndts(indts)
+          if (indts > -1) then
+            zg = zgridndts(indts)
+          else
+            zg = zgrid
+          endif
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-            if (pgroup%zp(ip) < zgrid + zmmin) then
+            if (pgroup%zp(ip) < zg + zmmin) then
               pgroup%zp(ip) = pgroup%zp(ip) +
-     &                      syslen*int((zgrid + zmmax - pgroup%zp(ip))/syslen)
+     &                      syslen*int((zg + zmmax - pgroup%zp(ip))/syslen)
             endif
-            if (pgroup%zp(ip) > zgrid + zmmax) then
+            if (pgroup%zp(ip) > zg + zmmax) then
               pgroup%zp(ip) = pgroup%zp(ip) -
-     &                      syslen*int((pgroup%zp(ip) - zgrid - zmmin)/syslen)
+     &                      syslen*int((pgroup%zp(ip) - zg - zmmin)/syslen)
             endif
           enddo
         enddo
@@ -2489,20 +2498,24 @@ c     --- other boundary condition (particles absorbed or reflected)
         do is=1,pgroup%ns
           if (.not. pgroup%ldts(is-1)) cycle
           indts = ndtstorho(pgroup%ndts(is-1))
-          zgrid = zgridndts(indts)
+          if (indts > -1) then
+            zg = zgridndts(indts)
+          else
+            zg = zgrid
+          endif
           do ip=pgroup%ins(is),pgroup%ins(is)+pgroup%nps(is)-1
-            if ((pgroup%zp(ip)-zgrid) >= zmmax) then
+            if ((pgroup%zp(ip)-zg) >= zmmax) then
               if(pboundnz==absorb) then
                 pgroup%gaminv(ip) = 0.
               elseif(pboundnz==reflect) then
-                pgroup%zp(ip) = 2.*zgrid + 2.*zmmax - pgroup%zp(ip)
+                pgroup%zp(ip) = 2.*zg + 2.*zmmax - pgroup%zp(ip)
                 pgroup%uzp(ip) = -pgroup%uzp(ip)
               end if
-            elseif ((pgroup%zp(ip)-zgrid) <= zmmin) then
+            elseif ((pgroup%zp(ip)-zg) <= zmmin) then
               if(pbound0==absorb) then
                 pgroup%gaminv(ip) = 0.
               elseif(pbound0==reflect) then
-                pgroup%zp(ip) = 2.*zgrid + 2.*zmmin - pgroup%zp(ip)
+                pgroup%zp(ip) = 2.*zg + 2.*zmmin - pgroup%zp(ip)
                 pgroup%uzp(ip) = -pgroup%uzp(ip)
               end if
             endif
