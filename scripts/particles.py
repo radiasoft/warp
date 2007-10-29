@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.61 2007/10/24 21:18:01 dave Exp $"
+particles_version = "$Id: particles.py,v 1.62 2007/10/29 23:33:34 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -437,7 +437,7 @@ Multiple selection criteria are now supported.
                 indices)
 
   if usezerovzflag or top.clearlostpart == 0:
-    if indices is None: ii = arange(ir1,ir2)
+    if ii is None and indices is None: ii = arange(ir1,ir2)
     uz = getattrwithsuffix(pgroup,'uzp',suffixparticle)
     ii = compress(not_equal(take(uz,ii),0.),ii)
 
