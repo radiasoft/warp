@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.172 2007/10/25 20:32:11 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.173 2007/10/29 17:06:14 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -111,7 +111,7 @@ def generateconductors_doc():
 ##############################################################################
 installedconductors = []
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                        zmin=None,zmax=None,dfill=top.largepos,
+                        zmin=None,zmax=None,dfill=2.,
                         zbeam=None,
                         nx=None,ny=None,nzlocal=None,nz=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
@@ -126,8 +126,8 @@ Installs the given conductors.
     mesh size. These can be set for optimization, to avoid looking
     for conductors where there are none. Also, they can be used crop a
     conductor
-  - dfill=largepos: points at a depth in the conductor greater than dfill
-                    are skipped.
+  - dfill=2.: points at a depth in the conductor greater than dfill
+              are skipped.
   - zbeam=top.zbeam: location of the beam frame
   - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
   - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
@@ -1895,13 +1895,13 @@ Creates a grid object which can generate conductor data.
     if zmin-dz > zmax or xmin-dx > xmax or ymin-dy > ymax: return 0
     return 1
 
-  def getdata(self,a,dfill=top.largepos,fuzzsign=-1):
+  def getdata(self,a,dfill=2.,fuzzsign=-1):
     """
 Given an Assembly, accumulate the appropriate data to represent that
 Assembly on this grid.
  - a: the assembly or a list of assemblies
- - dfill=top.largepos: points at a depth in the conductor greater than dfill
-                       are skipped.
+ - dfill=2.: points at a depth in the conductor greater than dfill
+             are skipped.
     """
 
     # --- If 'a' is a list, then recursively call this routine for each
