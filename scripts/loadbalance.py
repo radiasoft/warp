@@ -10,7 +10,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 from warp import *
 import time
 
-loadbalance_version = "$Id: loadbalance.py,v 1.58 2007/10/13 00:34:08 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.59 2007/10/29 23:42:38 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -275,8 +275,8 @@ that has already been done.
   top.zpslmin[0] = max(w3d.zmmin,top.zpslmin[0] - padleft)
   top.zpslmax[-1] = min(w3d.zmmax,top.zpslmax[-1] + padright)
 
-  top.zpminlocal = top.zlslmin[me]
-  top.zpmaxlocal = top.zlslmax[me]
+  top.zpminlocal = top.zpslmin[me]
+  top.zpmaxlocal = top.zpslmax[me]
 
   # --- Reorganize the particles
   if reorg:
