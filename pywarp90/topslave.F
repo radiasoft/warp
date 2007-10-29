@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.53 $, $Date: 2007/10/24 21:14:06 $
+c TOPSLAVE.M, version $Revision: 1.54 $, $Date: 2007/10/29 23:40:23 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -558,7 +558,7 @@ c sorts through all of the particles first, then does all of the communication
 c at once.
 
       integer(MPIISZ),allocatable:: zprocs(:)
-      integer(MPIISZ):: nzp,izp,ip,izp1,izp2
+      integer(MPIISZ):: nzp,izp,ip,iz,izp1,izp2
       real(kind=8):: wzp,dzp
       real(kind=8),allocatable:: ptemp(:,:),precv(:,:)
       integer(MPIISZ),allocatable:: pprocs(:)
@@ -591,13 +591,23 @@ c     --- over every processor to find which one the particle is in.
         call kaboom("reorgparticles_parallel: allocation error")
         return
       endif
-      do ip=0,nslaves-1
-        izp1 = nzp - int((zpmax - zpslmin(ip))/dzp)
-        izp2 = int((zpslmax(ip) - zpmin)/dzp)
-        zprocs(izp1:izp2) = ip
+c     do ip=0,nslaves-1
+c       izp1 = nzp - int((zpmax - zpslmin(ip))/dzp)
+c       izp2 = int((zpslmax(ip) - zpmin)/dzp)
+c       zprocs(izp1:izp2) = ip
+c     enddo
+c     zprocs(0) = 0
+c     zprocs(nzp) = nslaves-1
+c     --- This method is more robust since it gaurantees that every element
+c     --- of zprocs is set properly.
+      ip = 0
+      do iz=0,nzp
+        zz = zpmin + iz*dzp
+        do while (zz > zpslmax(ip) .and. ip < nslaves-1)
+          ip = ip + 1
+        enddo
+        zprocs(iz) = ip
       enddo
-      zprocs(0) = 0
-      zprocs(nzp) = nslaves-1
 
 c     --- Next, create temporary arrays to hold the sorted particles.
       pnp = sum(pgroup%nps)
