@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.36 2007/10/29 21:59:46 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.37 2007/10/29 22:01:18 dave Exp $"
 
 class TraceParticle(object):
   """
@@ -404,6 +404,11 @@ done and no diagnostic moments are calculated. Creator arguments...
  - zerophi=0: when true, w3d.phi is zero out
  - resettime=0: when true, time and beam frame location reset to initial values
  - js=0: species of particles
+ - enforceinitboundaries=true: when true, the particle boundaries are
+                               enforced for the initial particle positions.
+                               It is a good idea to turn this off if the
+                               trace particles are setup before a generate
+                               is done.
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -428,7 +433,8 @@ Available methods...
 
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
-                    maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0):
+                    maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0,
+                    enforceinitboundaries=true):
     if js not in TraceParticle._instance_dict:
       TraceParticle._instance_dict[js] = 1
       if js == 0:
@@ -439,7 +445,8 @@ Available methods...
       top.pgroup.sq[js] = top.zion*top.echarge
       top.pgroup.sm[js] = top.aion*top.amu
       top.pgroup.sw[js] = 0.
-    TraceParticle.__init__(self,x,y,z,vx,vy,vz,maxsteps,savedata,js)
+    TraceParticle.__init__(self,x,y,z,vx,vy,vz,maxsteps,savedata,js,
+                           enforceinitboundaries)
     # --- Do some initialization
     self.spsetup(zerophi)
     # --- Setup the lattice
