@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.382 $, $Date: 2007/10/24 21:15:02 $
+c@(#) File W3D.F, version $Revision: 3.383 $, $Date: 2007/10/29 23:41:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8380,6 +8380,7 @@ c=============================================================================
       subroutine setrhoforfieldsolve3d(nx,ny,nzlocal,rho,nxp,nyp,nzp,rhop,nzpguard,
      &                                 my_index,nslaves,izpslave,nzpslave,
      &                                 izfsslave,nzfsslave)
+      use Subtimers3d
       integer(ISZ):: nx,ny,nzlocal,nxp,nyp,nzp,nzpguard
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
@@ -8387,18 +8388,26 @@ c=============================================================================
       integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
 #ifdef MPIPARALLEL
 
-      call parallelbarrier()
+c     call parallelbarrier()
       call sumsourcepondomainboundaries(rhop,1,nxp,nyp,nzp,nzpguard,
      &                                  my_index,nslaves,izpslave,nzpslave)
-      call parallelbarrier()
+c     call parallelbarrier()
       call setsourceforfieldsolve3d_parallel(1,nx,ny,nzlocal,rho,nxp,nyp,nzp,rhop,
      &                                       my_index,nslaves,
      &                                       izpslave,nzpslave,izfsslave,nzfsslave)
 
 #endif
 
+!$OMP MASTER
+      if (lw3dtimesubs)
+     &  timesetrhoforfieldsolve3d = timesetrhoforfieldsolve3d +
+     &     wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
