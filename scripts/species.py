@@ -480,6 +480,9 @@ in radius squared.
       zmaxp = zmax
 
     if spacing == 'random':
+      # --- Add a random number to the number of particles so that on
+      # --- average, the correct number of particles will be generated.
+      np += RandomArray.random(1)[0]
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
       np = nint((zmaxp - zminp)/(zmax - zmin)*np)
