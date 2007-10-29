@@ -1,8 +1,8 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.35 2007/08/20 17:58:43 jlvay Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.36 2007/10/29 21:59:46 dave Exp $"
 
-class TraceParticle:
+class TraceParticle(object):
   """
 Class for adding a trace particle
 Creator arguments...
@@ -15,6 +15,11 @@ Creator arguments...
                   small
  - savedata=1: frequency (in time steps) for saving of particle trajectories
  - js=0: species of particles
+ - enforceinitboundaries=true: when true, the particle boundaries are
+                               enforced for the initial particle positions.
+                               It is a good idea to turn this off if the
+                               trace particles are setup before a generate
+                               is done.
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -47,7 +52,8 @@ Available methods...
 
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
-                    maxsteps=1000,savedata=1,js=0):
+                    maxsteps=1000,savedata=1,js=0,
+                    enforceinitboundaries=true):
     assert js < top.ns,"species must be already existing"
 
     # --- This may be bad to do, but is needed so that the particle
@@ -58,6 +64,7 @@ Available methods...
     self.js = js
     self.savedata = savedata
     self.enabled = 0
+    self.enforceinitboundaries = enforceinitboundaries
 
     # --- Check if species needs to be setup
     if js not in TraceParticle._instance_dict:
@@ -157,12 +164,13 @@ Available methods...
     self.enabled = 1
     self.startit = top.it
     # --- Enforce the transverse particle boundary conditions
-    stckxy3d(self.nn,
-             self.x,w3d.xmmax,w3d.xmmin,w3d.dx,
-             self.y,w3d.ymmax,w3d.ymmin,w3d.dy,
-             self.z,w3d.zmminlocal,w3d.dz,self.ux,self.uy,self.uz,
-             self.gi,top.zgrid,top.zbeam,
-             w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
+    if self.enforceinitboundaries:
+      stckxy3d(self.nn,
+               self.x,w3d.xmmax,w3d.xmmin,w3d.dx,
+               self.y,w3d.ymmax,w3d.ymmin,w3d.dy,
+               self.z,w3d.zmminlocal,w3d.dz,self.ux,self.uy,self.uz,
+               self.gi,top.zgrid,top.zbeam,
+               w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     # --- load the data
     addparticles(x=self.x,y=self.y,z=self.z,vx=self.ux,vy=self.uy,vz=self.uz,
                  gi=self.gi,pid=self.pid,js=self.js,lmomentum=true)
