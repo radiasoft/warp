@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.202 2007/08/20 18:01:31 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.203 2007/10/30 21:00:55 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -209,6 +209,11 @@ Opens up an X window
       if xon: gist.window(winnum,dpi=dpi)
       else:   gist.window(winnum,dpi=dpi,display='')
   else:
+    # --- Get the next winnum if it wasn't passed in.
+    if winnum == 0:
+      try:    winnum = winon.winnum + 1
+      except: winnum = 1
+    winon.winnum = winnum
     # --- Check input errors
     try: setup.pname
     except AttributeError: raise 'setup has not yet been called'
@@ -226,6 +231,7 @@ Opens up an X window
       gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
     else:
       gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
+    return winnum
 
 ##########################################################################
 # Plot run info to the current plot and plot info to the log file.
@@ -786,7 +792,10 @@ def ppgeneric_doc(x,y):
   - xbound=dirichlet: sets boundary condition on gridded data for x
   - ybound=dirichlet: sets boundary condition on gridded data for y
   - particles=0: when true, plot particles
-  - uselog=0: when true, logarithmic levels of the number density are used
+  - uselog=None: when given, logarithmic levels of the number density are used.
+                 The value gives the log base, 1 is same as 'e'.
+  - logmin=None: when given, and with uselog, values less than logmin are
+                 truncated.
   - color='fg': color of particles, when=='density', color by number density
   - ncolor=None: when plotting particle color by number density, number of
                  colors to use, defaults to top.ncolor
@@ -808,6 +817,7 @@ def ppgeneric_doc(x,y):
   - centering='node': centering of cells with cellarray, other option are 'cell'                      and 'old' (for old incorrect scaling)
   - ctop=199: max color index for cellarray plot
   - ldensityscale=0: when true, scale the density by its max.
+  - gridscale=None: scale factor applied to gridded data.
   - flipxaxis=0: when true, flips gridded data about the x-axis
   - flipyaxis=0: when true, flips gridded data about the y-axis
   - xcoffset,ycoffset=0: offsets of coordinates in grid plots
@@ -845,7 +855,8 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'titlet':'','titleb':'','titlel':'','titler':'',
                 'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
-                'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
+                'particles':0,'uselog':None,'logmin':None,
+                'color':'fg','ncolor':top.ncolor,
                 'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
@@ -853,7 +864,8 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
-                'ldensityscale':0,'flipxaxis':0,'flipyaxis':0,
+                'ldensityscale':0,'gridscale':None,
+                'flipxaxis':0,'flipyaxis':0,
                 'xcoffset':0.,'ycoffset':0.,
                 'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
@@ -1103,24 +1115,33 @@ Note that either the x and y coordinates or the grid must be passed in.
     if densitygridmax != 0.:
       densitygrid[:,:] = densitygrid/densitygridmax
 
+  # --- Apply grid scale factor if supplied
+  # --- Note that a new array is created so that a grid passed in is not
+  # --- modified. Also, any connection between grid and densitygrid is broken.
+  if gridscale is not None: grid = grid*gridscale
+
   # --- If using logarithmic levels, take the log of the grid data.
-  if uselog and grid is not None:
+  if uselog is not None and grid is not None:
+    if uselog == 'e' or uselog == 1.: logscale = 1.
+    else:                             logscale = log(uselog)
     if grid is densitygrid:
       # --- Take the log, raising all values below 0.1 to 0.1. The
       # --- threshold is used so that none of the elements are zero.
       # --- That value 0.1 is used since values any smaller do not have
       # --- much meaning since a value of 1.0 means that there is already
-      # --- only one particle in that cell.
-      grid = log10(where(less(grid,0.1),0.1,grid))
+      # --- only one particle in that cell. The user can reset logmin though.
+      if logmin is None: logmin = 0.1
+      grid = log(where(less(grid,logmin),logmin,grid))/logscale
     else:
       # --- Before taking the log of the user supplied grid data, make sure
       # --- that there are no negative values. Zero is ok since they will
       # --- be replaced with a minimum value.
-      dmax = maxnd(grid)
-      dmin = minnd(where(equal(grid,0.),dmax,grid))
-      if dmin <= 0.:
-        raise "Can't take log since the grid has negative values"
-      grid = log(where(less(grid,dmin/10.),dmin/10.,grid))
+      if logmin is None:
+        dmax = maxnd(grid)
+        logmin = minnd(where(equal(grid,0.),dmax,grid))/10.
+        if logmin <= 0.:
+          raise "Can't take log since the grid has negative values"
+      grid = log(where(less(grid,logmin),logmin,grid))/logscale
 
   # --- Flip data and plot limits about axis if requested.
   # --- Note that iregt had already been transposed.
@@ -1413,13 +1434,14 @@ colorbar_placement = [[0.62,0.64,0.43,0.86],[0.62,0.64,0.43,0.86],
                       [0.617,0.627,0.692,0.859],[0.617,0.627,0.428,0.596]]
 colorbar_fontsize = [14.,14.,8.,8.,8.,8.,8.,8.,8.,8.]
 
-def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None,colbarlinear=1,
+def colorbar(zmin,zmax,uselog=None,ncolor=100,view=1,levs=None,colbarlinear=1,
              ctop=199):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
   - zmin, zmax: lower and upper range for color bar
-  - uselog=0: when true, labels are printed in the form 10^x
+  - uselog=None: when true, labels are printed in the form b^x where b (the
+                 base) is given by uselog.
   - ncolor=100: default number of colors to include
   - view=1: specifies the view that is associated with the color bar
   - levs: an optional list of color levels
@@ -1485,8 +1507,9 @@ values from zmin to zmax.
   else:
     ys = ymin + (ymax - ymin)*(nicelevs - zmin)/(zmax - zmin)
   # --- Plot the labels, skipping ones that are too close together.
-  if uselog: ss = " 10^%.5g"
-  else:      ss = " %.5g"
+  if uselog == 'e' or uselog == 1.: ss = " e^%.5g"
+  elif uselog is not None:          ss = " %d^%%.5g"%int(uselog)
+  else:                             ss = " %.5g"
   ylast = 0.
   for i in xrange(llev):
     if ys[i] - ylast > (ymax-ymin)/30:
@@ -3508,7 +3531,7 @@ be from none to all three.
    #return ppp
 # --------------------------------------------------------------------------
 def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
-             solver=w3d):
+             solver=None):
   """Returns slices of selfe, the electrostatic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3520,6 +3543,7 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if alltrue(top.efetch != 3) or solver.nx_selfe == 0:
     # --- If not already using selfe, then allocate it and set it.
@@ -3618,7 +3642,7 @@ be from none to all three.
     return eee
 # --------------------------------------------------------------------------
 def getj(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
-         solver=w3d):
+         solver=None):
   """Returns slices of J, the current density array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3630,6 +3654,7 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
@@ -3712,7 +3737,7 @@ be from none to all three.
 
 # --------------------------------------------------------------------------
 def getb(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
-         solver=w3d):
+         solver=None):
   """Returns slices of B, the magnetic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3724,6 +3749,7 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
@@ -3805,7 +3831,7 @@ be from none to all three.
     return b
 # --------------------------------------------------------------------------
 def geta(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
-         solver=w3d):
+         solver=None):
   """Returns slices of B, the magnetic vector potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -3817,6 +3843,7 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if type(comp) == IntType: ic = comp
   else:                     ic = ['x','y','z'].index(comp)
@@ -3898,12 +3925,13 @@ be from none to all three.
     return a
 
 ##########################################################################
-def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
+def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -3932,12 +3960,13 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
+def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -3966,11 +3995,12 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcrhoxy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
+def pcrhoxy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of charge density in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
@@ -3995,12 +4025,13 @@ def pcrhoxy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
+def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4029,12 +4060,13 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
+def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=nint(-ymmin/dy): Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4063,11 +4095,12 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcphixy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
+def pcphixy(iz=None,fullplane=1,solver=None,local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - iz=nint(-zmmin/dz): Z index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
@@ -4092,7 +4125,7 @@ def pcphixy(iz=None,fullplane=1,solver=w3d,local=0,**kw):
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
+def pcselfezy(comp='',ix=None,fullplane=1,solver=None,
               lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4102,6 +4135,7 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4135,7 +4169,7 @@ def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
+def pcselfezx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4145,6 +4179,7 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4178,7 +4213,7 @@ def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+def pcselfexy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
               local=0,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4187,6 +4222,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
@@ -4220,7 +4256,7 @@ def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
+def pcjzy(comp='',ix=None,fullplane=1,solver=None,
           lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of current density in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4230,6 +4266,7 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4263,7 +4300,7 @@ def pcjzy(comp='',ix=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcjzy.__doc__ = pcjzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
+def pcjzx(comp=None,iy=None,fullplane=1,solver=None,
               lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of current density in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4273,6 +4310,7 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4306,7 +4344,7 @@ def pcjzx(comp=None,iy=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcjzx.__doc__ = pcjzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+def pcjxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of current density in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4315,6 +4353,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
@@ -4348,7 +4387,7 @@ def pcjxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcjxy.__doc__ = pcjxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
+def pcbzy(comp='',ix=None,fullplane=1,solver=None,
           lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4358,6 +4397,7 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4391,7 +4431,7 @@ def pcbzy(comp='',ix=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcbzy.__doc__ = pcbzy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
+def pcbzx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic field in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4401,6 +4441,7 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4434,7 +4475,7 @@ def pcbzx(comp=None,iy=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcbzx.__doc__ = pcbzx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+def pcbxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of the magnetic field in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4443,6 +4484,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
@@ -4476,7 +4518,7 @@ def pcbxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
 if sys.version[:5] != "1.5.1":
   pcbxy.__doc__ = pcbxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
+def pcazy(comp='',ix=None,fullplane=1,solver=None,
           lbeamframe=1,vec=0,sz=1,sy=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4486,6 +4528,7 @@ def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4519,7 +4562,7 @@ def pcazy(comp='',ix=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcazy.__doc__ = pcazy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
+def pcazx(comp=None,iy=None,fullplane=1,solver=None,
           lbeamframe=1,vec=0,sz=1,sx=1,local=0,**kw):
   """Plots contours of the magnetic vector potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4529,6 +4572,7 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
@@ -4562,7 +4606,7 @@ def pcazx(comp=None,iy=None,fullplane=1,solver=w3d,
 if sys.version[:5] != "1.5.1":
   pcazx.__doc__ = pcazx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
+def pcaxy(comp=None,iz=None,fullplane=1,solver=None,vec=0,sx=1,sy=1,
           local=0,**kw):
   """Plots contours of the magnetic vector potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
@@ -4571,6 +4615,7 @@ def pcaxy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
+  if solver is None: solver = (getregisteredsolver() or w3d)
   if iz is None: iz = nint(-solver.zmmin/solver.dz)
   kw.setdefault('xmin',solver.xmmin)
   kw.setdefault('xmax',solver.xmmax)
