@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.149 2007/10/11 17:43:11 dave Exp $"
+warp_version = "$Id: warp.py,v 1.150 2007/10/30 21:01:47 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -889,7 +889,7 @@ Creates a dump file
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,onefile=0,verbose=false,dofieldsol=true):
+def restart(filename,suffix='',onefile=0,verbose=false,dofieldsol=true):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
@@ -904,7 +904,7 @@ Reads in data from file, redeposits charge density and does field solve
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
   if lparallel and not onefile:
-    filename = filename + '_%05d_%05d.dump'%(me,npes)
+    filename = filename + '_%05d_%05d%s.dump'%(me,npes,suffix)
 
   # --- Call different restore routine depending on context.
   # --- Having the restore function return the open file object is very
