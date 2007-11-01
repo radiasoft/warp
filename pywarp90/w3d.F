@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.383 $, $Date: 2007/10/29 23:41:18 $
+c@(#) File W3D.F, version $Revision: 3.384 $, $Date: 2007/11/01 17:10:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2019,6 +2019,7 @@ c----------------------------------------------------------------------------
 
 c       --- Inject more particles. This adds particles and alters ins and nps.
         call inject3d(1,pgroup)
+        call execuser("userinjection")
 
 c       --- Treat particles at boundaries
         call particleboundaries3d(pgroup)
