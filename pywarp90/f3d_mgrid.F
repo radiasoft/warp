@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.157 $, $Date: 2007/11/01 22:06:37 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.158 $, $Date: 2007/11/01 23:19:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -4504,7 +4504,8 @@ c       ---------------------------------------------------------------------
         real(kind=8):: dw,dd
         real(kind=8):: vngp,dngp
         integer(ISZ):: ic
-        if (conductors%icgrid(i+ox,j+oy,k+oz) == 0) then
+        if (conductors%icgrid(i+ox,j+oy,k+oz) == 0 .or.
+     &      conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) == 0) then
           wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - phi(i+ox+px,j+oy+py,k+oz+pz))*dd
         elseif (conductors%icgrid(i+ox,j+oy,k+oz) < nmax+1) then
