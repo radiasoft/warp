@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.156 $, $Date: 2007/10/15 22:58:21 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.157 $, $Date: 2007/11/01 22:06:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -4042,29 +4042,29 @@ c     --- Calculate some temporaries.
 
           else
 
-          ee = 0.
-          wwsum = 0.
-          call GETEEFROME(0, 0,0,0, 1,0,0, dxi,u0*v0*w0,u1*v0*w0)
-          call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
-          call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
-          call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
-          wwsum(0) = 1./wwsum(0)
+            ee = 0.
+            wwsum = 0.
+            call GETEEFROME(0, 0,0,0, 1,0,0, dxi,u0*v0*w0,u1*v0*w0)
+            call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
+            call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
+            call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
+            wwsum(0) = 1./wwsum(0)
 
-          call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
-          call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
-          call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
-          call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
-          wwsum(1) = 1./wwsum(1)
+            call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
+            call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
+            call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
+            call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
+            wwsum(1) = 1./wwsum(1)
 
-          call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
-          call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
-          call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
-          call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
-          wwsum(2) = 1./wwsum(2)
+            call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
+            call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
+            call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
+            call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
+            wwsum(2) = 1./wwsum(2)
 
-          ext = ee(0)*wwsum(0)
-          eyt = ee(1)*wwsum(1)
-          ezt = ee(2)*wwsum(2)
+            ext = ee(0)*wwsum(0)
+            eyt = ee(1)*wwsum(1)
+            ezt = ee(2)*wwsum(2)
 
           endif
 
@@ -4185,29 +4185,29 @@ c       --- the finite differences here..
 
           else
 
-          ee = 0.
-          wwsum = 0.
-          call GETEEFROME(0, 0,0,0, 1,0,0, dxi,u0*v0*w0,u1*v0*w0)
-          call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
-          call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
-          call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
-          wwsum(0) = 1./wwsum(0)
+            ee = 0.
+            wwsum = 0.
+            call GETEEFROME(0, 0,0,0, 1,0,0, dxi,u0*v0*w0,u1*v0*w0)
+            call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
+            call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
+            call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
+            wwsum(0) = 1./wwsum(0)
 
-          call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
-          call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
-          call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
-          call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
-          wwsum(1) = 1./wwsum(1)
+            call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
+            call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
+            call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
+            call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
+            wwsum(1) = 1./wwsum(1)
 
-          call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
-          call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
-          call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
-          call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
-          wwsum(2) = 1./wwsum(2)
+            call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
+            call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
+            call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
+            call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
+            wwsum(2) = 1./wwsum(2)
 
-          ext = ee(0)*wwsum(0)
-          eyt = ee(1)*wwsum(1)
-          ezt = ee(2)*wwsum(2)
+            ext = ee(0)*wwsum(0)
+            eyt = ee(1)*wwsum(1)
+            ezt = ee(2)*wwsum(2)
 
           endif
 
@@ -4504,10 +4504,10 @@ c       ---------------------------------------------------------------------
         real(kind=8):: dw,dd
         real(kind=8):: vngp,dngp
         integer(ISZ):: ic
-        if (conductors%icgrid(i+ox,j+oy,k+oz) == 0 .and. conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) == 0) then
+        if (conductors%icgrid(i+ox,j+oy,k+oz) == 0) then
           wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - phi(i+ox+px,j+oy+py,k+oz+pz))*dd
-        elseif (conductors%icgrid(i+ox,j+oy,k+oz) <= nmax) then
+        elseif (conductors%icgrid(i+ox,j+oy,k+oz) < nmax+1) then
           ic = conductors%icgrid(i+ox,j+oy,k+oz)
           if (ic < 0) then
             dels => conductors%oddsubgrid%dels(:,-ic)
@@ -4525,7 +4525,7 @@ c       ---------------------------------------------------------------------
           endif
           wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - vngp)*dd/dngp
-        elseif (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) <= nmax) then
+        elseif (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) < nmax+1) then
           ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
           if (ic < 0) then
             dels => conductors%oddsubgrid%dels(:,-ic)
