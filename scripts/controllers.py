@@ -12,7 +12,7 @@ Functions can be called at the following times:
 aftergenerate: immediately after the generate is complete
 beforefs: before the field solve
 afterfs: after the field solve
-beforelr: before the rho is deposited
+beforelr: before the rho is deposited, at the beginning of loadrho
 othereuser: during execution of electric fields gathering
 beforestep: before the time step
 afterstep: after the time step
@@ -25,6 +25,9 @@ plseldom: during a special time step, when position and velocity are
           synchronized, specified by itplseldom or zzplseldom
 plalways: during a special time step, when position and velocity are
           synchronized, specified by itplalways or zzplalways
+userinjection: called when particles injection happens, after the position
+               advance and before loadrho is called, allowing a user defined
+               particle distribution to be injected each time step
 
 Here is the complete list of functions:
 
@@ -54,9 +57,11 @@ installplseldom, uninstallplseldom, isinstalledplseldom
 
 installplalways, uninstallplalways, isinstalledplalways
 
+installuserinjection, uninstalluserinjection, installeduserinjection
+
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.20 2007/07/16 21:59:32 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.21 2007/11/01 17:10:16 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -250,6 +255,7 @@ callafterplotfuncs = ControllerFunction('callafterplotfuncs')
 callplseldomfuncs = ControllerFunction('callplseldomfuncs')
 callplalwaysfuncs = ControllerFunction('callplalwaysfuncs')
 callafterrestartfuncs = ControllerFunction('callafterrestartfuncs',lcallonce=1)
+userinjection = ControllerFunction('userinjection')
 generateuserparticlesforinjection = ControllerFunction('generateuserparticlesforinjection')
 
 #=============================================================================
@@ -311,6 +317,7 @@ controllerfunctioncontainer = ControllerFunctionContainer(
                                 callbeforeplotfuncs,callafterplotfuncs,
                                 callplseldomfuncs,callplalwaysfuncs,
                                 callafterrestartfuncs,
+                                userinjection,
                                 generateuserparticlesforinjection])
 
 
@@ -486,11 +493,28 @@ def isinstalledafterrestart(f):
   return callafterrestartfuncs.isinstalledfuncinlist(f)
 
 # ----------------------------------------------------------------------------
+def installuserinjection(f):
+  """
+Adds a user defined function that is to be called when particles
+injection happens, after the position advance and before loadrho is
+called, allowing a user defined particle distribution to be injected
+each time step"""
+  userinjection.installfuncinlist(f)
+def uninstalluserinjection(f):
+  "Removes the function installed by installuserinjection"
+  userinjection.uninstallfuncinlist(f)
+def isinstalleduserinjection(f):
+  return userinjection.isinstalledfuncinlist(f)
+
+# ----------------------------------------------------------------------------
 def installuserparticlesinjection(f):
-  "Adds a function that is to be called during injection which creates the particles to be injected."
+  """
+Adds a user defined function that is to be called during injection which
+allows the user to specify the distribution of particles on the emitting
+surface. For expert use only."""
   generateuserparticlesforinjection.installfuncinlist(f)
 def uninstalluserparticlesinjection(f):
-  "Removes a function that would be called during injection which creates the particles to be injected."
+  "Removes the function installed by installuserparticlesinjection"
   generateuserparticlesforinjection.uninstallfuncinlist(f)
 def isinstalleduserparticlesinjection(f):
   return generateuserparticlesforinjection.isinstalledfuncinlist(f)
