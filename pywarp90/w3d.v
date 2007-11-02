@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.275 $, $Date: 2007/10/29 23:41:19 $
+#@(#) File W3D.V, version $Revision: 3.276 $, $Date: 2007/11/02 16:13:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.275 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.276 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -639,6 +639,8 @@ igradb   integer  /2/    #  parameter to select method of calculating grad B
                          # 3 for lookup in z, quad in x,y
 interpdk(1000) _integer  /0/ # parameter specifies whether and how to do orbit
                          # interpolation: 0, full orbit. 1, interpolate
+impinterp     integer   /0/  # set to 1 for implicit version of interpolated
+                             # mover
 alphcoef      real    /0.25/ # coefficient multiplying (omegac dt)**2
                              # in setting alpha
 ipalpha       integer /1/   # power of sqrt(1+omegadt) in setting alpha.
@@ -685,6 +687,7 @@ bsq(npint)      _real [1/T**2]    # B^2
 uparoverB(npint) _real [m/s*T]    # v_parallel/B
 uparsq(npint)   _real [m**2/s**2] # vparallel^2
 uparsq_new(npint) _real [m**2/s**2] # vparallel^2, udated v's
+                                    # for implicit, eval at predicted x's
 uperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
 usq(npint)      _real [m**2/s**2] # v^2
 usq_new(npint)  _real [m**2/s**2] # v^2, updated v's
@@ -804,6 +807,7 @@ set_polarization(rho(0:nx,0:nz),nx,nz,dx:real,dz:real,xmin:real,zmin:real)
 $setvdrifts(pgroup:ParticleGroup,np,is,x(np):real,y(np):real,z(np):real,
 $           ux(np):real,uy(np):real,uz(np):real,predcor:string)
 $    subroutine #  calculates vdrifts from ExB and gradB
+oldsetup() subroutine # sets up pid indices for interpolation routines
 
 *********** W3Dsubs:
 # Subroutines in package 3D
@@ -825,8 +829,7 @@ othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
          zbeam:real,zimax:real,zimin:real,
          straight:real,ifeears,eears:real,eearsofz(0:nzzarr):real,
          dzzi:real,nzzarr,
-         zzmin:real,dedr:real,dexdx:real,deydy:real,
-         dbdr:real,dbxdy:real,dbydx:real,
+         zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
          ex(np):real,ey(np):real,ez(np):real,
          bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field
