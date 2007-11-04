@@ -1232,6 +1232,8 @@ class Quasistaticold:
    # --- if running in parallel, enforcing l_mode=1
    if npes>1:self.l_mode=1
    for it in range(nt):
+     # --- call beforestep functions
+     callbeforestepfuncs.callfuncsinlist()
      if (not self.l_weakstrong or top.it==0) and (top.it%self.nelecperiod==0):
        loadrho()
        fieldsol()
@@ -1249,8 +1251,11 @@ class Quasistaticold:
      top.time+=top.dt
      # --- compute moments
      if self.l_verbose: print me,top.it,self.iz,'me = ',me,';compute zmmnt'
-     zmmnt()
-     minidiag(top.it,top.time,top.lspecial)
+     if top.it%top.nhist==0:
+       zmmnt()
+       minidiag(top.it,top.time,top.lspecial)
+     # --- call afterstep functions
+     callafterstepfuncs.callfuncsinlist()
      # --- update time counter
      top.it+=1
 
