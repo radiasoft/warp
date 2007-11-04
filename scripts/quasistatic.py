@@ -1334,6 +1334,7 @@ class Quasistaticold:
 #      self.setidosolve(self.MRroot,1)      
       
   def clear_electrons(self):
+    pg=top.pgroup
     # --- clear electrons on processor 0, shift them to the previous ones for me>0
     if me==0:
       pg.nps[1]=0      
