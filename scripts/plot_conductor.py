@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.113 2007/07/11 18:30:44 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.114 2007/11/05 23:50:18 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1152,7 +1152,7 @@ Same arguments as pfxy
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
        numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
-       solver=w3d,kwdict=kw)
+       solver=solver,kwdict=kw)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=0,
@@ -1173,7 +1173,7 @@ Same arguments as pfzx
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
        numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
-       solver=w3d,kwdict=kw)
+       solver=solver,kwdict=kw)
 
 # z-r plane
 pfzrg = pfzxg
@@ -1197,7 +1197,7 @@ Same arguments as pfzy
        phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
        condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
        numb=numb,mglevel=mglevel,inverted=inverted,conductors=conductors,
-       solver=w3d,kwdict=kw)
+       solver=solver,kwdict=kw)
 
 ######################################################################
 
