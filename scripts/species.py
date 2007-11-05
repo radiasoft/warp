@@ -465,14 +465,15 @@ in radius squared.
     if theta == 0. and phi == 0.:
       # --- When no angle is specified, then the clipping to the domain
       # --- can be done directly on the zmin and zmax
+      # --- NOTE: zbeam still needs to be accounted for.
       if lallindomain:
         # --- Crop the zmin and zmax to be within the local domain
-        zminp = max(zmin,min(zmax,top.zpminlocal))
-        zmaxp = min(zmax,max(zmin,top.zpmaxlocal))
+        zminp = max(zmin+zmean,min(zmax+zmean,top.zpminlocal)) - zmean
+        zmaxp = min(zmax+zmean,max(zmin+zmean,top.zpmaxlocal)) - zmean
       else:
         # --- Crop the zmin and zmax to be within the global domain
-        zminp = max(zmin,w3d.zmmin)
-        zmaxp = min(zmax,w3d.zmmax)
+        zminp = max(zmin+zmean,w3d.zmmin) - zmean
+        zmaxp = min(zmax+zmean,w3d.zmmax) - zmean
     else:
       # --- When angles are specified, the clipping must be done on a particle
       # --- by particle basis. Copy the zmin and zmax directly over to start.
@@ -519,11 +520,11 @@ in radius squared.
       lvariableweights = (top.wpid != 0)
     if lvariableweights and top.wpid == 0:
       top.wpid = nextpid()
+
     if not lvariableweights:
+      # --- Scale the radius appriately to get a uniform distribution
+      # --- in radius.
       r = sqrt(r)
-      if top.wpid != 0: kw['w'] = 1.
-    else:
-      kw['w'] = 2*r
 
     x = rmax*r*cos(2.*pi*thetap)
     y = rmax*r*sin(2.*pi*thetap)
@@ -559,6 +560,12 @@ in radius squared.
       z = compress(indomain,z)
       np = len(z)
       if np == 0: return
+
+    # --- The weights can be set now if needed (after clipping the positions).
+    if not lvariableweights:
+      if top.wpid != 0: kw['w'] = 1.
+    else:
+      kw['w'] = 2*sqrt(x**2 + y**2)
 
     # --- Now the velocities are generated (after clipping the positions).
     vx = RandomArray.normal(vxmean,vthx,np)
