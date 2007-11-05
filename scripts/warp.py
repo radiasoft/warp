@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.150 2007/10/30 21:01:47 dave Exp $"
+warp_version = "$Id: warp.py,v 1.151 2007/11/05 23:49:43 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -29,6 +29,8 @@ import time
 if not with_numpy:
   # --- Set this to a more reasonable value
   MA.set_print_limit(10000)
+  def set_printoptions(precision=None):
+    MA.limitedArrayRepr.func_defaults = (None,precision,None)
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
