@@ -338,7 +338,7 @@ class MultiGrid(SubcycledPoissonSolver):
       # --- This sets up the icgrid
       setupconductorfielddata(self.nxp,self.nyp,self.nzp,self.nz,
                               self.dx,self.dy,self.dz,conductorobject,
-                              self.my_index,self.nslaves,self.izfsslave,self.nzfsslave)
+                              self.my_index,self.nslaves,self.izpslave,self.nzpslave)
       # --- This calculates the field
       getefieldatconductors(conductorobject,
                             self.potentialp,self.dx,self.dy,self.dz,
