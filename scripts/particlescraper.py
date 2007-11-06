@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.65 2007/09/29 00:19:35 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.66 2007/11/06 00:24:05 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -68,6 +68,9 @@ conductors are an argument.
     self.usergrid = (grid is not None)
     # --- Don't create the grid until it is needed.
     self.grid = grid
+    # --- By default, don't save the old positions or velocities.
+    self.lsaveoldpositions = false
+    self.lsaveoldvelocities = false
     # --- register any initial conductors
     self.conductors = []
     self.registerconductors(conductors)
@@ -86,16 +89,9 @@ conductors are an argument.
     if self.lsavecondid:
       top.lsavelostpart = true
     if self.lsaveintercept:
-      # --- Note that nextpid returns numbers based on 1 based indexing
-      self.xoldpid = nextpid() - 1
-      self.yoldpid = nextpid() - 1
-      self.zoldpid = nextpid() - 1
+      self.lsaveoldpositions = true
       if self.lrefineintercept or self.lrefineallintercept:
-        self.uxoldpid = nextpid() - 1
-        self.uyoldpid = nextpid() - 1
-        self.uzoldpid = nextpid() - 1
-#      installbeforestep(self.saveolddata)
-      setuppgroup(top.pgroup)
+        self.lsaveoldvelocities = true
     self.l_print_timing=0
     # --- If the user specified the grid, then add the conductors
     if self.usergrid: self.updateconductors()
@@ -130,6 +126,11 @@ conductors are an argument.
       assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
       self.conductors.append(c)
 #      self.grid.getisinside(c,mglevel=self.mglevel,aura=self.aura)
+      if c.material == 'reflector':
+        # --- For reflector materials, the old position is saved so that when
+        # --- particles reflect, their current position will be replaced
+        # --- with the old.
+        self.lsaveoldpositions = true
     self.updategrid()
 
   def unregisterconductors(self,conductor,nooverlap=0):
@@ -196,15 +197,32 @@ after load balancing."""
     #                   self.grid.nx,self.grid.ny,self.grid.nz)
 
   def saveolddata(self):
+    # --- If no data is to be saved, then do nothing.
+    if not (self.lsaveoldpositions or self.lsaveoldvelocities): return
+
+    # --- Check if the pid indices have been setup.
+    if self.lsaveoldpositions and 'xoldpid' not in self.__dict__:
+      # --- Note that nextpid returns numbers based on 1 based indexing
+      self.xoldpid = nextpid() - 1
+      self.yoldpid = nextpid() - 1
+      self.zoldpid = nextpid() - 1
+      setuppgroup(top.pgroup)
+    if self.lsaveoldvelocities and 'uxoldpid' not in self.__dict__:
+      self.uxoldpid = nextpid() - 1
+      self.uyoldpid = nextpid() - 1
+      self.uzoldpid = nextpid() - 1
+      setuppgroup(top.pgroup)
+
+    # --- Do the saving.
     for js in xrange(top.pgroup.ns):
-#      print js,top.pgroup.ldts[js]
       if top.pgroup.ldts[js]:
         # --- The code can be written this way now since the get routines
         # --- can now return a direct reference to the data.
-        getpid(id=self.xoldpid,js=js,gather=0)[:] = getx(js=js,gather=0)
-        getpid(id=self.yoldpid,js=js,gather=0)[:] = gety(js=js,gather=0)
-        getpid(id=self.zoldpid,js=js,gather=0)[:] = getz(js=js,gather=0)
-        if self.lrefineintercept or self.lrefineallintercept:
+        if self.lsaveoldpositions:
+          getpid(id=self.xoldpid,js=js,gather=0)[:] = getx(js=js,gather=0)
+          getpid(id=self.yoldpid,js=js,gather=0)[:] = gety(js=js,gather=0)
+          getpid(id=self.zoldpid,js=js,gather=0)[:] = getz(js=js,gather=0)
+        if self.lsaveoldvelocities:
           getpid(id=self.uxoldpid,js=js,gather=0)[:] = getux(js=js,gather=0)
           getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
           getpid(id=self.uzoldpid,js=js,gather=0)[:] = getuz(js=js,gather=0)
@@ -246,8 +264,7 @@ after load balancing."""
           self.savecondid(js,local=local)
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
-    if self.lsaveintercept:
-      self.saveolddata()
+    self.saveolddata()
     
   def scrape(self,js):
     # --- If there are no particles in this species, that nothing needs to be done
@@ -390,8 +407,8 @@ after load balancing."""
         if self.lrefineallintercept:
           # --- Refine whether or not particles are lost by taking small time
           # --- steps, starting from the old position. Note that it is possible
-          # --- that particles that were lost could be not lost upon refinement,
-          # --- and similarly, particles that were not lost, could be lost upon
+          # --- that particles that were lost may not be lost upon refinement,
+          # --- and similarly, particles that were not lost, may be lost upon
           # --- refinement.
           # --- Get the old coordinates of particles that are close.
           iclose1 = take(iclose,ii)
@@ -471,11 +488,23 @@ after load balancing."""
         # --- If no particle are inside the conductor, then skip to the next one
         if len(iic) == 0: continue
 
-        # --- For particles which are inside, set gaminv to 0, the lost
-        # --- particle flag
-        put(top.pgroup.gaminv,ic,0.)
+        if c.material == 'reflector':
+          # --- For particles which are inside, replace the position with
+          # --- the old position and reverse the velocity.
+          # --- Would it be better to use the old velocity?
+          put(top.pgroup.xp,ic,take(top.pgroup.pid[:,self.xoldpid],ic))
+          put(top.pgroup.yp,ic,take(top.pgroup.pid[:,self.yoldpid],ic))
+          put(top.pgroup.zp,ic,take(top.pgroup.pid[:,self.zoldpid],ic))
+          put(top.pgroup.uxp,ic,-take(top.pgroup.uxp,ic))
+          put(top.pgroup.uyp,ic,-take(top.pgroup.uyp,ic))
+          put(top.pgroup.uzp,ic,-take(top.pgroup.uzp,ic))
+        else:
+          # --- For particles which are inside, set gaminv to 0, the lost
+          # --- particle flag
+          put(top.pgroup.gaminv,ic,0.)
 
-        # --- Remove the already handled particles, returning if there are no more.
+        # --- Remove the already handled particles, returning if there
+        # --- are no more.
         put(iclose,iic,-1)
         iclose = compress(iclose>=0,iclose)        
         nn = len(iclose)
