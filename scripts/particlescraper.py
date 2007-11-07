@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.66 2007/11/06 00:24:05 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.67 2007/11/07 01:03:44 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -97,6 +97,18 @@ conductors are an argument.
     if self.usergrid: self.updateconductors()
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
+    # --- This is needed but is not necessarily the correct code.
+    # --- xoldpid etc aren't defined until saveolddata is called, and it
+    # --- isn't called until after scraping happens. But the xoldpid etc
+    # --- are needed the first time scraping happens - this produces an
+    # --- error. This is a conceptual error in general when particles
+    # --- are being added. On their first time being scraped, the xold
+    # --- etc have not yet been saved, but those quantities are needed.
+    # --- Adding a call to saveolddata here partially fixes the first
+    # --- problem. Fixing the other will be more complicated - perhaps
+    # --- requiring a flag that says whether the xold has been saved
+    # --- yet.
+    self.saveolddata() 
 
   def installscraper(self):
     # --- Install the call to scrape particles
@@ -113,7 +125,8 @@ conductors are an argument.
     self.installscraper()
 
     if 'reducedisinside' not in self.__dict__:
-      self.reducedisinside = self.grid.isinside.copy()
+      #self.reducedisinside = self.grid.isinside.copy()
+      self.reducedisinside = self.grid.isinside
     if 'lrefineintercept' not in self.__dict__:
       self.lrefineintercept = 0
     if 'lrefineallintercept' not in self.__dict__:
@@ -190,11 +203,13 @@ after load balancing."""
     # --- will get a reference to the conductor from the neighboring grid
     # --- points. Note that the routine never ignores grid points that have
     # --- nx,ny,nz all even.
-    self.reducedisinside = fzeros(self.grid.isinside.shape,'d')
-    self.reducedisinside[...] = self.grid.isinside
-    # --- There is a problem with this so don't use for now
+    #self.reducedisinside = fzeros(self.grid.isinside.shape,'d')
+    #self.reducedisinside[...] = self.grid.isinside
     #reduceisinsidegrid(self.grid.isinside,self.reducedisinside,
     #                   self.grid.nx,self.grid.ny,self.grid.nz)
+    # --- There is a problem with the above so don't use for now
+    # --- Just make a reference. Similarly in setstate.
+    self.reducedisinside = self.grid.isinside
 
   def saveolddata(self):
     # --- If no data is to be saved, then do nothing.
@@ -215,7 +230,7 @@ after load balancing."""
 
     # --- Do the saving.
     for js in xrange(top.pgroup.ns):
-      if top.pgroup.ldts[js]:
+      if top.pgroup.ldts[js] and getn(js=js,gather=0) > 0:
         # --- The code can be written this way now since the get routines
         # --- can now return a direct reference to the data.
         if self.lsaveoldpositions:
