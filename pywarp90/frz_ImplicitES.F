@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.19 $, $Date: 2007/10/22 16:25:54 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.20 $, $Date: 2007/11/08 20:09:04 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -724,6 +724,7 @@ c       --- Add in resulting error.
         call expand3d(nx,0,nzlocal,nz,1,0,1,phi,
      &                nxcoarse,0,nzlocalcoarse,nzcoarse,phicoarse,
      &                localbounds,lzoffset)
+        call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,localboundsc,.false.)
 #ifdef MPIPARALLEL
         call mgexchange_phiperiodic(nx,0,nzlocal,nz,phi,localbounds,1,1,0,1,
      &                              my_index,nslaves,izfsslave,
@@ -948,17 +949,17 @@ c Restrict to a coarser grid.
       integer(ISZ):: izcoarsemin,izcoarsemax
       real(kind=8):: r,w,dx,dy,dz,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
 
-c     --- Set the loop limits, always including edges.
-      ixcoarsemin = 1
-      ixcoarsemax = nxcoarse-1
-      iycoarsemin = 1
-      iycoarsemax = nycoarse-1
+c     --- Set the loop limits, skipping Dirichlet edges
+      ixcoarsemin = 0
+      ixcoarsemax = nxcoarse
+      iycoarsemin = 0
+      iycoarsemax = nycoarse
       izcoarsemin = 0
       izcoarsemax = nzlocalcoarse
-      if (bounds(0) >  0) ixcoarsemin = 0
-      if (bounds(1) == 1) ixcoarsemax = nxcoarse
-      if (bounds(2) >  0) iycoarsemin = 0
-      if (bounds(3) == 1) iycoarsemax = nycoarse
+      if (bounds(0) == 0) ixcoarsemin = 1
+      if (bounds(1) == 0) ixcoarsemax = nxcoarse - 1
+      if (bounds(2) == 0) iycoarsemin = 1
+      if (bounds(3) == 0) iycoarsemax = nycoarse - 1
       if (bounds(4) == 0) izcoarsemin = 1
       if (bounds(5) == 0) izcoarsemax = nzlocalcoarse - 1
 
