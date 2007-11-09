@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.13 $, $Date: 2007/10/17 01:08:41 $
+c@(#) File top_lattice.F, version $Revision: 3.14 $, $Date: 2007/11/09 00:54:31 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -952,8 +952,8 @@ c     --- Now fetch the B fields
 c       bsqgradtemp(0:nx,0:ny,0:nz, 5,id) = 0.
 c       bsqgradtemp(0:nx,0:ny,0:nz, 6,id) = 0.
 c       bsqgradtemp(0:nx,0:ny,0:nz, 7,id) = 0.
-        bsqgradtemp(0:nx,0:ny,0:nz, 8,id) = 0.
-        bsqgradtemp(0:nx,0:ny,0:nz, 9,id) = 0.
+        bsqgradtemp(0:nx,0:ny,0:nz, 8,id) = bx0
+        bsqgradtemp(0:nx,0:ny,0:nz, 9,id) = by0
         bsqgradtemp(0:nx,0:ny,0:nz,10,id) = bz0
 
 c       --- handle uniform fields
@@ -2324,7 +2324,11 @@ c=============================================================================
 
 c Apply uniform fields.
 
+      ex = ex + ex0
+      ey = ey + ey0
       ez = ez + ez0
+      bx = bx + bx0
+      by = by + by0
       bz = bz + bz0
 
       return
