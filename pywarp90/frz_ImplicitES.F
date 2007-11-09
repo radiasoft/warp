@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.20 $, $Date: 2007/11/08 20:09:04 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.21 $, $Date: 2007/11/09 00:57:28 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -777,9 +777,16 @@ c=============================================================================
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.
+c phisave is needed because when there are B fields, the even and odd sweeps
+c are no longer independent since the diagonal coefficients become non-zero.
+c The simplest solution is to save the values of phi before a sweep and
+c read those saved values for the update of phi.
 
+      real(kind=8),allocatable:: phisave(:,:)
       integer(ISZ):: parity,s_parity,e_parity
       integer(ISZ):: ixmin,ixmax,izmin,izmax,ix,iz,ix1
+
+      allocate(phisave(-1:nx+1,-1:nzlocal+1))
 
       call cond_potmg(conductors%interior,
      &                nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
@@ -807,20 +814,21 @@ c     --- potential on the grid edge.
 
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
+        phisave = phi
 
         do iz=izmin,izmax
           ix1 = ixmin + mod(ixmin + iz + parity,2)
           do ix=ix1,ixmax,2
 
             phi(ix,iz) = mgparam*(rho(ix,iz)/eps0 +
-     &                            coeffs(0,0,ix,iz)*phi(ix-1,iz-1) +
-     &                            coeffs(1,0,ix,iz)*phi(ix  ,iz-1) +
-     &                            coeffs(2,0,ix,iz)*phi(ix+1,iz-1) +
-     &                            coeffs(0,1,ix,iz)*phi(ix-1,iz  ) +
-     &                            coeffs(2,1,ix,iz)*phi(ix+1,iz  ) +
-     &                            coeffs(0,2,ix,iz)*phi(ix-1,iz+1) +
-     &                            coeffs(1,2,ix,iz)*phi(ix  ,iz+1) +
-     &                            coeffs(2,2,ix,iz)*phi(ix+1,iz+1))/
+     &                            coeffs(0,0,ix,iz)*phisave(ix-1,iz-1) +
+     &                            coeffs(1,0,ix,iz)*phisave(ix  ,iz-1) +
+     &                            coeffs(2,0,ix,iz)*phisave(ix+1,iz-1) +
+     &                            coeffs(0,1,ix,iz)*phisave(ix-1,iz  ) +
+     &                            coeffs(2,1,ix,iz)*phisave(ix+1,iz  ) +
+     &                            coeffs(0,2,ix,iz)*phisave(ix-1,iz+1) +
+     &                            coeffs(1,2,ix,iz)*phisave(ix  ,iz+1) +
+     &                            coeffs(2,2,ix,iz)*phisave(ix+1,iz+1))/
      &                           (-coeffs(1,1,ix,iz)) +
      &                   (1.-mgparam)*phi(ix,iz)
 
@@ -852,6 +860,8 @@ c     --- Exchange phi in the z guard planes
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
 #endif
+
+      deallocate(phisave)
 
       return
       end
