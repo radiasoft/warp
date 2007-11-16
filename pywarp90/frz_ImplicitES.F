@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.21 $, $Date: 2007/11/09 00:57:28 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.22 $, $Date: 2007/11/16 00:54:14 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -62,9 +62,10 @@ c     --- Apply the boundary conditions, setting the values in the guard cells.
       return
       end function getbfieldsongrides2d
 c=============================================================================
-      subroutine getcoefficientses2d(nx,nzlocal,dx,dz,xmmin,ns,qomdt,rho,chi0,bongrid,
+      subroutine getcoefficientses2d(nx,nzlocal,dx,dz,xmmin,ns,qomdt,rho,chi0,
+     &                               bongrid,
      &                               mglevel,lcndbndy,icndbndy,conductors,lrz,
-     &                               coeffs,rhs)
+     &                               bounds,coeffs,rhs)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,nzlocal,ns
@@ -77,17 +78,15 @@ c=============================================================================
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy,lrz
+      integer(ISZ):: bounds(0:5)
       real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
       real(kind=8):: rhs(0:nx,0:nzlocal)
 
       real(kind=8),pointer:: chi(:,:,:,:)
-      integer(ISZ):: ix,iz,js
+      integer(ISZ):: ix,iz,js,ic
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       real(kind=8):: ox,oy,oz,oo
       real(kind=8):: rr,rrm,rrp
-
-c     --- Right hand side is easy (without conductors)
-c     rhs = rho/eps0
 
       allocate(chi(0:1,0:1,-1:nx+1,-1:nzlocal+1))
       chi = 0.
@@ -109,6 +108,17 @@ c     --- First, generate the chi tensor from chi0 and the B field.
 
           enddo
         enddo
+
+c       --- Force chi to zero inside of any conductors. This is because
+c       --- the charge density is always zero there.
+c       --- This is probably not needed.
+        do ic = conductors%interior%istart(mglevel),
+     &          conductors%interior%istart(mglevel+1)-1
+          ix = conductors%interior%indx(0,ic)
+          iz = conductors%interior%indx(2,ic)
+          chi(:,:,ix,iz) = 0.
+        enddo
+
       enddo
 
       if (lrz) then
@@ -195,37 +205,269 @@ c       --- XZ Planar
 
       endif
 
-c     --- Handle points interior to conductors.
-c     do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
-c       ix = interior%indx(0,ic)
-c       iz = interior%indx(2,ic)
-c       coeffs(:,:,ix,iz) = 0.
-c       coeffs(1,1,ix,iz) = -1.
-c     enddo
+      rhs = 0.
+      call getcoefficientssubgrides2d(conductors%evensubgrid,nx,nzlocal,dx,dz,
+     &                                xmmin,mglevel,lcndbndy,icndbndy,lrz,chi,
+     &                                bounds,coeffs,rhs)
+      call getcoefficientssubgrides2d(conductors%oddsubgrid,nx,nzlocal,dx,dz,
+     &                                xmmin,mglevel,lcndbndy,icndbndy,lrz,chi,
+     &                                bounds,coeffs,rhs)
 
       deallocate(chi)
 
       return
       end subroutine getcoefficientses2d
-      subroutine getcoefficientssubgrides2d(nx,nzlocal,dx,dz,xmmin,ns,qomdt,
-     &                                       chi0,bongrid,mglevel,
-     &                             lcndbndy,icndbndy,subgrid,lrz,chi,coeffs)
+c=============================================================================
+      subroutine getcoefficientssubgrides2d(subgrid,nx,nzlocal,dx,dz,xmmin,
+     &                                      mglevel,lcndbndy,icndbndy,lrz,chi,
+     &                                      bounds,coeffs,rhs)
       use Constant
       use ConductorSubgridTypemodule
-      integer(ISZ):: nx,nzlocal,ns
+      type(ConductorSubgridType):: subgrid
+      integer(ISZ):: nx,nzlocal
       real(kind=8):: dx,dz,xmmin
-      real(kind=8):: qomdt(0:ns-1)
-      real(kind=8):: chi0(-1:nx+1,-3:nzlocal+3,0:ns-1)
-      real(kind=8):: bongrid(-1:nx+1,-3:nzlocal+3,0:2)
       integer(ISZ):: mglevel
       integer(ISZ):: icndbndy
-      type(ConductorSubgridType):: subgrid
       logical(ISZ):: lcndbndy,lrz
-      real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
       real(kind=8):: chi(0:1,0:1,-1:nx+1,-1:nzlocal+1)
+      integer(ISZ):: bounds(0:5)
+      real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
+      real(kind=8):: rhs(0:nx,0:nzlocal)
+
+c Uses adjusted difference equation to enforce sub-grid level placement of 
+c conductor boundaries for points near conductor surface.
 
       integer(ISZ):: ic,ix,iz
+      real(kind=8):: dxm,dzm,dxp,dzp
+      real(kind=8):: pxm,pzm,pxp,pzp
+      real(kind=8):: rrm,rrp
+      real(kind=8):: chixm(0:1,0:1),chizm(0:1,0:1)
+      real(kind=8):: chixp(0:1,0:1),chizp(0:1,0:1)
+      real(kind=8):: cxm,czm,cxp,czp
+      real(kind=8):: dx1,dx2,dz1,dz2
+      real(kind=8):: voltfac,c0
+      real(kind=8):: rr(0:nx),rri(0:nx)
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
 
+      if (.not. lcndbndy) return
+
+      if (icndbndy == 1) then
+        call kaboom("mgsolveimplicites2d: icndbndy == 1 not supported")
+        return
+      endif
+
+      dels => subgrid%dels
+      volt => subgrid%volt
+
+c     --- Only use actual voltage on finest level. Set to zero for
+c     --- coarser levels since solver for the residuals.
+      if (mglevel == 0) then
+        voltfac = 1.
+      else
+        voltfac = 0.
+      endif
+
+c     --- Precalculate the radius for efficiency
+      if (lrz) then
+        do ix=0,nx
+          rr(ix) = ix*dx + xmmin
+          if (rr(ix) > 0.) rri(ix) = 1./rr(ix)
+        enddo
+      endif
+
+c     --- Loop over points near surface of conductors.
+!$OMP DO
+      do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
+
+        ix = subgrid%indx(0,ic)
+        iz = subgrid%indx(2,ic)
+
+c       --- Skip the data point if it is on a Dirichlet or parallel boundary
+        if (ix == 0  .and. bounds(0) < 1) cycle
+        if (ix == nx .and. bounds(1) < 1) cycle
+        if (iz == 0  .and. bounds(4) < 1) cycle
+        if (iz == nzlocal .and. bounds(5) < 1) cycle
+
+c       --- First, get the effective grid cell sizes and the chi's.
+c       --- The chi's inside the conductor are always zero because the
+c       --- charge density is zero there.
+        if (0. < dels(0,ic) .and. dels(0,ic) < +1.) then
+          dxm = dels(0,ic)
+          chixm = 0.
+        elseif (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          dxm = -2.*dels(0,ic)
+          chixm = 0.
+        else
+          dxm = 1.
+          chixm = chi(:,:,ix-1,iz)
+        endif
+
+        if (0. < dels(1,ic) .and. dels(1,ic) < +1.) then
+          dxp = dels(1,ic)
+          chixp = 0.
+        elseif (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          dxp = -2.*dels(1,ic)
+          chixp = 0.
+        else
+          dxp = 1.
+          chixp = chi(:,:,ix+1,iz)
+        endif
+
+        if (0. < dels(4,ic) .and. dels(4,ic) < +1.) then
+          dzm = dels(4,ic)
+          chizm = 0.
+        elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          dzm = -2.*dels(4,ic)
+          chizm = 0.
+        else
+          dzm = 1.
+          chizm = chi(:,:,ix,iz-1)
+        endif
+
+        if (0. < dels(5,ic) .and. dels(5,ic) < +1.) then
+          dzp = dels(5,ic)
+          chizp = 0.
+        elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          dzp = -2.*dels(5,ic)
+          chizp = 0.
+        else
+          dzp = 1.
+          chizp = chi(:,:,ix,iz+1)
+        endif
+
+c       --- Now construct the coefficients
+        cxm = 1./(dxm*(0.5*dxm + 0.5*dxp))
+        cxp = 1./(dxp*(0.5*dxm + 0.5*dxp))
+        czm = 1./(dzm*(0.5*dzm + 0.5*dzp))
+        czp = 1./(dzp*(0.5*dzm + 0.5*dzp))
+        if (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) cxm = 0.
+        if (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) cxp = 0.
+        if (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) czm = 0.
+        if (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) czp = 0.
+
+c       --- Correct coefficients for axisymmetric case
+        if (lrz) then
+          if (rr(ix) > 0.) then
+            rrm = (rr(ix) - 0.5*dxm*dx)*rri(ix)
+            rrp = (rr(ix) + 0.5*dxm*dx)*rri(ix)
+            cxm = cxm*rrm
+            cxp = cxp*rrp
+          else
+            rrm = 0.
+            rrp = 0.
+            cxm = 0.
+            cxp = 4.*cxp
+          endif
+        endif
+
+c       --- The dx1 and dz1 are for finite differences (i+1/2) - (i-1/2)
+c       --- the dx2 and dz2 are for finite differences (i+1) - (i-1)
+        dx1 = dx*(0.5*dxm + 0.5*dxp)
+        dz1 = dz*(0.5*dzm + 0.5*dzp)
+        dx2 = dx*(dxm + dxp)
+        dz2 = dz*(dzm + dzp)
+
+        coeffs(2,1,ix,iz) = +cxp*(1. + 0.5*(chi(0,0,ix,iz)+chixp(0,0)))/dx**2
+        coeffs(0,1,ix,iz) = +cxm*(1. + 0.5*(chixm(0,0)+chi(0,0,ix,iz)))/dx**2
+        coeffs(1,2,ix,iz) = +czp*(1. + 0.5*(chi(1,1,ix,iz)+chizp(1,1)))/dz**2
+        coeffs(1,0,ix,iz) = +czm*(1. + 0.5*(chizm(1,1)+chi(1,1,ix,iz)))/dz**2
+        coeffs(1,1,ix,iz) = -coeffs(2,1,ix,iz)-coeffs(0,1,ix,iz)
+     &                      -coeffs(1,2,ix,iz)-coeffs(1,0,ix,iz)
+        if (lrz) then
+          coeffs(1,2,ix,iz) = coeffs(1,2,ix,iz)
+     &                        + 0.5*(rrp-rrm)*(chi(1,0,ix,iz))/(dz2*dx1)
+          coeffs(1,0,ix,iz) = coeffs(1,0,ix,iz)
+     &                        - 0.5*(rrp-rrm)*(chi(1,0,ix,iz))/(dz2*dx1)
+        endif
+
+c       --- Now the right hand side and be generated and the associated
+c       --- coefficients zeroed out.
+c       --- Note that for the Neumann case, the potential is not
+c       --- used and so there are not contributions to the rhs.
+c       --- Changes are made to the corner coefficients for neighboring
+c       --- cells. These corner terms appear because of finite differences
+c       --- across the neighboring cells. For example, the template for
+c       --- cell (i+1,k) includes the finite difference
+c       --- (phi(i,k-1)-phi(i,k+1)). This finite difference is modified
+c       --- by the subgrid info at cell (i,k).
+        if (0. < dels(0,ic) .and. dels(0,ic) < +1.) then
+          pxm = voltfac*volt(0,ic)
+          rhs(ix,iz) = rhs(ix,iz) + coeffs(0,1,ix,iz)*pxm
+          coeffs(0,1,ix,iz) = 0.
+          if (iz > 0) then
+            rhs(ix,iz-1) = rhs(ix,iz-1) - 0.5*chi(0,1,ix,iz)/(dz*dx2)*pxm
+            coeffs(0,2,ix,iz-1) = 0.
+          endif
+          if (iz < nzlocal) then
+            rhs(ix,iz+1) = rhs(ix,iz+1) + 0.5*chi(0,1,ix,iz)/(dz*dx2)*pxm
+            coeffs(0,0,ix,iz+1) = 0.
+          endif
+        elseif (-1. < dels(0,ic) .and. dels(0,ic) <= 0.) then
+          coeffs(0,1,ix,iz) = 0.
+          if (iz > 0) coeffs(0,2,ix,iz-1) = 0.
+          if (iz < nzlocal) coeffs(0,0,ix,iz+1) = 0.
+        endif
+
+        if (0. < dels(1,ic) .and. dels(1,ic) < +1.) then
+          pxp = voltfac*volt(1,ic)
+          rhs(ix,iz) = rhs(ix,iz) + coeffs(2,1,ix,iz)*pxp
+          coeffs(2,1,ix,iz) = 0.
+          if (iz > 0) then
+            rhs(ix,iz-1) = rhs(ix,iz-1) + 0.5*chi(0,1,ix,iz)/(dz*dx2)*pxp
+            coeffs(2,2,ix,iz-1) = 0.
+          endif
+          if (iz < nzlocal) then
+            rhs(ix,iz+1) = rhs(ix,iz+1) - 0.5*chi(0,1,ix,iz)/(dz*dx2)*pxp
+            coeffs(2,0,ix,iz+1) = 0.
+          endif
+        elseif (-1. < dels(1,ic) .and. dels(1,ic) <= 0.) then
+          coeffs(2,1,ix,iz) = 0.
+          if (iz > 0) coeffs(2,2,ix,iz-1) = 0.
+          if (iz < nzlocal) coeffs(2,0,ix,iz+1) = 0.
+        endif
+
+        if (0. < dels(4,ic) .and. dels(4,ic) < +1.) then
+          pzm = voltfac*volt(4,ic)
+          rhs(ix,iz) = rhs(ix,iz) + coeffs(1,0,ix,iz)*pzm
+          coeffs(1,0,ix,iz) = 0.
+          if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
+            rhs(ix-1,iz) = rhs(ix-1,iz)
+     &         - 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
+            coeffs(2,0,ix-1,iz) = 0.
+          endif
+          if (ix < nx) then
+            rhs(ix+1,iz) = rhs(ix+1,iz)
+     &         + 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzm
+            coeffs(0,0,ix+1,iz) = 0.
+          endif
+        elseif (-1. < dels(4,ic) .and. dels(4,ic) <= 0.) then
+          coeffs(1,0,ix,iz) = 0.
+          if (ix > 0) coeffs(2,0,ix-1,iz) = 0.
+          if (ix < nx) coeffs(0,0,ix+1,iz) = 0.
+        endif
+
+        if (0. < dels(5,ic) .and. dels(5,ic) < +1.) then
+          pzp = voltfac*volt(5,ic)
+          rhs(ix,iz) = rhs(ix,iz) + coeffs(1,2,ix,iz)*pzp
+          coeffs(1,2,ix,iz) = 0.
+          if (ix > 1 .or. (ix == 1 .and. xmmin > 0.)) then
+            rhs(ix-1,iz) = rhs(ix-1,iz)
+     &         + 0.5*(rr(ix)-0.5*dx)/(rr(ix)-dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
+            coeffs(2,2,ix-1,iz) = 0.
+          endif
+          if (ix < nx) then
+            rhs(ix+1,iz) = rhs(ix+1,iz)
+     &         - 0.5*(rr(ix)+0.5*dx)/(rr(ix)+dx)*chi(1,0,ix,iz)/(dx*dz2)*pzp
+            coeffs(0,2,ix+1,iz) = 0.
+          endif
+        elseif (-1. < dels(5,ic) .and. dels(5,ic) <= 0.) then
+          coeffs(1,2,ix,iz) = 0.
+          if (ix > 0) coeffs(2,2,ix-1,iz) = 0.
+          if (ix < nx) coeffs(0,2,ix+1,iz) = 0.
+        endif
+
+      enddo
+!$OMP END DO
 
       end subroutine getcoefficientssubgrides2d
       end module coefficientsmodulees2d
@@ -451,11 +693,13 @@ c=============================================================================
       use Multigrid3d_diagnostic
       use coefficientsmodulees2d
       use formggetarraysuminterface
+c     use ImplicitMG2D
       integer(ISZ):: mglevel
       integer(ISZ):: nx,nzlocal,nz,ns
       real(kind=8):: dx,dz,xmmin
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
-      real(kind=8):: chi0(-1:nx+1,-3:nzlocal+3,0:ns-1),bongrid(-1:nx+1,-3:nzlocal+3,0:2)
+      real(kind=8):: chi0(-1:nx+1,-3:nzlocal+3,0:ns-1)
+      real(kind=8):: bongrid(-1:nx+1,-3:nzlocal+3,0:2)
       real(kind=8):: qomdt(0:ns-1)
       integer(ISZ):: globalbounds(0:5)
       real(kind=8):: mgparam
@@ -489,13 +733,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: sss(2)
       logical(ISZ):: larraysumdiagnostic=.false.
 
-c     --- Get the finite difference coefficients for the Poisson operator at
-c     --- the current level of refinement.
-      allocate(coeffs(0:2,0:2,0:nx,0:nzlocal))
-      allocate(rhs(0:nx,0:nzlocal))
-      call getcoefficientses2d(nx,nzlocal,dx,dz,xmmin,ns,qomdt,rho,chi0,bongrid,
-     &                         mglevel,lcndbndy,icndbndy,conductors,lrz,coeffs,rhs)
-
       localbounds = globalbounds
 
 #ifdef MPIPARALLEL
@@ -509,6 +746,20 @@ c     --- the current level of refinement.
       if (izfsslave(my_index) > 0) localbounds(4) = -1
       if (izfsslave(my_index)+nzlocal < nz) localbounds(5) = -1
 #endif
+
+c     --- Get the finite difference coefficients for the Poisson operator at
+c     --- the current level of refinement.
+      allocate(coeffs(0:2,0:2,0:nx,0:nzlocal))
+      allocate(rhs(0:nx,0:nzlocal))
+      call getcoefficientses2d(nx,nzlocal,dx,dz,xmmin,ns,qomdt,rho,chi0,bongrid,
+     &                         mglevel,lcndbndy,icndbndy,conductors,lrz,
+     &                         localbounds,coeffs,rhs)
+c     if (mglevel == 0) then
+c       allocate(coeffs1(0:2,0:2,0:nx,0:nzlocal))
+c       allocate(rhs1(0:nx,0:nzlocal))
+c       coeffs1 = coeffs
+c       rhs1 = rhs
+c     endif
 
       if (larraysumdiagnostic) then
         sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
@@ -524,8 +775,8 @@ c     --- the current level of refinement.
 
 c     --- Do initial SOR passes.
       do i=1,downpasses
-        call relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,coeffs,localbounds,mgparam,
-     &                 conductors,
+        call relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,rhs,coeffs,
+     &                 localbounds,mgparam,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
@@ -553,7 +804,7 @@ c     --- coarsening. This is the same check that is done in getmglevels.
         endif
 
 c       --- Get the residual on the current grid.
-        call residuales2d(nx,nzlocal,nz,phi,rho,coeffs,res,
+        call residuales2d(nx,nzlocal,nz,phi,rho,coeffs,rhs,res,
      &                    mglevel,localbounds,mgparam,conductors)
 #ifdef MPIPARALLEL
         call applyparallelboundaryconditionses2d(res,nx,0,nzlocal,nz,1,0,3,1,3,
@@ -662,10 +913,10 @@ c       --- Alloate new work space
           return
         endif
 
-        rhocoarse = 0.
+c       rhocoarse = 0.
         phicoarse = 0.
-        chi0coarse = 0.
-        bongridcoarse = 0.
+c       chi0coarse = 0.
+c       bongridcoarse = 0.
 
 c       --- Restriction
         call restrictes3d(nx,0,nzlocal,nz,res,1,0,3,
@@ -730,6 +981,7 @@ c       --- Add in resulting error.
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
+        call averageperiodicphi2d(phi,nx,0,nzlocal,nz,1,0,1,localbounds)
         if (larraysumdiagnostic) then
           sss = mggetarraysum(nx,0,nzlocal,1,0,1,phi,
      &                        izfsslave,nzfsslave,nslaves,my_index)
@@ -744,8 +996,8 @@ c       --- Add in resulting error.
 
 c     --- Do final SOR passes.
       do i=1,uppasses
-        call relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,coeffs,localbounds,mgparam,
-     &                 conductors,
+        call relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,rhs,coeffs,
+     &                 localbounds,mgparam,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
@@ -757,7 +1009,7 @@ c     --- Do final SOR passes.
       return
       end
 c=============================================================================
-      subroutine relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,coeffs,bounds,mgparam,
+      subroutine relaxes2d(mglevel,nx,nzlocal,nz,phi,rho,rhs,coeffs,bounds,mgparam,
      &                     conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -766,6 +1018,7 @@ c=============================================================================
       use ConductorTypemodule
       integer(ISZ):: mglevel,nx,ny,nzlocal,nz
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
+      real(kind=8):: rhs(0:nx,0:nzlocal)
       real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
       integer(ISZ):: bounds(0:5)
       real(kind=8):: mgparam
@@ -790,6 +1043,10 @@ c read those saved values for the update of phi.
 
       call cond_potmg(conductors%interior,
      &                nx,0,nzlocal,1,0,1,phi,mglevel,1,.false.)
+      call condbndymgint(conductors%evensubgrid,nx,0,nzlocal,1,0,1,phi,
+     &                   bounds,mglevel,2)
+      call condbndymgint(conductors%oddsubgrid,nx,0,nzlocal,1,0,1,phi,
+     &                   bounds,mglevel,2)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -820,7 +1077,7 @@ c     --- do loop to cover even and odd points
           ix1 = ixmin + mod(ixmin + iz + parity,2)
           do ix=ix1,ixmax,2
 
-            phi(ix,iz) = mgparam*(rho(ix,iz)/eps0 +
+            phi(ix,iz) = mgparam*(rho(ix,iz)/eps0 + rhs(ix,iz) +
      &                            coeffs(0,0,ix,iz)*phisave(ix-1,iz-1) +
      &                            coeffs(1,0,ix,iz)*phisave(ix  ,iz-1) +
      &                            coeffs(2,0,ix,iz)*phisave(ix+1,iz-1) +
@@ -861,18 +1118,22 @@ c     --- Exchange phi in the z guard planes
      &                    whosendingright,izsendingright)
 #endif
 
+      call averageperiodicphi2d(phi,nx,0,nzlocal,nz,1,0,1,bounds)
+
       deallocate(phisave)
 
       return
       end
 c=============================================================================
-      subroutine residuales2d(nx,nzlocal,nz,phi,rho,coeffs,res,
+      subroutine residuales2d(nx,nzlocal,nz,phi,rho,coeffs,rhs,res,
      &                        mglevel,bounds,mgparam,conductors)
       use Constant
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nzlocal,nz
       real(kind=8):: phi(-1:nx+1,-1:nzlocal+1),rho(0:nx,0:nzlocal)
-      real(kind=8):: res(-1:nx+1,-3:nzlocal+3),coeffs(0:2,0:2,0:nx,0:nzlocal)
+      real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
+      real(kind=8):: rhs(0:nx,0:nzlocal)
+      real(kind=8):: res(-1:nx+1,-3:nzlocal+3)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       type(ConductorType):: conductors
@@ -899,7 +1160,7 @@ c     --- Calculate the residual.
 
         do ix=ixmin,ixmax
 
-          res(ix,iz) = rho(ix,iz) + eps0*(
+          res(ix,iz) = rho(ix,iz) + eps0*(rhs(ix,iz) +
      &                  coeffs(0,0,ix,iz)*phi(ix-1,iz-1) +
      &                  coeffs(1,0,ix,iz)*phi(ix  ,iz-1) +
      &                  coeffs(2,0,ix,iz)*phi(ix+1,iz-1) +
@@ -916,23 +1177,8 @@ c     --- Calculate the residual.
 
       call cond_potmgres(conductors%interior,
      &                   nx,0,nzlocal,res,mglevel,1,.false.,1,0)
-      call applyboundaryconditionses2d(res,nx,0,nzlocal,nz,1,0,3,1,bounds,.true.)
-
-c     --- Transverse boundaries
-c     if (bounds(0) == 0) res(-1:0,:) = 0.
-c     if (bounds(1) == 0) res(nx:nx+1,:) = 0.
-c     if (bounds(0) == 1) res(-1,:) = res(1,:)
-c     if (bounds(1) == 1) res(nx+1,:) = res(nx-1,:)
-c     if (bounds(0) == 2) res(-1,:) = res(nx-1,:)
-c     if (bounds(1) == 2) res(nx:nx+1,:) = res(0:1,:)
-
-c     --- Longitudinal boundaries
-c     if (bounds(4) == 0) res(:,-1:0) = 0.
-c     if (bounds(5) == 0) res(:,nzlocal:nzlocal+1) = 0.
-c     if (bounds(4) == 1) res(:,-1) = res(:,1)
-c     if (bounds(5) == 1) res(:,nzlocal+1) = res(:,nzlocal-1)
-c     if (bounds(4) == 2 .and. nzlocal == nz) res(:,-1) = res(:,nzlocal-1)
-c     if (bounds(5) == 2 .and. nzlocal == nz) res(:,nzlocal+1) = res(:,1)
+      call applyboundaryconditionses2d(res,nx,0,nzlocal,nz,1,0,3,1,bounds,
+     &                                 .true.)
 
       return
       end
@@ -1161,6 +1407,28 @@ c=============================================================================
       enddo
 
 #endif
+
+      return
+      end
+c=============================================================================
+      subroutine averageperiodicphi2d(phi,nx,ny,nzlocal,nz,
+     &                                delx,dely,delz,bounds)
+      integer(ISZ):: nx,ny,nzlocal,nz,delx,dely,delz
+      real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz)
+      integer(ISZ):: bounds(0:5)
+
+c Subtracts out the average phi.
+c Warning - does not work in parallel.
+
+      real(kind=8):: phiave
+
+      if (bounds(0) == 2 .and. bounds(1) == 2 .and.
+     &    bounds(4) == 2 .and. bounds(5) == 2) then
+
+        phiave = sum(phi(0:nx-1,0,0:nzlocal-1))/(nx*nz)
+        phi = phi - phiave
+
+      endif
 
       return
       end
