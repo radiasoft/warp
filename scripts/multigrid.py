@@ -970,9 +970,251 @@ class MultiGrid(SubcycledPoissonSolver):
              self.lcndbndy,self.icndbndy,self.conductors)
     return res
 
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+class MultiGridImplicit3D(MultiGrid):
+  """
+This solves the modified Poisson equation which includes the suseptibility
+tensor that appears from the direct implicit scheme.
+  """
+  
+  def __init__(self,lreducedpickle=1,**kw):
+    kw['lreducedpickle'] = lreducedpickle
+
+    SubcycledPoissonSolver.__init__(self,kwdict=kw)
+    self.solvergeom = w3d.XYZgeom
+    self.ncomponents = 1
+    self.nxguard = 1
+    self.nyguard = 1
+    self.nzguard = 1
+
+    # --- Kludge - make sure that the multigrid3df routines never sets up
+    # --- any conductors. This is not really needed here.
+    f3d.gridmode = 1
+
+    # --- Save input parameters
+    self.processdefaultsfrompackage(MultiGrid.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid.__f3dinputs__,f3d,kw)
+
+    # --- If there are any remaning keyword arguments, raise an error.
+    assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
+
+    # --- Create conductor objects
+    self.initializeconductors()
+
+    # --- Give these variables dummy initial values.
+    self.mgiters = 0
+    self.mgerror = 0.
+
+    # --- At the start, assume that there are no bends. This is corrected
+    # --- in the solve method when there are bends.
+    self.linbend = false
+
+    # --- Turn on the chi kludge, where chi is set to be an average value
+    # --- of chi for grid cells where is it zero.
+    self.chikludge = 1
+
+  def __getstate__(self):
+    dict = MultiGrid.__getstate__(self)
+    if self.lreducedpickle:
+      if 'chi0' in dict: del dict['chi0']
+    return dict
+
+  def getpdims(self):
+    # --- This is needed to set the top.nsimplicit variable.
+    setupImplicit(top.pgroup)
+    dims = MultiGrid.getpdims(self)
+    # --- The extra dimension is to hold the charge density and the chi's
+    # --- for the implicit groups.
+    dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
+    return dims
+
+  def getdims(self):
+    # --- This is needed to set the top.nsimplicit variable.
+    setupImplicit(top.pgroup)
+    dims = MultiGrid.getdims(self)
+    # --- The extra dimension is to hold the charge density and the chi's
+    # --- for the implicit groups.
+    dims = (tuple(list(dims[0])+[1+top.nsimplicit]),)+dims[1:]
+    return dims
+
+  def getrho(self):
+    return self.source[:,:,:,0]
+
+  def getphi(self):
+    'Returns the phi array without the guard cells'
+    return MultiGrid.getphi(self)[:,:,:]
+
+  def loadrho(self,lzero=None,**kw):
+    # --- top.laccumulate_rho is used as a flag by the implicit stepper.
+    # --- When true, the load rho is skipped - it is not needed at some
+    # --- points during a step.
+    if top.laccumulate_rho: return
+    MultiGrid.loadsource(self,lzero,**kw)
+
+  def fetche(self,*args,**kw):
+    # --- lresetparticlee is used as a flag in the implicit stepper.
+    # --- When false, skip the fetche since the field is calculated
+    # --- from existing data.
+    if not top.lresetparticlee: return
+    MultiGrid.fetchfield(self,*args,**kw)
+
+  def setsourcep(self,js,pgroup,zgrid):
+    n  = pgroup.nps[js]
+    if n == 0: return
+    i  = pgroup.ins[js] - 1
+    x  = pgroup.xp[i:i+n]
+    y  = pgroup.yp[i:i+n]
+    z  = pgroup.zp[i:i+n]
+    ux = zeros((0,), 'd')
+    uy = zeros((0,), 'd')
+    uz = pgroup.uzp[i:i+n]
+    gaminv = zeros((0,), 'd')
+    q  = pgroup.sq[js]
+    m  = pgroup.sm[js]
+    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
+    iimp = pgroup.iimplicit[js]
+    if top.wpid == 0: wght = zeros((0,), 'd')
+    else:             wght = pgroup.pid[i:i+n,top.wpid-1]
+    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid)
+
+  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,m,w,iimp,zgrid):
+    n  = len(x)
+    if n == 0: return
+    # --- Create a temporary array to pass into setrho3d. This contributes
+    # --- differently to the charge density and to chi. Also, make it a
+    # --- 3-D array so it is accepted by setrho3d.
+    sourcep = fzeros(self.sourcep.shape[:-1],'d')
+    if top.wpid == 0:
+      setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
+               self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+               self.solvergeom==w3d.RZgeom)
+    else:
+      # --- Need top.pid(:,top.wpid)
+      setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
+                self.nxp,self.nyp,self.nzp,self.dx,self.dy,self.dz,
+                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
+                self.solvergeom==w3d.RZgeom)
+    self.sourcep[...,0] += sourcep
+    if iimp >= 0:
+      # --- The extra terms convert rho to chi
+      self.sourcep[...,iimp+1] += 0.5*sourcep*q/m*top.dt**2/eps0
+
+  def setsourceforfieldsolve(self,*args):
+    # --- A separate copy is needed since self.source has an extra dimension
+    # --- which must be looped over.
+    SubcycledPoissonSolver.setsourceforfieldsolve(self,*args)
+    if self.lparallel:
+      SubcycledPoissonSolver.setsourcepforparticles(self,*args)
+      if isinstance(self.source,FloatType): return
+      if isinstance(self.sourcep,FloatType): return
+      for iimp in range(top.nsimplicit):
+        setrhoforfieldsolve3d(self.nx,self.ny,self.nzlocal,
+                              self.source[...,iimp],
+                              self.nxp,self.nyp,self.nzp,
+                              self.sourcep[...,iimp],
+                              self.nzpguard,
+                              self.my_index,self.nslaves,
+                              self.izpslave,self.nzpslave,
+                              self.izfsslave,self.nzfsslave)
+
+  def fetchpotentialfrompositions(self,x,y,z,potential):
+    n = len(x)
+    if n == 0: return
+    nx = self.nx + 2*self.nxguard
+    ny = self.ny + 2*self.nyguard
+    nzlocal = self.nzlocal + 2*self.nzguard
+    xmmin = self.xmmin - self.nxguard*self.dx
+    xmmax = self.xmmax + self.nxguard*self.dx
+    ymmin = self.ymmin - self.nyguard*self.dy
+    ymmax = self.ymmax + self.nyguard*self.dy
+    zmminlocal = self.zmminlocal - self.nzguard*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
+    getgrid3d(n,x,y,z,potential,nx,ny,nzlocal,self.potential,
+              xmmin,xmmax,ymmin,ymmax,zmminlocal,zmmaxlocal)
+
+  def dosolve(self,iwhich=0,*args):
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self.phi = self.potential
+    self.rho = self.source[...,0]
+    if isinstance(self.potential,FloatType): return
+
+    # --- Setup data for bends.
+    rstar = fzeros(3+self.nzlocal,'d')
+    if top.bends:
+
+      # --- This commented out code does the same thing as the line below
+      # --- setting linbend but is a bit more complicated. It is preserved
+      # --- in case of some unforeseen problem with the code below.
+      #ii = (top.cbendzs <= self.zmmax+zgrid and
+      #                     self.zmmin+zgrid <= top.cbendze)
+      #self.linbend = sometrue(ii)
+
+      setrstar(rstar,self.nzlocal,self.dz,self.zmminlocal,self.getzgrid())
+      self.linbend = min(rstar) < largepos
+
+    if self.izfsslave is None: self.izfsslave = top.izfsslave
+    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
+    mgiters = zeros(1)
+    mgerror = zeros(1,'d')
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
+    self.lbuildquads = false
+
+    # --- Setup implicit chi
+    qomdt = top.implicitfactor*top.dt # implicitfactor = q/m
+    #--- chi0 = 0.5*rho*q/m*top.dt**2/eps0
+    self.chi0 = self.source[...,1:]
+    # --- Kludge alart!!!
+    if self.chikludge:
+      for js in range(self.source.shape[-1]-1):
+        if maxnd(abs(self.chi0[...,js])) == 0.: continue
+        avechi = sumnd(self.chi0[...,js])/sumnd(where(self.chi0[...,js] == 0.,0.,1.))
+        self.chi0[...,js] = where(self.chi0[...,js]==0.,avechi,self.chi0[...,js])
+    """
+    # --- Test a linearly varying chi and parabolic phi
+    c1 = 10.
+    c2 = 2.
+    alpha = 10.
+    for iz in range(self.nzlocal+1):
+      self.chi0[...,iz] = (c1 + c2*self.zmesh[iz])
+      self.source[...,iz] = -(2.*alpha + 2.*c1*alpha + 4.*c2*alpha*w3d.zmesh[iz])*eps0
+    """
+
+    mgsolveimplicites3d(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
+                        self.dx,self.dy,self.dz*zfact,
+                        self.potential,self.rho,
+                        top.nsimplicit,qomdt,self.chi0,
+                        rstar,self.linbend,
+                        self.bounds,self.xmmin,self.ymmin,
+                        self.zmminlocal*zfact,self.zmmin*zfact,
+                        self.getzgrid()*zfact,self.getzgrid()*zfact,
+                        self.mgparam,mgiters,self.mgmaxiters,
+                        self.mgmaxlevels,mgerror,self.mgtol,
+                        self.mgverbose,
+                        self.downpasses,self.uppasses,
+                        self.lcndbndy,self.laddconductor,self.icndbndy,
+                        self.lbuildquads,self.gridmode,conductorobject,
+                        self.my_index,self.nslaves,
+                        self.izfsslave,self.nzfsslave)
+
+    self.mgiters = mgiters[0]
+    self.mgerror = mgerror[0]
+
 # --- This can only be done after MultiGrid is defined.
 try:
   psyco.bind(MultiGrid)
+  psyco.bind(MultiGridImplicit3D)
 except NameError:
   pass
+
 
