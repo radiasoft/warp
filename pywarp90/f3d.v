@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.182 $, $Date: 2007/10/24 20:53:13 $
+#@(#) File F3D.V, version $Revision: 3.183 $, $Date: 2007/11/16 00:55:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.182 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.183 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -265,6 +265,20 @@ multigrid2dsolve(iwhich:integer,nx:integer,nzlocal:integer,nz:integer,
    subroutine
    # Solves Poisson's equation in 2D using the multigrid method. All input is
    # through the argument list.
+mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,
+                    nz:integer,dx:real,dy:real,dz:real,phi:real,rho:real,
+                    ns:integer,qomdt:real,chi0:real,rstar:real,linbend:logical,
+                    bounds(0:5):integer,xmmin:real,ymmin:real,zmminlocal:real,
+                    zmmin:real,zbeam:real,zgrid:real,mgparam:real,
+                    mgiters:integer,mgmaxiters:integer,mgmaxlevels:integer,
+                    mgerror:real,mgtol:real,mgverbose:integer,
+                    downpasses:integer,uppasses:integer,lcndbndy:logical,
+                    laddconductor:logical,icndbndy:integer,lbuildquads:logical,
+                    gridmode:integer,conductors:ConductorType,my_index:integer,
+                    nslaves:integer,izfsslave:integer,nzfsslave:integer) 
+   subroutine
+   # Solves Poisson's equation in 3D using the multigrid method including
+   # the implicit susceptability. All input is through the argument list.
 residual(nx:integer,ny:integer,nzlocal:integer,nz:integer,
          dxsqi:real,dysqi:real,dzsqi:real,
          phi(0:nx,0:ny,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
@@ -774,176 +788,193 @@ setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz0:real,fuzz1:real,fuzzsign:integer,
                    dfill:real) subroutine
 zplaneconductorf(zcent:real,zsign:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zplaneconductord(zcent:real,zsign:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zplaneintercept(zcent:real,zsign:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 planeconductorf(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 planeconductord(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 planeintercept(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 boxconductord(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 boxintercept(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 cylinderconductorf(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 cylinderconductord(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 cylinderintercept(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 cylindersconductorf(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 cylindersconductord(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 cylindersintercept(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zcylinderintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zroundedcylinderconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zroundedcylinderconductord(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zroundedcylinderintercept(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zcylinderoutconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zcylinderoutconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zcylinderoutintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zroundedcylinderoutconductord(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zroundedcylinderoutintercept(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 sphereconductord(rad:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 sphereintercept(rad:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 coneconductorf(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 coneconductord(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 coneintercept(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 conesconductorf(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 conesconductord(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 conesintercept(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 ztorusconductord(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 ztorusintercept(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 beamletplateconductord(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 beamletplateintercept(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zsrfrvoutconductorf(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zsrfrvoutconductord(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zsrfrvoutintercept(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zsrfrvinconductorf(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zsrfrvinconductord(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zsrfrvinintercept(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 zsrfrvinoutconductorf(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
+        delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
+        fuzz:real) subroutine
 zsrfrvinoutconductord(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,distance:real) subroutine
+        n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
 zsrfrvinoutintercept(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
-        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 
 
@@ -1020,3 +1051,13 @@ timebvp3d                      real /0./
 timegetbforparticles3d         real /0./
 timegetaforfields3d            real /0./
 
+timegetbfieldsongrid3d real /0./
+timegetcoefficientsimplicites3d real /0./
+timegetcoefficientssubgridimplicites3d real /0./
+timemgsolveimplicites3d real /0./
+timevcycleimplicites3d real /0./
+timerelaximplicites3d real /0./
+timeresidualimplicites3d real /0./
+timeaverageperiodicphi3d real /0./
+timeapplyboundaryconditionses3d real /0./
+timeapplyparallelboundaryconditionses3d real /0./
