@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.14 2007/02/28 00:28:55 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.15 2007/11/16 01:09:56 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -68,7 +68,6 @@ def generate(command=None):
   #ruthere()
 
 def step(n=1,maxcalls=None,command=None):
-  b = wtime()
   if command is None:
     command = _getcommand('exe','step')
   if maxcalls is None: maxcalls = n
@@ -76,6 +75,7 @@ def step(n=1,maxcalls=None,command=None):
   ncalls = n
   top.ncall = 0
   while top.ncall < ncalls:
+    starttime = wtime()
     #setinterrupt()
     top.ncall = top.ncall + 1
 
@@ -100,9 +100,9 @@ def step(n=1,maxcalls=None,command=None):
 
     #ruthere()
 
-  # --- Get step time
-  a = wtime()
-  top.steptime = top.steptime + (a - b)
+    # --- Accumulate step time
+    endtime = wtime()
+    top.steptime += (endtime - starttime)
 
 def finish(command=None):
   #setinterrupt()
