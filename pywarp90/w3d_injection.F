@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.96 $, $Date: 2007/08/10 00:12:51 $
+c@(#) File w3d_injection.F, version $Revision: 1.97 $, $Date: 2007/11/19 23:04:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1453,6 +1453,7 @@ c           --- loop over species
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
               if (.not. pgroup%ldts(is-1)) cycle
+              if (ftinject(jsid+1,ij) == 0.) cycle
               fulldt_s    = dt*pgroup%ndts(is-1)*pgroup%dtscale(is)
               nti = 0
               qoverm = pgroup%sq(is)/pgroup%sm(is)
