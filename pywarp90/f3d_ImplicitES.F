@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.1 $, $Date: 2007/11/16 00:51:42 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.2 $, $Date: 2007/11/20 16:56:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -893,6 +893,7 @@ c=============================================================================
       integer(ISZ):: mglevel
       real(kind=8):: mgscale
       integer(ISZ):: nx,ny,nzlocal,nz,ns
+      integer(ISZ):: delx,dely,delz
       real(kind=8):: dx,dy,dz
       real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
@@ -908,7 +909,6 @@ c=============================================================================
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
-      integer(ISZ):: delx,dely,delz
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
