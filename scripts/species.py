@@ -562,10 +562,11 @@ in radius squared.
       if np == 0: return
 
     # --- The weights can be set now if needed (after clipping the positions).
+    # --- Note that rmax must be scaled out.
     if not lvariableweights:
       if top.wpid != 0: kw['w'] = 1.
     else:
-      kw['w'] = 2*sqrt(x**2 + y**2)
+      kw['w'] = 2*sqrt(x**2 + y**2)/rmax
 
     # --- Now the velocities are generated (after clipping the positions).
     vx = RandomArray.normal(vxmean,vthx,np)
