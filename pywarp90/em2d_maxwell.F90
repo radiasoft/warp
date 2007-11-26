@@ -39,27 +39,57 @@ TYPE(EM2D_FIELDtype) :: f
 dtsdx = dt/f%dx
 dtsdy = dt/f%dy
 
-! advance Bx
-do k = 1, f%ny+1
-  do j = 0, f%nx+1
-    f%Bx(j,k) = f%Bx(j,k) - dtsdy * (f%Ez(j,k)   - f%Ez(j,k-1)) 
+if (f%l_usecoeffs) then
+  ! advance Bx
+  do k = 1, f%ny+1
+    do j = 0, f%nx+1
+      f%Bx(j,k) = f%aBx(j,k)*f%Bx(j,k)  &
+                - f%bBx(j,k)*f%Ez(j,k)  &
+                - f%cBx(j,k)*f%Ez(j,k-1)
+    end do
   end do
-end do
 
-! advance By
-do k = 0, f%ny+1
-  do j = 1, f%nx+1
-    f%By(j,k) = f%By(j,k) + dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) 
+  ! advance By
+  do k = 0, f%ny+1
+    do j = 1, f%nx+1
+      f%By(j,k) = f%aBy(j,k)*f%By(j,k) &
+                + f%bBy(j,k)*f%Ez(j,k) &   
+                + f%cBy(j,k)*f%Ez(j-1,k)
+    end do
   end do
-end do
 
-! advance Bz 
-do k = 0, f%ny+1
-  do j = 0, f%nx+1
-    f%Bz(j,k) = f%Bz(j,k) - dtsdx * (f%Ey(j+1,k) - f%Ey(j,k)) &
-                          + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k))
+  ! advance Bz 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Bz(j,k) = f%aBz(j,k)*f%Bz(j,k)    &
+                - f%bBzx(j,k)*f%Ey(j+1,k) &
+                - f%cBzx(j,k)*f%Ey(j,k)   &
+                + f%bBzy(j,k)*f%Ex(j,k+1) &
+                + f%cBzy(j,k)*f%Ex(j,k)
+    end do
   end do
-end do
+else
+  ! advance Bx
+  do k = 1, f%ny+1
+    do j = 0, f%nx+1
+      f%Bx(j,k) = f%Bx(j,k) - dtsdy * (f%Ez(j,k)   - f%Ez(j,k-1)) 
+    end do
+  end do
+
+  ! advance By
+  do k = 0, f%ny+1
+    do j = 1, f%nx+1
+      f%By(j,k) = f%By(j,k) + dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) 
+    end do
+  end do
+  ! advance Bz 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Bz(j,k) = f%Bz(j,k) - dtsdx * (f%Ey(j+1,k) - f%Ey(j,k)) &
+                            + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k))
+    end do
+  end do
+end if
 
 ! add source term
 !if (l_elaser_out_plane) then
@@ -69,6 +99,41 @@ end do
   f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
   f%cst2 =  2.*dt/f%dx /(1.+dt*f%clight/f%dx)
 !end if
+
+if (f%dirprop/=0) then
+  ! advance Ez_s and Bz_sb
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+!      f%Bz_s(j,k) = f%Bz_s(j,k) - 2.*dtsdx * f%Ey_sbnd(j,k) &
+!                                + dtsdy * (f%Ex(j,k+1) - f%Ex(j,k)) 
+      f%By_sbnd(j,k) = f%cst1*f%By_sbnd(j,k) + f%cst2*f%Ez_s(j,k)
+    end do
+  end do
+  ! remove source term in forward or backward direction
+  if (f%dirprop==1 .and. .true.) then
+    do k = 0, f%ny+1
+      do j = 1, f%nx+1
+        f%By(j,k) = f%By(j,k) - dtsdx * (f%Ez(j,k)   - f%Ez(j-1,k)) &
+                              + dtsdx * (f%Ezx_s(j,k)   - f%Ezx_s(j-1,k)) &
+                              - f%dirprop*dtsdx * f%Ez_s(j,k) 
+      end do
+    end do
+!    do k = 1, f%ny+1
+!      do j = 0, f%nx+1
+!        f%Bx(j,k) = f%Bx(j,k) + 1.*dtsdy * (f%Ez_s(j,k)   - f%Ez_s(j,k-1)) 
+!      end do
+!    end do
+  end if
+  if (f%dirprop==-1 .and. .true.) then
+    do k = 0, f%ny+1
+      do j = 1, f%nx+1
+        f%By(j,k) = f%By(j,k) + f%dirprop*dtsdx * f%Ez_s(j,k) 
+      end do
+    end do
+  end if
+end if
+
+
 if (f%l_add_source) then
  if (.not.l_moving_window) then
   if(l_elaser_out_plane) then
@@ -157,6 +222,9 @@ INTEGER :: j, k
 real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
+real(kind=8) :: alpha = 0.5
+
+
 dtsdx = f%clight**2*dt/f%dx
 dtsdy = f%clight**2*dt/f%dy
 mudt  = f%mu0*f%clight**2*dt
@@ -179,30 +247,70 @@ if (f%l_apply_pml) then
   end if
 end if
 
-! advance Ex
-do k = 1, f%ny+1
-  do j = 0, f%nx+1
-    f%Ex(j,k) = f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) &
-                          - mudt  * f%J(j,k,1)
+if (f%l_usecoeffs) then
+  ! advance Ex
+  do k = 1, f%ny+1
+    do j = 0, f%nx+1
+      f%Ex(j,k) = f%aEx(j,k)*f%Ex(j,k)   &
+                + f%bEx(j,k)*f%Bz(j,k)   &
+                + f%cEx(j,k)*f%Bz(j,k-1) &
+                - f%Ex(j,k)*f%J(j,k,1)
+    end do
   end do
-end do
 
-! advance Ey
-do k = 0, f%ny+1
-  do j = 1, f%nx+1
-    f%Ey(j,k) = f%Ey(j,k) - dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k)) &
-                          - mudt  * f%J(j,k,2)
+  ! advance Ey
+  do k = 0, f%ny+1
+    do j = 1, f%nx+1
+      f%Ey(j,k) = f%aEy(j,k)*f%Ey(j,k)   &
+                - f%bEy(j,k)*f%Bz(j,k)   &
+                - f%cEy(j,k)*f%Bz(j-1,k) &
+                - f%dEy(j,k)*f%J(j,k,2)
+    end do
   end do
-end do
 
-! advance Ez 
-do k = 0, f%ny+1
-  do j = 0, f%nx+1
-    f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
-                          - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
-                          - mudt  * f%J(j,k,3)
+  ! advance Ez 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Ez(j,k) = f%aEz(j,k)*f%Ez(j,k)    &
+                + f%bEzx(j,k)*f%By(j+1,k) &
+                + f%cEzx(j,k)*f%By(j,k)   &
+                - f%bEzy(j,k)*f%Bx(j,k+1) &
+                - f%cEzy(j,k)*f%Bx(j,k)   &
+                - f%dEz(j,k)*f%J(j,k,3)
+    end do
   end do
-end do
+else
+  ! advance Ex
+  do k = 1, f%ny+1
+    do j = 0, f%nx+1
+      f%Ex(j,k) = f%Ex(j,k) + dtsdy * (f%Bz(j,k)   - f%Bz(j,k-1)) &
+                            - mudt  * f%J(j,k,1)
+    end do
+  end do
+
+  ! advance Ey
+  do k = 0, f%ny+1
+    do j = 1, f%nx+1
+      f%Ey(j,k) = f%Ey(j,k) - dtsdx * (f%Bz(j,k)   - f%Bz(j-1,k)) &
+                            - mudt  * f%J(j,k,2)
+    end do
+  end do
+
+  ! advance Ez 
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      if (j==1 .or. j==f%nx+1) then 
+      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
+                            - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            - mudt  * f%J(j,k,3)
+      else
+      f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
+                            - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            - mudt  * ((1.-2.*alpha)*f%J(j,k,3)+alpha*(f%J(j+1,k,3)+f%J(j-1,k,3)))
+      end if      
+    end do
+  end do
+end if
 
 !if (l_elaser_out_plane) then
 !  f%cst1 = (1.-dt*f%clight/f%dy)/(1.+dt*f%clight/f%dy)
@@ -211,6 +319,41 @@ end do
   f%cst1 = (1.-dt*f%clight/f%dx)/(1.+dt*f%clight/f%dx)
   f%cst2 =  f%clight**2*2.*dt/f%dx /(1.+dt*f%clight/f%dx)
 !end if
+
+if (f%dirprop/=0) then
+  ! advance Ez_s and Bz_sb
+  do k = 0, f%ny+1
+    do j = 0, f%nx+1
+      f%Ez_s(j,k) = f%Ez_s(j,k) - 2.*dtsdx * f%By_sbnd(j,k) &
+!                                - 1.*dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                                - mudt  * f%J(j,k,3)   
+      f%Ey_sbnd(j,k) = f%cst1*f%Ey_sbnd(j,k) + f%cst2*f%Bz_s(j,k)
+      f%Ezx_s(j,k) = f%Ezx_s(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
+                            - 0.5*dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            - 0.5*mudt  * f%J(j,k,3)
+      f%Ez(j,k) = f%Ez(j,k)  &
+!                            + 0.5*dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
+                            + 0.5*mudt  * f%J(j,k,3)
+      f%Ezx_s(j,k) = f%Ez(j,k)
+    end do
+  end do
+  ! remove source term in forward or backward direction
+  if (f%dirprop==1 .and. .true.) then
+    do k = 0, f%ny+1
+      do j = 1, f%nx+1
+        f%Ey(j,k) = f%Ey(j,k) + f%dirprop*dtsdx * f%Bz_s(j,k) 
+      end do
+    end do
+  end if
+  if (f%dirprop==-1 .and. .true.) then
+    do k = 0, f%ny+1
+      do j = 1, f%nx+1
+        f%Ey(j,k) = f%Ey(j,k) - f%dirprop*dtsdx * f%Bz_s(j-1,k) 
+      end do
+    end do
+  end if
+end if
+
 if (f%l_add_source .and. .not.l_moving_window .and. .not. l_elaser_out_plane) then
     ! Evaluate Ex and Ey source
     do k = 1, f%ny+1
@@ -1538,6 +1681,7 @@ INTEGER(ISZ), INTENT(IN) :: nx, ny, rap
 INTEGER(ISZ), INTENT(IN) :: nbndx, nbndy, xlb, ylb, xrb, yrb
 REAL(kind=8), INTENT(IN) :: dt, dx, dy, xmin, ymin, clight, mu0
 INTEGER :: k,m
+real(kind=8) :: dtsdx, dtsdy, mudt
 
 !f => NewEM2D_FIELDType()
 if(l_pml_cummer) then
@@ -1587,6 +1731,11 @@ else
   call create_bnd(f%bndbxbyez, nx, ny, nbndx=nbndx, nbndy=nbndy, dt=dt*clight, dx=dx, dy=dy, xbnd=xlb, ybnd=ylb)
 end if
 
+if (f%l_usecoeffs) then
+  f%nxcoeffs = f%nx
+  f%nycoeffs = f%ny
+end if
+
   call EM2D_FIELDtypeallot(f)
 
 
@@ -1612,6 +1761,38 @@ f%xlbound = xlb
 f%xrbound = xrb
 f%ylbound = ylb
 f%yrbound = yrb
+
+mudt  = f%mu0*f%clight**2*dt
+dtsdx = dt/f%dx
+dtsdy = dt/f%dy
+
+if (f%l_usecoeffs) then
+  f%aEx (:,:) = 1.
+  f%bEx (:,:) = dtsdy*f%clight**2
+  f%cEx (:,:) = -dtsdy*f%clight**2
+  f%dEx (:,:) = mudt
+  f%aEy (:,:) = 1.
+  f%bEy (:,:) = dtsdx*f%clight**2
+  f%cEy (:,:) = -dtsdx*f%clight**2
+  f%dEy (:,:) = mudt
+  f%aEz (:,:) = 1.
+  f%bEzx(:,:) = dtsdx*f%clight**2
+  f%cEzx(:,:) = -dtsdx*f%clight**2
+  f%bEzy(:,:) = dtsdy*f%clight**2
+  f%cEzy(:,:) = -dtsdy*f%clight**2
+  f%dEz (:,:) = mudt
+  f%aBx (:,:) = 1.
+  f%bBx (:,:) = dtsdy*0.5
+  f%cBx (:,:) = -dtsdy*0.5
+  f%aBy (:,:) = 1.
+  f%bBy (:,:) = dtsdx*0.5
+  f%cBy (:,:) = -dtsdx*0.5
+  f%aBz (:,:) = 1.
+  f%bBzx(:,:) = dtsdx*0.5
+  f%cBzx(:,:) = -dtsdx*0.5
+  f%bBzy(:,:) = dtsdy*0.5
+  f%cBzy(:,:) = -dtsdy*0.5
+end if
 
 return
 
