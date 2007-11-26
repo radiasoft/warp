@@ -5,7 +5,7 @@ from warp import *
 from generateconductors import *
 import timing as t
 
-particlescraper_version = "$Id: particlescraper.py,v 1.67 2007/11/07 01:03:44 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.68 2007/11/26 18:06:18 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -660,6 +660,7 @@ after load balancing."""
         yo = take(top.pidlost[:,self.yoldpid],ic)
         zo = take(top.pidlost[:,self.zoldpid],ic)
 
+        dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]
         if self.lrefineintercept:
           uxo = take(top.pidlost[:,self.uxoldpid],ic)
           uyo = take(top.pidlost[:,self.uyoldpid],ic)
@@ -671,13 +672,12 @@ after load balancing."""
           by = take(top.bylost,ic)
           bz = take(top.bzlost,ic)
           itime = zeros(len(ic),'d')
-          dt = top.dt*top.pgroup.ndts[js]*top.pgroup.dtscale[js]*ones(len(ic))
+          dt *= ones(len(ic))
           q = top.pgroup.sq[js]
           m = top.pgroup.sm[js]
           self.refineintercept(c,xc,yc,zc,xo,yo,zo,uxo,uyo,uzo,ex,ey,ez,bx,by,bz,itime,dt,q,m,0)
         else:
           itime = 0.
-          dt = top.dt
 
         if self.lrefineallintercept:
           # --- In this case, the old and new positions are the points
