@@ -107,6 +107,10 @@ TYPE(BNDtype), POINTER :: b
   bg%xmin=rmin
   bg%xmax=rmin+nr*dr
   bg%nz=nz
+  if(l_bgrid) then
+    bg%nrb=bg%nr
+    bg%nzpb=bg%nzp
+  end if
 #ifdef MPIPARALLEL
 !  bg%zminp=zpslmin(my_index)
   if(bg%l_parallel) then
@@ -333,6 +337,10 @@ REAL(8) :: dr,dz,rmin,zmin
   g%nrpar = 0
   g%nzpar = 0
 #endif
+  if(l_bgrid) then
+    g%nrb=g%nr
+    g%nzpb=g%nzp
+  end if
   call GRIDtypeallot(g)
   g%gid=ngrids+1
 !  IF(n_avail_ids==0) then
@@ -5107,9 +5115,9 @@ real(8),allocatable :: phisave(:,:)
 return
 END subroutine find_mgparam_rz_1grid
 
-function time_field_solve(grid,lsavephi,phisave)
+function time_field_solve_orig(grid,lsavephi,phisave)
 implicit none
-REAL(8) :: time_field_solve
+REAL(8) :: time_field_solve_orig
 TYPE(GRIDtype):: grid
 logical(ISZ):: lsavephi
 real(8):: phisave(:,:)
@@ -5134,7 +5142,58 @@ REAL(8), EXTERNAL :: wtime
   beforetime = wtime()
   call solve_multigridrz(grid=grid, accuracy=mgridrz_accuracy, l_for_timing=.true.)
   aftertime = wtime()
-  time_field_solve = aftertime - beforetime
+  time_field_solve_orig = aftertime - beforetime
+#ifdef MPIPARALLEL
+  if(grid%l_parallel) time_field_solve_orig = mpi_global_compute_real(time_field_solve_orig,MPI_MAX)
+#endif
+
+  return
+END function time_field_solve_orig
+
+function time_field_solve(grid,lsavephi,phisave)
+implicit none
+REAL(8) :: time_field_solve
+TYPE(GRIDtype):: grid
+logical(ISZ):: lsavephi
+real(8):: phisave(:,:)
+
+INTEGER(ISZ) :: ixmax, izmin, izmax, n, i
+REAL(8) :: beforetime, aftertime
+REAL(8), EXTERNAL :: wtime
+
+  ixmax = grid%nr+1
+  izmin = 1
+  izmax = grid%nz+1
+  IF(grid%ixrbnd==dirichlet .or. grid%ixrbnd==patchbnd) ixmax=ixmax-1
+  IF(grid%izlbnd==dirichlet .or. grid%izlbnd==patchbnd) izmin=izmin+1
+  IF(grid%izrbnd==dirichlet .or. grid%izrbnd==patchbnd) izmax=izmax-1
+
+  time_field_solve = 0.
+  n = 0
+  do while(time_field_solve<0.1)
+    n=n+1
+    beforetime = wtime()
+    do i = 1, n
+      if (lsavephi) then
+        grid%phi = phisave
+      else
+        grid%phi(1:ixmax,izmin:izmax)=0.
+      end if
+      call solve_multigridrz(grid=grid, accuracy=mgridrz_accuracy, l_for_timing=.true.)
+    end do
+    aftertime = wtime()
+    time_field_solve = time_field_solve + aftertime - beforetime
+  end do
+  beforetime = wtime()
+  do i = 1, n
+    if (lsavephi) then
+      grid%phi = phisave
+    else
+      grid%phi(1:ixmax,izmin:izmax)=0.
+    end if
+  end do
+  aftertime = wtime()
+  time_field_solve = (time_field_solve+ aftertime - beforetime)/n
 #ifdef MPIPARALLEL
   if(grid%l_parallel) time_field_solve = mpi_global_compute_real(time_field_solve,MPI_MAX)
 #endif
@@ -8785,6 +8844,169 @@ END if
 
 return
 end subroutine fieldweightxz
+
+subroutine fieldweightxzb(xp,zp,bx,bz,np,zgrid,efetch)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: bx, bz
+REAL(8), INTENT(IN) :: zgrid
+INTEGER(ISZ), INTENT(IN) :: efetch
+
+REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, zmin0, bxt, bzt, tot
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+TYPE(GRIDtype), pointer :: g
+
+!if (.not. l_get_fields_on_grid) then 
+!  call fieldweightxzfromphi(xp,zp,bx,bz,np,zgrid,efetch)
+!  return
+!end if
+
+IF( solvergeom==XYgeom) then
+  zmin0 = 0.
+else ! solvergeom=XZgeom
+  zmin0 = zgrid
+END if
+
+IF(ngrids>1 .and. .not.l_get_field_from_base) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    igrid = 1
+    g => basegrid
+    ingrid=.false.
+    if(l4symtry) then
+      rpos = (ABS(xp(i))-g%xmin)*g%invdr
+    else
+      rpos = (xp(i)-g%xmin)*g%invdr
+    end if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-g%zminp-zmin0)*g%invdz
+    else
+      zpos = (zp(i)-g%zminp-zmin0)*g%invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(g%loc_part_fd(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = g%loc_part_fd(jn,ln)
+        g=>grids_ptr(igrid)%grid
+        if(l4symtry) then
+          rpos = (ABS(xp(i))-g%xmin)*g%invdr
+        else
+          rpos = (xp(i)-g%xmin)*g%invdr
+        end if
+        IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+          zpos = (ABS(zp(i))-g%zminp-zmin0)*g%invdz
+        else
+          zpos = (zp(i)-g%zminp-zmin0)*g%invdz
+        END if
+        jn = 1+INT(rpos)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    bxt=0.
+    bzt=0.
+    tot=0.
+    if (g%bndfirst%v(jn,ln)/=v_cond) then
+      bxt=bxt+oddr*oddz*g%brp(jn,ln)
+      bzt=bzt+oddr*oddz*g%bzp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (g%bndfirst%v(jn+1,ln)/=v_cond) then
+      bxt=bxt+ddr*oddz*g%brp(jn+1,ln)
+      bzt=bzt+ddr*oddz*g%bzp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (g%bndfirst%v(jn,ln+1)/=v_cond) then
+      bxt=bxt+oddr*ddz*g%brp(jn,ln+1)
+      bzt=bzt+oddr*ddz*g%bzp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (g%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      bxt=bxt+ddr*ddz*g%brp(jn+1,ln+1)
+      bzt=bzt+ddr*ddz*g%bzp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      bxt=bxt/tot
+      bzt=bzt/tot
+    endif  
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      IF(zp(i)<0.) bzt = -bzt
+    END if
+    bx(i) = bx(i) + bxt
+    bz(i) = bz(i) + bzt
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    ingrid=.false.
+    if(l4symtry) then
+      rpos = (ABS(xp(i))-basegrid%xmin)*basegrid%invdr
+    else
+      rpos = (xp(i)-basegrid%xmin)*basegrid%invdr
+    end if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      zpos = (ABS(zp(i))-basegrid%zminp-zmin0)*basegrid%invdz
+    else
+      zpos = (zp(i)-basegrid%zminp-zmin0)*basegrid%invdz
+    END if
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    bxt=0.
+    bzt=0.
+    tot=0.
+    if (basegrid%bndfirst%v(jn,ln)/=v_cond) then
+      bxt=bxt+oddr*oddz*basegrid%brp(jn,ln)
+      bzt=bzt+oddr*oddz*basegrid%bzp(jn,ln)
+      tot=tot+oddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln)/=v_cond) then
+      bxt=bxt+ddr*oddz*basegrid%brp(jn+1,ln)
+      bzt=bzt+ddr*oddz*basegrid%bzp(jn+1,ln)
+      tot=tot+ddr*oddz
+    endif
+    if (basegrid%bndfirst%v(jn,ln+1)/=v_cond) then
+      bxt=bxt+oddr*ddz*basegrid%brp(jn,ln+1)
+      bzt=bzt+oddr*ddz*basegrid%bzp(jn,ln+1)
+      tot=tot+oddr*ddz
+    endif
+    if (basegrid%bndfirst%v(jn+1,ln+1)/=v_cond) then
+      bxt=bxt+ddr*ddz*basegrid%brp(jn+1,ln+1)
+      bzt=bzt+ddr*ddz*basegrid%bzp(jn+1,ln+1)
+      tot=tot+ddr*ddz
+    endif
+    if (tot>0.) then
+      bxt=bxt/tot
+      bzt=bzt/tot
+    endif  
+    IF(l4symtry) then
+      IF(xp(i)<0.) bxt = -bxt
+    END if
+    IF((l2symtry .or. l4symtry) .and. solvergeom==XYgeom) then
+      IF(zp(i)<0.) bzt = -bzt
+    END if
+    bx(i) = bx(i) + bxt
+    bz(i) = bz(i) + bzt
+  END do
+END if
+
+return
+end subroutine fieldweightxzb
 
 subroutine fieldweightxzfromphi(xp,zp,ex,ez,np,zgrid,efetch)
 USE multigridrz
