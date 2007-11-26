@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.151 2007/11/05 23:49:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.152 2007/11/26 16:01:45 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -1153,3 +1153,12 @@ initial_global_dict_keys.remove('registeredsolverscontainer')
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
 warpversions = versionstext()
+
+def setzdiagsflag(flag):
+  w3d.lsrhoax3d=flag
+  w3d.lgtlchg3d=flag
+  w3d.lgetvzofz=flag
+  w3d.lgetese3d=flag
+  w3d.lsphiax3d=flag
+  w3d.lsezax3d =flag
+  w3d.lsetcurr =flag
