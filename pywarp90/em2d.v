@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.13 $, $Date: 2007/09/20 16:53:44 $
+#@(#) File EM2D.V, version $Revision: 1.14 $, $Date: 2007/11/26 19:59:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -181,6 +181,8 @@ nx integer
 ny integer
 nxi integer
 nyi integer
+nxcoeffs integer
+nycoeffs integer
 nxcopy integer 
 nycopy integer 
 xmin real
@@ -204,10 +206,11 @@ xlbound                      integer /0/
 xrbound                      integer /0/
 ylbound                      integer /0/
 yrbound                      integer /0/
-l_apply_pml logical /.true./
-l_add_source logical /.true./
-l_overcycle_ions logical /.true./
-l_addpatchresidual           logical /.false./
+l_apply_pml        logical /.true./
+l_add_source       logical /.true./
+l_overcycle_ions   logical /.true./
+l_addpatchresidual logical /.false./
+l_usecoeffs        logical /.false./
 ntemp integer
 ipulse integer /1/
 npulse integer
@@ -225,6 +228,31 @@ Ez(0:nx+3,0:ny+2) _real
 Bx(0:nx+3,0:ny+2) _real
 By(0:nx+3,0:ny+2) _real
 Bz(0:nx+3,0:ny+2) _real
+aEx(0:nxcoeffs+3,0:nycoeffs+2) _real
+bEx(0:nxcoeffs+3,0:nycoeffs+2) _real
+cEx(0:nxcoeffs+3,0:nycoeffs+2) _real
+dEx(0:nxcoeffs+3,0:nycoeffs+2) _real
+aEy(0:nxcoeffs+3,0:nycoeffs+2) _real
+bEy(0:nxcoeffs+3,0:nycoeffs+2) _real
+cEy(0:nxcoeffs+3,0:nycoeffs+2) _real
+dEy(0:nxcoeffs+3,0:nycoeffs+2) _real
+aEz(0:nxcoeffs+3,0:nycoeffs+2) _real
+bEzx(0:nxcoeffs+3,0:nycoeffs+2) _real
+cEzx(0:nxcoeffs+3,0:nycoeffs+2) _real
+bEzy(0:nxcoeffs+3,0:nycoeffs+2) _real
+cEzy(0:nxcoeffs+3,0:nycoeffs+2) _real
+dEz(0:nxcoeffs+3,0:nycoeffs+2) _real
+aBx(0:nxcoeffs+3,0:nycoeffs+2) _real
+bBx(0:nxcoeffs+3,0:nycoeffs+2) _real
+cBx(0:nxcoeffs+3,0:nycoeffs+2) _real
+aBy(0:nxcoeffs+3,0:nycoeffs+2) _real
+bBy(0:nxcoeffs+3,0:nycoeffs+2) _real
+cBy(0:nxcoeffs+3,0:nycoeffs+2) _real
+aBz(0:nxcoeffs+3,0:nycoeffs+2) _real
+bBzx(0:nxcoeffs+3,0:nycoeffs+2) _real
+cBzx(0:nxcoeffs+3,0:nycoeffs+2) _real
+bBzy(0:nxcoeffs+3,0:nycoeffs+2) _real
+cBzy(0:nxcoeffs+3,0:nycoeffs+2) _real
 Excopy(0:nxcopy+3,0:nycopy+2) _real
 Eycopy(0:nxcopy+3,0:nycopy+2) _real
 Bzcopy(0:nxcopy+3,0:nycopy+2) _real
@@ -245,6 +273,15 @@ Ex_in(0:ny+2) _real
 Ez_in(0:ny+2) _real
 By_in(0:ny+2) _real
 Bx_in(0:ny+2) _real
+nxs integer
+nys integer
+dirprop integer /0/ # if 1 or -1, will suppress forward/backward emission
+Ez_s(0:nxs+3,0:nys+2) _real
+Ezx_s(0:nxs+3,0:nys+2) _real
+Bz_s(0:nxs+3,0:nys+2) _real
+Bzx_s(0:nxs+3,0:nys+2) _real
+Ey_sbnd(0:nxs+3,0:nys+2) _real
+By_sbnd(0:nxs+3,0:nys+2) _real
 laser_profile(0:ny+3) _real
 temp(0:ntemp) _real
 tpulse(0:npulse+1) _real
