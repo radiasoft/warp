@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.183 $, $Date: 2007/11/16 00:55:42 $
+#@(#) File F3D.V, version $Revision: 3.184 $, $Date: 2007/11/26 17:05:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.183 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.184 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -501,6 +501,10 @@ lanalyticbtheta logical /.false./ # When true, Btheta is calculated from Jz
 j(0:2,0:nx,0:ny,0:nzlocal) _real # Current density
 b(0:2,0:nx,0:ny,0:nzlocal) _real # B field, calculated from B = del cross A
 a(0:2,-1:nx+1,-1:ny+1,-1:nzlocal+1) _real
+nxold     integer  /0/  # Number of grid cells in x in B grid
+nyold     integer  /0/  # Number of grid cells in y in B grid
+nzold     integer  /0/  # Number of grid cells in z in B grid
+aold(0:2,-1:nxold+1,-1:nyold+1,-1:nzold+1) _real
   # Vector magnetic potential, calculated from del sq A = J
 
 attx(0:nx-1)     _real           # Attenuation factor as fcn. of kx
@@ -781,7 +785,7 @@ vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
        scrtch:real,xmmax:real,zmmin:real,zgrid:real,
        pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # External routine for capacity matrix field solve
-
+     
 ******** ConductorGeometryGenerators:
 solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4:complex) subroutine
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
