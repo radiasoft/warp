@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.203 2007/10/30 21:00:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.204 2007/11/26 16:06:29 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1999,6 +1999,20 @@ def ppzvz(iw=0,**kw):
                    kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
+
+##########################################################################
+def ppzuz(iw=0,**kw):
+  "Plots Z-Uz"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzuz,(iw,),kw): return
+  kw.setdefault('local',0)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0,**kw)
+  settitles("Uz vs Z","Z","Uz",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getuz(ii=ii,gather=0,**kw),getz(ii=ii,gather=0,**kw),
+                   kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzuz.__doc__ = ppzuz.__doc__ + ppgeneric_doc('z',"uz")
 
 ##########################################################################
 def ppzvr(iw=0,**kw):
