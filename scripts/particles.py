@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.62 2007/10/29 23:33:34 dave Exp $"
+particles_version = "$Id: particles.py,v 1.63 2007/11/26 18:04:16 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -1231,10 +1231,12 @@ def getvzrange(kwdict={}):
 
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
-def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=0.,w=1.,js=0,sid=None,
+def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,
+                 pid=0.,w=1.,js=0,sid=None,
                  lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false,
-                 pgroup=None):
+                 pgroup=None,
+                 ex=0.,ey=0.,ez=0.,bx=0.,by=0.,bz=0.,lfields=false):
   """
 Adds particles to the simulation
   x,y,z,vx,vy,vz,gi: particle coordinates and velocities. Can be a arrays or
@@ -1281,6 +1283,18 @@ Adds particles to the simulation
   except TypeError: lengi = 1
   try:              lenpid = len(pid)
   except TypeError: lenpid = 1
+  try:              lenex = len(ex)
+  except TypeError: lenex = 1
+  try:              leney = len(ey)
+  except TypeError: leney = 1
+  try:              lenez = len(ez)
+  except TypeError: lenez = 1
+  try:              lenbx = len(bx)
+  except TypeError: lenbx = 1
+  try:              lenby = len(by)
+  except TypeError: lenby = 1
+  try:              lenbz = len(bz)
+  except TypeError: lenbz = 1
 
   # --- If any of the inputs are arrays that are zero length, then return
   if (lenx == 0 or leny == 0 or lenz == 0 or
@@ -1297,6 +1311,12 @@ Adds particles to the simulation
   assert lenvz==maxlen or lenvz==1,"Length of vz doesn't match len of others"
   assert lengi==maxlen or lengi==1,"Length of gi doesn't match len of others"
   assert lenpid==maxlen or lenpid==1,"Length of pid doesn't match len of others"
+  assert lenex==maxlen or lenex==1,"Length of ex doesn't match len of others"
+  assert leney==maxlen or leney==1,"Length of ey doesn't match len of others"
+  assert lenez==maxlen or lenez==1,"Length of ez doesn't match len of others"
+  assert lenbx==maxlen or lenbx==1,"Length of bx doesn't match len of others"
+  assert lenby==maxlen or lenby==1,"Length of by doesn't match len of others"
+  assert lenbz==maxlen or lenbz==1,"Length of bz doesn't match len of others"
 
   # --- Convert all to arrays of length maxlen, broadcasting scalars
   x = array(x)*ones(maxlen,'d')
@@ -1305,6 +1325,12 @@ Adds particles to the simulation
   vx = array(vx)*ones(maxlen,'d')
   vy = array(vy)*ones(maxlen,'d')
   vz = array(vz)*ones(maxlen,'d')
+  ex = array(ex)*ones(maxlen,'d')
+  ey = array(ey)*ones(maxlen,'d')
+  ez = array(ez)*ones(maxlen,'d')
+  bx = array(bx)*ones(maxlen,'d')
+  by = array(by)*ones(maxlen,'d')
+  bz = array(bz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
   pid = array(pid)*ones([maxlen,top.npid],'d')
   w = array(w)*ones(maxlen,'d')
@@ -1340,10 +1366,9 @@ Adds particles to the simulation
     print "=================================================================="
 
   if pgroup is None: pgroup = top.pgroup
-
   # --- Now data can be passed into the fortran addparticles routine.
-  addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,
-          lallindomain,zmmin,zmmax,lmomentum)
+  addpart(pgroup,maxlen,top.npid,x,y,z,vx,vy,vz,gi,ex,ey,ez,bx,by,bz,pid,js+1,
+          lallindomain,zmmin,zmmax,lmomentum,lfields)
  
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp(top.pgroup)
