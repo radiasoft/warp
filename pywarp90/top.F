@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.215 $, $Date: 2007/10/29 20:37:25 $
+c@(#) File TOP.F, version $Revision: 3.216 $, $Date: 2007/11/26 16:41:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1925,6 +1925,85 @@ c         --- End of Z moments accumulation
       return
       end
 c=============================================================================
+      subroutine get_zmmnts_stations(ns,jslist,pgroup,nstations,zmin,zmax,vfrm,
+     &           pnum,xbar,ybar,xpbar,ypbar,x2,y2,xp2,yp2,xxp,yyp)
+      use ParticleGroupmodule
+      use Particles, only: xoldpid, yoldpid, zoldpid, uxoldpid, uyoldpid, uzoldpid, wpid
+      use InGen, only: dt
+      use PicGlb, only: time
+      
+c     --- arguments
+      integer(ISZ) :: ns, nstations, jslist(ns)
+      real(kind=8) :: zmin, zmax, vfrm
+      real(kind=8), dimension(nstations) :: pnum,xbar,ybar,xpbar,ypbar,x2,y2,xp2,yp2,xxp,yyp
+      type(ParticleGroup):: pgroup
+      
+c     --- local variables
+      integer(ISZ) :: j,ip,is,iz,izo,ist
+      real(kind=8) :: dz,z,zo,ddz,sw,swo,zs,x,y,xo,yo,vx,vy,vz,xp,yp,w,
+     &                vxo,vyo,vzo,xpo,ypo
+      
+      dz = (zmax-zmin)/nstations
+      do j=1,ns
+        is=jslist(j)+1
+        do ip = pgroup%ins(is), pgroup%ins(is) + pgroup%nps(is) - 1
+          z  = pgroup%zp(ip)-vfrm*time
+          zo = pgroup%pid(ip,zoldpid)-vfrm*(time-dt*pgroup%ndts(is))
+          iz = int((z-zmin)/dz)
+          izo = int((zo-zmin)/dz)
+          if(iz==izo) cycle
+          ddz = z-zo
+          if(ddz>0.) then
+            ist = iz+1
+            zs = zmin+(ist-1)*dz
+            sw = (zs-zo)/ddz
+          else
+            ist = izo+1
+            zs = zmin+(ist-1)*dz
+            sw = (zo-zs)/ddz
+          end if
+          if (ist<1 .or. ist>nstations) cycle 
+          swo = 1.-sw
+          x  = pgroup%xp(ip)
+          y  = pgroup%yp(ip)
+          xo = pgroup%pid(ip,xoldpid)
+          yo = pgroup%pid(ip,yoldpid)
+c          vx=(x-xo)/(dt*pgroup%ndts(is))
+c          vy=(y-yo)/(dt*pgroup%ndts(is))
+c          vz=(z-zo)/(dt*pgroup%ndts(is))
+          vx  = pgroup%uxp(ip)
+          vy  = pgroup%uyp(ip)
+          vz  = pgroup%uzp(ip)
+          vxo = pgroup%pid(ip,uxoldpid)
+          vyo = pgroup%pid(ip,uyoldpid)
+          vzo = pgroup%pid(ip,uzoldpid)
+          xp=vx/vz
+          yp=vy/vz
+          xpo=vxo/vzo
+          ypo=vyo/vzo
+          x = sw*x + swo*xo
+          y = sw*y + swo*yo
+          xp = sw*xp + swo*xpo
+          yp = sw*yp + swo*ypo
+          w = pgroup%sw(is)
+          if(wpid>0) w = w*pgroup%pid(ip,wpid)
+          pnum (ist) = pnum (ist) + w
+          xbar (ist) = xbar (ist) + w*x
+          ybar (ist) = ybar (ist) + w*y
+          xpbar(ist) = xpbar(ist) + w*xp
+          ypbar(ist) = ypbar(ist) + w*yp
+          x2   (ist) = x2   (ist) + w*x*x
+          y2   (ist) = y2   (ist) + w*y*y
+          xp2  (ist) = xp2  (ist) + w*xp*xp
+          yp2  (ist) = yp2  (ist) + w*yp*yp
+          xxp  (ist) = xxp  (ist) + w*x*xp
+          yyp  (ist) = yyp  (ist) + w*y*yp
+        end do
+      end do
+
+      return
+      end subroutine get_zmmnts_stations
+c=============================================================================
       subroutine getextrapolatedparticles(ipmin,np,pgroup,npid,
      &                                    dt,uxpo,uypo,uzpo,isid,time,zbeam)
       use ParticleGroupmodule
@@ -2232,6 +2311,79 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       endif
 
       endif
+
+      return
+      end
+!=============================================================================
+      subroutine setu_in_boosted_frame3d(np,uxp,uyp,uzp,gaminv,uxf,uyf,uzf,gammaf)
+! --- Computes u={uxp,uyp,uzp} in boosted frame {uxf,uyf,uzf}
+      use Constant
+      integer(ISZ):: np
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: uxf(np),uyf(np),uzf(np),gammaf(np)
+      
+      integer(ISZ) :: ip
+      real(kind=8):: gammapr,vx,vy,vz,v,vvp_x,vvp_y,vvp_z,vvp,vvvp_x,vvvp_y,vvvp_z,vvvp
+      real(kind=8):: vxp,vyp,vzp,vp_par,vp_perp,vpr_par,vpr_perp,gaminvf,const,invclightsq
+      logical(ISZ):: l_vperp
+      invclightsq = 1./(clight*clight)
+      do ip=1,np
+        if(gammaf(ip)<1.00000001) cycle
+        
+!  --- get velocities
+        vxp = uxp(ip)*gaminv(ip)
+        vyp = uyp(ip)*gaminv(ip)
+        vzp = uzp(ip)*gaminv(ip)
+
+        gaminvf = 1./gammaf(ip)
+        vx=uxf(ip)*gaminvf
+        vy=uyf(ip)*gaminvf
+        vz=uzf(ip)*gaminvf
+        const = 1./(1.-(vxp*vx+vyp*vy+vzp*vz)*invclightsq)         
+
+!   --- get vnit vector v
+        v = sqrt(vx*vx+vy*vy+vz*vz)
+        vx = vx/v; vy = vy/v; vz = vz/v
+        
+!   --- get vnit vector v x vp
+        vvp_x = vy*vzp-vz*vyp
+        vvp_y = vz*vxp-vx*vzp
+        vvp_z = vx*vyp-vy*vxp
+        vvp = sqrt(vvp_x*vvp_x+vvp_y*vvp_y+vvp_z*vvp_z)
+!        if(vvp<1.e-10*v) then
+        if(vvp==0.) then
+          l_vperp=.false.
+        else
+          l_vperp=.true.
+        end if
+        if(l_vperp) then
+          vvp_x = vvp_x/vvp; vvp_y = vvp_y/vvp; vvp_z = vvp_z/vvp
+ 
+!   --- get vnit vector v x (v x vp)
+          vvvp_x = vy*vvp_z-vz*vvp_y
+          vvvp_y = vz*vvp_x-vx*vvp_z
+          vvvp_z = vx*vvp_y-vy*vvp_x
+          vvvp = sqrt(vvvp_x*vvvp_x+vvvp_y*vvvp_y+vvvp_z*vvvp_z)
+          vvvp_x = vvvp_x/vvvp; vvvp_y = vvvp_y/vvvp; vvvp_z = vvvp_z/vvvp
+        end if
+        
+ ! get particle velocity vp in base {v,v x (v x vp)}, i.e. {v_par,v_perp}
+        vp_par  = vxp*vx + vyp*vy + vzp*vz 
+        if(l_vperp) vp_perp = vxp*vvvp_x + vyp*vvvp_y + vzp*vvvp_z 
+        vpr_par = (vp_par-v)*const
+        const = const*gaminvf
+        if(l_vperp) then
+          vpr_perp = vp_perp*const
+        else
+          vpr_perp = 0.
+        endif
+        gammapr = 1./sqrt(1.-(vpr_par**2+vpr_perp**2)*invclightsq)
+        uxp(ip) = (vpr_par*vx+vpr_perp*vvvp_x)*gammapr
+        uyp(ip) = (vpr_par*vy+vpr_perp*vvvp_y)*gammapr
+        uzp(ip) = (vpr_par*vz+vpr_perp*vvvp_z)*gammapr
+        if(uzp(ip)==0.) uzp(ip)=1.e-20
+        gaminv(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
+      enddo
 
       return
       end
@@ -3088,8 +3240,9 @@ c starting at 'istart' to locations starting at 'it'.
       return
       end
 c=============================================================================
-      subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,ppid,is,
-     &                   lallindomain,zmmin,zmmax,lmomentum)
+      subroutine addpart(pgroup,nn,nnpid,x,y,z,vx,vy,vz,gi,
+     &                   ex,ey,ez,bx,by,bz,ppid,is,
+     &                   lallindomain,zmmin,zmmax,lmomentum,lfields)
       use ParticleGroupmodule
       use Subtimerstop
       use Constant
@@ -3098,8 +3251,9 @@ c=============================================================================
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,nn,nnpid
       real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
+      real(kind=8):: ex(nn),ey(nn),ez(nn),bx(nn),by(nn),bz(nn)
       real(kind=8):: ppid(nn,nnpid)
-      logical(ISZ):: lallindomain,lmomentum
+      logical(ISZ):: lallindomain,lmomentum,lfields
       real(kind=8):: zmmin,zmmax
 
 c Adds new particles to the simulation
@@ -3144,6 +3298,14 @@ c     --- transversely.
               vy(n1) = vy(ip)
               vz(n1) = vz(ip)
               gi(n1) = gi(ip)
+              if (lfields) then
+                ex(n1) = ex(ip)
+                ey(n1) = ey(ip)
+                ez(n1) = ez(ip)
+                bx(n1) = bx(ip)
+                by(n1) = by(ip)
+                bz(n1) = bz(ip)
+              end if
               if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
             endif
           endif
@@ -3176,6 +3338,14 @@ c     --- Now, copy data into arrays
       pgroup%uyp(i1:i2) = vy(1:n1)
       pgroup%uzp(i1:i2) = vz(1:n1)
       pgroup%gaminv(i1:i2) = gi(1:n1)
+      if (lfields) then
+        pgroup%ex(i1:i2) = ex(1:n1)
+        pgroup%ey(i1:i2) = ey(1:n1)
+        pgroup%ez(i1:i2) = ez(1:n1)
+        pgroup%bx(i1:i2) = bx(1:n1)
+        pgroup%by(i1:i2) = by(1:n1)
+        pgroup%bz(i1:i2) = bz(1:n1)
+      end if
       if (nnpid > 0) pgroup%pid(i1:i2,1:nnpid) = ppid(1:n1,:)
       if (spid > 0) then
 c       --- Only set the ssn if it is not already set.
@@ -3428,7 +3598,7 @@ c the routine which clears out the lost particles is called.
       real(kind=8):: usq
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
-
+      
 c     --- Make sure that 'is' is within the correct range
       if (is < 1 .or. is > pgroup%ns) then
         print*,"processlostpart: warning: the input species is ",is,", but must be between 1 and ",pgroup%ns
