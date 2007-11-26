@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.276 $, $Date: 2007/11/02 16:13:27 $
+#@(#) File W3D.V, version $Revision: 3.277 $, $Date: 2007/11/26 17:22:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.276 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.277 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -81,6 +81,7 @@ lgetvzofz logical /.true./ # Sets wether vzofz is calculated
 lsrhoax3d logical /.true./ # Sets wether the charge density on axis is calculated
 lsphiax3d logical /.true./ # Sets wether the potential on axis is calculated
 lsezax3d  logical /.true./ # Sets wether the longitudinal electric field on axis is calculated
+lsetcurr             logical /.true./ # Sets wether the current on axis is calculated
 
 
 *********** InPart3d dump:
@@ -916,9 +917,10 @@ xpush3d(np,xp(np):real,yp(np):real,zp(np):real,
 xpusht3d(np,xp(np):real,yp(np):real,zp(np):real,
         uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,fdt:real)
              subroutine # Particle position advance with varying dt
-ebcancel3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
-           exp(np):real,eyp(np):real,ezp(np):real,bxp(np):real,byp(np):real,bzp(np):real)
-             subroutine # E+vxB cancellation routine
+ebcancelpush3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gi(np):real,
+                  exp(np):real,eyp(np):real,ezp(np):real,
+                  bxp(np):real,byp(np):real,bzp(np):real,
+                  q:real,m:real,ddt:real,which:integer) subroutine # velocity push with E+vxB cancellation
 seteears()  subroutine # Sets eearsofz, the axial confining field
 sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        xmmin:real,ymmin:real,zmmin:real,dx:real,dy:real,dz:real,nx,ny,nz,
