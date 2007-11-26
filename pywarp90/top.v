@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.223 $, $Date: 2007/10/24 20:54:11 $
+#@(#) File TOP.V, version $Revision: 3.224 $, $Date: 2007/11/26 16:35:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.223 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.224 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -112,6 +112,10 @@ dexdx         real /0./             [E/m] # Uniform focusing X-Electric field
 deydy         real /0./             [E/m] # Unifrom focusing Y-Electric field 
                                           #   gradient (dE_y/dy) 
 dbdr          real /0./             [T/m] # Uniform focusing B-field gradient
+dbxdy         real /0./             [T/m] # Uniform focusing X-Magnetic field 
+                                          #   gradient (-dB_x/dy) 
+dbydx         real /0./             [T/m] # Unifrom focusing Y-Magnetic field 
+                                          #   gradient (dB_y/dx) 
 ekin          real /0./              [eV] # Input beam kinetic energy
 emit          real /0./           [m-rad] # Perp Emittance of beam (rms-edge)
 emitx         real /0./           [m-rad] #    X-Emittance of beam (rms-edge)
@@ -775,6 +779,9 @@ linegrd(0:negrdol)        _logical         # Flag for when egrd element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 linbsqgrad(0:nbsqgradol)        _logical         # Flag for when bsqgrad element in mesh
+Mtx(2,2)                  _real            # linear map in x
+Mty(2,2)                  _real            # linear map in y
+Map(6,6)                  _real            # linear 6-D map
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -962,8 +969,10 @@ laccumulate_rho           logical /.false./
    # zeroed each time step before the deposition.)
 gamadv                    character*8 /"stndrd"/
    # Specifies type of gamma advance, "stndrd", "fast 1", or "fast 2"
-lvdadz                    logical /.false./
-   # sets on/off calculation of e=dA/dt=vdA/dz
+idadt                     integer /0/
+   # sets calculation of e=-dA/dt; 1=>dA/dt=(A-Aold)/dt; 2=> dA/dt=vframe*dA/dz
+zgridaprv                 real    /0./
+   # z of grid at time of previous calculation of A
 periinz                   logical /.true./
    # Specifies whether or not there is periodicity in z
 stickyz                   logical /.false./
@@ -1386,8 +1395,6 @@ lamkreal(0:nzzarr)     _real  [C/m]    # Real part of FFT of lambda
 lamkimag(0:nzzarr)     _real  [C/m]    # Imaginary part of FFT of lambda
 curr(0:nzzarr,0:nszarr)     _real [A]  # Beam current
 lostpars(0:nzzarr,0:nszarr) _integer /0/ # number of lost particles by zcells
-
-
 xmaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used 
 # to remove particles outside a rectangular region. 
 xminz(0:nzzarr)        _real   [m]   /-LARGEPOS/ # z-dependent locations used
@@ -2085,14 +2092,18 @@ iselfb(0:ns-1) _integer /0/ # Group number for particles that are affected by
                             # approximation. The correction is not applied to
                             # group number -1.
 fselfb(0:ns-1) _real   /0./ # The scaling factor, vz.
+l_maps(0:ns-1)  _logical /0/
 dtscale(ns) _real /1./ # Scale factor applied to time step size for each
                        # species. Only makes sense in steaday and and
                        # transverse slice modes.
 limplicit(0:ns-1) _logical /0/ # Flags implicit particle species
 iimplicit(0:ns-1) _integer /-1/ # Group number for implicit particles
 ldoadvance(0:ns-1) _logical /1/ # Flags whether particles are time advanced
+lparaxial(ns)    _logical   /0/ # Flags to turn on/off paraxial approximation
 zshift(ns) _real /0./
+lebcancel_pusher logical   /.false./ # turns on/off cancellation of E+VxB within V push
 lebcancel        logical   /.false./ # turns on/off cancellation of E+VxB before V push
+gamma_ebcancel_max(ns) _real /1./ # maximum value allowed for ExB cancellation
 gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
 xp(npmax)       _real [m]       # X-positions of particles
 yp(npmax)       _real [m]       # Y-positions of particles
@@ -2180,7 +2191,7 @@ scr_uyp(scr_npmax) _real    [m/s] # gamma * Y-velocities of particles
 scr_uzp(scr_npmax) _real    [m/s] # gamma * Z-velocities of particles
 
 *********** LostParticles dump parallel:
-lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
+lsavelostpart  logical /.false./ # Flag setting whether lost particles are saved
 lresetlostpart logical /.false./ # Flag setting whether lost particles are erased at each time step
 npmaxlost           integer /0/ # Size of lost particle arrays
 npidlost            integer /1/ # Number of columns in pidlist
@@ -2265,6 +2276,9 @@ lspecial                  logical
 lresetparticlee           logical /.true./
    # When true, the particle's E field is reset to zero at the beginning
    # of each step.
+lresetparticleb           logical /.true./
+   # When true, the particle's B field is reset to zero at the beginning
+   # of each step.
 
 *********** ExtPart dump:
 # Arrays that hold particle data that is extrapolated to grid cell centers
@@ -2312,6 +2326,14 @@ getzmmnt_weights(np,xp(np):real,yp(np):real,zp(np):real,
          uxpo:real,uypo:real,uzpo:real,is:integer,isid:integer,ismax:integer,
          maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
+get_zmmnts_stations(ns:integer,jslist(ns):integer,pgroup:ParticleGroup,
+                 nstations:integer,zmin:real,zmax:real,vfrm:real,
+                 pnum(nstations):real,xbar(nstations):real,ybar(nstations):real,
+                 xpbar(nstations):real,ypbar(nstations):real,
+                 x2(nstations):real,y2(nstations):real,
+                 xp2(nstations):real,yp2(nstations):real,
+                 xxp(nstations):real,yyp(nstations):real)
+            subroutine # gather moments data at regularly spaced stations
 getlabwn()  subroutine # Gets the lab window moments from the z moments
 getvzofz()  subroutine
 setgamma(lrelativ)
@@ -2319,6 +2341,9 @@ setgamma(lrelativ)
 gammaadv(np,gaminv(np):real,uxp(np):real,uyp(np):real,uzp(np):real,
          gamadv:string,lrelativ)
             subroutine # Advances gamma
+setu_in_boosted_frame3d(np,uxp(np):real,uyp(np):real,uzp(np):real,gaminv(np):real,
+                           uxf(np):real,uyf(np):real,uzf(np):real,gammaf(np):real) 
+                           subroutine # applies relativistic vlocity addition due to boost {uxf,uyf,ufz}
 resetlat()  subroutine # Resizes lattice arrays to their true lengths
 resetlatdrft() subroutine # Resizes drft lattice arrays to their true lengths
 resetlatbend() subroutine # Resizes bend lattice arrays to their true lengths
@@ -2536,9 +2561,10 @@ chckpart(pgroup:ParticleGroup,is:integer,nlower:integer,nhigher:integer)
              subroutine # Makes sure there is enough space for nn particles.
 addpart(pgroup:ParticleGroup,nn:integer,npid:integer,
         x(nn):real,y(nn):real,z(nn):real,vx(nn):real,vy(nn):real,vz(nn):real,
-        gi(nn):real,pid(nn,npid):real,
+        gi(nn):real,ex(nn):real,ey(nn):real,ez(nn):real,
+        bx(nn):real,by(nn):real,bz(nn):real,pid(nn,npid):real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
-        lmomentum:logical)
+        lmomentum:logical,lfields:logical)
              subroutine # Adds new particles to the simulation
 clearpart(pgroup:ParticleGroup,js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
@@ -2631,9 +2657,12 @@ zpartbndwithdata(n:integer,z(n):real,uz(n):real,gaminv(n):real,
        # Enforces axial particle boundary conditions
 reorgparticles(pgroup:ParticleGroup) subroutine
        # Reorganizes particles for the parallel version
-apply_simple_map(n,x(n):real,y(n):real,ux(n):real,uy(n):real,gaminv(n):real,
-                 Mtx(2,2):real,Mty(2,2):real,vbeam:real) subroutine
+apply_simple_map(n,x(n):real,y(n):real,ux(n):real,uy(n):real,uz(n):real,
+                 Mtx(2,2):real,Mty(2,2):real) subroutine
        # applies simple linear map
+apply_map(n,x(n):real,y(n):real,z(n):real,ux(n):real,uy(n):real,uz(n):real,
+            gaminv(n):real,Map(6,6):real,vbeam:real,gammabar:real) subroutine
+       # applies linear map
 
 ******* Parallel:
 nslaves       integer /0/         # Number of slaves
