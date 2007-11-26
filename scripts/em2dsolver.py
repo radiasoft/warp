@@ -20,11 +20,12 @@ class EM2D(object):
                     'l_elaser_out_plane','ndelta_t',
                    'ntamp_scatter','ntamp_gather']
   __flaginputs__ = {'l_apply_pml':true,'nbndx':10,'nbndy':10,
-                    'l_particles_weight':false,
+                    'l_particles_weight':false,'l_usecoeffs':false,
                     'laser_amplitude':1.,'laser_profile':None,
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
-                    'laser_frequency':None,'laser_source':2}
+                    'laser_frequency':None,'laser_source':2,
+                    'density_1d':False}
 
   def __init__(self,**kw):
     top.lcallfetchb = true
@@ -123,6 +124,7 @@ class EM2D(object):
   def allocatefieldarrays(self):
     # --- Code transcribed from init_fields
     self.field = EM2D_FIELDtype()
+    self.field.l_usecoeffs = self.l_usecoeffs
     init_fields(self.field,self.nx,self.ny,self.nbndx,self.nbndx,top.dt,
                 self.dx,self.dy,clight,mu0,
                 self.xmmin,self.ymmin,1,
@@ -227,14 +229,18 @@ class EM2D(object):
 #        return fx,fz,fy
         return fz,fx,fy
 
-  def setj(self,x,y,ux,uy,uz,gaminv,q,w):
+  def setj(self,x,y,ux,uy,uz,gaminv,q,w,wfact):
     n = len(x)
     if n == 0: return
-    wtmp = zeros(n,'d')
-    if self.l_onegrid:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wtmp,q*w,top.dt,false,self.field,self.field)
+    if wfact is None:
+      wfact = zeros(n,'d')
+      l_particles_weight = false
     else:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wtmp,q*w,top.dt,false,self.field,self.fpatchfine)
+      l_particles_weight = true
+    if self.l_onegrid:
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,top.dt,l_particles_weight,self.field,self.field)
+    else:
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,top.dt,l_particles_weight,self.field,self.fpatchfine)
     
   def setjpy(self,x,y,ux,uy,uz,gaminv,q,w):
     n = len(x)
@@ -386,8 +392,17 @@ class EM2D(object):
       x,y,ux,uy,uz = self.transformparticles(
             top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],top.pgroup.zp[i:i+n],
             top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n])
-      self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w)
+      if top.wpid==0:
+        wfact = None
+      else:
+        wfact = top.pgroup.pid[i:i+n,top.wpid-1]
+      self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w,wfact)
     if self.l_smoothdensity:self.smoothdensity()
+    if self.density_1d:
+      for i in range(3):
+       J = sum(self.field.J[:,:,i],1)
+       for ii in range(shape(self.field.J[:,:,i])[1]):
+         self.field.J[:,ii,i] = J
 
   def smoothdensity(self):
     smooth2d_lindman(self.field.J[:,:,0],self.field.nx,self.field.ny)
@@ -395,11 +410,14 @@ class EM2D(object):
     smooth2d_lindman(self.field.J[:,:,2],self.field.nx,self.field.ny)
 
   def fetche(self):
-    if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-    ex,ey,ez = self.transformfields(w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+#    if w3d.api_xlf2:
+    w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+    w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+    w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+#    ex,ey,ez = self.transformfields(w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    ex,ey,ez = self.transformfields(top.pgroup.ex[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi],
+                                    top.pgroup.ey[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi],
+                                    top.pgroup.ez[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi])
     ex[:] = 0.
     ey[:] = 0.
     ez[:] = 0.
@@ -407,11 +425,14 @@ class EM2D(object):
     self.fetchefrompositions(x,y,ex,ey,ez)
 
   def fetchb(self):
-    if w3d.api_xlf2:
-      w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-      w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-      w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
-    bx,by,bz = self.transformfields(w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+#    if w3d.api_xlf2:
+    w3d.xfsapi=top.pgroup.xp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+    w3d.yfsapi=top.pgroup.yp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+    w3d.zfsapi=top.pgroup.zp[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi]
+#    bx,by,bz = self.transformfields(w3d.bxfsapi,w3d.byfsapi,w3d.bzfsapi)
+    bx,by,bz = self.transformfields(top.pgroup.bx[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi],
+                                    top.pgroup.by[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi],
+                                    top.pgroup.bz[w3d.ipminfsapi-1:w3d.ipminfsapi-1+w3d.npfsapi])
     bx[:] = 0.
     by[:] = 0.
     bz[:] = 0.
@@ -444,10 +465,11 @@ class EM2D(object):
 #    if top.time < self.tmin_moving_main_window: return
     move_window_field(self.field)
     self.zgridprv=top.zgrid
-    self.fpatchfine.xminscatter+=w3d.dz
-    self.fpatchfine.xmaxscatter+=w3d.dz
-    self.fpatchfine.xmingather+=w3d.dz
-    self.fpatchfine.xmaxgather+=w3d.dz
+    if not self.l_onegrid:
+      self.fpatchfine.xminscatter+=w3d.dz
+      self.fpatchfine.xmaxscatter+=w3d.dz
+      self.fpatchfine.xmingather+=w3d.dz
+      self.fpatchfine.xmaxgather+=w3d.dz
 
   def add_laser(self,field):
     if self.laser_profile is None: return
@@ -501,8 +523,9 @@ class EM2D(object):
       push_em_b(field,0.5*top.dt)
       push_em_e(field,top.dt)
       push_em_b(field,0.5*top.dt)
-      griuni(field)
     self.move_window_fields()
+    for field in fields:
+      griuni(field)
     if not self.l_onegrid:set_substitute_fields(self.field,self.fpatchcoarse,self.fpatchfine)
 
   ##########################################################################
@@ -597,7 +620,88 @@ class EM2D(object):
   def getese(self):
     pass
 
-# --- This can only be done after MultiGrid is defined.
+  def plbnd(self,h,fin=None):
+    f = self.field
+    if em2d.l_pml_cummer:
+      b = f.bndexeybz_cummer
+    else:
+      b = f.bndexeybz
+    g = fzeros([b.nx+1,b.ny+1],'d')
+
+    for k in range(1, b.nbndy+1):
+      jk1 = b.ntop1 + k * b.n1x
+      for j in range(1, b.nx+1):
+        jk = jk1 + j
+        g[j-1,k-1] = h[jk-1]
+
+    for k in range(  b.ny-b.nbndy+1, b.ny+1):
+      jk1 = b.ntop2 + k * b.n1x
+      for j in range(1, b.nx+1):
+        jk = jk1 + j
+        g[j-1,k-1] = h[jk-1]
+
+    for k in range(b.nbndy+2, b.ny-b.nbndy-2+1):
+      for j in range(1, b.nbndx+1):
+        jk= b.nbot1 + j + k * b.nint
+        g[j-1,k-1] = h[jk-1]
+
+    k=b.nbndy+1
+    for j in range(1, b.nbndx+1):
+      jk=bndijk(f,j,k)
+      g[j-1,k-1] = h[jk-1]
+
+    for k in range(b.ny-b.nbndy-1,b.ny-b.nbndy+1):
+      for j in range(1, b.nbndx+1):
+        jk=bndijk(f,j,k)
+        g[j-1,k-1] = h[jk-1]
+
+    for k in range(b.nbndy+2, b.ny-b.nbndy-2+1):
+      for j in range(b.nx-b.nbndx+1, b.nx+1):
+        jk = b.nbot2+ j + k * b.nint
+        g[j-1,k-1] = h[jk-1]
+
+    k=b.nbndy+1
+    for j in range(b.nx-b.nbndx+1, b.nx+1):
+      jk=bndijk(f,j,k)
+      g[j-1,k-1] = h[jk-1]
+
+    for k in range(b.ny-b.nbndy-1,b.ny-b.nbndy+1):
+      for j in range( b.nx-b.nbndx+1, b.nx+1):
+        jk=bndijk(f,j,k)
+        g[j-1,k-1] = h[jk-1]
+
+    if fin is not None:
+      grimax(f)
+      g[b.nbndx-1:b.nbndx+f.nx+1,b.nbndy-1:b.nbndy+f.ny+1]=fin[:f.nx+2,:f.ny+2]
+      griuni(f)
+      
+    pli(g)
+    
+  def fpezall(self,**kw):
+    f = self.field
+    if em2d.l_pml_cummer:
+      h = f.bndbxbyez_cummer.Bz
+    else:
+      h = f.bndbxbyez.Bzx+f.bndbxbyez.Bzy
+    self.plbnd(-h*clight,f.Ez)
+    
+  def fpbxall(self,**kw):
+    f = self.field
+    if em2d.l_pml_cummer:
+      h = f.bndbxbyez_cummer.Ex
+    else:
+      h = f.bndbxbyez.Ex
+    self.plbnd(h,f.Bx)
+        
+  def fpbyall(self,**kw):
+    f = self.field
+    if em2d.l_pml_cummer:
+      h = f.bndbxbyez_cummer.Ey
+    else:
+      h = f.bndbxbyez.Ey
+    self.plbnd(h,f.By)
+        
+# --- This can only be done after the class is defined.
 try:
   psyco.bind(EM2D)
 except NameError:
