@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.63 $, $Date: 2007/10/15 16:56:20 $
+#@(#) File FRZ.V, version $Revision: 3.64 $, $Date: 2007/11/26 19:54:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.63 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.64 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -87,6 +87,7 @@ l_get_injphi_from_base    logical  /.false./ # if true, gather injphi from base 
 l_get_fields_on_grid      logical  /.true./  # if true, get fields on grid before scatter to particles
 l_dep_rho_on_base         logical  /.false./ # if true, deposit rho on base grid only
 l_distribute              logical  /.true./  # if true, distribute rho between high level to low level patches
+l_bgrid                   logical  /.false./  # 
 nguardx                   integer /1/        # number of guard cell in x/r
 nguardz                   integer /1/        # number of guard cell in z
 grids_nids                integer            # number of grid IDs
@@ -232,6 +233,7 @@ fieldweightr(xp(np):real,yp(np):real,ex(np):real,ey(np):real,np:integer) subrout
 fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
 fieldweightxz(xp:real,zp:real,ex:real,ez:real,np:integer,zgrid:real,efetch:integer) subroutine
+fieldweightxzb(xp:real,zp:real,bx:real,bz:real,np:integer,zgrid:real,efetch:integer) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
@@ -395,6 +397,8 @@ nlevels integer
 nr integer
 nz integer
 nzp integer
+nrb integer
+nzpb integer
 nrpar integer
 nzpar integer
 jmin integer
@@ -423,6 +427,8 @@ rhop(1:nrpar+1,1:nzpar+1) _real
 phip(1-nguardx:nrpar+nguardx+1,1-nguardz:nzpar+nguardz+1) _real #
 erp(1:nr+1,1:nzp+1) _real
 ezp(1:nr+1,1:nzp+1) _real
+brp(1:nrb+1,1:nzpb+1) _real
+bzp(1:nrb+1,1:nzpb+1) _real
 rhominr integer
 rhomaxr integer
 rhominz integer
