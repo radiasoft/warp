@@ -169,7 +169,7 @@ class MultiGrid(SubcycledPoissonSolver):
 
     # --- If there are any relativistic groups, then turn on the code
     # --- which uses the selfe array.
-    if max(top.fselfb) > 0.:
+    if max(abs(top.fselfb)) > 0.:
       # --- This is probably redundant, but it shouldn't hurt.
       # --- This forces all species to use the precalculated E field
       # --- if any have the B correction.
@@ -285,7 +285,7 @@ class MultiGrid(SubcycledPoissonSolver):
              self.dx,self.dy,self.dz,self.nxp,self.nyp,self.nzp,top.efetch[js],
              ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
              self.nxguard,self.nyguard,self.nzguard)
-    if max(top.fselfb) > 0.:
+    if max(abs(top.fselfb)) > 0.:
       #assert len(bx) == n,"The multigrid needs to be fixed so the B fields can be fetched with other than fetche3d"
       # --- For now, just skip the gather of the self B field if this was
       # --- called directly from fetche3dfrompositions (in which case
@@ -357,7 +357,7 @@ class MultiGrid(SubcycledPoissonSolver):
         tfieldp = transpose(self.fieldp)
         tfieldp[...] = 0.
       self.getselfe(recalculate=1,lzero=lzero)
-      if top.fselfb[iselfb] > 0:
+      if abs(top.fselfb[iselfb]) > 0:
         # --- If the self-B correction is nonzero, then calculate and include
         # --- the approximate correction terms A and dA/dt.
         self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
