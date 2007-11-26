@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.23 2006/06/29 17:24:34 jlvay Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.24 2007/11/26 20:24:40 jlvay Exp $"
 import __main__
 __main__.selectbox = 0
 __main__.selectbox_remove = 1
@@ -418,7 +418,8 @@ name='WARP viz': Display name - only used when new scene created.
                xscaled=0,zscaled=0,
                color=None,
                scene=None,name=None,vrange=None,viewer=None,
-               rscale=None,zscale=None,display=0,kwdict={}):
+               rscale=None,zscale=None,display=0,
+               showfaces=[1,1,1,1,1,1],kwdict={}):
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     VisualModel.__init__(self,twoSided=0,normalsign=1,
                               scene=scene,name=name,
@@ -445,12 +446,12 @@ name='WARP viz': Display name - only used when new scene created.
     p011 = array([xcent-xsize/2.,ycent+ysize/2.,zcent+zsize/2.])
     p111 = array([xcent+xsize/2.,ycent+ysize/2.,zcent+zsize/2.])
 
-    self.FacetedPolygon([p000,p100,p110,p010],color=color)
-    self.FacetedPolygon([p001,p101,p111,p011],color=color)
-    self.FacetedPolygon([p000,p100,p101,p001],color=color)
-    self.FacetedPolygon([p010,p110,p111,p011],color=color)
-    self.FacetedPolygon([p000,p010,p011,p001],color=color)
-    self.FacetedPolygon([p100,p110,p111,p101],color=color)
+    if showfaces[0]:self.FacetedPolygon([p000,p010,p011,p001],color=color)
+    if showfaces[1]:self.FacetedPolygon([p100,p110,p111,p101],color=color)
+    if showfaces[2]:self.FacetedPolygon([p000,p100,p101,p001],color=color)
+    if showfaces[3]:self.FacetedPolygon([p010,p110,p111,p011],color=color)
+    if showfaces[4]:self.FacetedPolygon([p000,p100,p110,p010],color=color)
+    if showfaces[5]:self.FacetedPolygon([p001,p101,p111,p011],color=color)
 
     if display:
       self.createdxobject()
