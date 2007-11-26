@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.384 $, $Date: 2007/11/01 17:10:49 $
+c@(#) File W3D.F, version $Revision: 3.385 $, $Date: 2007/11/26 19:48:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -400,7 +400,7 @@ c  Also allocate the dynamic internal lattice arrays.
 
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
-      if (lvdadz) efetch=3
+      if (idadt>0) efetch=3
       if (ANY(efetch == 3) .and. fstype < 12 .and.
      &    (solvergeom == XYZgeom .or.
      &     solvergeom == RZgeom .or.
@@ -483,7 +483,7 @@ c  Create the dynamic arrays for "window" moments
 c  Create the dynamic arrays for z moments
 
       call remark(" ---  Allocating Z_Moments")
-      if (nzmmnt == 0) nzmmnt = nz
+      if (nzmmnt == 0) nzmmnt = max(nzfull,1)
       call gchange("Z_Moments", 0)
       if (zmmntmin == 0.) zmmntmin = zmmin
       if (zmmntmax == 0.) zmmntmax = zmmax
@@ -936,7 +936,7 @@ c           --- in which cases all species use the same field.
             call getselfe3d(phip,nxp,nyp,nzp,selfe,
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,
      &                  boundxy,boundxy,boundxy,boundxy,.true.,0,0,1)
-            if(lvdadz) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dz,vbeamfrm)
+            if(idadt>0) call getefroma3d(selfe(1,0,0,0),nxp,nyp,nzp,dt,dz,vbeamfrm,idadt,zgrid,zgridaprv)
          endif
 
 c  Set the potential near the emitting surface.
@@ -1120,12 +1120,12 @@ c     --- Accumulate time for applying the fields of the lattice
 c=============================================================================
       subroutine othere3d(np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                    ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
-     &                    dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
+     &                    dedr,dexdx,deydy,dbdr,dbxdy,dbydx,ex,ey,ez,bx,by,bz)
       use InGen3d, only:lothereuser
       use Subtimers3d
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
-      real(kind=8):: dedr,dexdx,deydy,dbdr
+      real(kind=8):: dedr,dexdx,deydy,dbdr,dbxdy,dbydx
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
       real(kind=8):: bx(np), by(np), bz(np)
@@ -1187,6 +1187,13 @@ c     --- azimuthal magnetic field
         do ip=1,np
           bx(ip) = bx(ip) - dbdr*yp(ip)
           by(ip) = by(ip) + dbdr*xp(ip)
+        enddo
+      endif
+c     --- x- and y-magnetic fields
+      if ((dbxdy /= 0.) .or. (dbydx /= 0.)) then
+        do ip=1,np
+          bx(ip) = bx(ip) - dbxdy*yp(ip)
+          by(ip) = by(ip) + dbydx*xp(ip)
         enddo
       endif
 
@@ -1383,6 +1390,7 @@ c=============================================================================
      &                             bendres,bendradi)
       use ParticleGroupmodule
       use Particles, Only: xoldpid,yoldpid,zoldpid
+      use LatticeInternal, Only: Mtx, Mty
       type(ParticleGroup):: pgroup
       integer(ISZ):: is,np,ipmin,interpdk
       real(kind=8):: dt
@@ -1406,13 +1414,18 @@ c     predictor-corrector.
         zpo = pgroup%zp(ipmin:ipmin+np-1)
       endif
 
-      if (interpdk .ne. 0) then
-        call xpush3dintrp(pgroup,np,is,ipmin,dt)
+      if (pgroup%l_maps(is-1)) then
+        call apply_simple_map(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
+     &                           Mtx,Mty)
       else
-        call xpush3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
-     &               pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),dt)
+        if (interpdk .ne. 0) then
+          call xpush3dintrp(pgroup,np,is,ipmin,dt)
+        else
+          call xpush3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                 pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),pgroup%gaminv(ipmin),dt)
+        endif
       endif
-
+      
 c     --- Bend residence factor over POSITION advance step
       call getbend(np,np,pgroup%zp(ipmin),pgroup%uzp(ipmin),
      &             pgroup%gaminv(ipmin),
@@ -1434,6 +1447,47 @@ c     --- Correct position advance for slanted dipole entry/exit
       return
       end
 c=============================================================================
+      subroutine epush(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,sq,sm,dt,dtfact,l_dtmult,l_paraxial)
+c --- Push the particle velocity with E field
+        use Beam_acc,only:lrelativ
+        use InGen,only:gamadv
+        integer(ISZ):: np
+        real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),exp(np),eyp(np),ezp(np),sq,sm,dt,dtfact(np)
+        logical(ISZ)::l_dtmult,l_paraxial
+
+        if(l_paraxial) then
+          call epush2d(np,uxp,uyp,exp,eyp,sq,sm,dt)
+        else
+          if(.not. l_dtmult) then
+            call epush3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dt)
+          else
+            call epusht3d(np,uxp,uyp,uzp,exp,eyp,ezp,sq,sm,dtfact,dt)
+          endif
+c         --- Advance relativistic Gamma factor
+          call gammaadv(np,gaminv,uxp,uyp,uzp,gamadv,lrelativ)
+        endif
+
+      return
+      end
+c=============================================================================
+      subroutine bpush(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,dtfact,l_dtmult,l_paraxial,ibpush)
+c --- Push the particle velocity with B field
+        integer(ISZ):: np,ibpush
+        real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
+        logical(ISZ)::l_dtmult,l_paraxial
+        if(l_paraxial) then
+          call bpush2d(np,uxp,uyp,uzp,bxp,byp,bzp,sq,sm,dt,ibpush)
+        else
+          if(.not. l_dtmult) then
+            call bpush3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
+          else
+            call bpusht3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dtfact,dt,ibpush)
+          endif
+        endif
+        
+      return
+      end
+c=============================================================================
       subroutine padvnc3d(center,pgroup)
       use ParticleGroupmodule
       use GlobalVars
@@ -1444,6 +1498,7 @@ c=============================================================================
       use InPart,Only: zimin,zimax
       use InGaps
       use InDiag
+      use InDiag3d
       use Lattice
       use LatticeInternal
       use Particles,Only: nplive,wpid,chdtspid,uxoldpid,uyoldpid,uzoldpid
@@ -1628,7 +1683,7 @@ c         --- to be recomputed; B doesn't get recomputed if
 c         --- center is "synchv" and interpdk is nonzero and allspecl
 c         --- is 0
           if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0 
-     &        .and. .not. allspecl)) then
+     &        .and. .not. allspecl) .and. lresetparticleb) then
             bx(ipmin:ipmin+ip-1) = 0.
             by(ipmin:ipmin+ip-1) = 0.
             bz(ipmin:ipmin+ip-1) = 0.
@@ -1677,8 +1732,8 @@ c         --- Compute lag average for experimental damping algorithm
      &                 pid(ipmin,ezeomlagpid))
           end if
 
-c         --- Save old velocity, but only is not doing the interpolated mover
-          if (interpdk(isid) == 0) then
+c         --- Save old velocity, but only if not doing the interpolated mover
+          if (interpdk(isid) == 0 .and. center /= "synchv") then
             if (uxoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uxoldpid) = pgroup%uxp(ipmin:ipmin+ip-1)
             if (uyoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uyoldpid) = pgroup%uyp(ipmin:ipmin+ip-1)
             if (uzoldpid > 0) pgroup%pid(ipmin:ipmin+ip-1,uzoldpid) = pgroup%uzp(ipmin:ipmin+ip-1)
@@ -1706,7 +1761,7 @@ c           --- Add in Ez from axially-smoothed gaps
 c           --- Add in ears and uniform focusing E field pieces
             call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
      &                    ex(ipmin),ey(ipmin),ez(ipmin),
      &                    bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B; All: Bz
@@ -1718,42 +1773,40 @@ c           --- Set quad, dipole E and B; All: Bz
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
-c           --- Apply cancellation of E+VxB correction
-            if(pgroup%lebcancel) 
-     &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
-     &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- First half-electric field increment to momenta
 c           Only do a vpush for ipredcor = 0.  But will still
 c           need to calculate gradB for ipredcor = 1; this is
 c           part of mugrdbpush. So must do explicitly in xpush3dintrp
 c           for ipredcor = 1.
             if (ipredcor == 0) then
-              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                   ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c             --- Advance relativistic Gamma factor
-              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                    gamadv,lrelativ)
-c             --- Magnetic field increment to momenta
-c             --- If interpolating with drift kinetics, must do half
-c             ---  a mu grad B correction before and half after Bpush
-              if (interpdk(isid) .ne. 0) then
-c               call setptrs(bx(ipmin),by(ipmin),bz(ipmin),
-c    &                       ex(ipmin),ey(ipmin),ez(ipmin))
-                call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
+              if (pgroup%lebcancel_pusher) then
+                call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                                 ex(ipmin),ey(ipmin),ez(ipmin),
+     &                                 bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),fulldt_s,0)
+              else
+                call epush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),
+     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+c               --- Magnetic field increment to momenta
+c               --- If interpolating with drift kinetics, must do half
+c               ---  a mu grad B correction before and half after Bpush
+                if (interpdk(isid) .ne. 0) then
+c                 call setptrs(bx(ipmin),by(ipmin),bz(ipmin),
+c    &                         ex(ipmin),ey(ipmin),ez(ipmin))
+                  call mugrdbpush(pgroup,ip,isid,ipmin,halfdt_s,fulldt_s,1)
+                endif
+                call bpush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                        bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                        fulldt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+                if (interpdk(isid) .ne. 0)
+     &          call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
+                call epush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),
+     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+c             end of predictor-only if for vpush
               endif
-              call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                   bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
-     &                   fulldt_s,ibpush)
-              if (interpdk(isid) .ne. 0)
-     &        call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,0)
-c             --- Final half-electric field increment to momenta
-              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                    ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c             --- Advance relativistic Gamma factor
-              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                    gamadv,lrelativ)
-c           end of predictor-only if for vpush
             endif
+
 c           --- Position advance
             call positionadvance3d(pgroup,is,ip,ipmin,interpdk(isid),
      &                             fulldt_s,bendres,bendradi)
@@ -1786,7 +1839,7 @@ c           --- Add in Ez from axially-smoothed gaps
 c           --- Add in ears and uniform focusing E field pieces
             call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                    zbeam,zimax,zimin,straight,ifeears,eears,
-     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                    eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
      &                    ex(ipmin),ey(ipmin),ez(ipmin),
      &                    bx(ipmin),by(ipmin),bz(ipmin))
 c           --- Set quad, dipole E and B;  All: Bz
@@ -1798,37 +1851,38 @@ c           --- Set quad, dipole E and B;  All: Bz
 c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    0., halfdt_s, fulldt_s, sm(1), sq(1), time)
-c           --- Apply cancellation of E+VxB correction
-            if(pgroup%lebcancel) 
-     &      call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
-     &                      ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
 c           --- Magnetic field increment to momenta
 c               Only do a vpush for ipredcor = 0.  But will still
 c               need to calculate gradB for ipredcor = 1; this is
 c               part of mugrdbpush.
             if (ipredcor == 0) then
-              if (interpdk(isid) .ne. 0) then
-                call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                     bx(ipmin),by(ipmin),bz(ipmin),
-     &                     sq(is),sm(is),fulldt_s,-1)
-c               --- If interpolating with drift kinetics, must do 
-c               ---  a mu grad B correction.  Since may be calling
-c               ---  this on first timestep, must make sure grad B's are
-c               ---  calculated, so last arg = 1.
-                 call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
+              if (pgroup%lebcancel_pusher) then
+                call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                                 ex(ipmin),ey(ipmin),ez(ipmin),
+     &                                 bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),fulldt_s,2)
               else
-                 call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      bx(ipmin),by(ipmin),bz(ipmin),
-     &                      sq(is),sm(is),halfdt_s,ibpush)
-c             --- Final half-electric field increment to momenta
+                if (interpdk(isid) .ne. 0) then
+                  call bpush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                          bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                          fulldt_s,1.,.false.,pgroup%lparaxial(is),-1)
+c                 --- If interpolating with drift kinetics, must do 
+c                 ---  a mu grad B correction.  Since may be calling
+c                 ---  this on first timestep, must make sure grad B's are
+c                 ---  calculated, so last arg = 1.
+                   call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
+                else
+                  call bpush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                          bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                          halfdt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+                endif
+c               --- Final half-electric field increment to momenta
+                call epush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),
+     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+c             end of predictor-only loop
               endif
-              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                   ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c             --- Advance relativistic Gamma factor
-              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                    gamadv,lrelativ)
-c           end of predictor-only loop
             endif
+
 c           --- Position advance
             if (center .ne. "hbor2") then
 c             --- hbor2 just does a v advance, no x push
@@ -1880,7 +1934,7 @@ c             --- Add in Ez from axially-smoothed gaps
 c             --- Add in ears and uniform focusing E field pieces
               call othere3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                      zbeam,zimax,zimin,straight,ifeears,eears,
-     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                      eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
      &                      ex(ipmin),ey(ipmin),ez(ipmin),
      &                      bx(ipmin),by(ipmin),bz(ipmin))
 c             --- Set quad, dipole E and B; All: Bz
@@ -1889,27 +1943,29 @@ c             --- Set quad, dipole E and B; All: Bz
      &                     bx(ipmin),by(ipmin),bz(ipmin),
      &                     ex(ipmin),ey(ipmin),ez(ipmin),sm(is),sq(is),
      &                     bendres,bendradi,gammabar,fulldt_s)
-c             --- Apply cancellation of E+VxB correction
-              if(pgroup%lebcancel) 
-     &        call ebcancel3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin), 
-     &                        ex(ipmin),ey(ipmin),ez(ipmin),bx(ipmin),by(ipmin),bz(ipmin) )
-c             --- Half electric field increment to momenta
-              call epush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                     ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),halfdt_s)
-c             --- Advance relativistic Gamma factor
-              call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                      gamadv,lrelativ)
-c             --- If interpolating with drift kinetics, must do half
-c             ---  a mu grad B correction
-c             --- Half magnetic field increment to momenta
-              if (interpdk(isid) .ne. 0) then
-                 call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
-                 call bpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),fulldt_s,-1)
-c                Half a Boris push
+              if (pgroup%lebcancel_pusher) then
+                call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                                 ex(ipmin),ey(ipmin),ez(ipmin),
+     &                                 bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),fulldt_s,1)
               else
-                 call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      bx(ipmin), by(ipmin), bz(ipmin), sq(is), sm(is), halfdt_s, ibpush)
+c               --- Half electric field increment to momenta
+                call epush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                        ex(ipmin),ey(ipmin),ez(ipmin),sq(is),sm(is),
+     &                        halfdt_s,1.,.false.,pgroup%lparaxial(is))
+c               --- If interpolating with drift kinetics, must do half
+c               ---  a mu grad B correction
+c               --- Half magnetic field increment to momenta
+                if (interpdk(isid) .ne. 0) then
+                  call mugrdbpush(pgroup,ip,is,ipmin,halfdt_s,fulldt_s,1)
+                  call bpush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                          bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                          fulldt_s,1.,.false.,pgroup%lparaxial(is),-1)
+c                 Half a Boris push
+                else
+                  call bpush(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                          bx(ipmin),by(ipmin),bz(ipmin),sq(is),sm(is),
+     &                          halfdt_s,1.,.false.,pgroup%lparaxial(is),ibpush)
+                endif
               endif
               if (center == "gen") then
 c               --- Reset uxp to uxpo, set uxpo to half step backward
@@ -1955,7 +2011,7 @@ c           --- THIS IS NOT DONE FOR center = hbor1.
             if(center == "synchv" .and. chdtspid > 0) then
               call check_cc3d(pgroup,is,ipmin,ip,exo,eyo,ezo,bxo,byo,bzo)
             endif
-          endif
+         endif
 
 c       --- End of loop over particle blocks for cache
         enddo
@@ -2007,7 +2063,7 @@ c     ---  Do final stuff for moments calculation
 #endif
       endif
 
-      if (center == "synchv" .or. center == "gen" .or. ifgap) then
+      if (lsetcurr .and. (center == "synchv" .or. center == "gen" .or. ifgap)) then
 
 c       --- Calculate current
         call setcurr(pgroup,zbeam,ismax,wpid,lspeciesmoments,
@@ -2224,6 +2280,32 @@ c  Push the particle velocity with E field
       return
       end
 c=============================================================================
+      subroutine epush2d(np,uxp,uyp,ex,ey,q,m,ddt)
+      use Subtimers3d
+      integer(ISZ):: np
+      real(kind=8):: uxp(np),uyp(np)
+      real(kind=8):: ex(np),ey(np)
+      real(kind=8):: q,m,ddt
+
+c  Push the particle velocity with E field
+
+      integer(ISZ):: ip
+      real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+      const = q*ddt/m
+
+      do ip=1,np
+        uxp(ip) = uxp(ip) + ex(ip)*const
+        uyp(ip) = uyp(ip) + ey(ip)*const
+      enddo
+
+!$OMP MASTER
+      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c=============================================================================
       subroutine epusht3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
       use Subtimers3d
       integer(ISZ):: np
@@ -2331,6 +2413,90 @@ c        --- fast b-field rotation algorithm with half Boris angle
             uxp(ip) = uxp(ip) + uyppr*sz - uzppr*sy
             uyp(ip) = uyp(ip) + uzppr*sx - uxppr*sz
             uzp(ip) = uzp(ip) + uxppr*sy - uyppr*sx
+         enddo
+      endif
+
+!$OMP MASTER
+      if (lw3dtimesubs) timebpush3d = timebpush3d + wtime() - substarttime
+!$OMP END MASTER
+      return
+      end
+c============================================================================= 
+      subroutine bpush2d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
+      use Subtimers3d
+      integer(ISZ):: np,ibpush
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+      real(kind=8):: q,m,ddt
+
+c  Push the particle velocity with B field
+
+      integer(ISZ):: ip
+      real(kind=8):: btot,btotinv,tanalphab
+      real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
+      real(kind=8):: const,t,tiny,const1
+      real(kind=8):: substarttime,wtime
+
+      if (lw3dtimesubs) substarttime = wtime()
+      const = q*ddt*0.5/m
+      if (ibpush == 1 .or. ibpush == 3) then
+c        --- fast b-field rotation algorithm
+c        --- ibpush = 3 uses this also for fullv but this routine is 
+c        --- called with ibpush = -1 for halfv or synchv
+         do ip=1,np
+            tx = gaminv(ip)*bx(ip)*const
+            ty = gaminv(ip)*by(ip)*const
+            tz = gaminv(ip)*bz(ip)*const
+            tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
+            sx = tx*tsqi
+            sy = ty*tsqi
+            sz = tz*tsqi
+            uxppr = uxp(ip) + uyp(ip)*tz - uzp(ip)*ty
+            uyppr = uyp(ip) + uzp(ip)*tx - uxp(ip)*tz
+            uzppr = uzp(ip) + uxp(ip)*ty - uyp(ip)*tx
+            uxp(ip) = uxp(ip) + uyppr*sz - uzppr*sy
+            uyp(ip) = uyp(ip) + uzppr*sx - uxppr*sz
+         enddo
+      elseif (ibpush == 2) then
+c        --- tan(alpha) / alpha algorithm
+         do ip=1,np
+            btot = sqrt(bx(ip)**2 + by(ip)**2 + bz(ip)**2)
+            if (btot == 0.) cycle
+            tanalphab = tan(gaminv(ip)*btot*const)/btot
+            tx = bx(ip)*tanalphab
+            ty = by(ip)*tanalphab
+            tz = bz(ip)*tanalphab
+            tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
+            sx = tx*tsqi
+            sy = ty*tsqi
+            sz = tz*tsqi
+            uxppr = uxp(ip) + uyp(ip)*tz - uzp(ip)*ty
+            uyppr = uyp(ip) + uzp(ip)*tx - uxp(ip)*tz
+            uzppr = uzp(ip) + uxp(ip)*ty - uyp(ip)*tx
+            uxp(ip) = uxp(ip) + uyppr*sz - uzppr*sy
+            uyp(ip) = uyp(ip) + uzppr*sx - uxppr*sz
+         enddo
+      elseif (ibpush == -1) then
+c        --- fast b-field rotation algorithm with half Boris angle
+         tiny = 1.e-20
+         do ip=1,np
+            btot = sqrt(bx(ip)**2 + by(ip)**2 + bz(ip)**2)
+            t=gaminv(ip)*btot*const
+            if (btot == 0 .or. t == 0.) cycle
+            btot=max(btot,tiny)
+            const1=(sqrt(1.+t*t)-1.)/(t*btot)
+            tx = bx(ip)*const1
+            ty = by(ip)*const1
+            tz = bz(ip)*const1
+            tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
+            sx = tx*tsqi
+            sy = ty*tsqi
+            sz = tz*tsqi
+            uxppr = uxp(ip) + uyp(ip)*tz - uzp(ip)*ty
+            uyppr = uyp(ip) + uzp(ip)*tx - uxp(ip)*tz
+            uzppr = uzp(ip) + uxp(ip)*ty - uyp(ip)*tx
+            uxp(ip) = uxp(ip) + uyppr*sz - uzppr*sy
+            uyp(ip) = uyp(ip) + uzppr*sx - uxppr*sz
          enddo
       endif
 
@@ -2453,71 +2619,115 @@ c  Advance particle positions
       return
       end
 c=============================================================================
-      subroutine ebcancel3d(np,uxp,uyp,uzp,gaminv,exp,eyp,ezp,bxp,byp,bzp)
+      subroutine ebcancelpush3d(np,uxp,uyp,uzp,gi,exp,eyp,ezp,bxp,byp,bzp,q,m,dt,which)
       use Subtimers3d
-      integer(ISZ):: np
-      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      use Constant
+      integer(ISZ):: np,which
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gi(np)
       real(kind=8):: exp(np),eyp(np),ezp(np),bxp(np),byp(np),bzp(np)
-      real(kind=8):: v,vx,vy,vz,e,ex,ey,ez,ve,vex,vey,vez
-      real(kind=8):: eve,evex,evey,evez,b_e,b_ve,b_eve,v_eve,vcrossb_e,de,fact
+      real(kind=8):: q,m,dt
 
-c Apply E+VxB cancellation.
-c Vectors are first decomposed on base B={E,VxE,Ex(VxE)}. 
+c Push the particle velocity with E and B fields, assuming Vmid = 0.5*(Vold+Vnew), 
+c solving directly for the new gamma.
+c This offers better cancellation of E+VxB than the Boris velocity push.
+c Question: should we recompute gamma from the new u, in order to prevent roundoff errors 
+c to create mismatched values of u and gamma?
 
       integer(ISZ):: ip
-      real(kind=8):: const
+      real(kind=8):: const,bconst,s,gisq,invclight,invclightsq,gprsq
+      real(kind=8):: tx,ty,tz,tu,uxpr,uypr,uzpr,bg,vx,vy,vz
+      real(kind=8):: taux,tauy,tauz,tausq,ust,sigma
       real(kind=8):: substarttime,wtime
-!      if (lw3dtimesubs) substarttime = wtime()
-      do ip=1,np
-        ! get unit vectors e and v
-        e  = sqrt(exp(ip)*exp(ip)+eyp(ip)*eyp(ip)+ezp(ip)*ezp(ip))
-        if(e==0.) cycle
-        vx = uxp(ip)*gaminv(ip)
-        vy = uyp(ip)*gaminv(ip)
-        vz = uzp(ip)*gaminv(ip)
-        v = sqrt(vx*vx+vy*vy+vz*vz)
-        if(v==0.) return
-        ex = exp(ip)/e; ey = eyp(ip)/e; ez = ezp(ip)/e
-        vx = vx/v; vy = vy/v; vz = vz/v
-        ! get unit vectors ve
-        vex = vy*ez-vz*ey
-        vey = vz*ex-vx*ez
-        vez = vx*ey-vy*ex
-        ve = sqrt(vex*vex+vey*vey+vez*vez)
-        vex = vex/ve; vey = vey/ve; vez = vez/ve
-        if(ve==0.) cycle
-        ! get unit vectors eve
-        evex = ey*vez-ez*vey
-        evey = ez*vex-ex*vez
-        evez = ex*vey-ey*vex
-        eve = sqrt(evex*evex+evey*evey+evez*evez)
-        evex = evex/eve; evey = evey/eve; evez = evez/eve
-        ! get B field in base {E,VxE,Ex(VxE)}
-        b_e   = bxp(ip)*ex  +byp(ip)*ey  +bzp(ip)*ez
-        b_ve  = bxp(ip)*vex +byp(ip)*vey +bzp(ip)*vez
-        if(b_ve==0.) cycle
-        b_eve = bxp(ip)*evex+byp(ip)*evey+bzp(ip)*evez
-        ! get velocity V in base {E,VxE,Ex(VxE)}
-!        v_e   = vx*ex  +vy*ey  +vz*ez  ! uninteresting
-!        v_ve  = vx*vex +vy*vey +vz*vez ! should be 0
-        v_eve = v*(vx*evex+vy*evey+vz*evez)
-        if(v_eve==0.) cycle
-        ! get VxB along E
-        vcrossb_e = -v_eve*b_ve!+v_ve*b_eve
-        if(vcrossb_e>=0.) cycle
-        de = max(vcrossb_e,-e)
-        b_ve = b_ve+de/v_eve
-        fact = de/e
-        exp(ip) = exp(ip)*(1.+fact)
-        eyp(ip) = eyp(ip)*(1.+fact)
-        ezp(ip) = ezp(ip)*(1.+fact)
-        bxp(ip) = b_e*ex+b_ve*vex+b_eve*evex
-        byp(ip) = b_e*ey+b_ve*vey+b_eve*evey
-        bzp(ip) = b_e*ez+b_ve*vez+b_eve*evez
-      enddo
+      if (lw3dtimesubs) substarttime = wtime()
 
+      invclight   = 1./clight
+      invclightsq = 1./(clight*clight)
+      
+      if(which==0) then
+!     --- full push      
+       const = q*dt/m
+       bconst = 0.5*const
+       do ip=1,np
+!       --- get tau
+        taux = bconst*bxp(ip)
+        tauy = bconst*byp(ip)
+        tauz = bconst*bzp(ip)
+        tausq = taux*taux+tauy*tauy+tauz*tauz
+!       --- get U',gamma'^2
+        uxpr = uxp(ip) + const*exp(ip) + (uyp(ip)*tauz-uzp(ip)*tauy)*gi(ip)
+        uypr = uyp(ip) + const*eyp(ip) + (uzp(ip)*taux-uxp(ip)*tauz)*gi(ip)
+        uzpr = uzp(ip) + const*ezp(ip) + (uxp(ip)*tauy-uyp(ip)*taux)*gi(ip)
+        gprsq = (1.+(uxpr*uxpr+uypr*uypr+uzpr*uzpr)*invclightsq)
+!       --- get u*
+        ust = (uxpr*taux+uypr*tauy+uzpr*tauz)*invclight
+!       --- get new gamma
+        sigma = gprsq-tausq
+        gisq = 2./(sigma+sqrt(sigma*sigma+4.*(tausq+ust*ust)))
+        gi(ip) = sqrt(gisq)
+!       --- get t,s
+        bg = bconst*sqrt(gisq)
+        tx = bg*bxp(ip)
+        ty = bg*byp(ip)
+        tz = bg*bzp(ip)
+        s = 1./(1.+tausq*gisq)
+!       --- get t.u'
+        tu = tx*uxpr+ty*uypr+tz*uzpr
+!       --- get new U
+        uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
+        uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
+        uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
+       enddo 
+      else if(which==1) then
+!     --- first half push     
+       const = 0.5*q*dt/m
+       do ip=1,np
+!     --- get new U
+        vx = uxp(ip)*gi(ip)
+        vy = uyp(ip)*gi(ip)
+        vz = uzp(ip)*gi(ip)
+        uxp(ip) = uxp(ip) + const*( exp(ip) + vy*bzp(ip)-vz*byp(ip) )
+        uyp(ip) = uyp(ip) + const*( eyp(ip) + vz*bxp(ip)-vx*bzp(ip) )
+        uzp(ip) = uzp(ip) + const*( ezp(ip) + vx*byp(ip)-vy*bxp(ip) )
+        gi(ip) = 1./sqrt(1.+(uxp(ip)*uxp(ip)+uyp(ip)*uyp(ip)+uzp(ip)*uzp(ip))*invclightsq)
+       enddo
+      else if(which==2) then
+!     --- second half push      
+       const = 0.5*q*dt/m
+       bconst = const
+       do ip=1,np
+!     --- get U'
+        uxpr = uxp(ip) + const*exp(ip)
+        uypr = uyp(ip) + const*eyp(ip)
+        uzpr = uzp(ip) + const*ezp(ip)
+        gprsq = (1.+(uxpr*uxpr+uypr*uypr+uzpr*uzpr)*invclightsq)
+!       --- get tau
+        taux = bconst*bxp(ip)
+        tauy = bconst*byp(ip)
+        tauz = bconst*bzp(ip)
+        tausq = taux*taux+tauy*tauy+tauz*tauz
+!       --- get u*
+        ust = (uxpr*taux+uypr*tauy+uzpr*tauz)*invclight
+!       --- get new gamma
+        sigma = gprsq-tausq
+        gisq = 2./(sigma+sqrt(sigma*sigma+4.*(tausq+ust*ust)))
+        gi(ip) = sqrt(gisq)
+!       --- get t,s
+        bg = bconst*sqrt(gisq)
+        tx = bg*bxp(ip)
+        ty = bg*byp(ip)
+        tz = bg*bzp(ip)
+        s = 1./(1.+tausq*gisq)
+!       --- get t.u'
+        tu = tx*uxpr+ty*uypr+tz*uzpr
+!       --- get new U
+        uxp(ip) = s*(uxpr+tx*tu+uypr*tz-uzpr*ty)
+        uyp(ip) = s*(uypr+ty*tu+uzpr*tx-uxpr*tz)
+        uzp(ip) = s*(uzpr+tz*tu+uxpr*ty-uypr*tx)
+       enddo 
+      endif
+      
 !$OMP MASTER
-!      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
+      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
 !$OMP END MASTER
       return
       end
