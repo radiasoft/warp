@@ -23,7 +23,7 @@ from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.19 2007/07/11 18:31:31 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.20 2007/11/26 16:04:52 jlvay Exp $"
 
 def warputilsdoc():
   import warputils
@@ -258,7 +258,7 @@ except:
 
 # --- Convenience function to read in data from a text file
 def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,typecode='d',
-                        fortranordering=1,converter=float):
+                        fortranordering=1,converter=float,mode='r',get_header=false):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
 logically Cartesian mesh.
@@ -297,12 +297,15 @@ Both produce an array of shape (2,4) that looks like
   # --- them.
   ntot = nquantities*product(dims)
   data = zeros(ntot,typecode)
-
-  ff = open(filename,'r')
+  if get_header:header=[]
+  ff = open(filename,mode)
 
   # --- Skip the number of lines at the top of the file as specified
   for i in range(nskip):
-    ff.readline()
+    if get_header:
+      header.append(ff.readline())
+    else:
+      ff.readline()
 
   # --- Loop over the file, reading in one line at a time.
   # --- Each whole line is put into data at once.
@@ -335,5 +338,8 @@ Both produce an array of shape (2,4) that looks like
   else:
     data = transpose(data,[len(dims0)]+range(len(dims0)))
 
-  return data
+  if get_header:
+    return data,header
+  else:
+    return data
 
