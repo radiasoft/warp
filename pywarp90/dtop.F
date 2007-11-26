@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.159 $, $Date: 2007/10/18 01:08:07 $
+c@(#) File DTOP.F, version $Revision: 3.160 $, $Date: 2007/11/26 16:44:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -631,7 +631,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.159 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.160 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -3354,23 +3354,64 @@ c           --- point is inside if a conductor can be ignored.
       return
       end subroutine reduceisinsidegrid
 c=============================================================================
-c=============================================================================
-      subroutine apply_simple_map(n,x,y,ux,uy,gaminv,Mtx,Mty,vbeam)
+      subroutine apply_simple_map(n,x,y,ux,uy,uz,Mtx,Mty)
 c applies simple linear map
       integer(ISZ):: n,i
-      real(kind=8):: x(n),y(n),ux(n),uy(n),gaminv(n),Mtx(2,2),Mty(2,2),vbeam,scf,xtmp,ytmp
+      real(kind=8):: x(n),y(n),ux(n),uy(n),uz(n),Mtx(2,2),Mty(2,2),xtmp,ytmp
 
         do i = 1,n
-          scf = gaminv(i)/vbeam
           xtmp = x(i)
           ytmp = y(i)
-          x (i) = Mtx(1,1)*xtmp     + Mtx(1,2)*ux(i)*scf
-          ux(i) = Mtx(2,1)*xtmp/scf + Mtx(2,2)*ux(i)
-          y (i) = Mty(1,1)*ytmp     + Mty(1,2)*uy(i)*scf
-          uy(i) = Mty(2,1)*ytmp/scf + Mty(2,2)*uy(i)
+          x (i) = Mtx(1,1)*xtmp       + Mtx(1,2)*ux(i)/uz(i)
+          ux(i) = Mtx(2,1)*xtmp*uz(i) + Mtx(2,2)*ux(i)
+          y (i) = Mty(1,1)*ytmp       + Mty(1,2)*uy(i)/uz(i)
+          uy(i) = Mty(2,1)*ytmp*uz(i) + Mty(2,2)*uy(i)
         end do
         
         return
       end subroutine apply_simple_map
+c=============================================================================
+      subroutine apply_map(n,x,y,z,ux,uy,uz,gaminv,Map,vbeam,gammabar)
+c applies simple linear map
+      integer(ISZ):: n,i
+      real(kind=8):: x(n),y(n),z(n),ux(n),uy(n),uz(n),gaminv(n),Map(0:5,0:5),vbeam,gammabar
+      real(kind=8):: xtmp,ytmp,ztmp,scf,uxp,uyp,uzp,uzb
+
+        uzb =  gammabar*vbeam
+        do i = 1,n
+          xtmp = x(i)
+          ytmp = y(i)
+          ztmp = z(i)
+          scf = gaminv(i)/vbeam
+          uxp = ux(i)*scf
+          uyp = uy(i)*scf
+          uzp = (z(i)-uzb)/uzb
+          x(i)  = Map(0,0)*xtmp   + Map(0,1)*uxp  
+     &          + Map(0,2)*ytmp   + Map(0,3)*uyp  
+     &          + Map(0,4)*ztmp   + Map(0,5)*uzp  
+                          
+          ux(i) = (Map(1,0)*xtmp  + Map(1,1)*uxp  
+     &          +  Map(1,2)*ytmp  + Map(1,3)*uyp  
+     &          +  Map(1,4)*ztmp  + Map(1,5)*uzp)/scf 
+                      
+          y(i)  = Map(2,0)*xtmp   + Map(2,1)*uxp  
+     &          + Map(2,2)*ytmp   + Map(2,3)*uyp  
+     &          + Map(2,4)*ztmp   + Map(2,5)*uzp        
+                       
+          uy(i) = (Map(3,0)*xtmp  + Map(3,1)*uxp  
+     &          +  Map(3,2)*ytmp  + Map(3,3)*uyp  
+     &          +  Map(3,4)*ztmp  + Map(3,5)*uzp)/scf    
+                      
+          z(i)  = Map(4,0)*xtmp   + Map(4,1)*uxp  
+     &          + Map(4,2)*ytmp   + Map(4,3)*uyp  
+     &          + Map(4,4)*ztmp   + Map(4,5)*uzp     
+                      
+          uz(i) = (Map(5,0)*xtmp  + Map(5,1)*uxp  
+     &          +  Map(5,2)*ytmp  + Map(5,3)*uyp  
+     &          +  Map(5,4)*ztmp  + Map(5,5)*uzp)*uzb + uzb     
+        end do
+        
+        return
+      end subroutine apply_map
 c=============================================================================
 
