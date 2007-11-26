@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.14 $, $Date: 2007/11/09 00:54:31 $
+c@(#) File top_lattice.F, version $Revision: 3.15 $, $Date: 2007/11/26 16:46:03 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -2324,12 +2324,12 @@ c=============================================================================
 
 c Apply uniform fields.
 
-      ex = ex + ex0
-      ey = ey + ey0
-      ez = ez + ez0
-      bx = bx + bx0
-      by = by + by0
-      bz = bz + bz0
+      if (ex0/=0.) ex = ex + ex0
+      if (ey0/=0.) ey = ey + ey0
+      if (ez0/=0.) ez = ez + ez0
+      if (bx0/=0.) bx = bx + bx0
+      if (by0/=0.) by = by + by0
+      if (bz0/=0.) bz = bz + bz0
 
       return
       end
