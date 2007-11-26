@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.40 $, $Date: 2007/07/21 00:23:16 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.41 $, $Date: 2007/11/26 17:08:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -64,6 +64,7 @@ c=============================================================================
       use BFieldGrid
       use InMesh3d
       use InGen3d, only: l2symtry,l4symtry,solvergeom,RZgeom
+      use InGen, only: idadt
       use GridBoundary3d
       use Multigrid3d
       use Conductor3d, only: icndbndy
@@ -88,6 +89,11 @@ c=============================================================================
       if (bfield%dx == 0) bfield%dx = (bfield%xmmax-bfield%xmmin)/bfield%nx
       if (bfield%dy == 0 .and. bfield%ny > 0) bfield%dy = (bfield%ymmax-bfield%ymmin)/bfield%ny
       if (bfield%dz == 0) bfield%dz = (bfield%zmmax-bfield%zmmin)/bfield%nz
+      if (idadt>0) then
+        if (bfield%nxold /= bfield%nx) bfield%nxold = bfield%nx
+        if (bfield%nyold /= bfield%ny) bfield%nyold = bfield%ny
+        if (bfield%nzold /= bfield%nz) bfield%nzold = bfield%nz
+      end if
       call BFieldGridTypechange(bfield)
 
       bfield%icndbndy = icndbndy
@@ -521,7 +527,8 @@ c  Evaluation of B, vectorized over particles
           v0 = 1. - v1
           w0 = 1. - w1
 
-          bx(ip) = u0*v0*w0*b(0,i  ,j  ,k  )
+          bx(ip) = bx(ip)
+     &           + u0*v0*w0*b(0,i  ,j  ,k  )
      &           + u1*v0*w0*b(0,i+1,j  ,k  )
      &           + u0*v1*w0*b(0,i  ,j+1,k  )
      &           + u1*v1*w0*b(0,i+1,j+1,k  )
@@ -530,7 +537,8 @@ c  Evaluation of B, vectorized over particles
      &           + u0*v1*w1*b(0,i  ,j+1,k+1)
      &           + u1*v1*w1*b(0,i+1,j+1,k+1)
 
-          by(ip) = u0*v0*w0*b(1,i  ,j  ,k  )
+          by(ip) = by(ip)
+     &           + u0*v0*w0*b(1,i  ,j  ,k  )
      &           + u1*v0*w0*b(1,i+1,j  ,k  )
      &           + u0*v1*w0*b(1,i  ,j+1,k  )
      &           + u1*v1*w0*b(1,i+1,j+1,k  )
@@ -539,7 +547,8 @@ c  Evaluation of B, vectorized over particles
      &           + u0*v1*w1*b(1,i  ,j+1,k+1)
      &           + u1*v1*w1*b(1,i+1,j+1,k+1)
 
-          bz(ip) = u0*v0*w0*b(2,i  ,j  ,k  )
+          bz(ip) = bz(ip)
+     &           + u0*v0*w0*b(2,i  ,j  ,k  )
      &           + u1*v0*w0*b(2,i+1,j  ,k  )
      &           + u0*v1*w0*b(2,i  ,j+1,k  )
      &           + u1*v1*w0*b(2,i+1,j+1,k  )
@@ -579,7 +588,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
           if (x(ip) < 0.) xsign = sx
           if (y(ip) < 0.) ysign = sy
 
-          bx(ip) = xsign*(u0*v0*w0*b(0,i  ,j  ,k  )
+          bx(ip) = bx(ip)
+     &           + xsign*(u0*v0*w0*b(0,i  ,j  ,k  )
      &                  + u1*v0*w0*b(0,i+1,j  ,k  )
      &                  + u0*v1*w0*b(0,i  ,j+1,k  )
      &                  + u1*v1*w0*b(0,i+1,j+1,k  )
@@ -588,7 +598,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
      &                  + u0*v1*w1*b(0,i  ,j+1,k+1)
      &                  + u1*v1*w1*b(0,i+1,j+1,k+1))
 
-          by(ip) = ysign*(u0*v0*w0*b(1,i  ,j  ,k  )
+          by(ip) = by(ip)
+     &           + ysign*(u0*v0*w0*b(1,i  ,j  ,k  )
      &                  + u1*v0*w0*b(1,i+1,j  ,k  )
      &                  + u0*v1*w0*b(1,i  ,j+1,k  )
      &                  + u1*v1*w0*b(1,i+1,j+1,k  )
@@ -597,7 +608,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
      &                  + u0*v1*w1*b(1,i  ,j+1,k+1)
      &                  + u1*v1*w1*b(1,i+1,j+1,k+1))
 
-          bz(ip) =        u0*v0*w0*b(2,i  ,j  ,k  )
+          bz(ip) = bz(ip)
+     &           +        u0*v0*w0*b(2,i  ,j  ,k  )
      &                  + u1*v0*w0*b(2,i+1,j  ,k  )
      &                  + u0*v1*w0*b(2,i  ,j+1,k  )
      &                  + u1*v1*w0*b(2,i+1,j+1,k  )
@@ -614,8 +626,8 @@ c         --- Adjust sign of B field for appropriate quadrant.
 c       --- Transform Br and Btheta into Bx and By
         y = atan2(yp,xp)
         bxtemp = bx
-        bx = bxtemp*cos(y) - by*sin(y)
-        by = bxtemp*sin(y) + by*cos(y)
+        bx = bx + bxtemp*cos(y) - by*sin(y)
+        by = by + bxtemp*sin(y) + by*cos(y)
         deallocate(x,y,bxtemp)
       endif
 
@@ -900,30 +912,51 @@ c           --- a(1,1,0,iz) = a(0,0,-1,iz) = -a(1,-1,0,iz) = -a(0,0,+1,iz)
       return
       end
 c=========================================================================== 
-      subroutine getefroma3d(e,nx,ny,nzlocal,dz,vframe)
+      subroutine getefroma3d(e,nx,ny,nzlocal,dt,dz,vframe,idadt,zgrid,zgridaprv)
       use GlobalVars
       use BFieldGrid
       use Subtimersf3d
-      integer(ISZ):: nx,ny,nzlocal
+      use Picglb, only:it
+      integer(ISZ):: nx,ny,nzlocal,idadt
       real(kind=8):: e(0:2,0:nx,0:ny,0:nzlocal)
-      real(kind=8):: dz,vframe
+      real(kind=8):: dt,dz,vframe,zgrid,zgridaprv
 
       integer(ISZ):: ix,iy,iz
-      real(kind=8):: substarttime,wtime,tdzi
+      real(kind=8):: substarttime,wtime,tdzi,ddz,oddz
       if (lf3dtimesubs) substarttime = wtime()
 
-      tdzi = 0.5*vframe/dz
-
-      do iz=0,nzlocal
-        do iy=0,ny
-          do ix=0,nx
-            e(0,ix,iy,iz) = e(0,ix,iy,iz)+tdzi*(bfield%a(0,ix ,iy ,iz+1) - bfield%a(0,ix ,iy ,iz-1))
-            e(1,ix,iy,iz) = e(1,ix,iy,iz)+tdzi*(bfield%a(1,ix ,iy ,iz+1) - bfield%a(1,ix ,iy ,iz-1))
-            e(2,ix,iy,iz) = e(2,ix,iy,iz)+tdzi*(bfield%a(2,ix ,iy ,iz+1) - bfield%a(2,ix ,iy ,iz-1))
+      if(idadt==1) then
+c       --- dA/dt=(A-Aold)/dt
+        tdzi = 1./dt
+        ddz = (zgrid-zgridaprv)/dz
+        if(ddz>1.) then
+          write(0,*) 'Warning from getefroma3d: zgrid jumps by steps larger than dz. Calculation of e=-dA/dt aborted.'
+          return
+        end if
+        oddz = 1.-ddz
+        if(it<5) return
+        do iz=0,nzlocal
+          do iy=0,ny
+            do ix=0,nx
+              e(:,ix,iy,iz)=e(:,ix,iy,iz)+tdzi*((bfield%aold(:,ix,iy,iz)*oddz+bfield%aold(:,ix,iy,iz+1)*ddz)-bfield%a(:,ix,iy,iz))
+            enddo
           enddo
         enddo
-      enddo
-
+      elseif(idadt==2) then
+c       --- dA/dt=vframe*dA/dz 
+        tdzi = 0.5*vframe/dz
+        do iz=0,nzlocal
+          do iy=0,ny
+            do ix=0,nx
+              e(0,ix,iy,iz) = e(0,ix,iy,iz)+tdzi*(bfield%a(0,ix ,iy ,iz+1) - bfield%a(0,ix ,iy ,iz-1))
+              e(1,ix,iy,iz) = e(1,ix,iy,iz)+tdzi*(bfield%a(1,ix ,iy ,iz+1) - bfield%a(1,ix ,iy ,iz-1))
+              e(2,ix,iy,iz) = e(2,ix,iy,iz)+tdzi*(bfield%a(2,ix ,iy ,iz+1) - bfield%a(2,ix ,iy ,iz-1))
+            enddo
+          enddo
+        enddo
+      endif
+      zgridaprv=zgrid
+      
       return
       end
 c=============================================================================
@@ -1784,7 +1817,7 @@ c     --- Obtain the magnetic field
 
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
-
+        
       if ((fstype == 12 .and. bfstype < 0) .or. bfstype == 12) then
 #if defined(XLF) || defined(XLF2)
 c       --- The pointer assignment breaks with the xlf compilers, so instead
@@ -1793,6 +1826,8 @@ c       --- This is less efficient since there is overhead in the allocation
 c       --- and the data needs to be copied around.
         allocate(xfsapi(n),yfsapi(n),zfsapi(n))
         allocate(bxfsapi(n),byfsapi(n),bzfsapi(n))
+        
+c     --- Zero out the particle's B field if requested (the default)
         xfsapi = x
         yfsapi = y
         zfsapi = z
@@ -2031,6 +2066,7 @@ c=============================================================================
       use Constant
       use BFieldGrid
       use InGen3d, only: solvergeom,RZgeom
+      use InGen, only: idadt
       integer(ISZ):: iwhich,bfstype
 
       integer(ISZ):: id,idmax
@@ -2085,6 +2121,15 @@ c     --- that copies are being done.
 c     --- If only initialization is being done (iwhich==1) then the bvp3d_work
 c     --- routine only needs to be called once. Proper arrays are still passed
 c     --- though they should never be needed during initialization.
+      if (idadt==1) then
+        if (bfield%nxold/=bfield%nx .or.bfield%nyold/=bfield%ny .or.bfield%nzold/=bfield%nz) then
+          bfield%nxold=bfield%nx
+          bfield%nyold=bfield%ny
+          bfield%nzold=bfield%nz
+          call BFieldGridTypechange(bfield)          
+        end if
+        bfield%aold=bfield%a
+      end if
       idmax = 2
       if (iwhich == 1) idmax = 0
       do id=0,idmax
