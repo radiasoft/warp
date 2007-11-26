@@ -261,8 +261,8 @@ Creates a new species of particles. All arguments are optional.
       if xmax is None:xmax=w3d.xmmax
       if ymin is None:ymin=w3d.ymmin
       if ymax is None:ymax=w3d.ymmax
-      if zmin is None:zmin=w3d.zmmin
-      if zmax is None:zmax=w3d.zmmax
+      if zmin is None:zmin=w3d.zmmin+top.zgrid
+      if zmax is None:zmax=w3d.zmmax+top.zgrid
       if l4symtry is None:l4symtry=w3d.l4symtry
       if l2symtry is None:l2symtry=w3d.l2symtry
     else:
