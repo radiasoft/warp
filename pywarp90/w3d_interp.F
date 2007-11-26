@@ -650,7 +650,7 @@ c      print*,"pre-othere3d,x,ey,ez = ",x(1),ey(1),ez(1)
 c      call fetche3d(pgroup,ipmin,npd,is)
 c     add in ears and uniform focusing E field pieces
       call othere3d(npd,x,y,z,zbeam,zimax,zimin,straight,ifeears,eears,
-     &                     eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
+     &                     eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,dbxdy,dbydx,
      &                     ex,ey,ez,bx,by,bz)
 c      call geteb(pgroup,npd,is,ipmin,x,y,z,ex,ey,ez,bx,by,bz)
       dtr=.5*dt
