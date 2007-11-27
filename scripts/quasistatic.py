@@ -2,6 +2,9 @@
 This script contains the class for performing runs in quasistatic approximation.
 In parallel, there is a caveat that each processor carries particles at different time steps. 
 """
+
+# TODO: Mesh Refinement; get Ez from beam using dA/dt=vz*dA/dz (for now, Ez=0).
+
 from warp import *
 from getzmom import *
 from AMR import *
@@ -108,6 +111,7 @@ class Quasistatic:
     for iz in range(globalmax(w3d.nzp)-1):
       self.ions.append(Species(type=ions.type,fselfb=top.pgroup.fselfb[0]))
       top.pgroup.sq[-1] = top.pgroup.sq[0]
+    ions.jslist = range(top.pgroup.ns)
     self.pgelec = ParticleGroup()
     self.pgelec.gchange()
     top.pgroup = self.pgelec
@@ -1014,27 +1018,28 @@ class Quasistatic:
     if np==0:return
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
-    if top.pgroup.lebcancel: 
-      ebcancel3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu], 
-                pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
-                pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
-                pg.sq[js],pg.sm[js],top.dt)
-    # --- push velocity from electric field (half step)
-    epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-               pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
-               pg.sq[js],pg.sm[js],0.5*top.dt)
-    # --- update gamma
-    self.set_gamma(js)
-    # --- push velocity from magnetic field
-    bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
-                pg.sq[js],pg.sm[js],top.dt, top.ibpush)
-    # --- push velocity from electric field (half step)
-    epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-               pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
-               pg.sq[js],pg.sm[js],0.5*top.dt)
-    # --- update gamma
-    self.set_gamma(js)
+    if pg.lebcancel_pusher:
+      ebcancelpush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                        pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
+                        pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
+                        pg.sq[js],pg.sm[js],top.dt,0)
+    else:
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
+      # --- push velocity from magnetic field
+      bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
+                  pg.sq[js],pg.sm[js],top.dt, top.ibpush)
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
     if self.l_verbose:print me,top.it,self.iz,'exit push_ions_velocity_first_half'
     
   def push_ions_velocity_first_half(self,js):
@@ -1044,21 +1049,22 @@ class Quasistatic:
     if np==0:return
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
-    if top.pgroup.lebcancel: 
-      ebcancel3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu], 
-                pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
-                pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
-                pg.sq[js],pg.sm[js],top.dt)
-    # --- push velocity from electric field (half step)
-    epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-               pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
-               pg.sq[js],pg.sm[js],0.5*top.dt)
-    # --- update gamma
-    self.set_gamma(js)
-    # --- push velocity from magnetic field
-    bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
-                pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
+    if pg.lebcancel_pusher:
+      ebcancelpush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                        pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
+                        pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
+                        pg.sq[js],pg.sm[js],top.dt,1)
+    else:
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
+      # --- push velocity from magnetic field
+      bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
+                  pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
 
     if self.l_verbose:print me,top.it,self.iz,'exit push_ions_velocity_first_half'
     
@@ -1069,16 +1075,22 @@ class Quasistatic:
     if np==0:return
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
-    # --- push velocity from magnetic field
-    bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
-                pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
-                pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
-    # --- push velocity from electric field (half step)
-    epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
-               pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
-               pg.sq[js],pg.sm[js],0.5*top.dt)
-    # --- update gamma
-    self.set_gamma(js)
+    if pg.lebcancel_pusher:
+      ebcancelpush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                        pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu],
+                        pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu],
+                        pg.sq[js],pg.sm[js],top.dt,2)
+    else:
+      # --- push velocity from magnetic field
+      bpush3d (np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],pg.gaminv[il:iu],
+                  pg.bx[il:iu], pg.by[il:iu], pg.bz[il:iu], 
+                  pg.sq[js],pg.sm[js],0.5*top.dt, top.ibpush)
+      # --- push velocity from electric field (half step)
+      epush3d(np,pg.uxp[il:iu],pg.uyp[il:iu],pg.uzp[il:iu],
+                 pg.ex[il:iu], pg.ey[il:iu], pg.ez[il:iu], 
+                 pg.sq[js],pg.sm[js],0.5*top.dt)
+      # --- update gamma
+      self.set_gamma(js)
 
     if self.l_verbose:print me,top.it,self.iz,'exit push_ions_velocity_second_half'
     
