@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.2 $, $Date: 2007/11/20 16:56:07 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.3 $, $Date: 2007/11/27 19:21:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -1136,12 +1136,12 @@ c       --- Restriction
         call restrictes3d(nx,ny,nzlocal,nz,res,1,1,delz,
      &                    nxcoarse,nycoarse,nzlocalcoarse,nzcoarse,rhocoarse,
      &                    0,0,0,localbounds,localboundsc,lzoffset)
-#ifdef MPIPARALLEL
-        if (lgoserial) then
-          call mgexchangeallrhocoarse(1,nxcoarse,nycoarse,nzcoarse,rhocoarse,
-     &                                nz,my_index,nslaves,izfsslave,nzfsslave)
-        endif
-#endif
+cifdef MPIPARALLEL
+c       if (lgoserial) then
+c         call mgexchangeallrhocoarse(1,nxcoarse,nycoarse,nzcoarse,rhocoarse,
+c    &                                nz,my_index,nslaves,izfsslave,nzfsslave)
+c       endif
+cendif
         if (lprintmgarraysumdiagnostic) then
           sss = mggetarraysum(nxcoarse,nycoarse,nzlocalcoarse,0,0,0,rhocoarse,
      &                        izfsslavec,nzfsslavec,nslaves,my_index)
