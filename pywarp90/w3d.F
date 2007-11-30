@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.385 $, $Date: 2007/11/26 19:48:39 $
+c@(#) File W3D.F, version $Revision: 3.386 $, $Date: 2007/11/30 17:00:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1476,7 +1476,7 @@ c --- Push the particle velocity with B field
         real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np),bxp(np),byp(np),bzp(np),sq,sm,dt,dtfact(np)
         logical(ISZ)::l_dtmult,l_paraxial
         if(l_paraxial) then
-          call bpush2d(np,uxp,uyp,uzp,bxp,byp,bzp,sq,sm,dt,ibpush)
+          call bpush2d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
         else
           if(.not. l_dtmult) then
             call bpush3d(np,uxp,uyp,uzp,gaminv,bxp,byp,bzp,sq,sm,dt,ibpush)
