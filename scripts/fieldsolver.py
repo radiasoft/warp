@@ -1363,3 +1363,13 @@ of the arrays used by the field solve"""
     source = self.returnsource(0,0)
     source[...] = (1.-param)*source + param*self.sourceprevious
 
+  def savepreviouspotential(self):
+    # --- This is needed by the implicit algorithm.
+    self.potentialprevious = self.potentialarray.copy()
+
+  def averagewithpreviouspotential(self,param=0.5):
+    # --- This is used by the implicit algorithm, to average the potential
+    # --- over multiple iterations.
+    potential = self.potentialarray
+    potential[...] = (1.-param)*potential + param*self.potentialprevious
+
