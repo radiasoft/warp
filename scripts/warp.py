@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.152 2007/11/26 16:01:45 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.153 2007/12/12 23:41:10 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -958,7 +958,7 @@ Reads in data from file, redeposits charge density and does field solve
     if dofieldsol: fieldsol(0)
 
   # --- Call setup if it is needed.
-  if me == 0 and current_window() == -1: setup()
+  if current_window() == -1: setup()
 
   # --- Call any functions that had been registered to be called after
   # --- the restart.
@@ -1092,6 +1092,7 @@ from plot_conductor import *
 from lattice import *
 from drawlattice import *
 from multigrid import MultiGrid
+from multigrid import MultiGridImplicit3D
 from multigridRZ import MultiGridRZ
 from multigridRZ import MultiGrid2D
 from multigridRZ import MultiGridImplicit2D
