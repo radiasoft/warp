@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.97 $, $Date: 2007/11/19 23:04:36 $
+c@(#) File w3d_injection.F, version $Revision: 1.98 $, $Date: 2007/12/12 19:45:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -655,10 +655,8 @@ c         --- Zero npinje_s.
           npinje_s = 0
           npinjtmp = 0
 
-c         --- Copy inj_np to inj_prev, and zero inj_np
+c         --- Copy inj_np to inj_prev
           inj_prev = inj_np
-          inj_np = 0.
-          inj_npactual = 0.
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
@@ -737,7 +735,10 @@ c             --- is only strictly correct for planar emission.
 
             enddo
 
-c           --- Load particles one grid cell at a time.
+c           --- First, calculate the number of particles that will be injected
+c           --- for all grid cells and species. This allows the particle
+c           --- arrays to be adjusted to add space for the new particles
+c           --- all at once.
             do iy=0,inj_ny
               do ix=0,inj_nx
 
@@ -756,23 +757,37 @@ c               --- rectangular.
                   linj_cell = ((xm*bi)**2 + (ym*ai)**2) <= (ai*bi)**2
                 endif
 
-                if (.not. linj_cell) cycle
+                if (.not. linj_cell) then
+                  inj_npactual(ix,iy,ij,:) = 0.
+                  cycle
+                endif
 
+c               --- Check the z extent of the source at the grid cell.
+c               --- This gets the min and max of grid over the region
+c               --- around the cell.
                 zmin_tmp = minval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
      &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
      &                                     + zinj)
                 zmax_tmp = maxval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
      &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
      &                                     + zinj)
-                if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) cycle
+c               --- Check if the z extent is within the domain.
+                if(zmin_tmp>=inj_zmmax.or.inj_zmmin>zmax_tmp) then
+                  inj_npactual(ix,iy,ij,:) = 0.
+                  cycle
+                endif
+
 c               --- Loop over the species
                 do is=1,pgroup%ns
                   jsid = pgroup%sid(is-1)
                   inj_is = min(jsid+1,inj_ns)
 
 c                 --- Skip this species if the fraction is zero.
-c                 if (finject(ij,jsid+1) == 0.) cycle
-                  if (.not. pgroup%ldts(is-1) .or. finject(ij,jsid+1) == 0.) cycle
+                  if (.not. pgroup%ldts(is-1) .or.
+     &                finject(ij,jsid+1) == 0.) then
+                    inj_npactual(ix,iy,ij,inj_is) = 0.
+                    cycle
+                  endif
 
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
@@ -804,9 +819,7 @@ c                 --- iterative mode.
      &                  (1. - inj_param)*inj_prev(ix,iy,ij,inj_is))
 
 c                 --- Force injected current to be between the range
-c                 --- jmininj to jmaxinj.  The absolute values are used
-c                 --- so that this works with either positive ions
-c                 --- and electron.
+c                 --- jmininj to jmaxinj.
                   rnn = min(rnn,jmaxinj(ij)*jton(jsid))
                   rnn = max(rnn,jmininj(ij)*jton(jsid))
 
@@ -814,8 +827,19 @@ c                 --- Scale the number of particles by the fraction of the
 c                 --- total for this species.
                   rnn = rnn*finject(ij,jsid+1)
 
-c                 --- Save the number of particles injected
-                  inj_np(ix,iy,ij,inj_is) = inj_np(ix,iy,ij,inj_is) + rnn
+c                 --- Scale the number of particles injected by the fraction
+c                 --- of the grid cell covered by the source. This will only
+c                 --- be less than one at the edge of the source.
+                  if(l_inj_regular) rnn = rnn * inj_area(ix,iy,ij)
+
+c                 --- Divide number of particles injected by two on axis
+c                 --- when using radial injection.
+                  if(.not. l_inj_regular .and. l_inj_rz .and. ix==0) then
+                    rnn = 0.5*rnn
+                  endif
+
+c                 --- Save the calculated number of particles to inject.
+                  inj_np(ix,iy,ij,inj_is) = rnn
 
 c                 --- Add a random number to the number of particles injected
 c                 --- so that the average number of particles injected is
@@ -823,42 +847,59 @@ c                 --- correct.  For example, if rnn < 1., without the
 c                 --- addition of the random number, no particles would ever
 c                 --- be injected.  With the random number, particles will be
 c                 --- injected and but the average number will be less than 1.
-                 if(.not. l_inj_regular) then
-                   rnn = rnn + wranf()
-c                  --- divide number of particles injected by two on axis
-c                  --- when using radial injection
-                   if(l_inj_rz .and. ix==0) rnn = 0.5*rnn
-                 else
-                   rnn = rnn * inj_area(ix,iy,ij)
-                 end if
-
-c                 --- Convert to integer.
-                  if(.not.l_inj_regular) then
-                    nn = int(rnn)
-                  else
-                    nn = 1
+                  if(.not. l_inj_regular) then
+                    rnn = rnn + wranf()
                   end if
 
-c                 --- Only do following work if particles are to be injected
-                  if (nn <= 0 .or. rnn<=0.) cycle
-
-c                 --- Make sure there is room for more particles.  Estimate
-c                 --- total number of particles to be injected from the
-c                 --- source. The second call makes it absolutely sure
-c                 --- that there is enough room available in case the
-c                 --- first estimate is wrong.
+c                 --- Save the number of particles to inject.
                   if(.not.l_inj_regular) then
-                    if(.not.l_inj_rz) then
-                      call chckpart(pgroup,is,
-     &                              max(nn,int(nn*ainj*binj*pi*dxi*dyi)),0)
-                    else
-                      call chckpart(pgroup,is,
-     &                              max(nn,int(nn*ainj*dxi)),0)
-                    end if
+c                   --- Convert to an integer.
+                    inj_npactual(ix,iy,ij,inj_is) = int(rnn)
                   else
-                    call chckpart(pgroup,is,
-     &                            max(nn,int((inj_nx+1)*(inj_ny+1))),0)
+c                   --- One particle is injected, but weighted by rnn.
+                    inj_npactual(ix,iy,ij,inj_is) = 1.
                   end if
+
+c                 --- If rnn is somehow negative, make sure that nothing gets
+c                 --- injected.
+                  if (rnn < 0.) inj_npactual(ix,iy,ij,inj_is) = 0.
+
+                enddo
+              enddo
+            enddo
+
+c           --- Allocate enough space for the particles, summing over the
+c           --- injection grid cells.
+            do is=1,pgroup%ns
+              jsid = pgroup%sid(is-1)
+              inj_is = min(jsid+1,inj_ns)
+              nn = sum(inj_npactual(:,:,ij,inj_is))
+              call chckpart(pgroup,is,nn,0)
+            enddo
+
+c           --- Load particles one grid cell at a time.
+            do iy=0,inj_ny
+              do ix=0,inj_nx
+
+c               --- Mesh location relative to source center
+                xm = inj_xmmin(ij) + ix*inj_dx
+                ym = inj_ymmin(ij) + iy*inj_dy
+
+c               --- Loop over the species
+                do is=1,pgroup%ns
+                  jsid = pgroup%sid(is-1)
+                  inj_is = min(jsid+1,inj_ns)
+
+c                 --- Skip this species if no particles are to be injected
+                  if (inj_npactual(ix,iy,ij,inj_is) == 0.) cycle
+
+                  rnn = inj_np(ix,iy,ij,inj_is)
+                  nn = inj_npactual(ix,iy,ij,inj_is)
+
+c                 --- Double check to make sure that there is room for the
+c                 --- particles, in case there is a problem with the above
+c                 --- calculation.
+                  call chckpart(pgroup,is,nn,0)
 
 c                 --- loop to load new particles
                   do ip=1,nn
@@ -883,21 +924,30 @@ c                   --- if within injection source load it, else skip it
                       pgroup%xp(ii)=xm
                       pgroup%yp(ii)=ym
                     end if
+
 c                   --- Check if particle is within the rectangular or
 c                   --- elliptical annulus with outer major and minor
 c                   --- size of ainject and binject and inner size of
 c                   --- ainjmin and binjmin.
+c                   --- If the particle is rejected, then adjust inj_npactual
+c                   --- appropriately.
                     if(linj_rectangle) then
                       if (abs(pgroup%xp(ii)) > ainj .or.
-     &                    abs(pgroup%yp(ii)) > binj) cycle
-                      if (abs(pgroup%xp(ii)) < ainjmin(ij) .or.
-     &                    abs(pgroup%yp(ii)) < binjmin(ij)) cycle
+     &                    abs(pgroup%yp(ii)) > binj .or.
+     &                    abs(pgroup%xp(ii)) < ainjmin(ij) .or.
+     &                    abs(pgroup%yp(ii)) < binjmin(ij)) then
+                        inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
+                        cycle
+                      endif
                     else
-                      if ((pgroup%xp(ii)*ainji)**2 +
-     &                    (pgroup%yp(ii)*binji)**2 > 1.) cycle
-                      if ((pgroup%xp(ii)*binjmin(ij))**2 +
-     &                    (pgroup%yp(ii)*ainjmin(ij))**2 <
-     &                    ainjmin(ij)*binjmin(ij)) cycle
+                      if (((pgroup%xp(ii)*ainji)**2 +
+     &                     (pgroup%yp(ii)*binji)**2 > 1.) .or.
+     &                    ((pgroup%xp(ii)*binjmin(ij))**2 +
+     &                     (pgroup%yp(ii)*ainjmin(ij))**2 <
+     &                     ainjmin(ij)*binjmin(ij))) then
+                        inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
+                        cycle
+                      endif
                     endif
 
 c                   --- Clear out any old data from pid. This is done here
@@ -968,7 +1018,11 @@ c                     --- find injection angle due to curvature by interpolation
                     end if
 
 c                   --- Only inject particles within the injection region.
-                    if (pgroup%zp(ii)+zinj < inj_zmmin .or. pgroup%zp(ii)+zinj >= inj_zmmax) cycle
+                    if (pgroup%zp(ii)+zinj < inj_zmmin .or.
+     &                  pgroup%zp(ii)+zinj >= inj_zmmax) then
+                        inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) - 1.
+                        cycle
+                      endif
 
 c                   --- Calculate transverse angle
                     aa = atan2(pgroup%yp(ii),pgroup%xp(ii))
@@ -1086,7 +1140,6 @@ c                   --- Save SSN
 c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
                     npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
-                    inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) + 1.
 
 c                   --- total number of particles injected.
                     npinject = npinject + npinje_s(jsid+1)
@@ -1432,13 +1485,24 @@ c Injection off of a tranverse facing surface.
 c Uses any of the three methods implemented, based off the value of
 c the variable 'inject'.
 
+c     --- Check if tinject should be set equal to inject.
+c     --- tinject is a new variable that allows different injection algorithms
+c     --- to be used to longitudinal and transverse injection sources.
+c     --- If the user sets up a transverse injection source, but does not
+c     --- set tinject, it is assumed that tinject should take on the same
+c     --- value as inject. This is done here so that the check is always
+c     --- made in case the user turns on injection at a later time.
+      if (tinject == 0 .and. ntinj > 0) then
+        tinject = inject
+      endif
+
       if (ntinj > 0 .and.
-     &    1 <= inject .and. inject <= 3) then
+     &    1 <= tinject .and. tinject <= 3) then
 
         if (itask == 1) then
 
-c         --- zero ntinject for inject = 2 or 3
-          if (inject == 2 .or. inject == 3) then
+c         --- zero ntinject for tinject = 2 or 3
+          if (tinject == 2 .or. tinject == 3) then
             do is=1,pgroup%ns
               jsid = pgroup%sid(is-1)
               if (.not. pgroup%ldts(is-1)) cycle
@@ -1533,10 +1597,10 @@ c                 --- This does not take into account any variation in a and bti
      &                     (tinj_phi(ith,iz,ij)-tinj_phi(ith,iz+1,ij))/dztinj(ij)
 
 c                 --- number of particles injected in grid cell
-                  if (inject == 1) then
+                  if (tinject == 1) then
                     rnn = ntinject(jsid+1)*ftinject(jsid+1,ij)/real(nttinj(ij)*nztinj(ij))
-                  elseif (inject == 2) then
-c                   --- Const for inject = 2.  Denominator includes factor for
+                  elseif (tinject == 2) then
+c                   --- Const for tinject = 2.  Denominator includes factor for
 c                   --- emitting on concentric cylinders.  See I. Langmuir,
 c                   --- K. Blodgett, "Currents Limited by Space Charge Between
 c                   --- Concentric Spheres", PhysRev, 1924.
@@ -1548,7 +1612,7 @@ c                   --- Concentric Spheres", PhysRev, 1924.
      &                                    (1. - inj_param)*tinjprev(ith,iz,ij))
                     rnn = tinjprev(ith,iz,ij)
                     if (ith == 0) tinjprev(nttinj(ij),iz,ij) = tinjprev(ith,iz,ij)
-                  elseif (inject == 3) then
+                  elseif (tinject == 3) then
 c                   --- Find coordinates of the point.
 c                   --- This only works with basic 3d and RZ solvers
                     p1x = abs(xtinject(ij) + p1x - xmmin)/dx
@@ -1664,8 +1728,8 @@ c                   --- shifted also.
                 enddo
               enddo
 
-c             --- Set number of particles that were injected for inject = 2 or 3
-              if (inject == 2 .or. inject == 3) then
+c             --- Set number of particles that were injected for tinject = 2 or 3
+              if (tinject == 2 .or. tinject == 3) then
                 ntinject(jsid+1) = ntinject(jsid+1) + nti
               endif
 
