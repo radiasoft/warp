@@ -401,6 +401,10 @@ class MultiGrid(SubcycledPoissonSolver):
       mpi.send(self.source[:,:,0],self.nslaves-1,tag)
 
   def getselfe(self,recalculate=0,lzero=true):
+    # --- Make sure that fieldp is at least defined.
+    try: self.fieldp
+    except AttributeError: self.setfieldpforparticles(0,0,0)
+
     if type(self.fieldp) != ArrayType:
       # --- This should only ever be done by an external routine, such as
       # --- a plotting function.
