@@ -4,14 +4,15 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 import timing as t
+#import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.68 2007/11/26 18:06:18 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.69 2007/12/12 23:34:50 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
 
 
-class ParticleScraper:
+class ParticleScraper(object):
   """
 Class for creating particle scraper for conductors
  - conductors: a conductor or list of conductors which act as particle scrapers
@@ -59,6 +60,7 @@ After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
+  #__metaclass__ = decorators.TimedClass
   def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
                     lcollectlpdata=0,mglevel=0,aura=0.,install=1,grid=None): 
@@ -230,17 +232,27 @@ after load balancing."""
 
     # --- Do the saving.
     for js in xrange(top.pgroup.ns):
-      if top.pgroup.ldts[js] and getn(js=js,gather=0) > 0:
-        # --- The code can be written this way now since the get routines
-        # --- can now return a direct reference to the data.
+      if top.pgroup.ldts[js] and top.pgroup.nps[js] > 0:
+        i1 = top.pgroup.ins[js] - 1
+        i2 = i1 + top.pgroup.nps[js]
         if self.lsaveoldpositions:
-          getpid(id=self.xoldpid,js=js,gather=0)[:] = getx(js=js,gather=0)
-          getpid(id=self.yoldpid,js=js,gather=0)[:] = gety(js=js,gather=0)
-          getpid(id=self.zoldpid,js=js,gather=0)[:] = getz(js=js,gather=0)
+          # --- The code could be written this way now since the get routines
+          # --- can now return a direct reference to the data.
+          #getpid(id=self.xoldpid,js=js,gather=0)[:] = getx(js=js,gather=0)
+          #getpid(id=self.yoldpid,js=js,gather=0)[:] = gety(js=js,gather=0)
+          #getpid(id=self.zoldpid,js=js,gather=0)[:] = getz(js=js,gather=0)
+          # --- But this is ~3 times faster for small numbers of particles
+          # --- due to overhead of the get functions.
+          top.pgroup.pid[i1:i2,self.xoldpid] = top.pgroup.xp[i1:i2]
+          top.pgroup.pid[i1:i2,self.yoldpid] = top.pgroup.yp[i1:i2]
+          top.pgroup.pid[i1:i2,self.zoldpid] = top.pgroup.zp[i1:i2]
         if self.lsaveoldvelocities:
-          getpid(id=self.uxoldpid,js=js,gather=0)[:] = getux(js=js,gather=0)
-          getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
-          getpid(id=self.uzoldpid,js=js,gather=0)[:] = getuz(js=js,gather=0)
+          #getpid(id=self.uxoldpid,js=js,gather=0)[:] = getux(js=js,gather=0)
+          #getpid(id=self.uyoldpid,js=js,gather=0)[:] = getuy(js=js,gather=0)
+          #getpid(id=self.uzoldpid,js=js,gather=0)[:] = getuz(js=js,gather=0)
+          top.pgroup.pid[i1:i2,self.uxoldpid] = top.pgroup.uxp[i1:i2]
+          top.pgroup.pid[i1:i2,self.uyoldpid] = top.pgroup.uyp[i1:i2]
+          top.pgroup.pid[i1:i2,self.uzoldpid] = top.pgroup.uzp[i1:i2]
 
   def applysymmetry(self,xc,yc):
     # --- Apply symmetry conditions to the positions so that the data passed
@@ -280,6 +292,7 @@ after load balancing."""
         if self.l_print_timing:t.finish()
         if self.l_print_timing:print js,'savecondid',t.milli()
     self.saveolddata()
+  #scrapeall = decorators.timedmethod(scrapeall)
     
   def scrape(self,js):
     # --- If there are no particles in this species, that nothing needs to be done
@@ -381,16 +394,18 @@ after load balancing."""
 
       # --- Get id of the conductor that the particles are near
       # --- See comments in updateconductors regarding reducedisinside
+      # --- An optimization trick is to shift the grid rather than
+      # --- the particles, avoiding adding scalars to arrays.
       if w3d.solvergeom in [w3d.XYZgeom]:
-        getgridngp3d(nn,xg+gdx[i],yg+gdy[i],zg+gdz[i],pp,
-                     nx,ny,nz,self.reducedisinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
-                     w3d.l2symtry,w3d.l4symtry)
+        getgridngp3d(nn,xg,yg,zg,pp,nx,ny,nz,self.reducedisinside,
+                     xmin-gdx[i],xmax-gdx[i],ymin-gdy[i],ymax-gdy[i],
+                     zmin-gdz[i],zmax-gdz[i],0.,w3d.l2symtry,w3d.l4symtry)
       elif w3d.solvergeom in [w3d.XZgeom,w3d.RZgeom]:
-        getgridngp2d(nn,xg+gdx[i],zg+gdz[i],pp,nx,nz,self.reducedisinside[:,0,:],
-                     xmin,xmax,zmin,zmax)
+        getgridngp2d(nn,xg,zg,pp,nx,nz,self.reducedisinside[:,0,:],
+                     xmin-gdx[i],xmax-gdx[i],zmin-gdz[i],zmax-gdz[i])
       elif w3d.solvergeom == w3d.XYgeom:
-        getgridngp2d(nn,xg+gdx[i],yg+gdy[i],pp,nx,ny,self.reducedisinside[:,:,0],
-                     xmin,xmax,ymin,ymax)
+        getgridngp2d(nn,xg,yg,pp,nx,ny,self.reducedisinside[:,:,0],
+                     xmin-gdx[i],xmax-gdx[i],ymin-gdy[i],ymax-gdy[i])
 
       # --- Loop over the conductors, removing particles that are found inside
       # --- of each.
