@@ -1,6 +1,6 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.16 2006/01/21 00:58:52 dave Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.17 2007/12/12 20:54:00 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
@@ -57,7 +57,7 @@ def plc(*x,**xx):
 def redraw():
   pass
 def current_window():
-  pass
+  return -1
 def pldefault(*x,**xx):
   pass
 def palette(*x,**xx):
