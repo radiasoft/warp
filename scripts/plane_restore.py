@@ -2,7 +2,7 @@
 Contains PlaneRestore class that is used to restore particle and field data at a
 specified z plane. The data have been saved by PlaneSave.
 The two simulations are linked together.
-"""
+
 ###########################################################################
 # Routines for restoring particle and phi data at a plane.
 #
@@ -21,9 +21,10 @@ The two simulations are linked together.
 # Assumptions:
 #   new_zplane lies exactly on a grid cell.
 ###########################################################################
+"""
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.10 2007/06/04 23:02:53 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.11 2007/12/12 23:39:01 dave Exp $"
 
 class PlaneRestore:
   """
@@ -33,44 +34,51 @@ It is automatically called every time step after the field solve
 Input:
   - filename=runid.plane: filename where data is stored
   - zplane: location where simulations are linked together. Units of meters
-            relative to the lab frame. Note zplane must lie on a grid cell.
+            relative to the lab frame. Defaults to w3d.zmmin.
   - js: species which are saved. Defaults to all species. Can be single
         integer or a list of integers.
   - l_restore_phi=1: flag for restoring phi or not.
+  - lrestoreparticles=1: flag for restoring particles
   """
 
-  def __init__(self,filename,zplane=None,js=None,l_restore_phi=1):
+  def __init__(self,filename,zplane=None,js=None,
+               l_restore_phi=1,lrestoreparticles=1):
 
-    # set self.zplane
-    if zplane is None:
-      self.zplane = w3d.zmmin
-    else:
-      # --- Use input value of zplane, but forcing it to the nearest
-      # --- grid location.
-      self.zplane = nint(zplane/w3d.dz)*w3d.dz
-
-    # restore only if between grid bounds
-    if(self.zplane < w3d.zmmin or self.zplane >= w3d.zmmax):
-      raise "The specified zplane is outside of the simulation domain"
-    
-    # --- Make sure that vbeamfrm is set to zero so that the grid doesn't move
-    # --- out from under the restoration plane.
-    top.vbeamfrm = 0.
-
-    # --- Save input flag
+    # --- Save some input values
+    self.filename = filename
+    self.zplane = zplane
+    self.js = js
     self.l_restore_phi = l_restore_phi
+    self.lrestoreparticles = lrestoreparticles
+
+    # --- Install the routines that do the work.
+    installbeforefs(self.restoreplane_bfs)
+    installafterfs(self.restoreplane_afs)
+
+    # --- Initialize self.f to None to flag that the initialization
+    # --- has not yet happened.
+    self.f = None
+
+  def initrestoreplane(self):
 
     ##############################
-    # Initialization stuff
+    # --- Initialization stuff
 
-    # open the file which holds the data
-    self.f = PR.PR(filename)
+    if self.zplane is None: self.zplane = w3d.zmmin
+
+    # --- open the file which holds the data
+    self.f = PR.PR(self.filename)
     self.zshift = self.zplane - self.f.zplane
 
-    # get time level of first plane and subtract 1
+    self.lsavephi = self.f.lsavephi
+    self.lsaveparticles = self.f.lsaveparticles
+    if not self.lsavephi: self.l_restore_phi = false
+    if not self.lsaveparticles: self.lrestoreparticles = false
+
+    # --- get time level of first plane and subtract 1
     self.it_restore = 0
 
-    # get time step, tmin, tmax
+    # --- get time step, tmin, tmax
     if top.dt != self.f.dt:
       print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
       print "Warning: timestep size not the same as in saved run, top.dt will"
@@ -80,66 +88,67 @@ Input:
     self.tmin = self.f.tmin
     self.tmax = self.f.tmax
 
-    # initializes list of species
-    if type(js) == IntType:
-      self.jslist= [js]
-    elif js is None:
-      self.jslist = range(top.ns)
-    else:
-      self.jslist = js
+    if self.lrestoreparticles:
+      # --- initializes list of species
+      if self.js is None:
+        self.jslist = range(top.ns)
+      else:
+        try:
+          list(self.js)
+          self.jslist = self.js
+        except TypeError:
+          self.jslist= [self.js]
 
-    # restore particle charge, mass, weight
-    for js in self.jslist:
-      top.pgroup.sq[js] = self.f.read('sq_%d'%js)
-      top.pgroup.sm[js] = self.f.read('sm_%d'%js)
-      top.pgroup.sw[js] = self.f.read('sw_%d'%js)
+      # --- restore particle charge, mass, weight
+      for js in self.jslist:
+        top.pgroup.sq[js] = self.f.read('sq_%d'%js)
+        top.pgroup.sm[js] = self.f.read('sm_%d'%js)
+        top.pgroup.sw[js] = self.f.read('sw_%d'%js)
 
-    # make sure that pid will be allocated
-    top.npid = self.f.npid
-    alotpart(top.pgroup)
+      # --- make sure that pid will be allocated
+      top.npid = self.f.npid
+      setuppgroup(top.pgroup)
 
-    # restore solver geometry of the saved data
-    try:
-      self.solvergeom = self.f.solvergeom
-    except:
-      self.solvergeom = w3d.XYZgeom
+    if self.l_restore_phi:
+      # --- restore solver geometry of the saved data
+      try:
+        self.solvergeom = self.f.solvergeom
+      except:
+        self.solvergeom = w3d.XYZgeom
 
-    # set up indices which specify transverse extent of saved and restored phi
-    # _r for restored phi array, _s for saved phi array
-    # '0' is minimum index, 'm' is maximum index
+      # set up indices which specify transverse extent of saved and restored phi
+      # _r for restored phi array, _s for saved phi array
+      # '0' is minimum index, 'm' is maximum index
 
-    #self.nx0_r = max(0,int(floor((self.f.xmmin - w3d.xmmin)/w3d.dx)))
-    #self.ny0_r = max(0,int(floor((self.f.ymmin - w3d.ymmin)/w3d.dy)))
-    #self.nxm_r = min(w3d.nx,int(floor((self.f.xmmax - w3d.xmmin)/w3d.dx)))
-    #self.nym_r = min(w3d.ny,int(floor((self.f.ymmax - w3d.ymmin)/w3d.dy)))
+      #self.nx0_r = max(0,int(floor((self.f.xmmin - w3d.xmmin)/w3d.dx)))
+      #self.ny0_r = max(0,int(floor((self.f.ymmin - w3d.ymmin)/w3d.dy)))
+      #self.nxm_r = min(w3d.nx,int(floor((self.f.xmmax - w3d.xmmin)/w3d.dx)))
+      #self.nym_r = min(w3d.ny,int(floor((self.f.ymmax - w3d.ymmin)/w3d.dy)))
 
-    self.nx0_r = max(0, 0 - self.f.ixa_plane + w3d.ix_axis)
-    self.ny0_r = max(0, 0 - self.f.iya_plane + w3d.iy_axis)
-    self.nxm_r = min(w3d.nx, self.f.nx_plane - self.f.ixa_plane + w3d.ix_axis)
-    self.nym_r = min(w3d.ny, self.f.ny_plane - self.f.iya_plane + w3d.iy_axis)
-    self.nx0_s = self.nx0_r - w3d.ix_axis + self.f.ixa_plane
-    self.ny0_s = self.ny0_r - w3d.iy_axis + self.f.iya_plane
-    self.nxm_s = self.nxm_r - w3d.ix_axis + self.f.ixa_plane
-    self.nym_s = self.nym_r - w3d.iy_axis + self.f.iya_plane
+      self.nx0_r = max(0, 0 - self.f.ixa_plane + w3d.ix_axis)
+      self.ny0_r = max(0, 0 - self.f.iya_plane + w3d.iy_axis)
+      self.nxm_r = min(w3d.nx, self.f.nx_plane - self.f.ixa_plane + w3d.ix_axis)
+      self.nym_r = min(w3d.ny, self.f.ny_plane - self.f.iya_plane + w3d.iy_axis)
+      self.nx0_s = self.nx0_r - w3d.ix_axis + self.f.ixa_plane
+      self.ny0_s = self.ny0_r - w3d.iy_axis + self.f.iya_plane
+      self.nxm_s = self.nxm_r - w3d.ix_axis + self.f.ixa_plane
+      self.nym_s = self.nym_r - w3d.iy_axis + self.f.iya_plane
 
-    # deal with symmetries
-    # if saved is 2 or 4 fold symmetric and restored isn't, lower half of restored
-    # is filled with inverted saved phi
-    if ((self.f.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
-        (self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))): 
-      self.ny0_r2 = max(0, - self.f.ny_plane - self.f.iya_plane + w3d.iy_axis)
-      self.nym_r2 = min(w3d.ny, 0 - self.f.iya_plane + w3d.iy_axis)
-      self.ny0_s2 = - self.ny0_r + w3d.iy_axis + self.f.iya_plane
-      self.nym_s2 =   self.nym_r - w3d.iy_axis + self.f.iya_plane
-    if ((self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry)) or
-        (self.f.sym_plane == 4 and (    w3d.l2symtry and not w3d.l4symtry))):
-      self.nx0_r2 = max(0, - self.f.nx_plane - self.f.ixa_plane + w3d.ix_axis)
-      self.nxm_r2 = min(w3d.nx, 0 - self.f.ixa_plane + w3d.ix_axis)
-      self.nx0_s2 = self.nxm_r - w3d.ix_axis + self.f.ixa_plane
-      self.nxm_s2 = - self.nx0_r + w3d.ix_axis + self.f.ixa_plane
-
-    installbeforefs(self.restoreplane_bfs)
-    installafterfs(self.restoreplane_afs)
+      # --- deal with symmetries
+      # --- if saved is 2 or 4 fold symmetric and restored isn't,
+      # --- lower half of restored is filled with inverted saved phi
+      if ((self.f.sym_plane == 2 and (not w3d.l2symtry and not w3d.l4symtry)) or
+          (self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry))): 
+        self.ny0_r2 = max(0, - self.f.ny_plane - self.f.iya_plane + w3d.iy_axis)
+        self.nym_r2 = min(w3d.ny, 0 - self.f.iya_plane + w3d.iy_axis)
+        self.ny0_s2 = - self.ny0_r + w3d.iy_axis + self.f.iya_plane
+        self.nym_s2 =   self.nym_r - w3d.iy_axis + self.f.iya_plane
+      if ((self.f.sym_plane == 4 and (not w3d.l2symtry and not w3d.l4symtry)) or
+          (self.f.sym_plane == 4 and (    w3d.l2symtry and not w3d.l4symtry))):
+        self.nx0_r2 = max(0, - self.f.nx_plane - self.f.ixa_plane + w3d.ix_axis)
+        self.nxm_r2 = min(w3d.nx, 0 - self.f.ixa_plane + w3d.ix_axis)
+        self.nx0_s2 = self.nxm_r - w3d.ix_axis + self.f.ixa_plane
+        self.nxm_s2 = - self.nx0_r + w3d.ix_axis + self.f.ixa_plane
 
   ###########################################################################
   def disable_plane_restore(self):
@@ -148,29 +157,39 @@ Input:
     uninstallafterfs(self.restoreplane_afs)
 
   ###########################################################################
-  # restore the next plane of data
+  # --- restore the next plane of data
   def restoreplane_bfs(self):
-    # increment the timelevel of the plane
+
+    # --- Do the initialization if it hasn't been done yet.
+    if self.f is None:
+      self.initrestoreplane()
+
+    # --- restore only if between grid bounds
+    if (self.zplane < w3d.zmmin+top.zbeam or
+        self.zplane+top.zbeam >= w3d.zmmax): return
+
+    # --- increment the timelevel of the plane
     self.it_restore = self.it_restore + 1
     it = self.it_restore
 
-    # load particles for each species
+    # --- load particles for each species
     for js in self.jslist:
-      self.restoreplane(js,it)
+      self.restoreplaneparticles(js,it)
 
-    # calculate grid location of new_plane
+    # --- calculate grid location of new_plane
     iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
-    # load saved phi into the phi array
+    # --- load saved phi into the phi array
     try:
       self.restore_phi(iz,it)
     except:
       return
 
-  def restoreplane(self,js=0,it=0):
+  def restoreplaneparticles(self,js=0,it=0):
+    if not self.lrestoreparticles: return
 
-    # put restored data into particle arrays, adjusting the z location
-    # Check if data was written for this step.
+    # --- put restored data into particle arrays, adjusting the z location
+    # --- Check if data was written for this step.
     suffix = '%d_%d'%(it,js)
     if 'xp'+suffix in self.f.inquire_names():
       xx = self.f.read('xp'+suffix)
@@ -182,27 +201,29 @@ Input:
       gi = self.f.read('gaminv'+suffix)
       id = self.f.read('pid'+suffix)
       addparticles(xx,yy,zz,ux,uy,uz,gi,id,
-                   js,
+                   js=js,
                    lallindomain=false,
                    lmomentum=true,
                    resetrho=false)
 
-  # this routine resets the potential at the plane iz=-1 after the field solve
-  # if this is needed
   def restoreplane_afs(self):
-    # calculate grid location of new_plane
+    # --- this routine resets the potential at the plane iz=-1 after the 
+    # --- field solve if this is needed
+
+    # --- restore only if between grid bounds
+    if (self.zplane < w3d.zmmin+top.zbeam or
+        self.zplane+top.zbeam >= w3d.zmmax): return
+
+    # --- calculate grid location of new_plane
     iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
-    # reset phi at plane iz=-1 if zplane is at iz=0
+    # --- reset phi at plane iz=-1 if zplane is at iz=0
     if (iz == 0):
-#     try:
       self.restore_phi(iz,self.it_restore)
-#     except:
-#       return
 
   #######################################################################
   def restore_phi(self,iz,it):
-    # return if flag indicates phi not to be restored
+    # --- return if flag indicates phi not to be restored
     if self.l_restore_phi is 0: return
     
     # --- Read in the phi data if it is available
