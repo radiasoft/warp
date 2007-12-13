@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.98 $, $Date: 2007/12/12 19:45:13 $
+c@(#) File w3d_injection.F, version $Revision: 1.99 $, $Date: 2007/12/13 18:46:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2072,7 +2072,8 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if (inject < 1 .or. inject > 3) return
+      if ((inject < 1 .or. inject > 3) .and.
+     &    (tinject < 1 .or. tinject > 3)) return
 
 c Set wpid if needed and not set by user
       if((l_inj_rz.or.l_inj_regular) .and. wpid==0) then
