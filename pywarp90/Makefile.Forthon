@@ -6,7 +6,7 @@ PUBLICHOME =
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) ranffortran.c
 	rm -f warpC.so
-	python setup.py -F nag build --build-platlib .
+	python setup.py $(FCOMP) build --build-platlib .
 
 toppy.$(SO): top.F top_lattice.F dtop.F top.v
 	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F dtop.F
