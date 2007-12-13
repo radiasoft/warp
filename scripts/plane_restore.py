@@ -23,8 +23,10 @@ The two simulations are linked together.
 ###########################################################################
 """
 
+__all__ = ['PlaneRestore','plane_restore_version']
+
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.11 2007/12/12 23:39:01 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.12 2007/12/13 02:10:26 dave Exp $"
 
 class PlaneRestore:
   """

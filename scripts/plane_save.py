@@ -3,8 +3,11 @@ Contains PlaneSave class that is used to save particle and field data at a
 specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
+
+__all__ = ['PlaneSave','plane_save_version']
+
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.17 2007/12/12 23:39:01 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.18 2007/12/13 02:10:26 dave Exp $"
 
 class PlaneSave:
   """
