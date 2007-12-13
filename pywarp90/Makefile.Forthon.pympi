@@ -1,48 +1,49 @@
 #DEBUG = -g #--fargs -C
-FCOMP = --farg "-DMPIPARALLEL -I/usr/local/mpi/include"
+FARGS = --farg "-DMPIPARALLEL -I/usr/local/mpi/include"
+FCOMP = 
 SO = so
 PUBLICHOME = $(HOME)/pub
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) em2dpy.$(SO) ranffortran.c
 	rm -f warpC.so
-	python setup.py --parallel build --build-platlib .
+	python setup.py $(FCOMP) --parallel build --build-platlib .
 	#mv warpC.so /home/dave/scriptsnew
 
 toppy.$(SO): top.F top_lattice.F dtop.F top.v topslave.F
-	Forthon -a $(FCOMP) $(DEBUG) top top_lattice.F dtop.F topslave.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) top top_lattice.F dtop.F topslave.F
 
 envpy.$(SO): toppy.$(SO) env.F env.v
-	Forthon -a $(FCOMP) $(DEBUG) env
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) env
 
 w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d.v w3d_interp.F w3d_collisions.F w3d_injection.F w3d_utilities.F w3d_load.F w3dslave.F
-	Forthon -a $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_interp.F w3d_collisions.F w3d_injection.F w3d_utilities.F w3d_load.F w3dslave.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) --macros top.v w3d dw3d.F w3d_interp.F w3d_collisions.F w3d_injection.F w3d_utilities.F w3d_load.F w3dslave.F
 
 f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3d.v f3dslave.F
-	Forthon -a $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3dslave.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_ImplicitES.F f3d_mgrid_be.F f3d_bfield.F f3d_conductors.F util.F fft.F f3dslave.F
 
 wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
-	Forthon -a $(FCOMP) $(DEBUG) wxy
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) wxy
 
 fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
-	Forthon -a $(FCOMP) $(DEBUG) fxy fxy_mgrid.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) fxy fxy_mgrid.F
 
 wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
-	Forthon -a $(FCOMP) $(DEBUG) --macros top.v wrz dwrz.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) --macros top.v wrz dwrz.F
 
 frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F frz.v frzslave.F90
-	Forthon -a $(FCOMP) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90 frz_mgrid_be.F frz_ImplicitES.F
 
 herpy.$(SO): toppy.$(SO) her.F her.v
-	Forthon -a $(FCOMP) $(DEBUG) her
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) her
 
 cirpy.$(SO): toppy.$(SO) cir.F cir.v
-	Forthon -a $(FCOMP) $(DEBUG) cir
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) cir
 
 chopy.$(SO): toppy.$(SO) cho.F cho.v
-	Forthon -a $(FCOMP) $(DEBUG) cho
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) cho
 
 em2dpy.$(SO): toppy.$(SO) em2d.F90 em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90 em2d.v
-	Forthon -a $(FCOMP) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90
+	Forthon -a $(FCOMP) $(FARGS) $(DEBUG) em2d em2d_apml.F90 em2d_apml_cummer.F90 em2d_maxwell.F90
 
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
