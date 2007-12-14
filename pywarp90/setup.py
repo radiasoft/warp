@@ -14,16 +14,18 @@ try:
 except:
     raise SystemExit, "Distutils problem"
 
-optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',['parallel'])
+optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',['parallel','with-numpy'])
 machine = sys.platform
 debug   = 0
 fcomp   = None
 parallel = 0
+with_numpy = 0
 for o in optlist:
   if   o[0] == '-g': debug = 1
   elif o[0] == '-t': machine = o[1]
   elif o[0] == '-F': fcomp = o[1]
   elif o[0] == '--parallel': parallel = 1
+  elif o[0] == '--with-numpy': with_numpy = 1
 
 sys.argv = ['setup.py']+args
 fcompiler = FCompiler(machine=machine,
@@ -68,6 +70,11 @@ if parallel:
   libraries = fcompiler.libs + ['mpi']
   #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
+if with_numpy:
+  define_macros = []
+else:
+  define_macros = [('WITH_NUMERIC','1')]
+
 # --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
 # --- files are always put in a build/temp directory relative to where the
 # --- source file is, rather than relative to the main build directory.
@@ -89,7 +96,7 @@ setup (name = "warpC",
                                 include_dirs=[builddir],
                                 library_dirs=library_dirs,
                                 libraries=libraries,
-                                define_macros=[('WITH_NUMERIC','1')],
+                                define_macros=define_macros,
                                 extra_objects=warpobjects,
                                 extra_link_args=['-g']+
                                              fcompiler.extra_link_args,
