@@ -582,6 +582,7 @@ class MultiGrid(SubcycledPoissonSolver):
                             self.dx,self.dy,self.dz,
                             self.nx,self.ny,self.nzlocal,
                             self.rho,iondensitygrid3d)
+      self.iondensitygrid3d = iondensitygrid3d
       multigridbe3dsolve(iwhich,self.nx,self.ny,self.nzlocal,self.nz,
                          self.dx,self.dy,self.dz*zfact,self.potential,self.source,
                          rstar,self.linbend,self.bounds,
