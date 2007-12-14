@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.39 $, $Date: 2007/07/31 23:09:40 $
+c version $Revision: 1.40 $, $Date: 2007/12/14 23:33:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1841,7 +1841,7 @@ c     generate interpolated local iondensity
      &   iondensitygrid3d%grid(ixx  ,iyy+1,izz+1)*(1.-wxx)*    wyy *    wzz  +
      &   iondensitygrid3d%grid(ixx+1,iyy+1,izz+1)*    wxx *    wyy *    wzz
 
-      else if (iondensity(id) .ne. 0.) then
+      else
         iondensitytmp = iondensity(id)
       endif
 
