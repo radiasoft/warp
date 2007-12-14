@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.204 2007/11/26 16:06:29 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.205 2007/12/14 23:51:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -937,13 +937,13 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If particle data was passed in and no specific plots were requested,
   # --- just plot the particles.
   if y is not None and \
-     (not hash and not contours and not surface and not cellarray):
+     (not hash and contours is None and not surface and not cellarray):
     particles = 1
 
   # --- If a grid is passed in and no specific plots were requested,
   # --- make a cellarray plot.
   if grid is not None and \
-     (not hash and not contours and not surface and not cellarray):
+     (not hash and contours is None and not surface and not cellarray):
     cellarray = 1
 
   # --- Whether a grid plot is parallel or not depends on the input.
@@ -1035,7 +1035,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- as densitygrid. The density grid is also needed if chopped or
   # --- denmin or max are specified, which always operate on the density.
   if (((type(grid) != ArrayType and zz is None) and
-       (hash or contours or surface or cellarray or color=='density'))
+       (hash or contours is not None or surface or cellarray or
+        color=='density'))
       or chopped or denmin or denmax):
     # --- Create space for data
     densitygrid = fzeros((1+nx,1+ny),'d')
@@ -1063,7 +1064,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- is being made. The exception is color=='density', in which case the
   # --- color is taken directly from the zz quantity.
   if ((zz is not None) and
-       (hash or contours or surface or cellarray)):
+       (hash or contours is not None or surface or cellarray)):
 
     # --- Create space for data
     grid = fzeros((1+nx,1+ny),'d')
@@ -1165,7 +1166,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   ppgeneric.cmax = cmax
 
   # --- Get grid mesh if it is needed
-  if contours or hash or surface or cellarray:
+  if contours is not None or hash or surface or cellarray:
     if xmesh is not None or ymesh is not None: usermesh = 1
     else:                                      usermesh = 0
     # --- The offsets are added in the way they are incase they are arrays.
@@ -1184,7 +1185,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
-  if contours and filled and nx > 1 and ny > 1:
+  if contours is not None and filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
@@ -1251,7 +1252,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
-  if contours and not filled and nx > 1 and ny > 1:
+  if contours is not None and not filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid),transpose(ymesh),transpose(xmesh),iregt,
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax,
@@ -1271,10 +1272,11 @@ Note that either the x and y coordinates or the grid must be passed in.
             color=hcolor,width=width)
 
   # --- Add colorbar if needed
-  if lcolorbar and \
-     ((contours and filled==1) or (color == 'density' and len(x) > 0) or \
-      (cellarray)):
-    if (contours and filled==1):
+  if (lcolorbar and
+     ((contours is not None and filled==1) or
+      (color == 'density' and len(x) > 0) or
+      (cellarray))):
+    if (contours is not None and filled==1):
       try:
         nc = len(contours) + 1
         levs = contours
@@ -1303,14 +1305,16 @@ Note that either the x and y coordinates or the grid must be passed in.
   if surface and me == 0 and nx > 1 and ny > 1:
     try:
       #import VPythonobjects
+      #import Opyndx
       import pyOpenDX
       if type(color) != ListType: scolor = None
       else:                       scolor = color
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
       zrange = 1.5*maxnd(abs(grid))
-     #vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
-     #                               color=scolor,vrange=(xrange,yrange,zrange))
+      #vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
+      #                             color=scolor,vrange=(xrange,yrange,zrange))
+      #vo = Opyndx.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
       vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
       import pl3d
