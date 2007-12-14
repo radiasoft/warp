@@ -1,10 +1,27 @@
 /* Created by David P. Grote */
-/* $Id: warpC_Forthon.c,v 1.5 2006/07/19 18:32:49 jlvay Exp $ */
+/* $Id: warpC_Forthon.c,v 1.6 2007/12/14 23:29:14 dave Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
 /* object file.                                                              */
 #include "Forthon.h"
+
+#ifndef PyMODINIT_FUNC
+#define PyMODINIT_FUNC void
+#endif
+
+extern PyMODINIT_FUNC inittoppy(void);
+extern PyMODINIT_FUNC initenvpy(void);
+extern PyMODINIT_FUNC initw3dpy(void);
+extern PyMODINIT_FUNC initf3dpy(void);
+extern PyMODINIT_FUNC initwxypy(void);
+extern PyMODINIT_FUNC initfxypy(void);
+extern PyMODINIT_FUNC initwrzpy(void);
+extern PyMODINIT_FUNC initfrzpy(void);
+extern PyMODINIT_FUNC initcirpy(void);
+extern PyMODINIT_FUNC initherpy(void);
+extern PyMODINIT_FUNC initchopy(void);
+extern PyMODINIT_FUNC initem2dpy(void);
 
 /* ######################################################################### */
 /* # Method list                                                             */
