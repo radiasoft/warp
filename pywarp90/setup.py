@@ -70,8 +70,11 @@ if parallel:
   libraries = fcompiler.libs + ['mpi']
   #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
+include_dirs = [builddir]
 if with_numpy:
+  import numpy
   define_macros = []
+  include_dirs.append(numpy.get_include())
 else:
   define_macros = [('WITH_NUMERIC','1')]
 
@@ -93,7 +96,7 @@ setup (name = "warpC",
                                 ['warpC_Forthon.c',
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
-                                include_dirs=[builddir],
+                                include_dirs=include_dirs,
                                 library_dirs=library_dirs,
                                 libraries=libraries,
                                 define_macros=define_macros,
