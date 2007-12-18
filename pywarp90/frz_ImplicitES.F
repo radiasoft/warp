@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.22 $, $Date: 2007/11/16 00:54:14 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.23 $, $Date: 2007/12/18 19:55:47 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -913,10 +913,10 @@ c       --- Alloate new work space
           return
         endif
 
-c       rhocoarse = 0.
+        rhocoarse = 0.
         phicoarse = 0.
-c       chi0coarse = 0.
-c       bongridcoarse = 0.
+        chi0coarse = 0.
+        bongridcoarse = 0.
 
 c       --- Restriction
         call restrictes3d(nx,0,nzlocal,nz,res,1,0,3,
