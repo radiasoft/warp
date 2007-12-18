@@ -146,7 +146,7 @@ class Maps:
                             pg.xp[il:iu],pg.yp[il:iu],pg.zp[il:iu],
                             self.ex[:np],self.ey[:np],self.ez[:np])
        if self.l_mode==2:
-         lzeros = where(pg.zp[il:iu]<0.5*w3d.zmmin or pg.zp[il:iu]>0.5*w3d.zmmax,1,0)
+         lzeros = where( (pg.zp[il:iu]<0.5*w3d.zmmin) | (pg.zp[il:iu]>0.5*w3d.zmmax) ,1,0)
          self.ex[:np] = where(lzeros,0.,self.ex[:np])
          self.ey[:np] = where(lzeros,0.,self.ey[:np])
          self.ez[:np] = where(lzeros,0.,self.ez[:np])
@@ -216,10 +216,9 @@ class Maps_simple:
                        pg.yp[il:iu],
                        pg.uxp[il:iu],
                        pg.uyp[il:iu],
-                       pg.gaminv[il:iu],
+                       pg.uzp[il:iu],
                        self.Mtx,
-                       self.Mty,
-                       top.vbeam)
+                       self.Mty)
 #      xp = pg.xp[il:iu].copy()
 #      yp = pg.yp[il:iu].copy()
 #      scf = pg.gaminv[il:iu]/top.vbeam
