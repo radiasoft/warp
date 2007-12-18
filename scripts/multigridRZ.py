@@ -458,7 +458,7 @@ class MultiGrid2D(MultiGrid):
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
-    mgiters = zeros(1)
+    mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
@@ -671,7 +671,7 @@ Initially, conductors are not implemented.
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
-    mgiters = zeros(1)
+    mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false
@@ -726,12 +726,12 @@ Initially, conductors are not implemented.
     nrhs = 1
     b = -self.source[:-1,:-1]/eps0
     phi = self.potential[1:-1,1:-1]
-    info = zeros(1)
+    info = zeros(1,'l')
 
     values = fzeros((5,n),'d')
-    rowind = fzeros((5,n))
+    rowind = fzeros((5,n),'l')
     colptr = arange(n+1)*5 + 1
-    rowcnt = zeros(n)
+    rowcnt = zeros(n,'l')
     rmmin = self.xmmin
     dr = self.dx
     dz = self.dz
