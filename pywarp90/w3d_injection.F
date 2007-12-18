@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.100 $, $Date: 2007/12/18 00:27:00 $
+c@(#) File w3d_injection.F, version $Revision: 1.101 $, $Date: 2007/12/18 19:46:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -131,10 +131,10 @@ c     --- need to be loaded in each of the four quadrants.
         spready = 0
       endif
 
-c If itask = 1, zero npinject. This is done here since npinject is used both
-c by normal and transverse space-charge limited injection. Both sections
-c add onto npinject. Only do this if actually injecting particles.
-      if (itask == 1) npinject = 0
+c If itask = 1, zero npinjected. This is done here since npinjected is set by
+c both normal and transverse space-charge limited injection. Both sections
+c add onto npinjected. Only do this if actually injecting particles.
+      if (itask == 1) npinjected = 0
 
 c The check of whether or not there is enough space for the injected particles
 c is now done in each injection method.
@@ -400,7 +400,7 @@ c           --- Get actual number of particles injected and ipmin
 
 c           --- Sum npinje_s to get the total number of particles injected.
             npinje_s(jsid+1) = npinje_s(jsid+1) + nn
-            npinject     = npinject     + nn
+            npinjected       = npinjected       + nn
 
 c           --- make injected particles live particles
             pgroup%ins(is) = pgroup%ins(is) - nn
@@ -1153,9 +1153,6 @@ c                   --- increment various particle counters
                     npinje_s(jsid+1) = npinje_s(jsid+1) + 1
                     npinjtmp(jsid+1,ij) = npinjtmp(jsid+1,ij) + 1
 
-c                   --- total number of particles injected.
-                    npinject = npinject + npinje_s(jsid+1)
-
 c                   --- Make injected particle live, though more work will
 c                   --- to be done to it below before its ready. But now, if
 c                   --- chckpart shifts particles around, this one will be
@@ -1226,6 +1223,9 @@ c           --- Adjust npinje_s(jsid+1) so it doesn't include the particles
 c           --- which were just scraped. Also, reset pgroup%nps(is).
             npinje_s(jsid+1) = pgroup%nps(is)
             pgroup%nps(is) = nn + npinje_s(jsid+1)
+
+c           --- Sum npinje_s to get the total number of particles injected.
+            npinjected = npinjected + npinje_s(jsid+1)
 
           enddo
 
@@ -1315,7 +1315,7 @@ c           --- setrho is now done by the setrho call in padvnc3d.
           enddo
 
 c         --- print warning if no particles were injected
-          if (debug .and. npinject == 0) then
+          if (debug .and. npinjected == 0) then
             call remark("No particles were injected.")
           endif
 
@@ -1715,9 +1715,6 @@ c                   --- increment particle counter
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
 
-c                   --- total number of particles injected
-                    npinject = npinject + ntinject(jsid+1)
-
 c                   --- Make injected particle live, though more work will
 c                   --- to be done to it below before its ready. But now, if
 c                   --- chckpart shifts particles around, this one will be
@@ -1776,10 +1773,13 @@ c           --- which were just scraped. Also, reset pgroup%nps(is).
             ntinject(jsid+1) = pgroup%nps(is)
             pgroup%nps(is) = nn + ntinject(jsid+1)
 
+c           --- Sum ntinject to get the total number of particles injected.
+            npinjected = npinjected + ntinject(jsid+1)
+
           enddo
 
 c         --- print warning if no particles were injected
-          if (debug .and. npinject == 0) then
+          if (debug .and. npinjected == 0) then
             call remark("No particles were injected transversely.")
           endif
 

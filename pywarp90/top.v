@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.225 $, $Date: 2007/12/12 19:41:52 $
+#@(#) File TOP.V, version $Revision: 3.226 $, $Date: 2007/12/18 19:46:14 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.225 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.226 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -152,6 +152,7 @@ jperev        real /0.0/    [J/eV]        # Conversion factor, Joules per eV
                                           # Set to echarge in derivqty
 mu0           real /0.0/    [H/m]         # Permeability of free space
 boltzmann     real /1.3806503e-23/ [J/K]  # Boltzmann's constant
+avogadro      real /6.02214179e23/        # Avogadro's Number
 fuz           real /3.e-5/                # for integer-real comparisons
 
 **** Ch_var dump:
@@ -1237,11 +1238,13 @@ inj_dtemp(ninject)  _real /0./ # Distance from surface where temperature is adde
 lvinject logical /.false./ # Sets whether injection source is included
                            # in field solve
 vinject(ninject)  _real    # Voltage on the injection source
-npinject     integer /0/   # Number of particles injected each step
+npinject     integer /0/   # Number of particles to inject each step
+npinjected   integer /0/   # Number of particles injected each step
 npinje_s(ns) _integer      # Number of particles injected each step
                            # for each species
-rnpinje_s(ns) _real        # Number of particles injected each step
-                           # for each species (do not need to be integers)
+rnpinje_s(ns) _real        # Number of particles to inject each step
+                           # for each species (do not need to be integers).
+                           # Only used when inject==1.
 npinjtmp(ns,ninject) _integer # Temporary for saving actual number of
                            # particles injected for inject=1. Only meaningful
                            # in parallel version.
