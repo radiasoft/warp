@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.173 2007/10/29 17:06:14 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.174 2007/12/18 20:52:30 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -295,7 +295,7 @@ Should never be directly created by the user.
         plg(self.xcent-array(r),z,color=color)
     if filled is not None:
       if filled == 'condid': filled = self.condid
-      c = array([filled],typecode='b')
+      c = array([filled],'b')
       plfp(c,self.xcent+r,z,[len(r)])
       if fullplane:
         plfp(c,self.xcent-array(r),z,[len(r)])
