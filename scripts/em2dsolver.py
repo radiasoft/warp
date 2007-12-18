@@ -25,7 +25,8 @@ class EM2D(object):
                     'laser_gauss_width':None,'laser_angle':0.,
                     'laser_wavelength':None,'laser_wavenumber':None,
                     'laser_frequency':None,'laser_source':2,
-                    'density_1d':False}
+                    'density_1d':False,'nfield_subcycle':1,
+                    'autoset_timestep':true,'dtcoef':0.99}
 
   def __init__(self,**kw):
     top.lcallfetchb = true
@@ -90,6 +91,7 @@ class EM2D(object):
       self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
       self.dy = (self.ymmax - self.ymmin)/self.ny
       self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
+
     if self.solvergeom in [w3d.XZgeom]:
       # --- When Z is used, set Z quantities, and set Y quantities to the same
       # --- values. Internally, the class always uses x and y. The user
@@ -115,6 +117,14 @@ class EM2D(object):
 #     em2d.ndelta_t = self.ndelta_t
 #     assert (self.ndelta_t - top.vbeam*top.dt/w3d.dz) < 1.e-6,"The input ndelta_t is not commensurate with the values of top.vbeam, top.dt, and w3d.dz"
 
+    # --- set time step as a fraction of Courant condition
+    # --- also set self.nfield_subcycle if top.dt over Courant condition times dtcoef
+    if self.autoset_timestep:
+      dt=self.dtcoef/(clight*sqrt(1./self.dx**2+1./self.dy**2))
+      if top.dt==0.:
+        top.dt=dt
+      else:
+        self.nfield_subcycle=int(top.dt/dt)+1
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
 
@@ -125,7 +135,7 @@ class EM2D(object):
     # --- Code transcribed from init_fields
     self.field = EM2D_FIELDtype()
     self.field.l_usecoeffs = self.l_usecoeffs
-    init_fields(self.field,self.nx,self.ny,self.nbndx,self.nbndx,top.dt,
+    init_fields(self.field,self.nx,self.ny,self.nbndx,self.nbndx,top.dt/self.nfield_subcycle,
                 self.dx,self.dy,clight,mu0,
                 self.xmmin,self.ymmin,1,
                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
@@ -146,11 +156,11 @@ class EM2D(object):
     if iypatch==0:ylb = self.bounds[1]
     if ixpatch+nxpatch==self.nx:xrb = self.bounds[2]
     if iypatch+nypatch==self.ny:yrb = self.bounds[3]
-    init_fields(self.fpatchcoarse,nxpatch,nypatch,self.nbndx,self.nbndx,top.dt,
+    init_fields(self.fpatchcoarse,nxpatch,nypatch,self.nbndx,self.nbndx,top.dt/self.nfield_subcycle,
                 self.dx,self.dy,clight,mu0,
                 self.xmmin+ixpatch*self.dx,self.ymmin+iypatch*self.dy,1,
                 xlb,ylb,xrb,yrb)
-    init_fields(self.fpatchfine,nxpatch*rap,nypatch*rap,self.nbndx,self.nbndx,top.dt,
+    init_fields(self.fpatchfine,nxpatch*rap,nypatch*rap,self.nbndx,self.nbndx,top.dt/self.nfield_subcycle,
                 self.dx/rap,self.dy/rap,clight,mu0,
                 self.xmmin+ixpatch*self.dx,self.ymmin+iypatch*self.dy,rap,
                 xlb,ylb,xrb,yrb)
@@ -229,7 +239,7 @@ class EM2D(object):
 #        return fx,fz,fy
         return fz,fx,fy
 
-  def setj(self,x,y,ux,uy,uz,gaminv,q,w,wfact):
+  def setj(self,x,y,ux,uy,uz,gaminv,q,w,wfact,dt):
     n = len(x)
     if n == 0: return
     if wfact is None:
@@ -238,9 +248,9 @@ class EM2D(object):
     else:
       l_particles_weight = true
     if self.l_onegrid:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,top.dt,l_particles_weight,self.field,self.field)
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.field)
     else:
-      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,top.dt,l_particles_weight,self.field,self.fpatchfine)
+      depose_current_em2d(n,x,y,ux,uy,uz,gaminv,wfact,q*w,dt,l_particles_weight,self.field,self.fpatchfine)
     
   def setjpy(self,x,y,ux,uy,uz,gaminv,q,w):
     n = len(x)
@@ -381,14 +391,27 @@ class EM2D(object):
     pass
 
   def loadj(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
+    # --- reallocate Jarray if needed
+    if self.field.ntimes<>top.nsndts:
+      self.field.ntimes=top.nsndts
+      self.field.gchange()
+      force_deposition=true
+    else:
+      force_deposition=false
+
+    # --- zero proper portion of Jarray
     if lzero: 
-      self.field.J[...] = 0.
-      if not self.l_onegrid:
-        self.fpatchcoarse.J[...] = 0.
-        self.fpatchfine.J[...] = 0.
-    for i,n,q,w in zip(top.pgroup.ins-1,top.pgroup.nps,
+      for i in range(top.nsndts-1,-1,-1):
+        if force_deposition or (top.it-1)%(2**i)==0:
+          self.field.Jarray[:,:,:,i] = 0.
+          if not self.l_onegrid:
+            self.fpatchcoarse.Jarray[:,:,:,i] = 0.
+            self.fpatchfine.Jarray[:,:,:,i] = 0.
+        
+    # --- loop over species
+    for js,i,n,q,w in zip(arange(top.pgroup.ns),top.pgroup.ins-1,top.pgroup.nps,
                        top.pgroup.sq,top.pgroup.sw):
-      if n == 0: continue
+      if n == 0 or ((top.it-1)%top.pgroup.ndts[js]<>0 and not force_deposition): continue
       x,y,ux,uy,uz = self.transformparticles(
             top.pgroup.xp[i:i+n],top.pgroup.yp[i:i+n],top.pgroup.zp[i:i+n],
             top.pgroup.uxp[i:i+n],top.pgroup.uyp[i:i+n],top.pgroup.uzp[i:i+n])
@@ -396,8 +419,24 @@ class EM2D(object):
         wfact = None
       else:
         wfact = top.pgroup.pid[i:i+n,top.wpid-1]
-      self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w,wfact)
+      # --- point J array to proper Jarray slice
+      self.field.J = self.field.Jarray[:,:,:,top.ndtstorho[top.pgroup.ndts[js]-1]]
+      # --- call routine performing current deposition
+      self.setj(x,y,ux,uy,uz,top.pgroup.gaminv[i:i+n],q,w,wfact,top.dt*top.pgroup.ndts[js])
+
+    # --- add slices
+    if top.nsndts>1:
+      for i in range(top.nsndts-2,-1,-1):
+        if force_deposition or (top.it-1)%(2**i)==0:
+          add_current_slice(self.field,i+1)
+
+    # --- point J to first slice of Jarray
+    self.field.J = self.field.Jarray[:,:,:,0]
+    
+    # --- smooth current density 
     if self.l_smoothdensity:self.smoothdensity()
+
+    # --- get 1-D density
     if self.density_1d:
       for i in range(3):
        J = sum(self.field.J[:,:,i],1)
@@ -520,9 +559,11 @@ class EM2D(object):
     for field in fields:
       self.add_laser(field)
       grimax(field)
-      push_em_b(field,0.5*top.dt)
-      push_em_e(field,top.dt)
-      push_em_b(field,0.5*top.dt)
+      dt = top.dt/self.nfield_subcycle
+      for i in range(self.nfield_subcycle):
+        push_em_b(field,0.5*dt)
+        push_em_e(field,dt)
+        push_em_b(field,0.5*dt)
     self.move_window_fields()
     for field in fields:
       griuni(field)
@@ -537,15 +578,15 @@ class EM2D(object):
     elif self.solvergeom == w3d.XZgeom:
       settitles(title,'Z','X','t = %gs'%(top.time))
     if l_transpose:
-      kw.setdefault('xmin',self.xmmin)
-      kw.setdefault('xmax',self.xmmax)
-      kw.setdefault('ymin',self.ymmin)
-      kw.setdefault('ymax',self.ymmax)
+      kw.setdefault('xmin',self.field.xmin)
+      kw.setdefault('xmax',self.field.xmax)
+      kw.setdefault('ymin',self.field.ymin)
+      kw.setdefault('ymax',self.field.ymax)
     else:
-      kw.setdefault('xmin',self.ymmin)
-      kw.setdefault('xmax',self.ymmax)
-      kw.setdefault('ymin',self.xmmin)
-      kw.setdefault('ymax',self.xmmax)
+      kw.setdefault('xmin',self.field.ymin)
+      kw.setdefault('xmax',self.field.ymax)
+      kw.setdefault('ymin',self.field.xmin)
+      kw.setdefault('ymax',self.field.xmax)
     ppgeneric(grid=data,**kw)
       
   def fpex(self,**kw):
@@ -675,7 +716,7 @@ class EM2D(object):
       g[b.nbndx-1:b.nbndx+f.nx+1,b.nbndy-1:b.nbndy+f.ny+1]=fin[:f.nx+2,:f.ny+2]
       griuni(f)
       
-    pli(g)
+    ppgeneric(g)
     
   def fpezall(self,**kw):
     f = self.field
