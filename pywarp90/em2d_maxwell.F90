@@ -222,7 +222,7 @@ INTEGER :: j, k
 real(kind=8) :: dt,dtsdx,dtsdy,mudt
 real(kind=8), ALLOCATABLE, DIMENSION(:,:) :: Bzapr
 
-real(kind=8) :: alpha = 0.5
+real(kind=8) :: alpha = 0.!5
 
 
 dtsdx = f%clight**2*dt/f%dx
@@ -299,7 +299,7 @@ else
   ! advance Ez 
   do k = 0, f%ny+1
     do j = 0, f%nx+1
-      if (j==1 .or. j==f%nx+1) then 
+      if (j==0 .or. j==f%nx+1) then 
       f%Ez(j,k) = f%Ez(j,k) + dtsdx * (f%By(j+1,k) - f%By(j,k)) &
                             - dtsdy * (f%Bx(j,k+1) - f%Bx(j,k)) &
                             - mudt  * f%J(j,k,3)
@@ -1963,3 +1963,12 @@ end if
 
 return
 end function bndijk
+
+subroutine add_current_slice(f,i)
+use mod_field
+TYPE(EM2D_FIELDtype) :: f
+integer(ISZ) :: i
+  
+  f%Jarray(:,:,:,i) = f%Jarray(:,:,:,i) + f%Jarray(:,:,:,i+1)
+
+end subroutine add_current_slice
