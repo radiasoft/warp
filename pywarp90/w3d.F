@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.386 $, $Date: 2007/11/30 17:00:44 $
+c@(#) File W3D.F, version $Revision: 3.387 $, $Date: 2007/12/18 19:39:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -831,11 +831,11 @@ c           --- Set zbeam so that it follows the center of mass of the beam.
 
             else
 c            --- Advance beam frame location using the nominal beam frame velocity.
-c             if (lgridqnt) then
-c               zbeam = zbeam+vbeamfrm*dt
-c             else
+             if (lgridqnt) then
+               zbeam = zbeam+vbeamfrm*dt
+             else
                zbeam = zgrid
-c             endif
+             endif
             endif
 
 c       --- zgridprv needs to be updated for the "synchv" step
@@ -1417,6 +1417,8 @@ c     predictor-corrector.
       if (pgroup%l_maps(is-1)) then
         call apply_simple_map(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%uxp(ipmin),pgroup%uyp(ipmin),pgroup%uzp(ipmin),
      &                           Mtx,Mty)
+        pgroup%zp(ipmin:ipmin+np-1) = pgroup%zp(ipmin:ipmin+np-1) 
+     &                              + pgroup%uzp(ipmin:ipmin+np-1)*pgroup%gaminv(ipmin:ipmin+np-1)*dt
       else
         if (interpdk .ne. 0) then
           call xpush3dintrp(pgroup,np,is,ipmin,dt)
@@ -1678,17 +1680,6 @@ c  Loop over particle blocks; move each block separately
           jmin = ipmin-1
           jmax = jmin+ip
 
-c         --- Zero out B field arrays, but only if B is going
-c         --- to be recomputed; B doesn't get recomputed if 
-c         --- center is "synchv" and interpdk is nonzero and allspecl
-c         --- is 0
-          if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0 
-     &        .and. .not. allspecl) .and. lresetparticleb) then
-            bx(ipmin:ipmin+ip-1) = 0.
-            by(ipmin:ipmin+ip-1) = 0.
-            bz(ipmin:ipmin+ip-1) = 0.
-          endif
-
 c         --- Save old fields which are needed to check if particles
 c         --- can have their ndts changed.
           if(center == "synchv" .and. chdtspid>0) then
@@ -1698,6 +1689,17 @@ c         --- can have their ndts changed.
             bxo(1:ip) = bx(ipmin:ipmin+ip-1)
             byo(1:ip) = by(ipmin:ipmin+ip-1)
             bzo(1:ip) = bz(ipmin:ipmin+ip-1)
+          endif
+
+c         --- Zero out B field arrays, but only if B is going
+c         --- to be recomputed; B doesn't get recomputed if 
+c         --- center is "synchv" and interpdk is nonzero and allspecl
+c         --- is 0
+          if (.not. (center .eq. "synchv" .and. interpdk(isid) .ne. 0 
+     &        .and. .not. allspecl) .and. lresetparticleb) then
+            bx(ipmin:ipmin+ip-1) = 0.
+            by(ipmin:ipmin+ip-1) = 0.
+            bz(ipmin:ipmin+ip-1) = 0.
           endif
 
 c         --- Obtain the self-fields
@@ -2008,7 +2010,7 @@ c           --- THIS IS NOT DONE FOR center = hbor1.
      &                                      halfdt_s,uxpo,uypo,uzpo,
      &                                      isid,time,zbeam)
             endif
-            if(center == "synchv" .and. chdtspid > 0) then
+            if(center == "synchv" .and. chdtspid > 0 .and. it>1) then
               call check_cc3d(pgroup,is,ipmin,ip,exo,eyo,ezo,bxo,byo,bzo)
             endif
          endif
@@ -2855,8 +2857,7 @@ c       --- appropriate time step
         if(ldownOK .and. (dd>courantmax .or. (.not. ldfield_below_threshold) .or. l_pisnearbycond)) then
 c         --- flag to move to group with smaller time step
           pgroup%pid(ip0,chdtspid) = -1.
-        elseif(lupOK .and. dd<courantmin .and. ldfield_below_threshold_up .and. 
-     &         .not. l_pisnearbycond) then
+        elseif(lupOK .and. (dd<courantmin .or. (.not. ldfield_below_threshold_up) .or. l_pisnearbycond)) then
 c         --- flag to move to group with larger time step
           pgroup%pid(ip0,chdtspid) = +1.
         endif
