@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.216 $, $Date: 2007/11/26 16:41:10 $
+c@(#) File TOP.F, version $Revision: 3.217 $, $Date: 2007/12/18 00:30:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4260,8 +4260,14 @@ c These are generic and can be used by any field solver.
 
 c     --- Find any new implicit species with different q/m
       do js1=0,pgroup%ns-1
-        if (.not. pgroup%limplicit(js1)) continue
+        if (.not. pgroup%limplicit(js1)) cycle
 c       --- First check if the q/m of this species has already been registered
+        if (pgroup%sm(js1+1) == 0) then
+          print*,"setupImplicit: the mass of an implicit species must be",
+     &           "nonzero, since chi depends on q/m"
+          call kaboom("setupImplicit: the mass must be nonzero")
+          return
+        endif
         qom = pgroup%sq(js1+1)/pgroup%sm(js1+1)
         lnew = .true.
         do js2=0,nsimplicit-1
@@ -4642,6 +4648,10 @@ c     --- Get current time
       call ostime(cpu, io, sys, mem)
       wtime = cpu
 c     wtime = walltime()
+
+c     integer:: c,cr,cm
+c     call system_clock(c,cr,cm)
+c     wtime = 1.*c/cr
 
       return
       end
