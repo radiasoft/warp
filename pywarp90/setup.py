@@ -66,7 +66,7 @@ warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
 library_dirs = fcompiler.libdirs
 libraries = fcompiler.libs
 if parallel:
-  library_dirs = fcompiler.libdirs + ['/usr/lpp/ppe.poe/lib']
+  library_dirs = library_dirs + ['/usr/lpp/ppe.poe/lib']
   libraries = fcompiler.libs + ['mpi']
   #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
