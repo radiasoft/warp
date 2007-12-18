@@ -192,7 +192,7 @@ Creates a new species of particles. All arguments are optional.
     if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
     if limplicit is not None: top.pgroup.limplicit[self.jslist[-1]] = limplicit
     for i in xrange(nautodt-1):
-      self.add_group()
+      self.add_group(weight=weight)
       top.pgroup.ndts[self.jslist[-1]]=2*top.pgroup.ndts[self.jslist[-2]]
       if efetch is not None: top.efetch[self.jslist[-1]] = efetch
       if fselfb is not None: top.pgroup.fselfb[self.jslist[-1]] = fselfb
@@ -601,9 +601,9 @@ in radius squared.
       vz=RandomArray.normal(0.,vthz,np)
       self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
       if fourfold:
-        self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
-        self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
-        self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+        self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
+        self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
+        self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
     if zdist=='regular': 
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
@@ -621,11 +621,11 @@ in radius squared.
           vx=RandomArray.normal(0.,vthx,Nadd)
           vy=RandomArray.normal(0.,vthy,Nadd)
           vz=RandomArray.normal(0.,vthz,Nadd)
-          self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
-    if fourfold:
-      self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
-      self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,lallindomain=true)
-      self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,lallindomain=true)
+          self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
+          if fourfold:
+            self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
+            self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
+            self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
     
   def gather_zmmnts_locs(self):
     get_zmmnts_stations(len(self.jslist),
