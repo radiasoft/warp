@@ -1,5 +1,5 @@
 em2d
-#@(#) File EM2D.V, version $Revision: 1.14 $, $Date: 2007/11/26 19:59:26 $
+#@(#) File EM2D.V, version $Revision: 1.15 $, $Date: 2007/12/18 19:33:10 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -103,6 +103,7 @@ move_window_field(f:EM2D_FIELDtype) subroutine
 project_j(f:EM2D_FIELDtype,fc:EM2D_FIELDtype,ff:EM2D_FIELDtype) subroutine
 set_substitute_fields(field:EM2D_FIELDtype,fpatchcoarse:EM2D_FIELDtype,fpatchfine:EM2D_FIELDtype) subroutine
 bndijk(f:EM2D_FIELDtype,j:integer,k:integer) integer function
+add_current_slice(f:EM2D_FIELDtype,i:integer) subroutine
 
 %%%%%%%% type_bnd:
 n integer
@@ -185,6 +186,7 @@ nxcoeffs integer
 nycoeffs integer
 nxcopy integer 
 nycopy integer 
+ntimes integer /1/
 xmin real
 ymin real
 xmax real
@@ -257,6 +259,7 @@ Excopy(0:nxcopy+3,0:nycopy+2) _real
 Eycopy(0:nxcopy+3,0:nycopy+2) _real
 Bzcopy(0:nxcopy+3,0:nycopy+2) _real
 J(0:nx+3,0:ny+2,3) _real
+Jarray(0:nx+3,0:ny+2,3,ntimes) _real
 nxfsum integer /0/
 nyfsum integer /0/
 Exfsum(0:nxfsum+3,0:nyfsum+2) _real
