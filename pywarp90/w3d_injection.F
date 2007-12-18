@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.99 $, $Date: 2007/12/13 18:46:39 $
+c@(#) File w3d_injection.F, version $Revision: 1.100 $, $Date: 2007/12/18 00:27:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -27,6 +27,7 @@ c=============================================================================
       use Picglb3d
       use Setpwork3d
       use Fields3dParticles
+      use DebugFlags,Only: debug
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -69,7 +70,18 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if (inject <= 0) return
+      if (inject <= 0 .and. tinject <= 0) return
+
+c     --- Check if tinject should be set equal to inject.
+c     --- tinject is a new variable that allows different injection algorithms
+c     --- to be used to longitudinal and transverse injection sources.
+c     --- If the user sets up a transverse injection source, but does not
+c     --- set tinject, it is assumed that tinject should take on the same
+c     --- value as inject. This is done here so that the check is always
+c     --- made in case the user turns on injection at a later time.
+      if (tinject == 0 .and. ntinj > 0) then
+        tinject = inject
+      endif
 
       call setuppgroup(pgroup,pgroup%ns)
 
@@ -79,7 +91,7 @@ c injection.  The third part is for space-charge limited injection.
       if (lrelativ) clightsqi = 1./clight**2
 
 c Print warning if vbeamfrm is not zero
-      if (abs(vbeamfrm) > 0.) then
+      if (debug .and. abs(vbeamfrm) > 0.) then
        call remark("WARNING: vbeamfrm is not zero and injection is being used.")
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
@@ -1303,7 +1315,7 @@ c           --- setrho is now done by the setrho call in padvnc3d.
           enddo
 
 c         --- print warning if no particles were injected
-          if (npinject == 0) then
+          if (debug .and. npinject == 0) then
             call remark("No particles were injected.")
           endif
 
@@ -1483,18 +1495,7 @@ c------------------------------------------------------------------------
 c------------------------------------------------------------------------
 c Injection off of a tranverse facing surface.
 c Uses any of the three methods implemented, based off the value of
-c the variable 'inject'.
-
-c     --- Check if tinject should be set equal to inject.
-c     --- tinject is a new variable that allows different injection algorithms
-c     --- to be used to longitudinal and transverse injection sources.
-c     --- If the user sets up a transverse injection source, but does not
-c     --- set tinject, it is assumed that tinject should take on the same
-c     --- value as inject. This is done here so that the check is always
-c     --- made in case the user turns on injection at a later time.
-      if (tinject == 0 .and. ntinj > 0) then
-        tinject = inject
-      endif
+c the variable 'tinject'.
 
       if (ntinj > 0 .and.
      &    1 <= tinject .and. tinject <= 3) then
@@ -1778,7 +1779,7 @@ c           --- which were just scraped. Also, reset pgroup%nps(is).
           enddo
 
 c         --- print warning if no particles were injected
-          if (npinject == 0) then
+          if (debug .and. npinject == 0) then
             call remark("No particles were injected transversely.")
           endif
 
@@ -3148,10 +3149,12 @@ c=============================================================================
       integer(ISZ):: ipmin,np
       real(kind=8):: ex(np),ey(np),ez(np)
 
-      if (inject <= 0) return
+      if (inject <= 0 .and. tinject <= 0) return
 
       call inj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
      &                pgroup%pid(ipmin,injpid),ex,ey,ez)
+      call tinj_sete3d(np,pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin),
+     &                 pgroup%pid(ipmin,injpid),ex,ey,ez)
 
       return
       end
@@ -4743,7 +4746,7 @@ c of dx from the surface.
 
       if (ntinj == 0) return
 
-      if (inject < 1 .or. inject > 3) return
+      if (tinject < 1 .or. tinject > 3) return
 
       call updateinj_zmminmax()
 
