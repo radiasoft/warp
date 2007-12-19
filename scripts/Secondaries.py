@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.26 2007/09/19 14:50:11 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.27 2007/12/19 20:52:17 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -48,7 +48,8 @@ Class for generating secondaries
  - l_verbose: sets verbosity (default=0). 
   """
   def __init__(self,isinc=None,conductors=None,issec=None,set_params_user=None,material=None,
-                    xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0):
+                    xoldpid=None,yoldpid=None,zoldpid=None,min_age=None,vmode=1,l_verbose=0,
+                    l_set_params_user_only=0):
     top.lresetlostpart=true
     self.inter={}
     self.outparts=[]
@@ -62,6 +63,7 @@ Class for generating secondaries
 #    self.condids={}
 #    self.emitted={}
     self.set_params_user=set_params_user
+    self.l_set_params_user_only=l_set_params_user_only
     self.mat_number=1
     self.call_set_params_user(pos.maxsec,self.mat_number)
     self.min_age=min_age
@@ -794,7 +796,7 @@ Class for generating secondaries
   def call_set_params_user(self,maxsec,mat_num=None):
     # --- Always call the default version of the routine. The user's routine
     # --- only needs to set the parameters that are different.
-    self.set_params(maxsec,mat_num)
+    if not self.l_set_params_user_only:self.set_params(maxsec,mat_num)
     # --- Now call the user's routine if there is one.
     if self.set_params_user is not None:
       if type(self.set_params_user) is StringType:
