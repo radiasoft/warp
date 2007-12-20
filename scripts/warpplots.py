@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.205 2007/12/14 23:51:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.206 2007/12/20 00:38:19 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -315,7 +315,6 @@ def plotlistofthings(lturnofflist=0):
   _listofthingstoplot = []
   for things in listsofthings:
     for thing in things:
-      pfunc = __main__.__dict__[thing[0]]
       getattr(_plotpackage,thing[0])(*thing[1],**thing[2])
   if lturnofflist: makeplotsdirectly()
 
