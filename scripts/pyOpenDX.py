@@ -39,7 +39,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.34 2007/12/20 01:34:43 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.35 2007/12/20 17:27:53 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -1188,7 +1188,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     try:
       timer = __main__.wgui.dx_timer
     except:
-      __main__.wgui.dx_timer = wx.wxPyTimer(__main__.wgui.dxinter)
+      __main__.wgui.dx_timer = wx.PyTimer(__main__.wgui.dxinter)
       __main__.wgui.dx_timer.Start(__main__.dxtimerconstant)
   else:
     dxinter(1)
