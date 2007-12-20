@@ -30,7 +30,7 @@ from rami_scripts import *
 from Fitting import *
 import __main__, os, sys
 
-postrack_version = "$Id: postrack.py,v 1.3 2005/05/13 06:04:13 ramiak Exp $"
+postrack_version = "$Id: postrack.py,v 1.4 2007/12/20 00:36:41 dave Exp $"
 def postrackdoc():
   import postrack
   print postrack.__doc__
@@ -73,10 +73,10 @@ except:
 
 lyexp_x = zeros([top.ns-1, 9],'d')
 lyexp_y = zeros([top.ns-1, 9],'d')
-init_zx  = ones([top.ns-1, 3])  # Final Cutoffs
-init_zy  = ones([top.ns-1, 3])  # Initial Cutoffs
-final_zx = ones([top.ns-1, 3])  # Final Cutoffs
-final_zy = ones([top.ns-1, 3])  # Final Cutoffs
+init_zx  = ones([top.ns-1, 3],'l')  # Final Cutoffs
+init_zy  = ones([top.ns-1, 3],'l')  # Initial Cutoffs
+final_zx = ones([top.ns-1, 3],'l')  # Final Cutoffs
+final_zy = ones([top.ns-1, 3],'l')  # Final Cutoffs
 
 # --- Allocate Arrays for particle differences ("divergence")
 
@@ -184,7 +184,7 @@ def print_lyap(outf=None, sep=' ', fmt="%12.8f"):
     else: out = sys.stdout
 
     nmeth = init_zx.shape[1]
-    vect = ones(2*array(init_zx.shape))
+    vect = ones(2*array(init_zx.shape),'l')
     vect[0:top.ns-1, :nmeth] = init_zx
     vect[0:top.ns-1, nmeth:] = init_zy
     vect[top.ns-1:, :nmeth] = final_zx

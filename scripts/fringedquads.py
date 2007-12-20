@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.9 2007/07/11 18:30:43 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.10 2007/12/20 00:36:40 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -325,7 +325,7 @@ def testfringedequads():
   rr=sqrt(xx**2+yy**2)
   tt=arctan(yy/xx)
   tt[w3d.nx/2,w3d.ny/2]=0.
-  ireg=ones((w3d.nx+1,w3d.ny+1))
+  ireg=ones((w3d.nx+1,w3d.ny+1),'l')
   for i in xrange(101):
     ppp[:,:,i] = top.esemlt[i,0,0]*rr**2*cos(2*(tt+top.emltpe[i]))
     pp1[:,:,i] = top.esemlt[i,1,0]*rr**4*cos(2*(tt+top.emltpe[i]))

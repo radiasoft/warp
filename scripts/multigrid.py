@@ -1170,7 +1170,7 @@ tensor that appears from the direct implicit scheme.
 
     if self.izfsslave is None: self.izfsslave = top.izfsslave
     if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
-    mgiters = zeros(1)
+    mgiters = zeros(1,'l')
     mgerror = zeros(1,'d')
     conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
     self.lbuildquads = false

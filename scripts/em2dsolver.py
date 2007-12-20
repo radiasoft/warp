@@ -60,7 +60,7 @@ class EM2D(object):
       if 'bounds' in kw:
         self.bounds = kw['bounds']
       else:
-        self.bounds = zeros(6)
+        self.bounds = zeros(6,'l')
         self.bounds[0] = self.boundxy
         self.bounds[1] = self.boundxy
         self.bounds[2] = self.boundxy

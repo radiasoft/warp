@@ -49,7 +49,7 @@ class FieldSolver3dBase(object):
       if 'bounds' in kw:
         self.bounds = kw['bounds']
       else:
-        self.bounds = zeros(6)
+        self.bounds = zeros(6,'l')
         self.bounds[0] = self.boundxy
         self.bounds[1] = self.boundxy
         self.bounds[2] = self.boundxy
@@ -74,7 +74,7 @@ class FieldSolver3dBase(object):
       if 'pbounds' in kw:
         self.pbounds = kw['pbounds']
       else:
-        self.pbounds = zeros(6)
+        self.pbounds = zeros(6,'l')
         self.pbounds[0] = self.pboundxy
         self.pbounds[1] = self.pboundxy
         self.pbounds[2] = self.pboundxy

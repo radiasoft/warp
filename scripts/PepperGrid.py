@@ -17,7 +17,7 @@ apply_grid  ... Rectangular Grid
 """
 from warp import *
 
-PepperGrid_version = "$Id: PepperGrid.py,v 1.3 2006/04/28 16:30:57 dave Exp $"
+PepperGrid_version = "$Id: PepperGrid.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
 def PepperGriddoc():
   import PepperGrid
   print PepperGrid.__doc__
@@ -33,7 +33,7 @@ def apply_pp(h_size=0.0002, h_sep=0.002, peakx=None, peaky=None):
     if peaky is None: peaky = w3d.ymmax
     nix = nint(peakx/h_sep)             # Number of holes in x, y
     niy = nint(peaky/h_sep)
-    tag = zeros([top.pgroup.npmax])            # Array to tag particles
+    tag = zeros([top.pgroup.npmax],'l')            # Array to tag particles
     for xh in range(0, nix+1):
         for yh in range(0, niy+1):
             # tag particles inside any pepper-pot hole

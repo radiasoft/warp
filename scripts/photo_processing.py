@@ -25,7 +25,7 @@ import Numeric
 import mphoto
 import gifmaker
 
-photo_processing_version = "$Id: photo_processing.py,v 1.2 2002/08/14 21:08:30 ramiak Exp $"
+photo_processing_version = "$Id: photo_processing.py,v 1.3 2007/12/20 00:36:41 dave Exp $"
 def photo_processingdoc():
   import photo_processing
   print photo_processing.__doc__
@@ -79,7 +79,7 @@ same name but with "montage" appended.
     print "Rows =", Rows
     print "Columns =", Columns
 
-    mphoto.save_tif(Numeric.zeros([Columns*D1,Rows*D0]),"background.tif")
+    mphoto.save_tif(Numeric.zeros([Columns*D1,Rows*D0],'l'),"background.tif")
     B = Image.open("background.tif")
 
     print "Background size =", B.size

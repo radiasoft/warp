@@ -29,7 +29,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.62 2007/08/10 00:15:32 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.63 2007/12/20 00:36:40 dave Exp $"
 
 
 ##############################################################################
@@ -777,11 +777,11 @@ Performs steady-state iterations in a cascade using different resolutions.
     global rhonext,nrnex,nznext,dxnext,dznext
     frz.dep_rho_rz(1,rhonext,nrnext,nznext,drnext,dznext,0.,w3d.zmmin)
   # declare arrays containing size grids for each mg level
-  gunnx = zeros(nmg+1)
-  gunny = zeros(nmg+1)
-  gunnz = zeros(nmg+1)
+  gunnx = zeros(nmg+1,'l')
+  gunny = zeros(nmg+1,'l')
+  gunnz = zeros(nmg+1,'l')
   gundt = zeros(nmg+1,'d')
-  gunnpinject = zeros(nmg+1)
+  gunnpinject = zeros(nmg+1,'l')
   # save last level sizes
   i = nmg
   gunnx[nmg] = w3d.nx

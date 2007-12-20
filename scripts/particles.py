@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.63 2007/11/26 18:04:16 jlvay Exp $"
+particles_version = "$Id: particles.py,v 1.64 2007/12/20 00:36:41 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -99,8 +99,7 @@ def populationsample(population,k,self=random.Random(0)):
     random = self.random
     _int = int
     # --- Result is an array rather than a list ---
-    typecode = gettypecode(array([population[0]]))
-    result = zeros(k,typecode=typecode)
+    result = zeros(k,gettypecode(array([population[0]])))
     if n < 6 * k:     # if n len list takes less space than a k len dict
         pool = list(population)
         for i in xrange(k):         # invariant:  non-selected at [0,n-i)
@@ -401,7 +400,7 @@ Multiple selection criteria are now supported.
     try: selectparticles.npsprev
     except: selectparticles.npsprev = nps + 0
     if len(selectparticles.npsprev) != ns:
-      selectparticles.npsprev = zeros(ns)
+      selectparticles.npsprev = zeros(ns,'l')
     if selectparticles.npsprev[js] >= nps[js]:
       if psubset==[]: setup_subsets()
       if -iw > len(psubset): raise "Bad window number"
@@ -412,7 +411,7 @@ Multiple selection criteria are now supported.
       else:          ii = take(ii,subset)
     else:
       # --- Once this method is used, always use it.
-      selectparticles.npsprev = zeros(ns)
+      selectparticles.npsprev = zeros(ns,'l')
       npplot = getattrwithsuffix(object,'npplot',suffix)
       if indices is None: indices = arange(ir1,ir2)
       if nps[js] <= npplot[-iw-1]:

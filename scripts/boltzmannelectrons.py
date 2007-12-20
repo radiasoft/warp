@@ -63,7 +63,7 @@ have direct control over the sor iterations.
       if not withegun: installafterfs(self.solve4)
       f3d.sormaxit = 0
     elif self.method in [1,3]:
-      self.parity = zeros(shape(w3d.rho[:,:,1:-1]))
+      self.parity = zeros(shape(w3d.rho[:,:,1:-1]),'l')
       self.parity[0::2,0::2,0::2] = 1
       self.parity[1::2,1::2,0::2] = 1
       self.parity[0::2,1::2,1::2] = 1

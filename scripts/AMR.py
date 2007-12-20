@@ -321,7 +321,7 @@ class AMRTree(object,Visualizable):
         nx=shape(f)[0]
         ny=shape(f)[1]
         nz=shape(f)[2]
-        t = fzeros([nx,ny,nz])
+        t = fzeros([nx,ny,nz],'l')
         r = maxnd(f)
         while r>=1:
           sum_neighbors3d(where(f==r,0,1),t,nx-1,ny-1,nz-1)
@@ -331,7 +331,7 @@ class AMRTree(object,Visualizable):
        if rank(f)==2:
         nr=shape(f)[0]
         nz=shape(f)[1]
-        t = fzeros([nr,nz])
+        t = fzeros([nr,nz],'l')
         r = maxnd(f)
         while r>=1:
           sum_neighbors(where(f==r,0,1),t,nr-1,nz-1)
@@ -405,9 +405,9 @@ class AMRTree(object,Visualizable):
         listpatches = []
         if(nooverlap):
           if dim==2:
-            fno = zeros([nx,ny])
+            fno = zeros([nx,ny],'l')
           else:
-            fno = zeros([nx,ny,nz])
+            fno = zeros([nx,ny,nz],'l')
         # loop all nodes where refinement is needed
         for n in listnodes:
           ix  = 1
@@ -537,9 +537,9 @@ class AMRTree(object,Visualizable):
         listpatches = []
         if(nooverlap):
           if dim==2:
-            fno = zeros([nx,ny])
+            fno = zeros([nx,ny],'l')
           else:
-            fno = zeros([nx,ny,nz])
+            fno = zeros([nx,ny,nz],'l')
         # loop all nodes where refinement is needed
         for n in listnodes:
           ix  = 1
@@ -693,7 +693,7 @@ class AMRTree(object,Visualizable):
 
     def sumpatch(self,listpatches,nx,ny,nz,dim):
       if dim==2:
-        f = fzeros([nx,ny])
+        f = fzeros([nx,ny],'l')
         for patch in listpatches:
           j=patch[0]
           k=patch[1]
@@ -701,7 +701,7 @@ class AMRTree(object,Visualizable):
           iy = patch[3]
           f[j:j+ix,k:k+iy] += 1
       else:
-        f = zeros([nx,ny,nz])
+        f = zeros([nx,ny,nz],'l')
         for patch in listpatches:
           j=patch[0]
           k=patch[1]

@@ -124,8 +124,8 @@ class MultiGridRZ(SubcycledPoissonSolver):
     bg.invdz = 1./bg.dz
 
     bg.gid = array([1])
-    bg.loc_part = ones((bg.nr+1,bg.nzp+1))
-    bg.loc_part_fd = ones((bg.nr+1,bg.nzp+1))
+    bg.loc_part = ones((bg.nr+1,bg.nzp+1),'l')
+    bg.loc_part_fd = ones((bg.nr+1,bg.nzp+1),'l')
     bg.invvol = zeros((bg.nr+1),'d')
 
     frz.ngrids = 1

@@ -1,6 +1,6 @@
 """Functions to find matched beam parameters for a periodic lattice using Circe."""
 from warp import *
-cir_match_version = "$Id: cir_match.py,v 1.3 2003/08/07 19:00:58 dave Exp $"
+cir_match_version = "$Id: cir_match.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
 
 print " "
 print "This scripts finds matched beam parameters for a periodic lattice."
@@ -101,7 +101,7 @@ def match(n=1,_sig_desr=20.,savehist=false):
   fff = zeros((2,cir.nit),'d')
   xxx = zeros((2,cir.nit),'d')
   nxxx = zeros(cir.nit,'d')
-  ixxx = zeros(cir.nit)
+  ixxx = zeros(cir.nit,'l')
   sigcir = zeros(cir.nit,'d')
   sig0cir = zeros(cir.nit,'d')
   sig_desr = _sig_desr*ones(cir.nit,'d')

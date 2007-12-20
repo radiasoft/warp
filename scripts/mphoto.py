@@ -30,7 +30,7 @@ from warp import *
 import Numeric, os, string
 from tifrw import *
 
-mphoto_version = "$Id: mphoto.py,v 1.3 2005/05/13 06:02:44 ramiak Exp $"
+mphoto_version = "$Id: mphoto.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
 def mphotodoc():
   import mphoto
   print mphoto.__doc__
@@ -56,7 +56,7 @@ The pixel in the center of a moving window of size (2*D_x+1, 2*D_y+1)
 is replaced with the median value of all the pixels in the window.
     """
     M, N = Numeric.shape(matrix)
-    outmatrix = Numeric.zeros([M,N])*1.0
+    outmatrix = Numeric.zeros([M,N],'d')
     D_x = int(Numeric.absolute(D_x))
     D_y = int(Numeric.absolute(D_y))
 
@@ -87,7 +87,7 @@ is replaced with the median value of all the pixels in the window.
 
             Lx = max_k - min_k
             Axy = Lx * Ly
-            V = Numeric.zeros([Axy,])*1.0	
+            V = Numeric.zeros([Axy,],'d')
 				
             for h in range(min_h, max_h):
                 for k in range (min_k, max_k):
@@ -105,8 +105,8 @@ and 4 for 4-fold -> unfold over x and y)
 	"""
 	if symmetry == 4:
 		M, N = Numeric.shape(matrix)
-		F_1 = Numeric.zeros([M,N-1])*1.0
-		F_2 = Numeric.zeros([M-1,2*N-1])*1.0
+		F_1 = Numeric.zeros([M,N-1],'d')
+		F_2 = Numeric.zeros([M-1,2*N-1],'d')
 		n = range(N-1)
 		for i in n:
 			F_1[:,i] = matrix[:,(N-1) - i]
@@ -114,7 +114,7 @@ and 4 for 4-fold -> unfold over x and y)
 		del(F_1)
 		del(n)
 
-		F_2 = Numeric.zeros([M-1,2*N-1])*1.0
+		F_2 = Numeric.zeros([M-1,2*N-1],'d')
 		m = range(M-1)
 		for i in m:
 			F_2[i,:] = F_3[(M-1) - i,:]
@@ -126,7 +126,7 @@ and 4 for 4-fold -> unfold over x and y)
 
 	elif symmetry == 2:
 		M, N = Numeric.shape(matrix)
-		F_2 = Numeric.zeros([M, 2*N-1])*1.0	                            	
+		F_2 = Numeric.zeros([M, 2*N-1],'d')
        	
 		for i in range(2*N-1):
 			if i < N:

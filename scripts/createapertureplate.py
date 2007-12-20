@@ -5,7 +5,7 @@ ParticleScraper: class for creating particle scraping
 """
 from warp import *
 
-createapertureplate_version = "$Id: createapertureplate.py,v 1.3 2007/06/04 23:03:44 dave Exp $"
+createapertureplate_version = "$Id: createapertureplate.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
 def createapertureplatedoc():
   import createapertureplate
   print createapertureplate.__doc__
@@ -35,8 +35,8 @@ Generate conductor data for field solver
   if platemax is None:
     platemax = sqrt(w3d.xmmax**2 + w3d.ymmax**2) + max(w3d.dx,w3d.dy)
 
-  iix = iota(0,w3d.nx)[:,NewAxis]*ones(1+w3d.ny)
-  iiy = iota(0,w3d.ny)*ones(1+w3d.nx)[:,NewAxis]
+  iix = iota(0,w3d.nx)[:,NewAxis]*ones(1+w3d.ny,'l')
+  iiy = iota(0,w3d.ny)*ones(1+w3d.nx,'l')[:,NewAxis]
   iix.shape = ((w3d.nx+1)*(w3d.ny+1),)
   iiy.shape = ((w3d.nx+1)*(w3d.ny+1),)
   xxx = iix*w3d.dx + w3d.xmmin
@@ -179,8 +179,8 @@ Class for creating particle scraper for a plate with multiple apertures
     ddtemp = fzeros((s.nx+1,s.ny+1),'d') + maxdd
 
     # --- Get locations of the grid points
-    iix = iota(0,w3d.nx)[:,NewAxis]*ones(1+w3d.ny)
-    iiy = iota(0,w3d.ny)*ones(1+w3d.nx)[:,NewAxis]
+    iix = iota(0,w3d.nx)[:,NewAxis]*ones(1+w3d.ny,'l')
+    iiy = iota(0,w3d.ny)*ones(1+w3d.nx,'l')[:,NewAxis]
     iix.shape = ((w3d.nx+1)*(w3d.ny+1),)
     iiy.shape = ((w3d.nx+1)*(w3d.ny+1),)
     xxx = iix*w3d.dx + w3d.xmmin

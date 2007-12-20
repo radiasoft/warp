@@ -4,7 +4,7 @@ from generateconductors import *
 from particlescraper import *
 import AMR
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.70 2007/06/04 23:02:54 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.71 2007/12/20 00:36:41 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -124,7 +124,7 @@ Constructor arguments
       # --- arrays to it.
       s.pcond = fzeros(n,'d')
       s.qcond = fzeros(n,'d')
-      s.kpvtxy = fzeros(n)
+      s.kpvtxy = fzeros(n,'l')
       fxy.pcond = s.pcond
       fxy.qcond = s.qcond
       fxy.kpvtxy = s.kpvtxy

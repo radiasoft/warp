@@ -1,6 +1,6 @@
 from warp import *
 import PW
-parallelpdb_version = "$Id: parallelpdb.py,v 1.5 2001/06/18 20:45:54 dave Exp $"
+parallelpdb_version = "$Id: parallelpdb.py,v 1.6 2007/12/20 00:36:41 dave Exp $"
 
 # Routines to allow all processors to write data to one file.
 # The PE's sequentially append data to the file. When a file is open,
@@ -56,7 +56,7 @@ class ParallelPW(PW.PW):
 	    if nn[i][id] != nn[0][id]:
 	      raise "all dimensions must be of the same length except the last"
 	# --- Get partial sum of last dimension
-	nlast = zeros(npes+1)
+	nlast = zeros(npes+1,'l')
 	for i in range(npes):
 	  nlast[i+1] = nlast[i] + nn[i][-1]
 	# --- Now, PE0 creates space in the file and closes it.

@@ -72,7 +72,7 @@ class MagnetostaticMG(SubcycledPoissonSolver):
     self.newconductorlist = []
 
     # --- Give these variables dummy initial values.
-    self.mgiters = zeros(3)
+    self.mgiters = zeros(3,'l')
     self.mgerror = zeros(3,'d')
 
     # --- Make sure that these are arrays
