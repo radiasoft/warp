@@ -23,7 +23,7 @@ from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.20 2007/11/26 16:04:52 jlvay Exp $"
+warputils_version = "$Id: warputils.py,v 1.21 2007/12/20 00:37:28 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -257,7 +257,7 @@ except:
     return tt
 
 # --- Convenience function to read in data from a text file
-def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,typecode='d',
+def getdatafromtextfile(filename,nskip=0,dims=[],nquantities=1,dtype='d',
                         fortranordering=1,converter=float,mode='r',get_header=false):
   """
 Reads data in from a text file. The data is assumed to be laid out on a
@@ -296,7 +296,7 @@ Both produce an array of shape (2,4) that looks like
   # --- Get total number of data values and make an array big enough to hold
   # --- them.
   ntot = nquantities*product(dims)
-  data = zeros(ntot,typecode)
+  data = zeros(ntot,dtype)
   if get_header:header=[]
   ff = open(filename,mode)
 
