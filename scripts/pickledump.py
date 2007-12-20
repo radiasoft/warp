@@ -38,7 +38,7 @@ Dump data into a pdb file
     if tables is not None:
       ff = tables.openFile(filename, 'w')
     else:
-      ff = file(filename, 'w')
+      ff = open(filename, 'w')
     closefile = 1
   else:
     closefile = 0
@@ -48,14 +48,20 @@ Dump data into a pdb file
   if tables is not None:
     pickler = hdf5pickle.Pickler(file=ff)
   else:
-    pickler = pickle.Pickler(ff)
+    pickler = pickle.Pickler(ff,pickle.HIGHEST_PROTOCOL)
+
+  # --- It turns out however, the writing multiple pickles to the same file
+  # --- is broken when using arrays. So now everything is put into a single
+  # --- list and it is pickled all at once.
+  picklelist = []
 
   # --- Put the varsuffix in the file if it was specified
   if varsuffix is not None:
     if tables is not None:
       ff.setNodeAttr('/','varsuffix',varsuffix)
     else:
-      pickler.dump('varsuffix')
+      #pickler.dump('varsuffix')
+      picklelist.append('varsuffix')
 
   # --- Convert attr into a list if needed
   if not (type(attr) == types.ListType): attr = [attr]
@@ -118,8 +124,8 @@ Dump data into a pdb file
     if tables is not None:
       pickler.dump('/'+pname,pkgdict)
     else:
-      pickler.dump((pname,pkgdict))
-      #pickle.dump((pname,pkgdict),ff)
+      #pickler.dump((pname,pkgdict))
+      picklelist.append((pname,pkgdict))
 
   # --- Create an empty dictionary to put pytrhon variables into.
   pkgdict = {}
@@ -180,52 +186,35 @@ Dump data into a pdb file
   if tables is not None:
     pickler.dump('/__main__',pkgdict)
   else:
-    pickler.dump(('__main__',pkgdict))
+    #pickler.dump(('__main__',pkgdict))
+    picklelist.append(('__main__',pkgdict))
+
+  pickler.dump(picklelist)
 
   if closefile: ff.close()
 
-
-
 #############################################################################
-# --- Restore everything from the pickle file
-def picklerestore(filename=None,verbose=0,skip=[],ff=None,
-                  varsuffix=None,ls=0,lreturnff=0):
+def picklerestore(filename,verbose=0,skip=[],
+                  varsuffix=None):
   """
-Restores all of the variables in the specified file.
-  - filename: file to read in from (assumes PDB format)
+Restores all of the variables in the specified pickle file.
+  - filename: file to read in from
   - verbose=0: When true, prints out the names of variables which are read in
-  - skip=[]: list of variables to skip
-  - ff=None: Allows passing in of a file object so that pydump can be called
-       multiple times to pass data into the same file. Note that
-       the file must be explicitly closed by the user.
+  - skip=[]: list of variables to skip (now ignored)
   - varsuffix: when set, all variables read in will be given the suffix
                Note that fortran variables are then read into python vars
-  - ls=0: when true, prints a list of the variables in the file
-          when 1 prints as tuple
-          when 2 prints in a column
-Note that it will automatically detect whether the file is PDB or HDF.
   """
-  assert filename is not None or ff is not None,\
-         "Either a filename must be specified or a pdb file pointer"
-  if ff is None:
+  ff = open(filename, 'rb')
 
-    # --- Make sure a filename was input.
-    assert filename is not None,"A filename must be specified"
-    # --- Check if file exists
-    assert os.access(filename,os.F_OK),"File %s does not exist"%filename
+  picklelist = pickle.load(ff)
 
-    ff = file(filename, 'r')
-    closefile = 1
-  else:
-    closefile = 0
+# while 1:
+#   try:
+#     object = pickle.load(ff)
+#   except EOFError:
+#     break
 
-  if lreturnff: closefile = 0
-
-  while 1:
-    try:
-      object = pickle.load(ff)
-    except EOFError:
-      break
+  for object in picklelist:
 
     # --- Check if it is varsuffix. If varsuffix was input, the varsuffix
     # --- from the file is ignored.
@@ -233,17 +222,15 @@ Note that it will automatically detect whether the file is PDB or HDF.
       if varsuffix is None: varsuffix = object
       continue
 
-    # --- The object is otherwise a tuple (pname,dict)
+    # --- The object is otherwise a tuple (pname,dict).
     pname,dict = object
-    print pname
 
-    # --- Add the varsuffix to all names if given
+    # --- Add the varsuffix to all names, if given.
     if isinstance(varsuffix,types.StringType):
       newdict = {}
       for key,value in dict.iteritems():
         newdict[varsuffix+key] = value
       dict = newdict
-
 
     # --- Check for the __main__ dictionary. Also, if a varsuffix is
     # --- given, then put everything into main.
@@ -272,13 +259,7 @@ Note that it will automatically detect whether the file is PDB or HDF.
           continue
 
     # --- Now the dictionary can be updated.
-    #pkg.setdict(dict) setdict is working (don't know why)
-    for key,value in dict.iteritems():
-      if isinstance(value,numpy.ndarray): continue
-      setattr(pkg,key,value)
-    for key,value in dict.iteritems():
-      if isinstance(value,numpy.ndarray):
-        setattr(pkg,key,value)
+    pkg.setdict(dict)
 
   # --- User defined Python functions need to be handle specially.
   try:
@@ -303,6 +284,5 @@ Note that it will automatically detect whether the file is PDB or HDF.
       except:
         if verbose: print "error with function "+vname
 
-  if closefile: ff.close()
-  if lreturnff: return ff
+  ff.close()
 
