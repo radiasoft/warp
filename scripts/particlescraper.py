@@ -6,7 +6,7 @@ from generateconductors import *
 import timing as t
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.69 2007/12/12 23:34:50 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.70 2007/12/20 00:04:37 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -729,17 +729,22 @@ after load balancing."""
           # --- It looks like in some cases, the x and xold etc positions are
           # --- inconsistent and very far from each each, giving an errorneous
           # --- value of vx etc.
-          if beta >= 0.99999:
-            vx = vx/beta*0.99999
-            vy = vy/beta*0.99999
-            vz = vz/beta*0.99999
-            beta = 0.99999
+          # --- betacorrection is written this way to avoid dividing by zero
+          # --- when beta == 0.
+          betacorrection = 1./where(beta >= 0.99999,beta/0.99999,1.)
+          beta = minimum(beta,0.99999)
           gamma = 1./sqrt((1.-beta)*(1.+beta))
+          ux = vx*(gamma*betacorrection)
+          uy = vy*(gamma*betacorrection)
+          uz = vz*(gamma*betacorrection)
         else:
           gamma = 1.
-        put(top.uxplost,ic,vx*gamma)
-        put(top.uyplost,ic,vy*gamma)
-        put(top.uzplost,ic,vz*gamma)
+          ux = vx
+          uy = vy
+          uz = vz
+        put(top.uxplost,ic,ux)
+        put(top.uyplost,ic,uy)
+        put(top.uzplost,ic,uz)
 
         # --- Set the angle of incidence and time of interception
         put(top.pidlost[:,-3],ic,intercept.itheta)
