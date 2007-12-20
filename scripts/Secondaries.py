@@ -20,7 +20,7 @@ except:
 import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.27 2007/12/19 20:52:17 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.28 2007/12/20 00:05:50 dave Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -86,11 +86,11 @@ Class for generating secondaries
     else:
       self.zoldpid=zoldpid
     # set variables for secondary electrons routines
-    self.secelec_ns = zeros(1)
+    self.secelec_ns = zeros(1,'l')
     self.secelec_un = zeros(pos.maxsec,'d')
     self.secelec_ut = zeros(pos.maxsec,'d')
     self.secelec_uz = zeros(pos.maxsec,'d')
-    self.secelec_ityps  = zeros(pos.maxsec)
+    self.secelec_ityps  = zeros(pos.maxsec,'l')
     self.secelec_ekstot = zeros(pos.maxsec,'d')
     self.secelec_dele   = zeros(1,'d')
     self.secelec_delr   = zeros(1,'d')
@@ -424,7 +424,7 @@ Class for generating secondaries
         sinphi   = sin(phi)
         # theta is relative to the z axis, phi to the x axis in the x-y plane 
         n_unit0 = array([sintheta*cosphi,sintheta*sinphi,costheta])
-        coseta = -sum(v*n_unit0)/sqrt(sum(v*v))
+        coseta = -sum(v*n_unit0,axis=0)/sqrt(sum(v*v,axis=0))
 #        print 'coseta = ',coseta
 #        return
 #        coseta=0.5*ones(shape(e0)[0])
