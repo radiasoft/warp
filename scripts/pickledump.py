@@ -1,8 +1,10 @@
+__all__ = ['pickledump','picklerestore']
 import __main__
 import os
 import types
 import numpy
 import Forthon
+
 #try:
 #  import tables
 #  import hdf5pickle
@@ -11,8 +13,8 @@ if 1:
   tables = None
   import pickle
 
-def hdfdump(filename=None,attr=['dump'],vars=[],serial=0,ff=None,varsuffix=None,
-            verbose=0):
+def pickledump(filename=None,attr=['dump'],vars=[],serial=0,ff=None,
+               varsuffix=None,verbose=0):
   """
 Dump data into a pdb file
   - filename: dump file name
