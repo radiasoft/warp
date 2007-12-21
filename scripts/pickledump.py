@@ -2,6 +2,7 @@ __all__ = ['pickledump','picklerestore']
 import __main__
 import os
 import types
+import inspect
 import numpy
 import Forthon
 
@@ -145,7 +146,7 @@ Dump data into a pdb file
     # --- Write out the source of functions. Note that the source of functions
     # --- typed in interactively is not retrieveable - inspect.getsource
     # --- returns an IOError.
-    if isinstance(vval,FunctionType):
+    if isinstance(vval,types.FunctionType):
 
       source = None
       try:
