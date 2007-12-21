@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.153 2007/12/12 23:41:10 dave Exp $"
+warp_version = "$Id: warp.py,v 1.154 2007/12/21 20:50:38 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -70,6 +70,7 @@ from warpC import *
 
 from Forthon import *
 from warputils import *
+import pickledump
 if with_numpy:
   import numpy.oldnumeric.random_array as RandomArray
 else:
@@ -110,8 +111,6 @@ package('wxy')
 package('w3d')
 package('top')
 
-# --- Add stuff to the path
-import sys
 
 # --- Override the value of the true and false variables setup in Forthon.
 # --- This ensures that the correct values of true and false are obtained
@@ -832,7 +831,8 @@ def restoreolddump(ff):
 ##############################################################################
 # --- Dump command
 def dump(filename=None,prefix='',suffix='',attr='dump',serial=0,onefile=0,pyvars=1,
-         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,hdf=0):
+         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false,
+         hdf=0,format='pdb'):
   """
 Creates a dump file
   - filename=(prefix+runid+'%06d'%top.it+suffix+'.dump')
@@ -852,6 +852,10 @@ Creates a dump file
   - resizeHist=1: When true, resize history arrays so that unused locations
                   are removed.
   - hdf=0: when true, dump into an HDF file rather than a PDB.
+  - format='pdb': specifies the dump format to use. Can be one of
+                  'pdb' for pdb file
+                  'hdf' for hdf file (using pytables)
+                  'pickle' for pickle file
   """
   timetemp = wtime()
   if not filename:
@@ -873,7 +877,8 @@ Creates a dump file
   interpreter_variables = []
   if pyvars:
     # --- Add to the list all variables which are not in the initial list
-    for l in __main__.__dict__.keys():
+    for l,v in __main__.__dict__.iteritems():
+      if isinstance(v,ModuleType): continue
       if l not in initial_global_dict_keys:
         interpreter_variables.append(l)
   # --- Resize history arrays if requested.
@@ -881,17 +886,24 @@ Creates a dump file
     top.lenhist = top.jhist
     gchange("Hist")
   # --- Call routine to make data dump
-  if onefile and lparallel:
-    paralleldump(filename,attr,interpreter_variables,serial=serial,
-                 varsuffix=varsuffix,histz=histz,verbose=verbose)
+  if format in ['pdb','hdf']:
+    if onefile and lparallel:
+      paralleldump(filename,attr,interpreter_variables,serial=serial,
+                   varsuffix=varsuffix,histz=histz,verbose=verbose)
+    else:
+      pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
+             varsuffix=varsuffix,verbose=verbose,hdf=hdf)
+  elif format == 'pickle':
+    pickledump.pickledump(filename,attr,interpreter_variables,serial,ff,
+                          varsuffix,verbose)
   else:
-    pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
-           varsuffix=varsuffix,verbose=verbose,hdf=hdf)
+    raise InputError
   # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,suffix='',onefile=0,verbose=false,dofieldsol=true):
+def restart(filename,suffix='',onefile=0,verbose=false,dofieldsol=true,
+            format='pdb'):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
@@ -902,31 +914,40 @@ Reads in data from file, redeposits charge density and does field solve
   - dofieldsol=true: When true, call fieldsol(0). This allows special cases
                      where just calling fieldsol(0) is not appropriate or
                      optimal
+  - format='pdb': specifies the dump format to use. Can be one of
+                  'pdb' for pdb file
+                  'hdf' for hdf file (using pytables)
+                  'pickle' for pickle file
   """
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
   if lparallel and not onefile:
     filename = filename + '_%05d_%05d%s.dump'%(me,npes,suffix)
 
-  # --- Call different restore routine depending on context.
-  # --- Having the restore function return the open file object is very
-  # --- kludgy. But it is necessary to avoid opening in
-  # --- the file multiple times. Doing that causes problems since some
-  # --- things would be initialized and installed multiple times.
-  # --- This is because the PW pickles everything that it can't write
-  # --- out directly and unpickles them when PR is called. Many things
-  # --- reinstall themselves when unpickled.
-  if onefile and lparallel:
-    ff = parallelrestore(filename,verbose=verbose,lreturnff=1)
-  else:
-    ff = pyrestore(filename,verbose=verbose,lreturnff=1)
+  if format in ['pdb','hdf']:
+    # --- Call different restore routine depending on context.
+    # --- Having the restore function return the open file object is very
+    # --- kludgy. But it is necessary to avoid opening in
+    # --- the file multiple times. Doing that causes problems since some
+    # --- things would be initialized and installed multiple times.
+    # --- This is because the PW pickles everything that it can't write
+    # --- out directly and unpickles them when PR is called. Many things
+    # --- reinstall themselves when unpickled.
+    if onefile and lparallel:
+      ff = parallelrestore(filename,verbose=verbose,lreturnff=1)
+    else:
+      ff = pyrestore(filename,verbose=verbose,lreturnff=1)
 
-  # --- Fix old dump files.
-  # --- This is the only place where the open dump file is needed.
-  restoreolddump(ff)
+    # --- Fix old dump files.
+    # --- This is the only place where the open dump file is needed.
+    restoreolddump(ff)
+    ff.close()
 
   # --- Now close the restart file
-  ff.close()
+  elif format == 'pickle':
+    pickledump.picklerestore(filename,verbose)
+  else:
+    raise InputError
 
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
