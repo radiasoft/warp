@@ -179,7 +179,7 @@ Dump data into a pdb file
       continue
 
     # --- Zero length arrays cannot by written out so they are skipped.
-    if isinstance(vval,numpy.ndarray) and product(array(shape(vval))) == 0:
+    if isinstance(vval,numpy.ndarray) and numpy.product(vval.shape) == 0:
       continue
 
     if verbose: print 'writing python variable '+vname
