@@ -52,7 +52,7 @@ values from zmin to zmax.
   ymax = 0.85
   ymin = 0.44
   if type(zmin) == type(zmax) == type(1):
-     plotval = reshape(arange(zmin,zmax+1,typecode='b'),(zmax+1-zmin,1))
+     plotval = reshape(arange(zmin,zmax+1,typecode=ubyte),(zmax+1-zmin,1))
   else:
      plotval = reshape(arange(ncolor)/(ncolor-1.),(ncolor,1))
   # --- draw the bar

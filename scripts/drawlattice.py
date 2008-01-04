@@ -2,7 +2,7 @@
 """
 __all__ = ['drawlatticedoc','drawlattice']
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.9 2007/12/19 20:11:00 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.10 2008/01/04 00:10:48 dave Exp $"
 def drawlatticedoc():
   import drawlattice
   print drawlattice.__doc__
@@ -24,7 +24,7 @@ def _getelem(elem,zlatmin,zlatmax):
 def _plotele(x,z,c,n1,n2):
   if c is None: return
   if n1 > 0:
-    cc = (c*ones(n1)).astype('b')
+    cc = (c*ones(n1)).astype(ubyte)
     nn = n2*ones(n1,'l')
     plfp(cc,x,z,nn)
     z = array(z)

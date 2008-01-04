@@ -16,7 +16,7 @@
 yes = 1; no = 0
 import Numeric
 
-tifrw_version = "$Id: tifrw.py,v 1.1 2005/05/13 06:14:58 ramiak Exp $"
+tifrw_version = "$Id: tifrw.py,v 1.2 2008/01/04 00:10:47 dave Exp $"
 def tifrwdoc():
   import tifrw
   print tifrw.__doc__
@@ -34,7 +34,7 @@ def save_tif(matrix, filename = None):
     max_val = float(Numeric.maximum.reduce(S))
     if max_val <> min_val:
         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
-    matrix = matrix.astype('b')					#Convert to binary
+    matrix = matrix.astype(ubyte)					#Convert to binary
     matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
 
     if filename is None:    filename = "temp.tif"

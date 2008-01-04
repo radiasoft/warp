@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.114 2007/11/05 23:50:18 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.115 2008/01/04 00:10:47 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -395,7 +395,7 @@ by the conductor number.
 
   # --- Now that the data is gathered, make the plot.
   z = array(z)
-  z = z.astype('b')
+  z = z.astype(ubyte)
   plfp(z,y,x,n,local=local)
 
 def _corner1(ix,iy,sx,sy,delsx,delsy,nm,nmsx,nmsy,iparity,
@@ -746,7 +746,7 @@ by the conductor number.
   print n
   # --- Now that the data is gathered, make the plot.
   z = array(z)
-  z = z.astype('b')
+  z = z.astype(ubyte)
   plfp(z,y,x,n,local=local)
   plp([y[0]],[x[0]],marker=circle,color=green,local=local)
   plg(y,x,color=red,local=local)
@@ -1682,7 +1682,7 @@ def plotsrfrvinout(srfrvin,srfrvout,zmin,zmax,n=1000,color='fg',gridframe=0,
   if outline:
     plg(rscale*rr+roff,zscale*zz+zoff,color=color)
   if fillcolor is not None:
-    cc = array([fillcolor]).astype('b')
+    cc = array([fillcolor]).astype(ubyte)
     plfp(cc,rscale*rr+roff,zscale*zz+zoff,[2*n+2])
 
 #####################################################################
@@ -1721,7 +1721,7 @@ def plotsrfrvin(srfrvin,zmin,zmax,n=1000,color='fg',gridframe=0,
   if outline:
     plg(rr,zz,color=color)
   if fillcolor is not None:
-    cc = array([fillcolor]).astype('b')
+    cc = array([fillcolor]).astype(ubyte)
     rr = array(list(rr) + [rmin,rmin])
     zz = array(list(zz) + [zmax,zmin])
     plfp(cc,rr,zz,[n+3])
@@ -1762,7 +1762,7 @@ def plotsrfrvout(srfrvin,zmin,zmax,n=1000,color='fg',gridframe=0,
   if outline:
     plg(rr,zz,color=color)
   if fillcolor is not None:
-    cc = array([fillcolor]).astype('b')
+    cc = array([fillcolor]).astype(ubyte)
     rmax = min(rmax,w3d.xmmax)
     rmax = max(rmax,max(rr))
     rr = array(list(rr) + [rmax,rmax])
@@ -1802,7 +1802,7 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
   if outline:
     plg(rscale*rr+roff,zscale*zz+zoff,color=color)
   if fillcolor is not None:
-    cc = array([fillcolor]).astype('b')
+    cc = array([fillcolor]).astype(ubyte)
     plfp(cc,rscale*rr+roff,zscale*zz+zoff,[n+1])
 
 
@@ -1878,7 +1878,7 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
         plg(rr1,zz,color=color)
         plg(rr2,zz,color=color)
       if fillcolor is not None:
-        cc = array([fillcolor]).astype('b')
+        cc = array([fillcolor]).astype(ubyte)
         plfp(cc,rr1,zz,[5])
         plfp(cc,rr2,zz,[5])
     # --- Plot end plates
@@ -1914,7 +1914,7 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
         plg(rrr1,zzr,color=color)
         plg(rrr2,zzr,color=color)
       if fillcolor is not None:
-        cc = array([fillcolor]).astype('b')
+        cc = array([fillcolor]).astype(ubyte)
         plfp(cc,rrl1,zzl,[5])
         plfp(cc,rrl2,zzl,[5])
         plfp(cc,rrr1,zzr,[5])

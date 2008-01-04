@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.206 2007/12/20 00:38:19 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.207 2008/01/04 00:10:47 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1476,7 +1476,7 @@ values from zmin to zmax.
     # --- the range of the level relative to other levels.
     if type(zmin) == type(zmax) == type(1) and \
        zmin >= 0 and zmax <=199:
-       plotval = arange(zmin,zmax+1,typecode='b')[:,NewAxis]*ones(2)
+       plotval = arange(zmin,zmax+1,typecode=ubyte)[:,NewAxis]*ones(2)
     else:
        plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
     pli(plotval,xmin,ymin,xmax,ymax,top=ctop,local=1)
@@ -1567,14 +1567,14 @@ Mouse actions:
   xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   # --- Create storate arrays
   # --- rr, gg, bb hold the original palette
-  rr = zeros(200,'b')
-  gg = zeros(200,'b')
-  bb = zeros(200,'b')
+  rr = zeros(200,ubyte)
+  gg = zeros(200,ubyte)
+  bb = zeros(200,ubyte)
   palette(rr,gg,bb,query=1)
   # --- newrr, newgg, newbb hold the new palette
-  newrr = zeros(200,'b')
-  newgg = zeros(200,'b')
-  newbb = zeros(200,'b')
+  newrr = zeros(200,ubyte)
+  newgg = zeros(200,ubyte)
+  newbb = zeros(200,ubyte)
   # --- position relative to the original palette
   cc = arange(0,200)*1.
   newcc = arange(0,200)*1.

@@ -1706,8 +1706,8 @@ be plotted.
     xx = [i01,i01,i02,i02,i01]
     yy = [i11,i12,i12,i11,i11]
     if idim==2: xx,yy = yy,xx
-    if ibox is None: ibox = ones(1,'b')
-    else:            ibox = (ibox+1).astype('b')
+    if ibox is None: ibox = ones(1,ubyte)
+    else:            ibox = (ibox+1).astype(ubyte)
     if self is self.root: accumulateplotlists()
     try:
       plfp(ibox,yy,xx,[5])

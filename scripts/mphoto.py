@@ -30,7 +30,7 @@ from warp import *
 import Numeric, os, string
 from tifrw import *
 
-mphoto_version = "$Id: mphoto.py,v 1.4 2007/12/20 00:36:40 dave Exp $"
+mphoto_version = "$Id: mphoto.py,v 1.5 2008/01/04 00:10:48 dave Exp $"
 def mphotodoc():
   import mphoto
   print mphoto.__doc__
@@ -157,7 +157,7 @@ and 4 for 4-fold -> unfold over x and y)
 #     max_val = float(Numeric.maximum.reduce(S))
 #     if max_val <> min_val:
 #         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
-#     matrix = matrix.astype('b')					#Convert to binary
+#     matrix = matrix.astype(ubyte)					#Convert to binary
 #     matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
 # 
 #     if filename is None:    filename = "temp.tif"
