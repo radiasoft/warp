@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.154 2007/12/21 20:50:38 dave Exp $"
+warp_version = "$Id: warp.py,v 1.155 2008/01/04 00:09:14 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -23,6 +23,7 @@ else:
   def gettypecode(x):
     return x.typecode()
   oldnonzero = nonzero
+  ubyte = 'b'
 import os.path
 import time
 
