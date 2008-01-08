@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.207 2008/01/04 00:10:47 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.208 2008/01/08 02:09:46 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3356,7 +3356,7 @@ to all three.
       if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
 #     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = broadcast(ppp)
+    if bcast: ppp = parallel.broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
 def setrho(val,ix=None,iy=None,iz=None,local=0,solver=None):
@@ -3414,7 +3414,7 @@ to all three.
    #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = broadcast(ppp)
+   #if bcast: ppp = parallel.broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
 def getphi(ix=None,iy=None,iz=None,bcast=0,local=0,solver=None):
@@ -3485,7 +3485,7 @@ be from none to all three.
       if me == pe: ppp = ppp[...,iz-toptmp.izfsslave[me]]
 #     else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = broadcast(ppp)
+    if bcast: ppp = parallel.broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
 def setphi(val,ix=None,iy=None,iz=None,local=0,solver=None):
@@ -3544,7 +3544,7 @@ be from none to all three.
    #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izfsslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = broadcast(ppp)
+   #if bcast: ppp = parallel.broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
 def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,local=0,fullplane=0,
@@ -3625,7 +3625,7 @@ be from none to all three.
       if me == pe: eee = eee[...,iz-top.izpslave[me]]
       else:        eee = zeros(shape(eee[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): eee = getarray(pe,eee,0)
-    if bcast: eee = broadcast(eee)
+    if bcast: eee = parallel.broadcast(eee)
 
   if not fullplane:
     return eee
@@ -3719,7 +3719,7 @@ be from none to all three.
       if me == pe: j = j[...,iz-top.izpslave[me]]
       else:        j = zeros(shape(j[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): j = getarray(pe,j,0)
-    if bcast: j = broadcast(j)
+    if bcast: j = parallel.broadcast(j)
 
   if not fullplane:
     return j
@@ -3814,7 +3814,7 @@ be from none to all three.
       if me == pe: b = b[...,iz-top.izpslave[me]]
       else:        b = zeros(shape(b[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): b = getarray(pe,b,0)
-    if bcast: b = broadcast(b)
+    if bcast: b = parallel.broadcast(b)
 
   if not fullplane:
     return b
@@ -3908,7 +3908,7 @@ be from none to all three.
       if me == pe: a = a[...,iz-top.izpslave[me]]
       else:        a = zeros(shape(a[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): a = getarray(pe,a,0)
-    if bcast: a = broadcast(a)
+    if bcast: a = parallel.broadcast(a)
 
   if not fullplane:
     return a

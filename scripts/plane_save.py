@@ -7,7 +7,7 @@ simulation. The two simulations are linked together.
 __all__ = ['PlaneSave','plane_save_version']
 
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.18 2007/12/13 02:10:26 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.19 2008/01/08 02:09:46 dave Exp $"
 
 class PlaneSave:
   """
@@ -243,7 +243,7 @@ Input:
     else:
       np_save = 0
 
-    self.save_this_step = broadcast(self.save_this_step)
+    self.save_this_step = parallel.broadcast(self.save_this_step)
 
     if (self.save_this_step):
       self.it = self.it + 1

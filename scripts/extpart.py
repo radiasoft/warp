@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.54 2007/10/19 20:30:52 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.55 2008/01/08 02:09:46 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -988,7 +988,7 @@ def restoreExtPart(object,filename):
     iz = 0
   # --- PE0 broadcasts its value of iz to all of the other processors
   # --- which create new instances of the ExtPart class.
-  iz = broadcast(iz)
+  iz = parallel.broadcast(iz)
   if me > 0: result = ExtPart(iz)
   return result
 

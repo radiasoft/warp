@@ -439,7 +439,7 @@ class Quasistatic:
 #      for ip in range(npes-1):
 #        mpi.send(tosend,ip)
       print me,tosend
-    recved = broadcast(tosend,npes-1)
+    recved = parallel.broadcast(tosend,npes-1)
     print me,recved
     if me<npes-1:
 #     recved = mpirecv(npes-1)

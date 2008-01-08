@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.155 2008/01/04 00:09:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.156 2008/01/08 02:09:47 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -57,6 +57,7 @@ except ImportError:
 # --- data handling. These routines all have sensible default results when
 # --- not running in parallel.
 from parallel import *
+import parallel
 
 try:
   if me == 0 and sys.platform != 'mac':
