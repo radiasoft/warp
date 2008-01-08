@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.208 2008/01/08 02:09:46 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.209 2008/01/08 20:49:33 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3310,7 +3310,7 @@ to all three.
       rho = frz.basegrid.rho[1:-1,1:-1]
       iy = None
     else:
-      rho = w3d.rho[:,:,1:-1]
+      rho = w3d.rho
   else:
     rho = solver.getrho()
     if len(rho.shape) == 2: iy = None
@@ -3374,7 +3374,7 @@ to all three.
       rho = frz.basegrid.rho[1:-1,1:-1]
       iy = None
     else:
-      rho = w3d.rho[:,:,1:-1]
+      rho = w3d.rho
   else:
     rho = solver.getrho()
     if len(rho.shape) == 2: iy = None
