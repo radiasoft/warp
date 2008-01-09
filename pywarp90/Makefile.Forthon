@@ -1,3 +1,4 @@
+#DEBUG = -g --fargs "-ftrace=full -freal=nan -fbounds-check"
 DEBUG = #-g #--fargs "-CB -traceback"
 FCOMP =
 SO = so

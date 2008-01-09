@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.277 $, $Date: 2007/11/26 17:22:39 $
+#@(#) File W3D.V, version $Revision: 3.278 $, $Date: 2008/01/09 19:32:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.277 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.278 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -831,6 +831,7 @@ othere3d(np:integer,xp(np):real,yp(np):real,zp(np):real,
          straight:real,ifeears,eears:real,eearsofz(0:nzzarr):real,
          dzzi:real,nzzarr,
          zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
+	 dbxdy:real,dbydx:real,
          ex(np):real,ey(np):real,ez(np):real,
          bx(np):real,by(np):real,bz(np):real)
              subroutine # Sets external E field

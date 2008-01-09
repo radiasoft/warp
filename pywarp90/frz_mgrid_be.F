@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.30 $, $Date: 2007/07/11 18:10:18 $
+c version $Revision: 1.31 $, $Date: 2008/01/09 19:32:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -93,10 +93,13 @@ c     NOTE there is no analagous coding for electrontemperaturegrid2d as the use
 c     set this up in a python script -- need to set all attributes of that object.
         
 c       --- Now, copy the rho data into the iondensitygrid2d grid
-        ixbemin = iondensitygrid2d%xmin/grid%dr
-        ixbemax = iondensitygrid2d%xmax/grid%dr
-        izbemin = iondensitygrid2d%ymin/grid%dz
-        izbemax = iondensitygrid2d%ymax/grid%dz
+        ixbemin = nint(iondensitygrid2d%xmin/grid%dr)
+c        ixbemax = nint(iondensitygrid2d%xmax/grid%dr)
+        ixbemax = ixbemin + iondensitygrid2d%nx
+        izbemin = nint(iondensitygrid2d%ymin/grid%dz)
+c        izbemax = nint(iondensitygrid2d%ymax/grid%dz)
+        izbemax = izbemin + iondensitygrid2d%ny
+
 c       Copy rho's into iondensitygrid2d.  If luseparticledensity = 2, then
 c        use the z-averaged value of rho.
         if (lzavparticledensity) then
@@ -251,6 +254,7 @@ c       --- Do one vcycle.
      &                  downpasses,uppasses,lrz,lcndbndy,icndbndy,bnd,
      &                  my_index,nslaves,izfsslave,nzfsslave)
 
+
 c       --- Calculate the change in phi (the error).
 
 c       --- This line seems to create a large temporary which can
@@ -372,7 +376,6 @@ c     --- Do initial relaxation iterations
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
-
 c     --- Recurse until the bottom layer is reached.
 c     --- This assumes that the parameters at the coarse levels are
 c     --- already calculated.
@@ -782,8 +785,6 @@ c                  print*,ix,iz, epsilontmp
                   rhoeote(ix,iz) = rhoe(ix,iz)/(electemptmp)
                   ix1 = ixmin + mod(ixmin + iz + parity,2)
 c                  if (ix == ix1+2 .and. iz==izmin+1 .and. printed .lt. 10) then
-c                     print*,"iondensity,boltzfac,epsilon,electemp ",
-c     &                iondensitytmp,boltzfac(ix,iz),epsilontmp,electemptmp,rhoeote(ix,iz)
 c                   endif
                 endif
               endif
@@ -1615,9 +1616,9 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
       regionid = 0
       do id=1,nberegions
         ixmin = (max(0.,xbemin(id) - xmmin))/dx
-        ixmax = (min(nx*dx,xbemax(id) - xmmin))/dx
+        ixmax = min(1.0*nx,(xbemax(id) - xmmin)/dx)
         izmin = (max(0.,zbemin(id) - zmmin))/dz
-        izmax = (min(nzlocal*dz,zbemax(id) - zmmin))/dz
+        izmax = min(1.0*nzlocal,(zbemax(id) - zmmin)/dz)
         regionid(ixmin:ixmax,izmin:izmax) = id
       enddo
 
@@ -1658,7 +1659,6 @@ c      print*,"ix,iz,id,liondensitygrid2d ", ix,iz,id,liondensitygrid2d
      &       iondensitygrid2d%grid(ixx+1,izz  )*    wxx *(1.-wzz) +
      &       iondensitygrid2d%grid(ixx  ,izz+1)*(1.-wxx)*    wzz  +
      &       iondensitygrid2d%grid(ixx+1,izz+1)*    wxx *    wzz
-
       else if (iondensity(id) .ne. 0.) then
         iondensitytmp = iondensity(id)
       endif

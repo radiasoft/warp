@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.23 $, $Date: 2007/12/18 19:55:47 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.24 $, $Date: 2008/01/09 19:32:44 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -68,6 +68,7 @@ c=============================================================================
      &                               bounds,coeffs,rhs)
       use Constant
       use ConductorTypemodule
+      use DKInterp
       integer(ISZ):: nx,nzlocal,ns
       real(kind=8):: dx,dz,xmmin
       real(kind=8):: qomdt(0:ns-1)
@@ -83,29 +84,84 @@ c=============================================================================
       real(kind=8):: rhs(0:nx,0:nzlocal)
 
       real(kind=8),pointer:: chi(:,:,:,:)
-      integer(ISZ):: ix,iz,js,ic
+      integer(ISZ):: ix,iz,js,ic,js1
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       real(kind=8):: ox,oy,oz,oo
       real(kind=8):: rr,rrm,rrp
+      real(kind=8):: alpha,alphabar,oneminus
+      real(kind=8):: osq,txx,txz,tzx,tzz,halfosqi,omcdti,bsqi,by
+      real(kind=8):: bbxx,bbxz,bbzx,bbzz,iperpxx,iperpxz,iperpzx,iperpzz
+      real(kind=8):: bcrossixz,bcrossizx
+
+      oneminus = 1.0 - 1.e-12
 
       allocate(chi(0:1,0:1,-1:nx+1,-1:nzlocal+1))
       chi = 0.
 
 c     --- First, generate the chi tensor from chi0 and the B field.
       do js=0,ns-1
+        js1=js+1
         do iz=-1,nzlocal+1
           do ix=-1,nx+1
 
             ox = 0.5*qomdt(js)*bongrid(ix,iz,0)
             oy = 0.5*qomdt(js)*bongrid(ix,iz,1)
             oz = 0.5*qomdt(js)*bongrid(ix,iz,2)
-            oo = 1./(1. + ox**2 + oy**2 + oz**2)
+c           -- (omega_c dt/2)**2 ... 
+            osq = ox**2+oy**2+oz**2
+            oo = 1./(1. + osq)
+c           Birdsall-Langdon T matrix components..
+            txx = oo*(1.+ox**2)
+            txz = oo*(ox*oz-oy)
+            tzx = oo*(ox*oz+oy)
+            tzz = oo*(1.+oz**2)
 
-            chi(0,0,ix,iz) = chi(0,0,ix,iz) + chi0(ix,iz,js)*oo*(1. + ox**2)
-            chi(0,1,ix,iz) = chi(0,1,ix,iz) + chi0(ix,iz,js)*oo*(ox*oz + oy)
-            chi(1,0,ix,iz) = chi(1,0,ix,iz) + chi0(ix,iz,js)*oo*(ox*oz - oy)
-            chi(1,1,ix,iz) = chi(1,1,ix,iz) + chi0(ix,iz,js)*oo*(1. + oz**2)
+            if (interpdk(js1) == 0 .or. oo > oneminus) then
+c           -- Not interpolating this species
+c           -- Reminder, first two indices of chi are the x-z tensor indices
+c           -- Now fixed for standard tensoral notation,i.e. used as
+c           -- Sum_ij (d/dx_i) chi_ij dphi/dx_j
+               chi(0,0,ix,iz) = chi(0,0,ix,iz) + chi0(ix,iz,js)*txx
+               chi(0,1,ix,iz) = chi(0,1,ix,iz) + chi0(ix,iz,js)*txz
+               chi(1,0,ix,iz) = chi(1,0,ix,iz) + chi0(ix,iz,js)*tzx
+               chi(1,1,ix,iz) = chi(1,1,ix,iz) + chi0(ix,iz,js)*tzz
+            else
+c           -- Interpolated species
+               alpha = sqrt(oo)
+               alphabar = 1.-alpha
+c           -- store 2/(omega_c dt)**2 and 1/(omega_c dt)
+               halfosqi=0.5/osq
+               omcdti = sqrt(0.25/osq)
+c           -- component of unit vector in direction of B
+               bsqi = 1./(bongrid(ix,iz,0)**2+bongrid(ix,iz,1)**2 +
+     &           bongrid(ix,iz,2)**2)
+               by = bongrid(ix,iz,1)*sqrt(bsqi)
+c           -- components of bb diad
+               bbxx = bongrid(ix,iz,0)**2*bsqi
+               bbxz = bongrid(ix,iz,0)*bongrid(ix,iz,2)*bsqi
+               bbzx = bbxz
+               bbzz = bongrid(ix,iz,2)**2*bsqi
+c           -- components of identity tensor perpendicular to B
+               iperpxx = 1.-bbxx
+               iperpxz = -bbxz
+               iperpzx = iperpxz
+               iperpzz = 1.-bbzz
+c           -- components of b cross I
+c           --  note diagonal terms bcrossixx = bcrossizz = 0
+               bcrossixz = by
+               bcrossizx = - by
 
+               chi(0,0,ix,iz) = chi(0,0,ix,iz) + chi0(ix,iz,js)*
+     &           (alpha*txx+alphabar*(bbxx +alphabar*halfosqi*iperpxx))
+               chi(0,1,ix,iz) = chi(0,1,ix,iz) + chi0(ix,iz,js)*
+     &           (alpha*txz+alphabar*(bbxz +alphabar*halfosqi*iperpxz -
+     &            omcdti*bcrossixz))
+               chi(1,0,ix,iz) = chi(1,0,ix,iz) + chi0(ix,iz,js)*
+     &           (alpha*tzx+alphabar*(bbzx +alphabar*halfosqi*iperpzx -
+     &            omcdti*bcrossizx))
+               chi(1,1,ix,iz) = chi(1,1,ix,iz) + chi0(ix,iz,js)*
+     &           (alpha*tzz+alphabar*(bbzz +alphabar*halfosqi*iperpzz))
+            endif
           enddo
         enddo
 
@@ -161,18 +217,18 @@ c         --- The general case
      &                          -    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
             coeffs(2,1,ix,iz) = +rrp*(1. + 0.5*(chi(0,0,ix  ,iz  )+chi(0,0,ix+1,iz  )))/dx**2
             coeffs(0,1,ix,iz) = +rrm*(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
-            coeffs(1,2,ix,iz) = +0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
+            coeffs(1,2,ix,iz) = +0.5*(rrp-rrm)*(chi(0,1,ix  ,iz  ))/(2.*dz*dx)
      &                          +    (1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
-            coeffs(1,0,ix,iz) = -0.5*(rrp-rrm)*(chi(1,0,ix  ,iz  ))/(2.*dz*dx)
+            coeffs(1,0,ix,iz) = -0.5*(rrp-rrm)*(chi(0,1,ix  ,iz  ))/(2.*dz*dx)
      &                          +    (1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-            coeffs(2,2,ix,iz) = +0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dx)
-     &                          +0.5*    chi(0,1,ix  ,iz+1)/(2.*dx*dz)
-            coeffs(0,2,ix,iz) = -0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dx)
-     &                          -0.5*    chi(0,1,ix  ,iz+1)/(2.*dx*dz)
-            coeffs(2,0,ix,iz) = -0.5*rrp*chi(1,0,ix+1,iz  )/(2.*dz*dx)
-     &                          -0.5*    chi(0,1,ix  ,iz-1)/(2.*dx*dz)
-            coeffs(0,0,ix,iz) = +0.5*rrm*chi(1,0,ix-1,iz  )/(2.*dz*dx)
-     &                          +0.5*    chi(0,1,ix  ,iz-1)/(2.*dx*dz)
+            coeffs(2,2,ix,iz) = +0.5*rrp*chi(0,1,ix+1,iz  )/(2.*dz*dx)
+     &                          +0.5*    chi(1,0,ix  ,iz+1)/(2.*dx*dz)
+            coeffs(0,2,ix,iz) = -0.5*rrm*chi(0,1,ix-1,iz  )/(2.*dz*dx)
+     &                          -0.5*    chi(1,0,ix  ,iz+1)/(2.*dx*dz)
+            coeffs(2,0,ix,iz) = -0.5*rrp*chi(0,1,ix+1,iz  )/(2.*dz*dx)
+     &                          -0.5*    chi(1,0,ix  ,iz-1)/(2.*dx*dz)
+            coeffs(0,0,ix,iz) = +0.5*rrm*chi(0,1,ix-1,iz  )/(2.*dz*dx)
+     &                          +0.5*    chi(1,0,ix  ,iz-1)/(2.*dx*dz)
 
           enddo
         enddo
@@ -191,14 +247,14 @@ c       --- XZ Planar
             coeffs(0,1,ix,iz) = +(1. + 0.5*(chi(0,0,ix-1,iz  )+chi(0,0,ix  ,iz  )))/dx**2
             coeffs(1,2,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz  )+chi(1,1,ix  ,iz+1)))/dz**2
             coeffs(1,0,ix,iz) = +(1. + 0.5*(chi(1,1,ix  ,iz-1)+chi(1,1,ix  ,iz  )))/dz**2
-            coeffs(2,2,ix,iz) = +0.5*chi(1,0,ix+1,iz  )/(2.*dz*dx)
-     &                          +0.5*chi(0,1,ix  ,iz+1)/(2.*dx*dz)
-            coeffs(0,2,ix,iz) = -0.5*chi(1,0,ix-1,iz  )/(2.*dz*dx)
-     &                          -0.5*chi(0,1,ix  ,iz+1)/(2.*dx*dz)
-            coeffs(2,0,ix,iz) = -0.5*chi(1,0,ix+1,iz  )/(2.*dz*dx)
-     &                          -0.5*chi(0,1,ix  ,iz-1)/(2.*dx*dz)
-            coeffs(0,0,ix,iz) = +0.5*chi(1,0,ix-1,iz  )/(2.*dz*dx)
-     &                          +0.5*chi(0,1,ix  ,iz-1)/(2.*dx*dz)
+            coeffs(2,2,ix,iz) = +0.5*chi(0,1,ix+1,iz  )/(2.*dz*dx)
+     &                          +0.5*chi(1,0,ix  ,iz+1)/(2.*dx*dz)
+            coeffs(0,2,ix,iz) = -0.5*chi(0,1,ix-1,iz  )/(2.*dz*dx)
+     &                          -0.5*chi(1,0,ix  ,iz+1)/(2.*dx*dz)
+            coeffs(2,0,ix,iz) = -0.5*chi(0,1,ix+1,iz  )/(2.*dz*dx)
+     &                          -0.5*chi(1,0,ix  ,iz-1)/(2.*dx*dz)
+            coeffs(0,0,ix,iz) = +0.5*chi(0,1,ix-1,iz  )/(2.*dz*dx)
+     &                          +0.5*chi(1,0,ix  ,iz-1)/(2.*dx*dz)
 
           enddo
         enddo
@@ -569,6 +625,7 @@ c     --- converted and expanded for the multigrid solver.
 
 c     --- Make sure guard planes have sensible values before beginning.
       call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,bounds,.false.)
+      localbounds = bounds
 
       localbounds = bounds
 
@@ -1021,7 +1078,7 @@ c=============================================================================
       real(kind=8):: rhs(0:nx,0:nzlocal)
       real(kind=8):: coeffs(0:2,0:2,0:nx,0:nzlocal)
       integer(ISZ):: bounds(0:5)
-      real(kind=8):: mgparam
+      real(kind=8):: mgparam,phiav
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -1097,6 +1154,7 @@ c     --- do loop to cover even and odd points
 
 c       --- set phi in the z guard planes
         call applyboundaryconditionses2d(phi,nx,0,nzlocal,nz,1,0,1,1,bounds,.false.)
+
 #ifdef MPIPARALLEL
         call mgexchange_phi(nx,0,nzlocal,nz,phi,bounds,0,1,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
@@ -1121,7 +1179,6 @@ c     --- Exchange phi in the z guard planes
       call averageperiodicphi2d(phi,nx,0,nzlocal,nz,1,0,1,bounds)
 
       deallocate(phisave)
-
       return
       end
 c=============================================================================

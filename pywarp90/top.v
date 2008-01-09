@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.226 $, $Date: 2007/12/18 19:46:14 $
+#@(#) File TOP.V, version $Revision: 3.227 $, $Date: 2008/01/09 19:32:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.226 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.227 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2067,6 +2067,19 @@ bzoldpid   integer /0/  # position of particles old Bz field in array pid
 chdtspid integer /0/   # position of particle pid for dts change
                        # (FORTRAN indexed: based 1)
 uparBopid  integer /0/ # position of particles uparallel * B in array pid
+bxpredpid   integer /0/  # position of particles predicted Bx field in
+                       # array pid (FORTRAN indexed: based 1)   
+bypredpid   integer /0/  # position of particles predicted By field in
+                       #  array pid (FORTRAN indexed: based 1) 
+bzpredpid   integer /0/  # position of particles predicted Bz field in
+                       # array pid (FORTRAN indexed: based 1) 
+uparoBpredpid  integer /0/ # position of particles uparallel * B in array pid
+expredpid   integer /0/  # position of particles predicted Ex field in
+                       # array pid (FORTRAN indexed: based 1)
+eypredpid   integer /0/  # position of particles predicted Ey field in
+                       # array pid (FORTRAN indexed: based 1)
+ezpredpid   integer /0/  # position of particles predicted Ez field in
+                       # array pid (FORTRAN indexed: based 1)      
 
 ssn    integer   /1/   # next particles 'social security number' available
 

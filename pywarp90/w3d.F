@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.387 $, $Date: 2007/12/18 19:39:49 $
+c@(#) File W3D.F, version $Revision: 3.388 $, $Date: 2008/01/09 19:32:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1625,8 +1625,10 @@ c  Loop over species
         if (.not. pgroup%ldts(is-1) .and. .not. pgroup%lvdts(is-1)) cycle
         isid = pgroup%sid(is-1) + 1
 c
-c  If this is a corrector step, do nothing for a non-interpolated species
-        if (interpdk(isid) == 0 .and. ipredcor > 0) cycle 
+c  If this is a corrector step, do nothing for a species that is neither
+c  interpolated nor implicit
+        if ( interpdk(isid) == 0 
+     &      .and. ipredcor > 0 .and. .not. pgroup%limplicit(isid-1)) cycle 
 c
 c  If this is a predictor step for an interpolated
 c  species, save the current uxp's as old velocities.
@@ -1703,8 +1705,12 @@ c         --- is 0
           endif
 
 c         --- Obtain the self-fields
-          call fetche3d(pgroup,ipmin,ip,is)
-          call fetchb3d(pgroup,ipmin,ip,is)
+c         --- Should skip this for implicit species as E is fetched in
+c         --- the python stepper.          
+          if (.not. pgroup%limplicit(isid-1)) then
+             call fetche3d(pgroup,ipmin,ip,is)
+             call fetchb3d(pgroup,ipmin,ip,is)
+          endif
 
 c         --- Get E field for particles near the  injection surface.
           call inj_sete(pgroup,ipmin,ip,ex(ipmin),ey(ipmin),ez(ipmin))
@@ -1776,11 +1782,13 @@ c           --- Correction to z on entry/exit to accelerator gap
             call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                    -halfdt_s, halfdt_s, fulldt_s, sm(1), sq(1), time)
 c           --- First half-electric field increment to momenta
-c           Only do a vpush for ipredcor = 0.  But will still
+c           Only do a vpush for ipredcor = 0, if we are not implicit.  
+c           If species is implicit it needs vpush regardless of whether
+c           interpolated or not.   In any case will still
 c           need to calculate gradB for ipredcor = 1; this is
 c           part of mugrdbpush. So must do explicitly in xpush3dintrp
-c           for ipredcor = 1.
-            if (ipredcor == 0) then
+c           for ipredcor = 1 (if we are not implicit).
+            if (ipredcor == 0 .or. pgroup%limplicit(isid-1)) then
               if (pgroup%lebcancel_pusher) then
                 call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                                 ex(ipmin),ey(ipmin),ez(ipmin),
@@ -1857,7 +1865,7 @@ c           --- Magnetic field increment to momenta
 c               Only do a vpush for ipredcor = 0.  But will still
 c               need to calculate gradB for ipredcor = 1; this is
 c               part of mugrdbpush.
-            if (ipredcor == 0) then
+            if (ipredcor == 0 .or. pgroup%limplicit(isid-1)) then
               if (pgroup%lebcancel_pusher) then
                 call ebcancelpush3d(ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                                 ex(ipmin),ey(ipmin),ez(ipmin),
