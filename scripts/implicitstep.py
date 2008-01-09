@@ -1,5 +1,6 @@
+
 """Defines ImplicitStep, which handles implicit time stepping"""
-implicitstep_version = "$Id: implicitstep.py,v 1.5 2007/08/14 23:36:41 dave Exp $"
+implicitstep_version = "$Id: implicitstep.py,v 1.6 2008/01/09 19:42:59 rcohen Exp $"
 
 from warp import *
 
@@ -28,6 +29,13 @@ Handles implicit time stepping.
     self.uyoldpid = nextpid() - 1
     self.uzoldpid = nextpid() - 1
     self.gaminvoldpid = nextpid() - 1
+    # set up pid indices for predicted values of blended mover
+    # WATCH OUT -- these are variables that may be used in both python
+    # and fortran, and do NOT have the 1 subtracted.  So if we use
+    # top.XXXpid from python where XXX is vdxold, vdyold, vdzold, bxpred,pypred,
+    #  bzpred, uparoBpred, be sure to subtract 1 from it in the pid array!
+    if (w3d.impinterp == 1):
+      w3d.oldsetup()
     setuppgroup(top.pgroup)
 
   def __setstate(self,dict):
@@ -81,6 +89,20 @@ Handles implicit time stepping.
         top.pgroup.pid[i1:i2,self.eyoldpid] = top.pgroup.ey[i1:i2]
         top.pgroup.pid[i1:i2,self.ezoldpid] = top.pgroup.ez[i1:i2]
 
+  def savePredEB(self):
+    for js in range(top.pgroup.ns):
+      if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
+        i1 = top.pgroup.ins[js] - 1
+        i2 = top.pgroup.ins[js] + top.pgroup.nps[js] - 1
+        # From comments in constructor, need to subtract one from
+        #  top.XXXpid's.
+        top.pgroup.pid[i1:i2,top.expredpid-1] = top.pgroup.ex[i1:i2]
+        top.pgroup.pid[i1:i2,top.eypredpid-1] = top.pgroup.ey[i1:i2]
+        top.pgroup.pid[i1:i2,top.ezpredpid-1] = top.pgroup.ez[i1:i2]
+        top.pgroup.pid[i1:i2,top.bxpredpid-1] = top.pgroup.bx[i1:i2]
+        top.pgroup.pid[i1:i2,top.bypredpid-1] = top.pgroup.by[i1:i2]
+        top.pgroup.pid[i1:i2,top.bzpredpid-1] = top.pgroup.bz[i1:i2]
+
   def restoreOldE(self,f=1.):
     for js in range(top.pgroup.ns):
       if top.pgroup.limplicit[js] and top.pgroup.nps[js] > 0:
@@ -111,6 +133,41 @@ Handles implicit time stepping.
       if top.pgroup.limplicit[js]:
         fetche3d(top.pgroup,top.pgroup.ins[js],top.pgroup.nps[js],js+1)
     top.lresetparticlee = false
+
+  def resetparticleb(self):
+    top.pgroup.bx = 0.
+    top.pgroup.by = 0.
+    top.pgroup.bz = 0.
+
+  def addextfields(self):
+    # adds the external E and B fields to existing particle E and B fields
+    pgroup=top.pgroup
+    for js in range(pgroup.ns):
+      # if top.pgroup.limplicit[js]:  why??  what happens for explicit species?
+      npd=pgroup.nps[js]
+      ins=pgroup.ins[js]-1
+      imax=ins+npd
+      x=pgroup.xp[ins:imax]
+      y=pgroup.yp[ins:imax]
+      z=pgroup.zp[ins:imax]
+      uz=pgroup.uzp[ins:imax]
+      gaminv=pgroup.gaminv[ins:imax]
+      ex=pgroup.ex[ins:imax]
+      ey=pgroup.ey[ins:imax]
+      ez=pgroup.ez[ins:imax]
+      bx=pgroup.bx[ins:imax]
+      by=pgroup.by[ins:imax]
+      bz=pgroup.bz[ins:imax]
+      bendres=zeros(npd,"d")
+      bendradi=zeros(npd,"d")
+      dtr = 0.5*top.dt
+      othere3d(npd,x,y,z,top.zbeam,top.zimin,top.zimax,top.straight, \
+               top.ifeears,top.eears,top.eearsofz,top.dzzi,top.nzzarr, \
+               top.zzmin,top.dedr,top.dexdx,top.deydy,top.dbdr, \
+               top.dbxdy,top.dbydx,ex,ey,ez,bx,by,bz)
+
+      exteb3d(npd,x,y,z,uz,gaminv,-dtr,dtr,bx,by,bz,ex,ey,ez,
+              pgroup.sm[js],pgroup.sq[js],bendres,bendradi,top.gammabar,top.dt)
 
   def advancezgrid(self):
     # --- Accelerate grid frame.
@@ -177,6 +234,17 @@ Handles implicit time stepping.
     # --- setup for the first part of the first step.
     self.fetche()
     self.saveOldE()
+    if w3d.impinterp == 1:
+      self.resetparticleb()
+      self.addextfields()
+      self.savePredEB()
+  #==========================================================================
+  def printpartextremes(self,leadstring):
+    minx = minnd(top.pgroup.xp)
+    maxx = maxnd(top.pgroup.xp)
+    minz = minnd(top.pgroup.zp)
+    maxz = maxnd(top.pgroup.zp)
+    print leadstring,minx,maxx,minz,maxz
 
   #============================================================================
   def step(self):
@@ -209,6 +277,8 @@ Handles implicit time stepping.
 
   #============================================================================
   def dostep(self):
+    #print "STARTING IMPLICIT TIMESTEPPER"
+    #print "uzp = ",top.pgroup.uzp[0]
     substarttime = wtime()
 
     # --- Set the internal lattice variables. This is not generally necessary
@@ -242,11 +312,18 @@ Handles implicit time stepping.
     # --- is not used.
     self.restoreOldE()
     top.laccumulate_rho = true
+#    execfile("/home/rcohen/warp/scripts/rcdiags.py")
+#    print "BEGIN STEP, z,zold,vdzold", printzzoldvzold()
+#    print "taking step, Ez = ", top.pgroup.ez[0]
+    if w3d.impinterp ==1:
+      w3d.ipredcor = 1   # corrector for the blended mover
     if top.lspecial:
       padvnc3d("halfv",top.pgroup)
     else:
       padvnc3d("fullv",top.pgroup)
+#    top.pgroup.yp=0.   # to avoid yp out of bounds in solve.  Need y=0 in range.
     top.laccumulate_rho = false
+#    print "AFTER HALFV, uzp = ",top.pgroup.uzp[0]
 
     # --- Now the position of the grid can be advanced.
     self.advancezbeam()
@@ -297,8 +374,15 @@ Handles implicit time stepping.
                     top.lmoments or top.lhist or top.llabwn or top.llast or
                     (top.it == 0) or top.allspecl)
 
+#    self.printpartextremes("AFTER CORRECTOR, ")
+#    print "AFTER CORR STEP, z,zold,vdzold", printzzoldvzold()
+#    print "BEFORE SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
+
     # --- Save the old particle data
     self.saveOldParticleData()
+
+#    print "AFTER SAVEOLD PART, z,zold,vdzold", printzzoldvzold()
+#    print "AFTER SAVEOLDPART, uzp = ",top.pgroup.uzp[0]
 
     # --- Halve the old E field to get a(n+1) = 1/2(a(n) + a(n+2)) where
     # --- a(n+2) is zero, use it to initialize the E field.
@@ -311,8 +395,20 @@ Handles implicit time stepping.
     # XXX Note that particle boundary conditions and injection will be tricky
     # XXX here.
     self.advancezgrid()
+    # If we are running the interpolated mover, we are now doing a predictor
+    # step.  This should apply the current fields to the corrected x.
+    # We can't do it here or it would muck up the Lorentz advance.  So
+    # it is done in xpush3d_interp.
+    if w3d.impinterp == 1:
+      w3d.ipredcor = 0
+    #
+#    print "BEFORE FULLV, uzp = ",top.pgroup.uzp[0]
     top.pgroup.ldoadvance[:] = top.pgroup.limplicit
     padvnc3d("fullv",top.pgroup)
+#    print "AFTER PRED STEP, z,zold,vdzold", printzzoldvzold()
+#    print "AFTER FULLV, uzp = ",top.pgroup.uzp[0]
+#    self.printpartextremes("AFTER PREDICTOR, ")
+
     top.pgroup.ldoadvance[:] = true
     self.advancezbeam()
 
@@ -327,18 +423,27 @@ Handles implicit time stepping.
     # --- Implicit field-solve for potential.
     if w3d.lbeforefs: beforefs()
     fieldsol3d(-1)
-    bfieldsol3d(-1)
+#    bfieldsol3d(-1)
     if w3d.lafterfs: afterfs()
 
     # --- Fetch the newly calculated implicit field and averate it with
     # --- the old field. This calculates a(n+1) = 1/2(a(n) + a(n+2))
     # --- The result is copied into the old field arrays.
+    # --- If we are running the interpolated mover we must also save the E,B
+    # --- at the particle locations as E_pred,B_pred for use in calculating
+    # --- v_drift at current time for next step.
     self.fetche()
     self.averageOldAndNewE()
+    if w3d.impinterp == 1:
+      self.resetparticleb()
+      self.addextfields()
+      self.savePredEB()
+      # this stores predicted total E, B for use in corrector.
 
     # --- Restore the old particle data. This can be done now that the new
     # --- implicit field is fetched at the free streaming positions.
     self.restoreOldParticleData()
+#    print "AFTER RESTOREOLDP, uzp = ",top.pgroup.uzp[0]
 
     # --- Set the transverse E fields near any defined apertures.
     #set_aperture_e()
@@ -368,6 +473,7 @@ Handles implicit time stepping.
 
       # --- Do a half-advance to bring v to same time level as the particles.
       padvnc3d("synchv",top.pgroup)
+#      print "AFTER SYNCHV, uzp = ",top.pgroup.uzp[0]
 
       # --- Finalize the moments calculation and do other diagnostics.
       getzmmnt(1,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,3,
