@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.54 $, $Date: 2007/10/29 23:40:23 $
+c TOPSLAVE.M, version $Revision: 1.55 $, $Date: 2008/01/11 22:19:23 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -85,11 +85,6 @@ c     call VTBEGIN(10,IERR)
 #endif
 
 
-c     --- Set ldoagain flag to false. Later on, particles received are checked
-c     --- if they are within the bounds and if any are not, ldoagain is set
-c     --- to true.
-      ldoagain = .false.
-
 c     --- make sure that particles marked as lost in this routine will be
 c     --- cleaned by clearpart.
       if(clearlostpart==0) clearlostpart = 1
@@ -101,6 +96,9 @@ c     --- wrapping around at the ends.
 
       ldoagain = .true.
       do while (ldoagain)
+c       --- Set ldoagain flag to false. Later on, particles received are checked
+c       --- if they are within the bounds and if any are not, ldoagain is set
+c       --- to true.
         ldoagain = .false.
 
 c       --- Loop over species
@@ -208,15 +206,19 @@ c         --- Sticky boundary condition: particles picked out are not passed.
 c         --- Instead, they are marked as lost particles and ins and nps are
 c         --- reset to include them.
           elseif (my_index == 0 .and. pbound0==absorb) then
-            pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = 0.
-            pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
-            pgroup%ins(is) = ins_init(is)
+            if (pgroup%ins(is) > ins_init(is)) then
+              pgroup%gaminv(ins_init(is):pgroup%ins(is)-1) = 0.
+              pgroup%nps(is) = pgroup%nps(is) + (pgroup%ins(is) - ins_init(is))
+              pgroup%ins(is) = ins_init(is)
+            endif
           elseif (my_index == nslaves-1 .and. pboundnz==absorb) then
-            pgroup%gaminv(pgroup%ins(is)+pgroup%nps(is):ins_init(is)+nps_init(is)-1)=0.
-            pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
-c         --- Reflecting boundary condition: particles picked out are not passed.
-c         --- Instead, they are put back in the system and ins and nps are
-c         --- reset to include them.
+            if (ins_init(is)+nps_init(is) > pgroup%ins(is)+pgroup%nps(is)) then
+              pgroup%gaminv(pgroup%ins(is)+pgroup%nps(is):ins_init(is)+nps_init(is)-1)=0.
+              pgroup%nps(is) = ins_init(is) + nps_init(is) - pgroup%ins(is)
+            endif
+c         --- Reflecting boundary condition: particles picked out are not
+c         --- passed. Instead, they are put back in the system and ins and nps
+c         --- are reset to include them.
           elseif (my_index == 0 .and. pbound0==reflect) then
             do ip=ins_init(is),pgroup%ins(is)-1
               pgroup%zp(ip) = zmmin + (zmmin - pgroup%zp(ip))
