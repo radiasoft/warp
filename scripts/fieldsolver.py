@@ -1015,9 +1015,9 @@ class SubcycledPoissonSolver(FieldSolver):
                      "Particles in species %d have y above the grid when depositing the source"%js
             if self.nzlocal > 0:
               z = pgroup.zp[i1:i2]
-              assert min(z) >= self.zmminlocal+self.getzgridndts()[indts],\
+              assert min(z) >= self.zmminp+self.getzgridndts()[indts],\
                      "Particles in species %d have z below the grid when depositing the source"%js
-              assert max(z) < self.zmmaxlocal+self.getzgridndts()[indts],\
+              assert max(z) < self.zmmaxp+self.getzgridndts()[indts],\
                      "Particles in species %d have z above the grid when depositing the source"%js
 
           self.setsourcep(js,pgroup,self.getzgridndts()[indts])
@@ -1113,9 +1113,9 @@ class SubcycledPoissonSolver(FieldSolver):
         assert max(y) < self.ymmax,\
                "Particles in species %d have y above the grid when fetching the field"%jsid
       if self.nzlocal > 0:
-        assert min(z) >= self.zmminlocal+self.getzgridprv(),\
+        assert min(z) >= self.zmminp+self.getzgridprv(),\
                "Particles in species %d have z below the grid when fetching the field"%jsid
-        assert max(z) < self.zmmaxlocal+self.getzgridprv(),\
+        assert max(z) < self.zmmaxp+self.getzgridprv(),\
                "Particles in species %d have z above the grid when fetching the field"%jsid
 
     args = [x,y,z,ex,ey,ez,bx,by,bz,jsid,pgroup]
