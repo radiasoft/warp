@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.388 $, $Date: 2008/01/09 19:32:45 $
+c@(#) File W3D.F, version $Revision: 3.389 $, $Date: 2008/01/15 00:46:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4425,6 +4425,7 @@ c The E field is accumulated, ie. e = e - grad phi, but
 c will be zeroed out if lzero is true.
 
       integer(ISZ):: ix,iy,iz
+      real(kind=8):: dxi,dyi,dzi
       real(kind=8):: tdxi,tdyi,tdzi
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -4437,6 +4438,9 @@ c     --- Do some checking first.
 c     --- Zero out the E field is requested
       if (lzero) selfe = 0.
 
+      dxi = 1.0/dx
+      dyi = 1.0/dy
+      dzi = 1.0/dz
       tdxi = 0.5/dx
       tdyi = 0.5/dy
       tdzi = 0.5/dz
@@ -4467,25 +4471,25 @@ c     --- of the guard cells.
      &  selfe(2,nx,1:ny-1,:) = selfe(2,nx,1:ny-1,:) + tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
 
       if (boundx0 == dirichlet .or. boundx0 == neumann) then
-        selfe(1, 0, :,:) = 0.
+        selfe(1, 0, :,:) = selfe(1, 0, :,:) + dxi*(phi(0,:,:) - phi(1,:,:))
       else if (boundx0 == periodic) then
         selfe(1, 0, :,:) = selfe(1, 0, :,:) + tdxi*(phi(nx-1,:,:) - phi(1,:,:))
       endif
 
       if (boundxn == dirichlet .or. boundxn == neumann) then
-        selfe(1,nx, :,:) = 0.
+        selfe(1,nx, :,:) = selfe(1,nx, :,:) + dxi*(phi(nx-1,:,:) - phi(nx,:,:))
       else if (boundxn == periodic) then
         selfe(1,nx, :,:) = selfe(1,nx, :,:) + tdxi*(phi(nx-1,:,:) - phi(1,:,:))
       endif
 
       if (boundy0 == dirichlet .or. boundy0 == neumann) then
-        selfe(2, :, 0,:) = 0.
+        selfe(2, :, 0,:) = selfe(2, :, 0,:) + dyi*(phi(:,0,:) - phi(:,1,:))
       else if (boundy0 == periodic) then
         selfe(2, :, 0,:) = selfe(2, :, 0,:) + tdyi*(phi(:,ny-1,:) - phi(:,1,:))
       endif
 
       if (boundyn == dirichlet .or. boundyn == neumann) then
-        selfe(2, :,ny,:) = 0.
+        selfe(2, :,ny,:) = selfe(2, :,ny,:) + tdyi*(phi(:,ny-1,:) - phi(:,ny,:))
       else if (boundyn == periodic) then
         selfe(2, :,ny,:) = selfe(2, :,ny,:) + tdyi*(phi(:,ny-1,:) - phi(:,1,:))
       endif
@@ -4721,6 +4725,7 @@ c  Allocate scratch space for load. Must be done in the parallel block
 
       do js=0,pgroup%ns-1
         isid = pgroup%sid(js)+1
+        if (sp_fract(isid) == 0.) cycle
 
 c       --- Get number of particles to be loaded for this species.
         if (np_s(isid) == 0) then
