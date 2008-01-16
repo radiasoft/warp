@@ -17,7 +17,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.209 2008/01/08 20:49:33 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.210 2008/01/16 20:03:13 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -942,7 +942,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If a grid is passed in and no specific plots were requested,
   # --- make a cellarray plot.
   if grid is not None and \
-     (not hash and contours is None and not surface and not cellarray):
+     (not hash and contours is None and not surface and not cellarray
+      and not particles):
     cellarray = 1
 
   # --- Whether a grid plot is parallel or not depends on the input.
