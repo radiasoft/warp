@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.389 $, $Date: 2008/01/15 00:46:04 $
+c@(#) File W3D.F, version $Revision: 3.390 $, $Date: 2008/01/16 20:10:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -8937,6 +8937,8 @@ c         --- do it only if species was advanced on this time step
         end do
       end if
 
+      if (lbeforescraper) call execuser("beforescraper")
+
 c     --- Apply particle boundary conditions
       call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
 
@@ -8956,6 +8958,7 @@ c     --- absorb particles passing through semitransparent disc
         endif
       enddo
 
+      if (lafterscraper) call execuser("afterscraper")
       if (lcallscraper) call execuser("callscraper")
 
       do is=1,ns
