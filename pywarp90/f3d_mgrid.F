@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.158 $, $Date: 2007/11/01 23:19:49 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.159 $, $Date: 2008/01/16 19:57:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3889,7 +3889,7 @@ c===========================================================================
       integer(ISZ):: delx,dely,delz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
       real(kind=8):: phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz)
-      real(kind=8):: selfe(3,0:nx,0:ny,0:nz)
+      real(kind=8):: selfe(0:2,0:nx,0:ny,0:nz)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
       integer(ISZ):: efetch
@@ -3946,7 +3946,7 @@ c     --- Calculate some temporaries.
       dzi = 1./dz
       nmax = max(conductors%evensubgrid%nmax,conductors%oddsubgrid%nmax)
 
-      if (efetch == 1 .or. efetch == 5 .or. efetch == 6) then
+      if (efetch == 1 .or. efetch == 3 .or. efetch == 5 .or. efetch == 6) then
 
         if (lcylindrical) then
           xnext = sqrt(xp(1)**2 + yp(1)**2)
@@ -4013,175 +4013,64 @@ c     --- Calculate some temporaries.
      &        conductors%icgrid(i  ,j+1,k+1) == 0 .and.
      &        conductors%icgrid(i+1,j+1,k+1) == 0) then
 
-            ext = u0*v0*w0*(phi(i-1,j  ,k  ) - phi(i+1,j  ,k  ))*tdxi +
-     &            u1*v0*w0*(phi(i  ,j  ,k  ) - phi(i+2,j  ,k  ))*tdxi +
-     &            u0*v1*w0*(phi(i-1,j+1,k  ) - phi(i+1,j+1,k  ))*tdxi +
-     &            u1*v1*w0*(phi(i  ,j+1,k  ) - phi(i+2,j+1,k  ))*tdxi +
-     &            u0*v0*w1*(phi(i-1,j  ,k+1) - phi(i+1,j  ,k+1))*tdxi +
-     &            u1*v0*w1*(phi(i  ,j  ,k+1) - phi(i+2,j  ,k+1))*tdxi +
-     &            u0*v1*w1*(phi(i-1,j+1,k+1) - phi(i+1,j+1,k+1))*tdxi +
-     &            u1*v1*w1*(phi(i  ,j+1,k+1) - phi(i+2,j+1,k+1))*tdxi
+            if (efetch == 3) then
 
-            eyt = u0*v0*w0*(phi(i  ,j-1,k  ) - phi(i  ,j+1,k  ))*tdyi +
-     &            u1*v0*w0*(phi(i+1,j-1,k  ) - phi(i+1,j+1,k  ))*tdyi +
-     &            u0*v1*w0*(phi(i  ,j  ,k  ) - phi(i  ,j+2,k  ))*tdyi +
-     &            u1*v1*w0*(phi(i+1,j  ,k  ) - phi(i+1,j+2,k  ))*tdyi +
-     &            u0*v0*w1*(phi(i  ,j-1,k+1) - phi(i  ,j+1,k+1))*tdyi +
-     &            u1*v0*w1*(phi(i+1,j-1,k+1) - phi(i+1,j+1,k+1))*tdyi +
-     &            u0*v1*w1*(phi(i  ,j  ,k+1) - phi(i  ,j+2,k+1))*tdyi +
-     &            u1*v1*w1*(phi(i+1,j  ,k+1) - phi(i+1,j+2,k+1))*tdyi 
+              ext = u0*v0*w0*selfe(0,i  ,j  ,k  )
+     &            + u1*v0*w0*selfe(0,i+1,j  ,k  )
+     &            + u0*v1*w0*selfe(0,i  ,j+1,k  )
+     &            + u1*v1*w0*selfe(0,i+1,j+1,k  )
+     &            + u0*v0*w1*selfe(0,i  ,j  ,k+1)
+     &            + u1*v0*w1*selfe(0,i+1,j  ,k+1)
+     &            + u0*v1*w1*selfe(0,i  ,j+1,k+1)
+     &            + u1*v1*w1*selfe(0,i+1,j+1,k+1)
 
-            ezt = u0*v0*w0*(phi(i  ,j  ,k-1) - phi(i  ,j  ,k+1))*tdzi +
-     &            u1*v0*w0*(phi(i+1,j  ,k-1) - phi(i+1,j  ,k+1))*tdzi +
-     &            u0*v1*w0*(phi(i  ,j+1,k-1) - phi(i  ,j+1,k+1))*tdzi +
-     &            u1*v1*w0*(phi(i+1,j+1,k-1) - phi(i+1,j+1,k+1))*tdzi +
-     &            u0*v0*w1*(phi(i  ,j  ,k  ) - phi(i  ,j  ,k+2))*tdzi +
-     &            u1*v0*w1*(phi(i+1,j  ,k  ) - phi(i+1,j  ,k+2))*tdzi +
-     &            u0*v1*w1*(phi(i  ,j+1,k  ) - phi(i  ,j+1,k+2))*tdzi +
-     &            u1*v1*w1*(phi(i+1,j+1,k  ) - phi(i+1,j+1,k+2))*tdzi
+              eyt = u0*v0*w0*selfe(1,i  ,j  ,k  )
+     &            + u1*v0*w0*selfe(1,i+1,j  ,k  )
+     &            + u0*v1*w0*selfe(1,i  ,j+1,k  )
+     &            + u1*v1*w0*selfe(1,i+1,j+1,k  )
+     &            + u0*v0*w1*selfe(1,i  ,j  ,k+1)
+     &            + u1*v0*w1*selfe(1,i+1,j  ,k+1)
+     &            + u0*v1*w1*selfe(1,i  ,j+1,k+1)
+     &            + u1*v1*w1*selfe(1,i+1,j+1,k+1)
 
-          else
+              ezt = u0*v0*w0*selfe(2,i  ,j  ,k  )
+     &            + u1*v0*w0*selfe(2,i+1,j  ,k  )
+     &            + u0*v1*w0*selfe(2,i  ,j+1,k  )
+     &            + u1*v1*w0*selfe(2,i+1,j+1,k  )
+     &            + u0*v0*w1*selfe(2,i  ,j  ,k+1)
+     &            + u1*v0*w1*selfe(2,i+1,j  ,k+1)
+     &            + u0*v1*w1*selfe(2,i  ,j+1,k+1)
+     &            + u1*v1*w1*selfe(2,i+1,j+1,k+1)
 
-            ee = 0.
-            wwsum = 0.
-            call GETEEFROME(0, 0,0,0, 1,0,0, dxi,u0*v0*w0,u1*v0*w0)
-            call GETEEFROME(0, 0,1,0, 1,0,0, dxi,u0*v1*w0,u1*v1*w0)
-            call GETEEFROME(0, 0,0,1, 1,0,0, dxi,u0*v0*w1,u1*v0*w1)
-            call GETEEFROME(0, 0,1,1, 1,0,0, dxi,u0*v1*w1,u1*v1*w1)
-            wwsum(0) = 1./wwsum(0)
-
-            call GETEEFROME(1, 0,0,0, 0,1,0, dyi,u0*v0*w0,u0*v1*w0)
-            call GETEEFROME(1, 1,0,0, 0,1,0, dyi,u1*v0*w0,u1*v1*w0)
-            call GETEEFROME(1, 0,0,1, 0,1,0, dyi,u0*v0*w1,u0*v1*w1)
-            call GETEEFROME(1, 1,0,1, 0,1,0, dyi,u1*v0*w1,u1*v1*w1)
-            wwsum(1) = 1./wwsum(1)
-
-            call GETEEFROME(2, 0,0,0, 0,0,1, dzi,u0*v0*w0,u0*v0*w1)
-            call GETEEFROME(2, 1,0,0, 0,0,1, dzi,u1*v0*w0,u1*v0*w1)
-            call GETEEFROME(2, 0,1,0, 0,0,1, dzi,u0*v1*w0,u0*v1*w1)
-            call GETEEFROME(2, 1,1,0, 0,0,1, dzi,u1*v1*w0,u1*v1*w1)
-            wwsum(2) = 1./wwsum(2)
-
-            ext = ee(0)*wwsum(0)
-            eyt = ee(1)*wwsum(1)
-            ezt = ee(2)*wwsum(2)
-
-          endif
-
-          if (xp(ip) < 0. .and. l4symtry) ext = -ext
-          if (yp(ip) < 0. .and. (l4symtry .or. l2symtry)) ext = -eyt
-
-          if (lcylindrical) then
-            if (x > 0.) then
-              eyt = ext*yp(ip)/x
-              ext = ext*xp(ip)/x
             else
-              ext = ext
-              eyt = 0.
+
+              ext = u0*v0*w0*(phi(i-1,j  ,k  ) - phi(i+1,j  ,k  ))*tdxi +
+     &              u1*v0*w0*(phi(i  ,j  ,k  ) - phi(i+2,j  ,k  ))*tdxi +
+     &              u0*v1*w0*(phi(i-1,j+1,k  ) - phi(i+1,j+1,k  ))*tdxi +
+     &              u1*v1*w0*(phi(i  ,j+1,k  ) - phi(i+2,j+1,k  ))*tdxi +
+     &              u0*v0*w1*(phi(i-1,j  ,k+1) - phi(i+1,j  ,k+1))*tdxi +
+     &              u1*v0*w1*(phi(i  ,j  ,k+1) - phi(i+2,j  ,k+1))*tdxi +
+     &              u0*v1*w1*(phi(i-1,j+1,k+1) - phi(i+1,j+1,k+1))*tdxi +
+     &              u1*v1*w1*(phi(i  ,j+1,k+1) - phi(i+2,j+1,k+1))*tdxi
+
+              eyt = u0*v0*w0*(phi(i  ,j-1,k  ) - phi(i  ,j+1,k  ))*tdyi +
+     &              u1*v0*w0*(phi(i+1,j-1,k  ) - phi(i+1,j+1,k  ))*tdyi +
+     &              u0*v1*w0*(phi(i  ,j  ,k  ) - phi(i  ,j+2,k  ))*tdyi +
+     &              u1*v1*w0*(phi(i+1,j  ,k  ) - phi(i+1,j+2,k  ))*tdyi +
+     &              u0*v0*w1*(phi(i  ,j-1,k+1) - phi(i  ,j+1,k+1))*tdyi +
+     &              u1*v0*w1*(phi(i+1,j-1,k+1) - phi(i+1,j+1,k+1))*tdyi +
+     &              u0*v1*w1*(phi(i  ,j  ,k+1) - phi(i  ,j+2,k+1))*tdyi +
+     &              u1*v1*w1*(phi(i+1,j  ,k+1) - phi(i+1,j+2,k+1))*tdyi 
+
+              ezt = u0*v0*w0*(phi(i  ,j  ,k-1) - phi(i  ,j  ,k+1))*tdzi +
+     &              u1*v0*w0*(phi(i+1,j  ,k-1) - phi(i+1,j  ,k+1))*tdzi +
+     &              u0*v1*w0*(phi(i  ,j+1,k-1) - phi(i  ,j+1,k+1))*tdzi +
+     &              u1*v1*w0*(phi(i+1,j+1,k-1) - phi(i+1,j+1,k+1))*tdzi +
+     &              u0*v0*w1*(phi(i  ,j  ,k  ) - phi(i  ,j  ,k+2))*tdzi +
+     &              u1*v0*w1*(phi(i+1,j  ,k  ) - phi(i+1,j  ,k+2))*tdzi +
+     &              u0*v1*w1*(phi(i  ,j+1,k  ) - phi(i  ,j+1,k+2))*tdzi +
+     &              u1*v1*w1*(phi(i+1,j+1,k  ) - phi(i+1,j+1,k+2))*tdzi
             endif
-          endif
-
-          ex(ip) = ex(ip) + ext
-          ey(ip) = ey(ip) + eyt
-          ez(ip) = ez(ip) + ezt
-
-        enddo
-
-      elseif (efetch == 3) then
-c       --- This uses the precalculated selfe instead of doing
-c       --- the finite differences here..
-
-        if (lcylindrical) then
-          xnext = sqrt(xp(1)**2 + yp(1)**2)
-          ynext = ymmin
-        else
-          xnext = xp(1)
-          ynext = yp(1)
-        endif
-
-        xinext = (xnext - xmmin)*dxi
-        yjnext = (ynext - ymmin)*dyi
-        zknext = (zp(1) - zgrid - zmmin)*dzi
-        if (l4symtry) xinext = abs(xinext)
-        if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
-        inext = xinext
-        jnext = yjnext
-        knext = zknext
-
-        do ip = 1, np
-
-          i = inext
-          j = jnext
-          k = knext
-          x = xnext
-          xi = xinext
-          yj = yjnext
-          zk = zknext
-          if (ip < np) then
-            if (lcylindrical) then
-              xnext = sqrt(xp(ip+1)**2 + yp(ip+1)**2)
-              ynext = ymmin
-            else
-              xnext = xp(ip+1)
-              ynext = yp(ip+1)
-            endif
-            xinext = (xnext - xmmin)*dxi
-            yjnext = (ynext - ymmin)*dyi
-            zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-            if (l4symtry) xinext = abs(xinext)
-            if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
-            inext = xinext
-            jnext = yjnext
-            knext = zknext
-          endif
-
-          if (xi < 0. .or. xi > nx .or.
-     &        yj < 0. .or. yj > ny .or.
-     &        zk < 0. .or. zk > nz) cycle
-
-          u1 = xi - i
-          v1 = yj - j
-          w1 = zk - k
-
-          u0 = 1. - u1
-          v0 = 1. - v1
-          w0 = 1. - w1
-
-          if (conductors%icgrid(i  ,j  ,k  ) == 0 .and.
-     &        conductors%icgrid(i+1,j  ,k  ) == 0 .and.
-     &        conductors%icgrid(i  ,j+1,k  ) == 0 .and.
-     &        conductors%icgrid(i+1,j+1,k  ) == 0 .and.
-     &        conductors%icgrid(i  ,j  ,k+1) == 0 .and.
-     &        conductors%icgrid(i+1,j  ,k+1) == 0 .and.
-     &        conductors%icgrid(i  ,j+1,k+1) == 0 .and.
-     &        conductors%icgrid(i+1,j+1,k+1) == 0) then
-
-            ext = u0*v0*w0*(phi(i-1,j  ,k  ) - phi(i+1,j  ,k  ))*tdxi +
-     &            u1*v0*w0*(phi(i  ,j  ,k  ) - phi(i+2,j  ,k  ))*tdxi +
-     &            u0*v1*w0*(phi(i-1,j+1,k  ) - phi(i+1,j+1,k  ))*tdxi +
-     &            u1*v1*w0*(phi(i  ,j+1,k  ) - phi(i+2,j+1,k  ))*tdxi +
-     &            u0*v0*w1*(phi(i-1,j  ,k+1) - phi(i+1,j  ,k+1))*tdxi +
-     &            u1*v0*w1*(phi(i  ,j  ,k+1) - phi(i+2,j  ,k+1))*tdxi +
-     &            u0*v1*w1*(phi(i-1,j+1,k+1) - phi(i+1,j+1,k+1))*tdxi +
-     &            u1*v1*w1*(phi(i  ,j+1,k+1) - phi(i+2,j+1,k+1))*tdxi
-
-            eyt = u0*v0*w0*(phi(i  ,j-1,k  ) - phi(i  ,j+1,k  ))*tdyi +
-     &            u1*v0*w0*(phi(i+1,j-1,k  ) - phi(i+1,j+1,k  ))*tdyi +
-     &            u0*v1*w0*(phi(i  ,j  ,k  ) - phi(i  ,j+2,k  ))*tdyi +
-     &            u1*v1*w0*(phi(i+1,j  ,k  ) - phi(i+1,j+2,k  ))*tdyi +
-     &            u0*v0*w1*(phi(i  ,j-1,k+1) - phi(i  ,j+1,k+1))*tdyi +
-     &            u1*v0*w1*(phi(i+1,j-1,k+1) - phi(i+1,j+1,k+1))*tdyi +
-     &            u0*v1*w1*(phi(i  ,j  ,k+1) - phi(i  ,j+2,k+1))*tdyi +
-     &            u1*v1*w1*(phi(i+1,j  ,k+1) - phi(i+1,j+2,k+1))*tdyi 
-
-            ezt = u0*v0*w0*(phi(i  ,j  ,k-1) - phi(i  ,j  ,k+1))*tdzi +
-     &            u1*v0*w0*(phi(i+1,j  ,k-1) - phi(i+1,j  ,k+1))*tdzi +
-     &            u0*v1*w0*(phi(i  ,j+1,k-1) - phi(i  ,j+1,k+1))*tdzi +
-     &            u1*v1*w0*(phi(i+1,j+1,k-1) - phi(i+1,j+1,k+1))*tdzi +
-     &            u0*v0*w1*(phi(i  ,j  ,k  ) - phi(i  ,j  ,k+2))*tdzi +
-     &            u1*v0*w1*(phi(i+1,j  ,k  ) - phi(i+1,j  ,k+2))*tdzi +
-     &            u0*v1*w1*(phi(i  ,j+1,k  ) - phi(i  ,j+1,k+2))*tdzi +
-     &            u1*v1*w1*(phi(i+1,j+1,k  ) - phi(i+1,j+1,k+2))*tdzi
 
           else
 
@@ -4347,108 +4236,6 @@ c     if (lf3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
       CONTAINS
 
 c       ---------------------------------------------------------------------
-        subroutine GETEEFROMPHI(id,ox,oy,oz,px,py,pz,di,wm,wp)
-        integer(ISZ):: id,ox,oy,oz,px,py,pz
-        real(kind=8):: di,wm,wp
-        integer(ISZ):: ic
-        real(kind=8):: ppp
-        ic = conductors%icgrid(i+ox,j+oy,k+oz)
-        if (ic == 0) then
-          ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
-          wwsum(id) = wwsum(id) + wm
-        else if (ic < nmax+1) then
-          if (ic < 0) then
-            if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
-              vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
-              dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
-            else
-              vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
-              dd(0) = 1.
-            endif
-            if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
-              vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
-              dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
-            else
-              vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
-              dd(1) = 1.
-            endif
-          else
-            if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
-              vv(0) = conductors%evensubgrid%volt(2*id,ic)
-              dd(0) = conductors%evensubgrid%dels(2*id,ic)
-            else
-              vv(0) = phi(i+ox-px,j+oy-py,k+oz-pz)
-              dd(0) = 1.
-            endif
-            if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
-              vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
-              dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
-            else
-              vv(1) = phi(i+ox+px,j+oy+py,k+oz+pz)
-              dd(1) = 1.
-            endif
-          endif
-          ppp = phi(i+ox,j+oy,k+oz)
-          ee(id) = ee(id) + wm*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
-     &                          dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
-          wwsum(id) = wwsum(id) + wm
-          if (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) > nmax) then
-            ee(id) = ee(id) + wp*((ppp-vv(1))/dd(1) - (2.-dd(1))/(2.+dd(0))*(vv(0)-ppp)/dd(0))*
-     &                           ((2.+dd(0))/(dd(0)+dd(1)))*di
-            wwsum(id) = wwsum(id) + wp
-          endif
-        endif
-      ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
-        if (ic == 0) then
-          ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
-          wwsum(id) = wwsum(id) + wp
-        else if (ic < nmax+1) then
-          if (ic < 0) then
-            if (0. < conductors%oddsubgrid%dels(2*id,-ic) .and. conductors%oddsubgrid%dels(2*id,-ic) <= 1.) then
-              vv(0) = conductors%oddsubgrid%volt(2*id,-ic)
-              dd(0) = conductors%oddsubgrid%dels(2*id,-ic)
-            else
-              vv(0) = phi(i+ox,j+oy,k+oz)
-              dd(0) = 1.
-            endif
-            if (0. < conductors%oddsubgrid%dels(2*id+1,-ic) .and. conductors%oddsubgrid%dels(2*id+1,-ic) <= 1.) then
-              vv(1) = conductors%oddsubgrid%volt(2*id+1,-ic)
-              dd(1) = conductors%oddsubgrid%dels(2*id+1,-ic)
-            else
-              vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
-              dd(1) = 1.
-            endif
-          else
-            if (0. < conductors%evensubgrid%dels(2*id,ic) .and. conductors%evensubgrid%dels(2*id,ic) <= 1.) then
-              vv(0) = conductors%evensubgrid%volt(2*id,ic)
-              dd(0) = conductors%evensubgrid%dels(2*id,ic)
-            else
-              vv(0) = phi(i+ox,j+oy,k+oz)
-              dd(0) = 1.
-            endif
-            if (0. < conductors%evensubgrid%dels(2*id+1,ic) .and. conductors%evensubgrid%dels(2*id+1,ic) <= 1.) then
-              vv(1) = conductors%evensubgrid%volt(2*id+1,ic)
-              dd(1) = conductors%evensubgrid%dels(2*id+1,ic)
-            else
-              vv(1) = phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz)
-              dd(1) = 1.
-            endif
-          endif
-          ppp = phi(i+ox+px,j+oy+py,k+oz+pz)
-          ee(id) = ee(id) + wp*(dd(1)/(dd(0) + dd(1))*(vv(0) - ppp)/dd(0) +
-     &                          dd(0)/(dd(0) + dd(1))*(ppp - vv(1))/dd(1))*di
-          wwsum(id) = wwsum(id) + wp
-          if (conductors%icgrid(i+ox,j+oy,k+oz) > nmax) then
-            ee(id) = ee(id) + wm*((vv(0)-ppp)/dd(0) - (2.-dd(0))/(2.+dd(1))*(ppp-vv(1))/dd(1))*
-     &                           ((2.+dd(1))/(dd(1)+dd(0)))*di
-            wwsum(id) = wwsum(id) + wm
-          endif
-        endif
-
-        return
-        end subroutine GETEEFROMPHI
-
-c       ---------------------------------------------------------------------
         subroutine GETEEFROME(id,ox,oy,oz,px,py,pz,di,wm,wp)
         integer(ISZ):: id,ox,oy,oz,px,py,pz
         real(kind=8):: di,wm,wp
@@ -4456,7 +4243,12 @@ c       ---------------------------------------------------------------------
         real(kind=8):: ppp
         ic = conductors%icgrid(i+ox,j+oy,k+oz)
         if (ic == 0) then
-          ee(id) = ee(id) + wm*(phi(i+ox-px,j+oy-py,k+oz-pz) - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
+          if (efetch == 3) then
+            ee(id) = ee(id) + wm*selfe(id,i+ox,j+oy,k+oz)
+          else
+            ee(id) = ee(id) + wm*(  phi(i+ox-px,j+oy-py,k+oz-pz)
+     &                            - phi(i+ox+px,j+oy+py,k+oz+pz))*0.5*di
+          endif
           wwsum(id) = wwsum(id) + wm
         else if (ic < nmax+1) then
           if (ic < 0) then
@@ -4476,7 +4268,12 @@ c       ---------------------------------------------------------------------
         endif
         ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
         if (ic == 0) then
-          ee(id) = ee(id) + wp*(phi(i+ox,j+oy,k+oz) - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
+          if (efetch == 3) then
+            ee(id) = ee(id) + wp*selfe(id,i+ox+px,j+oy+py,k+oz+pz)
+          else
+            ee(id) = ee(id) + wp*(  phi(i+ox     ,j+oy     ,k+oz)
+     &                            - phi(i+ox+2*px,j+oy+2*py,k+oz+2*pz))*0.5*di
+          endif
           wwsum(id) = wwsum(id) + wp
         else if (ic < nmax+1) then
           if (ic < 0) then
