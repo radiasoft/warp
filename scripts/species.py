@@ -429,6 +429,7 @@ Creates a new species of particles. All arguments are optional.
                            lmomentum=0,spacing='random',nr=None,nz=None,
                            thetamin=0.,thetamax=2.*pi,
                            lvariableweights=None,lallindomain=0,
+                           ellipticity=1.,
                            **kw):
     """Creates particles, uniformly filling a cylinder.
 If top.wpid is nonzero, then the particles are uniformly spaced in radius and the
@@ -436,6 +437,7 @@ weights are set appropriately (weight=r/rmax). Otherwise, the particles are spac
 in radius squared.
  - np: total number of particles to load
  - rmax: radius of cylinder
+ - ellipticity: factor multiplying size in y, i.e. y-size is given by rmax*ellipticity
  - zmin,zmax: z extent of the cylinder
  - vthx, vthy, vthz: thermal velocity, defaults to 0.
  - xmean,ymean,zmean: center of the cylinder, defaults to 0.
@@ -526,8 +528,8 @@ in radius squared.
       # --- in radius.
       r = sqrt(r)
 
-    x = rmax*r*cos(2.*pi*thetap)
-    y = rmax*r*sin(2.*pi*thetap)
+    x = rmax*r*cos(thetap)
+    y = rmax*r*sin(thetap)*ellipticity
     z = zmin+(zmax-zmin)*z
 
     if theta != 0. or phi != 0.:
@@ -599,11 +601,27 @@ in radius squared.
       vx=RandomArray.normal(0.,vthx,np)
       vy=RandomArray.normal(0.,vthy,np)
       vz=RandomArray.normal(0.,vthz,np)
-      self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
       if fourfold:
-        self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
-        self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
-        self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
+        xsigns=[1.,-1.]
+        ysigns=[1.,-1.]
+      else:
+        xsigns=[1.]
+        ysigns=[1.]
+      za = z+zmean
+      vza = vz+vzmean
+      for ysign in ysigns:
+        for xsign in xsigns:
+          xa = xsign*x+xmean
+          ya = ysign*y+ymean
+          vxa = xsign*vx+vxmean
+          vya = ysign*vy+vymean
+          if top.lrelativ:
+            gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
+            lmomentum=true
+          else:
+            gi=1.
+            lmomentum=false
+          self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     if zdist=='regular': 
       dz=16.*deltaz/nz
       zmin=-(float(nz/2)-0.5)*dz
@@ -621,11 +639,27 @@ in radius squared.
           vx=RandomArray.normal(0.,vthx,Nadd)
           vy=RandomArray.normal(0.,vthy,Nadd)
           vz=RandomArray.normal(0.,vthz,Nadd)
-          self.addpart(x+xmean,y+ymean,z+zmean,vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
           if fourfold:
-            self.addpart(x+xmean,-y+ymean,z+zmean,vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
-            self.addpart(-x+xmean,y+ymean,z+zmean,-vx+vxmean,vy+vymean,vz+vzmean,js=js,**kw)
-            self.addpart(-x+xmean,-y+ymean,z+zmean,-vx+vxmean,-vy+vymean,vz+vzmean,js=js,**kw)
+            xsigns=[1.,-1.]
+            ysigns=[1.,-1.]
+          else:
+            xsigns=[1.]
+            ysigns=[1.]
+          za = z+zmean
+          vza = vz+vzmean
+          for ysign in ysigns:
+            for xsign in xsigns:
+              xa = xsign*x+xmean
+              ya = ysign*y+ymean
+              vxa = xsign*vx+vxmean
+              vya = ysign*vy+vymean
+              if top.lrelativ:
+                gi=1./sqrt(1.+(vxa*vxa+vya*vya+vza*vza)/clight**2)
+                lmomentum=true
+              else:
+                gi=1.
+                lmomentum=false
+              self.addpart(xa,ya,za,vxa,vya,vza,gi=gi,js=js,lmomentum=lmomentum,**kw)
     
   def gather_zmmnts_locs(self):
     get_zmmnts_stations(len(self.jslist),
