@@ -6,7 +6,7 @@ from generateconductors import *
 import timing as t
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.70 2007/12/20 00:04:37 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.71 2008/01/18 22:41:37 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -53,6 +53,16 @@ Class for creating particle scraper for conductors
               probably optimal.
  - install=1: flag whether or not to install the scraper so that the scraping
               automatically happens every time step.
+ - lbeforescraper=0: when true, the scraper is installed before grid scraping,
+                    otherwise it is installed after. In cases where particles
+                    outside the grid need to be detected, or where the
+                    scraping changes the particle positions (like reflectors),
+                    this should be true, so that the scraping done here
+                    happens before the scraping is done at the grid boundaries
+                    (including particle swapping among processes in parallel).
+                    Note that for this reason, if there are some conductors
+                    that are reflectors, this will automatically be set so
+                    scraping happens before grid scraping.
  - grid=None: A instance of the Grid class can be supplied, allowing control
               over the region where the scraping is done and the resolution
               of the scraping data.
@@ -63,9 +73,16 @@ conductors are an argument.
   #__metaclass__ = decorators.TimedClass
   def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,
                     lrefineintercept=0,lrefineallintercept=0,nstepsperorbit=8,
-                    lcollectlpdata=0,mglevel=0,aura=0.,install=1,grid=None): 
+                    lcollectlpdata=0,mglevel=0,aura=0.,
+                    install=1,lbeforescraper=0,
+                    grid=None): 
     self.mglevel = mglevel
     self.aura = aura
+    self.lbeforescraper = lbeforescraper
+    # --- First set so install is false. Reset later with input value.
+    # --- This is needed since in some cases registerconductors may want
+    # --- to do the install. This just skips it in that case.
+    self.install = 0
     # --- Remember if the user specified the grid.
     self.usergrid = (grid is not None)
     # --- Don't create the grid until it is needed.
@@ -98,7 +115,8 @@ conductors are an argument.
     # --- If the user specified the grid, then add the conductors
     if self.usergrid: self.updateconductors()
     # --- Install the call to scrape particles if requested
-    if install: self.installscraper()
+    self.install = install
+    self.installscraper()
     # --- This is needed but is not necessarily the correct code.
     # --- xoldpid etc aren't defined until saveolddata is called, and it
     # --- isn't called until after scraping happens. But the xoldpid etc
@@ -113,13 +131,22 @@ conductors are an argument.
     self.saveolddata() 
 
   def installscraper(self):
+    if not self.install: return
     # --- Install the call to scrape particles
-    if not isinstalledparticlescraper(self.scrapeall):
-      installparticlescraper(self.scrapeall)
+    if self.lbeforescraper:
+      if not isinstalledbeforescraper(self.scrapeall):
+        installbeforescraper(self.scrapeall)
+    else:
+      if not isinstalledparticlescraper(self.scrapeall):
+        installparticlescraper(self.scrapeall)
 
   def disable(self):
-    if isinstalledparticlescraper(self.scrapeall):
-      uninstallparticlescraper(self.scrapeall)
+    if self.lbeforescraper:
+      if isinstalledbeforescraper(self.scrapeall):
+        uninstallbeforescraper(self.scrapeall)
+    else:
+      if isinstalledparticlescraper(self.scrapeall):
+        uninstallparticlescraper(self.scrapeall)
 
   def __setstate__(self,dict):
     # --- This is called when the instance is unpickled.
@@ -146,6 +173,13 @@ conductors are an argument.
         # --- particles reflect, their current position will be replaced
         # --- with the old.
         self.lsaveoldpositions = true
+        #self.lsaveoldvelocities = true
+        # --- Set so the scraping happens before grid scraping since
+        # --- reflectors will change particle positions. Make sure that the
+        # --- installing gets set appropriately.
+        if not self.lbeforescraper: self.disable()
+        self.lbeforescraper = 1
+        self.installscraper()
     self.updategrid()
 
   def unregisterconductors(self,conductor,nooverlap=0):
@@ -521,13 +555,20 @@ after load balancing."""
         if c.material == 'reflector':
           # --- For particles which are inside, replace the position with
           # --- the old position and reverse the velocity.
-          # --- Would it be better to use the old velocity?
           put(top.pgroup.xp,ic,take(top.pgroup.pid[:,self.xoldpid],ic))
           put(top.pgroup.yp,ic,take(top.pgroup.pid[:,self.yoldpid],ic))
           put(top.pgroup.zp,ic,take(top.pgroup.pid[:,self.zoldpid],ic))
-          put(top.pgroup.uxp,ic,-take(top.pgroup.uxp,ic))
-          put(top.pgroup.uyp,ic,-take(top.pgroup.uyp,ic))
-          put(top.pgroup.uzp,ic,-take(top.pgroup.uzp,ic))
+          if self.lsaveoldvelocities:
+            # --- If its available, use the old velocity.
+            # --- Should this be the default?
+            put(top.pgroup.uxp,ic,-take(top.pgroup.pid[:,self.uxoldpid],ic))
+            put(top.pgroup.uyp,ic,-take(top.pgroup.pid[:,self.uyoldpid],ic))
+            put(top.pgroup.uzp,ic,-take(top.pgroup.pid[:,self.uzoldpid],ic))
+          else:
+            # --- Otherwise use the new velocity. Can this lead to errors?
+            put(top.pgroup.uxp,ic,-take(top.pgroup.uxp,ic))
+            put(top.pgroup.uyp,ic,-take(top.pgroup.uyp,ic))
+            put(top.pgroup.uzp,ic,-take(top.pgroup.uzp,ic))
         else:
           # --- For particles which are inside, set gaminv to 0, the lost
           # --- particle flag
