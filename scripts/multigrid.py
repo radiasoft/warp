@@ -270,8 +270,7 @@ class MultiGrid(SubcycledPoissonSolver):
     if top.efetch[js] == 3 and isinstance(self.fieldp,FloatType): return
     if top.efetch[js] != 3 and isinstance(self.potentialp,FloatType): return
     iselfb = top.iselfb[js]
-    if (sometrue(top.efetch == 3) or
-        not (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
+    if (not (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
              f3d.lcorrectede)):
       sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
              self.xmminp,self.ymminp,self.zmminp,
@@ -340,10 +339,11 @@ class MultiGrid(SubcycledPoissonSolver):
                               self.dx,self.dy,self.dz,conductorobject,
                               self.my_index,self.nslaves,self.izpslave,self.nzpslave)
       # --- This calculates the field
-      getefieldatconductors(conductorobject,
-                            self.potentialp,self.dx,self.dy,self.dz,
-                            self.nxp,self.nyp,self.nzp,
-                            self.nxguard,self.nyguard,self.nzguard,self.bounds)
+      getefieldatconductorsubgrid(conductorobject,
+                                  self.potentialp,self.dx,self.dy,self.dz,
+                                  self.nxp,self.nyp,self.nzp,
+                                  self.nxguard,self.nyguard,self.nzguard,
+                                  self.bounds)
     if sometrue(top.efetch == 3):
       self.setfieldpforparticles(*args)
       indts = args[1]
@@ -362,6 +362,18 @@ class MultiGrid(SubcycledPoissonSolver):
         # --- the approximate correction terms A and dA/dt.
         self.getselfb(self.fieldp,top.fselfb[iselfb],self.potentialp)
         self.adddadttoe(self.fieldp,top.fselfb[iselfb],self.potentialp)
+
+      if (iselfb == 0 and
+          (self.getconductorobject(top.fselfb[iselfb]).lcorrectede or
+           f3d.lcorrectede)):
+        # --- Now correct the E field at conductor points. This matters when
+        # --- the edge of conductors are aligned with the mesh and there are no
+        # --- subgrid points there.
+        # --- This is done when iselfb == 0 since that will be the last
+        # --- species - this routine modifies fieldp in place.
+        fixefieldatconductorpoints(conductorobject,self.fieldp,
+                                   self.dx,self.dy,self.dz,
+                                   self.nx,self.ny,self.nz)
 
   def makesourceperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
