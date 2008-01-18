@@ -1,5 +1,6 @@
 """Generic class describing the interface needed for a field solver.
 """
+from __future__ import generators
 from warp import *
 import __main__
 import gc
@@ -175,6 +176,9 @@ def getregisteredsolvers():
   "Return the list of all registered field solver"
   # --- A copy is returned to prevent the list from being mucked up.
   return copy.copy(_registeredfieldsolvers)
+def registeredsolvers():
+  for solver in _registeredfieldsolvers:
+    yield solver
 def unregistersolver(solver=None,i=None):
   if i is not None:
     del _registeredfieldsolvers[i]
@@ -1367,9 +1371,8 @@ of the arrays used by the field solve"""
     # --- This is needed by the implicit algorithm.
     self.potentialprevious = self.potentialarray.copy()
 
-  def averagewithpreviouspotential(self,param=0.5):
+  def addinpreviouspotential(self):
     # --- This is used by the implicit algorithm, to average the potential
     # --- over multiple iterations.
-    potential = self.potentialarray
-    potential[...] = (1.-param)*potential + param*self.potentialprevious
+    self.potentialarray += self.potentialprevious
 
