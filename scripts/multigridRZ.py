@@ -652,6 +652,21 @@ Initially, conductors are not implemented.
     getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
               xmmin,xmmax,zmminlocal,zmmaxlocal)
 
+  def removedelsqphi(self):
+    phi = self.potential[:,0,:]
+    rho = self.source[:,0,:,0]
+    if self.solvergeom==w3d.RZgeom:
+      rr = self.xmmin + arange(self.nx+1)*self.dx
+      rho += eps0*(
+        +(+phi[:-2,1:-1]*((rr-0.5*self.dx)/rr)[:,NewAxis]
+          -2.*phi[1:-1,1:-1]
+          +phi[2:,1:-1]*((rr+0.5*self.dx)/rr)[:,NewAxis])/self.dx**2
+        +(phi[1:-1,:-2] - 2.*phi[1:-1,1:-1] + phi[1:-1,2:])/self.dz**2)
+    else:
+      rho += eps0*(
+        +(phi[:-2,1:-1] - 2.*phi[1:-1,1:-1] + phi[2:,1:-1])/self.dx**2
+        +(phi[1:-1,:-2] - 2.*phi[1:-1,1:-1] + phi[1:-1,2:])/self.dz**2)
+
   def dosolve(self,iwhich=0,*args):
     if not self.l_internal_dosolve: return
     # --- Do the solve, including chi
