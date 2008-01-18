@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.184 $, $Date: 2007/11/26 17:05:11 $
+#@(#) File F3D.V, version $Revision: 3.185 $, $Date: 2008/01/18 22:29:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.184 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.185 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -347,10 +347,17 @@ setupconductorfielddata(nx:integer,ny:integer,nzlocal:integer,nz:integer,
                         dx:real,dy:real,dz:real,conductors:ConductorType,
                         my_index:integer,nslaves:integer,
                         izfsslave:integer,nzfsslave:integer) subroutine
-getefieldatconductors(conductors:ConductorType,phi:real,
-                      dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
-                      delx:integer,dely:integer,delz:integer,bounds(0:5):integer)
+getefieldatconductorsubgrid(conductors:ConductorType,phi:real,
+                            dx:real,dy:real,dz:real,
+                            nx:integer,ny:integer,nz:integer,
+                            delx:integer,dely:integer,delz:integer,
+                            bounds(0:5):integer)
                     subroutine
+fixefieldatconductorpoints(conductors:ConductorType,field:real,
+                           dx:real,dy:real,dz:real,
+                           nx:integer,ny:integer,nz:integer)
+                    subroutine
+    # Fix the two point finite difference operator at conductor points.
 sete3dwithconductor(conductors:ConductorType,phi:real,selfe:real,
                     np:integer,xp:real,yp:real,zp:real,zgrid:real,
                     xmmin:real,ymmin:real,zmmin:real,

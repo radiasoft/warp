@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.159 $, $Date: 2008/01/16 19:57:01 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.160 $, $Date: 2008/01/18 22:29:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3741,9 +3741,9 @@ c       --- Since it is not needed, make sure that the memory is freed.
       return
       end
 c=============================================================================
-      subroutine getefieldatconductors(conductors,phi,
-     &                                 dx,dy,dz,nx,ny,nz,delx,dely,delz,
-     &                                 bounds)
+      subroutine getefieldatconductorsubgrid(conductors,phi,
+     &                                       dx,dy,dz,nx,ny,nz,delx,dely,delz,
+     &                                       bounds)
       use ConductorTypemodule
       use Subtimers3d
       use Conductor3d,Only:lcorrectede
@@ -3872,11 +3872,40 @@ c       ---------------------------------------------------------------------
         end subroutine SETEE
 
       end
+c=============================================================================
+      subroutine fixefieldatconductorpoints(conductors,field,dx,dy,dz,nx,ny,nz)
+      use ConductorTypemodule
+      use Subtimers3d
+      use Conductor3d,Only:lcorrectede
+      type(ConductorType):: conductors
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: field(0:2,0:nx,0:ny,0:nz)
 
+c Doubles the field at conductor points. This is done to fix the finite
+c difference of phi at conductor points.  The normal two point finite
+c difference is E(i)=(phi(i-1)-phi(i+1))/2delta.  If the conductor covers
+c cells i and i-1, the correct finite difference would be
+c E=(phi(i) - phi(i+1))/delta.  Since in the conductor, phi(i-1) = phi(i),
+c the E can be fixed by a simple multiplication by 2. Note that this will
+c fail when a thin conductor only covers grid cell i and with cells i-1
+c and i+1 in vacuum.  In that case, two seperate finite differences would
+c need to be saved, one for each side of the conductor.  
 
+      integer(ISZ):: ii,ix,iy,iz
 
+      if (.not. ((lcorrectede .or. conductors%lcorrectede) .and.
+     &           conductors%interior%n > 0)) return
 
+      do ii=conductors%interior%istart(0),conductors%interior%istart(1)-1
+        ix = conductors%interior%indx(0,ii)
+        iy = conductors%interior%indx(1,ii)
+        iz = conductors%interior%indx(2,ii)
+        field(:,ix,iy,iz) = 2.*field(:,ix,iy,iz)
+      enddo
 
+      return
+      end
 c=========================================================================== 
       subroutine sete3dwithconductor(conductors,phi,selfe,np,xp,yp,zp,zgrid,
      &                  xmmin,ymmin,zmmin,
