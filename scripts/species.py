@@ -341,6 +341,9 @@ Creates a new species of particles. All arguments are optional.
       zmaxp = min(zmax,w3d.zmmax+top.zgrid)
 
     if spacing == 'random':
+      # --- Add a random number to the number of particles so that on
+      # --- average, the correct number of particles will be generated.
+      np = int(np + RandomArray.random(1)[0])
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
       if zmin==zmax:
@@ -485,7 +488,7 @@ in radius squared.
     if spacing == 'random':
       # --- Add a random number to the number of particles so that on
       # --- average, the correct number of particles will be generated.
-      np += RandomArray.random(1)[0]
+      np = int(np + RandomArray.random(1)[0])
       # --- Adjust the number of particles to load to based on the
       # --- width of the cropped zmin and max and the original
       np = nint((zmaxp - zminp)/(zmax - zmin)*np)
