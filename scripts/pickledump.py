@@ -12,7 +12,7 @@ import Forthon
 #except:
 if 1:
   tables = None
-  import pickle
+  import cPickle
 
 def pickledump(filename=None,attr=['dump'],vars=[],serial=0,ff=None,
                varsuffix=None,verbose=0):
@@ -51,7 +51,7 @@ Dump data into a pdb file
   if tables is not None:
     pickler = hdf5pickle.Pickler(file=ff)
   else:
-    pickler = pickle.Pickler(ff,pickle.HIGHEST_PROTOCOL)
+    pickler = cPickle.Pickler(ff,cPickle.HIGHEST_PROTOCOL)
 
   # --- It turns out however, the writing multiple pickles to the same file
   # --- is broken when using arrays. So now everything is put into a single
@@ -182,6 +182,20 @@ Dump data into a pdb file
     if isinstance(vval,numpy.ndarray) and numpy.product(vval.shape) == 0:
       continue
 
+    # --- Make sure that the object is picklable. There is no easy way of
+    # --- doing this except by trying to pickle the object. This could be
+    # --- very inefficient.
+    try:
+      testpickle = cPickle.dumps(vval)
+    except:
+      if verbose: print 'python variable '+vname+' could no be pickled'
+      continue
+    try:
+      testunpickle = cPickle.loads(testpickle)
+    except:
+      print 'python variable '+vname+' could no be unpickled'
+      continue
+
     if verbose: print 'writing python variable '+vname
     pkgdict[vname] = vval
 
@@ -191,8 +205,7 @@ Dump data into a pdb file
   else:
     #pickler.dump(('__main__',pkgdict))
     picklelist.append(('__main__',pkgdict))
-
-  pickler.dump(picklelist)
+    pickler.dump(picklelist)
 
   if closefile: ff.close()
 
@@ -209,11 +222,11 @@ Restores all of the variables in the specified pickle file.
   """
   ff = open(filename, 'rb')
 
-  picklelist = pickle.load(ff)
+  picklelist = cPickle.load(ff)
 
 # while 1:
 #   try:
-#     object = pickle.load(ff)
+#     object = cPickle.load(ff)
 #   except EOFError:
 #     break
 
