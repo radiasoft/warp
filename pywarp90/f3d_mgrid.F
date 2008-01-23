@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.160 $, $Date: 2008/01/18 22:29:55 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.161 $, $Date: 2008/01/23 22:57:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3951,7 +3951,8 @@ c       + ...
       real(kind=8):: vv(0:1),dd(0:1)
       real(kind=8):: ee(0:2)
       real(kind=8):: eengp(0:2,0:1,0:1,0:1)
-      real(kind=8):: wwngp,wwsum(0:2)
+      real(kind=8):: wwsum(0:2)
+      real(kind=8):: xsign,ysign,sx,sy
       real(kind=8),pointer:: dels(:),volt(:)
 
       real(kind=8):: substarttime,wtime
@@ -4159,11 +4160,28 @@ c       --- Energy conserving
           ynext = yp(1)
         endif
 
-        xinext = (xnext - xmmin)*dxi
-        yjnext = (ynext - ymmin)*dyi
+        if (l4symtry) then
+          sx = -1
+        else
+          sx = 1
+        endif
+        if (l4symtry .or. l2symtry) then
+          sy = -1
+        else
+          sy = 1
+        endif
+
+        if (l4symtry) then
+          xinext = (abs(xnext) - xmmin)*dxi
+          yjnext = (abs(ynext) - ymmin)*dyi
+        elseif (l2symtry) then
+          xinext = (xnext - xmmin)*dxi
+          yjnext = (abs(ynext) - ymmin)*dyi
+        else
+          xinext = (xnext - xmmin)*dxi
+          yjnext = (ynext - ymmin)*dyi
+        endif
         zknext = (zp(1) - zgrid - zmmin)*dzi
-        if (l4symtry) xinext = abs(xinext)
-        if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
         inext = xinext
         jnext = yjnext
         knext = zknext
@@ -4184,11 +4202,17 @@ c       --- Energy conserving
               xnext = xp(ip+1)
               ynext = yp(ip+1)
             endif
-            xinext = (xnext - xmmin)*dxi
-            yjnext = (ynext - ymmin)*dyi
+            if (l4symtry) then
+              xinext = (abs(xnext) - xmmin)*dxi
+              yjnext = (abs(ynext) - ymmin)*dyi
+            elseif (l2symtry) then
+              xinext = (xnext - xmmin)*dxi
+              yjnext = (abs(ynext) - ymmin)*dyi
+            else
+              xinext = (xnext - xmmin)*dxi
+              yjnext = (ynext - ymmin)*dyi
+            endif
             zknext = (zp(ip+1) - zgrid - zmmin)*dzi
-            if (l4symtry) xinext = abs(xinext)
-            if (l4symtry .or. l2symtry) yjnext = abs(yjnext)
             inext = xinext
             jnext = yjnext
             knext = zknext
@@ -4206,38 +4230,28 @@ c       --- Energy conserving
           v0 = 1. - v1
           w0 = 1. - w1
 
-          wwngp = 0.
           call GETEENGP(0,1,0,0,0,0,0,v0*w0,dxi)
           call GETEENGP(0,1,0,0,0,1,0,v1*w0,dxi)
           call GETEENGP(0,1,0,0,0,0,1,v0*w1,dxi)
           call GETEENGP(0,1,0,0,0,1,1,v1*w1,dxi)
-          if (wwngp > 0.) then
-            ext = (v0*w0*eengp(0,0,0,0) + v1*w0*eengp(0,0,1,0) +
-     &             v0*w1*eengp(0,0,0,1) + v1*w1*eengp(0,0,1,1))/wwngp
-          endif
+          ext = (v0*w0*eengp(0,0,0,0) + v1*w0*eengp(0,0,1,0) +
+     &           v0*w1*eengp(0,0,0,1) + v1*w1*eengp(0,0,1,1))
+          if (xp(ip) < 0) ext = sx*ext
 
-          wwngp = 0.
           call GETEENGP(1,0,1,0,0,0,0,u0*w0,dyi)
           call GETEENGP(1,0,1,0,1,0,0,u1*w0,dyi)
           call GETEENGP(1,0,1,0,0,0,1,u0*w1,dyi)
           call GETEENGP(1,0,1,0,1,0,1,u1*w1,dyi)
-          if (wwngp > 0.) then
-            eyt = (u0*w0*eengp(1,0,0,0) + u1*w0*eengp(1,1,0,0) +
-     &             u0*w1*eengp(1,0,0,1) + u1*w1*eengp(1,1,0,1))/wwngp
-          endif
+          eyt = (u0*w0*eengp(1,0,0,0) + u1*w0*eengp(1,1,0,0) +
+     &           u0*w1*eengp(1,0,0,1) + u1*w1*eengp(1,1,0,1))
+          if (yp(ip) < 0) eyt = sy*eyt
               
-          wwngp = 0.
           call GETEENGP(2,0,0,1,0,0,0,u0*v0,dzi)
           call GETEENGP(2,0,0,1,1,0,0,u1*v0,dzi)
           call GETEENGP(2,0,0,1,0,1,0,u0*v1,dzi)
           call GETEENGP(2,0,0,1,1,1,0,u1*v1,dzi)
-          if (wwngp > 0.) then
-            ezt = (u0*v0*eengp(2,0,0,0) + u1*v0*eengp(2,1,0,0) +
-     &             u0*v1*eengp(2,0,1,0) + u1*v1*eengp(2,1,1,0))/wwngp
-          endif
-
-          if (xp(ip) < 0. .and. l4symtry) ext = -ext
-          if (yp(ip) < 0. .and. (l4symtry .or. l2symtry)) ext = -eyt
+          ezt = (u0*v0*eengp(2,0,0,0) + u1*v0*eengp(2,1,0,0) +
+     &           u0*v1*eengp(2,0,1,0) + u1*v1*eengp(2,1,1,0))
 
           if (lcylindrical) then
             if (x > 0.) then
@@ -4332,7 +4346,6 @@ c       ---------------------------------------------------------------------
         integer(ISZ):: ic
         if (conductors%icgrid(i+ox,j+oy,k+oz) == 0 .or.
      &      conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) == 0) then
-          wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - phi(i+ox+px,j+oy+py,k+oz+pz))*dd
         elseif (conductors%icgrid(i+ox,j+oy,k+oz) < nmax+1) then
           ic = conductors%icgrid(i+ox,j+oy,k+oz)
@@ -4350,7 +4363,6 @@ c       ---------------------------------------------------------------------
             vngp = phi(i+ox+px,j+oy+py,k+oz+pz)
             dngp = 1
           endif
-          wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (phi(i+ox,j+oy,k+oz) - vngp)*dd/dngp
         elseif (conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz) < nmax+1) then
           ic = conductors%icgrid(i+ox+px,j+oy+py,k+oz+pz)
@@ -4368,7 +4380,6 @@ c       ---------------------------------------------------------------------
             vngp = phi(i+ox,j+oy,k+oz)
             dngp = 1.
           endif
-          wwngp = wwngp + dw
           eengp(id,ox,oy,oz) = (vngp - phi(i+ox+px,j+oy+py,k+oz+pz))*dd/dngp
         else
           eengp(id,ox,oy,oz) = 0.
