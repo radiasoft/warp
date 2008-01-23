@@ -8,16 +8,12 @@ try:
 except ImportError:
   pass
 import controllers
-if with_numpy:
-  import numpy.oldnumeric.random_array as RandomArray
-else:
-  import RandomArray
 import re
 import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.210 2008/01/16 20:03:13 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.211 2008/01/23 23:49:55 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.

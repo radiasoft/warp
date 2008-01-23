@@ -1,6 +1,5 @@
 from warp import *
-import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.8 2003/02/24 16:15:47 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.9 2008/01/23 23:49:55 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation

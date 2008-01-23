@@ -60,9 +60,8 @@ todo = """ Add comment attribute to elements """
 from warp import *
 from generateconductors import *
 import __main__
-import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.56 2007/10/13 00:33:33 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.57 2008/01/23 23:49:55 dave Exp $"
 
 def latticedoc():
   import lattice

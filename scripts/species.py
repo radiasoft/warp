@@ -4,7 +4,6 @@ Species), a dictionary of the periodic table of elements, as well as the instanc
 usual particles as object (Electron, Positron, Water, atoms from periodic table).
 """
 from warp import *
-import RandomArray
 
 class Particle(object):
   def __init__(self,mass=None,charge=None,Symbol=None,name=None):
