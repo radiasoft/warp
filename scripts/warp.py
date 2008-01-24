@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.156 2008/01/08 02:09:47 dave Exp $"
+warp_version = "$Id: warp.py,v 1.157 2008/01/24 00:01:37 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
@@ -74,7 +74,8 @@ from Forthon import *
 from warputils import *
 import pickledump
 if with_numpy:
-  import numpy.oldnumeric.random_array as RandomArray
+  from numpy import random
+  RandomArray = random
 else:
   import RandomArray
 
