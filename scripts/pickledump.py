@@ -3,8 +3,11 @@ import __main__
 import os
 import types
 import inspect
-import numpy
 import Forthon
+try:
+  import numpy
+except:
+  pass
 
 #try:
 #  import tables
