@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.161 $, $Date: 2008/01/23 22:57:22 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.162 $, $Date: 2008/01/25 19:39:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2888,8 +2888,12 @@ c     --- skip it.
      &    maxval(conductors%levellz) > 1) return
 
       mglevel = 0
+
+#ifdef MPIPARALLEL
       izfsslavef = izfsslave
       nzfsslavef = nzfsslave
+#endif
+
       nxfine = nx
       nyfine = ny
       nzfine = nz
@@ -2932,6 +2936,9 @@ c         --- Find domains in coarser grid
      &                    nzfine,nzcoarse)
 c         --- Set new value of nzlocal
           nzlocalcoarse = nzfsslavec(my_index)
+
+          izfsslavef = izfsslavec
+          nzfsslavef = nzfsslavec
 #endif
 
           nxfine = nxcoarse
@@ -2945,8 +2952,6 @@ c         --- Set new value of nzlocal
           lx = lx*cxf
           ly = ly*cyf
           lz = lz*czf
-          izfsslavef = izfsslavec
-          nzfsslavef = nzfsslavec
 
       enddo
 
@@ -4717,6 +4722,7 @@ c     --- multiplies in the main SOR sweep loop).
 c     --- Make sure guard planes have sensible values before beginning.
       call applyboundaryconditions3d(nx,0,nzlocal,nz,1,0,1,phi,bounds)
 
+      localbounds = bounds
 #ifdef MPIPARALLEL
       lzoffset = 0
       rzoffset = 0
