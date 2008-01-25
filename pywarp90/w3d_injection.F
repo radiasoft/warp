@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.101 $, $Date: 2007/12/18 19:46:13 $
+c@(#) File w3d_injection.F, version $Revision: 1.102 $, $Date: 2008/01/25 19:32:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4853,7 +4853,7 @@ c any conductor surface.
       integer(ISZ):: ip,iz,ith,ij
       real(kind=8):: ainj,binj,ainjp1,binjp1,aoverb
       real(kind=8):: p1x,p1y,p2x,p2y
-      real(kind=8):: dr,rr,dd,rsign,dzi,rinj
+      real(kind=8):: dr,rr,dd,rsign,dzi
       real(kind=8):: aa,wt,wz,en
       real(kind=8):: sx,sy
       real(kind=8):: fourthirds,onethird
@@ -4912,7 +4912,7 @@ c       --- Calculate distance of particle from the emitting surface
         p2x = p1x + rsign*inj_dx*cos(aa)
         p2y = p1y + rsign*inj_dx*aoverb*sin(aa)
         dr = sqrt((p2x - p1x)**2 + (p2y - p1y)**2)
-        dd = (rr - rinj)/dr
+        dd = (rr - ainj)/dr
 
 c       --- Only calculate E-field if particle close to emitting surface.
         if (0.0 <= dd .and. abs(dd) <= 1.) then
