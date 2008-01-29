@@ -108,10 +108,10 @@ Creates helix with constant Ez in the pulse.
     self.inductance = inductance
     self.capacitance = capacitance
     self.resistance = resistance
-    self.termcapacitance = where(termcapacitance is None,capacitance,
-                                 termcapacitance)
-    self.terminductance = where(terminductance is None,inductance,
-                                terminductance)
+    if termcapacitance is None: self.termcapacitance = capacitance
+    else:                       self.termcapacitance = termcapacitance
+    if terminductance is None: self.terminductance = inductance
+    else:                      self.terminductance = terminductance
     self.termresistance = termresistance
     self.pitch = pitch
     self.lbeamloading = lbeamloading
