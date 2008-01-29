@@ -199,8 +199,8 @@ class Quasistatic:
          exec('f.ez%i=getez(js=iz)'%iz)
        f.close()
 
-     # --- generate electrons (on last processor only)
      if (not self.l_weakstrong or top.it==0) and (top.it%self.nelecperiod==0):
+        # --- generate electrons (on last processor only)
        if me==max(0,npes-1) and (top.it==0  or not l_plotelec):self.create_electrons()
 
        # --- (diagnostic) stacking of electron distribution
@@ -399,6 +399,9 @@ class Quasistatic:
     pg = self.pgions
     il = pg.ins[js]-1
     iu = il+pg.nps[js]
+    if pg.nps[js]==0:
+      self.ionstoprev = [0]
+      return    
     ii = il+compress(pg.zp[il:iu]<w3d.zmminp,arange(pg.nps[js]))    
     if len(ii)==0:
       self.ionstoprev = [0]
@@ -1125,6 +1128,8 @@ class Quasistatic:
                            pg.uzp[il:iu],
                            self.maps.Mtx,
                            self.maps.Mty)
+          if self.l_push_z:
+            pg.zp[il:iu]+=(pg.uzp[il:iu]*pg.gaminv[il:iu]-top.vbeam)*top.dt
         else:
           apply_map(np,
                            pg.xp[il:iu],
@@ -1157,6 +1162,7 @@ class Quasistatic:
     if self.l_verbose:print me,top.it,self.iz,'enter apply_ions_bndconditions'
     # --- apply boundary conditions
     pg = self.pgions
+    if pg.nps[js]==0:return
     self.apply_bnd_conditions(js)
     if self.l_verbose:print me,top.it,self.iz,'exit apply_ions_bndconditions'
     
