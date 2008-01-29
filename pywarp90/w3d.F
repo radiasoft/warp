@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.390 $, $Date: 2008/01/16 20:10:23 $
+c@(#) File W3D.F, version $Revision: 3.391 $, $Date: 2008/01/29 01:38:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -821,6 +821,18 @@ c     BEGIN predictor-corrector loop
             else
                call padvnc3d ("fullv",pgroup)
             endif
+
+c           --- Inject more particles. This adds particles and alters ins
+c           --- and nps.
+            call inject3d(1,pgroup)
+            call execuser("userinjection")
+
+c           --- Treat particles at boundaries
+            call particleboundaries3d(pgroup)
+
+c           --- Collect charge density and current
+            call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
+            call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
 
 c           --- This is done here in case padvnc3d is called for multiple
 c           --- pgroups
@@ -1712,7 +1724,7 @@ c         --- the python stepper.
              call fetchb3d(pgroup,ipmin,ip,is)
           endif
 
-c         --- Get E field for particles near the  injection surface.
+c         --- Get E field for particles near the injection surface.
           call inj_sete(pgroup,ipmin,ip,ex(ipmin),ey(ipmin),ez(ipmin))
           call inj_addtemp3d(pgroup,ip,ipmin,dz)
 
@@ -2081,20 +2093,7 @@ c       --- Calculate current
 
       endif
 c----------------------------------------------------------------------------
-      if (center == "fullv" .or. center == "halfv") then
-
-c       --- Inject more particles. This adds particles and alters ins and nps.
-        call inject3d(1,pgroup)
-        call execuser("userinjection")
-
-c       --- Treat particles at boundaries
-        call particleboundaries3d(pgroup)
-
-c       --- Collect charge density and current
-        call loadrho3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-        call loadj3d(pgroup,-1,-1,-1,.not. laccumulate_rho)
-
-      elseif (center == 'synchv') then
+      if (center == 'synchv') then
 
 c       --- Rearrange particles group/species according to Courant condition.
         if(chdtspid > 0) then
