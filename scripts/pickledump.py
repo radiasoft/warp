@@ -76,24 +76,7 @@ Dump data into a pdb file
   for pname in Forthon.package():
 
     # --- Get the package object from the name.
-    try:
-      pkg = __main__.__dict__[pname]
-    except KeyError:
-      # --- In some cases, it is possible for a package to have been imported
-      # --- and included in the package list without being imported into main.
-      # --- Do the import here.
-      pkg = __import__(pname,globals(),locals())
-      try:
-        # --- Check if it is the right kind of object
-        pkg.getfobject
-      except AttributeError:
-        # --- There is a module with the same name as the package. See if it
-        # --- contains the package. Note that if it doesn't, skip this package
-        # --- since it can't be found. Or should an exception be raised?
-        try:
-          pkg = getattr(pkg,pname)
-        except AttributeError:
-          continue
+    pkg = Forthon.packageobject(pname)
 
     # --- PackageBase instances will be written out with the python variables.
     if isinstance(pkg,Forthon.PackageBase): continue
