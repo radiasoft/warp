@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.227 $, $Date: 2008/01/09 19:32:44 $
+#@(#) File TOP.V, version $Revision: 3.228 $, $Date: 2008/01/29 00:52:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.227 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.228 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2704,6 +2704,7 @@ izpslave(0:maxslaves-1)  _integer +dump # Starting iz of particle extent
 nzpslave(0:maxslaves-1)  _integer +dump # Number of Z cells of particle extent
 zpslmin(0:maxslaves-1)   _real    +dump # Particle Z minimum for each slave
 zpslmax(0:maxslaves-1)   _real    +dump # Particle Z maximum for each slave
+lloadbalanced logical /.false./ # Set to true if the load has been rebalanced
 
 ******* Databuffers:
 # Primarily used as data buffers for message passing
