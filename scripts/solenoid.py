@@ -7,7 +7,7 @@ The following functions are available:
 """
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.7 2007/10/15 18:00:29 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.8 2008/01/31 01:09:42 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -87,7 +87,7 @@ def B0p7(z,zcent,k,R,l):
 
 def addsolenoid(zi,zf,ri,ro=None,maxbz=None,current=0.,
                 nzpoints=10000,fringelen=10.,
-                nsheets=1,
+                nsheets=1,v=1,
                 **kw):
   """
 Adds a solenoid element represented as a multipole expansion of the field on
@@ -102,6 +102,8 @@ axis. This creates a mmlt lattice element.
  - nzpoints=10000: number of points in the table generated
  - fringelen=10.: length of region before and after the current sheet to
                   include the field fringe, in units of the sheet radius
+ - v=1: number of non-linear terms to include. max value is 3, though
+        it is not recommended to use v>1.
 Note that the actual sheet radius is given be (ri+ro)/2. The aperture is given
 by ri. The fringelen uses the actual sheet radius.
 
@@ -136,25 +138,28 @@ included, up B0'''.
   zs = zi - fringelen*max(rsheets)
   ze = zf + fringelen*max(rsheets)
   ap = kw.get('ap',ri)
-  z = span(zs,ze,nzpoints+1)
-  ms  = zeros((nzpoints+1,2),'d')
-  msp = zeros((nzpoints+1,2),'d')
+  z = zs + (ze - zs)*arange(nzpoints+1)/nzpoints
+  ms  = zeros((nzpoints+1,v+1),'d')
+  msp = zeros((nzpoints+1,v+1),'d')
 
   for R in rsheets:
     ms[:,0]  += B0(z,zcent,current,R,l)
     msp[:,0] += B0p(z,zcent,current,R,l)
-    ms[:,1]  += B0pp(z,zcent,current,R,l)
-    msp[:,1] += B0ppp(z,zcent,current,R,l)
+    if v >= 1:
+      ms[:,1]  += B0pp(z,zcent,current,R,l)
+      msp[:,1] += B0ppp(z,zcent,current,R,l)
     # --- This is a slowly converging series for radius approaching R
     # --- so having extra terms doesn't help, and can be worse since the
     # --- terms get larger at first.
-    #ms[:,2]  += B0p4(z,zcent,current,R,l)
-    #msp[:,2] += B0p5(z,zcent,current,R,l)
-    #ms[:,3]  += B0p6(z,zcent,current,R,l)
-    #msp[:,3] += B0p7(z,zcent,current,R,l)
+    if v >= 2:
+      ms[:,2]  += B0p4(z,zcent,current,R,l)
+      msp[:,2] += B0p5(z,zcent,current,R,l)
+    if v >= 3:
+      ms[:,3]  += B0p6(z,zcent,current,R,l)
+      msp[:,3] += B0p7(z,zcent,current,R,l)
 
-  nn = [0,0]
-  vv = [0,1]
+  nn = zeros(v+1,'l')
+  vv = arange(v+1,dtype='l')
   return addnewmmlt(zs,ze,ap,ms=ms,msp=msp,nn=nn,vv=vv,**kw)
 
 addnewsolenoid = addsolenoid
