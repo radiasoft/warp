@@ -1,19 +1,42 @@
 from warp import *
+
+import __main__
+__main__.__dict__['with_matplotlib'] = 0
 try:
-  if me == 0 and sys.platform != 'mac':
-    import gist
-  else:
-    import gistdummy
-    gist = gistdummy
-except ImportError:
-  pass
+  with_matplotlib = __main__.__dict__['with_matplotlib']
+except KeyError:
+  with_matplotlib = ('--with-matplotlib' in sys.argv)
+  __main__.__dict__['with_matplotlib'] = with_matplotlib
+
+with_gist = not with_matplotlib
+
+if with_matplotlib:
+  import pylab
+  # --- Set up some defaults to match the basic gist window.
+  pylab.rcParams['figure.figsize'] = (8.5,11.)
+  pylab.rcParams['figure.subplot.left'] = 0.1757
+  pylab.rcParams['figure.subplot.right'] = 0.1757 + 0.4386*11./8.5
+  pylab.rcParams['figure.subplot.bottom'] = 0.4257
+  pylab.rcParams['figure.subplot.top'] = 0.8643
+  pylab.rcParams['font.size'] = 16.0
+
+else:
+  try:
+    if me == 0 and sys.platform != 'mac':
+      import gist
+    else:
+      import gistdummy
+      gist = gistdummy
+  except ImportError:
+    pass
+
 import controllers
 import re
 import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.211 2008/01/23 23:49:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.212 2008/01/31 22:49:02 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -111,13 +134,36 @@ never = top.never
 cgmlogfile = None
 numframes = 0
 
-if me == 0: pldefault(marks=0) # --- Set plot defaults, no line marks
+if with_gist:
+  pldefault(marks=0) # --- Set plot defaults, no line marks
 
-# --- Set GISTPATH environment variable appropriately if it is not already
-# --- set.
-if "GISTPATH" not in os.environ:
-  import warp
-  os.environ["GISTPATH"] = os.path.dirname(warp.__file__)
+  # --- Set GISTPATH environment variable appropriately if it is not already
+  # --- set.
+  if "GISTPATH" not in os.environ:
+    import warp
+    os.environ["GISTPATH"] = os.path.dirname(warp.__file__)
+
+  def active_window(winnum=None):
+    if winnum is None:
+      return gist.current_window()
+    else:
+      gist.window(winnum)
+
+if with_matplotlib:
+  _matplotwindows = []
+  _matplotactivewindow = [0]
+  def active_window(winnum=None):
+    if winnum is None:
+      return _matplotactivewindow[0]
+    else:
+      _matplotactivewindow[0] = winnum
+
+  def universeaxes():
+    # --- Create a new axes which covers the whole plot frame.
+    aa = pylab.axes([0.,0.,1.,1.],frameon=False)
+    aa.axis([0.,1.,0.,1.])
+    aa.set_axis_off()
+    return aa
 
 # The setup routine does the work needed to start writing plots to a file
 # automatically.
@@ -142,37 +188,47 @@ Does the work needed to start writing plots to a file automatically
   # --- Only PE0 (or serial processor) should run this routine.
   if me > 0: return
   # --- Set cgmfilesize
-  try:
+  if with_gist:
     gist.pldefault(cgmfilesize=cgmfilesize)
-  except:
-    pass
+
   # --- Setup the plot file name
   if prefix is None: prefix = arraytostr(top.runid)
-  if makepsfile: suffix = 'ps'
-  else:          suffix = 'cgm'
+  if makepsfile or with_matplotlib: suffix = 'ps'
+  else:                             suffix = 'cgm'
   if pnumb is None:
     # --- Get next available plot file name.
     pname = getnextfilename(prefix,suffix)
     pnumb = pname[-len(suffix)-4:-len(suffix)-1]
   else:
     pname = "%s.%s.%s"%(prefix,pnumb,suffix)
-  # --- Save the plotfile name and number, since it is not retreivable from gist.
+  # --- Save the plotfile name and number, since its not retreivable from gist.
   setup.pname = pname
   setup.pnumb = pnumb
-  # --- Create window(0), but have it only dump to the file pname for now.
-  # --- Note that only plots made to window(0) are dumped to the file.
-  gist.window(0,display='',hcp=pname,dump=1)
+
+  if with_gist:
+    # --- Create window(0), but have it only dump to the file pname for now.
+    # --- Note that only plots made to window(0) are dumped to the file.
+    gist.window(0,display='',hcp=pname,dump=1)
+    # --- Set so all fma's dump plot to file.
+    gist.hcpon()
+  else:
+    # --- Open the file where the plots will be saved.
+    _matplotwindows.append(open(setup.pname,'w'))
+
   print "Plot file name",pname
-  # --- Set so all fma's dump plot to file.
-  gist.hcpon()
+
   if cgmlog:
     # --- Create plot log file and write heading to it.
     plogname = getnextfilename(prefix,'cgmlog')
     cgmlogfile = open(plogname,"w")
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
+
   # --- Print the versions to the plot file.
+  if with_matplotlib: universeaxes()
+
   plt(time.ctime(top.starttime)+'\n'+versionstext()+'\n'+runcomments,
       0.15,0.88,justify="LT",local=1)
+
   fma()
 
 # --- Convenience function to open a window with default value specilized to
@@ -197,13 +253,14 @@ Opens up an X window
   - xon=1: When true, an X window will be opened.
   """
   if suffix is None and prefix is None:
-    if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
-      # --- If display isn't set, no X plot window will appear since window0
-      # --- is already attached to a device (the plot file).
-      gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
-    else:
-      if xon: gist.window(winnum,dpi=dpi)
-      else:   gist.window(winnum,dpi=dpi,display='')
+    if with_gist:
+      if xon and winnum==0 and sys.platform not in ['win32','cygwin']:
+        # --- If display isn't set, no X plot window will appear since window0
+        # --- is already attached to a device (the plot file).
+        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
+      else:
+        if xon: gist.window(winnum,dpi=dpi)
+        else:   gist.window(winnum,dpi=dpi,display='')
   else:
     # --- Get the next winnum if it wasn't passed in.
     if winnum == 0:
@@ -222,11 +279,17 @@ Opens up an X window
     if prefix is not None: pname = prefix + pname
     if suffix is not None: pname = pname + '_' + suffix
     pname = pname + numb
-    # --- Open window
-    if xon:
-      gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
-    else:
-      gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
+    if with_gist:
+      # --- Open window
+      if xon:
+        gist.window(winnum,dpi=dpi,display=os.environ['DISPLAY'],dump=1,hcp=pname)
+      else:
+        gist.window(winnum,dpi=dpi,display='',dump=1,hcp=pname)
+    if with_matplotlib:
+      # --- Open a new file for the plots and make it active.
+      _matplotwindows.append(open(pname,'w'))
+      _matplotactivewindow[0] = len(_matplotwindows) - 1
+
     return winnum
 
 ##########################################################################
@@ -238,32 +301,50 @@ framer=''
 def plotruninfo():
   "Plot run info to the current plot and plot info to the log file"
   global numframes
+  if with_matplotlib:
+    # --- Get the current axis.
+    ca = pylab.gca()
+    # --- Create a new one which covers the whole plot frame.
+    aa = pylab.axes([0.,0.,1.,1.],frameon=False)
+    aa.axis([0.,1.,0.,1.])
+    aa.set_axis_off()
   ss = (arraytostr(top.pline3)+'\n'+
         arraytostr(top.pline2)+'\n'+
         arraytostr(top.pline1))
-  plt(ss,0.12,0.28,local=1)
+  if with_gist:
+    plt(ss,0.12,0.28,local=1)
+  if with_matplotlib:
+    aa.text(0.12,0.28,ss)
   runmaker = arraytostr(top.runmaker)
   codeid = arraytostr(top.codeid)
   rundate = arraytostr(top.rundate)
   runtime = arraytostr(top.runtime)
   runid = arraytostr(top.runid)
   ss = '%-28s  %-8s  %-8s  %-9s  %-8s'%(runmaker,codeid,rundate,runtime,runid)
-  plt(ss,0.12,0.24,local=1)
-  if current_window()==0:
+  if with_gist:
+    plt(ss,0.12,0.24,local=1)
+  if with_matplotlib:
+    aa.text(0.12,0.24,ss)
+  if active_window()==0:
     # --- Only increment and print frame number and log if the active
     # --- device is window(0).
     numframes = numframes + 1
-    plt(repr(numframes),0.68,0.9,justify='RA',local=1)
+    if with_gist:
+      plt(repr(numframes),0.68,0.9,justify='RA',local=1)
+    if with_matplotlib:
+      aa.text(0.68,0.9,repr(numframes),
+              horizontalalignment='right',
+              verticalalignment='top')
     if cgmlogfile:
       cgmlogfile.write('%d Step %d %s %s %s %s\n' %
                        (numframes,top.it,framet,frameb,framel,framer))
+  if with_matplotlib:
+    # --- Restore the previous axis
+    pylab.axes(ca)
 
 ##########################################################################
-# Frame advance and redraw routines. The fma routine from gist is replaced
-# with one that prints informative text at the bottom of each frame just
-# before the normal gist fma is called. Also created are alternate (Basis
-# like) names for fma and redraw.
-_plotpackage = gist
+if with_gist: _plotpackage = gist
+if with_matplotlib: _plotpackage = pylab
 def setplotpackage(plotpackage):
   global _plotpackage
   _plotpackage = plotpackage
@@ -314,6 +395,15 @@ def plotlistofthings(lturnofflist=0):
       getattr(_plotpackage,thing[0])(*thing[1],**thing[2])
   if lturnofflist: makeplotsdirectly()
 
+if with_matplotlib:
+  # --- The limits command is a simple wrapper around pylab.axis
+  def limits(*v,**kw):
+    pylab.axis(v,**kw)
+
+# Frame advance and redraw routines. The fma routine from gist is replaced
+# with one that prints informative text at the bottom of each frame just
+# before the normal gist fma is called. Also created are alternate (Basis
+# like) names for fma and redraw.
 def fma(legend=1):
   """
 Frame advance - plots run info on the bottom of the frame, gets graphics window
@@ -324,9 +414,17 @@ for before and after plot commands.
   plotlistofthings()
   if legend: plotruninfo()
   controllers.callafterplotfuncs()
-  callplotfunction("fma")
+  if with_gist:
+    callplotfunction("fma")
+    oldlimits = limits()
+  if with_matplotlib:
+    try:
+      pylab.savefig(_matplotwindows[_matplotactivewindow[0]],format='ps')
+    except IndexError:
+      pass
+    pylab.clf()
   controllers.callbeforeplotfuncs()
-  oldlimits = limits()
+    
 def hcp(legend=1):
   """
 Hardcopy - plots run info on the bottom of the frame and sends image to hard
@@ -336,20 +434,25 @@ copy file.
   controllers.callafterplotfuncs()
   if legend: plotruninfo()
   controllers.callbeforeplotfuncs()
-  callplotfunction("hcp")
+  if with_gist:
+    callplotfunction("hcp")
+  if with_matplotlib:
+    pylab.savefig(_matplotwindows[_matplotactivewindow[0]],format='ps')
 
 def refresh():
   """
 Refresh the current gist windows.
   """
-  try:
-    pyg_pending()
-    pyg_idler()
-  except:
-    ygdispatch()
+  if with_gist:
+    try:
+      pyg_pending()
+      pyg_idler()
+    except:
+      ygdispatch()
 
-nf = fma
-sf = redraw
+# --- obsoleted
+#nf = fma
+#sf = redraw
 
 ##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
@@ -404,13 +507,39 @@ def pla(y,x=None,linetype="solid",local=1,**kw):
       mpi.send(yy,0,3)
       mpi.send(xx,0,3)
   else:
+    # --- convert some arguments for pylab
+    if with_matplotlib:
+      if kw['type'] == 'solid': kw['linestyle'] = '-'
+      if kw['type'] == 'none': kw['linestyle'] = 'None'
+      del kw['type']
+      try:
+        if kw['marker'] == "\1": kw['marker'] = ','
+      except KeyError:
+        pass
+      try:
+        kw['linewidth'] = kw['msize']
+        del kw['msize']
+      except KeyError:
+        pass
+      try:
+        kw['linewidth'] = kw['width']
+        del kw['width']
+      except KeyError:
+        pass
+      try:
+        if kw['color'] == 'fg': kw['color'] = 'k'
+      except KeyError:
+        pass
     # --- The i%n is used in case the 2nd dimensions are not equal. This
     # --- is most useful if the 2nd dimension of xx is 1, in which case
     # --- all of the plots use that as the abscissa.
     n = shape(xx)[1]
     for i in xrange(yy.shape[1]):
       if len(yy[:,i]) > 0:
-        callplotfunction("plg",[yy[:,i],xx[:,i%n]],kw)
+        if with_gist:
+          callplotfunction("plg",[yy[:,i],xx[:,i%n]],kw)
+        if with_matplotlib:
+          callplotfunction("plot",[xx[:,i],yy[:,i%n]],kw)
 
 pla.__doc__ = gist.plg.__doc__
 plg = pla
@@ -423,7 +552,10 @@ def pldj(x0,y0,x1,y1,local=1,**kw):
     x1 = gatherarray(x1)
     y1 = gatherarray(y1)
   if size(x0) == 0 or size(y0) == 0 or size(x1) == 0 or size(y1) == 0: return
-  callplotfunction("pldj",[x0,y0,x1,y1],kw)
+  if with_gist:
+    callplotfunction("pldj",[x0,y0,x1,y1],kw)
+  if with_matplotlib:
+    callplotfunction("plot",[array([x0,x1]),array([y0,y1])],kw)
 pldj.__doc__ = gist.pldj.__doc__
 def plfp(z,y,x,n,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -432,7 +564,14 @@ def plfp(z,y,x,n,local=1,**kw):
     x = gatherarray(x)
     n = gatherarray(n)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(n) == 0: return
-  callplotfunction("plfp",[z,y,x,n],kw)
+  if with_gist:
+    callplotfunction("plfp",[z,y,x,n],kw)
+  if with_matplotlib:
+    i = 0
+    for j,c in zip(n,z):
+      kw.setdefault('color',(0.,1.-c/200.,c/200.))
+      callplotfunction("plot",[x[i:i+j],y[i:i+j]],kw)
+      i += j
 plfp.__doc__ = gist.plfp.__doc__
 def plfc(z,y,x,ireg,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -441,7 +580,11 @@ def plfc(z,y,x,ireg,local=1,**kw):
     x = gatherarray(x)
     ireg = gatherarray(ireg)
   if size(z) == 0 or size(y) == 0 or size(x) == 0 or size(ireg) == 0: return
-  callplotfunction("plfc",[z,y,x,ireg],kw)
+  if with_gist:
+    callplotfunction("plfc",[z,y,x,ireg],kw)
+  if with_matplotlib:
+    # --- Note: ireg could be handled by making z a masked array
+    callplotfunction("contourf",[x,y,z],kw)
 plfc.__doc__ = gist.plfc.__doc__
 def plc(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -450,7 +593,11 @@ def plc(z,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
-  callplotfunction("plc",[z,y,x,ireg],kw)
+  if with_gist:
+    callplotfunction("plc",[z,y,x,ireg],kw)
+  if with_matplotlib:
+    # --- Note: ireg could be handled by making z a masked array
+    callplotfunction("contour",[x,y,z],kw)
 plc.__doc__ = gist.plc.__doc__
 def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -460,7 +607,33 @@ def pli(z,x0=None,y0=None,x1=None,y1=None,local=1,**kw):
     if x1 is not None: x1 = gatherarray(x1)
     if y1 is not None: y1 = gatherarray(y1)
   if size(z) == 0: return
-  callplotfunction("pli",[z,x0,y0,x1,y1],kw)
+  if with_gist:
+    callplotfunction("pli",[z,x0,y0,x1,y1],kw)
+  if with_matplotlib:
+    try:
+      kw['vmin'] = kw['cmin']
+      del kw['cmin']
+    except KeyError:
+      pass
+    try:
+      kw['vmax'] = kw['cmax']
+      del kw['cmax']
+    except KeyError:
+      pass
+    try:
+      del kw['top']
+    except KeyError:
+      pass
+    nx,ny = z.shape
+    x0 = x0 or 0.
+    x1 = x1 or (nx - 1)
+    y0 = y0 or 0.
+    y1 = y1 or (ny - 1)
+    dx = (x1 - x0)/(nx-1)
+    dy = (y1 - y0)/(ny-1)
+    xx = arange(x0-dx/2.,x1+dx/2.,nx)
+    yy = arange(y0-dy/2.,y1+dy/2.,ny)
+    callplotfunction("pcolor",[xx,yy,transpose(z)],kw)
 pli.__doc__ = gist.pli.__doc__
 def plf(z,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -469,7 +642,11 @@ def plf(z,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(z) == 0: return
-  callplotfunction("plf",[z,y,x,ireg],kw)
+  if with_gist:
+    callplotfunction("plf",[z,y,x,ireg],kw)
+  if with_matplotlib:
+    # --- ireg not implemented now
+    callplotfunction("pcolor",[x,y,z],kw)
 plf.__doc__ = gist.plf.__doc__
 def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -479,7 +656,10 @@ def plv(vy,vx,y=None,x=None,ireg=None,local=1,**kw):
     if x is not None: x = gatherarray(x)
     if ireg is not None: ireg = gatherarray(ireg)
   if size(vy) == 0 or size(vx) == 0: return
-  callplotfunction("plv",[vy,vx,y,x,ireg],kw)
+  if with_gist:
+    callplotfunction("plv",[vy,vx,y,x,ireg],kw)
+  if with_matplotlib:
+    callplotfunction("quiver",[x,y,vx,vy],kw)
 plv.__doc__ = gist.plv.__doc__
 def plt(text,x,y,local=1,**kw):
   if not _accumulateplotlists and not local:
@@ -490,12 +670,22 @@ def plt(text,x,y,local=1,**kw):
     textlist = [text]
     xlist = [x]
     ylist = [y]
+  if with_matplotlib:
+    if 'justify' in kw:
+      if kw['justify'] == 'LT':
+        kw['horizontalalignment'] = 'left'
+        kw['verticalalignment'] = 'top'
+        del kw['justify']
   for text,x,y in zip(textlist,xlist,ylist):
-    callplotfunction("plt",[text,x,y],kw)
+    if with_gist:
+      callplotfunction("plt",[text,x,y],kw)
+    if with_matplotlib:
+      callplotfunction("text",[x,y,text],kw)
 plt.__doc__ = gist.plt.__doc__
 def plsys(n=None,**kw):
-  if n is None: return getattr(_plotpackage,"plsys")()
-  callplotfunction("plsys",[n])
+  if with_gist:
+    if n is None: return getattr(_plotpackage,"plsys")()
+    callplotfunction("plsys",[n])
 plsys.__doc__ = gist.plsys.__doc__
 
 ##########################################################################
@@ -660,20 +850,31 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=None,height=20):
   framel=titlel
   framer=titler
   if titlet:
-    plt(titlet,ptitle_placement[v-1][0][0],ptitle_placement[v-1][0][1],
-        justify="CC",orient=0,local=1,height=height)
+    if with_gist:
+      plt(titlet,ptitle_placement[v-1][0][0],ptitle_placement[v-1][0][1],
+          justify="CC",orient=0,local=1,height=height)
+    if with_matplotlib:
+      pylab.title(titlet)
   if titleb:
-    plt(titleb,ptitle_placement[v-1][1][0],ptitle_placement[v-1][1][1],
-        justify="CC",orient=0,local=1,height=height)
+    if with_gist:
+      plt(titleb,ptitle_placement[v-1][1][0],ptitle_placement[v-1][1][1],
+          justify="CC",orient=0,local=1,height=height)
+    if with_matplotlib:
+      pylab.xlabel(titleb + '\n' + titler)
   if titlel:
-    plt(titlel,ptitle_placement[v-1][2][0],ptitle_placement[v-1][2][1],
-        justify="CC",orient=1,local=1,height=height)
+    if with_gist:
+      plt(titlel,ptitle_placement[v-1][2][0],ptitle_placement[v-1][2][1],
+          justify="CC",orient=1,local=1,height=height)
+    if with_matplotlib:
+      pylab.ylabel(titlel)
   if titler:
-    plt(titler,ptitle_placement[v-1][3][0],ptitle_placement[v-1][3][1],
-        justify="CC",orient=0,local=1,height=height)
+    if with_gist:
+      plt(titler,ptitle_placement[v-1][3][0],ptitle_placement[v-1][3][1],
+          justify="CC",orient=0,local=1,height=height)
   settitles()
 def ptitlebottom(text=""):
-  plt(text,0.3950,0.37,justify="CC",local=1)
+  if with_gist:
+    plt(text,0.3950,0.37,justify="CC",local=1)
 
 ##########################################################################
 ##########################   UTILITY ROUTINES  ###########################
@@ -1449,6 +1650,10 @@ values from zmin to zmax.
   """
   # --- This is only ever done on processor 0, so otherwise return
   if me > 0: return
+  # --- The builtin colorbar is used with pylab
+  if with_matplotlib:
+    pylab.colorbar(pad=0.02,fraction=0.08)
+    return
   plsys(0)
   xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   fontsize = colorbar_fontsize[view-1]
@@ -4709,8 +4914,8 @@ def pltfld3d(fld='phi',freqflag=always):
   """Makes fields plots which have been turned on
      - fld='phi' quantity to plot, either 'phi' or 'rho'
      - freqflag=always frequency flag, either always, seldom, or never"""
-  currentwindow = current_window()
-  window(0)
+  currentwindow = active_window()
+  active_window(0)
   nwindows = 9
   for i in xrange(nwindows):
     if (w3d.icrhoxy[i] == freqflag and fld == "rho"): pcrhoxy[i]
@@ -4726,14 +4931,14 @@ def pltfld3d(fld='phi',freqflag=always):
   #if (top.icphizx4 == freqflag and fld == "phi"): pcphizx4
   #if (top.icphizy4 == freqflag and fld == "phi"): pcphizy4
   oldlimits = limits()
-  window(currentwindow)
+  active_window(currentwindow)
 
 ##########################################################################
 def onedplts(freqflag=always):
   """Makes 1-D plots which have been turned on
      - freqflag=always frequency flag, either always, seldom, or never"""
-  currentwindow = current_window()
-  window(0)
+  currentwindow = active_window()
+  active_window(0)
   if freqflag == top.ipcurr: pzcurr()
   if freqflag == top.ipegap: pzegap()
   if freqflag == top.iplchg: pzlchg()
@@ -4742,7 +4947,7 @@ def onedplts(freqflag=always):
   if freqflag == top.ipphiax: pzphiax()
   if freqflag == top.ipezax: pzezax()
   oldlimits = limits()
-  window(currentwindow)
+  active_window(currentwindow)
 
 # --- Thses are defined for the fortran interface. If WARP is not imported
 # --- main, then the functions and the always and seldom parameters will
@@ -4766,8 +4971,8 @@ def psplots(freqflag=always,js=0):
   # --- Save current device and set active device to window(0). This
   # --- ensures that plots created by this routine will be dumped to
   # --- the appropriate plot file.
-  currentwindow = current_window()
-  window(0)
+  currentwindow = active_window()
+  active_window(0)
 
   nsubsets = 3
   nwindows = 9
@@ -4885,7 +5090,7 @@ def psplots(freqflag=always,js=0):
   if freqflag == seldom: controllers.callplseldomfuncs()
 
   # --- Reset the current window to it previous value.
-  window(currentwindow)
+  active_window(currentwindow)
 
   # --- Accumulate time
   aa = wtime()
