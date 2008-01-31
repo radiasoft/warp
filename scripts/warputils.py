@@ -8,6 +8,7 @@ exists(): checks if a variable exists
 ave(): averages an array of numbers
 maxnd(): finds max of multi-dimensional array
 minnd(): finds min of multi-dimensional array
+span(): returns an array of evenly spaced numbers
 getnextfilename(): finds next available file name in a numeric sequence
 getmesh2d(): returns tuple of 2 2-d arrays holding the coordinates of the
              two dimensions
@@ -23,7 +24,7 @@ from __future__ import generators # needed for yield statement for P2.2
 from warp import *
 import struct # needed for makefortranordered
 
-warputils_version = "$Id: warputils.py,v 1.21 2007/12/20 00:37:28 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.22 2008/01/31 01:29:16 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -199,6 +200,12 @@ def avend(x,defaultval=0.):
   xtemp = reshape(x,tuple([product(array(shape(x)))]))
   if len(xtemp) == 0: return defaultval
   return sum(xtemp)/len(xtemp)
+
+def span(lo, hi, num):
+  """Returns an array of num equally spaced numbers starting with lo and
+ending with hi.
+  """
+  return lo + (hi - lo)*arange(num)/(num-1.)
 
 def makefortranordered(x):
   """Given an array, returns the same data but with fortran ordering. 
