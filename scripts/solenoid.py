@@ -5,9 +5,10 @@ The following functions are available:
  - addgriddedsolenoid: gridded data via solve of del**2 A = mu0*J
 
 """
+__all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.8 2008/01/31 01:09:42 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.9 2008/02/01 22:48:49 dave Exp $"
 
 def solenoiddoc():
   import solenoid
