@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.41 $, $Date: 2007/11/26 17:08:21 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.42 $, $Date: 2008/02/01 22:52:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -2070,7 +2070,6 @@ c=============================================================================
       integer(ISZ):: iwhich,bfstype
 
       integer(ISZ):: id,idmax
-      real(kind=8),pointer:: atemp(:,:,:),jtemp(:,:,:)
       real(kind=8),pointer:: j(:,:,:,:),curlj(:,:,:,:)
 
       if (bfstype < 0) return
@@ -2103,17 +2102,6 @@ c=============================================================================
         j => curlj
       endif
 
-      allocate(atemp(0:bfield%nx,0:bfield%ny,-1:bfield%nzlocal+1))
-
-      if (bfstype <= 4) then
-c       --- For the FFT field solvers, only one temp array is needed since
-c       --- j is not passed and the field solve happens in place.
-c       --- jtemp is pointed to atemp just to give it a non-null value.
-        jtemp => atemp
-      else
-        allocate(jtemp(0:bfield%nx,0:bfield%ny,0:bfield%nzlocal))
-      endif
-
       j = j*mu0*eps0
 
 c     --- Note that the arrays being passed in are not contiguous, which means
@@ -2137,13 +2125,9 @@ c     --- though they should never be needed during initialization.
      &      ((bfield%lusevectorpotential .and. (id == 0 .or. id == 2)) .or.
      &      (.not. bfield%lusevectorpotential .and. id == 1))) cycle
         if (bfstype <= 4) then
-          atemp(:,:,0:bfield%nzlocal) = j(id,:,:,:)
-        else
-          atemp = bfield%a(id,0:bfield%nx,0:bfield%ny,:)
-          jtemp = j(id,:,:,:)
+          bfield%a(id,0:bfield%nx,0:bfield%ny,0:bfield%nzlocal) = j(id,:,:,:)
         endif
-        call bvp3d_work(iwhich,bfstype,atemp,jtemp,id,bfield)
-        if (bfstype .ne. 10) bfield%a(id,0:bfield%nx,0:bfield%ny,:) = atemp
+        call bvp3d_work(iwhich,bfstype,id,bfield)
       enddo
 
 c     --- Rescale, replacing 1/eps0 with mu0
@@ -2163,9 +2147,6 @@ c     --- solvers since those do not set the z guard cells.
      &                      bfield%bounds,bfield%lcylindrical,
      &                      bfstype <= 4)
 
-      deallocate(atemp)
-      if (bfstype > 4) deallocate(jtemp)
-
       if (bfield%lusevectorpotential) then
 c       --- Unscale the current density
         j = j/(mu0*eps0)
@@ -2177,7 +2158,7 @@ c       --- The unscaling is not needed since the data is thrown away.
       return
       end
 c=============================================================================
-      subroutine bvp3d_work(iwhich,bfstype,a,j,iaxis,bfield)
+      subroutine bvp3d_work(iwhich,bfstype,iaxis,bfield)
       use Subtimersf3d
       use BFieldGridTypemodule
       use LatticeInternal, only: linbend
@@ -2188,8 +2169,6 @@ c=============================================================================
       use Parallel, only: my_index,nslaves,izfsslave,nzfsslave
       integer(ISZ):: iwhich,bfstype,iaxis
       type(BFieldGridType):: bfield
-      real(kind=8):: a(0:bfield%nx,0:bfield%ny,-1:bfield%nzlocal+1)
-      real(kind=8):: j(0:bfield%nx,0:bfield%ny,0:bfield%nzlocal)
 
 c Interface to field solver for magnetic vector potential
 c Note that bfield is passed in to have access to the data and work arrays
@@ -2216,7 +2195,7 @@ c fits and so was replaced with if statements.
       zlen = bfield%zmmax - bfield%zmmin
 
       if (bfstype == 0) then
-        call vpois3d(iwhich,a(0,0,0),a(0,0,0),
+        call vpois3d(iwhich,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &               bfield%kxsq,bfield%kysq,bfield%kzsq,
      &               bfield%attx,bfield%atty,bfield%attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
@@ -2224,7 +2203,7 @@ c fits and so was replaced with if statements.
      &               0,l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (bfstype == 4) then
         if (iwhich == 1 .or. iwhich == 0) then
-          call vpois3d(1,a(0,0,0),a(0,0,0),
+          call vpois3d(1,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
      &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
@@ -2232,19 +2211,19 @@ c fits and so was replaced with if statements.
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
         endif
         if (iwhich == -1 .or. iwhich == 0) then
-          call vpois3d(12,a(0,0,0),a(0,0,0),
+          call vpois3d(12,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
      &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-          call vpois3d(14,a(0,0,0),a(0,0,0),
+          call vpois3d(14,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
      &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                 bfield%scrtch,bfield%xywork,bfield%zwork,
      &                 0,l2symtry,l4symtry,bound0,boundnz,boundxy)
-          call vpois3d(13,a(0,0,0),a(0,0,0),
+          call vpois3d(13,bfield%a(iaxis,:,:,:),bfield%a(iaxis,:,:,:),
      &                 bfield%kxsq,bfield%kysq,bfield%kzsq,
      &                 bfield%attx,bfield%atty,bfield%attz,
      &                 filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
@@ -2254,24 +2233,25 @@ c fits and so was replaced with if statements.
 
       elseif (bfstype == 7) then
 
-        call multigrid3dsolve(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,a,j,
-     &                      bfield%rstar,linbend,bfield%bounds,
-     &                      bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
-     &                      bfield%zmmin,zbeam,zgrid,
-     &                      bfield%mgparam(iaxis),bfield%mgform(iaxis),
-     &                      bfield%mgiters(iaxis),bfield%mgmaxiters(iaxis),
-     &                      bfield%mgmaxlevels(iaxis),bfield%mgerror(iaxis),
-     &                      bfield%mgtol(iaxis),bfield%mgverbose(iaxis),
-     &                      bfield%downpasses(iaxis),bfield%uppasses(iaxis),
-     &                      bfield%lcndbndy,bfield%laddconductor,
-     &                      bfield%icndbndy,.false.,
-     &                      gridmode,bfield%conductors,
-     &                      my_index,nslaves,izfsslave,nzfsslave)
-
+        call multigrid3dsolve(iwhich,nx,ny,nzlocal,nz,dx,dy,dz,
+     &                        bfield%a(iaxis,:,:,:),bfield%j(iaxis,:,:,:),
+     &                        bfield%rstar,linbend,bfield%bounds,
+     &                        bfield%xmmin,bfield%ymmin,bfield%zmminlocal,
+     &                        bfield%zmmin,zbeam,zgrid,
+     &                        bfield%mgparam(iaxis),bfield%mgform(iaxis),
+     &                        bfield%mgiters(iaxis),bfield%mgmaxiters(iaxis),
+     &                        bfield%mgmaxlevels(iaxis),bfield%mgerror(iaxis),
+     &                        bfield%mgtol(iaxis),bfield%mgverbose(iaxis),
+     &                        bfield%downpasses(iaxis),bfield%uppasses(iaxis),
+     &                        bfield%lcndbndy,bfield%laddconductor,
+     &                        bfield%icndbndy,.false.,
+     &                        gridmode,bfield%conductors,
+     &                        my_index,nslaves,izfsslave,nzfsslave)
 
       elseif (bfstype == 10) then
-        call multigridrzb(iwhich,iaxis,bfield%a(iaxis,:,0,:),
-     &                    j(:,0,:),bfield%nx,bfield%nzlocal,bfield%mgtol(iaxis))
+        call multigridrzb(iwhich,iaxis,
+     &                    bfield%a(iaxis,:,0,:),bfield%j(iaxis,:,0,:),
+     &                    bfield%nx,bfield%nzlocal,bfield%mgtol(iaxis))
 
       endif
 
