@@ -1,5 +1,5 @@
 fxy
-#@(#) File FXY.V, version $Revision: 3.4 $, $Date: 2003/09/16 23:28:51 $
+#@(#) File FXY.V, version $Revision: 3.5 $, $Date: 2008/02/01 00:07:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FXY of code WARPxy
@@ -10,7 +10,7 @@ fxy
 
 *********** FXYversion:
 # Variables needed by the test driver of package FXY
-versfxy character*19 /"$Revision: 3.4 $"/#  Code version version is set by CVS
+versfxy character*19 /"$Revision: 3.5 $"/#  Code version version is set by CVS
 
 ******** CapMatxy dump: 
 ncxymax            integer  # Maximum number of points in conductors
@@ -21,7 +21,7 @@ vcond(ncxymax)    _real [V] # voltage of points in conductors
 pcond(ncxymax)    _real [V] # actual potential on points in conductors
                             # (auto set)
 qcond(ncxymax)    _real [C] # induced charge on points in conductors (auto set)
-cmatxy(ncxy,ncxy) _real     # Capacity matrix (auto set)
+cmatxy(ncxy,ncxy) _real /0./ # Capacity matrix (auto set)
 kpvtxy(ncxy)      _integer  # Pivot points for matrix solve (auto set)
 
 *********** FXYsubs:
