@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.46 $, $Date: 2007/10/09 23:37:23 $
+c W3DSLAVE.M, version $Revision: 1.47 $, $Date: 2008/02/01 00:04:00 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -544,7 +544,7 @@ c===========================================================================
       use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nzlocal
-      real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
 
 c Get the phi for the full extent where the fields are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
@@ -606,8 +606,8 @@ c     --- Send the data out to processors that need it.
         if (nzsend(i) > 0) then
           if ( i /= my_index) then
             w = w + 1
-            nn = nzsend(i)*(nx+1)*(ny+1)
-            call MPI_ISEND(phi(0,0,izsend(i)),nn,
+            nn = nzsend(i)*(nx+3)*(ny+3)
+            call MPI_ISEND(phi(-1,-1,izsend(i)),nn,
      &                     MPI_DOUBLE_PRECISION,
      &                     i,messid,MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -618,8 +618,8 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           if (nzrecv(i) > 0) then
-            nn = nzrecv(i)*(nx+1)*(ny+1)
-            call MPI_RECV(phi(0,0,izrecv(i)),nn,
+            nn = nzrecv(i)*(nx+3)*(ny+3)
+            call MPI_RECV(phi(-1,-1,izrecv(i)),nn,
      &                    MPI_DOUBLE_PRECISION,
      &                    i,messid,MPI_COMM_WORLD,mpistatus,mpierror)
           endif

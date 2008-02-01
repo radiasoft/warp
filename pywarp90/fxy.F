@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.6 $, $Date: 2007/04/24 21:37:37 $
+c@(#) File FXY.M, version $Revision: 3.7 $, $Date: 2008/02/01 00:04:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -59,11 +59,11 @@ c=======================================================================
      &                   xmmin,ymmin,scrtch,phisave,xywork,l2symtry,l4symtry)
       use CapMatxy
       integer(ISZ):: nx,ny
-      real(kind=8):: phi(0:nx,0:ny)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2)
-      real(kind=8):: scrtch(*),phisave(0:nx,0:ny),xywork(0:nx,0:ny)
+      real(kind=8):: scrtch(*),phisave(-1:nx+1,-1:ny+1),xywork(0:nx,0:ny)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -85,7 +85,7 @@ c     --- and return without doing anything
       endif
 
 c     --- Make a copy of phi since it will be scrambled below.
-      call copyarry(phi,phisave,(nx+1)*(ny+1))
+      phisave = phi
 
 c find capacity matrix
 
@@ -104,9 +104,9 @@ c       --- 2 or 4 at a symmetric boundary)
         wy =     (ycond(i)-ymmin)/dy  - iy
         cx = 1.
         cy = 1.
-        if (l2symtry .and. iy .eq. 0) cy = 2.
-        if (l4symtry .and. ix .eq. 0) cx = 2.
-        if (l4symtry .and. iy .eq. 0) cy = 2.
+        if (l2symtry .and. iy == 0) cy = 2.
+        if (l4symtry .and. ix == 0) cx = 2.
+        if (l4symtry .and. iy == 0) cy = 2.
         phi(ix  ,iy  ) = (1.-wx)*(1.-wy)*cx*cy
         phi(ix+1,iy  ) =     wx *(1.-wy)*cy
         phi(ix  ,iy+1) = (1.-wx)*    wy *cx
@@ -179,7 +179,7 @@ c     --- Fill in lower half (which is the same as the upper half)
       enddo
 
 c     --- Return the original saved phi.
-      call copyarry(phisave,phi,(nx+1)*(ny+1))
+      phi = phisave
 
       return
       end
@@ -189,11 +189,11 @@ c==============================================================================
      &                    l2symtry,l4symtry)
       use CapMatxy
       integer(ISZ):: iwhich,nx,ny
-      real(kind=8):: phi(0:nx,0:ny)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2)
-      real(kind=8):: scrtch(*),phisave(0:nx,0:ny),xywork(0:nx,0:ny)
+      real(kind=8):: scrtch(*),phisave(-1:nx+1,-1:ny+1),xywork(0:nx,0:ny)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
       logical(ISZ):: l2symtry,l4symtry
 
@@ -242,7 +242,7 @@ c     --- First transform phi (actually the source) and filter it.
      &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
 
 c     --- Now, save the transformed and possibly filtered source.
-      call copyarry(phi,phisave,(nx+1)*(ny+1))
+      phisave = phi
 
 c     --- Finish the first field solve: divide by k-squared and untransform.
       call vpois2d(4,phi,phi,kxsq,kysq,attx,atty,filt,
@@ -282,9 +282,9 @@ c     --- Deposit induced charge onto grid
         wy =     (ycond(i)-ymmin)/dy  - iy
         cx = 1.
         cy = 1.
-        if (l2symtry .and. iy .eq. 0) cy = 2.
-        if (l4symtry .and. ix .eq. 0) cx = 2.
-        if (l4symtry .and. iy .eq. 0) cy = 2.
+        if (l2symtry .and. iy == 0) cy = 2.
+        if (l4symtry .and. ix == 0) cx = 2.
+        if (l4symtry .and. iy == 0) cy = 2.
         phi(ix  ,iy  ) = phi(ix  ,iy  ) + qcond(i)*(1.-wx)*(1.-wy)*cx*cy
         phi(ix+1,iy  ) = phi(ix+1,iy  ) + qcond(i)*    wx *(1.-wy)*cy
         phi(ix  ,iy+1) = phi(ix  ,iy+1) + qcond(i)*(1.-wx)*    wy *cx

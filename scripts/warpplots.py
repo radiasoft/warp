@@ -36,7 +36,7 @@ import os
 import sys
 import string
 import __main__
-warpplots_version = "$Id: warpplots.py,v 1.212 2008/01/31 22:49:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.213 2008/02/01 00:06:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -3641,7 +3641,7 @@ be from none to all three.
       phi = frz.basegrid.phi[1:-1,1:-1]
       iy = None
     else:
-      phi = w3d.phi[:,:,1:-1]
+      phi = w3d.phi[1:-1,1:-1,1:-1]
   else:
     phi = solver.getphi()
     if len(phi.shape) == 2: iy = None
@@ -3706,7 +3706,7 @@ be from none to all three.
       phi = frz.basegrid.phi[1:-1,1:-1]
       iy = None
     else:
-      phi = w3d.phi[:,:,1:-1]
+      phi = w3d.phi[1:-1,1:-1,1:-1]
   else:
     phi = solver.getphi()
     if len(phi.shape) == 2: iy = None
@@ -3779,7 +3779,6 @@ be from none to all three.
       getselfe3d(solver.phip,solver.nxp,solver.nyp,solver.nzp,solver.selfe,
                  solver.nx_selfe,solver.ny_selfe,solver.nz_selfe,
                  solver.dx,solver.dy,solver.dz,
-                 solver.boundxy,solver.boundxy,solver.boundxy,solver.boundxy,
                  true,(nx-solver.nxp)/2,(ny-solver.nyp)/2,(nz-solver.nzp)/2,)
     else:
       solver.getselfe()

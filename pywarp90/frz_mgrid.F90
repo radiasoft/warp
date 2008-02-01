@@ -5459,7 +5459,7 @@ USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
-REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:nz0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
 
   IF(mgridrz_ncmax==0) return
@@ -5503,7 +5503,7 @@ USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nx0, ny0
-REAL(8), INTENT(IN OUT) :: u0(nx0+1,ny0+1)
+REAL(8), INTENT(IN OUT) :: u0(0:nx0+2,0:ny0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nx0+1,ny0+1)
 
   IF(mgridrz_ncmax==0) return
@@ -5535,7 +5535,7 @@ USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
-REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
+REAL(8), INTENT(IN OUT) :: u0(0:nr0+2,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
 REAL(8), INTENT(IN) :: accuracy
 
@@ -9340,7 +9340,7 @@ REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
 REAL(8), INTENT(IN) :: dr, dz, zmin, zgrid
 REAL(8), DIMENSION(0:nz), INTENT(INOUT) :: xfact,yfact
 LOGICAL(ISZ) :: calcphi
-REAL(8), INTENT(INOUT) :: phi3d(0:nr,0:nr,-1:nz+1), selfe(3,0:nr,0:nr,0:nz)
+REAL(8), INTENT(INOUT) :: phi3d(-1:nr+1,-1:nr+1,-1:nz+1),selfe(3,0:nr,0:nr,0:nz)
 
 REAL(8) :: invdx, invdy, invdr, invdz, xpos, ypos, rpos, zpos, ddx, ddy, ddr, ddz, oddx, oddy, oddr, oddz, &
            w1, w2, w3, w4, w5, w6, w7, w8
@@ -9367,7 +9367,7 @@ IF(calcphi) then
     end do
   end do
 
-  call getselfe3d(phi3d,nr,nr,nz,selfe,nr,nr,nz,dr,dr,dz,.true.)
+  call getselfe3d(phi3d,nr,nr,nz,selfe,nr,nr,nz,dr,dr,dz,.true.,1,1,1)
 !write(o_line,*) 'sum(phi)',SUM(ABS(phi3d)),SUM(ABS(phi))
 endif
 

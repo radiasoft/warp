@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.86 $, $Date: 2007/10/24 21:15:45 $
+c@(#) File WXY.M, version $Revision: 3.87 $, $Date: 2008/02/01 00:04:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -744,8 +744,8 @@ c  Field-solve for potential
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (ANY(efetch == 3))
-     &  call getselfe3d(phi(0,0,-1),nx,ny,nzlocal,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy,.true.)
+     &  call getselfe3d(phi,nx,ny,nzlocal,selfe,
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,.true.,1,1,1)
 
 c  Initialize the moments arrays which are calculated during the synchv and
 c  gen phases.
@@ -2571,7 +2571,7 @@ c FFT/bend iterative field solver.
         bndfit = bndfit + 1
 
 c       --- save phi for error measure
-        call copyarry(phi(0,0,0),phisave(0,0),(nx+1)*(ny+1))
+        phisave = phi(0:nx,0:ny,0)
 
 c       --- add curvature terms to the source (rho) as a correction
 !$OMP DO
@@ -2671,7 +2671,7 @@ c       --- Get information about the closest bend.
         if (bendres < 0.5 .or. iwhich > 0) then
 c         --- if not in a bend, then make direct call to vpxy
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
-            call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nzlocal+1))
+            phi(0:nx,0:ny,0:nzlocal) = rho
           endif
           call vpxy(iwhich)
 
@@ -2691,9 +2691,9 @@ c         --- This is skipped on the first step since there is no old phi.
         else
 
 c         --- Fill rest of phi array with copy of new phi
-          call copyarry(phi(0,0,0),phi(0,0,-1),(nx+1)*(ny+1))
+          phi(:,:,-1) = phi(:,:,0)
           do iz=1,nzlocal+1
-            call copyarry(phi(0,0,0),phi(0,0,iz),(nx+1)*(ny+1))
+            phi(:,:,iz) = phi(:,:,0)
           enddo
 
         endif
@@ -2732,19 +2732,19 @@ c       --- Otherwise, use 2d field solver
         if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
         if (fstype == 0) then
-          call vpois2d (iwhich, phi(0,0,0), phi(0,0,0), kxsq, kysq,
+          call vpois2d (iwhich, phi(-1,-1,0), phi(-1,-1,0), kxsq, kysq,
      &       attx, atty, filt, xmmax-xmmin, ymmax-ymmin,
-     &       nx, ny, scrtch, phi(0,0,1), 0, l2symtry,l4symtry)
+     &       nx, ny, scrtch, phi(-1,-1,1), 0, l2symtry,l4symtry)
 
         elseif (fstype == 1 .or. fstype == 2) then
 c         --- Note that phi(,,-1) and phi(,,1) are passed in as
 c         --- scratch space.
-          call capmatxyf(iwhich,phi(0,0,0),kxsq,kysq,attx,atty,
+          call capmatxyf(iwhich,phi(-1,-1,0),kxsq,kysq,attx,atty,
      &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
-     &             scrtch,phi(0,0,2),phi(0,0,1),l2symtry,l4symtry)
+     &             scrtch,phi(-1,-1,2),phi(-1,-1,1),l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver
-          call multigridxyf(iwhich,nx,ny,dx,dy,phi(0,0,0),rho(0,0,0),
+          call multigridxyf(iwhich,nx,ny,dx,dy,phi(-1,-1,0),rho(0,0,0),
      &                      l2symtry,l4symtry,xmmin,ymmin)
 c         --- AMR multigrid solver
         elseif (fstype == 10) then

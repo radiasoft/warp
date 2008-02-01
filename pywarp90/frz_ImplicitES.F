@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.24 $, $Date: 2008/01/09 19:32:44 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.25 $, $Date: 2008/02/01 00:04:00 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -1233,7 +1233,7 @@ c     --- Calculate the residual.
 !$OMP END DO
 
       call cond_potmgres(conductors%interior,
-     &                   nx,0,nzlocal,res,mglevel,1,.false.,1,0)
+     &                   nx,0,nzlocal,res,mglevel,1,.false.,1,0,1)
       call applyboundaryconditionses2d(res,nx,0,nzlocal,nz,1,0,3,1,bounds,
      &                                 .true.)
 

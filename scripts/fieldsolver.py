@@ -79,9 +79,7 @@ package. Only w3d and wxy have field solves defined.
          w3d.solvergeom == w3d.Zgeom)):
       getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
-                 w3d.dx,w3d.dy,w3d.dz,
-                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy,true,
-                 0,0,1)
+                 w3d.dx,w3d.dy,w3d.dz,true,1,1,1)
     # --- Get the phi needed for injection
     if top.inject > 0: getinj_phi()
 

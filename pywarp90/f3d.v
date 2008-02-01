@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.185 $, $Date: 2008/01/18 22:29:55 $
+#@(#) File F3D.V, version $Revision: 3.186 $, $Date: 2008/02/01 00:04:00 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.185 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.186 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -37,8 +37,10 @@ work2d(1:nx+2,1:ny+2)     _real        #  Workspace for 2d fieldsolver
 zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vpftz
 
 ******* Transpose_work_space:
-phi_trnspssize /0/       integer
-phi_trnsps(phi_trnspssize)  _real
+phi_trnspsnx /0/ integer
+phi_trnspsny /0/ integer
+phi_trnspsnz /0/ integer
+phi_trnsps(0:phi_trnspsnx,0:phi_trnspsny,0:phi_trnspsnz)  _real
 
 ******** CapMat3d dump:
 nc3dmax         integer /0/ # Maximum number of points in conductors
@@ -219,6 +221,7 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # times 1, 3, 5, and 7.
 lbuildquads logical /.true./ # When true, quad elements are constructed
                              # automatically if defined.
+mgscaleserial real /1.e39/
 getmglevels(nx:integer,ny:integer,nzlocal:integer,nz:integer,
             dx:real,dy:real,dz:real,conductors:ConductorType,
             my_index:integer,nslaves:integer,
@@ -228,7 +231,7 @@ getmglevels(nx:integer,ny:integer,nzlocal:integer,nz:integer,
    # must be zero when calling this routine.
 multigrid3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
              dx:real,dy:real,dz:real,
-             phi(0:nx,0:ny,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+             phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
              rstar(-1:nzlocal+1):real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
@@ -238,7 +241,7 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
    # from the f3d package to control the iterations and conductors.
 multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,nz:integer,
                  dx:real,dy:real,dz:real,
-                 phi(0:nx,0:ny,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+                 phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
                  rstar(-1:nzlocal+1):real,linbend:logical,bounds:integer,
                  xmmin:real,ymmin:real,zmminlocal:real,zmmin:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
@@ -281,31 +284,21 @@ mgsolveimplicites3d(iwhich:integer,nx:integer,ny:integer,nzlocal:integer,
    # the implicit susceptability. All input is through the argument list.
 residual(nx:integer,ny:integer,nzlocal:integer,nz:integer,
          dxsqi:real,dysqi:real,dzsqi:real,
-         phi(0:nx,0:ny,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+         phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
          res(-1:nx+1,-1:ny+1,-3:nzlocal+3):real,
          mglevel:integer,bounds:integer,
          mgparam:real,mgform:integer,mgform2init:logical,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Calculates the residual
-restrict2d(nx:integer,ny:integer,nzlocal:integer,res(-1:nx+1,-1:ny+1,-3:nzlocal+3):real,
-           nxcoarse:integer,nycoarse:integer,
-           rhocoarse(0:nxcoarse,0:nycoarse,0:nzlocal):real,
-           ff:integer,bounds:integer,delx:integer,dely:integer)
-   subroutine
-   # Restricts phi in 2 transverse dimensions
-expand2d(nx:integer,ny:integer,nzlocal:integer,delx:integer,dely:integer,delz:integer,phi(0:nx,0:ny,-1:nzlocal+1):real,
-         nxcoarse:integer,nycoarse:integer,phicoarse(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
-         bounds(0:5):integer)
-   subroutine
-   # Expands phi in 2 transverse dimensiosn
 restrict3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
-           res(-1:nx+1,-1:ny+1,-3:nzlocal+3):real,
+           res(-delx:nx+delx,-dely:ny+dely,-delz:nzlocal+delz):real,
+           delx:integer,dely:integer,delz:integer,
            nxcoarse:integer,nycoarse:integer,nzlocalcoarse:integer,
            nzcoarse:integer,
            rhocoarse(0:nxcoarse,0:nycoarse,0:nzlocalcoarse):real,
            ff:real,bounds(0:5):integer,boundscoarse(0:5):integer,
-           lzoffset:integer,delx:integer,dely:integer)
+           lzoffset:integer)
    subroutine
    # Restricts phi in 3 dimensions
 expand3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
@@ -318,7 +311,7 @@ expand3d(nx:integer,ny:integer,nzlocal:integer,nz:integer,
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
               nx:integer,ny:integer,nzlocal:integer,nz:integer,
-              phi(0:nx,0:ny,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
+              phi(-1:nx+1,-1:ny+1,-1:nzlocal+1):real,rho(0:nx,0:ny,0:nzlocal):real,
               rstar(-1:nzlocal+1):real,dxsqi:real,dysqi:real,dzsqi:real,
               linbend:logical,bendx((nx+1)*(ny+1)):real,bounds(0:5):integer,
               mgparam:real,mgform:integer,
@@ -1047,6 +1040,7 @@ timemggetexchangepes       real /0./
 timemgexchange_phi         real /0./
 timemgexchange_phiperiodic real /0./
 timemgexchange_rho         real /0./
+timemgexchangeallrhocoarse real /0./
 timeprintarray3d           real /0./
 
 timepera3d                     real /0./
@@ -1072,3 +1066,4 @@ timeresidualimplicites3d real /0./
 timeaverageperiodicphi3d real /0./
 timeapplyboundaryconditionses3d real /0./
 timeapplyparallelboundaryconditionses3d real /0./
+

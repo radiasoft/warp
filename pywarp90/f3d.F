@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.130 $, $Date: 2007/10/23 23:14:35 $
+c@(#) File F3D.M, version $Revision: 3.131 $, $Date: 2008/02/01 00:03:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -262,8 +262,8 @@ c=============================================================================
       use Parallel
 #endif
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz,ibc
-      real(kind=8)::  a(0:nx, 0:ny, 0:nzlocal)
-      real(kind=8):: ak(0:nx, 0:ny, -nzlocal/2:nzlocal/2)
+      real(kind=8)::  a(-1:nx+1, -1:ny+1, 0:nzlocal)
+      real(kind=8):: ak(-1:nx+1, -1:ny+1, -nzlocal/2:nzlocal/2)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz), filt(5,3)
       real(kind=8):: lx, ly, lzfull
@@ -562,14 +562,14 @@ c ----------------------------------------------------------------------------
      &    iwhich == 12 .or. iwhich == 13) then
 
         if (l4symtry) then
-          call cosqx (a(0,0,0), xywork, w(icox), nx, ny, 1,-1)
-          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 1,-1)
+          call cosqx (a, xywork, w(icox), nx, ny, 1,-1)
+          call cosqy (a, xywork, w(icoy), nx, ny, 1,-1)
         elseif (l2symtry) then
-          call vsftx (a(0,0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 1,-1)
+          call vsftx (a, xywork, w(icpx), w(icmx), nx, ny, 1)
+          call cosqy (a, xywork, w(icoy), nx, ny, 1,-1)
         else
-          call vsftx (a(0,0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call vsfty (a(0,0,0), xywork, w(icpy), w(icmy), nx, ny, 1)
+          call vsftx (a, xywork, w(icpx), w(icmx), nx, ny, 1)
+          call vsfty (a, xywork, w(icpy), w(icmy), nx, ny, 1)
         endif
 
       endif
@@ -606,8 +606,8 @@ c          --- Normalize the array
              enddo
            enddo
 c          --- Invoke the transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
+           call cosqx(a(-1,-1,iz),xywork,w(icox),nx,ny,0,-1)
+           call cosqy(a(-1,-1,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
 !$OMP END DO
       else if (l2symtry) then
@@ -622,8 +622,8 @@ c          --- Normalize the array
              enddo
            enddo
 c          --- Invoke the transform routines for the current z-slice
-           call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
+           call vsftx(a(-1,-1,iz),xywork,w(icpx),w(icmx),nx,ny,0)
+           call cosqy(a(-1,-1,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
 !$OMP END DO
       else
@@ -637,8 +637,8 @@ c          --- Normalize the array
              enddo
            enddo
 c          --- Invoke the transform routines for the current z-slice
-           call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
+           call vsftx(a(-1,-1,iz),xywork,w(icpx),w(icmx),nx,ny,0)
+           call vsfty(a(-1,-1,iz),xywork,w(icpy),w(icmy),nx,ny,0)
         enddo
 !$OMP END DO
       endif
@@ -671,11 +671,10 @@ c  line is on a single processor.
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vpftz(0,nx_tran,nz,a,norm,0,1,nx_tran+1,zwork)
+          call vpftz(0,nx_tran,nz,a,norm,0,1,zwork)
         else
 c         --- pass normal arguments
-          call vpftz(nx_tran,ny_tran-1,nz,a,norm,1,0,(nx_tran+1)*ny_tran,
-     &               zwork)
+          call vpftz(nx_tran,ny_tran-1,nz,a,norm,1,0,zwork)
         endif
 
         if (iwhich == 2 .or. iwhich == 10) then
@@ -685,7 +684,7 @@ c         --- Transpose back if not doing the full field solve
         endif
 #else
 c  Make call for serial code.
-        call vpftz(nx,ny,nzlocal,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftz(nx,ny,nzlocal,a,norm,1,1,zwork)
 #endif
 
       endif
@@ -807,11 +806,10 @@ c  original format.
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vpftzi(0,nx_tran,nz,a,norm,0,1,nx_tran+1,zwork)
+          call vpftzi(0,nx_tran,nz,a,norm,0,1,zwork)
         else
 c         --- pass normal arguments
-          call vpftzi(nx_tran,ny_tran-1,nz,a,norm,1,0,(nx_tran+1)*ny_tran,
-     &                zwork)
+          call vpftzi(nx_tran,ny_tran-1,nz,a,norm,1,0,zwork)
         endif
 
 c       --- Rearrange phi again back to original arrangement.
@@ -820,7 +818,7 @@ c       --- Rearrange phi again back to original arrangement.
 
 #else
 c  Call for serial version
-        call vpftzi(nx,ny,nzlocal,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftzi(nx,ny,nzlocal,a,norm,1,1,zwork)
 #endif
 
       endif
@@ -884,8 +882,8 @@ c         factor of .25/lx for cosqx and .25/ly for cosqy
 !$OMP DO
           do iz = izmin,izmax
 c            --- Invoke the inverse transform routines for the current z-slice
-             call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
+             call cosqx(a(-1,-1,iz),xywork,w(icox),nx,ny,0,1)
+             call cosqy(a(-1,-1,iz),xywork,w(icoy),nx,ny,0,1)
 c            --- Normalize the array
              do iy = 0, ny-1
                do ix = 0, nx-1
@@ -900,8 +898,8 @@ c         factor of 2./lx for vsftx and .25/ly for cosqy
 !$OMP DO
           do iz = izmin,izmax
 c            --- Invoke the inverse transform routines for the current z-slice
-             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
+             call vsftx ( a(-1,-1,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
+             call cosqy(a(-1,-1,iz),xywork,w(icoy),nx,ny,0,1)
 c            --- Normalize the array
              do iy = 0, ny-1
                do ix = 0, nx-1
@@ -915,8 +913,8 @@ c            --- Normalize the array
 !$OMP DO
           do iz = izmin,izmax
 c            --- Invoke the transform routines
-             call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
-             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
+             call vsfty ( a(-1,-1,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
+             call vsftx ( a(-1,-1,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
 c            --- Normalize the array
              do iy = 1, ny-1
                do ix = 1, nx-1
@@ -991,16 +989,15 @@ c  Birdsall/Langdon.
 c The difference in speed is around 15% using the Intel compiler on Linux
 c and about a factor of 2 on the IBM SP.
 c=============================================================================
-      subroutine vpftx(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:ny)
+      subroutine vpftx(nx,ny,nz,a,norm,esx,esy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,xywork(2,0:nx,0:ny)
 
 c Routine does the fft over x for entire array.  Outer loop is in z
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c 
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1047,15 +1044,14 @@ c       --- do the transforms
       end
 
 c=============================================================================
-      subroutine vpftxi(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:ny)
+      subroutine vpftxi(nx,ny,nz,a,norm,esx,esy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,xywork(2,0:nx,0:ny)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1103,15 +1099,14 @@ c       --- if non-zero.
 c=============================================================================
 c Periodic forward and reverse transforms in y
 c=============================================================================
-      subroutine vpfty(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:nz)
+      subroutine vpfty(nx,ny,nz,a,norm,esx,esy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,xywork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1157,15 +1152,14 @@ c       --- do the transforms
       return
       end
 c=============================================================================
-      subroutine vpftyi(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:nz)
+      subroutine vpftyi(nx,ny,nz,a,norm,esx,esy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,xywork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1227,15 +1221,14 @@ c The difference in speed is around 15% using the Intel compiler on Linux
 c and about a factor of 2 on the IBM SP.
 c Using the dcft routines, the code runs about 30-40% faster than with vcpft.
 c=============================================================================
-      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
+      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,zwork(2,0:nz,0:nx)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1333,15 +1326,14 @@ c       --- do the transforms
       return
       end
 c=============================================================================
-      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
+      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,zwork(2,0:nz,0:nx)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1447,15 +1439,14 @@ c versions were kept.
 c The difference in speed is around 15% using the Intel compiler on Linux
 c and about a factor of 2 on the IBM SP.
 c=============================================================================
-      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,zwork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1501,15 +1492,14 @@ c       --- do the transforms
       return
       end
 c=============================================================================
-      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm,zwork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 c
 c esx and esy are the amount of extra space at the ends of the dimensions.
-c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
@@ -1561,7 +1551,7 @@ c=============================================================================
 c=============================================================================
       subroutine attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy,esz)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
-      real(kind=8):: a(0:nx,0:ny,0:nz)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1585,7 +1575,7 @@ c=============================================================================
       subroutine unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,
      &                       esx,esy,esz)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
-      real(kind=8):: a(0:nx,0:ny,0:nz-1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1608,7 +1598,7 @@ c grid dimensions passed are not the true grid dimensions.
 c=============================================================================
       subroutine rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy,esz)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
-      real(kind=8):: a(0:nx,0:ny,0:nz)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz)
       real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1633,7 +1623,7 @@ c grid dimensions passed are not the true grid dimensions.
 c=============================================================================
       subroutine phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy,esz)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy,esz
-      real(kind=8):: a(0:nx,0:ny,0:nz)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz)
       real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1657,7 +1647,7 @@ c=============================================================================
       subroutine tridiag(nx,ny,nz,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,esy,
      &                   zwork)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm
+      real(kind=8):: a(-1:nx+1,-1:ny+1,0:nz),norm
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: zwork(0:nx,0:nz)
 
@@ -1729,8 +1719,8 @@ c=============================================================================
       use Parallel
 #endif
       integer(ISZ):: iwhich,nx,ny,ibc
-      real(kind=8)::  a(0:nx, 0:ny)
-      real(kind=8):: ak(0:nx, 0:ny)
+      real(kind=8)::  a(-1:nx+1, -1:ny+1)
+      real(kind=8):: ak(-1:nx+1, -1:ny+1)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), filt(5,2)
       real(kind=8):: lx, ly, w(*), xywork(0:nx,0:ny)
@@ -1810,7 +1800,9 @@ c-----------------------------------------------------------------------------
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
       real(kind=8):: dx,dy,pib2,norm
       real(kind=8):: atemp(0:ny,0:nx)
-      real(kind=8):: w1(0:2,0:ny),w2(0:2,0:ny)
+      real(kind=8):: w1(-1:3,-1:ny+1),w2(-1:3,-1:ny+1)
+      w1 = 0.
+      w2 = 0.
 
 c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
@@ -1949,14 +1941,14 @@ c ----------------------------------------------------------------------------
       if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 5) then
 
         if (l4symtry) then
-          call cosqx (a(0,0), xywork, w(icox), nx, ny, 1,-1)
-          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 1,-1)
+          call cosqx (a, xywork, w(icox), nx, ny, 1,-1)
+          call cosqy (a, xywork, w(icoy), nx, ny, 1,-1)
         elseif (l2symtry) then
-          call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 1,-1)
+          call vsftx (a, xywork, w(icpx), w(icmx), nx, ny, 1)
+          call cosqy (a, xywork, w(icoy), nx, ny, 1,-1)
         else
-          call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call vsfty (a(0,0), xywork, w(icpy), w(icmy), nx, ny, 1)
+          call vsftx (a, xywork, w(icpx), w(icmx), nx, ny, 1)
+          call vsfty (a, xywork, w(icpy), w(icmy), nx, ny, 1)
         endif
 
       endif
@@ -1984,14 +1976,14 @@ c       --- Invoke the transform routines for the current z-slice
 !$OMP DO
           do iy = iystart,iyend,2
             a(:,iy:iy+1) = a(:,iy:iy+1)*norm
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,-1)
+            call cosqx(a(:,iy-1:iy+2),xywork(0,iy),w(icox),nx,2,0,-1)
           enddo
 !$OMP END DO NOWAIT
         else
 !$OMP DO
           do iy = iystart,iyend,2
             a(:,iy:iy+1) = a(:,iy:iy+1)*norm
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+            call vsftx(a(:,iy-1:iy+2),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
           enddo
 !$OMP END DO NOWAIT
         endif
@@ -2007,17 +1999,17 @@ c       --- Invoke the transform routines for the current z-slice
           do ix = ixstart,ixend,2
 c           --- The arrays are copied into temporary arrays to get around
 c           --- a bug in the intel compiler, version 8.
-            w1 = a(ix:ix+2,0:ny)
-            w2 = xywork(ix:ix+2,0:ny)
+            w1(0:2,0:ny) = a(ix:ix+2,0:ny)
+            w2(0:2,0:ny) = xywork(ix:ix+2,0:ny)
             call cosqy(w1,w2,w(icoy),2,ny,0,-1)
-            a(ix:ix+2,0:ny) = w1
-            xywork(ix:ix+2,0:ny) = w2
+            a(ix:ix+2,0:ny) = w1(0:2,0:ny)
+            xywork(ix:ix+2,0:ny) = w2(0:2,0:ny)
           enddo
 !$OMP END DO NOWAIT
         else
 !$OMP DO
           do ix = ixstart,ixend,2
-            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+            call vsfty(a(ix-1:ix+3,:),xywork(ix:ix+2,:),w(icpy),w(icmy),2,ny,0)
           enddo
 !$OMP END DO NOWAIT
         endif
@@ -2080,17 +2072,17 @@ c         --- Invoke the inverse transform routines for the current z-slice
           do ix = ixstart,ixend,2
 c           --- The arrays are copied into temporary arrays to get around
 c           --- a bug in the intel compiler, version 8.
-            w1 = a(ix:ix+2,0:ny)
-            w2 = xywork(ix:ix+2,0:ny)
+            w1(0:2,0:ny) = a(ix:ix+2,0:ny)
+            w2(0:2,0:ny) = xywork(ix:ix+2,0:ny)
             call cosqy(w1,w2,w(icoy),2,ny,0,1)
-            a(ix:ix+2,0:ny) = w1
-            xywork(ix:ix+2,0:ny) = w2
+            a(ix:ix+2,0:ny) = w1(0:2,0:ny)
+            xywork(ix:ix+2,0:ny) = w2(0:2,0:ny)
           enddo
 !$OMP END DO NOWAIT
         else
 !$OMP DO
           do ix = ixstart,ixend,2
-            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+            call vsfty(a(ix-1:ix+3,:),xywork(ix:ix+2,:),w(icpy),w(icmy),2,ny,0)
           enddo
 !$OMP END DO NOWAIT
         endif
@@ -2108,15 +2100,15 @@ c           --- a bug in the intel compiler, version 8.
         if (l4symtry) then
 !$OMP DO
           do iy = iystart,iyend,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,1)
-            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
+            call cosqx(a(:,iy-1:iy+2),xywork(0,iy),w(icox),nx,2,0,1)
+            a(0:nx,iy:iy+1) = a(0:nx,iy:iy+1)*norm
           enddo
 !$OMP END DO NOWAIT
         else
 !$OMP DO
           do iy = iystart,iyend,2
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
-            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
+            call vsftx(a(:,iy-1:iy+2),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+            a(0:nx,iy:iy+1) = a(0:nx,iy:iy+1)*norm
           enddo
 !$OMP END DO NOWAIT
         endif
@@ -2189,7 +2181,7 @@ c======================================================================
       subroutine vsftx (a, w, cp, cm, nx, ny, isetup)
       use Constant
       integer(ISZ):: nx,ny,isetup
-      real(kind=8):: a(0:nx,0:ny), w(0:nx,0:ny)
+      real(kind=8):: a(-1:nx+1,-1:ny+1), w(0:nx,0:ny)
       real(kind=8):: cp(nx/2-1), cm(nx/2-1)
 
 c Many sine transforms in x; nx must be a power of two
@@ -2304,12 +2296,16 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dsinf(1_4,a,1_4,int(1+nx,4),a,1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
+c     --- XXX Note that this will be inefficient since a copy of 'a' will
+c     --- be made.
+      call dsinf(1_4,a(0:nx,0:ny),1_4,int(1+nx,4),a(0:nx,0:ny),
+     &           1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
      &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
       if (isetup == 1) return
 
-      call dsinf(0_4,a,1_4,int(1+nx,4),a,1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
+      call dsinf(0_4,a(0:nx,0:ny),1_4,int(1+nx,4),a(0:nx,0:ny),
+     &           1_4,int(1+nx,4),int(2*nx,4),int(ny,4),
      &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
 #endif
@@ -2320,7 +2316,7 @@ c======================================================================
       subroutine vsfty (a, w, cp, cm, nx, ny, isetup)
       use Constant
       integer(ISZ):: nx,ny,isetup
-      real(kind=8):: a(0:nx,0:ny), w(0:nx,0:ny)
+      real(kind=8):: a(-1:nx+1,-1:ny+1), w(0:nx,0:ny)
       real(kind=8):: cp(ny/2-1), cm(ny/2-1)
 
 c Many sine transforms in y; ny must be a power of two
@@ -2437,12 +2433,16 @@ c     --- different from last time (deallocating if needed).
         endif
       endif
 
-      call dsinf(1_4,a,int(1+nx,4),1_4,a,int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
+c     --- XXX Note that this will be inefficient since a copy of 'a' will
+c     --- be made.
+      call dsinf(1_4,a(0:nx,0:ny),int(1+nx,4),1_4,a(0:nx,0:ny),
+     &           int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
      &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
       if (isetup == 1) return
  
-      call dsinf(0_4,a,int(1+nx,4),1_4,a,int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
+      call dsinf(0_4,a(0:nx,0:ny),int(1+nx,4),1_4,a(0:nx,0:ny),
+     &           int(1+nx,4),1_4,int(2*ny,4),int(nx,4),
      &           1.,aux1,int(naux1,4),aux2,int(naux2,4))
 
 #endif
@@ -2464,7 +2464,7 @@ c Using the dcft routines, the code runs about 30-40% faster than with vcpft.
 c=======================================================================
       subroutine cosqx(a,w,c,nx,ny,isetup,isign)
       integer(ISZ):: nx,ny,isetup,isign
-      real(kind=8):: a(0:nx,0:ny),w(2,0:nx,ny/2),c(nx-1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1),w(2,0:nx,ny/2),c(nx-1)
 
 c  This routine does Fourier transforms with only odd cosines.
 
@@ -2613,7 +2613,7 @@ c     do backward transform
 c=======================================================================
       subroutine cosqy(a,w,c,nx,ny,isetup,isign)
       integer(ISZ):: nx,ny,isetup,isign
-      real(kind=8):: a(0:nx,0:ny),w(2,0:ny,nx/2),c(ny-1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1),w(2,0:ny,nx/2),c(ny-1)
 
 c  This routine does Fourier transforms with only odd cosines.
 
@@ -2770,7 +2770,7 @@ c and about a factor of 2 on the IBM SP.
 c=======================================================================
       subroutine cosqx(a,w,c,nx,ny,isetup,isign)
       integer(ISZ):: nx,ny,isetup,isign
-      real(kind=8):: a(0:nx,0:ny),w(0:ny-1,0:nx),c(nx-1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1),w(0:ny-1,0:nx),c(nx-1)
 
 c  This routine does Fourier transforms with only odd cosines.
 
@@ -2863,7 +2863,7 @@ c     do backward transform
 c=======================================================================
       subroutine cosqy(a,w,c,nx,ny,isetup,isign)
       integer(ISZ):: nx,ny,isetup,isign
-      real(kind=8):: a(0:nx,0:ny),w(0:nx-1,0:ny),c(ny-1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1),w(0:nx-1,0:ny),c(ny-1)
 
 c  This routine does Fourier transforms with only odd cosines.
 
@@ -2971,7 +2971,7 @@ c=======================================================================
      &                   bound0,boundnz,boundxy)
       use CapMat3d
       integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
@@ -2996,7 +2996,7 @@ c     --- find inverse capacity matrix
       do i=1,nc3d
 
 c       --- start with zero phi
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+c       call zeroarry(phi,(nx+1)*(ny+1)*(1+nzlocal))
         phi = 0.
 
 c       --- set phi with 1 Coulomb at conductor points (charge is scaled by
@@ -3031,7 +3031,7 @@ c       --- Solve for fields, with the filtering turned off
           return
         endif
         zerofilt = 0.
-        call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &                  zerofilt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                  scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &                  bound0,boundnz,boundxy)
@@ -3109,7 +3109,7 @@ c==============================================================================
      &                    l2symtry,l4symtry,bound0,boundnz,boundxy)
       use CapMat3d
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
@@ -3132,7 +3132,7 @@ c applied to the induced charge.
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
 
-        call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
@@ -3142,13 +3142,13 @@ c     --- Initialize the arrays for poisson solve and the capacity matrix.
      &               scrtch,xywork,zwork,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
         if (iwhich == 1) then
-          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+          phi(0:nx,0:ny,0:nzlocal) = rho
         endif
 
       elseif (iwhich > 1) then
 
 c       --- Make call to do the specialized action requested.
-        call vpois3d(iwhich,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(iwhich,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
@@ -3160,7 +3160,7 @@ c     --- If a full field solve was not desired, return.
 
 c     --- Do the first field solve (note that rho must have been copied into
 c     --- phi for this to work)
-      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &             scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &             bound0,boundnz,boundxy)
@@ -3192,7 +3192,7 @@ c     --- Multiply pcond by capacity matrix to get induced charge
       enddo
 
 c     --- Recopy rho into phi.
-      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+      phi(0:nx,0:ny,0:nzlocal) = rho
 
 c     --- Deposit induced charge onto grid
       do i=1,nc3d
@@ -3222,7 +3222,7 @@ c     --- Deposit induced charge onto grid
 
 c     --- Redo the field solve, now including both the beam space-charge and
 c     --- the induced charge in the conductor.
-      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3246,7 +3246,7 @@ c=======================================================================
      &                     bound0,boundnz,boundxy)
       use CapMat3d
       integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
@@ -3279,7 +3279,7 @@ c     --- find inverse capacity matrix
       do i=1,nc3d
 
 c       --- start with zero phi
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+c       call zeroarry(phi,(nx+1)*(ny+1)*(1+nzlocal))
         phi = 0.
 
 c       --- set phi with 1 Coulomb at conductor points (charge is scaled by
@@ -3302,13 +3302,13 @@ c       --- 2 or 4 at a symmetric boundary)
 
 c       --- Solve for fields, transforming only in x and y and skipping
 c       --- filtering.
-        call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(12,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
-        call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
-        call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(13,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3387,7 +3387,7 @@ c==============================================================================
      &                      l2symtry,l4symtry,bound0,boundnz,boundxy)
       use CapMat3d
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
@@ -3417,7 +3417,7 @@ c could be cut is half if careful load balancing were done.)
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
 
-        call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &              filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &              l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3427,13 +3427,13 @@ c     --- Initialize the arrays for poisson solve and the capacity matrix.
      &                 scrtch,xywork,zwork,l2symtry,l4symtry,
      &                 bound0,boundnz,boundxy)
         if (iwhich == 1) then
-          call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+          phi(0:nx,0:ny,0:nzlocal) = rho
         endif
 
       elseif (iwhich > 1) then
 
 c       --- Make call to do the specialized action requested.
-        call vpois3d(iwhich,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(iwhich,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &               scrtch,xywork,zwork,0,l2symtry,l4symtry,
      &               bound0,boundnz,boundxy)
@@ -3445,16 +3445,16 @@ c     --- If a full field solve was not desired, return.
 
 c     --- Do the first field solve (note that rho must have been copied into
 c     --- phi for this to work). The inverse transform in z is skipped.
-      call vpois3d( 2,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d( 2,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 3,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d( 3,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(13,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3489,10 +3489,10 @@ c     --- does the correct thing, i.e. nothing, since iiz is always < nc3dz2.
       enddo
 
 c     --- Recopy rho into phi.
-      call copyarry(rho(0,0,0),phi(0,0,0),(nx+1)*(ny+1)*(1+nzlocal))
+      phi(0:nx,0:ny,0:nzlocal) = rho
 
 c     --- Transform in z
-      call vpois3d(10,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(10,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3519,13 +3519,13 @@ c     --- Deposit induced charge onto grid
 
 c     --- Finish the field solve, now including both the beam space-charge and
 c     --- the induced charge in the conductor.
-      call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(12,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 5,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d( 5,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3548,7 +3548,8 @@ c===========================================================================
       use Pipe3d
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
       character(*):: pipeshpe
-      real(kind=8):: rho(0:nx,0:ny,0:nzlocal), phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
@@ -3593,7 +3594,7 @@ c=======================================================================
       integer(ISZ):: nx,ny,nzlocal,nz
       character(*):: pipeshpe
       real(kind=8):: cap(2*(nx+ny),*)
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
@@ -3656,7 +3657,7 @@ c     --- find inverse capacity matrix for all kz
 c     --- calculate stuff for first eighth (using phi for convenience)
 c     --- storing it in cap3d temporarily
       do i=1,pipe8th
-c       call zeroarry(phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
+c       call zeroarry(phi,(nx+1)*(ny+1)*(nzlocal+1))
         phi = 0.
 c       --- set phi with z transform of sinusoidal line charge for all kz
         ix = pipex(i)
@@ -3670,15 +3671,15 @@ c       --- set phi with z transform of sinusoidal line charge for all kz
           phi(ix+1,iy+1,iz) =     xx *    yy 
         enddo
 c       --- do transform in x and y
-        call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(12,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- divide by k squared
-        call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- inverse transform in x and y to find phi(kz)
-        call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(13,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 c       --- fill matrix with phi(kz)
@@ -3774,7 +3775,7 @@ c==============================================================================
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
       character(*):: pipeshpe
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(2,0:nx,0:nz)
@@ -3795,10 +3796,10 @@ c assumes that rho has been set, and copied into phi.
 
 c initialize capacity matrix and arrays for poisson solve
       if (iwhich == 1 .or. iwhich == 0) then
-        call vpois3d(1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
-        call pipest3d(pipeshpe,phi,phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call pipest3d(pipeshpe,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &                filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,
      &                scrtch,xywork,zwork,
      &                piperadi,pipen,pipenz2,pipe8th,pipex,pipey,cap3d,kpvt,
@@ -3806,23 +3807,23 @@ c initialize capacity matrix and arrays for poisson solve
         if (iwhich == 0) then
 c         --- Copy rho back into phi since phi was scrambled during the
 c         --- calculation of the matrix.
-          call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
+          phi(0:nx,0:ny,0:nzlocal) = rho
         endif
       endif
 
       if (iwhich == 1) return
 
 c do first partial field solve (without z transform at end)
-      call vpois3d( 2,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d( 2,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 3,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d( 3,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d(13,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d(13,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3908,10 +3909,10 @@ c     --- mpy pipephit by cap matrix (using reduced storage)
       enddo
 
 c     --- set up for field solve
-      call copyarry(rho,phi(0,0,0),(nx+1)*(ny+1)*(nzlocal+1))
+      phi(0:nx,0:ny,0:nzlocal) = rho
 
 c     --- transform in z
-      call vpois3d(10,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d(10,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &             xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3930,13 +3931,13 @@ c     --- deposit induced rho(kz) onto grid
       enddo
 
 c     --- complete the field solve
-      call vpois3d(12,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d(12,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d( 4,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
-      call vpois3d( 5,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,filt,
+      call vpois3d( 5,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,nx,ny,nzlocal,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -3959,7 +3960,7 @@ c==============================================================================
       real(kind=8):: quadx(ncndpts,4), quady(ncndpts,4), quadz(ncndpts)
       real(kind=8):: quadcap(4*ncndpts,4*ncndpts)
       integer(ISZ):: kpvt(4*ncndpts)
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: work(nx+ny-4),xywork(*),zwork(2,0:nx,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
@@ -4024,7 +4025,7 @@ c  do 3-d field solve, turning filtering off
           return
         endif
         zerofilt = 0.
-        call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &               zerofilt,xlen,ylen,zlen,nx,ny,nzlocal,nz,work,
      &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
         deallocate(zerofilt)
@@ -4081,7 +4082,7 @@ c==========================================================================
       use Capvars
       use GlobalVars
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal), rho(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal), rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
@@ -4108,7 +4109,7 @@ c  rest of variables have the standard meanings
 c  initialization
       if (iwhich == 0 .or. iwhich == 1) then
 c    intialize vpois3d vars
-        call vpois3d (1, phi(0,0,0), phi(0,0,0), kxsq, kysq, kzsq,
+        call vpois3d (1, phi, phi, kxsq, kysq, kzsq,
      &                attx, atty, attz, filt, xlen, ylen, zlen,
      &                nx, ny, nzlocal,nz, work, xywork, zwork, 0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
@@ -4125,7 +4126,7 @@ c    set up capacity matrix
         if (iwhich == 0) then
 c         --- Copy rho back into phi since phi was scrambled during the
 c         --- calculation of the matrix.
-          call copyarry(rho,phi,(nx+1)*(ny+1)*(nzlocal+1))
+          phi(0:nx,0:ny,0:nzlocal) = rho
         endif
       endif
 
@@ -4133,7 +4134,7 @@ c  return if only being initialized
       if (iwhich == 1) return
 
 c  do 3-d field solve
-      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nzlocal,nz,work,xywork,zwork,
      &             0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -4180,7 +4181,7 @@ c     solve for induced charge by solving phi = matrix*rho
       enddo
 
 c  reload rho back into phi
-      call copyarry(rho,phi,(nx+1)*(ny+1)*(nzlocal+1))
+      phi(0:nx,0:ny,0:nzlocal) = rho
 
 c  if periodic in z, zero out iz=nzlocal plane so that plane will only have
 c  image charges (plane 0 will have both image charges and beam charge)
@@ -4257,7 +4258,7 @@ c     endif
 
 c  finished with conductors, so...
 c  now do full 3-d field solve, with induced charges
-      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,
+      call vpois3d(-1,phi,phi,kxsq,kysq,kzsq,
      &              attx,atty,attz,filt,xlen,ylen,zlen,
      &              nx,ny,nzlocal,nz,work,xywork,zwork,
      &              0,l2symtry,l4symtry,bound0,boundnz,boundxy)
@@ -4467,7 +4468,7 @@ c=============================================================================
       use Lattice
       integer(ISZ):: iwhich,nx,ny,nzlocal,nz
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
-      real(kind=8):: phi(0:nx,0:ny,0:nzlocal)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3), scrtch(*), xywork(*), zwork(2,0:nx,0:nz)

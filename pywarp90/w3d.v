@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.279 $, $Date: 2008/01/16 20:10:04 $
+#@(#) File W3D.V, version $Revision: 3.280 $, $Date: 2008/02/01 00:04:00 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.279 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.280 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -305,7 +305,7 @@ zmeshlocal(0:nzlocal)   _real [m] +dump +parallel # Z coordinates of local mesh 
 nmxy                    integer /0/ +dump # larger of nx, ny
 nmxyz                   integer /0/ +dump +parallel # largest of nx, ny, nz
 izextra                 integer /1/ +dump # Amount of extra space at end of phi
-scrtch(0:nmxyz,0:nmxy)  _real           # Scratch for fieldsolve, plots
+scrtch(-1:nmxyz+1,-1:nmxy+1)  _real           # Scratch for fieldsolve, plots
 phi(:,:,:)              _real [V] +parallel # Electrostatic potential
 rho(:,:,:)              _real [C/m**3] +parallel # Charge density
 attx(0:nx-1)            _real           # Attenuation factor as fcn. of kx
@@ -344,7 +344,7 @@ rhopndts(0:nxp,0:nyp,0:nzp,0:nrhopndtscopies3d-1,0:nsndts3d-1) _real +fassign
                  # for groups with different time step sizes.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipndts(0:nxp,0:nyp,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
+phipndts(-1:nxp+1,-1:nyp+1,-1:nzp+1,0:nsndtsphi3d-1) _real +fassign
                  # Potential from the particles
                  # for groups with different time step sizes.
                  # This includes the effect of time averaged charge density
@@ -358,7 +358,7 @@ rhopselfb(0:nxp,0:nyp,0:nzp,0:nsselfb3d-1) _real +fassign
                  # for groups which require correction for their self B.
                  # This includes the time averaged charge density from
                  # faster particles and the old rho from the slower particles.
-phipselfb(0:nxp,0:nyp,-1:nzp+1,0:nsselfb3d-1) _real +fassign
+phipselfb(-1:nxp+1,-1:nyp+1,-1:nzp+1,0:nsselfb3d-1) _real +fassign
                  # Temporary copy of the potential from the particles
                  # for groups which require correction for their self B.
                  # This includes the effect of time averaged charge density
@@ -931,11 +931,11 @@ sete3d(phi1d:real,selfe:real,np,xp(np):real,yp(np):real,zp(np):real,zgrid:real,
        l2symtry:logical,l4symtry:logical,lcylindrical:logical,
        delx:integer,dely:integer,delz:integer)
              subroutine # Sets internal E field
-getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,nx:integer,ny:integer,nz:integer,
+getselfe3d(phi(-delx:nx+delx,-dely:ny+dely,-delz:nz+delz):real,
+           nx:integer,ny:integer,nz:integer,
            selfe(3,0:nx,0:ny,0:nz):real,
            nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,
-           boundx0:integer,boundxnx:integer,boundy0:integer,boundyny:integer,
            lzero:logical,delx:integer,dely:integer,delz:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d(rho(0:nx,0:ny,0:nz):real,

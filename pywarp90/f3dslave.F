@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.35 $, $Date: 2007/06/04 22:50:31 $
+c F3DSLAVE.M, version $Revision: 1.36 $, $Date: 2008/02/01 00:04:00 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -8,7 +8,7 @@ c=============================================================================
       use Subtimersf3d
       use Parallel
       integer(ISZ):: nx,ny,nz,bound0,boundnz,zsend
-      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nz+1)
 
 c This routine sends out and receives boundary data for the SOR field solver.
 
@@ -57,19 +57,19 @@ c     --- above are used.
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
       if (my_index > 0 .or. bound0 == 2) then
-        call MPI_ISEND(phi(0,0,left_send),int((nx+1)*(ny+1),MPIISZ),
+        call MPI_ISEND(phi(-1,-1,left_send),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(1),mpierror)
-        call MPI_IRECV(phi(0,0,left_recv),int((nx+1)*(ny+1),MPIISZ),
+        call MPI_IRECV(phi(-1,-1,left_recv),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,left_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(2),mpierror)
       endif
 
       if (my_index < nslaves-1 .or. boundnz == 2) then
-        call MPI_ISEND(phi(0,0,nz-right_send),int((nx+1)*(ny+1),MPIISZ),
+        call MPI_ISEND(phi(-1,-1,nz-right_send),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(3),mpierror)
-        call MPI_IRECV(phi(0,0,nz-right_recv),int((nx+1)*(ny+1),MPIISZ),
+        call MPI_IRECV(phi(-1,-1,nz-right_recv),int((nx+3)*(ny+3),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,right_pe,int(nx+ny,MPIISZ),
      &                 MPI_COMM_WORLD,mpirequest(4),mpierror)
       endif
@@ -85,14 +85,61 @@ c     --- Now wait for everything to finish
       end
 c=============================================================================
 c=============================================================================
-      subroutine warptranspose(nx,ny,nz,phi,nx_tran,ny_tran)
+c=============================================================================
+c=============================================================================
+      subroutine copy_tophitranspose(nx,ny,nz,phi,phi_trnsps)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nz)
+      real(kind=8):: phi_trnsps(0:nx,0:ny,0:nz)
+      
+      integer(ISZ):: ix,iy,iz
+
+      do iz=0,nz
+        do iy=0,ny
+          do ix=0,nx
+            phi_trnsps(ix,iy,iz) = phi(ix,iy,iz)
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine copy_fromphitranspose(nx,ny,nz,phi,phi_trnsps)
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nz)
+      real(kind=8):: phi_trnsps(0:nx,0:ny,0:nz)
+      
+      integer(ISZ):: ix,iy,iz
+
+      do iz=nz,0,-1
+        do iy=ny,0,-1
+          do ix=nx,0,-1
+            phi(ix,iy,iz) = phi_trnsps(ix,iy,iz)
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine printsumphiarray(nn,phi,s)
+      use Parallel
+      integer(ISZ):: nn
+      real(kind=8):: phi(nn)
+      character*(*):: s
+      print*,my_index,s,nn,sum(phi)
+      return
+      end
+c=============================================================================
+      subroutine warptranspose(nx,ny,nzlocal,phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
-      integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c Transpose 3-D array.  Only the volume (0:nx-1,0:ny-1,0:nz-1) is transposed.
+c 3-D transpose. Only the volume (0:nx-1,0:ny-1,0:nzlocal-1) is transposed.
 c Transpose is NOT done in place but uses scratch array.
 c
 c NOTICE: In cases where (nx+ny) < nslaves, the size of the transposed
@@ -100,7 +147,7 @@ c phi is LARGER than the size of phi. Extra padding must be added to the
 c end of phi of size
 c izextra = (nz - nz/nslaves*(nx+ny)/(nx*ny))
 c and with phi dimensions as
-c phi(0:nx,0:ny,0:nz+izextra)
+c phi(0:nx,0:ny,0:nzlocal+izextra)
 c
 c Algorithm assumes that all dimensions are powers of two and the number
 c of processors is a power of two.
@@ -114,9 +161,14 @@ c of processors is a power of two.
       integer(MPIISZ):: blen(2),bdisp(2),btype(2)
       integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
-c     integer(MPIISZ),parameter:: M_TRANSPOSE=10
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
+
+      phi_trnspsnx = nx
+      phi_trnspsny = ny
+      phi_trnspsnz = nzlocal
+      call gchange("Transpose_work_space",0)
+      call copy_tophitranspose(nx,ny,nzlocal,phi,phi)
 
 c     --- Calculate what the dimensions of the grid will be after the
 c     --- transpose.  The dimensions will be (0:nx_tran,ny_tran).  The
@@ -136,16 +188,9 @@ c     --- be the same as nx, otherwise work has to also be divided along x.
       endif
       nn = (nx_tran+1)*ny_tran
 
-c     --- Allocate the temporary space to copy the transpose phi into.
-c     --- At the end, the data is copy back into the phi array.
-      if (phi_trnspssize < nn*nz*nslaves) then
-        phi_trnspssize = nn*nz*nslaves
-        call gallot("Transpose_work_space",0)
-      endif
-
 c     --- Create an MPI type to refer to the distributed pieces of data that
 c     --- are sent to each of the processors.
-      call MPI_TYPE_VECTOR(int(nz,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
+      call MPI_TYPE_VECTOR(int(nzlocal,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     mpinewtype,mpierror)
       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -176,9 +221,9 @@ c       --- chunks of data, i.e. nn times number of bytes per real.
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi(0,0,0),int(1,MPIISZ),mpinewtype2,
-     &                    phi_trnsps,int(nn*nz,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                    MPI_COMM_WORLD,mpierror)
+        call MPI_ALLTOALL(phi,int(1,MPIISZ),mpinewtype2,
+     &                    phi_trnsps,int(nn*nzlocal,MPIISZ),
+     &                    MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
         call MPI_TYPE_FREE(mpinewtype2,mpierror)
@@ -206,12 +251,12 @@ c       --- Setup displacement arrays.
           iy = is*ny/nslaves
           sdispls(is) = ix + iy*(ny+1)
           sendcounts(is) = 1
-          rdispls(is) = is*nn*nz
-          recvcounts(is) = nn*nz
+          rdispls(is) = is*nn*nzlocal
+          recvcounts(is) = nn*nzlocal
         enddo
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALLV(phi(0,0,0),sendcounts,sdispls,mpinewtype2,
+        call MPI_ALLTOALLV(phi,sendcounts,sdispls,mpinewtype2,
      &                     phi_trnsps,recvcounts,rdispls,MPI_DOUBLE_PRECISION,
      &                     MPI_COMM_WORLD,mpierror)
 
@@ -221,13 +266,14 @@ c     --- Free the data type
       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
 c     --- Now the array phi_trnsps contains 3-D data with dimensions
-c     --- (0:nx_tran,ny_tran,nz*nslaves).
+c     --- (0:nx_tran,ny_tran,nzlocal*nslaves).
 
 c     --- Copy phi_trnsps into phi (don't want field solving routine to use
 c     --- the temporary array phi_trnsps).  This is somewhat inefficient, but
 c     --- hopefully the transpose will eventually be done in place, avoiding
 c     --- the temp space.
-      call copyarry(phi_trnsps,phi,nn*nz*nslaves)
+      call copy_fromphitranspose(nx_tran,ny_tran-1,nzlocal*nslaves-1,
+     &                           phi,phi_trnsps)
 
 c DONE!
 !$OMP MASTER
@@ -237,14 +283,14 @@ c DONE!
       return
       end
 c=============================================================================
-      subroutine warptransposei(nx,ny,nz,phi,nx_tran,ny_tran)
+      subroutine warptransposei(nx,ny,nzlocal,phi,nx_tran,ny_tran)
       use Subtimersf3d
       use Parallel
       use Transpose_work_space
-      integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny,nzlocal,nx_tran,ny_tran
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,0:nzlocal)
 
-c Undo above transpose of 3-D array.  Only the volume (0:nx-1,0:ny-1,0:nz-1)
+c Inverse 3-D transpose of array.  Only the volume (0:nx-1,0:ny-1,0:nzlocal-1)
 c is transposed back.  Now, nx_tran and ny_tran are used as input.
 c Transpose is NOT done in place but uses scratch array.
 c
@@ -262,24 +308,18 @@ c of processors is a power of two.
       integer(MPIISZ):: blen(2),bdisp(2),btype(2)
       integer(MPIISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(MPIISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
-c     integer(MPIISZ),parameter:: M_TRANSPOSE=10
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-c     --- Allocate the work space.
-      if (phi_trnspssize < (nx_tran+1)*ny_tran*nz*nslaves) then
-        phi_trnspssize = (nx_tran+1)*ny_tran*nz*nslaves
-        call gallot("Transpose_work_space",0)
-      endif
+      phi_trnspsnx = nx
+      phi_trnspsny = ny
+      phi_trnspsnz = nzlocal
+      call gchange("Transpose_work_space",0)
+      call copy_tophitranspose(nx_tran,ny_tran-1,nzlocal*nslaves-1,
+     &                         phi,phi_trnsps)
 
-c Copy phi into phi_trnsps array  (since field solving routine doesn't use
-c the temporary array phi_trnsps).  This is somewhat inefficient, but
-c hopefully the transpose will eventually be done in place, avoiding
-c the temp space.
       nn = (nx_tran+1)*ny_tran
-      call copyarry(phi,phi_trnsps,nn*nz*nslaves)
-
-      call MPI_TYPE_VECTOR(int(nz,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
+      call MPI_TYPE_VECTOR(int(nzlocal,MPIISZ),nn,int((nx+1)*(ny+1),MPIISZ),
      &                     MPI_DOUBLE_PRECISION,
      &                     mpinewtype,mpierror)
       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -297,8 +337,9 @@ c the temp space.
         call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-        call MPI_ALLTOALL(phi_trnsps,int(nn*nz,MPIISZ),MPI_DOUBLE_PRECISION,
-     &                    phi(0,0,0),int(1,MPIISZ),mpinewtype2,
+        call MPI_ALLTOALL(phi_trnsps,int(nn*nzlocal,MPIISZ),
+     &                    MPI_DOUBLE_PRECISION,
+     &                    phi,int(1,MPIISZ),mpinewtype2,
      &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
@@ -320,8 +361,8 @@ c       --- bound so that the extent is equal to the size a one double.
 
 c       --- Setup displacement arrays.
         do is = 0,nslaves-1
-          sdispls(is) = is*nn*nz
-          sendcounts(is) = nn*nz
+          sdispls(is) = is*nn*nzlocal
+          sendcounts(is) = nn*nzlocal
           ix = mod(is*nx_tran,nx)
           iy = is*ny/nslaves
           rdispls(is) = ix + iy*(ny+1)
@@ -330,13 +371,15 @@ c       --- Setup displacement arrays.
 
 c       --- Do all of the communication at once.
         call MPI_ALLTOALLV(phi_trnsps,sendcounts,sdispls,MPI_DOUBLE_PRECISION,
-     &                     phi(0,0,0),recvcounts,rdispls,mpinewtype2,
+     &                     phi,recvcounts,rdispls,mpinewtype2,
      &                     MPI_COMM_WORLD,mpierror)
 
       endif
 
 c     --- Free the data type
       call MPI_TYPE_FREE(mpinewtype,mpierror)
+
+      call copy_fromphitranspose(nx,ny,nzlocal-1,phi,phi)
 
 c     --- Now the array phi is returned to normal.
 
@@ -351,6 +394,8 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
 c=============================================================================
+c=============================================================================
+c=============================================================================
       subroutine lantzsolver(iwhich,a,kxsq,kysq,kzsq,attx,atty,attz,
      &                       filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,
      &                       l2symtry,l4symtry,bound0,boundnz,boundxy)
@@ -359,7 +404,7 @@ c=============================================================================
       use Parallel
       use LantzSolverTemp
       integer(ISZ):: iwhich,nx,ny,nz
-      real(kind=8):: a(0:nx,0:ny,-1:nz)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,-1:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
       real(kind=8):: filt(5,3)
@@ -393,7 +438,7 @@ c     --- Allocate space if needed or requested
         nylan = ny
         nzlan = 2*nslaves
         nzlocallan = nz
-        if (ny .ge. nslaves) then
+        if (ny >= nslaves) then
           nxtranlan = nx
           nytranlan = ny/nslaves
         else
@@ -403,7 +448,7 @@ c     --- Allocate space if needed or requested
         call gchange("LantzSolverTemp",0)
         lalloted = .true.
 c       --- Initialize the k's
-        call vpois3d(1,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+        call vpois3d(1,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &               l2symtry,l4symtry,bound0,boundnz,boundxy)
       endif
@@ -412,7 +457,7 @@ c       --- Initialize the k's
 
       print*,0,a(4,5,4)
 c     --- Apply FFT's to transverse planes.
-      call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(12,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -581,7 +626,7 @@ c     --- Calculate remaining values
       print*,5,a(4,5,4)
 
 c     --- Apply inverse FFT's to transverse planes.
-      call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(13,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -644,7 +689,7 @@ c=============================================================================
       use Subtimersf3d
       use Constant
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: a(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,-1:nz+1)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
       real(kind=8):: filt(5,3)
@@ -669,7 +714,7 @@ c than the tolerance.
       if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Apply FFT's to transverse planes.
-      call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(12,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
      &                filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -697,7 +742,7 @@ c       --- Exchange phi at the boundaries
         call exchange_phi(nx,ny,nz,a,0,0,0)
 
 c       --- Do the tridiag solve
-        call tridiag(nx,ny,nz,nz/2,a(0,0,0),norm,kxsq,kysq,kzsq,
+        call tridiag(nx,ny,nz,nz/2,a(-1,-1,0),norm,kxsq,kysq,kzsq,
      &               ikxmin,ikymin,1,zwork)
 
 c       --- Get error
@@ -713,7 +758,7 @@ c       --- Get error
       enddo
 
 c     --- Apply inverse FFT's to transverse planes.
-      call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(13,a(-1,-1,0),a(-1,-1,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -778,11 +823,13 @@ c=============================================================================
 c==== Parallel routines for the multigrid fieldsolver
 c=============================================================================
       subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                      nz,nzcoarse)
+     &                      nz,nzcoarse,mgscale)
       use Subtimersf3d
+      use Multigrid3d,Only:mgscaleserial
       integer(ISZ):: nslaves,nz,nzcoarse
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      real(kind=8):: mgscale
 
 c Divides nz for each processor by two. For odd numbers, the starting end
 c is rounded down, and the upper end up. For each processor, if nz ends up
@@ -793,31 +840,44 @@ c also, subtract 1 from izfsslave.
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
-      do is=0,nslaves-1
+      if (mgscale < mgscaleserial) then
 
-c       --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
-c       --- is rounded up.
-        izfsslavec(is) = int(floor(1.*izfsslave(is)*nzcoarse/nz))
-        nzfsslavec(is) = int(ceiling(1.*(izfsslave(is)+nzfsslave(is))*
-     &                                nzcoarse/nz - izfsslavec(is)))
+        do is=0,nslaves-1
 
-c       --- Then check that no nz are less than nzmin.
-c       --- Note that if nzfsslave is already < nzmin, leave it as is.
-c       --- When nzfsslave < nzmin, in some cases setting nzfsslavec to nzmin
-c       --- will cause the coarsened grid to extend too far beyond the finer
-c       --- grid's gaurd cell, so it would need data from a neighboring cell,
-c       --- where it would normally be able to use data from the gaurd cells.
-c       --- That is a rare occurance so it is simpler to avoid the problem
-c       --- then to write the code to exchange the data for that case.
-        if (nzfsslavec(is) < nzmin .and. nzfsslavec(is) < nzfsslave(is)) then
-          nzfsslavec(is) = nzfsslavec(is) + 1
-          if (izfsslavec(is)+nzfsslavec(is) > nzcoarse) then
-            izfsslavec(is) = izfsslavec(is) - 1
-            nzfsslavec(is) = nzcoarse - izfsslavec(is)
+c         --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
+c         --- is rounded up.
+          izfsslavec(is) = int(floor(1.*izfsslave(is)*nzcoarse/nz))
+          nzfsslavec(is) = int(ceiling(1.*(izfsslave(is)+nzfsslave(is))*
+     &                                  nzcoarse/nz - izfsslavec(is)))
+
+c         --- Then check that no nz are less than nzmin.
+c         --- Note that if nzfsslave is already < nzmin, leave it as is.
+c         --- When nzfsslave < nzmin, in some cases setting nzfsslavec to nzmin
+c         --- will cause the coarsened grid to extend too far beyond the finer
+c         --- grid's gaurd cell, so it would need data from a neighboring cell,
+c         --- where it would normally be able to use data from the gaurd cells.
+c         --- That is a rare occurance so it is simpler to avoid the problem
+c         --- then to write the code to exchange the data for that case.
+          if (nzfsslavec(is) < nzmin .and. nzfsslavec(is) < nzfsslave(is)) then
+            nzfsslavec(is) = nzfsslavec(is) + 1
+            if (izfsslavec(is)+nzfsslavec(is) > nzcoarse) then
+              izfsslavec(is) = izfsslavec(is) - 1
+              nzfsslavec(is) = nzcoarse - izfsslavec(is)
+            endif
           endif
-        endif
 
-      enddo
+        enddo
+
+      else
+
+c       --- When the volume of the coarsened grid gets small compared to
+c       --- the finest level, then expand the domain of each processor to
+c       --- cover the full system, to avoid passing around lots of small
+c       --- messages.
+        izfsslavec = 0
+        nzfsslavec = nzcoarse
+
+      endif
 
 !$OMP MASTER
       if (lf3dtimesubs) timemgdividenz = timemgdividenz + wtime() - substarttime
@@ -1088,42 +1148,68 @@ c     --- Set count to zero
 
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
-      do ip=0,nslaves-1
-        if (my_index == whosendingleft(ip)) then
-          w = w + 1
-          ls = izsendingleft(ip) - leftdelta
-          call MPI_ISEND(phi(-delx,-dely,ls),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
-     &                   MPI_DOUBLE_PRECISION,ip,messid,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
-        endif
-      enddo
-      if (whosendingright(my_index) /= -1) then
-        w = w + 1
-        call MPI_IRECV(phi(-delx,-dely,lr),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
-     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
-     &                 messid,
-     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
+      if (mod(my_index,2) == 0) then
+        do ip=0,nslaves-1
+          if (my_index == whosendingleft(ip)) then
+            w = w + 1
+            ls = izsendingleft(ip) - leftdelta
+            call MPI_SEND(phi(-delx,-dely,ls),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+     &                     MPI_DOUBLE_PRECISION,ip,messid,
+     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
       endif
-
-      do ip=0,nslaves-1
-        if (my_index == whosendingright(ip)) then
-          w = w + 1
-          rs = izsendingright(ip) + rightdelta
-          call MPI_ISEND(phi(-delx,-dely,rs),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
-     &                   MPI_DOUBLE_PRECISION,ip,messid,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
-        endif
-      enddo
       if (whosendingleft(my_index) /= -1) then
         w = w + 1
-        call MPI_IRECV(phi(-delx,-dely,rr),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+        call MPI_RECV(phi(-delx,-dely,rr),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
      &                 MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
      &                 messid,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
+      if (mod(my_index,2) == 1) then
+        do ip=0,nslaves-1
+          if (my_index == whosendingleft(ip)) then
+            w = w + 1
+            ls = izsendingleft(ip) - leftdelta
+            call MPI_SEND(phi(-delx,-dely,ls),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+     &                     MPI_DOUBLE_PRECISION,ip,messid,
+     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
+      endif
+
+      if (mod(my_index,2) == 0) then
+        do ip=0,nslaves-1
+          if (my_index == whosendingright(ip)) then
+            w = w + 1
+            rs = izsendingright(ip) + rightdelta
+            call MPI_SEND(phi(-delx,-dely,rs),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+     &                     MPI_DOUBLE_PRECISION,ip,messid,
+     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
+      endif
+      if (whosendingright(my_index) /= -1) then
+        w = w + 1
+        call MPI_RECV(phi(-delx,-dely,lr),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+     &                 MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
+     &                 messid,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
+      endif
+      if (mod(my_index,2) == 1) then
+        do ip=0,nslaves-1
+          if (my_index == whosendingright(ip)) then
+            w = w + 1
+            rs = izsendingright(ip) + rightdelta
+            call MPI_SEND(phi(-delx,-dely,rs),int((nx+1+2*delx)*(ny+1+2*dely),MPIISZ),
+     &                     MPI_DOUBLE_PRECISION,ip,messid,
+     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
+      endif
 
 c     --- Now wait for everything to finish
-      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
 !$OMP MASTER
       if (lf3dtimesubs) timemgexchange_phi = timemgexchange_phi + wtime() - substarttime
@@ -1174,21 +1260,9 @@ c       --- on the waitall since that message would never be received.
           if (my_index == whosendingleft(ip)) then
             w = w + 1
             nn = (nx+1+2*delx)*(ny+1+2*dely)
-            call MPI_ISEND(phi(-delx,-dely,zsend),nn,
-     &                     MPI_DOUBLE_PRECISION,ip,messid,
-     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
-          endif
-        enddo
-      endif
-      if (izfsslave(my_index)+nzlocal == nz .and. zsend /= 0) then
-c       --- See comments on loop above.
-        do ip=0,my_index-1
-          if (my_index == whosendingright(ip)) then
-            w = w + 1
-            nn = (nx+1+2*delx)*(ny+1+2*dely)
-            call MPI_ISEND(phi(-delx,-dely,nzlocal-zsend),nn,
-     &                     MPI_DOUBLE_PRECISION,ip,messid,
-     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+            call MPI_SEND(phi(-delx,-dely,zsend),nn,
+     &                    MPI_DOUBLE_PRECISION,ip,messid,
+     &                    MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         enddo
       endif
@@ -1197,25 +1271,39 @@ c       --- See comments on loop above.
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
           nn = (nx+1+2*delx)*(ny+1+2*dely)
-          call MPI_IRECV(phi(-delx,-dely,nzlocal+zsend),nn,
-     &                   MPI_DOUBLE_PRECISION,int(whosendingleft(my_index),MPIISZ),
-     &                   messid,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+          ip = whosendingleft(my_index)
+          call MPI_RECV(phi(-delx,-dely,nzlocal+zsend),nn,
+     &                  MPI_DOUBLE_PRECISION,ip,messid,
+     &                  MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       endif
+
+      if (izfsslave(my_index)+nzlocal == nz .and. zsend /= 0) then
+c       --- See comments on loop above.
+        do ip=0,my_index-1
+          if (my_index == whosendingright(ip)) then
+            w = w + 1
+            nn = (nx+1+2*delx)*(ny+1+2*dely)
+            call MPI_SEND(phi(-delx,-dely,nzlocal-zsend),nn,
+     &                    MPI_DOUBLE_PRECISION,ip,messid,
+     &                    MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
+      endif
+
       if (izfsslave(my_index) == 0 .and. zsend /= 0) then
         if (whosendingright(my_index) /= -1) then
           w = w + 1
           nn = (nx+1+2*delx)*(ny+1+2*dely)
-          call MPI_IRECV(phi(-delx,-dely,-zsend),nn,
-     &                   MPI_DOUBLE_PRECISION,int(whosendingright(my_index),MPIISZ),
-     &                   messid,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+          ip = whosendingright(my_index)
+          call MPI_RECV(phi(-delx,-dely,-zsend),nn,
+     &                  MPI_DOUBLE_PRECISION,ip,messid,
+     &                  MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       endif
 
 c     --- Now wait for everything to finish
-      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
 !$OMP MASTER
       if (lf3dtimesubs) timemgexchange_phiperiodic = timemgexchange_phiperiodic + wtime() - substarttime
@@ -1337,11 +1425,60 @@ c     --- Now wait for everything to finish
 
       return
       end
+c===========================================================================
+      subroutine mgexchangeallrhocoarse(nc,nx,ny,nz,source,nzfine,
+     &                                  my_index,nslaves,izfsslave,nzfsslave)
+      use Subtimersf3d
+      integer(ISZ):: nc,nx,ny,nz,nzfine
+      real(kind=8):: source(0:nc-1,0:nx,0:ny,0:nz)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+      real(kind=8),allocatable:: source2(:,:,:,:)
+      integer(MPIISZ):: i
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      integer(MPIISZ):: ii(0:nslaves-1),nn(0:nslaves-1)
+      integer(MPIISZ):: is(0:nslaves-1),ns(0:nslaves-1)
+      include "mpif.h"
+      integer(MPIISZ):: mpierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
+
+      call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                nzfine,nz,1.)
+
+      do i=0,nslaves-2
+        ii(i) = izfsslavec(i)
+        nn(i) = max(0,izfsslavec(i+1) - izfsslavec(i))
+      enddo
+      ii(nslaves-1) = izfsslavec(nslaves-1)
+      nn(nslaves-1) = nzfsslavec(nslaves-1) + 1
+
+      ii = ii*nc*(nx+1)*(ny+1)
+      nn = nn*nc*(nx+1)*(ny+1)
+
+      is = ii(my_index)
+      ns = nn(my_index)
+
+c     allocate(source2(0:nc-1,0:nx,0:ny,0:nz))
+c     source2 = source
+      call MPI_ALLTOALLV(source,ns,is,MPI_DOUBLE_PRECISION,
+     &                   source,nn,ii,MPI_DOUBLE_PRECISION,
+     &                   MPI_COMM_WORLD,mpierror)
+c     deallocate(source2)
+
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchangeallrhocoarse = timemgexchangeallrhocoarse + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
 c=============================================================================
       subroutine printarray3d(nx,ny,nz,iz0,nz0,izs,a,my_index,nslaves,text,mglevel)
       use Subtimersf3d
       integer(ISZ):: nx,ny,nz,iz0,nz0,izs,my_index,nslaves,mglevel
-      real(kind=8):: a(0:nx,0:ny,iz0:nz)
+      real(kind=8):: a(-1:nx+1,-1:ny+1,iz0:nz)
       character(*):: text
 
 c Specialized routine for printing out an array in parallel, keeping the same

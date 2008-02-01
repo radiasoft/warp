@@ -28,8 +28,8 @@ class MultiGrid(SubcycledPoissonSolver):
     SubcycledPoissonSolver.__init__(self,kwdict=kw)
     self.solvergeom = w3d.XYZgeom
     self.ncomponents = 1
-    self.nxguard = 0
-    self.nyguard = 0
+    self.nxguard = 1
+    self.nyguard = 1
     self.nzguard = 1
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
@@ -427,7 +427,6 @@ class MultiGrid(SubcycledPoissonSolver):
       getselfe3d(self.potentialp,self.nxp,self.nyp,self.nzp,
                  self.fieldp[:,:,:,:,0],self.nxp,self.nyp,self.nzp,
                  self.dx,self.dy,self.dz,
-                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3],
                  lzero,self.nxguard,self.nyguard,self.nzguard)
     return self.fieldp
 

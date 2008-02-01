@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File F3D_MGRID_BE.M,
-c version $Revision: 1.40 $, $Date: 2007/12/14 23:33:08 $
+c version $Revision: 1.41 $, $Date: 2008/02/01 00:03:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -24,7 +24,7 @@ c     use ifcore
 c     integer:: fsf
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nzlocal+1)
@@ -164,7 +164,7 @@ c=============================================================================
       use Grid3dtypemodule
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nzlocal,nz
-      real(kind=8):: phi(0:nx,0:ny,-1:nzlocal+1)
+      real(kind=8):: phi(-1:nx+1,-1:ny+1,-1:nzlocal+1)
       real(kind=8):: rho(0:nx,0:ny,0:nzlocal)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nzlocal+1)
@@ -194,7 +194,6 @@ c assumed that dx ~ dy and that semi-coarsening is not needed transversely.
 
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
-      real(kind=8),allocatable:: phiwithbounds(:,:,:)
       integer(ISZ),allocatable:: regionid(:,:,:)
       real(kind=8),allocatable:: phisave(:,:,:)
       real(kind=8):: bendx((nx+1)*(ny+1))
@@ -232,13 +231,6 @@ c     --- converted and expanded for the multigrid solver.
 c     --- Prepare rho by dividing it by -eps0
       rho = -rho/eps0
 
-      allocate(phiwithbounds(-1:nx+1,-1:ny+1,-1:nzlocal+1),stat=allocerror)
-      if (allocerror /= 0) then
-        print*,"multigrid3dsolve: allocation error ",allocerror,
-     &         ": could not allocate phiwithbounds to shape ",nx,ny,nzlocal
-        call kaboom("multigrid3dsolve: allocation error")
-        return
-      endif
       allocate(phisave(0:nx,0:ny,0:nzlocal),stat=allocerror)
       if (allocerror /= 0) then
         print*,"multigrid3dsolve: allocation error ",allocerror,
@@ -252,25 +244,6 @@ c     --- Create and setup array which holds the BE region ids
       call setupregionidsbe3d(regionid,nx,ny,nzlocal,dx,dy,dz,
      &                        xmmin,ymmin,zmminlocal)
 
-c     --- Copy phi into phiwithbounds
-      phiwithbounds = 0.
-      phiwithbounds(0:nx,0:ny,-1:nzlocal+1) = phi
-
-c     --- Fill the transverse boundaries guard cells
-      if (bounds(0) == 0) phiwithbounds(-1,:,:) = 2.*phiwithbounds(0,:,:)-phiwithbounds(1,:,:)
-      if (bounds(1) == 0) phiwithbounds(nx+1,:,:) = 2.*phiwithbounds(nx,:,:)-phiwithbounds(nx-1,:,:)
-      if (bounds(0) == 1) phiwithbounds(-1,:,:) = phiwithbounds(1,:,:)
-      if (bounds(1) == 1) phiwithbounds(nx+1,:,:) = phiwithbounds(nx-1,:,:)
-      if (bounds(0) == 2) phiwithbounds(-1,:,:) = phiwithbounds(nx-1,:,:)
-      if (bounds(1) == 2) phiwithbounds(nx:nx+1,:,:) = phiwithbounds(0:1,:,:)
-
-      if (bounds(2) == 0) phiwithbounds(:,-1,:) = 2.*phiwithbounds(:,0,:)-phiwithbounds(:,1,:)
-      if (bounds(3) == 0) phiwithbounds(:,ny+1,:) = 2.*phiwithbounds(:,ny,:)-phiwithbounds(:,ny-1,:)
-      if (bounds(2) == 1) phiwithbounds(:,-1,:) = phiwithbounds(:,1,:)
-      if (bounds(3) == 1) phiwithbounds(:,ny+1,:) = phiwithbounds(:,ny-1,:)
-      if (bounds(2) == 2) phiwithbounds(:,-1,:) = phiwithbounds(:,ny-1,:)
-      if (bounds(3) == 2) phiwithbounds(:,ny:ny+1,:) = phiwithbounds(:,0:1,:)
-
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
       mgiters = 0
@@ -279,10 +252,10 @@ c     --- very few iterations are done.
         mgiters = mgiters + 1
 
 c       --- Save current value of phi
-        phisave = phiwithbounds(0:nx,0:ny,0:nzlocal)
+        phisave = phi(0:nx,0:ny,0:nzlocal)
 
 c       --- Do one vcycle.
-        call vcyclebe(0,nx,ny,nzlocal,nz,dx,dy,dz,phiwithbounds,rho,regionid,
+        call vcyclebe(0,nx,ny,nzlocal,nz,dx,dy,dz,phi,rho,regionid,
      &                xmmin,ymmin,zmminlocal,
      &                rstar,linbend,bendx,bounds,mgparam,mgmaxlevels,
      &                downpasses,uppasses,lcndbndy,icndbndy,conductors,
@@ -294,14 +267,14 @@ c       --- Calculate the change in phi.
 c       --- This line seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop below.
-c       mgerror = maxval(abs(phisave - phiwithbounds))
+c       mgerror = maxval(abs(phisave - phi))
 
         mgerror = 0.
 !$OMP DO REDUCTION(MAX:mgerror)
         do iz=0,nzlocal
           do iy=0,ny
             do ix=0,nx
-              mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phiwithbounds(ix,iy,iz)))
+              mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
             enddo
           enddo
         enddo
@@ -316,9 +289,6 @@ c         --- calculate global sorerror
 
       enddo
 
-c     --- Copy phi back
-      phi = phiwithbounds(0:nx,0:ny,:)
-
 c     --- Make a print out.
       if (mgverbose>=1 .or. mgerror > mgtol) then
         if (mgerror > mgtol) then
@@ -329,7 +299,6 @@ c     --- Make a print out.
         call remark(errline)
       endif
       
-      deallocate(phiwithbounds)
       deallocate(phisave)
       deallocate(regionid)
 
