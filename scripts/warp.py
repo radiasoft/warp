@@ -1,9 +1,9 @@
-warp_version = "$Id: warp.py,v 1.157 2008/01/24 00:01:37 dave Exp $"
+warp_version = "$Id: warp.py,v 1.158 2008/02/01 22:48:07 dave Exp $"
 # import all of the neccesary packages
 import __main__
 import sys
 
-#__main__.__dict__['with_numpy'] = 1
+__main__.__dict__['with_numpy'] = 1
 try:
   with_numpy = __main__.__dict__['with_numpy']
 except KeyError:
