@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.392 $, $Date: 2008/02/01 00:04:00 $
+c@(#) File W3D.F, version $Revision: 3.393 $, $Date: 2008/02/01 17:45:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -374,9 +374,8 @@ c  Create the dynamic arrays in Z_arrays; set the z mesh
       enddo
 
 c  Set the value of prwall, radius at which particles are lost
-      if (prwall == 0.) prwall = xmmax - dx
       do k=0,nzzarr
-        prwallz(k) = prwall
+        if (prwallz(k) == LARGEPOS) prwallz(k) = prwall
         if (prwallxz(k) == 0.) prwallxz(k) = prwallx
         if (prwallyz(k) == 0.) prwallyz(k) = prwally
         if (prwelipz(k) == 1.) prwelipz(k) = prwelip

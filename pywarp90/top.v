@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.228 $, $Date: 2008/01/29 00:52:15 $
+#@(#) File TOP.V, version $Revision: 3.229 $, $Date: 2008/02/01 17:45:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.228 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.229 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1175,7 +1175,7 @@ vzperamp        real    [1]   /0./
    # Amplitude of sinusoidal perturbation in vz
 vzperphs        real    [rad] /0./
    # Phase of sinusoidal perturbation in vz
-prwall          real    [m]   /0./
+prwall          real    [m]   /LARGEPOS/
    # Optional radius of cylindrical wall that absorbs particles
    # When zero, uses largest cylinder that fits in grid
 prwallx         real    [m]   /0./
@@ -1390,7 +1390,7 @@ rhoax(0:nzzarr)        _real  [C/m^3]  # charge density on axis
 phiax(0:nzzarr)        _real  [V]      # potential on axis
 ezax(0:nzzarr)         _real  [V/m]    # space charge E field on axis
 eearsofz(0:nzzarr)     _real  [V/m]    # confining Eears, as a function of z
-prwallz(0:nzzarr)      _real  [m] /0./ # Radius at which particles are absorbed
+prwallz(0:nzzarr) _real [m] /LARGEPOS/ # Radius at which particles are absorbed
 prwallxz(0:nzzarr)     _real  [m] /0./ # X of center of cylindrical wall
 prwallyz(0:nzzarr)     _real  [m] /0./ # Y of center of cylindrical wall
 prwelipz(0:nzzarr)     _real  [1] /1./ # Ellipticity of cylindrical wall
