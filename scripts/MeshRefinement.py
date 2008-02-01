@@ -6,7 +6,6 @@ from multigrid import MultiGrid
 from multigridRZ import MultiGrid2D
 from find_mgparam import find_mgparam
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
-import MA
 #import threading
 
 try:
@@ -2094,7 +2093,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     # --- Calculate the change in phi.
     subtract(self.phisave,self.phi,self.phisave)
     absolute(self.phisave,self.phisave)
-    self.mgerror = MA.maximum(self.phisave)
+    self.mgerror = self.phisave.max()
     print self.mgerror,childrenserror
     print 'err = ',self.mgerror
     return max(childrenserror,self.mgerror)
@@ -2294,7 +2293,7 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     # --- Calculate the change in phi.
     subtract(self.phisave,self.phi,self.phisave)
     absolute(self.phisave,self.phisave)
-    self.mgerror = MA.maximum(self.phisave)
+    self.mgerror = self.phisave.max()
     print 'err= ',self.mgerror
     return max(childrenserror,self.mgerror)
 

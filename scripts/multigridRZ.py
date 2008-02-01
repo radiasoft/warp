@@ -3,7 +3,6 @@ from warp import *
 from fieldsolver import SubcycledPoissonSolver
 from generateconductors import installconductors
 from find_mgparam import find_mgparam
-import MA
 
 try:
   import psyco
