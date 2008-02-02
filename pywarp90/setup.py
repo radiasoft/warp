@@ -19,7 +19,7 @@ machine = sys.platform
 debug   = 0
 fcomp   = None
 parallel = 0
-with_numpy = 0
+with_numpy = 1
 for o in optlist:
   if   o[0] == '-g': debug = 1
   elif o[0] == '-t': machine = o[1]
