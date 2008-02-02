@@ -170,7 +170,7 @@ Creates a new species of particles. All arguments are optional.
                      species.
   """
   def __init__(self,js=None,pgroup=top.pgroup,
-                    type=Electron,charge=echarge,mass=emass,charge_state=0,
+                    type=None,charge=echarge,mass=emass,charge_state=0,
                     weight=None,name='',nautodt=1,
                     efetch=None,fselfb=None,limplicit=None):
     # --- Note that some default arguments are None in case the user had
