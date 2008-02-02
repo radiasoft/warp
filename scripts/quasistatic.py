@@ -199,7 +199,8 @@ class Quasistatic:
          exec('f.ez%i=getez(js=iz)'%iz)
        f.close()
 
-     if (not self.l_weakstrong or top.it==0) and (top.it%self.nelecperiod==0):
+#     if (not self.l_weakstrong or top.it==0) and (top.it%self.nelecperiod==0):
+     if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
         # --- generate electrons (on last processor only)
        if me==max(0,npes-1) and (top.it==0  or not l_plotelec):self.create_electrons()
 
@@ -209,69 +210,76 @@ class Quasistatic:
          sp=self.slist[0]
          self.dist.append([sp.getx(),sp.gety(),sp.getvx(),sp.getvy()])
 
-       # --- loop over "3-D" grid mesh in z
-       for iz in range(self.izmax-1,self.izmin-1,-1):
-         self.iz=iz
+     # --- loop over "3-D" grid mesh in z
+     for iz in range(self.izmax-1,self.izmin-1,-1):
+       self.iz=iz
          
-         if iz==(self.izmax-3):
-           if self.l_timing:ptime = wtime()
-           self.sendrecv_storedions()
-           if self.l_timing: self.time_sendrecv_storeions += wtime()-ptime
-
+       if iz==(self.izmax-3):
          if self.l_timing:ptime = wtime()
-         # --- push ions velocity (2nd half)
-         if me>=(npes-1-top.it):
-           if iz<w3d.nzp-1:
-             self.set_gamma(iz+1)
-#             self.push_ions_velocity_second_half(iz+1)
-           if iz==0:
-             self.set_gamma(iz)
-#             self.push_ions_velocity_second_half(iz)
-         if self.l_timing: self.time_set_gamma += wtime()-ptime
+         self.sendrecv_storedions()
+         if self.l_timing: self.time_sendrecv_storeions += wtime()-ptime
+
+       if self.l_timing:ptime = wtime()
+       # --- push ions velocity (2nd half)
+       if me>=(npes-1-top.it):
+         if iz<w3d.nzp-1:
+           self.set_gamma(iz+1)
+#           self.push_ions_velocity_second_half(iz+1)
+         if iz==0:
+           self.set_gamma(iz)
+#           self.push_ions_velocity_second_half(iz)
+       if self.l_timing: self.time_set_gamma += wtime()-ptime
  
-         if self.l_timing:ptime = wtime()
-         # --- deposit ions charge
-         self.deposit_ions()
-         if self.l_timing: self.time_deposit_ions += wtime()-ptime
+       if self.l_timing:ptime = wtime()
+       # --- deposit ions charge
+       self.deposit_ions()
+       if self.l_timing: self.time_deposit_ions += wtime()-ptime
 
+       # --- call 2-D field solver for ions
+       if self.l_selfi or ((not self.l_weakstrong) or (top.it%self.nelecperiod==0)):
          if self.l_timing:ptime = wtime()
-         # --- call 2-D field solver for ions
          frz.basegrid=self.gridions[1];mk_grids_ptr()
          # --- optimize mgparam
 #         if  self.l_findmgparam and top.it-1==npes-me-1 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
          if  self.l_findmgparam and top.it==0 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
-           if me==npes-1:find_mgparam_rz(true)
+          if me==npes-1:find_mgparam_rz(true)
          solve_mgridrz(self.gridions[1],frz.mgridrz_accuracy,true)
          if self.iz==0:solve_mgridrz(self.gridions[0],frz.mgridrz_accuracy,true)
          if self.l_timing: self.time_solve += wtime()-ptime
 
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
          if self.l_timing:ptime = wtime()
          # --- deposit electrons charge
          self.deposit_electrons(1)
          if self.l_timing: self.time_deposit_electrons += wtime()-ptime
 
-         if self.l_timing:ptime = wtime()
-         # --- call 2-D field solver for electrons
-         frz.basegrid=self.gridelecs[1];mk_grids_ptr()
+       if self.l_timing:ptime = wtime()
+       # --- call 2-D field solver for electrons
+       frz.basegrid=self.gridelecs[1];mk_grids_ptr()
          # --- optimize mgparam
 #         if  self.l_findmgparam and top.it-1==npes-me-1 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
          if  self.l_findmgparam and top.it==0 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
            if me==npes-1:find_mgparam_rz(true)
          solve_mgridrz(self.gridelecs[1],frz.mgridrz_accuracy,true)
-         if self.l_timing: self.time_solve += wtime()-ptime
+       else:
+         self.gridelecs[1].phi[...]=self.phie[:,:,self.iz+1]
+       if self.l_timing: self.time_solve += wtime()-ptime
 
-         if self.l_timing:ptime = wtime()
-         # --- add electron and ion fields
-         self.add_ei_fields(1)
-         if self.l_timing: self.time_add_ei_fields += wtime()-ptime
+       if self.l_timing:ptime = wtime()
+       # --- add electron and ion fields
+       self.add_ei_fields(1)
+       if self.l_timing: self.time_add_ei_fields += wtime()-ptime
 
-         if self.l_timing:ptime = wtime()
+       if self.l_timing:ptime = wtime()
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
          self.rhoe[:,:,self.iz+1] = self.gridelecs[1].rho
          self.phie[:,:,self.iz+1] = self.gridelecs[1].phi
-         self.rhoi[:,:,self.iz+1] = self.gridions[1].rho
-         self.phii[:,:,self.iz+1] = self.gridions[1].phi
-         if self.l_timing: self.time_stack_rhophi += wtime()-ptime
+       self.rhoi[:,:,self.iz+1] = self.gridions[1].rho
+       self.phii[:,:,self.iz+1] = self.gridions[1].phi
+       if self.l_timing: self.time_stack_rhophi += wtime()-ptime
 
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
          if self.l_timing:ptime = wtime()
          # --- push electrons 
          self.push_electrons()
@@ -286,36 +294,38 @@ class Quasistatic:
 #         if l_plotelec :self.plot_electrons()
          if l_plotelec and iz<w3d.nz/max(1,npes)-1:self.plot_electrons()
 
-         if self.l_timing:ptime = wtime()
-         # --- push ions
-         # WARNING: under current configuration, velocity push MUST be BEFORE positions push
-         if me>=(npes-1-top.it):
-           self.gather_ions_fields()
-           if iz<w3d.nzp-1:
-             self.push_ions_velocity_full(iz+1)
-             self.push_ions_positions(iz+1)
-             self.apply_ions_bndconditions(iz+1)
-           if iz==0:
-             self.push_ions_velocity_full(iz)
-             self.push_ions_positions(iz)
-             self.apply_ions_bndconditions(iz)
-         if self.l_timing: self.time_push_ions += wtime()-ptime
+       if self.l_timing:ptime = wtime()
+       # --- push ions
+       # WARNING: under current configuration, velocity push MUST be BEFORE positions push
+       if me>=(npes-1-top.it):
+         self.gather_ions_fields()
+         if iz<w3d.nzp-1:
+           self.push_ions_velocity_full(iz+1)
+           self.push_ions_positions(iz+1)
+           self.apply_ions_bndconditions(iz+1)
+         if iz==0:
+           self.push_ions_velocity_full(iz)
+           self.push_ions_positions(iz)
+           self.apply_ions_bndconditions(iz)
+       if self.l_timing: self.time_push_ions += wtime()-ptime
 
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
          # --- (diagnostic) stacking of electron distribution
          if l_return_dist:
            sp=self.slist[0]
            self.dist.append([sp.getx(),sp.gety(),sp.getvx(),sp.getvy()])
 
-         # --- switch 2-D solvers
-         for g in [self.gridelecs,self.gridions]:
-           gtmp=g.pop(0)
-           g.append(gtmp)
+       # --- switch 2-D solvers
+       for g in [self.gridelecs,self.gridions]:
+         gtmp=g.pop(0)
+         g.append(gtmp)
 #       for iz in range(globalmax(w3d.nzp)-w3d.nzp):
 #         if l_plotelec :self.plot_electrons()
          
        if self.l_timing:ptime = wtime()
-       self.rhoe[:,:,0] = self.gridelecs[1].rho
-       self.phie[:,:,0] = self.gridelecs[1].phi
+       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+         self.rhoe[:,:,0] = self.gridelecs[1].rho
+         self.phie[:,:,0] = self.gridelecs[1].phi
        self.rhoi[:,:,0] = self.gridions[1].rho
        self.phii[:,:,0] = self.gridions[1].phi
        if self.l_timing: self.time_stack_rhophi += wtime()-ptime
