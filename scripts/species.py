@@ -5,6 +5,12 @@ usual particles as object (Electron, Positron, Water, atoms from periodic table)
 """
 from warp import *
 
+def SpRandom(loc=0.,scale=1.,size=None):
+    if scale>0.:
+      return RandomArray.normal(loc,scale,size)
+    else:
+      return loc
+
 class Particle(object):
   def __init__(self,mass=None,charge=None,Symbol=None,name=None):
     self.Symbol=Symbol
@@ -413,9 +419,9 @@ Creates a new species of particles. All arguments are optional.
     y = ymin + (ymax - ymin)*y
     z = zmin + (zmax - zmin)*z
 
-    vx=RandomArray.normal(vxmean,vthx,np)
-    vy=RandomArray.normal(vymean,vthy,np)
-    vz=RandomArray.normal(vzmean,vthz,np)
+    vx=SpRandom(vxmean,vthx,np)
+    vy=SpRandom(vymean,vthy,np)
+    vz=SpRandom(vzmean,vthz,np)
     if lmomentum:
       gi=1./sqrt(1.+(vx*vx+vy*vy+vz*vz)/clight**2)
     else:
@@ -573,9 +579,9 @@ in radius squared.
       kw['w'] = 2*sqrt(x**2 + y**2)/rmax
 
     # --- Now the velocities are generated (after clipping the positions).
-    vx = RandomArray.normal(vxmean,vthx,np)
-    vy = RandomArray.normal(vymean,vthy,np)
-    vz = RandomArray.normal(vzmean,vthz,np)
+    vx = SpRandom(vxmean,vthx,np)
+    vy = SpRandom(vymean,vthy,np)
+    vz = SpRandom(vzmean,vthz,np)
 
     if theta != 0. or phi != 0.:
       # --- Transform velocities from rotated frame into the lab frame.
@@ -597,12 +603,12 @@ in radius squared.
                         zdist='random',nz=1000,fourfold=0,js=None,**kw):
     if fourfold:np=nint(float(np)/4)
     if zdist=='random':
-      x=RandomArray.normal(0.,deltax,np)
-      y=RandomArray.normal(0.,deltay,np)
-      z=RandomArray.normal(0.,deltaz,np)
-      vx=RandomArray.normal(0.,vthx,np)
-      vy=RandomArray.normal(0.,vthy,np)
-      vz=RandomArray.normal(0.,vthz,np)
+      x=SpRandom(0.,deltax,np)
+      y=SpRandom(0.,deltay,np)
+      z=SpRandom(0.,deltaz,np)
+      vx=SpRandom(0.,vthx,np)
+      vy=SpRandom(0.,vthy,np)
+      vz=SpRandom(0.,vthz,np)
       if fourfold:
         xsigns=[1.,-1.]
         ysigns=[1.,-1.]
@@ -635,12 +641,12 @@ in radius squared.
         else:
           Nadd=int(Nadd)
         if Nadd>0:
-          x=RandomArray.normal(0.,deltax,Nadd)
-          y=RandomArray.normal(0.,deltay,Nadd)
+          x=SpRandom(0.,deltax,Nadd)
+          y=SpRandom(0.,deltay,Nadd)
           z=zadd+dz*(RandomArray.random(Nadd)-0.5)
-          vx=RandomArray.normal(0.,vthx,Nadd)
-          vy=RandomArray.normal(0.,vthy,Nadd)
-          vz=RandomArray.normal(0.,vthz,Nadd)
+          vx=SpRandom(0.,vthx,Nadd)
+          vy=SpRandom(0.,vthy,Nadd)
+          vz=SpRandom(0.,vthz,Nadd)
           if fourfold:
             xsigns=[1.,-1.]
             ysigns=[1.,-1.]
