@@ -6,7 +6,6 @@ from generateconductors import installconductors
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
 import timing as t
-import MLab
 import gc # Garbage collection
 
 try:
@@ -250,11 +249,11 @@ class AMRTree(object,Visualizable):
       dim = rank(f)
 
       # get edges using vertical lines
-      maxfg = MLab.max(fg,0)
+      maxfg = fg.max(0)
       g1 = where(fg>threshold*maxfg[NewAxis,...],fg,0.)
         
       # get edges using horizontal lines
-      maxfg = MLab.max(fg,1)
+      maxfg = fg.max(1)
       if dim==2:
         g2 = where(fg>threshold*maxfg[:,NewAxis],fg,0.)
       elif dim==3:
@@ -264,7 +263,7 @@ class AMRTree(object,Visualizable):
       g = where(g1>g2,g1,g2)
 
       if dim==3:
-        maxfg = MLab.max(fg,2)
+        maxfg = fg.max(2)
         g3 = where(fg>threshold*maxfg[...,NewAxis],fg,0.)
         # returns max of g and g3
         g = where(g>g3,g,g3)
