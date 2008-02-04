@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.64 $, $Date: 2007/11/26 19:54:04 $
+#@(#) File FRZ.V, version $Revision: 3.65 $, $Date: 2008/02/04 22:20:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.64 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.65 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -57,7 +57,7 @@ mgridrz_ny                integer  /0/  #
 mgridrz_nz                integer  /0/  # 
 mgridrz_xfact(0:mgridrz_nz+2) _real     # array for deformation factor in X
 mgridrz_yfact(0:mgridrz_nz+2) _real     # array for deformation factor in Y
-mgridrz_phi3d(0:mgridrz_nx,0:mgridrz_ny,-1:mgridrz_nz) _real # array containing '3D' phi
+mgridrz_phi3d(-1:mgridrz_nx+1,-1:mgridrz_ny+1,-1:mgridrz_nz) _real # array containing '3D' phi
 mgridrz_ngrids            integer  /1/  # number of grids (useful when using mesh refinement)
 mgridrz_grid_is(mgridrz_ngrids)   _integer # array id grid associated with grid species 
 ngrids                    integer  /1/  # number of grids (includes base grid + patches)

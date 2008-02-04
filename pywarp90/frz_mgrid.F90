@@ -9297,12 +9297,12 @@ real(kind=8):: ex(ip),ey(ip),ez(ip)
                        ex,ey,ez,ip,zgridprv,efetch(is))
   else
     if(is==1 .and. ipmin==pgroup%ins(is)) call calc_phi3d_from_phirz()
-    call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip, &
+    call sete3d(mgridrz_phi3d,selfe(1,0,0,0),ip, &
                 pgroup%xp(ipmin),pgroup%yp(ipmin),pgroup%zp(ipmin), &
                 zgridprv,0.,0.,basegrid%zmin, &
                 basegrid%dr,basegrid%dr,basegrid%dz, &
                 mgridrz_nx,mgridrz_ny,mgridrz_nz, &
-                efetch(is),ex,ey,ez,l2symtry,l4symtry)
+                efetch(is),ex,ey,ez,l2symtry,l4symtry,1,1,1)
   end if
 
 end subroutine setemgridrz
@@ -9315,8 +9315,8 @@ INTEGER(ISZ) :: j, k, l, jn
 REAL(8) :: ddr, oddr, rpos
 
   do l = -1, mgridrz_nz+1
-    do k = 0, mgridrz_ny
-      do j = 0, mgridrz_nx
+    do k = -1, mgridrz_ny+1
+      do j = -1, mgridrz_nx+1
         rpos = SQRT(j**2*mgridrz_xfact(l+1)**2+k**2*mgridrz_yfact(l+1)**2)
         jn = MIN(basegrid%nr,1+INT(rpos))
         ddr=rpos-REAL(jn-1)
