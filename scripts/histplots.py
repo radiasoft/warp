@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.32 2006/11/21 17:35:56 jlvay Exp $"
+histplots_version = "$Id: histplots.py,v 1.33 2008/02/05 18:20:04 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -1550,6 +1550,36 @@ if sys.version[:5] != "1.5.1":
   hpredge.__doc__ = hpredge.__doc__ + hpbasicwintext
 
 
+def hpxxpslope(iw=0,kwdict={},**kw):
+  "X-X' slope (xxpbar - xbar*xpbar)/xrms**2."
+  kw.update(kwdict)
+  kw['titlet']="X-X' slope"
+  kw['titlel']="(rad)"
+  hxrms = _extractvarkw('hxrms',kw)
+  hxbar = _extractvarkw('hxbar',kw)
+  hxpbar = _extractvarkw('hxpbar',kw)
+  hxxpbar = _extractvarkw('hxxpbar',kw)
+  xxpslope = (hxxpbar - hxbar*hxpbar)/where(greater(hxrms,0.),hxrms**2,1.)
+  hpbasicwin(xxpslope,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxxpslope.__doc__ = hpxxpslope.__doc__ + hpbasicwintext
+
+
+def hpyypslope(iw=0,kwdict={},**kw):
+  "Y-Y' slope (yypbar - ybar*ypbar)/yrms**2."
+  kw.update(kwdict)
+  kw['titlet']="Y-Y' slope"
+  kw['titlel']="(rad)"
+  hyrms = _extractvarkw('hyrms',kw)
+  hybar = _extractvarkw('hybar',kw)
+  hypbar = _extractvarkw('hypbar',kw)
+  hyypbar = _extractvarkw('hyypbar',kw)
+  yypslope = (hyypbar - hybar*hypbar)/where(greater(hyrms,0.),hyrms**2,1.)
+  hpbasicwin(yypslope,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyypslope.__doc__ = hpyypslope.__doc__ + hpbasicwintext
+
+
 def hpenvx(iw=0,kwdict={},**kw):
   "X Beam Edge."
   kw.update(kwdict)
@@ -2091,6 +2121,16 @@ def hzredges(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpredges(iw=iw,kwdict=kw)
+def hpxxpslope(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpxxpslope(iw=iw,kwdict=kw)
+def hpyypslope(iw=0,kwdict={},**kw):
+  'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
+  kw['lhzbeam'] = 1
+  hpyypslope(iw=iw,kwdict=kw)
 def hzenvx(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
@@ -2127,6 +2167,8 @@ hpredge(): R Beam Edge (root 2 rms)
 hpxedges(): X Beam Edges plus centroid
 hpyedges(): Y Beam Edges plus centroid
 hpredges(): R Beam Edges
+hpxxpslope(): X-X' slope
+hpyypslope(): Y-Y' slope
 hpenvx = hpxedge
 hpenvy = hpyedge
 hpzbeam(): Beam frame location
@@ -2241,6 +2283,8 @@ Test all histplots
   apply(hpxedges,(),kw);fma()
   apply(hpyedges,(),kw);fma()
   apply(hpredges,(),kw);fma()
+  apply(hpxxpslope,(),kw);fma()
+  apply(hpyypslope,(),kw);fma()
   apply(hpenvx,(),kw);fma()
   apply(hpenvy,(),kw);fma()
   apply(hpzbeam,(),kw);fma()
