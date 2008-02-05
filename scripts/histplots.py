@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.33 2008/02/05 18:20:04 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.34 2008/02/05 20:42:48 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -2121,12 +2121,12 @@ def hzredges(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpredges(iw=iw,kwdict=kw)
-def hpxxpslope(iw=0,kwdict={},**kw):
+def hzxxpslope(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
   kw['lhzbeam'] = 1
   hpxxpslope(iw=iw,kwdict=kw)
-def hpyypslope(iw=0,kwdict={},**kw):
+def hzyypslope(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
   kw.update(kwdict)
   kw['lhzbeam'] = 1
