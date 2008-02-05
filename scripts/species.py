@@ -236,7 +236,7 @@ Creates a new species of particles. All arguments are optional.
     try:
       top.pgroup.sq[js]=type.charge
     except:
-      if type is None or type.__class__ is not Particle:
+      if type is not None and type.__class__ is not Particle:
         if charge_state is None:charge_state=self.charge_state
         top.pgroup.sq[js]=echarge*charge_state
       else:
