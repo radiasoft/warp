@@ -17,10 +17,9 @@ try:
 except:
   print 'WARNING: module desorb is not accessible.'
   l_desorb = 0
-import timing as t
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.28 2007/12/20 00:05:50 dave Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.29 2008/02/06 19:20:21 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -370,7 +369,7 @@ Class for generating secondaries
 #                      (zplost>zmin) & (zplost<zmax)
         # exclude particles recently created
         if self.min_age is not None:
-          inittime = take(top.pidlost[i1:i2,top.tpid-1],iit)
+          inittime = take(top.pidlost[i1:i2,top.tpid-1],iit,0)
           condition =  ((top.time-inittime)>self.min_age*top.dt)      
 #          condition = condition & ((top.time-inittime)>self.min_age*top.dt)      
           iit2 = compress(condition,arange(n))
@@ -383,7 +382,7 @@ Class for generating secondaries
         yplost = take(yplost,iit2)
         zplost = take(zplost,iit2)
         iit    = take(iit,iit2)
-        if self.l_record_timing:t.start()    
+        if self.l_record_timing:tstart=wtime()    
         uxplost = take(top.uxplost[i1:i2],iit)
         uyplost = take(top.uyplost[i1:i2],iit)
         uzplost = take(top.uzplost[i1:i2],iit)
@@ -508,9 +507,8 @@ Class for generating secondaries
           if l_infinity:
             continue
           if self.l_record_timing:
-            t.finish()
-            tinit+=t.micro()
-            t.start()
+            tinit+=wtime()-tstart
+            tstart=wtime()
           if self.l_verbose:print 'e0, coseta',e0[i],coseta[i]
           for ie,emitted_species in enumerate(self.inter[incident_species]['emitted_species'][ics]):
            js_new=emitted_species.jslist[0]
@@ -635,9 +633,8 @@ Class for generating secondaries
                  print 'nb secondaries = ',ns,' from conductor ',icond, e0[i], coseta[i],i1,i2,iit[i],top.npslost          
 
             if self.l_record_timing:
-              t.finish()
-              tgen+=t.micro()
-              t.start()
+              tgen+=wtime()-tstart
+              tstart=wtime()
             if ns>0:
              self.inter[incident_species]['emitted'][ics][ie] += ns*top.pgroup.sq[js_new]*top.pgroup.sw[js_new]
              if costheta[i]<1.-1.e-10:
@@ -665,9 +662,8 @@ Class for generating secondaries
              uzsec =          -sintheta[i]*ut0                 +           costheta[i]*un0
              del un,ut,uz,un0,ut0,uz0
              if self.l_record_timing:
-               t.finish()
-               tprepadd+=t.micro()
-               t.start()
+               tprepadd+=wtime()-tstart
+               tstart=wtime()
              xnew = xplost[i]+n_unit0[0][i]*1.e-10*w3d.dx
              ynew = yplost[i]+n_unit0[1][i]*1.e-10*w3d.dy 
              znew = zplost[i]+n_unit0[2][i]*1.e-10*w3d.dz
@@ -751,8 +747,7 @@ Class for generating secondaries
               ek0emitav += sum(e0emit)
             
           if self.l_record_timing:
-            t.finish()
-            tadd+=t.micro()
+            tadd+=wtime()-tstart
 
     # --- make sure that all particles are added
     for js in self.x.keys():
@@ -1410,21 +1405,22 @@ Class for generating photo-electrons
     for ints in self.inter.keys():
      incident_species=self.inter[ints]['incident_species']
      emitted_species=self.inter[incident_species]['emitted_species']
-     if incident_species is None:
-       self.nz=1
+     if type(self.Lambda) is type(0.):
+       self.nz=0
        if self.l_switchyz:
-         ymin=w3d.ymmin
-         ymax=w3d.ymmax
-         dy=(w3d.ymmax-w3d.ymmin)
+         self.ymin=w3d.ymmin
+         self.ymax=w3d.ymmax
+         self.dy=(w3d.ymmax-w3d.ymmin)
        else:
-         zmin=w3d.zmminlocal
-         zmax=w3d.zmmaxlocal
-         dz=(w3d.zmmaxlocal-w3d.zmminlocal)
+         self.zmin=w3d.zmminlocal
+         self.zmax=w3d.zmmaxlocal
+         self.dz=(w3d.zmmaxlocal-w3d.zmminlocal)
      else:
+      if incident_species is not None:
        if self.l_switchyz:
-         ymin=min(incident_species.gety())
-         ymax=max(incident_species.gety())
-         dy=(ymax-ymin)/self.nz
+         self.ymin=min(incident_species.gety())
+         self.ymax=max(incident_species.gety())
+         self.dy=(ymax-ymin)/self.nz
          self.Lambda = sum(sum(incident_species.get_density(nx=2, 
                                                             nz=2, 
                                                             ny=self.nz,
@@ -1434,9 +1430,9 @@ Class for generating photo-electrons
                                                             l_dividebyvolume=false,
                                                             charge=1),2),0)
        else:
-         zmin=min(incident_species.getz())
-         zmax=max(incident_species.getz())
-         dz=(zmax-zmin)/self.nz
+         self.zmin=min(incident_species.getz())
+         self.zmax=max(incident_species.getz())
+         self.dz=(zmax-zmin)/self.nz
          self.Lambda = sum(sum(incident_species.get_density(nx=2, 
                                                             ny=2, 
                                                             nz=self.nz,
@@ -1446,11 +1442,12 @@ Class for generating photo-electrons
                                                             l_dividebyvolume=false,
                                                             charge=1),0),0)
      weightemit=top.pgroup.sw[emitted_species.jslist[0]]*abs(top.pgroup.sq[emitted_species.jslist[0]])
-     for i in range(self.nz):
-       if incident_species is None:
+#     for i in range(self.nz+1):
+     for i in range(max(1,self.nz)):
+       if self.nz<1:
          rhel = self.Lambda*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
        else:
-         rhel = self.Lambda[i]*pos.queffp*pos.photpbppm*clight*top.dt/weightemit
+         rhel = self.Lambda[i]*pos.queffp*pos.photpbppm*clight*top.dt*self.dz/weightemit
 #       rhel*=pos.slength
        # rhel is the number of photoelectrons created at each timestep
        # queffp  is the  quantum efficiency (photoelectrons produced per
@@ -1494,7 +1491,7 @@ Class for generating photo-electrons
        if self.l_switchyz:
            self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
 #                         pos.z[:pos.nlast]*0.,
-                         (pos.z[:pos.nlast]/pos.slength)*dy+i*dy+ymin,
+                         (pos.z[:pos.nlast]/pos.slength)*self.dy+i*self.dy+self.ymin,
                          pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
                          pos.vgx[:pos.nlast],
                          pos.vgz[:pos.nlast],
@@ -1504,7 +1501,7 @@ Class for generating photo-electrons
        else:
            self.addpart(ns,pos.x[:pos.nlast]+dt*pos.vgx[:pos.nlast]*gaminv,
                          pos.y[:pos.nlast]+dt*pos.vgy[:pos.nlast]*gaminv,
-                         (pos.z[:pos.nlast]/pos.slength)*dz+i*dz+zmin,
+                         (pos.z[:pos.nlast]/pos.slength)*self.dz+i*self.dz+self.zmin,
                          pos.vgx[:pos.nlast],
                          pos.vgy[:pos.nlast],
                          pos.vgz[:pos.nlast],

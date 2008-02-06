@@ -3,10 +3,9 @@ ParticleScraper: class for creating particle scraping
 """
 from warp import *
 from generateconductors import *
-import timing as t
 #import decorators
 
-particlescraper_version = "$Id: particlescraper.py,v 1.71 2008/01/18 22:41:37 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.72 2008/02/06 19:18:51 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -310,21 +309,20 @@ after load balancing."""
     self.updategrid()
     for js in xrange(top.pgroup.ns):
       if top.pgroup.ldts[js]:
-        if self.l_print_timing:tt=0.
-        if self.l_print_timing:t.start()
+        if self.l_print_timing:tstart=wtime()
         self.scrape(js);
-        if self.l_print_timing:t.finish()
-        if self.l_print_timing:print js,'scrape',t.milli()
-        if self.l_print_timing:t.start()
+        if self.l_print_timing:tend=wtime()
+        if self.l_print_timing:print js,'scrape',tstart-tend
+        if self.l_print_timing:tstart=wtime()
         if clear or self.lsavecondid:
           processlostpart(top.pgroup,js+1,top.clearlostpart,top.time,top.zbeam)
-        if self.l_print_timing:t.finish()
-        if self.l_print_timing:print js,'processlosspart',t.milli()
-        if self.l_print_timing:t.start()
+        if self.l_print_timing:tend=wtime()
+        if self.l_print_timing:print js,'processlosspart',tstart-tend
+        if self.l_print_timing:tstart=wtime()
         if self.lsavecondid:
           self.savecondid(js,local=local)
-        if self.l_print_timing:t.finish()
-        if self.l_print_timing:print js,'savecondid',t.milli()
+        if self.l_print_timing:tend=wtime()
+        if self.l_print_timing:print js,'savecondid',tstart-tend
     self.saveolddata()
   #scrapeall = decorators.timedmethod(scrapeall)
     
