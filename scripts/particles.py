@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.64 2007/12/20 00:36:41 dave Exp $"
+particles_version = "$Id: particles.py,v 1.65 2008/02/06 19:17:21 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -947,7 +947,7 @@ def getpid(iw=0,id=0,gather=1,bcast=None,**kw):
       else:       result = pid[ii,:]
     elif len(ii) > 0:
       if id >= 0: result = take(pid[:,id],ii)
-      else:       result = take(pid[:,:],ii)
+      else:       result = take(pid[:,:],ii,0)
     else:
       result = array([],'d')
   else:
