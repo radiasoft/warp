@@ -7,7 +7,7 @@ In parallel, there is a caveat that each processor carries particles at differen
 
 from warp import *
 from getzmom import *
-from AMR import *
+#from AMR import *
 from appendablearray import *
 import __main__
 
@@ -55,9 +55,10 @@ class Quasistatic:
             brz=brz.down
           except:
             l_addblock=false
-        g=frz.basegrid
-        for conductor in conductors:
-          if l_addblock:raise('conductors need to be installed in quasistatic MR')
+      g=frz.basegrid
+      for conductor in conductors:
+          if self.l_MR:
+            if l_addblock:raise('conductors need to be installed in quasistatic MR')
           try:
             cond = conductor.cond
           except AttributeError:
@@ -515,20 +516,20 @@ class Quasistatic:
     tosend = []
     tosend.append(len(ii))
     if len(ii)>0:
-      tosend.append(take(pg.xp[ii]))
-      tosend.append(take(pg.yp[ii]))
-      tosend.append(take(pg.zp[ii]))
-      tosend.append(take(pg.uxp[ii]))
-      tosend.append(take(pg.uyp[ii]))
-      tosend.append(take(pg.uzp[ii]))
-      tosend.append(take(pg.gaminv[ii]))
-      tosend.append(take(pg.ex[ii]))
-      tosend.append(take(pg.ey[ii]))
-      tosend.append(take(pg.ez[ii]))
-      tosend.append(take(pg.bx[ii]))
-      tosend.append(take(pg.by[ii]))
-      tosend.append(take(pg.bz[ii]))
-      if top.npid>0:tosend.append(take(pg.pid[ii,:]))
+      tosend.append(take(pg.xp,ii))
+      tosend.append(take(pg.yp,ii))
+      tosend.append(take(pg.zp,ii))
+      tosend.append(take(pg.uxp,ii))
+      tosend.append(take(pg.uyp,ii))
+      tosend.append(take(pg.uzp,ii))
+      tosend.append(take(pg.gaminv,ii))
+      tosend.append(take(pg.ex,ii))
+      tosend.append(take(pg.ey,ii))
+      tosend.append(take(pg.ez,ii))
+      tosend.append(take(pg.bx,ii))
+      tosend.append(take(pg.by,ii))
+      tosend.append(take(pg.bz,ii))
+      if top.npid>0:tosend.append(take(pg.pid,ii,0))
     mpi.send(tosend,me+1)
     if self.ionstoprev[0]>0:
       print me, 'sends ',self.ionstoprev[0],' ions to ',me+1
@@ -784,7 +785,7 @@ class Quasistatic:
                      take(pg.by,izleft).copy(),
                      take(pg.bz,izleft).copy(),
                      take(pg.gaminv,izleft).copy()]
-        if pg.npid>0:toaddleft.append(take(pg.pid,izleft).copy())
+        if pg.npid>0:toaddleft.append(take(pg.pid,izleft,0).copy())
       if len(izright)>0:
         toaddright = [take(pg.xp,izright).copy(),
                      take(pg.yp,izright).copy(),
@@ -799,7 +800,7 @@ class Quasistatic:
                      take(pg.by,izright).copy(),
                      take(pg.bz,izright).copy(),
                      take(pg.gaminv,izright).copy()]
-        if pg.npid>0:toaddright.append(take(pg.pid,izright).copy())
+        if pg.npid>0:toaddright.append(take(pg.pid,izright,0).copy())
       if len(izleft)>0:
         if pg.npid==0:
           pid = 0.
@@ -872,7 +873,7 @@ class Quasistatic:
       ii = compress((z>=zmin) & (z<zmin+w3d.dz),arange(shape(x)[0]))
       if len(ii)>0:
         if pg.npid>0:
-          pida = take(pid,ii)
+          pida = pid.take(ii,0)
         else:
           pida = 0.
         addparticles(x=take(x,ii),
@@ -1926,7 +1927,7 @@ class Quasistaticold:
     self.uysaved = take(pg.uyp[il:iu],self.isaved)
     self.uzsaved = take(pg.uzp[il:iu],self.isaved)
     self.gisaved = take(pg.gaminv[il:iu],self.isaved)
-    if pg.npid>0:self.pidsaved = take(pg.pid[il:iu,:],self.isaved)
+    if pg.npid>0:self.pidsaved = take(pg.pid[il:iu,:],self.isaved,0)
     
   def push_electrons(self,l_return_dist=false,l_plotelec=0):
     # --- set shortcuts
