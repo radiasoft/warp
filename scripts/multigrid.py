@@ -298,8 +298,17 @@ class MultiGrid(SubcycledPoissonSolver):
     n = len(x)
     if n == 0: return
     if isinstance(self.potentialp,FloatType): return
-    getgrid3d(n,x,y,z,phi,self.nxp,self.nyp,self.nzp,self.potentialp[:,:,1:-1],
-              self.xmminp,self.xmmaxp,self.ymminp,self.ymmaxp,self.zmminp,self.zmmaxp,
+    nxp = self.nxp + 2*self.nxguard
+    nyp = self.nyp + 2*self.nyguard,
+    nzp = self.nzp + 2*self.nzguard
+    xmminp = self.xmminp - self.dx*self.nxguard
+    xmmaxp = self.xmmaxp + self.dx*self.nxguard
+    ymminp = self.ymminp - self.dy*self.nyguard
+    ymmaxp = self.ymmaxp + self.dy*self.nyguard
+    zmminp = self.zmminp - self.dz*self.nzguard
+    zmmaxp = self.zmmaxp + self.dz*self.nzguard
+    getgrid3d(n,x,y,z,phi,nxp,nyp,nzp,self.potentialp,
+              xmminp,xmmaxp,ymminp,ymmaxp,zmminp,zmmaxp,
               self.l2symtry,self.l4symtry)
 
   def setsourceforfieldsolve(self,*args):
