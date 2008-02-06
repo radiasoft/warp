@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.163 $, $Date: 2008/02/01 00:03:59 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.164 $, $Date: 2008/02/06 18:07:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -4210,8 +4210,8 @@ c=============================================================================
       integer(ISZ):: bounds(0:5)
       real(kind=8):: xmmin,zmminlocal,zmmin,zbeam,zgrid
       real(kind=8):: mgparam
-      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels
-      real(kind=8):: mgerror,mgtol,mgverbose
+      integer(ISZ):: mgiters,mgmaxiters,mgmaxlevels,mgverbose
+      real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
       integer(ISZ):: icndbndy,gridmode
