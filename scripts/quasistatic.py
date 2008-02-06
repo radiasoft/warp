@@ -622,7 +622,7 @@ class Quasistatic:
       zmin=w3d.zmminp+iz*w3d.dz
       wz1i = (pg.zp[il:iu]-zmin)/w3d.dz
       # --- select particles within zmminp <--> zmmaxp
-      ii = compress( (wz1i>=0.) and (wz1i<=1.), arange(np))
+      ii = compress( (wz1i>=0.) & (wz1i<=1.), arange(np))
       np =len(ii)
       if np>0:
         wz1 = take(wz1i,ii)
