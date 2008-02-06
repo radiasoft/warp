@@ -8,11 +8,12 @@ Class for generating photo-electrons
  - posinst_file: name of Posinst input file 
  - l_verbose   : sets verbosity (default=0). 
   """
-  def __init__(self,posinst_file=None,l_verbose=0,l_3d=0,nx=64,ny=None,
+  def __init__(self,posinst_file=None,l_verbose=0,nx=64,ny=None,
                xmin=None,xmax=None,ymin=None,ymax=None,weight=None,
                conductors=None,l_secondaries=1,dtfact=1,l_switchyz=0, 
                electronnmax=None,l_posmgsolver=0,l_posscatter=0,
-               lrefineallintercept=0,aura=0.):
+               lrefineallintercept=0,aura=0.,
+               l_3d=0,nz=4,nsz=1.):
     top.lrelativ = true
     if posinst_file is not None:
       init_posinst_for_warp(posinst_file)
@@ -28,9 +29,12 @@ Class for generating photo-electrons
       self.sigx     = pos.sigx      
       self.sigy     = pos.sigy 
       top.prwall    = 2.*max(pos.ach,pos.bch,0.5)
+      if l_3d:self.nz=nz
       if pos.ispch==3:
-        if nx is None:nx=pos.imax-1
-        if ny is None:ny=pos.jmax-1
+        if nx is None:nx=pos.imax-1#+2
+        if ny is None:ny=pos.jmax-1#+2
+#        if nx is None:nx=pos.imax-1
+#        if ny is None:ny=pos.jmax-1
       if l_switchyz:
         top.bz0      = pos.bfield
       else:
@@ -50,11 +54,13 @@ Class for generating photo-electrons
     self.addkick=0
     if pos.chmphelnom>0.:
       if weight is None:weight=pos.chmphelnom#/pos.slength#*self.sigz
+      if l_3d:weight*=nsz*self.sigz#/self.nz
       self.phelectrons=Species(type=Electron,weight=weight)
       self.PHEL=PhotoElectrons(l_verbose=0,l_switchyz=l_switchyz)
       self.PHEL.add(emitted_species=self.phelectrons)
     if pos.chmionelnom>0.:
       if weight is None:weight=pos.chmionelnom#/pos.slength#*self.sigz
+      if l_3d:weight*=nsz*self.sigz#/self.nz
       self.ioelectrons=Species(type=Electron,weight=weight)
       self.IOEL=IonizElectrons(l_verbose=0,l_switchyz=l_switchyz)
       self.IOEL.add(emitted_species=self.ioelectrons)
@@ -66,25 +72,32 @@ Class for generating photo-electrons
     self.l_3d=l_3d
     self.dtfact=dtfact
     self.l_switchyz=l_switchyz
-    if xmin is None:xmin=-pos.ach*1.05
-    if xmax is None:xmax= pos.ach*1.05
-    if ymin is None:ymin=-pos.bch*1.05
-    if ymax is None:ymax= pos.bch*1.05
+    dx = 2.*pos.ach/(pos.imax-1)
+    dy = 2.*pos.bch/(pos.jmax-1)
+    if xmin is None:xmin=-pos.ach#-dx
+    if xmax is None:xmax= pos.ach#+dx
+    if ymin is None:ymin=-pos.bch#-dy
+    if ymax is None:ymax= pos.bch#+dy
+#    if xmin is None:xmin=-pos.ach*1.05
+#    if xmax is None:xmax= pos.ach*1.05
+#    if ymin is None:ymin=-pos.bch*1.05
+#    if ymax is None:ymax= pos.bch*1.05
     w3d.nx=nx
     if ny is None:
       ny=nint(pos.bch*nx/pos.ach)
     w3d.xmmin=xmin
     w3d.xmmax=xmax
-    if l_switchyz:
-      w3d.zmmin=ymin
-      w3d.zmmax=ymax
-      w3d.nz=ny+0
-    else:
+    if l_3d:
       w3d.ymmin=ymin
       w3d.ymmax=ymax
-      w3d.ny=ny+0
-    if l_3d:
-      pass
+      w3d.ny=ny
+      w3d.nz = nz
+      w3d.zmmin=0.#*pos.slength
+      w3d.zmmax=nsz*self.sigz
+      w3d.boundnz=w3d.bound0=periodic
+      top.pboundnz=top.pbound0=periodic
+      self.MRroot=MultiGrid()
+      registersolver(self.MRroot)
     else:
       if pos.ispch==0:
         frz.mgridrz_ncmax=0
@@ -99,7 +112,13 @@ Class for generating photo-electrons
         w3d.ymmin=-0.5#*pos.slength
         w3d.ymmax=-w3d.ymmin
         w3d.solvergeom=w3d.XZgeom
+        w3d.zmmin=ymin
+        w3d.zmmax=ymax
+        w3d.nz=ny
       else:
+        w3d.ymmin=ymin
+        w3d.ymmax=ymax
+        w3d.ny=ny
         w3d.zmmin=-0.5#*pos.slength
         w3d.zmmax=-w3d.zmmin
         w3d.solvergeom=w3d.XYgeom
@@ -187,7 +206,7 @@ Class for generating photo-electrons
         pass
 #        self.Sec.enpar=pos.enpar
 #        self.Sec.pnpar=pos.pnpar
-      self.Sec = Secondaries(min_age=None,set_params_user=set_params,vmode=1)
+      self.Sec = Secondaries(min_age=None,set_params_user=set_params,vmode=1,l_set_params_user_only=true)
       self.set_params=set_params
       self.Sec.set_params_user=self.set_params
       self.Sec.enpar=pos.enpar
@@ -217,34 +236,49 @@ Class for generating photo-electrons
 
   def push_bucket(self):
     print '    *** bucket %g out of %g'%(self.ibk+1,self.nbuckets)
+    if self.l_3d:
+      self.ldz = pos.beamvel*pos.dt[0]
+      self.lnz = int((w3d.zmmax-w3d.zmmin)/self.ldz)+1
+      self.lzmin = w3d.zmmin
+      self.lzmax = self.lzmin + self.lnz*self.ldz
+      self.Lambdaz = zeros(self.lnz+1,'d')
+      thislambda = zeros(self.nz+1,'d')
+      z=w3d.zmmin+arange(w3d.nz+1)*w3d.dz
     for k in range(self.nkicks+self.nsteps_gap):
       self.ikick=k
+      if self.l_3d:self.Lambdaz[1:] = self.Lambdaz[:-1]
       if k<self.nkicks:
         self.addkick=1
-        try:
-          self.PHEL.Lambda=self.Lambda[k]*self.bucket_train[self.ibk]
-        except:
-          pass
-        try:
-          self.IOEL.Lambda=self.Lambda[k]*self.bucket_train[self.ibk]
-        except:
-          pass
         top.dt=pos.dt[k]
+        newlambda = self.Lambda[k]*self.bucket_train[self.ibk]
       else:
         self.addkick=0
-        try:
-          self.PHEL.Lambda=0.
-        except:
-          pass
-        try:
-          self.IOEL.Lambda=0.
-        except:
-          pass
         top.dt=pos.deltat_g
+        newlambda = 0.
+      if self.l_3d:
+        self.Lambdaz[0] = newlambda
+        getgrid1d(w3d.nz+1,z,thislambda,self.lnz,self.Lambdaz,self.lzmin,self.lzmax)
+      else:
+        thislambda = newlambda
+      try:
+        if self.l_3d:
+          self.PHEL.nz   = w3d.nz
+          self.PHEL.dz   = w3d.dz
+          self.PHEL.zmin = w3d.zmmin            
+        self.PHEL.Lambda=thislambda
+      except:
+        pass
+      try:
+        self.IOEL.Lambda=thislambda
+      except:
+        pass
       top.dt/=self.dtfact
+#      window(3);fma();pla(thislambda);refresh();window(0)
+#      window(4);fma();ppzy(color=blue,msize=2);ppzy(js=1,msize=2,color=red);limits(w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax);refresh();window(0)
       for i in range(self.dtfact):
         step()
-        self.zero_z()
+        if not self.l_3d:
+          self.zero_z()
     self.ibk+=1
       
   def zero_z(self):
@@ -262,6 +296,12 @@ Class for generating photo-electrons
           pg.zp[il:iu]=0.
 
   def beam_kick(self):
+    if self.l_3d:
+      self.beam_kick_3d()
+    else:
+      self.beam_kick_2d()
+
+  def beam_kick_2d(self):
     if  self.ikick>=self.nkicks:return
 #    print 'beam_kick',w3d.jmin,w3d.jmax
     fact=1.#/(1.*pi)
@@ -282,6 +322,38 @@ Class for generating photo-electrons
     else:
       y = pg.yp[il:iu]
       ey = pg.ey[il:iu]
+#    if(iden_xy==0) zdir=zef_direct_point(x,y,x0,y0)
+    if(pos.iden_xy==1): 
+      exbe,eybe = Bassetti_Erskine(fact*Lambda,x,y,x0,y0,self.sigx,self.sigy)
+      ex[...]+=exbe
+      ey[...]+=eybe
+#    if(iden_xy==2) zdir=zef_direct_unifell(x,y,x0,y0,abeam,bbeam)
+#    if(iden_xy==3) zdir=zef_direct_parabell(x,y,x0,y0,abeam,bbeam)
+    if(pos.iim==1):
+#    if(iim==1.and.ichsh==2) zim=zef_image_rect(x,y,x0,y0,ach,bch)
+#    if(iim==1.and.ichsh==3) zim=zef_image_open_H(x,y,x0,y0,bch)
+      if pos.ichsh==1: 
+        ef_image_ell(np,exim,eyim,x,y,x0,y0,pos.ach,pos.bch)
+      ex[...]+=fact*exim*Lambda/(4.*pi*eps0)
+      ey[...]+=fact*eyim*Lambda/(4.*pi*eps0)
+
+  def beam_kick_3d(self):
+#    if  self.ikick>=self.nkicks:return
+    fact=1.#/(1.*pi)
+    pg = top.pgroup
+    exim = zeros(w3d.jmax-w3d.jmin,'d')
+    eyim = zeros(w3d.jmax-w3d.jmin,'d')
+    x0=y0=0.
+    il = w3d.jmin
+    iu = w3d.jmax
+    np = iu-il
+    x = pg.xp[il:iu]
+    ex = pg.ex[il:iu]
+    y = pg.yp[il:iu]
+    ey = pg.ey[il:iu]
+    z = pg.zp[il:iu]
+    Lambda = zeros(np,'d')
+    getgrid1d(np,z,Lambda,self.lnz,self.Lambdaz,self.lzmin,self.lzmax)
 #    if(iden_xy==0) zdir=zef_direct_point(x,y,x0,y0)
     if(pos.iden_xy==1): 
       exbe,eybe = Bassetti_Erskine(fact*Lambda,x,y,x0,y0,self.sigx,self.sigy)
