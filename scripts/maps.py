@@ -279,3 +279,300 @@ class Maps_simple:
                   top.zgrid,top.zbeam,w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     processlostpart(top.pgroup,js+1,top.clearlostpart,top.time+top.dt*top.pgroup.ndts[js],top.zbeam)
 
+class Maps_Parameters:
+  def __init__(self,gamma_t = 0,harmn_num = 0,sync_freq = 0,sync_tune = 0,eta = 0,gamma_b = 1.,Ergy = 0,alpha = 0, mo = 938280000., circum=0):
+   if gamma_b == 0:
+    self.gamma = Ergy/mo 
+   else:
+    self.gamma = gamma_b 
+   if gamma_t == 0:
+    self.eta = alpha**2 - 1/self.gamma**2
+   else:
+    self.eta = 1/gamma_t**2 - 1/self.gamma**2 #slippage factor   
+   if sync_tune == 0:
+    self.mus = sync_freq*circum/top.clight
+   else:
+    self_mus = sync_tune 
+   self.h = harmn_num
+   self.C= circum  
+   self.Beta = sqrt(1 - 1/(self.gamma**2))
+
+  def Thin_quad(self,kl):
+    M11 = 1.
+    M12 = 0. 
+    M13 = 0.
+    M14 = 0.
+    M15 = 0.
+    M16 = 0.
+
+    M21 = -kl
+    M22 = 1.
+    M23 = 0.
+    M24 = 0. 
+    M25 = 0.
+    M26 = 0.
+
+    M31 = 0.
+    M32 = 0.
+    M33 = 1.
+    M34 = 0.
+    M35 = 0.
+    M36 = 0.
+
+    M41 = 0.
+    M42 = 0.
+    M43 = kl 
+    M44 = 1.
+    M45 = 0.
+    M46 = 0.
+
+    M51 = 0.
+    M52 = 0.
+    M53 = 0.
+    M54 = 0.
+    M55 = 1.
+    M56 = 0.
+
+    M61 = 0.
+    M62 = 0.
+    M63 = 0.
+    M64 = 0.
+    M65 = 0.
+    M66 = 1.
+
+    Map = array([[M11,M12,M13,M14,M15,M16],\
+               [M21,M22,M23,M24,M25,M26],\
+               [M31,M32,M33,M34,M35,M36],\
+               [M41,M42,M43,M44,M45,M46],\
+               [M51,M52,M53,M54,M55,M56],\
+               [M61,M62,M63,M64,M65,M66]])
+
+    return Map
+
+
+  def Thick_quad(self,k,L):
+    Be   = self.Beta
+    ga = self.gamma
+    cx = cos(k*L);
+    sx = sin(k*L)/k;
+    sy = cos(-k*L); 
+    cy = sin(-k*L)/k; 
+
+    M11 = cx
+    M12 = sx
+    M13 = 0.
+    M14 = 0.
+    M15 = 0.
+    M16 = 0. 
+
+    M21 = -k**2*sx
+    M22 = cx
+    M23 = 0.
+    M24 = 0.
+    M25 = 0.
+    M26 = 0. 
+
+    M31 = 0.
+    M32 = 0.
+    M33 = cy
+    M34 = sy
+    M35 = 0.
+    M36 = 0.
+
+    M41 = 0.
+    M42 = 0.
+    M43 = -k**2*sy
+    M44 = cy
+    M45 = 0.
+    M46 = 0.
+
+    M51 = 0.
+    M52 = 0.
+    M53 = 0.
+    M54 = 0.
+    M55 = 1.
+    M56 = L/(ga*ga*Be*Be)
+
+    M61 = 0.
+    M62 = 0.
+    M63 = 0.
+    M64 = 0.
+    M65 = 0.
+    M66 = 1.
+
+
+  def Drft(self,L):
+    Be   = self.Beta 
+    ga = self.gamma 
+    M11 = 1.
+    M12 = L 
+    M13 = 0.
+    M14 = 0.
+    M15 = 0.
+    M16 = 0.
+
+    M21 = 0.
+    M22 = 1.
+    M23 = 0.
+    M24 = 0.
+    M25 = 0.
+    M26 = 0.
+
+    M31 = 0.
+    M32 = 0.
+    M33 = 1.
+    M34 = L 
+    M35 = 0.
+    M36 = 0.
+
+    M41 = 0.
+    M42 = 0.
+    M43 = 0.
+    M44 = 1.
+    M45 = 0. 
+    M46 = 0. 
+
+    M51 = 0.
+    M52 = 0.
+    M53 = 0.
+    M54 = 0.
+    M55 = 1.
+    M56 = L/(ga*ga*Be*Be) 
+
+    M61 = 0.
+    M62 = 0.
+    M63 = 0.
+    M64 = 0.
+    M65 = 0.
+    M66 = 1.
+         
+    Map = array([[M11,M12,M13,M14,M15,M16],\
+                [M21,M22,M23,M24,M25,M26],\
+                [M31,M32,M33,M34,M35,M36],\
+                [M41,M42,M43,M44,M45,M46],\
+                [M51,M52,M53,M54,M55,M56],\
+                [M61,M62,M63,M64,M65,M66]])
+
+    return Map
+
+  def Bend(self,L,angle):
+    Be   = self.Beta 
+    ga = self.gamma 
+    h = angle/L;
+    K = 0.0;
+    kx = sqrt(h**2+K);
+    cx = cos(kx*L);
+    sx = sin(kx*L)/kx;
+    dx = (1-cx)/kx**2;
+    J1 = (L - sx)/kx**2;
+    sy = L;
+    cy = 1.0;
+    ky = 0;
+
+    M11 = cx 
+    M12 = sx 
+    M13 = 0.
+    M14 = 0.
+    M15 = 0.
+    M16 = (h/Be)*dx
+
+    M21 = -kx**2*sx 
+    M22 = cx 
+    M23 = 0.
+    M24 = 0.
+    M25 = 0.
+    M26 = (h/Be)*sx
+
+    M31 = 0.
+    M32 = 0.
+    M33 = cy 
+    M34 = sy 
+    M35 = 0.
+    M36 = 0.
+
+    M41 = 0.
+    M42 = 0.
+    M43 = -ky**2*sy
+    M44 = cy 
+    M45 = 0.
+    M46 = 0.
+
+    M51 = -(h/Be)*sx 
+    M52 = -(h/Be)*dx
+    M53 =  0.
+    M54 =  0. 
+    M55 =  1.
+    M56 =  -(h/Be)**2*J1+L/(Be**2*ga**2)
+
+    M61 = 0.
+    M62 = 0.
+    M63 = 0. 
+    M64 = 0.
+    M65 = 0.
+    M66 = 1.
+ 
+    Map = array([[M11,M12,M13,M14,M15,M16],\
+               [M21,M22,M23,M24,M25,M26],\
+               [M31,M32,M33,M34,M35,M36],\
+               [M41,M42,M43,M44,M45,M46],\
+               [M51,M52,M53,M54,M55,M56],\
+               [M61,M62,M63,M64,M65,M66]])
+
+    return Map
+
+  def RFkick(self):
+    mus = self.mus
+    eta = self.eta
+    C = self.C
+
+    M11 = 1.
+    M12 = 0.
+    M13 = 0.
+    M14 = 0.
+    M15 = 0.
+    M16 = 0.
+
+    M21 = 0. 
+    M22 = 1.
+    M23 = 0.
+    M24 = 0.
+    M25 = 0.
+    M26 = 0.
+
+    M31 = 0.
+    M32 = 0.
+    M33 = 1.
+    M34 = 0.
+    M35 = 0.
+    M36 = 0.
+
+    M41 = 0.
+    M42 = 0.
+    M43 = 0. 
+    M44 = 1.
+    M45 = 0.
+    M46 = 0.
+
+    M51 = 0.
+    M52 = 0.
+    M53 = 0.
+    M54 = 0.
+    M55 = 1.
+    M56 = 0.
+
+    M61 = 0.
+    M62 = 0.
+    M63 = 0.
+    M64 = 0.
+    M65 = (2*pi*mus)**2/(eta*C) 
+    M66 = 1.
+
+    Map = array([[M11,M12,M13,M14,M15,M16],\
+               [M21,M22,M23,M24,M25,M26],\
+               [M31,M32,M33,M34,M35,M36],\
+               [M41,M42,M43,M44,M45,M46],\
+               [M51,M52,M53,M54,M55,M56],\
+               [M61,M62,M63,M64,M65,M66]])
+
+    return Map
+
