@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.175 2008/01/04 00:10:48 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.176 2008/02/06 23:51:29 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -441,7 +441,7 @@ Should never be directly created by the user.
           interior = g.getconductorobject().interior
         except AttributeError:
           interior = g.conductors.interior
-      phi = g.phi
+      phi = g.phi[1:-1,1:-1,1:-1]
       rho = g.rho
       nx = g.nx
       ny = g.ny
@@ -515,7 +515,8 @@ Should never be directly created by the user.
       # --- accounted for properly. It needs to be explicitly subtracted off
       # --- since it should not be included as image charge.)
       qinterior=zeros(1,'d')
-      if w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom]:
+      if (w3d.solvergeom in [w3d.RZgeom,w3d.XYgeom,w3d.XZgeom] and
+          getregisteredsolver() is None):
         cond_sumrhointerior2d(qinterior,g,nx,nzlocal,rho[:,0,:],
                               ixmin,ixmax,izminlocal,izmaxlocal,dx,xmmin)
       else:
@@ -1797,6 +1798,11 @@ Creates a grid object which can generate conductor data.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nz
     else:           self.dz = (self.zmmax - self.zmmin)
     #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
+
+    # --- Check if frz.basegrid is allocated if installrz is set.
+    # --- If not, then turn off installrz.
+    if installrz:
+      if frz.getpyobject('basegrid') is None: installrz = 0
 
     if w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom] or not installrz:
       conductors = ConductorType()
