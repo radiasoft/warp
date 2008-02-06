@@ -125,6 +125,7 @@ class EM2D(object):
         top.dt=dt
       else:
         self.nfield_subcycle=int(top.dt/dt)+1
+    self.dtinit = top.dt
     # --- Create field and source arrays and other arrays.
     self.allocatefieldarrays()
 
@@ -550,6 +551,7 @@ class EM2D(object):
       field.Bz_in = self.laser_amplitude*field.laser_profile[:-1]*cos(phase)
 
   def solve(self,iwhich=0):
+    if top.dt<>self.dtinit:raise('Time step has been changed since initialization of EM2D.')
     if(not self.l_onegrid):
       project_j(self.field,self.fpatchcoarse,self.fpatchfine)
     if self.l_onegrid:
