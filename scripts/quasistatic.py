@@ -166,6 +166,15 @@ class Quasistatic:
    if npes>1:self.l_mode=1
    for it in range(nt):
      ptimeloop = wtime()
+     
+     # --- sets flag for pushing electrons
+     if not self.l_weakstrong:
+       l_push_elec=1
+     else:
+       if (top.it-(npes-me))%self.nelecperiod==0:
+         l_push_elec=1
+       else:
+         l_push_elec=0
      # --- call beforestep functions
      callbeforestepfuncs.callfuncsinlist()
 
@@ -175,7 +184,7 @@ class Quasistatic:
      if self.l_timing: self.time_sort += wtime()-ptime
 
      # --- gather moments
-     if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me-1))%top.nhist)==0):
+     if top.it==0 or (me>=(npes-top.it) and ((top.it-(npes-me))%top.nhist)==0):
        if self.l_timing:ptime = wtime()
        self.getmmnts()
        if self.l_timing: self.time_getmmnts += wtime()-ptime
@@ -200,8 +209,7 @@ class Quasistatic:
          exec('f.ez%i=getez(js=iz)'%iz)
        f.close()
 
-#     if (not self.l_weakstrong or top.it==0) and (top.it%self.nelecperiod==0):
-     if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+     if l_push_elec:
         # --- generate electrons (on last processor only)
        if me==max(0,npes-1) and (top.it==0  or not l_plotelec):self.create_electrons()
 
@@ -237,7 +245,7 @@ class Quasistatic:
        if self.l_timing: self.time_deposit_ions += wtime()-ptime
 
        # --- call 2-D field solver for ions
-       if self.l_selfi or ((not self.l_weakstrong) or (top.it%self.nelecperiod==0)):
+       if self.l_selfi or l_push_elec:
          if self.l_timing:ptime = wtime()
          frz.basegrid=self.gridions[1];mk_grids_ptr()
          # --- optimize mgparam
@@ -248,7 +256,7 @@ class Quasistatic:
          if self.iz==0:solve_mgridrz(self.gridions[0],frz.mgridrz_accuracy,true)
          if self.l_timing: self.time_solve += wtime()-ptime
 
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          if self.l_timing:ptime = wtime()
          # --- deposit electrons charge
          self.deposit_electrons(1)
@@ -259,7 +267,7 @@ class Quasistatic:
        frz.basegrid=self.gridelecs[1];mk_grids_ptr()
          # --- optimize mgparam
 #         if  self.l_findmgparam and top.it-1==npes-me-1 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          if  self.l_findmgparam and top.it==0 and self.iz in [w3d.nzlocal/2,w3d.nzlocal/2+1]:
            if me==npes-1:find_mgparam_rz(true)
          solve_mgridrz(self.gridelecs[1],frz.mgridrz_accuracy,true)
@@ -273,14 +281,14 @@ class Quasistatic:
        if self.l_timing: self.time_add_ei_fields += wtime()-ptime
 
        if self.l_timing:ptime = wtime()
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          self.rhoe[:,:,self.iz+1] = self.gridelecs[1].rho
          self.phie[:,:,self.iz+1] = self.gridelecs[1].phi
        self.rhoi[:,:,self.iz+1] = self.gridions[1].rho
        self.phii[:,:,self.iz+1] = self.gridions[1].phi
        if self.l_timing: self.time_stack_rhophi += wtime()-ptime
 
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          if self.l_timing:ptime = wtime()
          # --- push electrons 
          self.push_electrons()
@@ -310,7 +318,7 @@ class Quasistatic:
            self.apply_ions_bndconditions(iz)
        if self.l_timing: self.time_push_ions += wtime()-ptime
 
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          # --- (diagnostic) stacking of electron distribution
          if l_return_dist:
            sp=self.slist[0]
@@ -324,7 +332,7 @@ class Quasistatic:
 #         if l_plotelec :self.plot_electrons()
          
        if self.l_timing:ptime = wtime()
-       if (not self.l_weakstrong) or (top.it%self.nelecperiod==0):
+       if l_push_elec:
          self.rhoe[:,:,0] = self.gridelecs[1].rho
          self.phie[:,:,0] = self.gridelecs[1].phi
        self.rhoi[:,:,0] = self.gridions[1].rho
