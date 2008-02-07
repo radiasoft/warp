@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File top_lattice.F, version $Revision: 3.15 $, $Date: 2007/11/26 16:46:03 $
+c@(#) File top_lattice.F, version $Revision: 3.16 $, $Date: 2008/02/07 21:38:21 $
 c# Copyright (c) 1990-2006, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This file contains routines dealing with the accelerator lattice
@@ -482,6 +482,10 @@ c       --- specified.
 c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.  emlts = .false.
       do ie = 0, nemlt
+         if (emltid(ie) > nemltsets) then
+           call kaboom("setupemlts: emltid must be between 1 and nemltsets, or <= 0")
+           return
+         endif
          if (emltid(ie) > 0) emlts = .true.
       enddo
 
@@ -568,6 +572,10 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       mmlts = .false.
       do im = 0, nmmlt
+         if (mmltid(im) > nmmltsets) then
+           call kaboom("setupmmlts: mmltid must be between 1 and nmmltsets, or <= 0")
+           return
+         endif
          if (mmltid(im) > 0) mmlts = .true.
       enddo
 
@@ -658,6 +666,10 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       egrds = .false.
       do im = 0, negrd
+         if (egrdid(im) > egrdns) then
+           call kaboom("setupegrds: egrdid must be between 1 and egrdns, or <= 0")
+           return
+         endif
          if (egrdid(im) > 0) egrds = .true.
       enddo
 
@@ -723,6 +735,10 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       bgrds = .false.
       do im = 0, nbgrd
+         if (bgrdid(im) > bgrdns) then
+           call kaboom("setupbgrds: bgrdid must be between 1 and bgrdns, or <= 0")
+           return
+         endif
          if (bgrdid(im) > 0) bgrds = .true.
       enddo
 
@@ -793,6 +809,10 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       pgrds = .false.
       do im = 0, npgrd
+         if (pgrdid(im) > pgrdns) then
+           call kaboom("setuppgrds: pgrdid must be between 1 and pgrdns, or <= 0")
+           return
+         endif
          if (pgrdid(im) > 0) pgrds = .true.
       enddo
 
@@ -862,6 +882,10 @@ c     --- Set flags for existence of the elements - checking if the fields
 c     --- are specified.
       bsqgrads = .false.
       do ib = 0, nbsqgrad
+         if (bsqgradid(ib) > bsqgradns) then
+           call kaboom("setupbsqgrads: bsqgradid must be between 1 and bsqgradns, or <= 0")
+           return
+         endif
          if (bsqgradid(ib) > 0) bsqgrads = .true.
       enddo
 
