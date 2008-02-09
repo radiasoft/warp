@@ -5,12 +5,13 @@
 Pickled based writer class PW by David Grote, LLNL
 Heavily modified from PW.py originally written by Paul Dubois, LLNL, to use
 pickle files.
-$Id: PWpickle.py,v 1.1 2008/02/07 22:02:38 dave Exp $
+$Id: PWpickle.py,v 1.2 2008/02/09 00:17:07 dave Exp $
 
 This puts everything into a dictionary and when close is called, pickles the
 dictionary into the file.
 
 """
+__all__ = ['PW']
 import cPickle
 import warnings
 
