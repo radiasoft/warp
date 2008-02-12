@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.21 $, $Date: 2007/07/11 18:02:06 $
+c@(#) File w3d_utilities.F, version $Revision: 1.22 $, $Date: 2008/02/12 23:48:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -284,6 +284,8 @@ c     --- Rearrange the particles
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
       subroutine getichild(gridnumb,np,x,y,z,ichild,nx,ny,nz,grid,
      &                     xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
      &                     l2symtry,l4symtry)
@@ -311,7 +313,11 @@ c     --- These now default to zero, but could be input quantities.
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
+      if (ymin == ymax) then
+        dyi = 1.
+      else
+        dyi = ny/(ymax - ymin)
+      endif
       dzi = nz/(zmax - zmin)
 
 c     --- loop over particles
@@ -382,7 +388,11 @@ c     --- These now default to zero, but could be input quantities.
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-      dyi = ny/(ymax - ymin)
+      if (ymin == ymax) then
+        dyi = 1.
+      else
+        dyi = ny/(ymax - ymin)
+      endif
       dzi = nz/(zmax - zmin)
 
 c     --- loop over particles
