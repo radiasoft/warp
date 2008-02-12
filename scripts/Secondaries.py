@@ -6,7 +6,7 @@ from appendablearray import *
 from pos import *
 from species import *
 try:
-  import txphysics
+  from txphysics import txigenelec, txstopping, txrand
   l_txphysics = 1
 except:
   print 'WARNING: module txphysics is not accessible.'
@@ -19,7 +19,7 @@ except:
   l_desorb = 0
 import time
 
-secondaries_version = "$Id: Secondaries.py,v 1.29 2008/02/06 19:20:21 jlvay Exp $"
+secondaries_version = "$Id: Secondaries.py,v 1.30 2008/02/12 19:34:51 jlvay Exp $"
 def secondariesdoc():
   import Secondaries
   print Secondaries.__doc__
@@ -94,10 +94,6 @@ Class for generating secondaries
     self.secelec_dele   = zeros(1,'d')
     self.secelec_delr   = zeros(1,'d')
     self.secelec_delts  = zeros(1,'d')
-    # set work arrays for txphysics
-    # --- This is done in a separate method since it will be called from
-    # --- multiple places, here and in setstate.
-    self.creattxphysicsarrays()
     # set arrays for emitted particles
     self.npmax=4096
     self.nps={}
@@ -128,13 +124,6 @@ Class for generating secondaries
         else:                m = material[iis][ics]
         self.add(js,cond,issec[iis][ics],m)
     
-  def creattxphysicsarrays(self):
-    if l_txphysics:
-      self.emitted_e=txphysics.doubleArray(1000)
-      self.emitted_bn=txphysics.doubleArray(1000)
-      self.emitted_bt=txphysics.doubleArray(1000)
-      self.emitted_bz=txphysics.doubleArray(1000)
-
   def __getstate__(self):
     dict = self.__dict__.copy()
 
@@ -167,9 +156,8 @@ Class for generating secondaries
     return dict
 
   def __setstate__(self,dict):
-    'Restore the dictionary and recreate the txphysics arrays'
+    'Restore the dictionary'
     self.__dict__.update(dict)
-    self.creattxphysicsarrays()
 
   def add(self,incident_species=None,conductor=None,emitted_species=None,material=None,interaction_type=None,
                scale_factor=None,scale_factor_velocity=1.,forced_yield=None):
@@ -392,9 +380,9 @@ Class for generating secondaries
           vyplost=uyplost*gaminvlost
           vzplost=uzplost*gaminvlost
         elif self.vmode==2:
-          xplostold = take(top.pidlost[i1:i2,self.xoldpid],iit)
-          yplostold = take(top.pidlost[i1:i2,self.yoldpid],iit)
-          zplostold = take(top.pidlost[i1:i2,self.zoldpid],iit)
+          xplostold = take(top.pidlost[i1:i2,self.xoldpid],iit,0)
+          yplostold = take(top.pidlost[i1:i2,self.yoldpid],iit,0)
+          zplostold = take(top.pidlost[i1:i2,self.zoldpid],iit,0)
           vxplost = (xplost-xplostold)/top.dt
           vyplost = (yplost-yplostold)/top.dt
           vzplost = (zplost-zplostold)/top.dt
@@ -411,10 +399,10 @@ Class for generating secondaries
           print 'e0',e0,gaminvlost,uxplost,uyplost,uzplost
         v = array([vxplost,vyplost,vzplost])
 #        u = array([uxplost,uyplost,uzplost])
-        theta = take(top.pidlost[i1:i2,-3],iit)
-        phi   = take(top.pidlost[i1:i2,-2],iit)
+        theta = take(top.pidlost[i1:i2,-3],iit,0)
+        phi   = take(top.pidlost[i1:i2,-2],iit,0)
         if top.wpid>0: 
-          weight = take(top.pidlost[i1:i2,top.wpid-1],iit)
+          weight = take(top.pidlost[i1:i2,top.wpid-1],iit,0)
         else:
           weight=1.
         costheta = cos(theta)
@@ -563,9 +551,7 @@ Class for generating secondaries
             ##########################################
              if incident_species.type.__class__ in [Atom,Molecule]:
 #              try:
-
                if self.inter[incident_species]['material'][ics]=='SS':target_num=10025
-#              -- version 0.2.1
                scale_factor = self.inter[incident_species]['scale_factor'][ics]
                if scale_factor is None or scale_factor==1.:
                  nbatches = 1
@@ -578,28 +564,31 @@ Class for generating secondaries
                uttx=AppendableArray(typecode='d',autobump=10)
                uztx=AppendableArray(typecode='d',autobump=10)
                for ibatch in range(nbatches):
-                 ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
-                                            max(0.04,coseta[i]),
-                                            float(incident_species.type.Z),
-                                            incident_species.type.A,
-                                            target_num,
-                                            self.emitted_e,
-                                            self.emitted_bn,
-                                            self.emitted_bt,
-                                            self.emitted_bz)
-#              -- version 0.6.1
-#                 ion_ind_e0 = txphysics.doubleArray(1)
-#                 ion_ind_ct = txphysics.doubleArray(1)
-#                 ion_ind_e0[0] = e0[i]/(1.e6*incident_species.type.A)
-#                 ion_ind_ct[0] = max(0.04,coseta[i])
-#                 ns,self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
-#                 txphysics.ion_ind_elecs(1, # size of input array
-#                                         ion_ind_e0,
-#                                         ion_ind_ct,
-#                                         float(incident_species.type.Z),
-#                                         incident_species.type.A,
-#                                         target_num,
-#                                         0.)
+#              -- version 0.2.1
+#                 ns=txphysics.ion_ind_elecs(e0[i]/(1.e6*incident_species.type.A),
+#                                            max(0.04,coseta[i]),
+#                                            float(incident_species.type.Z),
+#                                            incident_species.type.A,
+#                                            target_num,
+#                                            self.emitted_e,
+#                                            self.emitted_bn,
+#                                            self.emitted_bt,
+#                                            self.emitted_bz)
+#              -- version 1.9.0
+                 ion_ind_e0 = zeros(1,'d')
+                 ion_ind_ct = zeros(1,'d')
+                 ion_ind_e0[0] = e0[i]/(1.e6)
+                 ion_ind_ct[0] = max(0.04,coseta[i])
+                 Te=0.
+                 Ne=0.
+                 self.emitted_e,self.emitted_bn,self.emitted_bt,self.emitted_bz = \
+                 txigenelec.ion_ind_elecs(ion_ind_e0,
+                                         ion_ind_ct,
+                                         float(incident_species.type.Z),
+                                         incident_species.type.A,
+                                         Te,Ne,
+                                         target_num)
+                 ns = self.emitted_e.size
                  self.coseta=coseta[i]
                  if l_scale_factor:
                    emitfrac=scale_factor-ibatch 
