@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.280 $, $Date: 2008/02/01 00:04:00 $
+#@(#) File W3D.V, version $Revision: 3.281 $, $Date: 2008/02/12 21:29:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -12,7 +12,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.280 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.281 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -464,6 +464,7 @@ zbemin(nberegions) _real /-LARGEPOS/ [m]
      # Minimum of the extent in z over which Boltzmann electrons are included
 zbemax(nberegions) _real /+LARGEPOS/ [m]
      # Maximum of the extent in z over which Boltzmann electrons are included
+lincludeiondensityinrho(nberegions) _logical /0/
 luseparticledensity(nberegions) _integer /0/
                      # When nonzero, use density from the particles
                                 # rather than the specified constant iondensity.
