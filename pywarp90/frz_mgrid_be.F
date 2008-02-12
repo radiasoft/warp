@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.31 $, $Date: 2008/01/09 19:32:44 $
+c version $Revision: 1.32 $, $Date: 2008/02/12 21:28:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -52,6 +52,11 @@ c     --- Check for luseparticledensity
           lanyuseparticledensity = .true.
           if (luseparticledensity(id) ==  2) lzavparticledensity = .true.
           liondensitygrid2d(id) = .true.
+c         --- Shift min/max to grid frame
+          iondensitygrid2d%xmin = iondensitygrid2d%xmin + grid%rmin
+          iondensitygrid2d%xmax = iondensitygrid2d%xmax + grid%rmin
+          iondensitygrid2d%ymin = iondensitygrid2d%ymin + grid%zmin
+          iondensitygrid2d%ymax = iondensitygrid2d%ymax + grid%zmin
 c         --- Find the extrema of all of the regions
           iondensitygrid2d%xmin = min(xbemin(id),iondensitygrid2d%xmin)
           iondensitygrid2d%xmax = max(xbemax(id),iondensitygrid2d%xmax)
@@ -62,6 +67,11 @@ c         --- Make sure that are within the grid bounds
           iondensitygrid2d%xmax = min(grid%rmax,iondensitygrid2d%xmax)
           iondensitygrid2d%ymin = max(grid%zmin,iondensitygrid2d%ymin)
           iondensitygrid2d%ymax = min(grid%zmax,iondensitygrid2d%ymax)
+c         --- Shift min/max back to be relative to grid mins
+          iondensitygrid2d%xmin = iondensitygrid2d%xmin - grid%rmin
+          iondensitygrid2d%xmax = iondensitygrid2d%xmax - grid%rmin
+          iondensitygrid2d%ymin = iondensitygrid2d%ymin - grid%zmin
+          iondensitygrid2d%ymax = iondensitygrid2d%ymax - grid%zmin
         endif
         logelecdenmaxscale(id) = log(electrondensitymaxscale(id))
       enddo
@@ -72,17 +82,22 @@ c       --- Note that the min's and max's are relative to the field grid,
 c       --- so for example, the location if xmin in the lab frame is
 c       --- iondensitygrid2d%xmin + grid%rmin. This is done so that
 c       --- grid%rmin etc are not needed when iondensitygrid2d is used.
-        wr = floor((iondensitygrid2d%xmin - grid%rmin)/grid%dr)
+        wr = floor(iondensitygrid2d%xmin/grid%dr)
         iondensitygrid2d%xmin = grid%dr*nint(wr)
-        wz = floor((iondensitygrid2d%ymin - grid%zmin)/grid%dz)
+        wz = floor(iondensitygrid2d%ymin/grid%dz)
         iondensitygrid2d%ymin = grid%dz*nint(wz)
-        wr = ceiling((iondensitygrid2d%xmax - grid%rmin)/grid%dr)
+        wr = ceiling(iondensitygrid2d%xmax/grid%dr)
         iondensitygrid2d%xmax = grid%dr*nint(wr)
-        wz = ceiling((iondensitygrid2d%ymax - grid%zmin)/grid%dz)
+        wz = ceiling(iondensitygrid2d%ymax/grid%dz)
         iondensitygrid2d%ymax = grid%dz*nint(wz)
 c       --- Now dx and dz can be set.
         iondensitygrid2d%dx = grid%dr
         iondensitygrid2d%dy = grid%dz
+c       --- and now the number of cells
+        iondensitygrid2d%nx =
+     &  nint((iondensitygrid2d%xmax-iondensitygrid2d%xmin)/iondensitygrid2d%dx)
+        iondensitygrid2d%ny =
+     &  nint((iondensitygrid2d%ymax-iondensitygrid2d%ymin)/iondensitygrid2d%dy)
 c       --- This will calculate nx and nzlocal and make sure the input is OK.
         call setupgrid2dtype(iondensitygrid2d,check)
         if (.not. check) then
@@ -783,6 +798,9 @@ c       precompute Boltzmann factor and some other arrays
 c                  print*,ix,iz, epsilontmp
                   rhoe(ix,iz) = iondensitytmp*boltzfac(ix,iz)/epsilontmp
                   rhoeote(ix,iz) = rhoe(ix,iz)/(electemptmp)
+                  if (lincludeiondensityinrho(id)) then
+                    rhoe(ix,iz) = rhoe(ix,iz) - iondensitytmp/epsilontmp
+                  endif
                   ix1 = ixmin + mod(ixmin + iz + parity,2)
 c                  if (ix == ix1+2 .and. iz==izmin+1 .and. printed .lt. 10) then
 c                   endif
@@ -986,7 +1004,7 @@ c not include Lphi.
       integer(ISZ):: ic,ii,i1,i2
       integer(ISZ):: ix,iz,id
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
-      real(kind=8):: iondensitytmp,electemptmp
+      real(kind=8):: iondensitytmp,electemptmp,epsilontmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -1136,12 +1154,16 @@ c         --- calculate the new phi based on the boundary conditions
               id = regionid(ix,iz)
               call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
               call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
+              call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
               if (iondensitytmp .ne. 0. .and.
      &            electemptmp .ne. 0) then
                 expo = (pik - plasmapotential(id))/electemptmp
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensitytmp*exp(expo)
+                rhoe = iondensitytmp*exp(expo)/epsilontmp
                 denom = denom - rhoe/electemptmp
+                if (lincludeiondensityinrho(id)) then
+                  rhoe = rhoe - iondensitytmp/epsilontmp
+                endif
               endif
             endif
             Lphi = (pxm+pxp)*delxsqi + (pzm+pzp)*delzsqi - rhoe
@@ -1267,6 +1289,9 @@ c     precompute Boltzmann factor and some other arrays
                      boltzfac(ix,iz) = 1.+ min(expo,logelecdenmaxscale(id))
                   endif
                   rhoe(ix,iz) = iondensitytmp*boltzfac(ix,iz)/epsilontmp
+                  if (lincludeiondensityinrho(id)) then
+                    rhoe(ix,iz) = rhoe(ix,iz) - iondensitytmp/epsilontmp
+                  endif
                endif
             endif
          enddo
@@ -1387,7 +1412,7 @@ c include the dels.
       integer(ISZ):: ic,ii
       integer(ISZ):: ix,iz,id
       real(kind=8):: dxi,dzi,dxm,dxp,dzm,dzp
-      real(kind=8):: iondensitytmp,electemptmp
+      real(kind=8):: iondensitytmp,electemptmp,epsilontmp
 
 c     --- These should really be passed in
       dxi = sqrt(dxsqi)
@@ -1511,11 +1536,15 @@ c         --- calculate the new phi based on the boundary conditions
               id = regionid(ix,iz)
               call getlocaldens(ix,iz,dx,dz,id,iondensitytmp)
               call getlocaltemp(ix,iz,dx,dz,id,electemptmp)
+              call getlocalepsilon(ix,iz,dx,dz,epsilontmp)
               if (iondensitytmp .ne. 0. .and.
      &            electemptmp .ne. 0) then
                 expo = (pik - plasmapotential(id))/electemptmp
                 expo = min(expo,log(electrondensitymaxscale(id)))
-                rhoe = iondensitytmp*exp(expo)
+                rhoe = iondensitytmp*exp(expo)/epsilontmp
+                if (lincludeiondensityinrho(id)) then
+                  rhoe = rhoe - iondensitytmp/epsilontmp
+                endif
               endif
             endif
             Lphi(ix,iz) = (+ (pxm+pxp)*delxsqi
