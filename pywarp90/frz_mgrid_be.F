@@ -1,7 +1,7 @@
 #include "top.h"
 c=============================================================================
 c@(#) File FRZ_MGRID_BE.F,
-c version $Revision: 1.32 $, $Date: 2008/02/12 21:28:54 $
+c version $Revision: 1.33 $, $Date: 2008/02/12 23:49:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the RZ multigrid field sovler which is part of the FRZ
@@ -82,6 +82,8 @@ c       --- Note that the min's and max's are relative to the field grid,
 c       --- so for example, the location if xmin in the lab frame is
 c       --- iondensitygrid2d%xmin + grid%rmin. This is done so that
 c       --- grid%rmin etc are not needed when iondensitygrid2d is used.
+c       --- The mins and maxs are rounded to ensure that they are at or
+c       --- outside of the BE region.
         wr = floor(iondensitygrid2d%xmin/grid%dr)
         iondensitygrid2d%xmin = grid%dr*nint(wr)
         wz = floor(iondensitygrid2d%ymin/grid%dz)
@@ -106,7 +108,7 @@ c       --- This will calculate nx and nzlocal and make sure the input is OK.
         endif
 c     NOTE there is no analagous coding for electrontemperaturegrid2d as the user should
 c     set this up in a python script -- need to set all attributes of that object.
-        
+
 c       --- Now, copy the rho data into the iondensitygrid2d grid
         ixbemin = nint(iondensitygrid2d%xmin/grid%dr)
 c        ixbemax = nint(iondensitygrid2d%xmax/grid%dr)
@@ -1648,6 +1650,11 @@ c Sets id of regions where the Boltzmann-electron distribution is used.
         ixmax = min(1.0*nx,(xbemax(id) - xmmin)/dx)
         izmin = (max(0.,zbemin(id) - zmmin))/dz
         izmax = min(1.0*nzlocal,(zbemax(id) - zmmin)/dz)
+c       --- Constrain the mins and maxes to be within the BE region.
+        if (xmmin+ixmin*dx < xbemin(id)) ixmin = ixmin + 1
+        if (xmmin+ixmax*dx > xbemax(id)) ixmax = ixmax - 1
+        if (zmmin+izmin*dz < zbemin(id)) izmin = izmin + 1
+        if (zmmin+izmax*dz > zbemax(id)) izmax = izmax - 1
         regionid(ixmin:ixmax,izmin:izmax) = id
       enddo
 
