@@ -148,7 +148,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- it ensures that all conductors will be properly installed into
     # --- the conductor object.
     for conductordata in self.conductordatalist:
-      self.__installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
+      self._installconductor(conductorobject,installedconductorlist,conductordata,fselfb)
  
     # --- Return the desired conductor object
     return conductorobject
@@ -494,7 +494,7 @@ class MultiGrid(SubcycledPoissonSolver):
     # --- installed when it is needed, during a call to getconductorobject.
     self.conductordatalist.append((conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill))
 
-  def __installconductor(self,conductorobject,installedlist,conductordata,fselfb):
+  def _installconductor(self,conductorobject,installedlist,conductordata,fselfb):
     # --- This does that actual installation of the conductor into the
     # --- conductor object
 
