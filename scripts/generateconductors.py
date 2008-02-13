@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.177 2008/02/13 00:40:43 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.178 2008/02/13 01:56:13 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2335,6 +2335,7 @@ Cylinder aligned with z-axis
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=[self.radius,self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2398,6 +2399,7 @@ Cylinder with rounded corners aligned with z-axis
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2444,6 +2446,7 @@ Outside of a cylinder aligned with z-axis
                        zdata=[-self.length/2.,+self.length/2.],
                        raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
                        normalsign=-1,
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2513,6 +2516,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
                        normalsign=-1,
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2669,6 +2673,7 @@ Elliptical cylinder aligned with z-axis
                        rxofzdata=[self.radius,self.radius],
                        ryofzdata=[e*self.radius,e*self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2709,6 +2714,7 @@ Outside an elliptical cylinder aligned with z-axis
                        rxofzdata=[self.radius,self.radius],
                        ryofzdata=[e*self.radius,e*self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -2879,6 +2885,7 @@ Sphere
                        rofzdata=[0.,0.],
                        zdata=[-self.radius,self.radius],
                        raddata=[self.radius],zcdata=[0.],rcdata=[0.],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -3075,6 +3082,7 @@ Torus
                        zdata=[-self.r2,self.r2,-self.r2],
                        raddata=[self.r2,self.r2],
                        zcdata=[0.,0.],rcdata=[self.r1,self.r1],
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -3275,9 +3283,8 @@ data and make sure it is consistent.
                        rdata,zdata,raddata,rcdata,zcdata,narcpoints):
     r = []
     z = []
-    if rfunc != ' ':
+    if rfunc is not None:
       # --- Get the data from the rofz function
-      import __main__
       if npoints is None:
         solver = getregisteredsolver()
         if solver is None: dz = w3d.dz
@@ -3286,7 +3293,7 @@ data and make sure it is consistent.
       dz = (self.zmax - self.zmin)/npoints
       for i in range(npoints+1):
         f3d.srfrv_z = self.zmin + i*dz
-        getattr(__main__,rfunc)()
+        rfunc()
         r.append(f3d.srfrv_r)
         z.append(f3d.srfrv_z)
     else:
@@ -3316,10 +3323,29 @@ data and make sure it is consistent.
     return r,z
 
 #============================================================================
+# --- These handle the callbacks when a python function is used to
+# --- describe the surface of revolution.
+def rofzfunc():
+  try:
+    f3d.srfrv_r = rofzfunc.rofzfunc(f3d.srfrv_z)
+  except TypeError:
+    rofzfunc.rofzfunc()
+def rminofz():
+  try:
+    f3d.srfrv_r = rminofz.rminofz(f3d.srfrv_z)
+  except TypeError:
+    rminofz.rminofz()
+def rmaxofz():
+  try:
+    f3d.srfrv_r = rmaxofz.rmaxofz(f3d.srfrv_z)
+  except TypeError:
+    rmaxofz.rmaxofz()
+
+#============================================================================
 class ZSrfrvOut(Srfrv,Assembly):
   """
 Outside of a surface of revolution
-  - rofzfunc=' ': name of python function describing surface
+  - rofzfunc=None: python function describing surface
   - zmin=None,zmax=None: z-extent of the surface, will be obtained from
                          any tablized data if not given
   - rmax=largepos: max radius of the surface
@@ -3348,7 +3374,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmax=largepos,
+  def __init__(self,rofzfunc=None,zmin=None,zmax=None,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
@@ -3371,22 +3397,17 @@ Methods:
       self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
-      self.rofzfunc = ' '
+      self.rofzfunc = None
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
       self.usedata = false
-      if type(self.rofzfunc) == FunctionType:
-        # --- Make sure the rofzfunc is in main.
-        # --- Note that this can only really work if a reference to the function
-        # --- is passed in (instead of the name).
+      if isinstance(self.rofzfunc,StringType):
+        # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
-        __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
-        # --- Get the name of the input function if a reference to the function
-        # --- was passed in.
-        self.rofzfunc = self.rofzfunc.__name__
+        self.rofzfunc = __main__.__dict__[self.rofzfunc]
       self.rofzdata = None
       self.zdata = None
       self.raddata = None
@@ -3414,6 +3435,7 @@ Methods:
       f3d.rc_sr = self.rcdata
     else:
       f3d.lsrlinr = false
+      rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
 
@@ -3454,6 +3476,7 @@ For other options, see documentation of VPythonobjects.VisualRevolution.
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
                        normalsign=-1,
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -3461,7 +3484,7 @@ For other options, see documentation of VPythonobjects.VisualRevolution.
 class ZSrfrvIn(Srfrv,Assembly):
   """
 Inside of a surface of revolution
-  - rofzfunc=' ': name of python function describing surface
+  - rofzfunc=None: python function describing surface
   - zmin=None,zmax=None: z-extent of the surface, will be obtained from
                          any tablized data if not given
   - rmin=0: min radius of the surface
@@ -3490,7 +3513,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rofzfunc=' ',zmin=None,zmax=None,rmin=0,
+  def __init__(self,rofzfunc=None,zmin=None,zmax=None,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
@@ -3513,22 +3536,17 @@ Methods:
       self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
-      self.rofzfunc = ' '
+      self.rofzfunc = None
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
       assert type(self.rofzfunc) in [FunctionType,StringType],\
              'The rofzfunc is not properly specified'
       self.usedata = false
-      if type(self.rofzfunc) == FunctionType:
-        # --- Make sure the rofzfunc is in main.
-        # --- Note that this can only really work if a reference to the function
-        # --- is passed in (instead of the name).
+      if isinstance(self.rofzfunc,StringType):
+        # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
-        __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
-        # --- Get the name of the input function if a reference to the function
-        # --- was passed in.
-        self.rofzfunc = self.rofzfunc.__name__
+        self.rofzfunc = __main__.__dict__[self.rofzfunc]
       self.rofzdata = None
       self.zdata = None
       self.raddata = None
@@ -3558,6 +3576,7 @@ Methods:
       f3d.rc_sr = self.rcdata
     else:
       f3d.lsrlinr = false
+      rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
 
@@ -3594,6 +3613,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
+                       largepos=largepos,
                        kwdict=kw)
     self.dxobject = v
 
@@ -3601,7 +3621,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
 class ZSrfrvInOut(Srfrv,Assembly):
   """
 Between surfaces of revolution
-  - rminofz=' ',rmaxofz=' ': names of python functions describing surfaces
+  - rminofz=None,rmaxofz=None: python functions describing surfaces
   - zmin=None,zmax=None: z-extent of the surface, will be obtained from
                          any tablized if not given
   - voltage=0: conductor voltage
@@ -3629,7 +3649,7 @@ Methods:
                  specify options on how the image is made. The returned object
                  is then passed to DXImage
   """
-  def __init__(self,rminofz=' ',rmaxofz=' ',zmin=None,zmax=None,
+  def __init__(self,rminofz=None,rmaxofz=None,zmin=None,zmax=None,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rminofzdata=None,zmindata=None,radmindata=None,
                     rcmindata=None,zcmindata=None,
@@ -3654,7 +3674,7 @@ Methods:
       self.zcmindata = self.setdatadefaults(zcmindata,len(zmindata)-1,None)
       self.checkarcs(self.zmindata,self.rminofzdata,self.radmindata,
                      self.zcmindata,self.rcmindata)
-      self.rminofz = ' '
+      self.rminofz = None
       zminmin = self.zmindata[0]
       zmaxmin = self.zmindata[-1]
     else:
@@ -3663,15 +3683,10 @@ Methods:
       self.usemindata = false
       zminmin = zmin
       zmaxmin = zmax
-      if type(self.rminofz) == FunctionType:
-        # --- Make sure rminofz is in main.
-        # --- Note that this can only really work if a reference to the function
-        # --- is passed in (instead of the name).
+      if isinstance(self.rminofz,StringType):
+        # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
-        __main__.__dict__[self.rminofz.__name__] = self.rminofz
-        # --- Get the name of the input function if a reference to the function
-        # --- was passed in.
-        self.rminofz = self.rminofz.__name__
+        self.rminofz = __main__.__dict__[self.rminofz]
       self.rminofzdata = None
       self.zmindata = None
       self.radmindata = None
@@ -3692,20 +3707,15 @@ Methods:
       zminmax = self.zmaxdata[0]
       zmaxmax = self.zmaxdata[-1]
     else:
-      assert type(self.rminofz) in [FunctionType,StringType],\
-             'The rminofz is not properly specified'
+      assert type(self.rmaxofz) in [FunctionType,StringType],\
+             'The rmaxofz is not properly specified'
       self.usemaxdata = false
       zminmax = zmin
       zmaxmax = zmax
-      if type(self.rmaxofz) == FunctionType:
-        # --- Make sure rminofz is in main.
-        # --- Note that this can only really work if a reference to the function
-        # --- is passed in (instead of the name).
+      if isinstance(self.rmaxofz,StringType):
+        # --- Check if the rofzfunc is in main. Complain if it is not.
         import __main__
-        __main__.__dict__[self.rmaxofz.__name__] = self.rmaxofz
-        # --- Get the name of the input function if a reference to the function
-        # --- was passed in.
-        self.rmaxofz = self.rmaxofz.__name__
+        self.rmaxofz = __main__.__dict__[self.rmaxofz]
       self.rmaxofzdata = None
       self.zmaxdata = None
       self.radmaxdata = None
@@ -3745,6 +3755,7 @@ Methods:
       f3d.rc_srmin = self.rcmindata
     else:
       f3d.lsrminlinr = false
+      rminofz.rminofz = self.rminofz
 
     if self.usemaxdata:
       f3d.lsrmaxlinr = true
@@ -3756,6 +3767,7 @@ Methods:
       f3d.rc_srmax = self.rcmaxdata
     else:
       f3d.lsrmaxlinr = false
+      rmaxofz.rmaxofz = self.rmaxofz
 
     return Assembly.getkwlist(self)
 
@@ -3793,23 +3805,21 @@ For options, see documentation of VPythonobjects.VisualRevolution.
       rminzmin = self.rminofzdata[0]
       rminzmax = self.rminofzdata[-1]
     else:
-      import __main__
       f3d.srfrv_z = self.zmin
-      __main__.__dict__[self.rminofz]()
+      self.rminofz()
       rminzmin = f3d.srfrv_r
       f3d.srfrv_z = self.zmax
-      __main__.__dict__[self.rminofz]()
+      self.rminofz()
       rminzmax = f3d.srfrv_r
     if self.usemaxdata:
       rmaxzmin = self.rmaxofzdata[0]
       rmaxzmax = self.rmaxofzdata[-1]
     else:
-      import __main__
       f3d.srfrv_z = self.zmin
-      __main__.__dict__[self.rmaxofz]()
+      self.rmaxofz()
       rmaxzmin = f3d.srfrv_r
       f3d.srfrv_z = self.zmax
-      __main__.__dict__[self.rmaxofz]()
+      self.rmaxofz()
       rmaxzmax = f3d.srfrv_r
     rendzmin = 0.5*(rminzmin + rmaxzmin)
     rendzmax = 0.5*(rminzmax + rmaxzmax)
@@ -3839,6 +3849,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
                        raddata=self.radmindata,zcdata=self.zcmindata,
                        rcdata=self.rcmindata,
                        normalsign=-1,
+                       largepos=largepos,
                        kwdict=kw)
       vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
@@ -3846,6 +3857,7 @@ For options, see documentation of VPythonobjects.VisualRevolution.
                        rofzdata=self.rmaxofzdata,zdata=self.zmaxdata,
                        raddata=self.radmaxdata,zcdata=self.zcmaxdata,
                        rcdata=self.rcmaxdata,
+                       largepos=largepos,
                        kwdict=kw)
       v = pyOpenDX.DXCollection(vmin,vmax)
 
