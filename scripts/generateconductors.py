@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.178 2008/02/13 01:56:13 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.179 2008/02/13 18:57:23 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -3378,12 +3378,13 @@ Methods:
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
-    kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
+    kwlist = ['lrofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvoutconductorf,zsrfrvoutconductord,
                       zsrfrvoutintercept,
                       kw=kw)
     self.rofzfunc = rofzfunc
+    self.lrofzfunc = rofzfunc is not None
     self.rmax = rmax
 
     # --- Deal with tablized data.
@@ -3397,7 +3398,6 @@ Methods:
       self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
-      self.rofzfunc = None
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
@@ -3426,7 +3426,6 @@ Methods:
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
     if self.usedata:
-      f3d.lsrlinr = true
       f3d.npnts_sr = len(self.zdata)
       f3d.z_sr = self.zdata
       f3d.r_sr = self.rofzdata
@@ -3434,7 +3433,6 @@ Methods:
       f3d.zc_sr = self.zcdata
       f3d.rc_sr = self.rcdata
     else:
-      f3d.lsrlinr = false
       rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
@@ -3517,12 +3515,13 @@ Methods:
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,**kw):
-    kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
+    kwlist = ['lrofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinconductorf,zsrfrvinconductord,
                       zsrfrvinintercept,
                       kw=kw)
     self.rofzfunc = rofzfunc
+    self.lrofzfunc = rofzfunc is not None
     self.rmin = rmin
 
     # --- Deal with tablized data.
@@ -3536,7 +3535,6 @@ Methods:
       self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
       self.checkarcs(self.zdata,self.rofzdata,self.raddata,
                      self.zcdata,self.rcdata)
-      self.rofzfunc = None
       if zmin is None: zmin = self.zdata[0]
       if zmax is None: zmax = self.zdata[-1]
     else:
@@ -3567,7 +3565,6 @@ Methods:
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
     if self.usedata:
-      f3d.lsrlinr = true
       f3d.npnts_sr = len(self.zdata)
       f3d.z_sr = self.zdata
       f3d.r_sr = self.rofzdata
@@ -3575,7 +3572,6 @@ Methods:
       f3d.zc_sr = self.zcdata
       f3d.rc_sr = self.rcdata
     else:
-      f3d.lsrlinr = false
       rofzfunc.rofzfunc = self.rofzfunc
 
     return Assembly.getkwlist(self)
@@ -3655,13 +3651,15 @@ Methods:
                     rcmindata=None,zcmindata=None,
                     rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
                     rcmaxdata=None,zcmaxdata=None,**kw):
-    kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
+    kwlist = ['lrminofz','lrmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinoutconductorf,zsrfrvinoutconductord,
                       zsrfrvinoutintercept,
                       kw=kw)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
+    self.lrminofz = rminofz is not None
+    self.lrmaxofz = rmaxofz is not None
 
     # --- Deal with tablized data.
     # --- Making sure the input is consistent
@@ -3674,7 +3672,6 @@ Methods:
       self.zcmindata = self.setdatadefaults(zcmindata,len(zmindata)-1,None)
       self.checkarcs(self.zmindata,self.rminofzdata,self.radmindata,
                      self.zcmindata,self.rcmindata)
-      self.rminofz = None
       zminmin = self.zmindata[0]
       zmaxmin = self.zmindata[-1]
     else:
@@ -3703,7 +3700,6 @@ Methods:
       self.zcmaxdata = self.setdatadefaults(zcmaxdata,len(zmaxdata)-1,None)
       self.checkarcs(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
                      self.zcmaxdata,self.rcmaxdata)
-      self.rmaxofz = ' '
       zminmax = self.zmaxdata[0]
       zmaxmax = self.zmaxdata[-1]
     else:
@@ -3746,7 +3742,6 @@ Methods:
     self.griddz = _griddzkludge[0]
     # --- If data arrays are specified, then put the data in the right place
     if self.usemindata:
-      f3d.lsrminlinr = true
       f3d.npnts_srmin = len(self.zmindata)
       f3d.z_srmin = self.zmindata
       f3d.r_srmin = self.rminofzdata
@@ -3754,11 +3749,9 @@ Methods:
       f3d.zc_srmin = self.zcmindata
       f3d.rc_srmin = self.rcmindata
     else:
-      f3d.lsrminlinr = false
       rminofz.rminofz = self.rminofz
 
     if self.usemaxdata:
-      f3d.lsrmaxlinr = true
       f3d.npnts_srmax = len(self.zmaxdata)
       f3d.z_srmax = self.zmaxdata
       f3d.r_srmax = self.rmaxofzdata
@@ -3766,7 +3759,6 @@ Methods:
       f3d.zc_srmax = self.zcmaxdata
       f3d.rc_srmax = self.rcmaxdata
     else:
-      f3d.lsrmaxlinr = false
       rmaxofz.rmaxofz = self.rmaxofz
 
     return Assembly.getkwlist(self)

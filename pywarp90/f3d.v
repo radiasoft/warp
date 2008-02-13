@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.186 $, $Date: 2008/02/01 00:04:00 $
+#@(#) File F3D.V, version $Revision: 3.187 $, $Date: 2008/02/13 18:56:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.186 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.187 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -690,8 +690,6 @@ srfrvinoutf(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
          l2symtry:logical,l4symtry:logical,condid:integer)
      subroutine # Set conductor points for a conductor that is between two
                 # surfaces of revolution.
-srfrv_f(zz:real,rofzfunc:string,icase:integer,izflag:integer)
-     real function # Function used to calculate r of z given some input.
 
 *********** F3Dsubs:
 #  Callable subroutines in the F3D package
@@ -941,45 +939,47 @@ beamletplateintercept(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
-zsrfrvoutconductorf(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+zsrfrvoutconductorf(lrofzfunc:logical,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
         fuzz:real) subroutine
-zsrfrvoutconductord(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+zsrfrvoutconductord(lrofzfunc:logical,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
-zsrfrvoutintercept(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+zsrfrvoutintercept(lrofzfunc:logical,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
-zsrfrvinconductorf(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+zsrfrvinconductorf(lrofzfunc:logical,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
         fuzz:real) subroutine
-zsrfrvinconductord(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+zsrfrvinconductord(lrofzfunc:logical,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
-zsrfrvinintercept(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+zsrfrvinintercept(lrofzfunc:logical,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
-zsrfrvinoutconductorf(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+zsrfrvinoutconductorf(lrminofz:logical,lrmaxofz:logical,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,delmx(n):real,delpx(n):real,
         delmy(n):real,delpy(n):real,delmz(n):real,delpz(n):real,
         fuzz:real) subroutine
-zsrfrvinoutconductord(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+zsrfrvinoutconductord(lrminofz:logical,lrmaxofz:logical,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,distance(n):real) subroutine
-zsrfrvinoutintercept(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+zsrfrvinoutintercept(lrminofz:logical,lrmaxofz:logical,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x(n):real,y(n):real,z(n):real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
+srfrv_f(zz:real,lrofzfunc:logical,icase:integer,izflag:integer)
+     real function # Function used to calculate r of z given some input.
 
 
 ******** ConductorGeometryVisualization:

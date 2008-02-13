@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.62 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.63 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3571,11 +3571,11 @@ c normal angle of the surface at that point.
 c=======================================================================
 c=======================================================================
 c=======================================================================
-      subroutine ZSrfrvOutConductorF(rofzfunc,zmin,zmax,rmax,griddz,
+      subroutine ZSrfrvOutConductorF(lrofzfunc,zmin,zmax,rmax,griddz,
      &                               xcent,ycent,zcent,n,x,y,z,
      &                               delmx,delpx,delmy,delpy,delmz,delpz,
      &                               fuzz)
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -3611,7 +3611,7 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          if (zz .ne. zzprev1) risrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev1) risrf = srfrv_f(zz,lrofzfunc,0,0)
           zzprev1 = zz
           xisrf = sqrt(max(0.,risrf**2 - yy**2))
           yisrf = sqrt(max(0.,risrf**2 - xx**2))
@@ -3674,18 +3674,18 @@ c       --- conductor or within the max radius.
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
 
-            rsrf = srfrv_f(zzz,rofzfunc,0,0)
-            rlower = srfrv_f(zlower,rofzfunc,0,0)
-            rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+            rsrf = srfrv_f(zzz,lrofzfunc,0,0)
+            rlower = srfrv_f(zlower,lrofzfunc,0,0)
+            rhigher = srfrv_f(zhigher,lrofzfunc,0,0)
 c           --- The commented code has not been tested.
-c           if (lsrlinr .and. lsrfindrextremum) then
+c           if (.not. lrofzfunc .and. lsrfindrextremum) then
 c             rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
 c    &                                z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
 c             rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
 c    &                                 z_sr,r_sr,rad_sr,zc_sr,rc_sr,+1)
 c           else
-              rlower = srfrv_f(zlower,rofzfunc,0,0)
-              rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+              rlower = srfrv_f(zlower,lrofzfunc,0,0)
+              rhigher = srfrv_f(zhigher,lrofzfunc,0,0)
 c           endif
             rfuzz = max(rsrf,rlower,rhigher)*1.e-12
           endif
@@ -3717,7 +3717,7 @@ c           --- that point.
               if (abs(ri(2)) > abs(ri(1))) ii = 2
               if (ri(1) == ri(2)) exit
               zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              ri(ii) = srfrv_f(zi(ii),lrofzfunc,0,0) - rr
               iterrf = iterrf + 1
             end do
             if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3735,7 +3735,7 @@ c             --- 10% in the delta and slowing down the code.
               znew = zlower
               do iterrf=1,32
                 znew = znew + ddz
-                rnew = srfrv_f(znew,rofzfunc,0,0)
+                rnew = srfrv_f(znew,lrofzfunc,0,0)
                 if (rnew > rr) then
                   ddz = -abs(ddz)*0.5
                 else if (rnew <= rr) then
@@ -3775,7 +3775,7 @@ c           --- that point.
               if (abs(ri(2)) > abs(ri(1))) ii = 2
               if (ri(1) == ri(2)) exit
               zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              ri(ii) = srfrv_f(zi(ii),lrofzfunc,0,0) - rr
               iterrf = iterrf + 1
             end do
             if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3793,7 +3793,7 @@ c             --- 10% in the delta and slowing down the code.
               znew = zhigher
               do iterrf=1,32
                 znew = znew + ddz
-                rnew = srfrv_f(znew,rofzfunc,0,0)
+                rnew = srfrv_f(znew,lrofzfunc,0,0)
                 if (rnew <= rr) then
                   ddz = -abs(ddz)*0.5
                 else if (rnew > rr) then
@@ -3812,9 +3812,9 @@ c             --- 10% in the delta and slowing down the code.
       return
       end
 c=======================================================================
-      subroutine ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,griddz,
+      subroutine ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,griddz,
      &                               xcent,ycent,zcent,n,x,y,z,distance)
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -3845,7 +3845,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
         zz = z(i) - zcent
 
         if (zmin <= zz .and. zz <= zmax) then
-          if (zz .ne. zzprev) rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zz,lrofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = rsrf - rr
           elseif (rr < rmax) then
@@ -3857,7 +3857,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
           endif
 
         elseif (zz < zmin) then
-          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,lrofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = zmin - zz
           else
@@ -3865,7 +3865,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
           endif
 
         else
-          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,lrofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = zz - zmax
           else
@@ -3880,14 +3880,13 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
       return
       end
 c=======================================================================
-      subroutine zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,inside,
-     &                            lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+      subroutine zsrfrv_intercept(lrofzfunc,zmin,zmax,xcent,ycent,zcent,inside,
+     &                            npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
      &                            n,x,y,z,vx,vy,vz,tt,itheta,iphi)
       use Constant
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,xcent,ycent,zcent
       integer(ISZ):: inside
-      logical(ISZ):: lsrlinr
       integer(ISZ):: npnts_sr
       real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
       real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
@@ -3907,7 +3906,7 @@ c This is only needed to get the correct orientation of the surface normal.
       real(kind=8):: t(2),d(2)
       real(kind=8):: srfrv_f
 
-      if (lsrlinr) then
+      if (.not. lrofzfunc) then
 
         do i=1,n
 
@@ -4038,7 +4037,7 @@ c         --- Set parameter to initial guess.
 c         --- Do a search to find the intersection.
 
 c         --- Find the shortest distance of the point to the surface
-c         call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,1.,
+c         call ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,1.,
 c    &                             xcent,ycent,zcent,1,x(i),y(i),z(i),dd)
 
           t(1) = 0.
@@ -4048,7 +4047,7 @@ c    &                             xcent,ycent,zcent,1,x(i),y(i),z(i),dd)
           xx = -vx(i)*t(2) + x(i)
           yy = -vy(i)*t(2) + y(i)
           zz = -vz(i)*t(2) + z(i)
-c         call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,1.,
+c         call ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,1.,
 c    &                             xcent,ycent,zcent,1,xx,yy,zz,dd)
           d(2) = dd
 
@@ -4064,7 +4063,7 @@ c    &                             xcent,ycent,zcent,1,xx,yy,zz,dd)
             yy = -vy(i)*t(ii) + y(i)
             zz = -vz(i)*t(ii) + z(i)
             zz = max(zmin,min(zmax,zz))
-c           call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,griddz,
+c           call ZSrfrvOutConductorD(lrofzfunc,zmin,zmax,rmax,griddz,
 c    &                               xcent,ycent,zcent,1,xx,yy,zz,d(ii))
             niter = niter + 1
           enddo
@@ -4082,12 +4081,12 @@ c           --- !!!!!!! not correct !!!!!!
       return
       end
 c=======================================================================
-      subroutine ZSrfrvOutIntercept(rofzfunc,zmin,zmax,rmax,griddz,
+      subroutine ZSrfrvOutIntercept(lrofzfunc,zmin,zmax,rmax,griddz,
      &                              xcent,ycent,zcent,
      &                              n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
       use Constant
       use Surface_of_Rev
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -4103,8 +4102,8 @@ c normal angle of the surface at that point.
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: srfrv_f
 
-      r_zmin = srfrv_f(zmin,rofzfunc,0,0)
-      r_zmax = srfrv_f(zmax,rofzfunc,0,0)
+      r_zmin = srfrv_f(zmin,lrofzfunc,0,0)
+      r_zmax = srfrv_f(zmax,lrofzfunc,0,0)
 
       tt = LARGEPOS
       xi = LARGEPOS
@@ -4113,8 +4112,8 @@ c normal angle of the surface at that point.
       itheta = 0.
       iphi = 0.
 
-      call zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,-1,
-     &                      lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+      call zsrfrv_intercept(lrofzfunc,zmin,zmax,xcent,ycent,zcent,-1,
+     &                      npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
      &                      n,x,y,z,vx,vy,vz,tt,itheta,iphi)
 
       do i=1,n
@@ -4191,11 +4190,11 @@ c       --- Check if it hits the outer cylinder.
       end
 c=======================================================================
 c=======================================================================
-      subroutine ZSrfrvInConductorF(rofzfunc,zmin,zmax,rmin,griddz,
+      subroutine ZSrfrvInConductorF(lrofzfunc,zmin,zmax,rmin,griddz,
      &                              xcent,ycent,zcent,n,x,y,z,
      &                              delmx,delpx,delmy,delpy,delmz,delpz,
      &                              fuzz)
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -4231,7 +4230,7 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          if (zz .ne. zzprev1) risrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev1) risrf = srfrv_f(zz,lrofzfunc,0,0)
           zzprev1 = zz
           xisrf = sqrt(max(0.,risrf**2 - yy**2))
           yisrf = sqrt(max(0.,risrf**2 - xx**2))
@@ -4294,16 +4293,16 @@ c       --- conductor or within the max radius.
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
 
-            rsrf = srfrv_f(zzz,rofzfunc,0,0)
+            rsrf = srfrv_f(zzz,lrofzfunc,0,0)
 c           --- The commented code has not been tested.
-c           if (lsrlinr .and. lsrfindrextremum) then
+c           if (.not. lrofzfunc .and. lsrfindrextremum) then
 c             rlower = linrzrextremum(zlower,zzz,rsrf,npnts_sr,
 c    &                                z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
 c             rhigher = linrzrextremum(zzz,zhigher,rsrf,npnts_sr,
 c    &                                 z_sr,r_sr,rad_sr,zc_sr,rc_sr,-1)
 c           else
-              rlower = srfrv_f(zlower,rofzfunc,0,0)
-              rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+              rlower = srfrv_f(zlower,lrofzfunc,0,0)
+              rhigher = srfrv_f(zhigher,lrofzfunc,0,0)
 c           endif
             rfuzz = max(rsrf,rlower,rhigher)*1.e-12
           endif
@@ -4335,7 +4334,7 @@ c           --- that point.
               if (abs(ri(2)) > abs(ri(1))) ii = 2
               if (ri(1) == ri(2)) exit
               zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              ri(ii) = srfrv_f(zi(ii),lrofzfunc,0,0) - rr
               iterrf = iterrf + 1
             end do
             if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -4353,7 +4352,7 @@ c             --- 10% in the delta and slowing down the code.
               znew = zlower
               do iterrf=1,32
                 znew = znew + ddz
-                rnew = srfrv_f(znew,rofzfunc,0,0)
+                rnew = srfrv_f(znew,lrofzfunc,0,0)
                 if (rnew > rr) then
                   ddz = -abs(ddz)*0.5
                 else if (rnew <= rr) then
@@ -4393,7 +4392,7 @@ c           --- that point.
               if (abs(ri(2)) > abs(ri(1))) ii = 2
               if (ri(1) == ri(2)) exit
               zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              ri(ii) = srfrv_f(zi(ii),lrofzfunc,0,0) - rr
               iterrf = iterrf + 1
             end do
             if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -4411,7 +4410,7 @@ c             --- 10% in the delta and slowing down the code.
               znew = zhigher
               do iterrf=1,32
                 znew = znew + ddz
-                rnew = srfrv_f(znew,rofzfunc,0,0)
+                rnew = srfrv_f(znew,lrofzfunc,0,0)
                 if (rnew <= rr) then
                   ddz = -abs(ddz)*0.5
                 else if (rnew > rr) then
@@ -4430,9 +4429,9 @@ c             --- 10% in the delta and slowing down the code.
       return
       end
 c=======================================================================
-      subroutine ZSrfrvInConductorD(rofzfunc,zmin,zmax,rmin,griddz,
+      subroutine ZSrfrvInConductorD(lrofzfunc,zmin,zmax,rmin,griddz,
      &                              xcent,ycent,zcent,n,x,y,z,distance)
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -4463,7 +4462,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
         rr = sqrt(xx**2 + yy**2)
 
         if (zmin <= zz .and. zz <= zmax) then
-          if (zz .ne. zzprev) rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zz,lrofzfunc,0,0)
           if (rr >= rsrf) then
             distance(i) = rr - rsrf
           elseif (rr > rmin) then
@@ -4475,7 +4474,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
           endif
 
         elseif (zz < zmin) then
-          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmin,lrofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = zmin - zz
           else
@@ -4483,7 +4482,7 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
           endif
 
         else
-          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (zz .ne. zzprev) rsrf = srfrv_f(zmax,lrofzfunc,0,0)
           if (rr <= rsrf) then
             distance(i) = zz - zmax
           else
@@ -4498,12 +4497,12 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
       return
       end
 c=======================================================================
-      subroutine ZSrfrvInIntercept(rofzfunc,zmin,zmax,rmin,griddz,
+      subroutine ZSrfrvInIntercept(lrofzfunc,zmin,zmax,rmin,griddz,
      &                             xcent,ycent,zcent,
      &                             n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
       use Constant
       use Surface_of_Rev
-      character(*):: rofzfunc
+      logical(ISZ):: lrofzfunc
       real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -4519,8 +4518,8 @@ c normal angle of the surface at that point.
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: srfrv_f
 
-      r_zmin = srfrv_f(zmin,rofzfunc,0,0)
-      r_zmax = srfrv_f(zmax,rofzfunc,0,0)
+      r_zmin = srfrv_f(zmin,lrofzfunc,0,0)
+      r_zmax = srfrv_f(zmax,lrofzfunc,0,0)
 
       tt = LARGEPOS
       xi = LARGEPOS
@@ -4529,8 +4528,8 @@ c normal angle of the surface at that point.
       itheta = 0.
       iphi = 0.
 
-      call zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,+1,
-     &                      lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+      call zsrfrv_intercept(lrofzfunc,zmin,zmax,xcent,ycent,zcent,+1,
+     &                      npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
      &                      n,x,y,z,vx,vy,vz,tt,itheta,iphi)
 
       do i=1,n
@@ -4823,11 +4822,11 @@ c       --- If this does happen, return the end point of the conductor.
       return
       end
 c=======================================================================
-      subroutine ZSrfrvInOutConductorF(rminofz,rmaxofz,zmin,zmax,griddz,
+      subroutine ZSrfrvInOutConductorF(lrminofz,lrmaxofz,zmin,zmax,griddz,
      &                                 xcent,ycent,zcent,n,x,y,z,
      &                                 delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
       use Surface_of_Rev
-      character(*):: rminofz,rmaxofz
+      logical(ISZ):: lrminofz,lrmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -4868,8 +4867,8 @@ c       --- Set temps
 c         --- Point inside the z-extent
           if (zz .ne. zzprev1) then
             zzprev1 = zz
-            rimin = min(srfrv_f(zz,rminofz,1,-1),srfrv_f(zz,rminofz,1,+1))
-            rimax = max(srfrv_f(zz,rmaxofz,2,-1),srfrv_f(zz,rmaxofz,2,+1))
+            rimin = min(srfrv_f(zz,lrminofz,1,-1),srfrv_f(zz,lrminofz,1,+1))
+            rimax = max(srfrv_f(zz,lrmaxofz,2,-1),srfrv_f(zz,lrmaxofz,2,+1))
           endif
           ximin = sqrt(max(0.,rimin**2 - yy**2))
           yimin = sqrt(max(0.,rimin**2 - xx**2))
@@ -4931,9 +4930,9 @@ c       --- conductor or within the max radius.
             zlower = max(zz-griddz,zmin)
             zhigher = min(zz+griddz,zmax)
 
-            rmin = srfrv_f(zzz,rminofz,1,0)
-            rmax = srfrv_f(zzz,rmaxofz,2,0)
-            if (lsrminlinr .and. lsrfindrextremum) then
+            rmin = srfrv_f(zzz,lrminofz,1,0)
+            rmax = srfrv_f(zzz,lrmaxofz,2,0)
+            if (.not. lrminofz .and. lsrfindrextremum) then
 c             --- XXX This code needs further debuggins. In the second call,
 c             --- zzz+griddz should be zhigher, but when that change is made,
 c             --- the code breaks and the conductors come out incorrectly - a
@@ -4946,17 +4945,17 @@ c             --- used in general, since it will be slower.
               rminhigher = linrzrextremum(zzz,zzz+griddz,rmin,npnts_srmin,
      &                           z_srmin,r_srmin,rad_srmin,zc_srmin,rc_srmin,-1)
             else
-              rminlower = srfrv_f(zlower,rminofz,1,-1)
-              rminhigher = srfrv_f(zhigher,rminofz,1,+1)
+              rminlower = srfrv_f(zlower,lrminofz,1,-1)
+              rminhigher = srfrv_f(zhigher,lrminofz,1,+1)
             endif
-            if (lsrmaxlinr .and. lsrfindrextremum) then
+            if (.not. lrmaxofz .and. lsrfindrextremum) then
               rmaxlower = linrzrextremum(zlower,zzz,rmax,npnts_srmax,
      &                           z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
               rmaxhigher = linrzrextremum(zzz,zzz+griddz,rmax,npnts_srmax,
      &                           z_srmax,r_srmax,rad_srmax,zc_srmax,rc_srmax,+1)
             else
-              rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
-              rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
+              rmaxlower = srfrv_f(zlower,lrmaxofz,2,-1)
+              rmaxhigher = srfrv_f(zhigher,lrmaxofz,2,+1)
             endif
             rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
           endif
@@ -4971,7 +4970,7 @@ c             --- used in general, since it will be slower.
           else
             delmz(i) = LARGEPOS
             if (min(rminlower,rmin) <= rr .and. rr <= max(rminlower,rmin)) then
-              if (lsrminlinr) then
+              if (.not. lrminofz) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
      &                                   rad_srmin,zc_srmin,rc_srmin,zmin,1)
                 delmz(i) = zz - znew
@@ -4996,7 +4995,7 @@ c               --- that point.
                   if (abs(ri(2)) > abs(ri(1))) ii = 2
                   if (ri(1) == ri(2)) exit
                   zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                  ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
+                  ri(ii) = srfrv_f(zi(ii),lrminofz,1,0) - rr
                   iterrf = iterrf + 1
                 end do
                 if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -5014,7 +5013,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rminofz,1,0)
+                    rnew = srfrv_f(znew,lrminofz,1,0)
                     if (rnew > rr) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew <= rr) then
@@ -5027,7 +5026,7 @@ c                 --- 10% in the delta and slowing down the code.
               if (rr >= rmin) delmz(i) = -delmz(i)
             endif
             if (min(rmaxlower,rmax) <= rr .and. rr <= max(rmaxlower,rmax)) then
-              if (lsrmaxlinr) then
+              if (.not. lrmaxofz) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
      &                                   rad_srmax,zc_srmax,rc_srmax,zmin,1)
                 delmz1 = zz - znew
@@ -5052,7 +5051,7 @@ c               --- that point.
                   if (abs(ri(2)) > abs(ri(1))) ii = 2
                   if (ri(1) == ri(2)) exit
                   zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                  ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
+                  ri(ii) = srfrv_f(zi(ii),lrmaxofz,2,0) - rr
                   iterrf = iterrf + 1
                 end do
                 if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -5070,7 +5069,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rmaxofz,2,0)
+                    rnew = srfrv_f(znew,lrmaxofz,2,0)
                     if (rnew > rr) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew <= rr) then
@@ -5104,7 +5103,7 @@ c         --- Calculate distance to conductor at higher z.
             delpz(i) = LARGEPOS
             if (min(rminhigher,rmin) <= rr .and.
      &          rr <= max(rminhigher,rmin)) then
-              if (lsrminlinr) then
+              if (.not. lrminofz) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
      &                                   rad_srmin,zc_srmin,rc_srmin,zmax,-1)
                 delpz(i) = znew - zz
@@ -5127,7 +5126,7 @@ c               --- that point.
                   if (abs(ri(2)) > abs(ri(1))) ii = 2
                   if (ri(1) == ri(2)) exit
                   zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                  ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
+                  ri(ii) = srfrv_f(zi(ii),lrminofz,1,0) - rr
                   iterrf = iterrf + 1
                 end do
                 if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -5145,7 +5144,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rminofz,1,0)
+                    rnew = srfrv_f(znew,lrminofz,1,0)
                     if (rnew <= rr) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew > rr) then
@@ -5159,7 +5158,7 @@ c                 --- 10% in the delta and slowing down the code.
             endif
             if (min(rmaxhigher,rmax) <= rr .and.
      &          rr <= max(rmaxhigher,rmax)) then
-              if (lsrmaxlinr) then
+              if (.not. lrmaxofz) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
      &                                   rad_srmax,zc_srmax,rc_srmax,zmax,-1)
                 delpz1 = znew - zz
@@ -5182,7 +5181,7 @@ c               --- that point.
                   if (abs(ri(2)) > abs(ri(1))) ii = 2
                   if (ri(1) == ri(2)) exit
                   zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                  ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
+                  ri(ii) = srfrv_f(zi(ii),lrmaxofz,2,0) - rr
                   iterrf = iterrf + 1
                 end do
                 if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -5200,7 +5199,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rmaxofz,2,0)
+                    rnew = srfrv_f(znew,lrmaxofz,2,0)
                     if (rnew <= rr) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew > rr) then
@@ -5226,9 +5225,9 @@ c                 --- 10% in the delta and slowing down the code.
       return
       end
 c=======================================================================
-      subroutine ZSrfrvInOutConductorD(rminofz,rmaxofz,zmin,zmax,griddz,
+      subroutine ZSrfrvInOutConductorD(lrminofz,lrmaxofz,zmin,zmax,griddz,
      &                                 xcent,ycent,zcent,n,x,y,z,distance)
-      character(*):: rminofz,rmaxofz
+      logical(ISZ):: lrminofz,lrmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -5260,8 +5259,8 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
 
         if (zmin <= zz .and. zz <= zmax) then
           if (zz .ne. zzprev) then
-            rmin = srfrv_f(zz,rminofz,1,0)
-            rmax = srfrv_f(zz,rmaxofz,2,0)
+            rmin = srfrv_f(zz,lrminofz,1,0)
+            rmax = srfrv_f(zz,lrmaxofz,2,0)
           endif
           if (rr >= rmax) then
             distance(i) = rr - rmax
@@ -5275,8 +5274,8 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
 
         elseif (zz < zmin) then
           if (zz .ne. zzprev) then
-            rmin = srfrv_f(zmin,rminofz,1,0)
-            rmax = srfrv_f(zmin,rmaxofz,2,0)
+            rmin = srfrv_f(zmin,lrminofz,1,0)
+            rmax = srfrv_f(zmin,lrmaxofz,2,0)
           endif
           if (rr < rmin) then
             distance(i) = sqrt((zmin-zz)**2 + (rr-rmin)**2)
@@ -5288,8 +5287,8 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
 
         else
           if (zz .ne. zzprev) then
-            rmin = srfrv_f(zmax,rminofz,1,0)
-            rmax = srfrv_f(zmax,rmaxofz,2,0)
+            rmin = srfrv_f(zmax,lrminofz,1,0)
+            rmax = srfrv_f(zmax,lrmaxofz,2,0)
           endif
           if (rr < rmin) then
             distance(i) = sqrt((zz-zmax)**2 + (rr-rmin)**2)
@@ -5306,12 +5305,12 @@ c     --- This guarantees that zzprev is never equal to (z(1)-zcent).
       return
       end
 c=======================================================================
-      subroutine ZSrfrvInOutIntercept(rminofz,rmaxofz,zmin,zmax,griddz,
+      subroutine ZSrfrvInOutIntercept(lrminofz,lrmaxofz,zmin,zmax,griddz,
      &                                xcent,ycent,zcent,
      &                                n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
       use Constant
       use Surface_of_Rev
-      character(*):: rminofz,rmaxofz
+      logical(ISZ):: lrminofz,lrmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -5328,10 +5327,10 @@ c normal angle of the surface at that point.
       real(kind=8):: rmax_zmin,rmax_zmax
       real(kind=8):: srfrv_f
 
-      rmin_zmin = srfrv_f(zmin,rminofz,1,0)
-      rmin_zmax = srfrv_f(zmax,rminofz,1,0)
-      rmax_zmin = srfrv_f(zmin,rmaxofz,2,0)
-      rmax_zmax = srfrv_f(zmax,rmaxofz,2,0)
+      rmin_zmin = srfrv_f(zmin,lrminofz,1,0)
+      rmin_zmax = srfrv_f(zmax,lrminofz,1,0)
+      rmax_zmin = srfrv_f(zmin,lrmaxofz,2,0)
+      rmax_zmax = srfrv_f(zmax,lrmaxofz,2,0)
 
       tt = LARGEPOS
       xi = LARGEPOS
@@ -5340,12 +5339,12 @@ c normal angle of the surface at that point.
       itheta = 0.
       iphi = 0.
 
-      call zsrfrv_intercept(rminofz,zmin,zmax,xcent,ycent,zcent,-1,
-     &                      lsrminlinr,npnts_srmin,z_srmin,r_srmin,
+      call zsrfrv_intercept(lrminofz,zmin,zmax,xcent,ycent,zcent,-1,
+     &                      npnts_srmin,z_srmin,r_srmin,
      &                      rad_srmin,zc_srmin,rc_srmin,
      &                      n,x,y,z,vx,vy,vz,tt,itheta,iphi)
-      call zsrfrv_intercept(rmaxofz,zmin,zmax,xcent,ycent,zcent,+1,
-     &                      lsrmaxlinr,npnts_srmax,z_srmax,r_srmax,
+      call zsrfrv_intercept(lrmaxofz,zmin,zmax,xcent,ycent,zcent,+1,
+     &                      npnts_srmax,z_srmax,r_srmax,
      &                      rad_srmax,zc_srmax,rc_srmax,
      &                      n,x,y,z,vx,vy,vz,tt,itheta,iphi)
 
@@ -5394,207 +5393,22 @@ c       --- First, check if trajectory hits conductor end.
       return
       end
 c========================================================================
-      real(kind=8) function srfrv_f(zz,rofzfunc,icase,izflag)
+      real(kind=8) function srfrv_f(zz,lrofzfunc,icase,izflag)
       use Machine_param
       use Surface_of_Rev
       real(kind=8):: zz
+      logical(ISZ):: lrofzfunc
       integer(ISZ):: icase,izflag
-      character(*):: rofzfunc
+
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
-c     the Python routine rofzfunc.
+c     the Python routine lrofzfunc.
 c     The radius returned is always greater than or equal to zero.
 
       integer(ISZ):: i,ii,iz
       real(kind=8):: z_sriim1
 
-      if (lsrlinr .and. icase == 0) then
-
-c       --- Calculate r(z) from a piecewise-linear curve.
-
-c       --- Find which piece z is in.
-        ii = 0
-        do i=1,npnts_sr
-          if (zz >= z_sr(i)) ii = i
-        enddo
-
-c       --- Calculate r from z.
-        if (ii == 0) then
-          srfrv_r = r_sr(1)
-        elseif (ii == npnts_sr) then
-          srfrv_r = r_sr(npnts_sr)
-        else
-c         --- Get z_sr at ii-1 to avoid accessing z_sr(0)
-          z_sriim1 = 0.
-          if (ii > 1) z_sriim1 = z_sr(ii-1)
-          if (ii > 1 .and.
-     &        z_sriim1 == z_sr(ii) .and. zz == z_sr(ii) .and.
-     &        izflag == 1) then
-            if (ii-1 == 1) then
-              srfrv_r = r_sr(1)
-            else
-              if (rad_sr(ii-2) == largepos) then
-                srfrv_r = r_sr(ii-2) + (zz - z_sr(ii-1))*
-     &                       (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
-              else
-                if (rad_sr(ii-2) > 0) then
-                  srfrv_r = rc_sr(ii-2)
-     &                 + sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
-                else
-                  srfrv_r = rc_sr(ii-2)
-     &                 - sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
-                endif
-              endif
-            endif
-          else
-            if (rad_sr(ii) == largepos) then
-              srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
-     &                     (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
-            else
-              if (rad_sr(ii) > 0) then
-                srfrv_r = rc_sr(ii)
-     &                 + sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
-              else
-                srfrv_r = rc_sr(ii)
-     &                 - sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
-              endif
-            endif
-          endif
-        endif
-
-      elseif (lsrminlinr .and. icase == 1) then
-
-c       --- Calculate rmin(z) from a piecewise-linear curve.
-c       --- Depeding on which direction is being looked, the order in which
-c       --- the points are searched changes. This only really matters when
-c       --- the conductor description includes step function in r(z), i.e.
-c       --- where two neighboring points have the same z value.
-
-        if (izflag <= 0) then
-
-c         --- Find which piece z is in.
-          ii = 0
-          do i=1,npnts_srmin
-            if (zz >= z_srmin(i)) ii = i
-          enddo
-
-c         --- Calculate r from z.
-          if (ii == 0) then
-            srfrv_r = r_srmin(1)
-          elseif (ii == npnts_srmin) then
-            srfrv_r = r_srmin(npnts_srmin)
-          else
-            if (rad_srmin(ii) == largepos) then
-              srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
-     &              (r_srmin(ii+1) - r_srmin(ii))/(z_srmin(ii+1) - z_srmin(ii))
-            else
-              if (rad_srmin(ii) > 0) then
-                srfrv_r = rc_srmin(ii)
-     &                + sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
-              else
-                srfrv_r = rc_srmin(ii)
-     &                - sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
-              endif
-            endif
-          endif
-
-        else
-
-c         --- Find which piece z is in.
-          ii = npnts_srmin+1
-          do i=npnts_srmin,1,-1
-            if (zz <= z_srmin(i)) ii = i
-          enddo
-
-c         --- Calculate r from z.
-          if (ii == npnts_srmin+1) then
-            srfrv_r = r_srmin(npnts_srmin)
-          elseif (ii == 1) then
-            srfrv_r = r_srmin(1)
-          else
-            if (rad_srmin(ii-1) == largepos) then
-              srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
-     &         (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
-            else
-              if (rad_srmin(ii-1) > 0) then
-                srfrv_r = rc_srmin(ii-1)
-     &            + sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
-              else
-                srfrv_r = rc_srmin(ii-1)
-     &            - sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
-              endif
-            endif
-          endif
-
-        endif
-
-      elseif (lsrmaxlinr .and. icase == 2) then
-
-c       --- Calculate rmax(z) from a piecewise-linear curve.
-c       --- Depeding on which direction is being looked, the order in which
-c       --- the points are searched changes. This only really matters when
-c       --- the conductor description includes step function in r(z), i.e.
-c       --- where two neighboring points have the same z value.
-
-        if (izflag <= 0) then
-
-c         --- Find which piece z is in.
-          ii = 0
-          do i=1,npnts_srmax
-            if (zz >= z_srmax(i)) ii = i
-          enddo
-
-c         --- Calculate r from z.
-          if (ii == 0) then
-            srfrv_r = r_srmax(1)
-          elseif (ii == npnts_srmax) then
-            srfrv_r = r_srmax(npnts_srmax)
-          else
-            if (rad_srmax(ii) == largepos) then
-              srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
-     &              (r_srmax(ii+1) - r_srmax(ii))/(z_srmax(ii+1) - z_srmax(ii))
-            else
-              if (rad_srmax(ii) > 0) then
-                srfrv_r = rc_srmax(ii)
-     &                + sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
-              else
-                srfrv_r = rc_srmax(ii)
-     &                - sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
-              endif
-            endif
-          endif
-
-        else
-
-c         --- Find which piece z is in.
-          ii = npnts_srmax+1
-          do i=npnts_srmax,1,-1
-            if (zz <= z_srmax(i)) ii = i
-          enddo
-
-c         --- Calculate r from z.
-          if (ii == npnts_srmax+1) then
-            srfrv_r = r_srmax(npnts_srmax)
-          elseif (ii == 1) then
-            srfrv_r = r_srmax(1)
-          else
-            if (rad_srmax(ii-1) == largepos) then
-              srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
-     &         (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
-            else
-              if (rad_srmax(ii-1) > 0) then
-                srfrv_r = rc_srmax(ii-1)
-     &            + sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
-              else
-                srfrv_r = rc_srmax(ii-1)
-     &            - sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
-              endif
-            endif
-          endif
-
-        endif
-
-      else
+      if (lrofzfunc) then
 
 c       --- Get r(z) from the Python function.
         srfrv_z = zz
@@ -5604,6 +5418,195 @@ c       --- Get r(z) from the Python function.
           call callpythonfunc("rminofz","generateconductors")
         else if (icase == 2) then
           call callpythonfunc("rmaxofz","generateconductors")
+        endif
+
+      else
+        if (icase == 0) then
+
+c       --- Calculate r(z) from a piecewise-linear curve.
+
+c       --- Find which piece z is in.
+          ii = 0
+          do i=1,npnts_sr
+            if (zz >= z_sr(i)) ii = i
+          enddo
+
+c         --- Calculate r from z.
+          if (ii == 0) then
+            srfrv_r = r_sr(1)
+          elseif (ii == npnts_sr) then
+            srfrv_r = r_sr(npnts_sr)
+          else
+c           --- Get z_sr at ii-1 to avoid accessing z_sr(0)
+            z_sriim1 = 0.
+            if (ii > 1) z_sriim1 = z_sr(ii-1)
+            if (ii > 1 .and.
+     &          z_sriim1 == z_sr(ii) .and. zz == z_sr(ii) .and.
+     &          izflag == 1) then
+              if (ii-1 == 1) then
+                srfrv_r = r_sr(1)
+              else
+                if (rad_sr(ii-2) == largepos) then
+                  srfrv_r = r_sr(ii-2) + (zz - z_sr(ii-1))*
+     &                         (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
+                else
+                  if (rad_sr(ii-2) > 0) then
+                    srfrv_r = rc_sr(ii-2)
+     &                   + sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
+                  else
+                    srfrv_r = rc_sr(ii-2)
+     &                   - sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
+                  endif
+                endif
+              endif
+            else
+              if (rad_sr(ii) == largepos) then
+                srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
+     &                       (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
+              else
+                if (rad_sr(ii) > 0) then
+                  srfrv_r = rc_sr(ii)
+     &                   + sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
+                else
+                  srfrv_r = rc_sr(ii)
+     &                   - sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
+                endif
+              endif
+            endif
+          endif
+
+        elseif (icase == 1) then
+
+c         --- Calculate rmin(z) from a piecewise-linear curve.
+c         --- Depeding on which direction is being looked, the order in which
+c         --- the points are searched changes. This only really matters when
+c         --- the conductor description includes step function in r(z), i.e.
+c         --- where two neighboring points have the same z value.
+
+          if (izflag <= 0) then
+
+c           --- Find which piece z is in.
+            ii = 0
+            do i=1,npnts_srmin
+              if (zz >= z_srmin(i)) ii = i
+            enddo
+
+c           --- Calculate r from z.
+            if (ii == 0) then
+              srfrv_r = r_srmin(1)
+            elseif (ii == npnts_srmin) then
+              srfrv_r = r_srmin(npnts_srmin)
+            else
+              if (rad_srmin(ii) == largepos) then
+                srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
+     &                (r_srmin(ii+1) - r_srmin(ii))/(z_srmin(ii+1) - z_srmin(ii))
+              else
+                if (rad_srmin(ii) > 0) then
+                  srfrv_r = rc_srmin(ii)
+     &                  + sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
+                else
+                  srfrv_r = rc_srmin(ii)
+     &                  - sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
+                endif
+              endif
+            endif
+
+          else
+
+c           --- Find which piece z is in.
+            ii = npnts_srmin+1
+            do i=npnts_srmin,1,-1
+              if (zz <= z_srmin(i)) ii = i
+            enddo
+
+c           --- Calculate r from z.
+            if (ii == npnts_srmin+1) then
+              srfrv_r = r_srmin(npnts_srmin)
+            elseif (ii == 1) then
+              srfrv_r = r_srmin(1)
+            else
+              if (rad_srmin(ii-1) == largepos) then
+                srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
+     &           (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
+              else
+                if (rad_srmin(ii-1) > 0) then
+                  srfrv_r = rc_srmin(ii-1)
+     &              + sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
+                else
+                  srfrv_r = rc_srmin(ii-1)
+     &              - sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
+                endif
+              endif
+            endif
+
+          endif
+
+        elseif (icase == 2) then
+
+c         --- Calculate rmax(z) from a piecewise-linear curve.
+c         --- Depeding on which direction is being looked, the order in which
+c         --- the points are searched changes. This only really matters when
+c         --- the conductor description includes step function in r(z), i.e.
+c         --- where two neighboring points have the same z value.
+
+          if (izflag <= 0) then
+
+c           --- Find which piece z is in.
+            ii = 0
+            do i=1,npnts_srmax
+              if (zz >= z_srmax(i)) ii = i
+            enddo
+
+c           --- Calculate r from z.
+            if (ii == 0) then
+              srfrv_r = r_srmax(1)
+            elseif (ii == npnts_srmax) then
+              srfrv_r = r_srmax(npnts_srmax)
+            else
+              if (rad_srmax(ii) == largepos) then
+                srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
+     &                (r_srmax(ii+1) - r_srmax(ii))/(z_srmax(ii+1) - z_srmax(ii))
+              else
+                if (rad_srmax(ii) > 0) then
+                  srfrv_r = rc_srmax(ii)
+     &                  + sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
+                else
+                  srfrv_r = rc_srmax(ii)
+     &                  - sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
+                endif
+              endif
+            endif
+
+          else
+
+c           --- Find which piece z is in.
+            ii = npnts_srmax+1
+            do i=npnts_srmax,1,-1
+              if (zz <= z_srmax(i)) ii = i
+            enddo
+
+c           --- Calculate r from z.
+            if (ii == npnts_srmax+1) then
+              srfrv_r = r_srmax(npnts_srmax)
+            elseif (ii == 1) then
+              srfrv_r = r_srmax(1)
+            else
+              if (rad_srmax(ii-1) == largepos) then
+                srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
+     &           (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
+              else
+                if (rad_srmax(ii-1) > 0) then
+                  srfrv_r = rc_srmax(ii-1)
+     &              + sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
+                else
+                  srfrv_r = rc_srmax(ii-1)
+     &              - sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
+                endif
+              endif
+            endif
+
+          endif
+
         endif
 
       endif
