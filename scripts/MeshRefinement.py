@@ -2298,7 +2298,6 @@ Implements adaptive mesh refinement in 3d for the electrostatic field solver
     return max(childrenserror,self.mgerror)
 
 
-
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -2463,6 +2462,170 @@ Implements adaptive mesh refinement in 2d for the electrostatic field solver
     finally:
       if self is self.root: plotlistofthings(lturnofflist=1)
 
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+class MRBlockRZ(MeshRefinement,MultiGridRZ):
+  """
+Implements adaptive mesh refinement in RZ for the electrostatic field solver
+ - parent:
+ - refinement=None: amount of refinement along each axis
+ - lower,upper: extent of domain in relative to parent, in its own grid
+                cell size, and not including any guard cells
+ - dims: dimensions of the grid, only used for root block, the one with
+         no parents
+ - mins,maxs: locations of the grid lower and upper bounds in the beam frame
+ - root: coarsest level grid
+ - children: list of tuples, each containing three elements,
+             (lower,upper,refinement). Children can also be added later
+             using addchild.
+ - lreducedpickle=true: when true, a small pickle is made by removing all of
+                        the big arrays. The information can be regenerated
+                        upon restart.
+  """
+  def __init__(self,parent=None,refinement=None,
+                    lower=None,upper=None,
+                    fulllower=None,fullupper=None,
+                    dims=None,mins=None,maxs=None,
+                    nguard=[1,1,1],
+                    children=None,**kw):
+
+    # --- Note that this calls the MultiGrid __init__ as well.
+    self.__class__.__bases__[0].__init__(self,
+                    parent=parent,refinement=refinement,
+                    lower=lower,upper=upper,
+                    fulllower=fulllower,fullupper=fullupper,
+                    dims=dims,mins=mins,maxs=maxs,
+                    nguard=nguard,
+                    children=children,**kw)
+
+  def getgetdataname(self,kw):
+    if kw.get('plotselfe',0):
+      return 'getfieldslice'
+    elif kw.get('plotrho',0):
+      return 'getsourceslice'
+    else:
+      return 'getpotentialslice'
+
+  def pfzx(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    self.genericpf(self.getgetdataname(kw),kwdict,1,pfzx)
+  def pfzxg(self,kwdict=None,**kw):
+    if kwdict is None: kwdict = {}
+    kwdict.update(kw)
+    self.genericpf(self.getgetdataname(kw),kwdict,1,pfzxg)
+
+  def plphiz(self,ix=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if ix < self.fulllower[0]: return
+    if ix > self.fullupper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.potential[ix-self.fulllower[0]+1,0,1:-1],self.zmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plphiz(ix*child.refinement[0],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plphix(self,iz=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if iz < self.fulllower[2]: return
+    if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.potential[1:-1,0,iz-self.fulllower[2]+1],self.xmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plphix(iz*child.refinement[2],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plrhoz(self,ix=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if ix < self.fulllower[0]: return
+    if ix > self.fullupper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.source[ix-self.fulllower[0],0,:],self.zmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plrhoz(ix*child.refinement[0],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plrhox(self,iz=None,colors=None,selfonly=0):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if iz < self.fulllower[2]: return
+    if iz > self.fullupper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.source[:,0,iz-self.fulllower[2]],self.xmesh,
+          color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plrhox(iz*child.refinement[2],colors=colors)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plselfez(self,comp=2,ix=None,colors=None,selfonly=0,withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iz = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iz = slice(self.lower[2] - self.fulllower[2],
+                 self.upper[2] - self.fulllower[2] + 1)
+    if ix < lower[0]: return
+    if ix > upper[0]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.field[comp,ix-self.fulllower[0],0,iz],
+          self.zmesh[iz],color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plselfez(comp,ix*child.refinement[0],
+                         colors=colors,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
+  def plselfex(self,comp=2,iz=None,colors=None,selfonly=0,withguard=1):
+    if colors is None: colors = color
+    elif not operator.isSequenceType(colors): colors = list([colors])
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      ix = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      ix = slice(self.lower[0] - self.fulllower[0],
+                 self.upper[0] - self.fulllower[0] + 1)
+    if iz < lower[2]: return
+    if iz > upper[2]: return
+    if self is self.root: accumulateplotlists()
+    try:
+      plg(self.field[comp,ix,0,iz-self.fulllower[2]],
+                     self.xmesh[ix],color=colors[self.blocknumber%len(colors)])
+      if not selfonly:
+        for child in self.children:
+          child.plselfex(comp,iz*child.refinement[2],
+                         colors=colors,withguard=withguard)
+    finally:
+      if self is self.root: plotlistofthings(lturnofflist=1)
+
 
 
 
@@ -2471,4 +2634,5 @@ try:
   psyco.bind(MRBlock)
 except NameError:
   pass
+
 
