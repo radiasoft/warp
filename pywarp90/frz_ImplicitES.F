@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File frz_ImplicitES.F, version $Revision: 1.25 $, $Date: 2008/02/01 00:04:00 $
+c@(#) File frz_ImplicitES.F, version $Revision: 1.26 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 2007-2007, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the Poisson solver for the electrostatic implicit scheme.
@@ -614,7 +614,7 @@ c     --- converted and expanded for the multigrid solver.
           call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,dx,dx,dz,
      &                  bounds(4),bounds(5),bounds(1),.false.,.false.)
         endif
-        if (laddconductor) call execuser("calladdconductor")
+        if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
       call checkconductors(nx,0,nzlocal,nz,dx,dx,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)

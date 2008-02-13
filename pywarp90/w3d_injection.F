@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.102 $, $Date: 2008/01/25 19:32:14 $
+c@(#) File w3d_injection.F, version $Revision: 1.103 $, $Date: 2008/02/13 02:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -192,7 +192,8 @@ c         --- Loop over species.
 
             if (l_inj_user_particles) then
 
-              call execuser("generateuserparticlesforinjection")
+              call callpythonfunc("generateuserparticlesforinjection",
+     &                            "controllers")
               rnn = npgrp
               nn = npgrp
               if (nn == 0) cycle

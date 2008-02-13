@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.158 $, $Date: 2007/06/04 22:47:05 $
+c@(#) File DW3D.F, version $Revision: 3.159 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -29,7 +29,7 @@ c Exit now if parameter are not to be printed
       if (.not. lprntpara) return
 
 c     --- Call script version of this routine.
-      call execuser("printparameters3d")
+      call callpythonfunc("printparameters3d","printparameters3d")
 
    20 format(1x,a,1pe11.4,a)
    30 format(1x,a,i8,a)
@@ -97,7 +97,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("rhodiaregistered")
+        call callpythonfunc("rhodiaregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call rhodia3d
       end if
@@ -108,7 +108,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("gtlchgregistered")
+        call callpythonfunc("gtlchgregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call gtlchg3d
       else if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
@@ -121,7 +121,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("srhoaxregistered")
+        call callpythonfunc("srhoaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call srhoax3d
       end if
@@ -132,7 +132,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("geteseregistered")
+        call callpythonfunc("geteseregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call getese3d
       end if
@@ -143,7 +143,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("sphiaxregistered")
+        call callpythonfunc("sphiaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call sphiax3d
       end if
@@ -154,7 +154,7 @@ c=============================================================================
       use InGen,Only: fstype
       use InGen3d
       if (fstype == 12) then
-        call execuser("sezaxregistered")
+        call callpythonfunc("sezaxregistered","fieldsolver")
       else if(solvergeom==XYZgeom) then
         call sezax3d
       end if

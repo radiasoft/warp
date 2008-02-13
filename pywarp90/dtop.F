@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.160 $, $Date: 2007/11/26 16:44:12 $
+c@(#) File DTOP.F, version $Revision: 3.161 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -69,8 +69,10 @@ c       --- If so, space needs to be allocated for them.
         lgchange = checkzhistarray(lhepsyz,ihepsyz) .or. lgchange
         lgchange = checkzhistarray(lhepsnxz,ihepsnxz) .or. lgchange
         lgchange = checkzhistarray(lhepsnyz,ihepsnyz) .or. lgchange
+        lgchange = checkzhistarray(lhepsrz,ihepsrz) .or. lgchange
         lgchange = checkzhistarray(lhepsgz,ihepsgz) .or. lgchange
         lgchange = checkzhistarray(lhepshz,ihepshz) .or. lgchange
+        lgchange = checkzhistarray(lhepsnrz,ihepsnrz) .or. lgchange
         lgchange = checkzhistarray(lhepsngz,ihepsngz) .or. lgchange
         lgchange = checkzhistarray(lhepsnhz,ihepsnhz) .or. lgchange
         lgchange = checkzhistarray(lhxbarz,ihxbarz) .or. lgchange
@@ -184,8 +186,10 @@ c       --- option, or when rewriting the code thusly.
           hepsnx(iw,jhist,js)   = epsnx(iw,js)
           hepsny(iw,jhist,js)   = epsny(iw,js)
           hepsnz(iw,jhist,js)   = epsnz(iw,js)
+          hepsr(iw,jhist,js)    = epsr(iw,js)
           hepsg(iw,jhist,js)    = epsg(iw,js)
           hepsh(iw,jhist,js)    = epsh(iw,js)
+          hepsnr(iw,jhist,js)   = epsnr(iw,js)
           hepsng(iw,jhist,js)   = epsng(iw,js)
           hepsnh(iw,jhist,js)   = epsnh(iw,js)
           hpnum(iw,jhist,js)    = pnum(iw,js)
@@ -232,8 +236,10 @@ c       --- with the intel compiler.
           if (lhepsyz)    hepsyz(iz,jhist,js)    = epsyz(iz,js)
           if (lhepsnxz)   hepsnxz(iz,jhist,js)   = epsnxz(iz,js)
           if (lhepsnyz)   hepsnyz(iz,jhist,js)   = epsnyz(iz,js)
+          if (lhepsrz)    hepsrz(iz,jhist,js)    = epsrz(iz,js)
           if (lhepsgz)    hepsgz(iz,jhist,js)    = epsgz(iz,js)
           if (lhepshz)    hepshz(iz,jhist,js)    = epshz(iz,js)
+          if (lhepsnrz)   hepsnrz(iz,jhist,js)   = epsnrz(iz,js)
           if (lhepsngz)   hepsngz(iz,jhist,js)   = epsngz(iz,js)
           if (lhepsnhz)   hepsnhz(iz,jhist,js)   = epsnhz(iz,js)
           if (lhxbarz)    hxbarz(iz,jhist,js)    = xbarz(iz,js)
@@ -388,7 +394,7 @@ c  Exit now if output parameters are not to be printed
       if (.not. lprntpara) return
 
 c     --- Call script version of this routine.
-      call execuser("printparameters")
+      call callpythonfunc("printparameters","printparameters3d")
 
 c  Write to plot frame
    20 format(1x,a,1pe11.4,a)
@@ -589,8 +595,8 @@ c  Phase space plots, both "frequent" ones and others
       timetemp = wtime()
 
       if (lpsplots) then
-        if (freqflag == ALWAYS) call parsestr("psplotsalways()")
-        if (freqflag == SELDOM) call parsestr("psplotsseldom()")
+        if (freqflag == ALWAYS) call callpythonfunc("psplotsalways","warpplots")
+        if (freqflag == SELDOM) call callpythonfunc("psplotsseldom","warpplots")
         plottime = plottime + (wtime() - timetemp)
         return
       endif
@@ -609,8 +615,8 @@ c  Plots all 1d (z dependent) quantities vs z
       timetemp = wtime()
 
       if (lonedplts) then
-        if (freqflag == ALWAYS) call parsestr("onedpltsalways()")
-        if (freqflag == SELDOM) call parsestr("onedpltsseldom()")
+        if (freqflag == ALWAYS) call callpythonfunc("onedpltsalways","warpplots")
+        if (freqflag == SELDOM) call callpythonfunc("onedpltsseldom","warpplots")
         return
       endif
 
@@ -631,7 +637,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.160 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.161 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19

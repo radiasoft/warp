@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.12 $, $Date: 2003/02/14 07:24:32 $
+c@(#) File HER.M, version $Revision: 3.13 $, $Date: 2008/02/13 02:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -102,7 +102,7 @@ c --- Set the g-factor for the constant g-factor model
 
       if (icharge == 5 .or. icharge == 6) then
 c     Read in Bessel data
-        call execuser ("readbessel")
+        call callpythonfunc ("readbessel","hermestools")
       endif
 
       if (icharge == 7) then
@@ -685,10 +685,10 @@ c     --- Calculate the current (needed for the envelope equation)
       if (lfail) return
       
 c     --- Get self axial fields of beam.
-      if (lbeforefs) call execuser("beforefs")
+      if (lbeforefs) call callpythonfunc("beforefs","controllers")
       call fieldsolhr (niz,y,ezbeam,rpipe,icharge,lezbeam,lezcenter,lfail)
       if (lfail) return
-      if (lafterfs) call execuser("afterfs")
+      if (lafterfs) call callpythonfunc("afterfs","controllers")
       
 c     --- Get the image effect on the beam envelope
       if (iimage > 0) then

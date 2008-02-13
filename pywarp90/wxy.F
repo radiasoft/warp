@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.89 $, $Date: 2008/02/04 22:01:18 $
+c@(#) File WXY.M, version $Revision: 3.90 $, $Date: 2008/02/13 02:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -736,9 +736,9 @@ c  relative to ZBEAM in the same way that self-fields are.
 
 c  Field-solve for potential 
 
-      if (lbeforefs) call execuser("beforefs")
+      if (lbeforefs) call callpythonfunc("beforefs","controllers")
       call fieldsolxy(-1)
-      if (lafterfs) call execuser("afterfs")
+      if (lafterfs) call callpythonfunc("afterfs","controllers")
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
@@ -1466,7 +1466,7 @@ c         --- Apply particle boundary conditions
      &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
         enddo
 
-        if (lcallscraper) call execuser("callscraper")
+        if (lcallscraper) call callpythonfunc("callscraper","controllers")
 
         do is=1,ns
           call processlostpart(pgroup,is,clearlostpart,time,zbeam)
@@ -2728,7 +2728,9 @@ c       --- Use 3d field solver
 
 c       --- Otherwise, use 2d field solver
 
-        if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
+        if (iwhich==0 .or. iwhich==1) then
+          call callpythonfunc("initfieldsolver","fieldsolver")
+        endif
 
         if (fstype == 0) then
           call vpois2d (iwhich, phi(-1,-1,0), phi(-1,-1,0), kxsq, kysq,

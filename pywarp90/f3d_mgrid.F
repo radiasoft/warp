@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.164 $, $Date: 2008/02/06 18:07:50 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.165 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field solver which is part of the F3D
@@ -161,7 +161,7 @@ c     --- converted and expanded for the multigrid solver.
      &                  (bounds(0)/=1.and.bounds(2)==1),
      &                  (bounds(0)==1.and.bounds(2)==1))
         endif
-        if (laddconductor) call execuser("calladdconductor")
+        if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
       call checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)
@@ -4260,7 +4260,7 @@ c     --- converted and expanded for the multigrid solver.
           call setcndtr(xmmin,0.,zmminlocal,zmmin,zbeam,zgrid,nx,0,nzlocal,dx,dx,dz,
      &                  bounds(4),bounds(5),bounds(1),.false.,.false.)
         endif
-        if (laddconductor) call execuser("calladdconductor")
+        if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
       call checkconductors(nx,0,nzlocal,nz,dx,dx,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)

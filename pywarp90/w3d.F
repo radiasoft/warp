@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.393 $, $Date: 2008/02/01 17:45:49 $
+c@(#) File W3D.F, version $Revision: 3.394 $, $Date: 2008/02/13 02:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -824,7 +824,7 @@ c     BEGIN predictor-corrector loop
 c           --- Inject more particles. This adds particles and alters ins
 c           --- and nps.
             call inject3d(1,pgroup)
-            call execuser("userinjection")
+            call callpythonfunc("userinjection","controllers")
 
 c           --- Treat particles at boundaries
             call particleboundaries3d(pgroup)
@@ -921,10 +921,10 @@ c  relative to ZBEAM in the same way that self-fields are.
 
 c  Field-solve for potential.
 
-         if (lbeforefs) call execuser("beforefs")
+         if (lbeforefs) call callpythonfunc("beforefs","controllers")
          call fieldsol3d(-1)
          call bfieldsol3d(-1)
-         if (lafterfs) call execuser("afterfs")
+         if (lafterfs) call callpythonfunc("afterfs","controllers")
 
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
@@ -1149,7 +1149,7 @@ c=============================================================================
 c  Set the electric fields from external sources,
 c  inculding axial confining fields, and uniform focusing fields.
 
-      if (lothereuser) call execuser("othereuser")
+      if (lothereuser) call callpythonfunc("othereuser","controllers")
 
 c  Apply axial confining ears for finite beam.
 
@@ -4528,7 +4528,9 @@ c  Picglb is included only to use zbeam
       if (lw3dtimesubs) substarttime = wtime()
 
 c  Call the user supplied particle loading routine if requested
-      if (lcallparticleloader) call execuser("callparticleloader")
+      if (lcallparticleloader) then
+        call callpythonfunc("callparticleloader","controllers")
+      endif
 
 c     --- Make sure that sid is set if it is not set by the user.
       do js=0,pgroup%ns-1
@@ -8186,7 +8188,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lw3dtimesubs) substarttime = wtime()
 
-      if (lbeforelr) call execuser("beforelr")
+      if (lbeforelr) call callpythonfunc("beforelr","controllers")
 
 c     --- Ensure that subcycling is setup correctly (in case the user had
 c     --- made changes.
@@ -8209,7 +8211,7 @@ c       --- Use user registered solver to load rho
         lzerorhofsapi = lzero
         js1fsapi = is1 - 1
         js2fsapi = is2 - 1
-        call execuser("loadrhoregistered")
+        call callpythonfunc("loadrhoregistered","fieldsolver")
         js1fsapi = -1
         js2fsapi = -1
       else
@@ -8691,7 +8693,7 @@ c     --- Zero out the particle's E field if requested (the default)
         ndtsfsapi = pgroup%ndts(is - 1)
         ipminfsapi = ipmin
         npfsapi = ip
-        call execuser("fetcheregistered")
+        call callpythonfunc("fetcheregistered","fieldsolver")
         NULLIFY(pgroupfsapi)
         jsfsapi = -1
         npfsapi = 0
@@ -8794,7 +8796,7 @@ c       --- and the data needs to be copied around.
         npfsapi = n
         jsfsapi = jsid
         ndtsfsapi = ndts
-        call execuser("fetcheregistered")
+        call callpythonfunc("fetcheregistered","fieldsolver")
         npfsapi = 0
         jsfsapi = -1
         ndtsfsapi = 0
@@ -8894,7 +8896,7 @@ c         --- do it only if species was advanced on this time step
         end do
       end if
 
-      if (lbeforescraper) call execuser("beforescraper")
+      if (lbeforescraper) call callpythonfunc("beforescraper","controllers")
 
 c     --- Apply particle boundary conditions
       call zpartbnd(pgroup,zmmaxlocal,zmminlocal,dz)
@@ -8915,8 +8917,8 @@ c     --- absorb particles passing through semitransparent disc
         endif
       enddo
 
-      if (lafterscraper) call execuser("afterscraper")
-      if (lcallscraper) call execuser("callscraper")
+      if (lafterscraper) call callpythonfunc("afterscraper","controllers")
+      if (lcallscraper) call callpythonfunc("callscraper","controllers")
 
       do is=1,ns
 c       --- do it only if species was advanced on this time step
@@ -9199,7 +9201,7 @@ c     --- Call the appropriate routine to get the phi
         yfsapi => y
         zfsapi => z
         phifsapi => p
-        call execuser("fetchphiregistered")
+        call callpythonfunc("fetchphiregistered","fieldsolver")
         npfsapi = 0
         NULLIFY(xfsapi)
         NULLIFY(yfsapi)
@@ -10095,7 +10097,7 @@ c       --- The registered field solvers shouldn't be called unless a full
 c       --- field solve is being called for.
         if (iwhich > 0) return
 
-        call execuser('fieldsolregistered')
+        call callpythonfunc("fieldsolregistered","fieldsolver")
 
 !$OMP MASTER
         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
@@ -10351,7 +10353,9 @@ c   4  2d fft in transverse plane, tridiag solve in z
         if(solvergeom==AMRgeom) fstype = 11
       endif
 
-      if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
+      if (iwhich==0 .or. iwhich==1) then
+        call callpythonfunc("initfieldsolver","fieldsolver")
+      endif
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
@@ -10470,7 +10474,7 @@ c         --- Chombo AMR  full-multigrid solver
      &                   l2symtry,l4symtry,xmmin,ymmin,zmminlocal,zmmin)
       elseif (fstype == 12) then
         if (iwhich <= 0) then
-          call execuser('fieldsolregistered')
+          call callpythonfunc("fieldsolregistered","fieldsolver")
         endif
 
       elseif (fstype == 13) then

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) Filef3d_ImplicitES.F, version $Revision: 1.3 $, $Date: 2007/11/27 19:21:13 $
+c@(#) Filef3d_ImplicitES.F, version $Revision: 1.4 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid implicit electrostatic field solver.
@@ -715,7 +715,7 @@ c     --- converted and expanded for the multigrid solver.
      &                  (bounds(0)/=1.and.bounds(2)==1),
      &                  (bounds(0)==1.and.bounds(2)==1))
         endif
-        if (laddconductor) call execuser("calladdconductor")
+        if (laddconductor) call callpythonfunc("calladdconductor","controllers")
       endif
       call checkconductors(nx,ny,nzlocal,nz,dx,dy,dz,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave)

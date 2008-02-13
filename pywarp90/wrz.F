@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.25 $, $Date: 2007/05/02 21:31:43 $
+c@(#) File WRZ.M, version $Revision: 3.26 $, $Date: 2008/02/13 02:22:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -601,11 +601,11 @@ c  Charge density and line charge plots
       endif
  
 c  Field-solve for potential (copy rho into phi first, compute e.s.e. after)
-      if (lbeforefs) call execuser("beforefs")
+      if (lbeforefs) call callpythonfunc("beforefs","controllers")
       call copyarry (rho, phi(0,0), nrz)
       call vprz (-1)
       if (periinz) call perphirz(phi(0,-1),nr,nz)
-      if (lafterfs) call execuser("afterfs")
+      if (lafterfs) call callpythonfunc("afterfs","controllers")
       call geteserz
 
       if ((caller .eq. "wrzgen").and.(frcetype .eq. "regress")) then

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DWRZ.M, version $Revision: 3.9 $, $Date: 2003/04/22 21:51:18 $
+c@(#) File DWRZ.M, version $Revision: 3.10 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package WRZ of code WARP
@@ -23,7 +23,7 @@ c Exit if paramters are not to be printed
       if (.not. lprntpara) return
 
 c     --- Call script version of this routine
-      call execuser("printparametersrz")
+      call callpythonfunc("printparametersrz","printparametersrz")
  
 c  Write to tty
    30 format(1x,a,i8,a)

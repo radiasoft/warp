@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_BFIELD.F, version $Revision: 1.42 $, $Date: 2008/02/01 22:52:26 $
+c@(#) File F3D_BFIELD.F, version $Revision: 1.43 $, $Date: 2008/02/13 02:22:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This contains routines to handle the B field, calculated from the current
@@ -180,10 +180,10 @@ c     --- the parallel sums on boundaries will need to be done again.
 
       if (bfstype == 12) then
         lzerorhofsapi = lzero
-        call execuser("bloadjregistered")
+        call callpythonfunc("bloadjregistered","fieldsolver")
       elseif (fstype == 12 .and. bfstype < 0) then
         lzerorhofsapi = lzero
-        call execuser("loadjregistered")
+        call callpythonfunc("loadjregistered","fieldsolver")
       elseif (bfstype >= 0) then
 
 c       --- Ensure that the jp array is setup properly
@@ -1846,9 +1846,9 @@ c     --- Zero out the particle's B field if requested (the default)
         jsfsapi = jsid
         ndtsfsapi = ndts
         if (bfstype == 12) then
-          call execuser("bfetchbregistered")
+          call callpythonfunc("bfetchbregistered","fieldsolver")
         else
-          call execuser("fetchbregistered")
+          call callpythonfunc("fetchbregistered","fieldsolver")
         endif
         npfsapi = 0
         jsfsapi = -1
@@ -1905,9 +1905,9 @@ c     --- Call the appropriate routine to get the A
         jsfsapi = -1
         ndtsfsapi = 1
         if (bfstype == 12) then
-          call execuser("bfetcharegistered")
+          call callpythonfunc("bfetcharegistered","fieldsolver")
         else
-          call execuser("fetcharegistered")
+          call callpythonfunc("fetcharegistered","fieldsolver")
         endif
         npfsapi = 0
         jsfsapi = -1
@@ -2074,11 +2074,13 @@ c=============================================================================
 
       if (bfstype < 0) return
 
-      if (iwhich==0 .or. iwhich==1) call execuser('initbfieldsolver')
+      if (iwhich==0 .or. iwhich==1) then
+        call callpythonfunc('initbfieldsolver',"fieldsolver")
+      endif
 
       if (bfstype == 12) then
         if (iwhich <= 0) then
-          call execuser('bfieldsolregistered')
+          call callpythonfunc('bfieldsolregistered',"fieldsolver")
           return
         endif
       endif
