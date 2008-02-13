@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.65 $, $Date: 2008/02/04 22:20:57 $
+#@(#) File FRZ.V, version $Revision: 3.66 $, $Date: 2008/02/13 00:24:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.65 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.66 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -168,7 +168,9 @@ solve_mgridrz(grid:GRIDtype,accuracy:real,fromup:logical) subroutine
          # multigridrzf.
 setmglevels_rz(grid:GRIDtype) subroutine
          # set mglevels in f3d arrays from RZ solver structure
-get_cond_rz(grid:integer) subroutine
+get_cond_rz(igrid:integer) subroutine
+         # get internal conductors locations from RZ multigrid solver
+get_cond_rz_grid(grid:GRIDtype,conductors:ConductorType) subroutine
          # get internal conductors locations from RZ multigrid solver
 get_cond_rz_level(grid:integer,level:integer) subroutine
          # get internal conductors locations from RZ multigrid solver
@@ -176,8 +178,14 @@ setconductorvoltagerz(volt:real,nz:integer,zmmin:real,dz:real,discrete:logical,
                       condid:integer)
          subroutine
          # set voltage on conductors from a z-grid
+setconductorvoltagerz_grid(grid:GRIDtype,volt:real,nz:integer,zmmin:real,
+                           dz:real,discrete:logical,condid:integer)
+         subroutine
+         # set voltage on conductors from a z-grid for grid
 setconductorvoltagerz_id(id:integer,volt:real) subroutine
          # set voltage on conductor given its ID
+setconductorvoltagerz_id_grid(grid:GRIDtype,id:integer,volt:real) subroutine
+         # set voltage on conductor given its ID for grid
 cond_sumrhointerior2d(rhosum:real,grid:GRIDtype,nx:integer,nz:integer,
                       rho(0:nx,0:nz):real,ixmin:integer,ixmax:integer,
                       izmin:integer,izmax:integer,dr:real,rmmin:real) subroutine
@@ -188,6 +196,10 @@ calcfact_deform(dz:real,zmin:real,
          # computes factors for elliptical deformation in X and Y planes
 init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,l_parallel:logical) subroutine
          # initializes the base grid for RZ solver
+init_gridrz(grid:GRIDtype,nr:integer,nz:integer,dr:real,dz:real,rmin:real,
+            zmin:real,l_parallel:logical,
+            boundxy:integer,bound0:integer,boundnz:integer) subroutine
+         # initializes a grid for RZ solver
 del_base() subroutine
          # removes the base grid
 set_basegrid() subroutine

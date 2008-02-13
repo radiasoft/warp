@@ -44,18 +44,20 @@ TYPE(GRDPTRtype), DIMENSION(:), ALLOCATABLE :: grids_ptr, gridinit
 
 contains
 
-subroutine init_basegrid(nr,nz,dr,dz,rmin,zmin,l_parallel)
+subroutine init_grid(bg,nr,nz,dr,dz,rmin,zmin,l_parallel, &
+                     boundxy,bound0,boundnz)
 !USE Multigrid3d
 implicit none
+TYPE(GRIDtype), POINTER :: bg
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 logical(ISZ), intent(in) :: l_parallel
+INTEGER(ISZ) :: boundxy,bound0,boundnz
 INTEGER(ISZ) :: i,j, nzp
-TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
 
   if (lverbose>=1) then
-    write(o_line,'("Init basegrid")')
+    write(o_line,'("Init grid")')
     call remark(trim(o_line))
   endif
 
@@ -65,9 +67,6 @@ TYPE(BNDtype), POINTER :: b
     return
   end if
 #endif
-
-  IF(.not. associated(basegrid)) call set_basegrid()
-  bg => basegrid
 
   inveps0 = 1./eps0
 
@@ -244,15 +243,14 @@ TYPE(BNDtype), POINTER :: b
     END do
     call setmglevels_rz(bg)
   endif
-  call mk_grids_ptr()
 
   if (lverbose>=1) then
-    write(o_line,'("Exit init_basegrid")')
+    write(o_line,'("Exit init_grid")')
     call remark(trim(o_line))
   endif
 
 return
-end subroutine init_basegrid
+end subroutine init_grid
 
 subroutine add_grid(mothergrid,nr,nz,dri,dzi,rmini,zmini,transit_min_r,transit_max_r,transit_min_z,transit_max_z)
 implicit none
@@ -899,7 +897,7 @@ end subroutine assign_grids_ptr
 
 subroutine init_bnd(g,nr,nz,dr,dz,zmin,zmax)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
-USE InGen3d, ONLY:l2symtry, l4symtry
+!USE InGen3d, ONLY:l2symtry, l4symtry
 USE InMesh3d, ONLY:zmminlocal,zmmaxlocal
 implicit none
 TYPE(GRIDtype), pointer :: g
@@ -6086,7 +6084,9 @@ conductors%interior%n = 0
 conductors%evensubgrid%n = 0
 conductors%oddsubgrid%n = 0
 
-IF(grid%gid(1)==basegrid%gid(1)) call get_cond_rz(1)
+IF (ASSOCIATED(basegrid)) then
+  IF(grid%gid(1)==basegrid%gid(1)) call get_cond_rz(basegrid%gid(1))
+END if
 
 return
 end subroutine install_conductors_rz
@@ -10149,16 +10149,38 @@ INTEGER(ISZ), INTENT(IN) :: nr,nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 logical(ISZ) :: l_parallel
 
- call init_basegrid(nr,nz,dr,dz,rmin,zmin,l_parallel)
+  IF(.not. associated(basegrid)) call set_basegrid()
 
- return
+  call init_grid(basegrid,nr,nz,dr,dz,rmin,zmin,l_parallel, &
+                 boundxy,bound0,boundnz)
+  call mk_grids_ptr()
+
+  return
 END subroutine init_base
+
+subroutine init_gridrz(grid,nr,nz,dr,dz,rmin,zmin,l_parallel, &
+                       boundxy,bound0,boundnz)
+USE multigridrz, Only: GRIDtype,init_grid
+implicit none
+TYPE(GRIDtype),target:: grid
+INTEGER(ISZ), INTENT(IN) :: nr,nz
+REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+logical(ISZ) :: l_parallel
+INTEGER(ISZ) :: boundxy,bound0,boundnz
+TYPE(GRIDtype), POINTER :: pgrid
+
+  pgrid => grid
+  call init_grid(pgrid,nr,nz,dr,dz,rmin,zmin,l_parallel, &
+                 boundxy,bound0,boundnz)
+
+  return
+END subroutine init_gridrz
 
 subroutine set_basegrid()
 USE multigridrz
   IF(associated(basegrid)) return
 
-  basegrid => NewGRIDType()
+  basegrid => NewGRIDtype()
 
   return
 end subroutine set_basegrid
@@ -10452,6 +10474,19 @@ USE Conductor3d
 implicit none
 INTEGER :: igrid
 
+  call get_cond_rz_grid(grids_ptr(igrid)%grid,conductors)
+
+return
+end subroutine get_cond_rz
+
+subroutine get_cond_rz_grid(grid,conductors)
+USE multigridrz, Only: GRIDtype,BNDtype,CONDtype,&
+                       solvergeom,Zgeom,Rgeom,XYgeom,v_bnd
+USE Conductor3d, Only: ConductorType
+implicit none
+TYPE(GRIDtype) :: grid
+TYPE(ConductorType) :: conductors
+
 INTEGER :: i,il,ic,icc,ice,ico,kl
 TYPE(BNDtype), pointer :: bnd
 TYPE(CONDtype), pointer :: c
@@ -10467,9 +10502,9 @@ TYPE(CONDtype), pointer :: c
  conductors%interior%n = 0
  conductors%evensubgrid%n = 0
  conductors%oddsubgrid%n = 0
- do il = 1, grids_ptr(igrid)%grid%nlevels
+ do il = 1, grid%nlevels
    IF(il == 1) then
-     bnd => grids_ptr(igrid)%grid%bndfirst
+     bnd => grid%bndfirst
    else
      bnd => bnd%next
    END if
@@ -10490,14 +10525,14 @@ TYPE(CONDtype), pointer :: c
      conductors%evensubgrid%nmax = conductors%evensubgrid%n
  if (conductors%oddsubgrid%nmax < conductors%oddsubgrid%n) &
      conductors%oddsubgrid%nmax = conductors%oddsubgrid%n
- call gchange("Conductor3d",0)
+ call ConductorTypechange(conductors)
 
  icc=0
  ice=0
  ico=0
- do il = 1, grids_ptr(igrid)%grid%nlevels
+ do il = 1, grid%nlevels
    IF(il == 1) then
-     bnd => grids_ptr(igrid)%grid%bndfirst
+     bnd => grid%bndfirst
    else
      bnd => bnd%next
    END if
@@ -10552,7 +10587,7 @@ TYPE(CONDtype), pointer :: c
  conductors%oddsubgrid%n = ico
 
 return
-end subroutine get_cond_rz
+end subroutine get_cond_rz_grid
 
 subroutine setconductorvoltagerz(volt,nz,zmmin,dz,discrete,id)
 USE multigridrz
@@ -10563,10 +10598,31 @@ real(kind=8):: rmmin,zmmin,dz
 logical(ISZ):: discrete
 integer(ISZ):: id
 
+INTEGER :: igrid
+
+  do igrid=1,ngrids
+    call setconductorvoltagerz_grid(grids_ptr(igrid)%grid,&
+                                    volt,nz,zmmin,dz,discrete,id)
+  enddo
+
+return
+end subroutine setconductorvoltagerz
+
+subroutine setconductorvoltagerz_grid(grid,volt,nz,zmmin,dz,discrete,id)
+USE multigridrz,Only: GRIDtype,CONDtype,BNDtype,bnd_method,egun,ecb,nlevels,&
+                      solvergeom,RZgeom
+implicit none
+type(GRIDtype):: grid
+integer(ISZ):: nz
+real(kind=8):: volt(0:nz)
+real(kind=8):: rmmin,zmmin,dz
+logical(ISZ):: discrete
+integer(ISZ):: id
+
 ! If the id is zero, then the voltage is applied to all conductors.
 ! Otherwise, it is applied only to the one specified.
 
-INTEGER :: igrid,i,iv,ic,icc,ice,ico
+INTEGER :: i,iv,ic,icc,ice,ico
 integer(ISZ):: iz
 real(kind=8):: zz,wz,vv
 TYPE(CONDtype), POINTER :: c
@@ -10574,12 +10630,11 @@ real(kind=8):: dxm,dxp,dzm,dzp,dxx,dzz,r,rm,rp
 TYPE(BNDtype), POINTER :: b
 LOGICAL(ISZ) :: l_change
 
-do igrid=1,ngrids
-  nlevels=grids_ptr(igrid)%grid%nlevels
-  rmmin = grids_ptr(igrid)%grid%rmin
+  nlevels=grid%nlevels
+  rmmin = grid%rmin
   do i = 1, nlevels
    IF(i == 1) then
-     b => grids_ptr(igrid)%grid%bndfirst
+     b => grid%bndfirst
    else
      b => b%next
    END if
@@ -10592,7 +10647,7 @@ do igrid=1,ngrids
 
     do ic=1,c%ncond
       IF(c%condid(ic) /= id .and. id /= 0) cycle
-      zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kcond(ic)-1)
+      zz = grid%zmin + b%dz*(c%kcond(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
         wz =     zz/dz - iz
@@ -10605,7 +10660,7 @@ do igrid=1,ngrids
     do ic = 1,c%nbbnd
 
       l_change = .false.
-      zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1)
+      zz = grid%zmin + b%dz*(c%kk(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
         wz =     zz/dz - iz
@@ -10630,7 +10685,7 @@ do igrid=1,ngrids
         endif
       endif
       if (c%dzm(ic) < b%dz .and. (c%condidzm(ic)==id .or. id == 0)) then
-        zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1) &
+        zz = grid%zmin + b%dz*(c%kk(ic)-1) &
              - c%dzm(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
@@ -10644,7 +10699,7 @@ do igrid=1,ngrids
         endif
       endif
       if (c%dzp(ic) < b%dz .and. (c%condidzp(ic)==id .or. id == 0)) then
-        zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1) &
+        zz = grid%zmin + b%dz*(c%kk(ic)-1) &
              + c%dzp(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
@@ -10724,9 +10779,8 @@ do igrid=1,ngrids
     enddo
    enddo
   enddo
-enddo
 return
-end subroutine setconductorvoltagerz
+end subroutine setconductorvoltagerz_grid
 
 subroutine setconductorvoltagerz_id(id,volt)
 USE multigridrz
@@ -10734,7 +10788,24 @@ implicit none
 integer(ISZ):: id
 real(kind=8):: volt
 
-INTEGER :: igrid,i,iv,ic,icc,ice,ico
+INTEGER :: igrid
+
+  do igrid=1,ngrids
+    call setconductorvoltagerz_id_grid(grids_ptr(igrid)%grid,id,volt)
+  enddo
+
+return
+end subroutine setconductorvoltagerz_id
+
+subroutine setconductorvoltagerz_id_grid(grid,id,volt)
+USE multigridrz,Only: GRIDtype,CONDtype,BNDtype,bnd_method,egun,ecb,nlevels,&
+                      solvergeom,RZgeom
+implicit none
+type(GRIDtype):: grid
+integer(ISZ):: id
+real(kind=8):: volt
+
+INTEGER :: i,iv,ic,icc,ice,ico
 integer(ISZ):: iz
 real(kind=8):: zz,wz,vv
 real(kind=8):: dxm,dxp,dzm,dzp,dxx,dzz,r,rm,rp,rmmin
@@ -10742,12 +10813,11 @@ LOGICAL(ISZ) :: l_change
 TYPE(BNDtype), POINTER :: b
 TYPE(CONDtype), POINTER :: c
 
-do igrid=1,ngrids
-  nlevels=grids_ptr(igrid)%grid%nlevels
-  rmmin = grids_ptr(igrid)%grid%rmin
+  nlevels=grid%nlevels
+  rmmin = grid%rmin
   do i = 1, nlevels
    IF(i == 1) then
-     b => grids_ptr(igrid)%grid%bndfirst
+     b => grid%bndfirst
    else
      b => b%next
    END if
@@ -10847,9 +10917,8 @@ do igrid=1,ngrids
     enddo
    enddo
   enddo
-enddo
 return
-end subroutine setconductorvoltagerz_id
+end subroutine setconductorvoltagerz_id_grid
 
 subroutine cond_sumrhointerior2d(rhosum,grid,nx,nz,rho,ixmin,ixmax,izmin,izmax,dr,rmmin)
 ! Sum up rho in the interior of the conductors within the specified extent.
@@ -11070,7 +11139,7 @@ TYPE(BNDtype), POINTER :: b
 !   call remark(trim(o_line))
 ! endif
 
-  IF(.not. associated(bworkgrid)) bworkgrid => NewGRIDType()
+  IF(.not. associated(bworkgrid)) bworkgrid => NewGRIDtype()
   bg => bworkgrid
 
   inveps0 = 1./eps0
@@ -11202,7 +11271,7 @@ TYPE(BNDtype), POINTER :: b
 ! call mk_grids_ptr()
 
 ! if (lverbose>=1) then
-!   write(o_line,'("Exit init_basegrid")')
+!   write(o_line,'("Exit init_bworkgrid")')
 !   call remark(trim(o_line))
 ! endif
 
