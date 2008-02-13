@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.229 $, $Date: 2008/02/01 17:45:49 $
+#@(#) File TOP.V, version $Revision: 3.230 $, $Date: 2008/02/13 18:16:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.229 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.230 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1466,8 +1466,11 @@ epsz(0:nzwind,0:nswind)    _real [m-rad] # Z-Z' emittance
 epsnx(0:nzwind,0:nswind)   _real [mm-mrad] # X-X' normalized emittance
 epsny(0:nzwind,0:nswind)   _real [mm-mrad] # Y-Y' normalized emittance
 epsnz(0:nzwind,0:nswind)   _real [mm-mrad] # Z-Z' normalized emittance
+epsr(0:nzwind,0:nswind)    _real [m-rad] # Generalized axisymmetric emittance
 epsg(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
 epsh(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
+epsnr(0:nzwind,0:nswind)   _real [mm-mrad] # Generalized axisymmetric
+                                           # normalized emittance
 epsng(0:nzwind,0:nswind)   _real [mm-mrad] # Generalized normalized emittance
 epsnh(0:nzwind,0:nswind)   _real [mm-mrad] # Generalized normalized emittance
 vxrms(0:nzwind,0:nswind)   _real [m/s]   # True RMS Vx in window
@@ -1540,8 +1543,12 @@ epszz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # Z-Z' emittance at grid point
 epsnxz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # X-X' normalized emittance at grid point
 epsnyz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Y-Y' normalized emittance at grid point
 epsnzz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Z-Z' normalized emittance at grid point
+epsrz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized axisymmetric
+                                             # emittance on grid
 epsgz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized emittance on grid
 epshz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized emittance on grid
+epsnrz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Generalized axisymmetric
+                                             # normalized emittance on grid
 epsngz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Generalized normalized emittance on grid
 epsnhz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Generalized normalized emittance on grid
 vxrmsz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # True RMS Vx at grid point
@@ -1681,12 +1688,19 @@ hepsny(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
 hepsnz(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Z-Z' normalized emittance by window as a function of time
+hepsr(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Generalized axisymmetric emittance by window as a function of time
 hepsg(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized emittance by window as a function of time
 hepsh(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized emittance by window as a function of time
+hepsnr(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Generalized axisymmetric normalized emittance by window as a function
+   # of time
 hepsng(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
    limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized normalized emittance by window as a function of time
@@ -1835,6 +1849,13 @@ ihepsnyz integer /-1/        # Multiplier for hepsnyz memory size (autoset)
 hepsnyz(0:nzmmnt*ihepsnyz,0:lenhist,0:nshist)  _real [mm-mrad]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y normalized emittance versus space and time
+lhepsrz logical /.false./    # Turns on history of Generalized axisymmetric
+                             # emittance
+ihepsrz integer /-1/         # Multiplier for hepsrz memory size (autoset)
+hepsrz(0:nzmmnt*ihepsrz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # Generalized axisymmetric emittance versus
+                             # space and time
 lhepsgz logical /.false./    # Turns on history of Generalized emittance
 ihepsgz integer /-1/         # Multiplier for hepsgz memory size (autoset)
 hepsgz(0:nzmmnt*ihepsgz,0:lenhist,0:nshist)  _real [m-rad]
@@ -1845,6 +1866,13 @@ ihepshz integer /-1/         # Multiplier for hepshz memory size (autoset)
 hepshz(0:nzmmnt*ihepshz,0:lenhist,0:nshist)  _real [m-rad]
             limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Generalized emittance versus space and time
+lhepsnrz logical /.false./   # Turns on history of Generalized axisymmetric
+                             # normalized emittance
+ihepsnrz integer /-1/        # Multiplier for hepsnrz memory size (autoset)
+hepsnrz(0:nzmmnt*ihepsnrz,0:lenhist,0:nshist)  _real [mm-mrad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
+            +zhist           # Generalized axisymmetric normalized emittance
+                             # versus space andtime
 lhepsngz logical /.false./   # Turns on history of Generalized nrmlzd emittance
 ihepsngz integer /-1/        # Multiplier for hepsngz memory size (autoset)
 hepsngz(0:nzmmnt*ihepsngz,0:lenhist,0:nshist)  _real [mm-mrad]

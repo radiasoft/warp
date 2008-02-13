@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.217 $, $Date: 2007/12/18 00:30:42 $
+c@(#) File TOP.F, version $Revision: 3.218 $, $Date: 2008/02/13 18:16:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -570,7 +570,7 @@ c  time in any location.
       real(kind=8):: delyxp,delxpyp
       real(kind=8):: delzsq,delvzsq,delzvz
       real(kind=8):: delvxsq,delvysq
-      real(kind=8):: tg,th
+      real(kind=8):: tr,tg,th
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
       real(kind=8):: zmmntscopy(NUMZMMNT)
@@ -1208,6 +1208,9 @@ c         --- Compute overall emittances
           epsnz(0,js) = epsz(0,js)*gamma*vzbar(0,js)*clighti*1.e6
 
 c         --- Compute generalized emittances
+          tr = 4.*((delxsq + delysq)*(delxpsq + delypsq)
+     &         -(delxxp + delyyp)**2 - (delxyp - delyxp)**2)
+          epsr(0,js) = sqrt(max(0.,tr))
           tg = 0.5*(epsx(0,js)**2 + epsy(0,js)**2) +
      &             16*(delxy*delxpyp - delxyp*delyxp)
           epsg(0,js) = sqrt(max(0.,tg))
@@ -1220,6 +1223,7 @@ c         --- Compute generalized emittances
      &       2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &       2*delxxp*delysq*delxpyp*delxyp)
           epsh(0,js) = sqrt(sqrt(max(0.,th)))
+          epsnr(0,js) = epsr(0,js)*gamma*vzbar(0,js)*clighti*1.e6
           epsng(0,js) = epsg(0,js)*gamma*vzbar(0,js)*clighti*1.e6
           epsnh(0,js) = epsh(0,js)*gamma*vzbar(0,js)*clighti*1.e6
 
@@ -1323,6 +1327,9 @@ c             --- Compute overall emittances
               epsnzz(izm,js) = epszz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
 
 c             --- Compute generalized emittances
+              tr = 4.*((delxsq + delysq)*(delxpsq + delypsq)
+     &             -(delxxp + delyyp)**2 - (delxyp - delyxp)**2)
+              epsrz(izm,js) = sqrt(max(0.,tr))
               tg = 0.5*(epsxz(izm,js)**2 + epsyz(izm,js)**2) +
      &           16*(delxy*delxpyp - delxyp*delyxp)
               epsgz(izm,js) = sqrt(max(0.,tg))
@@ -1335,6 +1342,7 @@ c             --- Compute generalized emittances
      &          2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &          2*delxxp*delysq*delxpyp*delxyp)
               epshz(izm,js) = sqrt(sqrt(max(0.,th)))
+              epsnrz(izm,js) = epsrz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
               epsngz(izm,js) = epsgz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
               epsnhz(izm,js) = epshz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
 
@@ -1390,8 +1398,10 @@ c           --- anything.
                 epsnx(iw,js)  =epsnxz(icell,js)*wz1   + epsnxz(icell+1,js)*wz0
                 epsny(iw,js)  =epsnyz(icell,js)*wz1   + epsnyz(icell+1,js)*wz0
                 epsnz(iw,js)  =epsnzz(icell,js)*wz1   + epsnzz(icell+1,js)*wz0
+                epsr(iw,js)   =epsrz(icell,js)*wz1    + epsrz(icell+1,js)*wz0
                 epsg(iw,js)   =epsgz(icell,js)*wz1    + epsgz(icell+1,js)*wz0
                 epsh(iw,js)   =epshz(icell,js)*wz1    + epshz(icell+1,js)*wz0
+                epsnr(iw,js)  =epsnrz(icell,js)*wz1   + epsnrz(icell+1,js)*wz0
                 epsng(iw,js)  =epsngz(icell,js)*wz1   + epsngz(icell+1,js)*wz0
                 epsnh(iw,js)  =epsnhz(icell,js)*wz1   + epsnhz(icell+1,js)*wz0
                 vxrms(iw,js)  =vxrmsz(icell,js)*wz1   + vxrmsz(icell+1,js)*wz0
