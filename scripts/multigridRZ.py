@@ -10,15 +10,9 @@ except ImportError:
   pass
 
 ##############################################################################
-class MultiGridRZ(SubcycledPoissonSolver):
+##############################################################################
+class MultiGridRZ(MultiGrid):
   
-  __w3dinputs__ = ['iondensity','electrontemperature','plasmapotential',
-                   'electrondensitymaxscale']
-  __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
-                   'mgmaxiters','mgtol','mgmaxlevels','mgform','mgverbose',
-                   'lcndbndy','icndbndy','laddconductor'] 
-  __frzinputs__ = ['mgridrz_ncycles','nguardx','nguardz']
-
   def __init__(self,lreducedpickle=1,**kw):
     kw['lreducedpickle'] = lreducedpickle
 
@@ -29,188 +23,49 @@ class MultiGridRZ(SubcycledPoissonSolver):
     if (self.solvergeom != w3d.RZgeom and self.solvergeom != w3d.XZgeom):
       self.solvergeom = w3d.RZgeom
     self.ncomponents = 1
+    self.nxguard = 1
+    self.nyguard = 0
+    self.nzguard = 1
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors. This is not really needed here.
     f3d.gridmode = 1
 
     # --- Save input parameters
-    self.processdefaultsfrompackage(MultiGridRZ.__w3dinputs__,w3d,kw)
-    self.processdefaultsfrompackage(MultiGridRZ.__f3dinputs__,f3d,kw)
-    self.processdefaultsfrompackage(MultiGridRZ.__frzinputs__,frz,kw)
+    self.processdefaultsfrompackage(MultiGrid2D.__w3dinputs__,w3d,kw)
+    self.processdefaultsfrompackage(MultiGrid2D.__f3dinputs__,f3d,kw)
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
-    self.nxguard = self.nguardx
-    self.nyguard = 0
-    self.nzguard = self.nguardz
-
-    # --- Create a conductor object, which by default is empty.
-    self.conductors = None
-    self.conductorlist = []
-    self.newconductorlist = []
+    # --- Create conductor objects
+    self.initializeconductors()
 
     # --- Give these variables dummy initial values.
     self.mgiters = 0
     self.mgerror = 0.
 
-    # --- Initialize the grid object
     self.initializegrid()
 
+  def initializegrid(self):
+    # --- Initialize the grid object
+    self.grid = GRIDtype()
+    init_gridrz(self.grid,self.nx,self.nz,self.dx,self.dz,self.xmmin,self.zmmin,
+                self.lparallel,self.bounds[1],self.bounds[4],self.bounds[5])
+
   def __getstate__(self):
-    dict = SubcycledPoissonSolver.__getstate__(self)
+    dict = MultiGrid.__getstate__(self)
     if self.lreducedpickle:
-      del dict['grid']
+      if 'grid' in dict: del dict['grid']
     return dict
 
   def __setstate__(self,dict):
-    SubcycledPoissonSolver.__setstate__(self,dict)
-    if 'newconductorlist' not in self.__dict__:
-      self.newconductorlist = self.conductorlist
-      self.conductorlist = []
+    MultiGrid.__setstate__(self,dict)
     if self.lreducedpickle and not self.lnorestoreonpickle:
       self.initializegrid()
 
-  def getconductorobject(self):
-    # --- Regenerate the conductor data
-    for conductor in self.newconductorlist:
-      self.installconductor(conductor)
-    self.newconductorlist = []
-    return None
-
-  def initializegrid(self):
-    self.grid = GRIDtype()
-    bg = self.grid
-
-    inveps0 = 1./eps0
-
-    if w3d.solvergeom==w3d.Zgeom: self.nguardx = 0
-    if w3d.solvergeom==w3d.Rgeom: self.nguardz = 0
-
-    bg.nzp = self.nz
-    bg.nrpar = 0
-    bg.nzpar = 0
-    bg.nr = self.nx
-    bg.dr = self.dx
-    bg.rmin = self.xmmin
-    bg.rmax = self.xmmax
-    bg.xmin = self.xmmin
-    bg.xmax = self.xmmax
-    bg.nz = self.nz
-    bg.zminp = self.zmmin
-    bg.dz = self.dz
-    bg.zmin = self.zmmin
-    bg.zmax = self.zmmax
-    bg.jmin = 1
-    bg.jmax = bg.nr+1
-    bg.lmin = 1
-    bg.lmax = bg.nr+1
-    bg.nguardx = self.nguardx
-    bg.nguardz = self.nguardz
-
-    bg.mgparam = self.mgparam
-    bg.npre = self.downpasses
-    bg.npost = self.uppasses
-    bg.ncycles = self.mgridrz_ncycles
-    bg.ncmax = self.mgmaxiters
-    bg.npmin = self.mgmaxlevels
-    bg.transit_min_r = 0
-    bg.transit_max_r = 0
-    bg.transit_min_z = 0
-    bg.transit_max_z = 0
-    bg.invdr = 1./bg.dr
-    bg.invdz = 1./bg.dz
-
-    bg.gid = array([1])
-    bg.loc_part = ones((bg.nr+1,bg.nzp+1),'l')
-    bg.loc_part_fd = ones((bg.nr+1,bg.nzp+1),'l')
-    bg.invvol = zeros((bg.nr+1),'d')
-
-    frz.ngrids = 1
-    frz.level_del_grid = 0
-    frz.n_avail_ids = 0
-    frz.avail_ids = -1
-
-    if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.Rgeom:
-#     --- computes divider by cell volumes to get density
-      if bg.rmin == 0.:
-#       --- the factor 0.75 corrects for overdeposition due to linear
-#       --- weighting (for uniform distribution)
-#       --- see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
-#       --- and Verboncoeur, J. of Comp. Phys.,
-        bg.invvol[0] = 0.75/(pi*(0.5*0.5*bg.dr*bg.dr*bg.dz))
-        for j in range(1,bg.nr+1):
-          bg.invvol[j] = 1./(2.*pi*j*bg.dr*bg.dr*bg.dz)
-      else:
-        for j in range(0,bg.nr+1):
-          bg.invvol[j] = 1./(2.*pi*(bg.rmin+j*bg.dr)*bg.dr*bg.dz)
-      if self.solvergeom == w3d.Rgeom: bg.invvol = bg.invvol*bg.dz
-    else:
-#     --- solvergeom==XZgeom or solvergeom==XYgeom
-      bg.invvol = 1./(bg.dr*bg.dz)
-
-    if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.XZgeom:
-      ixlbndi = self.boundxy
-      ixrbndi = self.boundxy
-      izlbndi = self.bound0
-      izrbndi = self.boundnz
-      ixlbnd = self.boundxy
-      ixrbnd = self.boundxy
-      izlbnd = self.bound0
-      izrbnd = self.boundnz
-      if bg.rmin == 0.:
-        ixlbndi = neumann
-        ixlbnd  = neumann
-    else:
-#     --- solvergeom==XYgeom
-      ixlbndi = self.boundxy
-      ixrbndi = self.boundxy
-      izlbndi = self.boundxy
-      izrbndi = self.boundxy
-      ixlbnd = self.boundxy
-      ixrbnd = self.boundxy
-      izlbnd = self.boundxy
-      izrbnd = self.boundxy
-      if self.l4symtry:
-        ixlbndi = neumann
-        ixlbnd  = neumann
-      if (w3d.l2symtry or w3d.l4symtry) and self.solvergeom == w3d.XYgeom:
-        izlbndi = neumann
-        izlbnd  = neumann
-
-    bg.ixlbnd = ixlbndi
-    bg.ixrbnd = ixrbndi
-    bg.izlbnd = izlbndi
-    bg.izrbnd = izrbndi
-
-    if not (self.solvergeom == w3d.Zgeom or self.solvergeom == w3d.Rgeom):
-      init_gridbnd(bg)
-    bg.nlevels = self.mgmaxlevels
-
-    for i in range(bg.nlevels):
-      if i == 0:
-        b = bg.bndfirst
-      else:
-        b = b.next
-      if b.izlbnd == dirichlet:  b.v[:,0]    = 3 # v_dirichlet
-      if b.izrbnd == dirichlet:  b.v[:,b.nz] = 3 # v_dirichlet
-      if bg.ixlbnd == dirichlet: b.v[0,:]    = 3 # v_dirichlet
-      if bg.ixrbnd == dirichlet: b.v[b.nr,:] = 3 # v_dirichlet
-    setmglevels_rz(bg)
-  
-  def getpdims(self):
-    # --- Returns the dimensions of the arrays used by the particles
-    return ((1+self.nxp,1+self.nzp),
-            (1+self.nxp+2*self.nguardx,1+self.nzp+2*self.nguardz))
-
-  def getdims(self):
-    # --- Returns the dimensions of the arrays used by the field solver
-    return ((1+self.nx,1+self.nz),
-            (1+self.nx+2*self.nguardx,1+self.nz+2*self.nguardz))
-
   def getrho(self):
-    return self.source
+    return self.source[:,0,:]
 
   def getphi(self):
     'Returns the phi array without the guard cells'
@@ -224,153 +79,120 @@ class MultiGridRZ(SubcycledPoissonSolver):
     iz2 = -self.nzguard
     if iz2 == 0: iz2 = None
     iz = slice(iz1,iz2)
-    return self.potential[ix,iz]
-
-  def getfield(self):
-    return self.field
-
-  def loadrho(self,lzero=None,**kw):
-    SubcycledPoissonSolver.loadsource(self,lzero,**kw)
-
-  def fetche(self,*args,**kw):
-    SubcycledPoissonSolver.fetchfield(self,*args,**kw)
-
-  def setsourcep(self,js,pgroup,zgrid):
-    n = pgroup.nps[js]
-    if n == 0: return
-    i  = pgroup.ins[js] - 1
-    x  = pgroup.xp[i:i+n]
-    y  = pgroup.yp[i:i+n]
-    z  = pgroup.zp[i:i+n]
-    ux = zeros((0,), 'd')
-    uy = zeros((0,), 'd')
-    uz = pgroup.uzp[i:i+n]
-    gaminv = zeros((0,), 'd')
-    q  = pgroup.sq[js]
-    w  = pgroup.sw[js]*top.pgroup.dtscale[js]
-    if top.wpid == 0: wght = zeros((0,), 'd')
-    else:             wght = pgroup.pid[i:i+n,top.wpid-1]
-    self.setsourcepatposition(x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid)
-
-  def setsourcepatposition(self,x,y,z,ux,uy,uz,gaminv,wght,q,w,zgrid):
-    n = len(x)
-    if n == 0: return
-    sourcep = transpose(self.sourcep)
-    sourcep.shape = (1+self.nzp,1,1+self.nxp)
-    sourcep = transpose(sourcep)
-    if top.wpid == 0:
-      setrho3d(sourcep,n,x,y,z,zgrid,uz,q,w,top.depos,
-               self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
-               self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
-               self.solvergeom==w3d.RZgeom)
-    else:
-      # --- Need top.pid(:,top.wpid)
-      setrho3dw(sourcep,n,x,y,z,zgrid,uz,wght,q,w,top.depos,
-                self.nxp,self.nyp,self.nzp,self.dx,1.,self.dz,
-                self.xmminp,self.ymminp,self.zmminp,self.l2symtry,self.l4symtry,
-                self.solvergeom==w3d.RZgeom)
-
-  def fetchfieldfrompositions(self,x,y,z,ex,ey,ez,bx,by,bz,js=0,pgroup=None):
-    # --- Only sets the E field from the potential
-    n = len(x)
-    if n == 0: return
-    sete3d(self.potentialp,self.fieldp,n,x,y,z,self.getzgridprv(),
-           self.xmminp,self.ymminp,self.zmminp,
-           self.dx,self.dy,self.dz,
-           self.nx,self.ny,self.nz,top.efetch[js],
-           ex,ey,ez,self.l2symtry,self.l4symtry,self.solvergeom==w3d.RZgeom,
-           self.nxguard,self.nyguard,self.nzguard)
-    #ey[...] = 0.
+    return self.potential[ix,0,iz]
 
   def fetchpotentialfrompositions(self,x,y,z,potential):
     n = len(x)
     if n == 0: return
     if self.solvergeom==w3d.RZgeom: r = sqrt(x**2 + y**2)
     else:                           r = x
-    nx = self.nx + 2*self.nguardx
-    nz = self.nz + 2*self.nguardz
-    xmmin = self.xmmin - self.nguardx*self.dx
-    xmmax = self.xmmax + self.nguardx*self.dx
-    zmminlocal = self.zmminlocal - self.nguardz*self.dz
-    zmmaxlocal = self.zmmaxlocal + self.nguardz*self.dz
-    getgrid2d(n,r,z,potential,nx,nz,self.potential,
+    nx = self.nx + 2*self.nxguard
+    nzlocal = self.nzlocal + 2*self.nzguard
+    xmmin = self.xmmin - self.nxguard*self.dx
+    xmmax = self.xmmax + self.nxguard*self.dx
+    zmminlocal = self.zmminlocal - self.nzguard*self.dz
+    zmmaxlocal = self.zmmaxlocal + self.nzguard*self.dz
+    getgrid2d(n,r,z,potential,nx,nzlocal,self.potential[:,0,:],
               xmmin,xmmax,zmminlocal,zmmaxlocal)
 
-  def setarraysforfieldsolve(self,*args):
-    SubcycledPoissonSolver.setarraysforfieldsolve(self,*args)
-    if self.lparallel:
-      raise "MultiGridRZ not parallelized"
+  def _installconductor(self,conductorobject,installedlist,conductordata,
+                        fselfb):
+    # --- Copied from MultiGrid, but turns on installrz.
+    # --- This does that actual installation of the conductor into the
+    # --- conductor object
 
-  def getpotentialpforparticles(self,*args):
-    SubcycledPoissonSolver.getpotentialpforparticles(self,*args)
-    if self.lparallel:
-      raise "MultiGridRZ not parallelized"
+    # --- Extract the data from conductordata (the arguments to
+    # installconductor)
+    conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill = conductordata
 
-  def makesourceperiodic(self):
-    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
-      self.source[0,:] = self.source[0,:] + self.source[-1,:]
-      self.source[-1,:] = self.source[0,:]
-    if self.pbounds[0] == 1 and not self.l4symtry:
-       self.source[0,:] = 2.*self.source[0,:]
-    if self.pbounds[1] == 1: self.source[-1,:] = 2.*self.source[-1,:]
-    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      if self.lparallel:
-        raise "MultiGridRZ not parallelized"
-        #self.makesourceperiodic_parallel()
-      else:
-        self.source[:,0] = self.source[:,0] + self.source[:,-1]
-        self.source[:,-1] = self.source[:,0]
-    if self.pbounds[4] == 1: self.source[:,0] = 2.*self.source[:,0]
-    if self.pbounds[5] == 1: self.source[:,-1] = 2.*self.source[:,-1]
+    if conductor in installedlist: return
+    installedlist.append(conductor)
 
-  def installconductor(self,conductor,
-                            xmin=None,xmax=None,
-                            ymin=None,ymax=None,
-                            zmin=None,zmax=None,
-                            dfill=top.largepos):
-    if conductor in self.conductorlist: return
-    self.conductorlist.append(conductor)
+    if fselfb == 'p':
+      zscale = 1.
+      nx,ny,nzlocal,nz = self.nxp,self.nyp,self.nzp,self.nz
+      xmmin,xmmax = self.xmminp,self.xmmaxp
+      ymmin,ymmax = self.ymminp,self.ymmaxp
+      zmmin,zmmax = self.zmminp,self.zmmaxp
+      mgmaxlevels = 1
+    else:
+      # --- Get relativistic longitudinal scaling factor
+      # --- This is quite ready yet.
+      beta = fselfb/clight
+      zscale = 1./sqrt((1.-beta)*(1.+beta))
+      nx,ny,nzlocal,nz = self.nx,self.ny,self.nzlocal,self.nz
+      xmmin,xmmax = self.xmmin,self.xmmax
+      ymmin,ymmax = self.ymmin,self.ymmax
+      zmmin,zmmax = self.zmmin,self.zmmax
+      mgmaxlevels = None
+
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       self.getzgrid(),
-                      self.nx,self.ny,self.nz,self.nz,
-                      self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                      self.zmmin,self.zmmax,1.,self.l2symtry,self.l4symtry,
-                      solvergeom=self.solvergeom,gridrz=self.grid)
+                      nx,ny,nzlocal,nz,
+                      xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,
+                      zscale,self.l2symtry,self.l4symtry,
+                      installrz=1,
+                      solvergeom=self.solvergeom,conductors=conductorobject,
+                      mgmaxlevels=mgmaxlevels,
+                      gridrz=self.grid)
+    get_cond_rz_grid(self.grid,conductorobject)
 
-  def hasconductors(self):
-    "This is not used anywhere"
-    return 1
+  def setconductorvoltage(self,voltage,condid=0,discrete=false,
+                          setvinject=false):
+    'calls setconductorvoltage'
 
-  def clearconductors(self):
-    "This is only used by realboundaries"
-    pass
+    # --- Set vinject first is requested.
+    # --- This is copied from plot_conductors.setconductorvoltage.
+    if setvinject:
+      if type(voltage) in [ListType,TupleType,ArrayType]:
+        # --- Set it to the voltage on the left edge
+        top.vinject = voltage[0]
+      elif type(voltage) == FunctionType:
+        # --- Set it to the voltage at the source center
+        top.vinject = voltage(top.xinject,top.yinject,top.zinject)
+      else:
+        top.vinject = voltage
 
-  def find_mgparam(self,lsavephi=false,resetpasses=1):
-    "This needs to be thought through"
-    pass
-    #find_mgparam(lsavephi=lsavephi,resetpasses=resetpasses,
-    #             solver=self,pkg3d=self)
+    # --- Loop over all of the selfb groups to that all conductor objects
+    # --- are handled.
+    # --- XXX NOTE THAT SELFB IS NOT IMPLEMENTED YET FOR MultiGridRZ XXX
+    for iselfb in range(top.nsselfb):
+      if type(voltage) in [ListType,TupleType,ArrayType]:
+      # --- Voltage is assumed to be the voltages are the z grid cell locations
+      # --- (in the global beam frame).
+        setconductorvoltagerz_grid(self.grid,voltage,self.nz,self.zmmin,
+                                   self.dz,discrete,condid)
+      else:
+        setconductorvoltagerz_id_grid(self.grid,condid,voltage)
 
   def dosolve(self,iwhich=0,*args):
-    self.getconductorobject()
-    self.grid.rho = self.source
-    self.grid.phi = self.potential
+    if not self.l_internal_dosolve: return
+    # --- set for longitudinal relativistic contraction
+    iselfb = args[2]
+    beta = top.pgroup.fselfb[iselfb]/clight
+    zfact = 1./sqrt((1.-beta)*(1.+beta))
+
+    # --- This is only done for convenience.
+    self.phi = self.potential
+    self.rho = self.source
+    if isinstance(self.potential,FloatType): return
+
+    if self.izfsslave is None: self.izfsslave = top.izfsslave
+    if self.nzfsslave is None: self.nzfsslave = top.nzfsslave
+    mgiters = zeros(1,'l')
+    mgerror = zeros(1,'d')
+
+    conductorobject = self.getconductorobject(top.pgroup.fselfb[iselfb])
+
+    self.grid.rho = self.source[:,0,:]
+    self.grid.phi = self.potential[:,0,:]
     solve_mgridrz(self.grid,self.mgtol,false)
-    self.mgiters = nb_iters
+
+    self.mgiters = frz.nb_iters
     #self.mgerror = mgerror[0] # not saved anywhere
 
   ##########################################################################
   # Define the basic plot commands
-  def genericpf(self,kw,pffunc):
-    kw['conductors'] = self.getconductorobject()
-    kw['solver'] = self
-    # --- This is a temporary kludge until the plot routines are updated to
-    # --- use source and potential instead of rho and phi.
-    self.rho = self.source
-    self.phi = self.potential
-    pffunc(**kw)
-  def pfzx(self,**kw): self.genericpf(kw,pfzx)
-  def pfzxg(self,**kw): self.genericpf(kw,pfzxg)
   def pfzr(self,**kw): self.genericpf(kw,pfzx)
   def pfzrg(self,**kw): self.genericpf(kw,pfzxg)
 
