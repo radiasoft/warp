@@ -103,7 +103,7 @@ import VPythonobjects
 from string import *
 from appendablearray import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.176 2008/02/06 23:51:29 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.177 2008/02/13 00:40:43 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -116,7 +116,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         nx=None,ny=None,nzlocal=None,nz=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,zscale=1.,l2symtry=None,l4symtry=None,
-                        installrz=1,gridmode=1,solvergeom=None,
+                        installrz=None,gridmode=1,solvergeom=None,
                         conductors=None,gridrz=None,mgmaxlevels=None,
                         my_index=None,nslaves=None,izfsslave=None,nzfsslave=None):
   """
@@ -152,11 +152,18 @@ Installs the given conductors.
   # --- Use whatever conductors object was specified, or
   # --- if no special solver is being used, use f3d.conductors.
   if conductors is None: conductors = f3d.conductors
+
+  # --- Set the installrz argument if needed.
+  if installrz is None:
+    installrz = (frz.getpyobject('basegrid') is not None)
+
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nzlocal,nz,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,installrz,gridrz,
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,zscale,l2symtry,l4symtry,
+           installrz,gridrz,
            mgmaxlevels=mgmaxlevels,
-           my_index=my_index,nslaves=nslaves,izslave=izfsslave,nzslave=nzfsslave)
+           my_index=my_index,nslaves=nslaves,
+           izslave=izfsslave,nzslave=nzfsslave)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
@@ -1728,7 +1735,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                     zmmin=None,zmmax=None,zscale=1.,
                     l2symtry=None,l4symtry=None,
-                    installrz=1,gridrz=None,
+                    installrz=None,gridrz=None,
                     my_index=None,nslaves=None,izslave=None,nzslave=None,
                     solver=None,mgmaxlevels=None):
     """
@@ -1801,8 +1808,8 @@ Creates a grid object which can generate conductor data.
 
     # --- Check if frz.basegrid is allocated if installrz is set.
     # --- If not, then turn off installrz.
-    if installrz:
-      if frz.getpyobject('basegrid') is None: installrz = 0
+    if installrz is None:
+      installrz = (frz.getpyobject('basegrid') is not None)
 
     if w3d.solvergeom not in [w3d.RZgeom,w3d.XZgeom,w3d.XYgeom] or not installrz:
       conductors = ConductorType()
