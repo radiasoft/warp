@@ -8,7 +8,7 @@ The following functions are available:
 __all__ = ['solenoiddoc','addsolenoid','addnewsolenoid','addgriddedsolenoid']
 from warp import *
 from lattice import addnewmmlt,addnewbgrd
-solenoid_version = "$Id: solenoid.py,v 1.9 2008/02/01 22:48:49 dave Exp $"
+solenoid_version = "$Id: solenoid.py,v 1.10 2008/02/14 21:59:47 dave Exp $"
 
 def solenoiddoc():
   import solenoid
@@ -179,6 +179,7 @@ def addgriddedsolenoid(zcenter=None,length=None,rinner=None,router=None,
                        ymmin=None,ymmax=None,
                        zmmin=None,zmmax=None,
                        l4symtry=None,l2symtry=None,
+                       fringelen=None,
                        **kw):
   """
 Adds a solenoid using gridded data, via a bgrd element.
@@ -195,6 +196,9 @@ Input arguments:
                       the fields is save as an attribute of the function.
  - scalebz=true: when true, B is scale to exactly match bzmax
  - tol=1.e-5: convergence tolerence for the field solve relative to bzmax
+ - fringelen=None: length of region before and after the solenoid to
+                   include the field fringe, in units of the sheet radius.
+                   If given, this sets the z extent of the grid.
   """
 
   assert zcenter is not None,ValueError('zcenter must be given')
@@ -202,6 +206,16 @@ Input arguments:
   assert rinner is not None,ValueError('rinner must be given')
   assert router is not None,ValueError('router must be given')
   assert bzmax is not None,ValueError('bzmax must be given')
+
+  # --- If fringelen is given, calculate the z extent of the grid.
+  # --- The grid cell size will be close to that of the field solving grid.
+  if fringelen is not None:
+    zmmin = zcenter - length/2. - fringelen*router
+    zmmax = zcenter + length/2. + fringelen*router
+    if dz is None: dz = w3d.dz
+    nz = nint((zmmax - zmmin)/dz)
+    dz = (zmmax - zmmin)/w3d.nz
+    nz = nint((zmmax - zmmin)/dz)
 
   # --- Note that the grid parameters are passed in using a separate dict
   # --- instead of using the generic kw, since kw is expected to contain
@@ -364,13 +378,16 @@ Input arguments:
   # --- value so they can be restored after the solve.
   solvergeom = w3d.solvergeom
   ncmax = frz.mgridrz_ncmax
+  electrontemperature = w3d.electrontemperature 
   w3d.solvergeom = w3d.RZgeom
   frz.mgridrz_ncmax = 10000
+  w3d.electrontemperature = 0. # turn of Boltzmann electrons
 
   Bsolver.solve()
 
   w3d.solvergeom = solvergeom
   frz.mgridrz_ncmax = ncmax
+  w3d.electrontemperature = electrontemperature
 
   '''
   # --- Do some error checking for the RZ case
