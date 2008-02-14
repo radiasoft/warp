@@ -16,7 +16,7 @@ class Quasistatic:
   def __init__(self,ions,MRroot=None,l_verbose=0,l_findmgparam=0,
                nparpgrp=top.nparpgrp,Ninit=1000,l_mode=1,l_selfe=1,l_selfi=1,maps=None,pboundxy=None,
                conductors=[],l_elecuniform=0,scraper=None,l_weakstrong=0,nelecperiod=1,
-               backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=true):
+               backgroundtype=Electron,l_push_z=true,l_inject_elec_MR=false,l_warpzmmnt=false):
     w3d.solvergeom=w3d.XYgeom
     self.gridelecs=[]
     self.gridions=[]
@@ -98,7 +98,7 @@ class Quasistatic:
     # --- sets z range
     if self.l_mode==2:
       self.izmin = w3d.nz/4
-      self.izmax = w3d.nz-izmin
+      self.izmax = w3d.nz-self.izmin
     else:
       self.izmin = 0
       self.izmax = w3d.nzp
@@ -142,6 +142,7 @@ class Quasistatic:
     self.timemmnts = AppendableArray(typecode='d')
     self.iz=-1
     self.l_timing=false
+    self.l_warpzmmnt=l_warpzmmnt
     self.reset_timers()
 
   def reset_timers(self):
@@ -331,22 +332,23 @@ class Quasistatic:
 #       for iz in range(globalmax(w3d.nzp)-w3d.nzp):
 #         if l_plotelec :self.plot_electrons()
          
-       if self.l_timing:ptime = wtime()
-       if l_push_elec:
-         self.rhoe[:,:,0] = self.gridelecs[1].rho
-         self.phie[:,:,0] = self.gridelecs[1].phi
-       self.rhoi[:,:,0] = self.gridions[1].rho
-       self.phii[:,:,0] = self.gridions[1].phi
-       if self.l_timing: self.time_stack_rhophi += wtime()-ptime
+    # --- END of FOR loop
+     if self.l_timing:ptime = wtime()
+     if l_push_elec:
+       self.rhoe[:,:,0] = self.gridelecs[1].rho
+       self.phie[:,:,0] = self.gridelecs[1].phi
+     self.rhoi[:,:,0] = self.gridions[1].rho
+     self.phii[:,:,0] = self.gridions[1].phi
+     if self.l_timing: self.time_stack_rhophi += wtime()-ptime
 
-       if self.l_timing:ptime = wtime()
-       self.reset_rho1()
-       if self.l_timing: self.time_reset_rho1 += wtime()-ptime
+     if self.l_timing:ptime = wtime()
+     self.reset_rho1()
+     if self.l_timing: self.time_reset_rho1 += wtime()-ptime
 #       if lparallel:mpi.barrier()
 
-       if self.l_timing:ptime = wtime()
-       self.store_ionstoprev()
-       if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
+     if self.l_timing:ptime = wtime()
+     self.store_ionstoprev()
+     if self.l_timing: self.time_store_ionstoprev += wtime()-ptime
        
      # --- clear electrons on processor 0, shift them to the previous ones for me>0
      self.clear_electrons()
@@ -357,8 +359,12 @@ class Quasistatic:
 
      # --- update time, time counter
      top.time+=top.dt
+     if self.l_verbose: print me,top.it,self.iz,'me = ',me,';compute zmmnt'
+     if self.l_warpzmmnt and top.it%top.nhist==0:
+       zmmnt()
+       minidiag(top.it,top.time,top.lspecial)
      top.it+=1
-     
+
      # --- call afterstep functions
      callafterstepfuncs.callfuncsinlist()
      print me,top.it,self.iz,'it = %i, time = %gs.'%(top.it,top.time)
@@ -775,6 +781,8 @@ class Quasistatic:
       iu = il+pg.nps[js]
       zmin = js*w3d.dz+w3d.zmminp
       iz = int((pg.zp[il:iu]-zmin)/w3d.dz) 
+      if len(iz)>0:
+        if min(iz)<-1 or max(iz)>1: print 'error iz',min(iz),max(iz) 
       izleft = compress(iz<0,arange(pg.nps[js]))
       izright = compress(iz>0,arange(pg.nps[js]))
       if js==0 and len(izleft)>0:raise('Error in sort_ions_along_z:js==0 and len(izleft)>0')   
@@ -794,6 +802,7 @@ class Quasistatic:
                      take(pg.bz,izleft).copy(),
                      take(pg.gaminv,izleft).copy()]
         if pg.npid>0:toaddleft.append(take(pg.pid,izleft,0).copy())
+        put(pg.gaminv,izleft,0.)
       if len(izright)>0:
         toaddright = [take(pg.xp,izright).copy(),
                      take(pg.yp,izright).copy(),
@@ -809,6 +818,8 @@ class Quasistatic:
                      take(pg.bz,izright).copy(),
                      take(pg.gaminv,izright).copy()]
         if pg.npid>0:toaddright.append(take(pg.pid,izright,0).copy())
+        put(pg.gaminv,izright,0.)
+      processlostpart(pg,js+1,top.clearlostpart,top.time+top.dt*pg.ndts[js],top.zbeam)
       if len(izleft)>0:
         if pg.npid==0:
           pid = 0.
@@ -1264,8 +1275,8 @@ class Quasistatic:
 #          ex = self.slist[0].getex()
 #          if me==0:ppco(x,y,ex,msize=3,ncolor=100);refresh()
 #        if iz==0:
-#        self.electrons.ppxex(msize=2);refresh()
-        self.electrons.ppxy(msize=2);refresh()
+        self.electrons.ppxex(msize=2);refresh()
+#        self.electrons.ppxy(msize=1);refresh()
 #        else:
 #          self.slist[0].ppxex(msize=2);
 #        limits(w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
@@ -2116,12 +2127,13 @@ class Quasistaticold:
             enzl=0
             enzu=0
           if self.l_maps:
-            phitmp = brz.phi[1:-1,1:-1].copy()
+            phitmp = brz.phi[:,:].copy()
             if self.l_selfe:
 #              brz.phi[1:-1,1:-1] += b3d.phi[...,iz+1+enzl] 
               brz.phi[1:-1,1:-1] += b3d.potentialarray[:,:,iz+1+enzl,0,0]
             else:
-              brz.phi[1:-1,1:-1] = b3d.phi[...,iz+1+enzl].copy()
+              brz.phi[:,:] = b3d.phi[...,iz+1+enzl].copy()
+#              brz.phi[1:-1,1:-1] = b3d.phi[...,iz+1+enzl].copy()
             b3d.potentialparray[:,:,iz+1+enzl,0,0] = phitmp.copy()
 #            b3d.phi[:,:,iz+1+enzl] = phitmp.copy()
             del phitmp
