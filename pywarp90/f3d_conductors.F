@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.63 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.64 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -788,9 +788,9 @@ c normal angle of the surface at that point.
       integer(ISZ):: i
       real(kind=8):: vsq
       real(kind=8):: distance
-      real(kind=8):: tx,xix,yix,zix,dix
-      real(kind=8):: ty,xiy,yiy,ziy,diy
-      real(kind=8):: tz,xiz,yiz,ziz,diz
+      real(kind=8):: tx,txm,txp,xix,yix,zix,dix
+      real(kind=8):: ty,tym,typ,xiy,yiy,ziy,diy
+      real(kind=8):: tz,tzm,tzp,xiz,yiz,ziz,diz
       real(kind=8):: ctheta,stheta,cphi,sphi
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
@@ -816,15 +816,19 @@ c normal angle of the surface at that point.
           if (vx(i) == 0.) then
             tx = LARGEPOS
           else
-            tx = -(xcent - xsize*0.5 - x(i))/vx(i)
-            if (tx < 0.) then
-              tx = -(xcent + xsize*0.5 - x(i))/vx(i)
+            txm = -(xcent - xsize*0.5 - x(i))/vx(i)
+            txp = -(xcent + xsize*0.5 - x(i))/vx(i)
+            if (txm > 0. .and. txp > 0.) then
+              tx = min(txm,txp)
+            else
+              tx = max(txm,txp)
             endif
           endif
           xix = -vx(i)*tx + x(i)
           yix = -vy(i)*tx + y(i)
           zix = -vz(i)*tx + z(i)
-          if (ymin <= yix .and. yix <= ymax .and.
+          if (tx > 0. .and.
+     &        ymin <= yix .and. yix <= ymax .and.
      &        zmin <= zix .and. zix <= zmax) then
             dix = (xix - x(i))**2 + (yix - y(i))**2 + (zix - z(i))**2
           else
@@ -834,15 +838,19 @@ c normal angle of the surface at that point.
           if (vy(i) == 0.) then
             ty = LARGEPOS
           else
-            ty = -(ycent - ysize*0.5 - y(i))/vy(i)
-            if (ty < 0.) then
-              ty = -(ycent + ysize*0.5 - y(i))/vy(i)
+            tym = -(ycent - ysize*0.5 - y(i))/vy(i)
+            typ = -(ycent + ysize*0.5 - y(i))/vy(i)
+            if (tym > 0. .and. typ > 0.) then
+              ty = min(tym,typ)
+            else
+              ty = max(tym,typ)
             endif
           endif
           xiy = -vx(i)*ty + x(i)
           yiy = -vy(i)*ty + y(i)
           ziy = -vz(i)*ty + z(i)
-          if (xmin <= xiy .and. xiy <= xmax .and.
+          if (ty > 0. .and.
+     &        xmin <= xiy .and. xiy <= xmax .and.
      &        zmin <= ziy .and. ziy <= zmax) then
             diy = (xiy - x(i))**2 + (yiy - y(i))**2 + (ziy - z(i))**2
           else
@@ -852,15 +860,19 @@ c normal angle of the surface at that point.
           if (vz(i) == 0.) then
             tz = LARGEPOS
           else
-            tz = -(zcent - zsize*0.5 - z(i))/vz(i)
-            if (tz < 0.) then
-              tz = -(zcent + zsize*0.5 - z(i))/vz(i)
+            tzm = -(zcent - zsize*0.5 - z(i))/vz(i)
+            tzp = -(zcent + zsize*0.5 - z(i))/vz(i)
+            if (tzm > 0. .and. tzp > 0.) then
+              tz = min(tzm,tzp)
+            else
+              tz = max(tzm,tzp)
             endif
           endif
           xiz = -vx(i)*tz + x(i)
           yiz = -vy(i)*tz + y(i)
           ziz = -vz(i)*tz + z(i)
-          if (xmin <= xiz .and. xiz <= xmax .and.
+          if (tz > 0. .and.
+     &        xmin <= xiz .and. xiz <= xmax .and.
      &        ymin <= yiz .and. yiz <= ymax) then
             diz = (xiz - x(i))**2 + (yiz - y(i))**2 + (ziz - z(i))**2
           else
